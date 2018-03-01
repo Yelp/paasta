@@ -1,3 +1,11 @@
+paasta-tools (0.69.37) xenial; urgency=medium
+
+  * 0.69.37 tagged with 'make release'
+    Commit: Merge pull request #1747 from Yelp/u/ddelnano/add-verify-
+    image-exists  Add --verify-image-exists flag for PAASTA-14050
+
+ -- Domenic Del Nano <ddelnano@yelp.com>  Thu, 01 Mar 2018 12:55:51 -0800
+
 paasta-tools (0.69.36) xenial; urgency=medium
 
   * 0.69.36 tagged with 'make release'
