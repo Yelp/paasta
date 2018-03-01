@@ -171,25 +171,21 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
     repository, tag = build_docker_image_name(service, sha).split(':')
 
     creds = read_docker_registy_creds(registry_uri)
-    uri = '%s/v2/%s/tags/list' % (registry_uri, repository)
+    uri = '%s/v2/%s/manifests/paasta-%s' % (registry_uri, repository, sha)
 
     with requests.Session() as s:
         try:
             url = 'https://' + uri
-            r = s.get(url, timeout=30) if creds[0] is None else s.get(url, auth=creds, timeout=30)
+            r = s.head(url, timeout=30) if creds[0] is None else s.head(url, auth=creds, timeout=30)
         except SSLError:
             # If no auth creds, fallback to trying http
             if creds[0] is not None:
                 raise
             url = 'http://' + uri
-            r = s.get(url, timeout=30)
+            r = s.head(url, timeout=30)
 
         if r.status_code == 200:
-            tags_resp = r.json()
-            if tags_resp['tags']:
-                return tag in tags_resp['tags']
-            else:
-                return False
+            return True
         elif r.status_code == 404:
             return False  # No Such Repository Error
         r.raise_for_status()
