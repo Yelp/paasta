@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import socket
@@ -26,7 +27,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
-DEFAULT_SPARK_WORK_DIR = '/spark_client'
+DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 
@@ -80,6 +81,16 @@ def add_subparser(subparsers):
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
         default='default',
+    )
+
+    list_parser.add_argument(
+        '-w', '--work-dir',
+        default='%s:%s' % (os.getcwd(), DEFAULT_SPARK_WORK_DIR),
+        help=(
+            "The read-write volume to mount in format "
+            "local_abs_dir:container_abs_dir, defaults "
+            "to cwd:/spark_drvier."
+        ),
     )
 
     list_parser.add_argument(
@@ -171,7 +182,7 @@ def get_docker_run_cmd(
 
 
 def get_spark_env(
-    cmd,
+    args,
     spark_conf,
 ):
     spark_env = {}
@@ -183,10 +194,11 @@ def get_spark_env(
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
 
-    if cmd == 'jupyter':
+    if args.cmd == 'jupyter':
         spark_env['SPARK_OPTS'] = spark_conf
-        spark_env['JUPYTER_RUNTIME_DIR'] = DEFAULT_SPARK_WORK_DIR + '/.jupyter'
-        spark_env['JUPYTER_DATA_DIR'] = DEFAULT_SPARK_WORK_DIR + '/.jupyter'
+        dirs = args.work_dir.split(':')
+        spark_env['JUPYTER_RUNTIME_DIR'] = dirs[1] + '/.jupyter'
+        spark_env['JUPYTER_DATA_DIR'] = dirs[1] + '/.jupyter'
 
     return spark_env
 
@@ -301,7 +313,7 @@ def configure_and_run_docker_container(
     )
 
     # Spark client specific volumes
-    volumes.append('%s:%s:rw' % (os.getcwd(), DEFAULT_SPARK_WORK_DIR))
+    volumes.append('%s:rw' % args.work_dir)
     volumes.append('/etc/passwd:/etc/passwd:ro')
     volumes.append('/etc/group:/etc/group:ro')
 
@@ -318,7 +330,7 @@ def configure_and_run_docker_container(
     # For jupyter, environment variable SPARK_OPTS is set instead.
     if docker_cmd == 'jupyter':
         docker_cmd = 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
-            socket.getfqdn(), DEFAULT_SPARK_WORK_DIR,
+            socket.getfqdn(), args.work_dir.split(':')[1],
         )
     elif docker_cmd in ['pyspark', 'spark-shell']:
         docker_cmd = docker_cmd + ' ' + spark_conf_str
@@ -328,7 +340,7 @@ def configure_and_run_docker_container(
     environment = instance_config.get_env_dictionary()
     environment.update(
         get_spark_env(
-            args.cmd,
+            args,
             spark_conf_str,
         ),
     )
@@ -386,7 +398,23 @@ def build_and_push_docker_image(args):
     return docker_url
 
 
+def validate_work_dir(s):
+    dirs = s.split(':')
+    if len(dirs) != 2:
+        msg = "--work-dir requires format local_abs_dir:container_abs_dir"
+        raise argparse.ArgumentTypeError(msg)
+
+    for d in dirs:
+        msg = "--work-dir requires absolute local and container paths"
+        if not os.path.isabs(d):
+            raise argparse.ArgumentTypeError(msg)
+
+
 def paasta_spark_run(args):
+    # argparse does not work as expected with both default and
+    # type=validate_work_dir.
+    validate_work_dir(args.work_dir)
+
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
