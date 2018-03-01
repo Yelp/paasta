@@ -22,6 +22,7 @@ import os
 
 import requests
 from requests.exceptions import RequestException
+from requests.exceptions import SSLError
 
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_full_git_sha
@@ -169,13 +170,22 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
     registry_uri = get_service_docker_registry(service, soa_dir)
     repository, tag = build_docker_image_name(service, sha).split(':')
 
+    creds = read_docker_registy_creds(registry_uri)
     uri = '%s/v2/%s/manifests/paasta-%s' % (registry_uri, repository, sha)
 
-    url = 'https://' + uri
-    r = requests.head(url, timeout=30)
+    with requests.Session() as s:
+        try:
+            url = 'https://' + uri
+            r = s.head(url, timeout=30) if creds[0] is None else s.head(url, auth=creds, timeout=30)
+        except SSLError:
+            # If no auth creds, fallback to trying http
+            if creds[0] is not None:
+                raise
+            url = 'http://' + uri
+            r = s.head(url, timeout=30)
 
-    if r.status_code == 200:
-        return True
-    elif r.status_code == 404:
-        return False
-    r.raise_for_status()
+        if r.status_code == 200:
+            return True
+        elif r.status_code == 404:
+            return False  # No Such Repository Error
+        r.raise_for_status()
