@@ -13,6 +13,7 @@
 # limitations under the License.
 from mock import ANY
 from mock import patch
+from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.utils import TimeoutError
@@ -27,6 +28,7 @@ class fake_args:
     block = False
     verbose = False
     auto_rollback = False
+    verify_image = False
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -115,6 +117,42 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         git_url='git://false.repo/services/test_services',
     )
     mock_mark_for_deployment.call_count = 2
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+def test_paasta_mark_for_deployment_when_verify_image_fails(
+    mock_get_currently_deployed_sha,
+    mock_is_docker_image_already_in_registry,
+    mock_validate_service_name,
+):
+    class fake_args_rollback(fake_args):
+        verify_image = True
+
+    mock_is_docker_image_already_in_registry.return_value = False
+    with raises(ValueError):
+        mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback)
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+def test_paasta_mark_for_deployment_when_verify_image_succeeds(
+    mock_get_currently_deployed_sha,
+    mock_is_docker_image_already_in_registry,
+    mock_validate_service_name,
+):
+    class fake_args_rollback(fake_args):
+        verify_image = True
+
+    mock_is_docker_image_already_in_registry.return_value = True
+    mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback)
+    mock_is_docker_image_already_in_registry.assert_called_with(
+        'test_service',
+        'fake_soa_dir',
+        'd670460b4b4aece5915caf5c68d12f560a9fe3e4',
+    )
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
