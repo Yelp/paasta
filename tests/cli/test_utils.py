@@ -800,9 +800,9 @@ def test_get_task_from_instance(mock_client):
 
 
 def test_get_container_name():
-    mock_task = mock.Mock(slave_id='slave1', executor={'container': 'container1'})
+    mock_task = mock.Mock(executor={'container': 'container1'})
     ret = utils.get_container_name(mock_task)
-    assert ret == 'mesos-slave1.container1'
+    assert ret == 'mesos-container1'
 
 
 def test_pick_random_port():
