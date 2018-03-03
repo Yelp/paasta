@@ -78,7 +78,6 @@ def test_get_spark_conf_str(
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.Session.get_credentials', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.os.path.exists', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.spark_run.os.getcwd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_username', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_spark_conf_str', autospec=True)
@@ -88,12 +87,10 @@ def test_configure_and_run_docker_container(
     mock_get_spark_conf_str,
     mock_get_username,
     mock_pick_random_port,
-    mock_getcwd,
     mock_os_path_exists,
     mock_get_credentials,
 ):
     mock_pick_random_port.return_value = 123
-    mock_getcwd.return_value = 'fake_cwd'
     mock_get_username.return_value = 'fake_user'
     mock_get_spark_conf_str.return_value = '--conf spark.app.name=fake_app'
     mock_run_docker_container.return_value = 0
@@ -102,6 +99,7 @@ def test_configure_and_run_docker_container(
     args = mock.MagicMock()
     args.cluster = 'fake_cluster'
     args.cmd = 'pyspark'
+    args.work_dir = '/fake_dir:/spark_driver'
     args.dry_run = True
 
     retcode = configure_and_run_docker_container(
@@ -138,7 +136,7 @@ def test_configure_and_run_docker_container(
         volumes=[
             '/h1:/c1:ro',
             '/h2:/c2:ro',
-            'fake_cwd:/spark_client:rw',
+            '/fake_dir:/spark_driver:rw',
             '/etc/passwd:/etc/passwd:ro',
             '/etc/group:/etc/group:ro',
         ],
