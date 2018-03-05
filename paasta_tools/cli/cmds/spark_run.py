@@ -30,6 +30,7 @@ from paasta_tools.utils import SystemPaastaConfig
 DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
+DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
 
 
 def add_subparser(subparsers):
@@ -108,6 +109,17 @@ def add_subparser(subparsers):
         help='Shows the arguments supplied to docker as json.',
         action='store_true',
         default=False,
+    )
+
+    list_parser.add_argument(
+        '--mesos-principal',
+        help="Mesos principal (username) to run a framework on Mesos.",
+        default='spark',
+    )
+
+    list_parser.add_argument(
+        '--mesos-secret',
+        help="Mesos secret (password) to run a framework on Mesos.",
     )
 
     list_parser.add_argument(
@@ -238,9 +250,20 @@ def get_spark_conf_str(
     if args.jars:
         spark_conf.append('--conf spark.jars=%s' % args.jars)
 
-    # TODO PAASTA-13815
-    # spark_conf.append('--conf spark.mesos.secret=')
-    # spark_conf.append('--conf spark.mesos.principal=')
+    spark_conf.append('--conf spark.mesos.principal=%s' % args.mesos_principal)
+    if not args.mesos_secret:
+        try:
+            with open(DEFAULT_SPARK_MESOS_SECRET_FILE, 'r') as f:
+                mesos_secret = f.read()
+                spark_conf.append('--conf spark.mesos.secret=%s' % mesos_secret)
+        except IOError:
+            paasta_print(
+                'Cannot load mesos secret from %s' % DEFAULT_SPARK_MESOS_SECRET_FILE,
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        spark_conf.append('--conf spark.mesos.secret=%s' % args.mesos_secret)
 
     # derby.system.home property defaulting to '.',
     # which requires directory permission changes.
