@@ -349,8 +349,9 @@ class ChronosJobConfig(InstanceConfig):
             except (pytz.exceptions.UnknownTimeZoneError, AttributeError):
                 job_tz = pytz.utc
             c = croniter(schedule, datetime.datetime.now(job_tz) - datetime.timedelta(seconds=seconds_ago))
-            # For some reason, croniter's iterator has trouble with monthly jobs that have a time-zone attached
+            # For some reason, croniter's iterator has trouble with weekly/monthly jobs that have a time-zone attached
             # So we pretend we are in the future a bit in order to get a sane interval.
+            c.get_next()
             c.get_next()
             return c.get_next() - c.get_prev()
         else:
