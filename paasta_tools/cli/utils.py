@@ -1054,7 +1054,7 @@ def get_task_from_instance(cluster, service, instance, slave_hostname=None, task
 
 
 def get_container_name(task):
-    container_name = "mesos-{}.{}".format(task.slave_id, task.executor['container'])
+    container_name = "mesos-{}".format(task.executor['container'])
     return container_name
 
 
