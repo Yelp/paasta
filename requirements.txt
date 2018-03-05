@@ -8,7 +8,7 @@ bravado==8.4.0
 choice==0.1
 chronos-python==1.2.1
 cookiecutter==1.4.0
-croniter==0.3.14
+croniter==0.3.20
 docker-py==1.2.3
 dulwich==0.17.3
 ephemeral-port-reserve==1.1.0
