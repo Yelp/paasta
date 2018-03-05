@@ -1,3 +1,11 @@
+paasta-tools (0.69.38) xenial; urgency=medium
+
+  * 0.69.38 tagged with 'make release'
+    Commit: Merge pull request #1748 from Yelp/fix-docker_exec  Fix
+    docker_ commands container name
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 05 Mar 2018 03:57:05 -0800
+
 paasta-tools (0.69.37) xenial; urgency=medium
 
   * 0.69.37 tagged with 'make release'
