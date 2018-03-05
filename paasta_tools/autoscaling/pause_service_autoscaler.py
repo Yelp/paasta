@@ -8,7 +8,7 @@ from paasta_tools.utils import paasta_print
 
 
 def get_service_autoscale_pause_time(cluster):
-    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    api = client.get_paasta_api_client(cluster=cluster)
     if not api:
         paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
         return 1
@@ -29,7 +29,7 @@ def get_service_autoscale_pause_time(cluster):
 
 
 def update_service_autoscale_pause_time(cluster, mins):
-    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    api = client.get_paasta_api_client(cluster=cluster)
     if not api:
         paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
         return 1
@@ -44,7 +44,7 @@ def update_service_autoscale_pause_time(cluster, mins):
 
 
 def delete_service_autoscale_pause_time(cluster):
-    api = client.get_paasta_api_client(cluster=cluster, http_res=True)
+    api = client.get_paasta_api_client(cluster=cluster)
     if not api:
         paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
         return 1

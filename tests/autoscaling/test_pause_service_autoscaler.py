@@ -10,7 +10,7 @@ def test_get_service_autoscale_pause_time_error(mock_client):
     mock_client.get_paasta_api_client.return_value = None
     return_code = get_service_autoscale_pause_time('cluster1')
     assert return_code == 1
-    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1', http_res=True)
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1')
 
     mock_api = mock.Mock()
     mock_client.get_paasta_api_client.return_value = mock_api
@@ -58,7 +58,7 @@ def test_update_service_autoscale_pause_time(mock_client):
     mock_client.get_paasta_api_client.return_value = None
     return_code = update_service_autoscale_pause_time('cluster1', '2')
     assert return_code == 1
-    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1', http_res=True)
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1')
 
     mock_api = mock.Mock()
     mock_client.get_paasta_api_client.return_value = mock_api
@@ -82,7 +82,7 @@ def test_delete_service_autoscale_pause_time(mock_client):
     mock_client.get_paasta_api_client.return_value = None
     return_code = delete_service_autoscale_pause_time('cluster1')
     assert return_code == 1
-    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1', http_res=True)
+    mock_client.get_paasta_api_client.assert_called_with(cluster='cluster1')
 
     mock_api = mock.Mock()
     mock_client.get_paasta_api_client.return_value = mock_api
