@@ -1,3 +1,11 @@
+paasta-tools (0.69.39) xenial; urgency=medium
+
+  * 0.69.39 tagged with 'make release'
+    Commit: Merge pull request #1750 from Yelp/croniter_bump  Test using
+    new version of croniter for dst fixes
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 05 Mar 2018 11:51:17 -0800
+
 paasta-tools (0.69.38) xenial; urgency=medium
 
   * 0.69.38 tagged with 'make release'
