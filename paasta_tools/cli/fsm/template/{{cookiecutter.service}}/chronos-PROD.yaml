@@ -33,7 +33,7 @@ example_chronos_job:
   # for the latest docs.
 
   # cmd does do date interpolation like tron. See the offical docs:
-  # https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables
+  # http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc
   # Just be careful as it is easy to mess up a % and escaping and junk
   cmd: "/code/virtualenv_run/bin/python -m mycode.batch --options"
 

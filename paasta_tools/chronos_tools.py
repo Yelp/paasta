@@ -917,7 +917,7 @@ def parse_time_variables(input_string, parse_time=None):
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
     variables listed in the tron documentation:
-    https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables
+    http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc
 
     :param input_string: input string to be parsed
     :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.

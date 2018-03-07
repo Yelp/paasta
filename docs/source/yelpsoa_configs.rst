@@ -378,7 +378,7 @@ Each job configuration MAY specify the following options:
     understands will be interpreted and replaced. ``shortdate``, ``year``,
     ``month``, ``day``, and ``daynumber`` are supported. Read more in the
     official `tron documentation
-    <https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables>`_
+    <http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc>`_
     for more information on how to use these variables.
 
     * **WARNING**: Chronos ``cmd`` parsing is done via `python string
