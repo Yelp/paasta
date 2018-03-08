@@ -1,3 +1,10 @@
+paasta-tools (0.69.40) xenial; urgency=medium
+
+  * 0.69.40 tagged with 'make release'
+    Commit: Update tron documentation links to point to readthedocs.io
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 07 Mar 2018 16:09:22 -0800
+
 paasta-tools (0.69.39) xenial; urgency=medium
 
   * 0.69.39 tagged with 'make release'
