@@ -447,6 +447,9 @@ class InstanceConfig(object):
             "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
         }
+        team = self.get_team()
+        if team:
+            env["PAASTA_MONITORING_TEAM"] = team
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
         return env
