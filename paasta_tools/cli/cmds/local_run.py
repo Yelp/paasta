@@ -554,11 +554,11 @@ def decrypt_secret_environment_variables(
             secret_provider_name=secret_provider_name,
             soa_dir=soa_dir,
             service_name=service_name,
-            cluster_name=cluster_name,
+            cluster_names=[cluster_name],
+            secret_provider_kwargs=secret_provider_kwargs,
         )
         secret_environment = secret_provider.decrypt_environment(
             secret_env_vars,
-            **secret_provider_kwargs,
         )
     return secret_environment
 

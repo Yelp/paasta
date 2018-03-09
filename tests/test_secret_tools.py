@@ -72,6 +72,17 @@ def test_get_secret_provider():
     with mock.patch(
         'paasta_tools.secret_providers.SecretProvider', autospec=True,
     ) as mock_secret_provider:
-        ret = get_secret_provider('paasta_tools.secret_providers', '/nail/blah', 'test-service', 'norcal-devc')
-        mock_secret_provider.assert_called_with('/nail/blah', 'test-service', 'norcal-devc')
+        ret = get_secret_provider(
+            secret_provider_name='paasta_tools.secret_providers',
+            soa_dir='/nail/blah',
+            service_name='test-service',
+            cluster_names=['norcal-devc'],
+            secret_provider_kwargs={'some': 'thing'},
+        )
+        mock_secret_provider.assert_called_with(
+            soa_dir='/nail/blah',
+            service_name='test-service',
+            cluster_names=['norcal-devc'],
+            some='thing',
+        )
         assert ret == mock_secret_provider.return_value

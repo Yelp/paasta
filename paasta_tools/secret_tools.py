@@ -13,6 +13,9 @@
 import json
 import os
 import re
+from typing import Any
+from typing import Dict
+from typing import List
 from typing import Optional
 
 from paasta_tools.secret_providers import SecretProvider
@@ -62,7 +65,13 @@ def get_secret_provider(
     secret_provider_name: str,
     soa_dir: str,
     service_name: str,
-    cluster_name: str,
+    cluster_names: List[str],
+    secret_provider_kwargs: Dict[str, Any],
 ) -> SecretProvider:
     SecretProvider = __import__(secret_provider_name, fromlist=['SecretProvider']).SecretProvider
-    return SecretProvider(soa_dir, service_name, cluster_name)
+    return SecretProvider(
+        soa_dir=soa_dir,
+        service_name=service_name,
+        cluster_names=cluster_names,
+        **secret_provider_kwargs,
+    )

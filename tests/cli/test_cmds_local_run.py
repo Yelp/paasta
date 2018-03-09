@@ -1697,11 +1697,11 @@ def test_decrypt_secret_environment_variables():
             secret_provider_name='vault',
             soa_dir='/nail/blah',
             service_name='universe',
-            cluster_name='mesosstage',
+            cluster_names=['mesosstage'],
+            secret_provider_kwargs={'some': 'config'},
         )
         mock_secret_provider.decrypt_environment.assert_called_with(
             {'SECRET': 'SECRET(123)'},
-            some='config',
         )
         assert ret == mock_secret_provider.decrypt_environment.return_value
 
