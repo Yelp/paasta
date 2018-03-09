@@ -1,3 +1,11 @@
+paasta-tools (0.69.42) xenial; urgency=medium
+
+  * 0.69.42 tagged with 'make release'
+    Commit: Merge pull request #1758 from Yelp/add-skip-secrets-option
+    Add --skip-secrets option to local-run
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 09 Mar 2018 09:45:23 -0800
+
 paasta-tools (0.69.41) xenial; urgency=medium
 
   * 0.69.41 tagged with 'make release'
