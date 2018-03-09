@@ -354,6 +354,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.dry_run_json_dict = False
     args.vault_auth_method = 'ldap'
     args.vault_token_file = '/blah/token'
+    args.skip_secrets = False
 
     mock_secret_provider_kwargs = {
         'vault_cluster_config': {},
@@ -389,6 +390,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         dry_run=False,
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
+        skip_secrets=False,
     )
 
 
@@ -418,6 +420,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.dry_run_json_dict = False
     args.vault_auth_method = 'ldap'
     args.vault_token_file = '/blah/token'
+    args.skip_secrets = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -452,6 +455,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         dry_run=False,
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
+        skip_secrets=False,
     )
 
 
@@ -487,6 +491,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.dry_run_json_dict = False
     args.vault_auth_method = 'ldap'
     args.vault_token_file = '/blah/token'
+    args.skip_secrets = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -523,6 +528,7 @@ def test_configure_and_run_pulls_image_when_asked(
         dry_run=False,
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
+        skip_secrets=False,
     )
 
 
@@ -552,6 +558,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.dry_run_json_dict = False
         args.vault_auth_method = 'ldap'
         args.vault_token_file = '/blah/token'
+        args.skip_secrets = False
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -588,6 +595,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             dry_run=False,
             json_dict=False,
             secret_provider_kwargs=mock_secret_provider_kwargs,
+            skip_secrets=False,
         )
 
 
