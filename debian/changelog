@@ -1,3 +1,11 @@
+paasta-tools (0.69.41) xenial; urgency=medium
+
+  * 0.69.41 tagged with 'make release'
+    Commit: Merge pull request #1754 from Yelp/paasta-secret-cli  Add
+    paasta secret cli module
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 09 Mar 2018 04:57:42 -0800
+
 paasta-tools (0.69.40) xenial; urgency=medium
 
   * 0.69.40 tagged with 'make release'
