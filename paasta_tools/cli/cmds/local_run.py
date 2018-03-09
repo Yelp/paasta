@@ -385,6 +385,14 @@ def add_subparser(subparsers):
         required=False,
         default='/root/.vault-token',
     )
+    list_parser.add_argument(
+        '--skip-secrets',
+        help='Skip decrypting secrets, useful if running non-interactively',
+        dest='skip_secrets',
+        required=False,
+        action='store_true',
+        default=False,
+    )
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -581,6 +589,7 @@ def run_docker_container(
     json_dict=False,
     framework=None,
     secret_provider_kwargs={},
+    skip_secrets=False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -604,15 +613,16 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
-    secret_environment = decrypt_secret_environment_variables(
-        secret_provider_name=secret_provider_name,
-        environment=environment,
-        soa_dir=soa_dir,
-        service_name=service,
-        cluster_name=instance_config.cluster,
-        secret_provider_kwargs=secret_provider_kwargs,
-    )
-    environment.update(secret_environment)
+    if not skip_secrets:
+        secret_environment = decrypt_secret_environment_variables(
+            secret_provider_name=secret_provider_name,
+            environment=environment,
+            soa_dir=soa_dir,
+            service_name=service,
+            cluster_name=instance_config.cluster,
+            secret_provider_kwargs=secret_provider_kwargs,
+        )
+        environment.update(secret_environment)
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config,
         port0=chosen_port,
@@ -909,6 +919,7 @@ def configure_and_run_docker_container(
         framework=instance_type,
         secret_provider_name=system_paasta_config.get_secret_provider_name(),
         secret_provider_kwargs=secret_provider_kwargs,
+        skip_secrets=args.skip_secrets,
     )
 
 
