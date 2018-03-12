@@ -45,11 +45,17 @@ def add_subparser(subparsers):
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    list_parser.add_argument(
+
+    group = list_parser.add_mutually_exclusive_group()
+    group.add_argument(
         '-b', '--build',
         help="Build the docker image from scratch using the local Makefile's cook-image target.",
         action='store_true',
         default=False,
+    )
+    group.add_argument(
+        '-I', '--image',
+        help="Use the provided image to start the Spark driver and executors.",
     )
 
     list_parser.add_argument(
@@ -244,7 +250,7 @@ def get_spark_conf_str(
         spark_conf.append('--conf spark.driver.cores=%d' % args.driver_cores)
 
     spark_conf.append('--conf spark.mesos.executor.docker.image=%s' % docker_img)
-    if not args.build:
+    if not args.build and not args.image:
         spark_conf.append('--conf spark.mesos.uris=file:///root/.dockercfg')
 
     if args.jars:
@@ -459,7 +465,7 @@ def paasta_spark_run(args):
             service=args.service,
             instance=args.instance,
             cluster=args.cluster,
-            load_deployments=args.build is False,
+            load_deployments=args.build is False and args.image is None,
             soa_dir=args.yelpsoa_config_root,
         )
     except NoConfigurationForServiceError as e:
@@ -484,6 +490,8 @@ def paasta_spark_run(args):
         docker_url = build_and_push_docker_image(args)
         if docker_url is None:
             return 1
+    elif args.image:
+        docker_url = args.image
     else:
         try:
             docker_url = instance_config.get_docker_url()
