@@ -1,3 +1,12 @@
+paasta-tools (0.69.43) xenial; urgency=medium
+
+  * 0.69.43 tagged with 'make release'
+    Commit: Merge pull request #1755 from Yelp/PAASTA-14065-add-
+    PAASTA_MONITORING_TEAM  Add PAASTA_MONITORING_TEAM environment
+    variable
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 12 Mar 2018 11:20:11 -0700
+
 paasta-tools (0.69.42) xenial; urgency=medium
 
   * 0.69.42 tagged with 'make release'
