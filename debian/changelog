@@ -1,3 +1,11 @@
+paasta-tools (0.69.44) xenial; urgency=medium
+
+  * 0.69.44 tagged with 'make release'
+    Commit: Merge pull request #1752 from Yelp/fix_pypi_upload  Fix
+    upload to pypi on tags. Fixes #1660
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 12 Mar 2018 15:17:56 -0700
+
 paasta-tools (0.69.43) xenial; urgency=medium
 
   * 0.69.43 tagged with 'make release'
