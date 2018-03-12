@@ -37,7 +37,7 @@ Jinja2==2.10
 jinja2-time==0.1.0
 jmespath==0.9.3
 jsonref==0.1
-jsonschema[format]==2.5.1
+jsonschema==2.5.1
 kazoo==2.4.0
 marathon==0.9.3
 MarkupSafe==1.0
