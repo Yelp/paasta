@@ -33,7 +33,7 @@ setup(
         'a_sync >= 0.5.0',
         'argcomplete >= 0.8.1',
         'aiohttp >= 2.3.3',
-        'bravado == 8.4.0',
+        'bravado == 9.2.2',
         'choice == 0.1',
         'chronos-python >= 1.2.0',
         'cookiecutter == 1.4.0',

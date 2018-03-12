@@ -57,7 +57,7 @@ def add_subparser(subparsers):
 def paasta_autoscale(args):
     log.setLevel(logging.DEBUG)
     service = figure_out_service_name(args)
-    api = client.get_paasta_api_client(cluster=args.cluster, http_res=True)
+    api = client.get_paasta_api_client(cluster=args.cluster)
     if not api:
         paasta_print('Could not connect to paasta api. Maybe you misspelled the cluster?')
         return 1
