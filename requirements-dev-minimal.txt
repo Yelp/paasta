@@ -1,0 +1,15 @@
+astroid
+asynctest
+coverage
+docutils
+flake8
+freezegun
+mock
+path.py
+pep8
+pre-commit
+pylint
+pytest
+pytest-asyncio
+requirements-tools
+Sphinx
