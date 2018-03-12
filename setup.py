@@ -30,13 +30,17 @@ setup(
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
     install_requires=[
+        # Make sure to modify requirements-minimal.txt as well!
         'a_sync >= 0.5.0',
         'argcomplete >= 0.8.1',
         'aiohttp >= 2.3.3',
-        'bravado == 8.4.0',
+        'boto3',
+        'botocore',
+        'bravado >= 8.4.0',
         'choice == 0.1',
         'chronos-python >= 1.2.0',
         'cookiecutter == 1.4.0',
+        'croniter',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
@@ -63,10 +67,16 @@ setup(
         'retry',
         'requests == 2.18.4',
         'requests-cache >= 0.4.10,<= 0.5.0',
+        'ruamel.yaml',
         'sensu-plugin',
         'service-configuration-lib >= 0.12.0',
         'syslogmp',
+        'task-processing',
+        'typing-extensions',
+        'tzlocal',
         'ujson == 1.35',
+        'wsgicors',
+        'yelp-bytes',
         'yelp-clog >= 2.7.2',
     ],
     scripts=[

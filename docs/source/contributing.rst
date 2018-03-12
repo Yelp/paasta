@@ -7,16 +7,16 @@ Running The Tests
 Unit Tests
 ^^^^^^^^^^
 
-Python 2.7 and tox are required for running the unit tests. You can simply run
-``make test`` or ``tox`` to execute them.
+Python 3.6 and virtualenv are required for running the unit tests. You can simply run
+``make test`` to execute them.
 
 This will build a virtualenv with the required python packages, then run the tests
-written in the ``tests`` directory
+written in the ``tests`` directory.
 
 Integration Tests
 ^^^^^^^^^^^^^^^^^
 
-Python 2.7, tox, and Docker are required to run the integration test suite.
+Python 3.6, virtualenv, and Docker are required to run the integration test suite.
 You can run ``make itest`` to execute them.
 
 Example Cluster
