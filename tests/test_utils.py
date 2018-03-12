@@ -1207,7 +1207,11 @@ class TestInstanceConfig:
             service='',
             cluster='',
             instance='',
-            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}, 'deploy_group': 'fake_deploy_group'},
+            config_dict={
+                'env': {'SPECIAL_ENV': 'TRUE'},
+                'deploy_group': 'fake_deploy_group',
+                'monitoring': {'team': 'generic_team'},
+            },
             branch_dict={'docker_image': 'something'},
         )
         assert fake_conf.get_env() == {
@@ -1217,6 +1221,7 @@ class TestInstanceConfig:
             'PAASTA_CLUSTER': '',
             'PAASTA_DEPLOY_GROUP': 'fake_deploy_group',
             'PAASTA_DOCKER_IMAGE': 'something',
+            'PAASTA_MONITORING_TEAM': 'generic_team',
         }
 
     def test_get_args_default_no_cmd(self):
