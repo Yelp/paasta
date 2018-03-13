@@ -56,8 +56,9 @@ def test_non_ascii_tags():
             'path',
         ),
     ):
-        ret = remote_git.list_remote_refs('git-url')
-        assert ret == {'☃': 'deadbeef'}
+        with mock.patch('time.sleep', autospec=True):
+            ret = remote_git.list_remote_refs('git-url')
+            assert ret == {'☃': 'deadbeef'}
 
 
 def test_make_force_push_mutate_refs_func_overwrites_shas():

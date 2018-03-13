@@ -74,7 +74,8 @@ class TestBounceLib:
         with mock.patch(
             'paasta_tools.bounce_lib.wait_for_create', autospec=True,
         ) as wait_patch:
-            bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
+            with mock.patch('time.sleep', autospec=True):
+                bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
             assert fake_client.create_app.call_count == 1
             actual_call_args = fake_client.create_app.call_args
             actual_config = actual_call_args[0][1]

@@ -69,20 +69,6 @@ def test_file_exists_flock(tmpdir):
         os.kill(flock_process, signal.SIGKILL)
 
 
-@skip_if_osx
-def test_file_exists_exhaustion(tmpdir):
-    flock_processes = []
-    try:
-        for x in range(100):
-            flock_process = _flock_process(str(tmpdir.join('02:52:00:00:00:{:02x}'.format(x))))
-            flock_processes.append(flock_process)
-
-        with pytest.raises(mac_address.MacAddressException):
-            mac_address.reserve_unique_mac_address(str(tmpdir))
-    finally:
-        [os.kill(p, signal.SIGKILL) for p in flock_processes]
-
-
 @pytest.yield_fixture(autouse=True)
 def mock_randbits():
     # make getrandbits() reliably return an incrementing counter starting at 0

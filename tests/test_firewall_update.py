@@ -133,7 +133,9 @@ def test_run_daemon(process_inotify_mock, smartstack_deps_mock, mock_daemon_args
             return {}
 
     smartstack_deps_mock.side_effect = kill_after_too_long()
-    subprocess.Popen(['bash', '-c', 'sleep 2; echo > %s/mydep.depinstance.json' % mock_daemon_args.synapse_service_dir])
+    subprocess.Popen(
+        ['bash', '-c', 'sleep 0.2; echo > %s/mydep.depinstance.json' % mock_daemon_args.synapse_service_dir],
+    )
     with pytest.raises(StopIteration):
         firewall_update.run_daemon(mock_daemon_args)
     assert smartstack_deps_mock.call_count > 0
