@@ -196,7 +196,16 @@
                     "uniqueItems": true
                 },
                 "monitoring": {
-                    "type": "object"
+                    "type": "object",
+                    "properties": {
+                        "team": {
+                            "type": "string"
+                        },
+                        "page": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": true
                 },
                 "net": {
                     "type": "string"
