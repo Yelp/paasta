@@ -696,7 +696,8 @@ class InstanceConfig(object):
         return self.config_dict.get('dependencies_reference')
 
     def get_dependencies(self) -> Optional[Dict]:
-        """Get the contents of the dependencies_dict pointed to by the dependency_reference
+        """Get the contents of the dependencies_dict pointed to by the dependency_reference or
+        'main' if no dependency_reference exists
 
         Defaults to None if not specified in the config.
 
@@ -704,7 +705,8 @@ class InstanceConfig(object):
         dependencies = self.config_dict.get('dependencies')
         if not dependencies:
             return None
-        return dependencies.get(self.get_dependencies_reference())
+        dependency_ref = self.get_dependencies_reference() or 'main'
+        return dependencies.get(dependency_ref)
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
