@@ -25,7 +25,12 @@ SECRET_REGEX = "^SECRET\([A-Za-z0-9_-]*\)$"
 
 def is_secret_ref(env_var_val: str) -> bool:
     pattern = re.compile(SECRET_REGEX)
-    return pattern.match(env_var_val) is not None
+    try:
+        match = pattern.match(env_var_val)
+    except TypeError:
+        # it can't be a secret ref if it isn't a string
+        return False
+    return match is not None
 
 
 def get_hmac_for_secret(

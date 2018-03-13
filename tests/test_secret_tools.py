@@ -26,6 +26,12 @@ def test_is_secret_ref():
     assert not is_secret_ref('SECRET(#!$)')
     # herein is a lesson on how tests are hard:
     assert not is_secret_ref('anything_else')
+    assert not is_secret_ref('')
+    # this is just incase a non string leaks in somewhere
+    # if it is not a string it can't be a secret ref
+    # so this checks that we are catching the TypeError
+    assert not is_secret_ref(None)
+    assert not is_secret_ref(3)
 
 
 def test_get_secret_name_from_ref():
