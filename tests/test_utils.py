@@ -40,7 +40,7 @@ def test_get_git_url_provided_by_serviceyaml():
 
 def test_get_git_url_default():
     service = 'giiiiiiiiiiit'
-    expected = 'git@git.yelpcorp.com:services/%s.git' % service
+    expected = 'git@git.yelpcorp.com:services/%s' % service
     with (
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True)
     ) as mock_read_service_configuration:

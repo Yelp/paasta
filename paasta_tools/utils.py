@@ -968,7 +968,7 @@ def get_git_url(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> str:
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
     if this is called with the string 'test', the returned
-    url will be git@git.yelpcorp.com:services/test.git.
+    url will be git@git.yelpcorp.com:services/test.
 
     :param service: The service name to get a URL for
     :returns: A git url to the service's repository"""
@@ -976,7 +976,7 @@ def get_git_url(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> str:
         service,
         soa_dir=soa_dir,
     )
-    default_location = 'git@git.yelpcorp.com:services/%s.git' % service
+    default_location = 'git@git.yelpcorp.com:services/%s' % service
     return general_config.get('git_url', default_location)
 
 
