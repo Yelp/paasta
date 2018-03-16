@@ -116,7 +116,8 @@ def missing_deployments_message(service):
 def get_deploy_info(deploy_file_path):
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
-        paasta_print(PaastaCheckMessages.DEPLOY_YAML_MISSING)
+        paasta_print('Error encountered with %s' % deploy_file_path)
+
         exit(1)
     return deploy_info
 

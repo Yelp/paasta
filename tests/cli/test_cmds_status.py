@@ -447,7 +447,7 @@ def test_get_deploy_info_does_not_exist(mock_read_deploy, capfd):
         status.get_deploy_info('fake_service')
     output, _ = capfd.readouterr()
     assert sys_exit.value.code == 1
-    assert output == expected_output
+    assert output.startswith('Error encountered with')
 
 
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
