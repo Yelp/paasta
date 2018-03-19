@@ -29,6 +29,7 @@ RUN apt-get update > /dev/null && \
 RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
+    add-apt-repository ppa:ubuntu-toolchain-r/test && \
     add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 9DC858229FC7DD38854AE2D88D81803C0EBFCD88 && \
@@ -36,7 +37,8 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         docker-ce=17.03.2~ce-0~ubuntu-trusty \
         libsasl2-modules \
-        mesos=1.4.1-2.0.1 > /dev/null && \
+        libstdc++6 \
+        mesos=1.5.0-2.0.1 > /dev/null && \
     rm -rf /var/lib/apt/lists/*
 
 COPY mesos-secrets mesos-slave-secret /etc/
