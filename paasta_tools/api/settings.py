@@ -19,3 +19,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 soa_dir = DEFAULT_SOA_DIR
 cluster = None
 marathon_clients = None
+auth_enabled = False
+vault_ca = None
+vault_url = None

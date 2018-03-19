@@ -1778,10 +1778,26 @@ class SystemPaastaConfig(object):
         used by all services in this cluster"""
         return self.config_dict.get('vault_environment')
 
+    def get_vault_local_url(self) -> str:
+        """ a url to resolve the local vault cluster"""
+        return self.config_dict.get('vault_local_url')
+
+    def get_api_auth_enabled(self) -> bool:
+        """ enable auth on paasta_api"""
+        return self.config_dict.get('api_auth_enabled', False)
+
     def get_vault_cluster_config(self) -> dict:
         """ Get a map from paasta_cluster to vault ecosystem. We need
         this because not every ecosystem will have its own vault cluster"""
         return self.config_dict.get('vault_cluster_map', {})
+
+    def get_vault_host_template(self) -> str:
+        """ get string template for vault host"""
+        return self.config_dict.get('vault_host_template', "https://{}.example.com:8200")
+
+    def get_vault_ca_template(self) -> str:
+        """ get vault_ca certificate path template"""
+        return self.config_dict.get('vault_ca_template', '/path/{}/ca.crt')
 
     def get_secret_provider_name(self) -> str:
         """ Get the name for the configured secret_provider, used to

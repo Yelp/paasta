@@ -23,12 +23,19 @@ import requests_cache
 import service_configuration_lib
 from gevent import monkey
 from gevent.wsgi import WSGIServer
+from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
+from pyramid.security import ALL_PERMISSIONS
+from pyramid.security import Allow
+from pyramid.security import Authenticated
+from pyramid.security import Deny
+from pyramid.security import Everyone
 from wsgicors import CORS
 
 import paasta_tools.api
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
+from paasta_tools.api.auth import VaultAuthAuthenticationPolicy
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
@@ -57,6 +64,15 @@ def parse_paasta_api_args():
     return args
 
 
+class PaastaAcl(object):
+    __acl__ = (
+        (Allow, 'paasta_api', 'view'),
+        (Allow, Authenticated, 'view'),
+        (Allow, 'paasta_api_admin', ALL_PERMISSIONS),
+        (Deny, Everyone, ALL_PERMISSIONS),
+    )
+
+
 def make_app(global_config=None):
     paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     setup_paasta_api()
@@ -67,6 +83,12 @@ def make_app(global_config=None):
         'pyramid_swagger.skip_validation': ['/(static)\\b', '/(status)\\b', '/(swagger.json)\\b'],
         'pyramid_swagger.swagger_versions': ['2.0'],
     })
+    if settings.auth_enabled:
+        authn_policy = VaultAuthAuthenticationPolicy(vault_url=settings.vault_url, vault_ca=settings.vault_ca)
+        config.set_authentication_policy(authn_policy)
+        config.set_authorization_policy(ACLAuthorizationPolicy())
+        config.set_root_factory(lambda request: PaastaAcl())
+        config.set_default_permission('view')
 
     config.include('pyramid_swagger')
     config.add_route('resources.utilization', '/v1/resources/utilization')
@@ -92,6 +114,9 @@ def setup_paasta_api():
 
     settings.system_paasta_config = load_system_paasta_config()
     settings.cluster = settings.system_paasta_config.get_cluster()
+    settings.vault_ca = settings.system_paasta_config.get_vault_ca_template().format(settings.cluster)
+    settings.vault_url = settings.system_paasta_config.get_vault_local_url()
+    settings.auth_enabled = settings.system_paasta_config.get_api_auth_enabled()
 
     settings.marathon_clients = marathon_tools.get_marathon_clients(
         marathon_tools.get_marathon_servers(settings.system_paasta_config),

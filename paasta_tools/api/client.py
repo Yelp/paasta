@@ -21,15 +21,17 @@ import os
 from urllib.parse import urlparse
 
 from bravado.client import SwaggerClient
+from bravado.requests_client import RequestsClient
 
 import paasta_tools.api
+from paasta_tools.api.auth_decorator import AuthClientDecorator
 from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger(__name__)
 
 
-def get_paasta_api_client(cluster=None, system_paasta_config=None, http_res=False):
+def get_paasta_api_client(cluster=None, system_paasta_config=None, http_res=False, use_auth=True, paasta_token=''):
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 
@@ -59,10 +61,25 @@ def get_paasta_api_client(cluster=None, system_paasta_config=None, http_res=Fals
         spec_dict = json.load(f)
     # replace localhost in swagger.json with actual api server
     spec_dict['host'] = api_server
+    http_client = RequestsClient()
+    # REQUEST_OPTIONS_DEFAULTS['response_callbacks'] = [r_call]
+    print(api_server)
+    if use_auth:
+        http_client.set_api_key(
+            host=api_server.split(":")[0],
+            api_key=paasta_token,
+            param_name='X-Paasta-Token',
+            param_in='header',
+        )
 
     # sometimes we want the status code
     if http_res:
         config = {'also_return_response': True}
-        return SwaggerClient.from_spec(spec_dict=spec_dict, config=config)
+        c = SwaggerClient.from_spec(spec_dict=spec_dict, config=config, http_client=http_client)
     else:
-        return SwaggerClient.from_spec(spec_dict=spec_dict)
+        c = SwaggerClient.from_spec(spec_dict=spec_dict, http_client=http_client)
+    return AuthClientDecorator(c, cluster_name=cluster)
+
+
+def r_call(incoming_response, operation):
+    pass

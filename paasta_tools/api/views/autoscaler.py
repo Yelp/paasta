@@ -24,7 +24,7 @@ from paasta_tools.long_running_service_tools import set_instances_for_marathon_s
 from paasta_tools.marathon_tools import load_marathon_service_config
 
 
-@view_config(route_name='service.autoscaler.get', request_method='GET', renderer='json')
+@view_config(route_name='service.autoscaler.get', request_method='GET', renderer='json', permission='view')
 def get_autoscaler_count(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
