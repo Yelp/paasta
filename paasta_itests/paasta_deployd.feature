@@ -63,7 +63,6 @@ Feature: paasta-deployd deploys apps
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
 
-  @skip
   Scenario: deployd will scale up an app if the instance count changes in zk
     Given a working paasta cluster
       And paasta-deployd is running
@@ -78,7 +77,6 @@ Feature: paasta-deployd deploys apps
      When we set the instance count in zookeeper for service "test-service" instance "main" to 4
      Then we should see the number of instances become 4
 
-  @skip
   Scenario: deployd will scale down an app if the instance count changes in zk
     Given a working paasta cluster
       And paasta-deployd is running

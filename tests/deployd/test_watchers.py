@@ -109,7 +109,12 @@ class TestAutoscalerWatcher(unittest.TestCase):
             mock_watcher = mock.Mock(_prior_children=['instances'])
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth')
-            mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances')
+            mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances', enqueue=False)
+
+            mock_watcher = mock.Mock(_prior_children=['instances'])
+            mock_children_watch.return_value = mock_watcher
+            self.watcher.watch_folder('/rick/beth', enqueue_children=True)
+            mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances', enqueue=True)
 
     def test_watch_node(self):
         with mock.patch(
@@ -191,8 +196,8 @@ class TestAutoscalerWatcher(unittest.TestCase):
             )
             self.watcher.process_folder_event(['morty', 'summer'], mock_event)
             calls = [
-                mock.call(self.watcher, '/rick/beth/morty'),
-                mock.call(self.watcher, '/rick/beth/summer'),
+                mock.call(self.watcher, '/rick/beth/morty', enqueue_children=True),
+                mock.call(self.watcher, '/rick/beth/summer', enqueue_children=True),
             ]
             mock_watch_folder.assert_has_calls(calls)
 
