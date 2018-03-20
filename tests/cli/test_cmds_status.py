@@ -13,6 +13,7 @@
 # limitations under the License.
 from collections import namedtuple
 
+from mock import ANY
 from mock import call
 from mock import MagicMock
 from mock import Mock
@@ -33,13 +34,16 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import PaastaColors
 
 
-def make_fake_instance_conf(cluster, service, instance, deploy_group=None, team=None):
+def make_fake_instance_conf(cluster, service, instance, deploy_group=None, team=None, registrations=()):
     conf = MagicMock()
     conf.get_cluster.return_value = cluster
     conf.get_service.return_value = service
     conf.get_instance.return_value = instance
     conf.get_deploy_group.return_value = deploy_group
     conf.get_team.return_value = team
+    conf.get_registrations.return_value = registrations if registrations else []
+    if registrations is None:
+        del conf.get_registrations  # http://www.voidspace.org.uk/python/mock/mock.html#deleting-attributes
     return conf
 
 
@@ -86,6 +90,7 @@ def test_status_arg_service_not_found(
     args.clusters = None
     args.instances = None
     args.deploy_group = None
+    args.registration = None
 
     # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
@@ -406,6 +411,7 @@ def test_status_pending_pipeline_build_message(
     args.instances = None
     args.owner = None
     args.soa_dir = utils.DEFAULT_SOA_DIR
+    args.registration = None
 
     paasta_status(args)
     output, _ = capfd.readouterr()
@@ -497,6 +503,7 @@ def test_status_calls_sergeants(
     args.owner = None
     args.deploy_group = None
     args.soa_dir = '/fake/soa/dir'
+    args.registration = None
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -532,20 +539,36 @@ def test_report_invalid_whitelist_values_with_whitelists():
     assert 'bogus1' in actual
 
 
+StatusArgs = namedtuple(
+    'StatusArgs',
+    [
+        'service',
+        'soa_dir',
+        'clusters',
+        'instances',
+        'deploy_group',
+        'owner',
+        'registration',
+        'verbose',
+    ],
+)
+
+
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
 @patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
 @patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
 def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_group(
     mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
 ):
-    PaastaArgs = namedtuple('PaastaArgs', ['soa_dir', 'clusters', 'instances', 'deploy_group', 'owner', 'service'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake_service',
         soa_dir='/fake/soa/dir',
         deploy_group='fake_deploy_group',
         clusters='cluster1',
         instances='instance1,instance3',
         owner=None,
+        registration=None,
+        verbose=False,
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
@@ -566,14 +589,15 @@ def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_gro
 def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_instances(
     mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
 ):
-    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake_service',
         soa_dir='/fake/soa/dir',
         deploy_group='fake_deploy_group',
         clusters=None,
         instances=None,
         owner=None,
+        registration=None,
+        verbose=False,
     )
 
     mock_figure_out_service_name.return_value = 'fake_service'
@@ -596,14 +620,15 @@ def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_inst
 def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_group(
     mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
 ):
-    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake_service',
         soa_dir='/fake/soa/dir',
         deploy_group='fake_deploy_group',
         clusters='cluster4',
         instances=None,
         owner=None,
+        registration=None,
+        verbose=False,
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
@@ -622,14 +647,15 @@ def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_grou
 def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_group(
     mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
 ):
-    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake_service',
         soa_dir='/fake/soa/dir',
         deploy_group='fake_deploy_group',
         clusters=None,
         instances='instance5',
         owner=None,
+        registration=None,
+        verbose=False,
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
@@ -648,14 +674,15 @@ def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_gro
 def test_apply_args_filters_clusters_and_instances(
     mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
 ):
-    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake_service',
         soa_dir='/fake/soa/dir',
         deploy_group=None,
         clusters='cluster1',
         instances='instance1,instance3',
         owner=None,
+        registration=None,
+        verbose=False,
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
@@ -672,14 +699,15 @@ def test_apply_args_filters_clusters_and_instances(
 
 @patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
 def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
-    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake-service',
         soa_dir='/fake/soa/dir',
         deploy_group=None,
         clusters='cluster1',
         instances='instance4,instance5',
         owner=None,
+        registration=None,
+        verbose=False,
     )
     mock_list_services.return_value = ['fake_service']
     pargs = apply_args_filters(args)
@@ -698,14 +726,15 @@ def test_apply_args_filters_no_instances_found(
     mock_figure_out_service_name, mock_list_services, mock_get_instance_configs_for_service,
     mock_list_all_instances_for_service, capfd,
 ):
-    PaastaArgs = namedtuple('PaastaArgs', ['service', 'soa_dir', 'clusters', 'instances', 'deploy_group', 'owner'])
-    args = PaastaArgs(
+    args = StatusArgs(
         service='fake_service',
         soa_dir='/fake/soa/dir',
         deploy_group=None,
         clusters='cluster1',
         instances='instance4,instance5',
         owner=None,
+        registration=None,
+        verbose=False,
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
@@ -797,7 +826,73 @@ def test_status_with_owner(
     args.deploy_group = None
     args.owner = 'faketeam'
     args.soa_dir = '/fake/soa/dir'
+    args.registration = None
     return_value = paasta_status(args)
 
     assert return_value == 0
     assert mock_report_status.call_count == 2
+
+
+@patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
+@patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
+@patch('paasta_tools.cli.cmds.status.load_system_paasta_config', autospec=True)
+@patch('paasta_tools.cli.cmds.status.report_status_for_cluster', autospec=True)
+def test_status_with_registration(
+        mock_report_status, mock_load_system_paasta_config, mock_get_actual_deployments,
+        mock_figure_out_service_name, mock_list_services,
+        mock_get_instance_configs_for_service,
+        system_paasta_config,
+):
+    mock_load_system_paasta_config.return_value = system_paasta_config
+    mock_list_services.return_value = ['fakeservice', 'otherservice']
+    cluster = 'fake_cluster'
+    mock_inst_1 = make_fake_instance_conf(cluster, 'fakeservice', 'instance1', registrations=['fakeservice.main'])
+    mock_inst_2 = make_fake_instance_conf(cluster, 'fakeservice', 'instance2', registrations=['fakeservice.not_main'])
+    mock_inst_3 = make_fake_instance_conf(
+        cluster, 'fakeservice', 'instance3',
+        registrations=['fakeservice.also_not_main'],
+    )
+    mock_inst_4 = make_fake_instance_conf(
+        cluster, 'fakeservice', 'instance4',
+        registrations=None,
+    )
+    mock_get_instance_configs_for_service.return_value = [
+        mock_inst_1,
+        mock_inst_2,
+        mock_inst_3,
+        mock_inst_4,
+    ]
+
+    mock_get_actual_deployments.return_value = {
+        'fakeservice.instance1': 'sha1',
+        'fakeservice.instance2': 'sha2',
+        'fakeservice.instance3': 'sha3',
+    }
+    mock_report_status.return_value = 0, ['dummy', 'output']
+
+    args = StatusArgs(
+        service='fakeservice',
+        instances=None,
+        clusters=None,
+        deploy_group=None,
+        owner=None,
+        registration='main,not_main',
+        soa_dir='/fake/soa/dir',
+        verbose=False,
+    )
+    return_value = paasta_status(args)
+
+    assert return_value == 0
+    assert mock_report_status.call_count == 1
+    mock_report_status.assert_called_once_with(
+        service='fakeservice',
+        cluster=cluster,
+        deploy_pipeline=ANY,
+        actual_deployments=ANY,
+        instance_whitelist={'instance1', 'instance2'},
+        system_paasta_config=system_paasta_config,
+        verbose=args.verbose,
+        use_api_endpoint=ANY,
+    )
