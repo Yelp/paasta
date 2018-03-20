@@ -146,7 +146,7 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 def print_marathon_message(desired_state):
     if desired_state == "start":
         paasta_print(
-            "This service will soon be gracefully started/restarted, replacing old instances according"
+            "This service will soon be gracefully started/restarted, replacing old instances according "
             "to the bounce method chosen in soa-configs. ",
         )
     elif desired_state == "stop":
