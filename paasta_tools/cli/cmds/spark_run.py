@@ -360,10 +360,10 @@ def configure_and_run_docker_container(
         )
     # Spark options are passed as options to pyspark and spark-shell.
     # For jupyter, environment variable SPARK_OPTS is set instead.
-    elif docker_cmd in ['pyspark', 'spark-shell']:
-        docker_cmd = docker_cmd + ' ' + spark_conf_str
-    elif docker_cmd.startswith('spark-submit'):
-        docker_cmd = 'spark-submit ' + spark_conf_str + docker_cmd[len('spark-submit'):]
+    else:
+        base_cmd, remainder = docker_cmd.split(None, 1)
+        if base_cmd in ('pyspark', 'spark-shell', 'spark-submit'):
+            docker_cmd = f'{base_cmd} {spark_conf_str} {remainder}'
 
     environment = instance_config.get_env_dictionary()
     environment.update(
