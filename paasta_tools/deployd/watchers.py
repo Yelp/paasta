@@ -54,7 +54,7 @@ class AutoscalerWatcher(PaastaWatcher):
         self.log.info("Adding folder watch on {}".format(path))
         watcher = ChildrenWatch(self.zk, path, func=self.process_folder_event, send_event=True)
         self.watchers[path] = watcher
-        children = watcher._prior_children
+        children = watcher._client.get_children(watcher._path)
         if children and ('instances' in children):
             self.watch_node("{}/instances".format(path), enqueue=enqueue_children)
         elif children:
