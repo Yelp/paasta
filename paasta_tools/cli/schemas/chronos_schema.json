@@ -60,7 +60,16 @@
                 "default": "graceful"
             },
             "monitoring": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string"
+                    },
+                    "page": {
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": true
             },
             "env": {
                 "type": "object",
