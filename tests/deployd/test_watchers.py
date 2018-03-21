@@ -67,7 +67,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
             self.watcher.watch_folder('/path/autoscaling.lock')
             assert not mock_children_watch.called
 
-            mock_watcher = mock.Mock(_client=mock.Mock(get_children=mock.Mock(return_value=[])))
+            mock_watcher = mock.Mock(_prior_children=[])
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth')
             mock_children_watch.assert_called_with(
@@ -78,8 +78,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
             )
             assert not mock_watch_node.called
 
-            mock_children = mock.Mock(side_effect=[['morty', 'summer'], [], []])
-            mock_watcher = mock.Mock(_client=mock.Mock(get_children=mock_children))
+            mock_children = mock.PropertyMock(side_effect=[['morty', 'summer'], [], []])
+            mock_watcher = mock.Mock()
+            type(mock_watcher)._prior_children = mock_children
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth')
             assert not mock_watch_node.called
@@ -103,17 +104,14 @@ class TestAutoscalerWatcher(unittest.TestCase):
                     send_event=True,
                 ),
             ]
-            for call in calls:
-                # this is a bit nasty because the calls to _client get lumped in too
-                # this just checks about the calls we really care happened
-                assert call in mock_children_watch.mock_calls
+            mock_children_watch.assert_has_calls(calls)
 
-            mock_watcher = mock.Mock(_client=mock.Mock(get_children=mock.Mock(return_value=['instances'])))
+            mock_watcher = mock.Mock(_prior_children=['instances'])
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth')
             mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances', enqueue=False)
 
-            mock_watcher = mock.Mock(_client=mock.Mock(get_children=mock.Mock(return_value=['instances'])))
+            mock_watcher = mock.Mock(_prior_children=['instances'])
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth', enqueue_children=True)
             mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances', enqueue=True)
