@@ -463,7 +463,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
     fake_old_utilization_data = ','.join([
         '1234:fake-service.fake-instance',
         '0:fake-service.fake-instance2',
-        '0:fake-service.fake-instance4',
+        '0:fake-service.fake-instance3',
     ])
 
     zookeeper_get_payload = {
@@ -492,6 +492,97 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
                 (fake_mesos_task_2, fake_mesos_task_3, fake_mesos_task),
                 log_utilization_data=log_utilization_data,
             ), 1,
+        )
+
+
+def test_mesos_cpu_metrics_provider_filter_no_bogus_values_10_percent_cpu_limit():
+    """
+    +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
+    |  inst  | prev norm_cputime | elasped_time | cputime | limit |  norm_cputime   |     utilization      |
+    +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
+    | 1      |              1234 |          600 |   603.4 |   0.2 | 603.4/(0.2-0.1) | (6034-1234)/600 => 8 |
+    | 2      |                 0 |          600 |      48 |   0.2 | 48/(0.2-0.1)    | 480/600 => 0.8       |
+    | 3      |                 0 |          600 |    630  |   0.2 | 630 /(0.2-0.1)  | 6300 /600 => 10.5    |
+    | -      |                 - |            - |       - |     - | -               | -                    |
+    | avg    |                   |              |         |       |                 | 6.4333               |
+    +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
+    """
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={},
+        branch_dict=None,
+    )
+    fake_system_paasta_config = mock.MagicMock()
+    fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = True
+    fake_mesos_task = mock.MagicMock(
+        stats_callable=mock.MagicMock(return_value={
+            'cpus_limit': 0.2,
+            'cpus_system_time_secs': 103.4,
+            'cpus_user_time_secs': 500,
+        }),
+    )
+    fake_mesos_task_2 = mock.MagicMock(
+        stats_callable=mock.MagicMock(return_value={
+            'cpus_limit': 0.2,
+            'cpus_system_time_secs': 0,
+            'cpus_user_time_secs': 48,
+        }),
+    )
+    fake_mesos_task_3 = mock.MagicMock(
+        stats_callable=mock.MagicMock(return_value={
+            'cpus_limit': 0.2,
+            'cpus_system_time_secs': 0,
+            # bogus
+            'cpus_user_time_secs': 630,
+        }),
+    )
+    fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
+    fake_mesos_task_2.__getitem__.return_value = 'fake-service.fake-instance2'
+    fake_mesos_task_3.__getitem__.return_value = 'fake-service.fake-instance3'
+
+    fake_marathon_tasks = [
+        mock.Mock(id='fake-service.fake-instance'),
+        mock.Mock(id='fake-service.fake-instance2'),
+        mock.Mock(id='fake-service.fake-instance3'),
+    ]
+
+    current_time = datetime.now()
+    last_time = (current_time - timedelta(seconds=600)).strftime('%s')
+
+    fake_old_utilization_data = ','.join([
+        '1234:fake-service.fake-instance',
+        '0:fake-service.fake-instance2',
+        '0:fake-service.fake-instance3',
+    ])
+
+    zookeeper_get_payload = {
+        'cpu_last_time': last_time,
+        'cpu_data': fake_old_utilization_data,
+    }
+
+    with mock.patch(
+        'paasta_tools.utils.KazooClient', autospec=True,
+        return_value=mock.Mock(get=mock.Mock(
+            side_effect=lambda x: (str(zookeeper_get_payload[x.split('/')[-1]]).encode('utf-8'), None),
+        )),
+    ), mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.datetime', autospec=True,
+    ) as mock_datetime, mock.patch(
+        'paasta_tools.utils.load_system_paasta_config', autospec=True,
+        return_value=mock.Mock(get_zk_hosts=mock.Mock()),
+    ):
+        mock_datetime.now.return_value = current_time
+        log_utilization_data = {}
+        assert 6.4333 == round(
+            autoscaling_service_lib.mesos_cpu_metrics_provider(
+                fake_marathon_service_config,
+                fake_system_paasta_config,
+                fake_marathon_tasks,
+                (fake_mesos_task_2, fake_mesos_task_3, fake_mesos_task),
+                log_utilization_data=log_utilization_data,
+            ), 4,
         )
 
 
