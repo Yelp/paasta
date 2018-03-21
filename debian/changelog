@@ -1,3 +1,11 @@
+paasta-tools (0.69.45) xenial; urgency=medium
+
+  * 0.69.45 tagged with 'make release'
+    Commit: Merge pull request #1764 from Yelp/fix-monitoring-schema
+    Add monitoring schema
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 21 Mar 2018 05:28:28 -0700
+
 paasta-tools (0.69.44) xenial; urgency=medium
 
   * 0.69.44 tagged with 'make release'
