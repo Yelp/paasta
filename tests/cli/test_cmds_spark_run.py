@@ -98,7 +98,7 @@ def test_configure_and_run_docker_container(
 
     args = mock.MagicMock()
     args.cluster = 'fake_cluster'
-    args.cmd = 'pyspark'
+    args.cmd = 'pyspark -v'
     args.work_dir = '/fake_dir:/spark_driver'
     args.dry_run = True
 
@@ -152,6 +152,6 @@ def test_configure_and_run_docker_container(
             'SPARK_OPTS': '--conf spark.app.name=fake_app',
         },
         docker_img='fake-registry/fake-service',
-        docker_cmd='pyspark --conf spark.app.name=fake_app',
+        docker_cmd='pyspark --conf spark.app.name=fake_app -v',
         dry_run=True,
     )
