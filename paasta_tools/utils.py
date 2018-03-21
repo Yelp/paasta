@@ -330,6 +330,11 @@ class InstanceConfig(object):
         cpus = self.config_dict.get('cpus', .25)
         return cpus
 
+    def get_cpu_burst_pct(self) -> float:
+        """Returns the percent over its declared cpu usage that a container
+        will be allowed to go. Default to DEFAULT_CPU_PERIOD"""
+        return self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
+
     def get_cpu_period(self) -> float:
         """The --cpu-period option to be passed to docker
         Comes from the cfs_period_us configuration option
@@ -339,13 +344,11 @@ class InstanceConfig(object):
 
     def get_cpu_quota(self) -> float:
         """Gets the --cpu-quota option to be passed to docker
-        Calculated from the cpu_burst_pct configuration option, which is the percent
-        over its declared cpu usage that a container will be allowed to go.
 
         Calculation: cpus * cfs_period_us * (100 + cpu_burst_pct) / 100
 
         :returns: The number to be passed to the --cpu-quota docker flag"""
-        cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
+        cpu_burst_pct = self.get_cpu_burst_pct()
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
     def get_extra_docker_args(self) -> Dict[str, str]:
