@@ -412,19 +412,14 @@ def mesos_cpu_metrics_provider(
 
             if system_paasta_config.get_filter_bogus_mesos_cputime_enabled():
                 # It is unlikely that the cputime consumed by a task is greater than the CPU limits
-                # that we enforce (plus 10% of margin). This is a bug in Mesos (tracked in PAASTA-13510)
-                cpu_burst_allowance = (
-                    1.10 *
-                    marathon_service_config.get_cpu_quota() /
-                    marathon_service_config.get_cpu_period()
-                )
-                if cputime_delta > time_delta * cpu_burst_allowance:
-                    log.warning('Ignoring potentially bogus cputime values for task {}'.format(str(task_id)))
-                    log.debug(
-                        'Elapsed time: {}, Enforced CPU limit: {}, CPU time consumed: {}'.format(
-                            time_delta,
-                            cpu_burst_allowance,
-                            cputime_delta,
+                # that we enforce. This is a bug in Mesos (tracked in PAASTA-13510)
+                max_cpu_allowed = (100 + marathon_service_config.get_cpu_burst_pct()) / 100
+                task_cpu_usage = cputime_delta / time_delta
+                if task_cpu_usage > (max_cpu_allowed * 1.1):
+                    log.warning(
+                        'Ignoring potentially bogus cpu usage {} for task {}'.format(
+                            task_cpu_usage,
+                            str(task_id),
                         ),
                     )
                     continue
