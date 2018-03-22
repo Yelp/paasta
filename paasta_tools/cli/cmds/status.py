@@ -81,35 +81,35 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_status)
 
 
-def add_instance_filter_arguments(status_parser):
+def add_instance_filter_arguments(status_parser, verb='inspect'):
     status_parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect',
+        help=f'The name of the service you wish to {verb}',
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         '-c', '--clusters',
-        help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
-             "For example: --clusters norcal-prod,nova-prod",
+        help=f"A comma-separated list of clusters to {verb}. By default, will {verb} all clusters.\n"
+             f"For example: --clusters norcal-prod,nova-prod",
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
         '-i', '--instances',
-        help="A comma-separated list of instances to view. Defaults to view all instances.\n"
-             "For example: --instances canary,main",
+        help=f"A comma-separated list of instances to {verb}. By default, will {verb} all instances.\n"
+             f"For example: --instances canary,main",
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.add_argument(
         '-l', '--deploy-group',
         help=(
-            'Name of the deploy group which you want to get status for. '
-            'If specified together with --instances and/or --clusters, will show common instances only.'
+            f'Name of the deploy group which you want to {verb}. '
+            f'If specified together with --instances and/or --clusters, will {verb} common instances only.'
         ),
     ).completer = lazy_choices_completer(list_deploy_groups)
     status_parser.add_argument(
         '-o', '--owner',
-        help='Team to filter instances by.',
+        help=f'Only {verb} instances with this owner specified in soa-configs.',
     ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
         '-r', '--registration',
-        help='Show only instances with this registration.',
+        help='Only {verb} instances with this registration.',
     )
 
 
