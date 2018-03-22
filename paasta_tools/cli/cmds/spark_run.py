@@ -344,26 +344,10 @@ def configure_and_run_docker_container(
     volumes.append('/etc/passwd:/etc/passwd:ro')
     volumes.append('/etc/group:/etc/group:ro')
 
-    if args.cmd is None:
-        docker_cmd = instance_config.get_cmd()
-    else:
-        docker_cmd = args.cmd
-
+    docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if docker_cmd is None:
         paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
         return 1
-
-    # Default cli options to start the jupyter notebook server.
-    if docker_cmd == 'jupyter':
-        docker_cmd = 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
-            socket.getfqdn(), args.work_dir.split(':')[1],
-        )
-    # Spark options are passed as options to pyspark and spark-shell.
-    # For jupyter, environment variable SPARK_OPTS is set instead.
-    elif docker_cmd in ['pyspark', 'spark-shell']:
-        docker_cmd = docker_cmd + ' ' + spark_conf_str
-    elif docker_cmd.startswith('spark-submit'):
-        docker_cmd = 'spark-submit ' + spark_conf_str + docker_cmd[len('spark-submit'):]
 
     environment = instance_config.get_env_dictionary()
     environment.update(
@@ -383,6 +367,29 @@ def configure_and_run_docker_container(
         docker_cmd=docker_cmd,
         dry_run=args.dry_run,
     )
+
+
+def get_docker_cmd(args, instance_config, spark_conf_str):
+    original_docker_cmd = args.cmd or instance_config.get_cmd()
+    if original_docker_cmd is None:
+        return None
+
+    # Default cli options to start the jupyter notebook server.
+    if original_docker_cmd == 'jupyter':
+        return 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
+            socket.getfqdn(), args.work_dir.split(':')[1],
+        )
+    # Spark options are passed as options to pyspark and spark-shell.
+    # For jupyter, environment variable SPARK_OPTS is set instead.
+    else:
+        for base_cmd in ('pyspark', 'spark-shell', 'spark-submit'):
+            if original_docker_cmd.startswith(base_cmd):
+                return '{base_cmd} {spark_conf_str}{remainder}'.format(
+                    base_cmd=base_cmd,
+                    spark_conf_str=spark_conf_str,
+                    remainder=original_docker_cmd[len(base_cmd):],
+                )
+        return original_docker_cmd
 
 
 def build_and_push_docker_image(args):
