@@ -71,6 +71,18 @@ def add_subparser(subparsers):
              "A second -v will also print the stdout/stderr tail.",
     )
     status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    add_instance_filter_arguments(status_parser)
+    status_parser.set_defaults(command=paasta_status)
+
+
+def add_instance_filter_arguments(status_parser):
+    status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect',
     ).completer = lazy_choices_completer(list_services)
@@ -96,13 +108,9 @@ def add_subparser(subparsers):
         help='Team to filter instances by.',
     ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
-        '-d', '--soa-dir',
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
+        '-r', '--registration',
+        help='Show only instances with this registration.',
     )
-    status_parser.set_defaults(command=paasta_status)
 
 
 def missing_deployments_message(service):
@@ -333,6 +341,16 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
+def normalize_registrations(service, registrations):
+    ret = []
+    for reg in registrations:
+        if '.' not in reg:
+            ret.append(f"{service}.{reg}")
+        else:
+            ret.append(reg)
+    return ret
+
+
 def get_filters(args):
     """Figures out which filters to apply from an args object, and returns them
 
@@ -352,6 +370,18 @@ def get_filters(args):
 
     if args.deploy_group:
         filters.append(lambda conf: conf.get_deploy_group() in args.deploy_group.split(','))
+
+    if args.registration:
+        normalized_regs = normalize_registrations(
+            service=args.service,
+            registrations=args.registration.split(','),
+        )
+        filters.append(
+            lambda conf: any(
+                reg in normalized_regs
+                for reg in (conf.get_registrations() if hasattr(conf, 'get_registrations') else [])
+            ),
+        )
 
     if args.owner:
         owners = args.owner.split(',')
