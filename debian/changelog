@@ -1,3 +1,11 @@
+paasta-tools (0.69.46) xenial; urgency=medium
+
+  * 0.69.46 tagged with 'make release'
+    Commit: Merge pull request #1769 from Yelp/autoscaler-watcher-fixes
+    Prevent autoscalerwatcher adding services on start
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 22 Mar 2018 03:36:03 -0700
+
 paasta-tools (0.69.45) xenial; urgency=medium
 
   * 0.69.45 tagged with 'make release'
