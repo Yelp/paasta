@@ -1,3 +1,10 @@
+paasta-tools (0.69.47) xenial; urgency=medium
+
+  * 0.69.47 tagged with 'make release'
+    Commit: Merge branch "status_registration"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 22 Mar 2018 08:51:09 -0700
+
 paasta-tools (0.69.46) xenial; urgency=medium
 
   * 0.69.46 tagged with 'make release'
