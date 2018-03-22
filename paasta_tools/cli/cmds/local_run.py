@@ -923,8 +923,16 @@ def configure_and_run_docker_container(
     )
 
 
+def docker_config_available():
+    home = os.path.expanduser('~')
+    oldconfig = os.path.join(home, ".dockercfg")
+    newconfig = os.path.join(home, ".docker", "config.json")
+    return (os.path.isfile(oldconfig) and os.access(oldconfig, os.R_OK)) or \
+        (os.path.isfile(newconfig) and os.access(newconfig, os.R_OK))
+
+
 def paasta_local_run(args):
-    if args.action == 'pull' and os.geteuid() != 0:
+    if args.action == 'pull' and os.geteuid() != 0 and not docker_config_available():
         paasta_print("Re-executing paasta local-run --pull with sudo..")
         os.execvp("sudo", ["sudo", "-H"] + sys.argv)
     if args.action == 'build' and not makefile_responds_to('cook-image'):
