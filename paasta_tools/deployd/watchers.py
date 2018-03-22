@@ -47,19 +47,19 @@ class AutoscalerWatcher(PaastaWatcher):
         self.zk = kwargs.pop('zookeeper_client')
         self.watchers: Dict[str, PaastaWatcher] = {}
 
-    def watch_folder(self, path):
+    def watch_folder(self, path, enqueue_children=False):
         """recursive nonsense"""
         if "autoscaling.lock" in path:
             return
-        self.log.debug("Adding folder watch on {}".format(path))
+        self.log.info("Adding folder watch on {}".format(path))
         watcher = ChildrenWatch(self.zk, path, func=self.process_folder_event, send_event=True)
         self.watchers[path] = watcher
-        children = watcher._prior_children
+        children = watcher._client.get_children(watcher._path)
         if children and ('instances' in children):
-            self.watch_node("{}/instances".format(path))
+            self.watch_node("{}/instances".format(path), enqueue=enqueue_children)
         elif children:
             for child in children:
-                self.watch_folder("{}/{}".format(path, child))
+                self.watch_folder("{}/{}".format(path, child), enqueue_children=enqueue_children)
 
     def _enqueue_service_instance(self, path):
         service, instance = path.split('/')[-3:-1]
@@ -77,10 +77,11 @@ class AutoscalerWatcher(PaastaWatcher):
         )
         self.inbox_q.put(service_instance)
 
-    def watch_node(self, path):
-        self.log.debug("Adding node watch on {}".format(path))
+    def watch_node(self, path, enqueue=False):
+        self.log.info("Adding node watch on {}".format(path))
         DataWatch(self.zk, path, func=self.process_node_event, send_event=True)
-        self._enqueue_service_instance(path)
+        if enqueue:
+            self._enqueue_service_instance(path)
 
     def process_node_event(self, data, stat, event):
         self.log.debug("Node change: {}".format(event))
@@ -93,7 +94,7 @@ class AutoscalerWatcher(PaastaWatcher):
             fq_children = ["{}/{}".format(event.path, child) for child in children]
             for child in fq_children:
                 if child not in self.watchers:
-                    self.watch_folder(child)
+                    self.watch_folder(child, enqueue_children=True)
 
     def run(self):
         self.watchers[AUTOSCALING_ZK_ROOT] = self.watch_folder(AUTOSCALING_ZK_ROOT)
