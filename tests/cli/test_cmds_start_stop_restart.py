@@ -127,7 +127,7 @@ def test_log_event():
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_paasta_start_or_stop(
     mock_list_clusters,
     mock_get_git_url,
@@ -212,7 +212,7 @@ def test_paasta_start_or_stop(
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_paasta_start_or_stop_with_deploy_group(
     mock_list_clusters,
     mock_get_git_url,
@@ -267,7 +267,7 @@ def test_paasta_start_or_stop_with_deploy_group(
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_stop_or_start_figures_out_correct_instances(
     mock_list_clusters,
     mock_get_git_url,
@@ -340,7 +340,7 @@ def test_stop_or_start_figures_out_correct_instances(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_stop_or_start_handle_ls_remote_failures(
     mock_list_clusters,
     mock_get_git_url,
@@ -369,7 +369,7 @@ def test_stop_or_start_handle_ls_remote_failures(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_start_or_stop_bad_refs(
     mock_list_clusters,
     mock_list_remote_refs,
@@ -413,7 +413,7 @@ def test_cluster_list_defaults_to_all():
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.list_clusters', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_stop_or_start_warn_on_multi_instance(
     mock_list_clusters,
     mock_get_git_url,

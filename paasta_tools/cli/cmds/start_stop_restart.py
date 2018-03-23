@@ -21,17 +21,12 @@ import choice
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import list_instances
-from paasta_tools.cli.utils import list_services
-from paasta_tools.cli.utils import list_teams
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
@@ -53,33 +48,7 @@ def add_subparser(subparsers):
                 "for the service is available."
             ),
         )
-        status_parser.add_argument(
-            '-s', '--service',
-            help='Service that you want to %s. Like example_service.' % lower,
-        ).completer = lazy_choices_completer(list_services)
-        status_parser.add_argument(
-            '-i', '--instances',
-            help='A comma-separated list of instances of the service that you '
-                 'want to %s. Like --instances main,canary. Defaults to all instances for the service.' % lower,
-        ).completer = lazy_choices_completer(list_instances)
-        status_parser.add_argument(
-            '-l', '--deploy-group',
-            help=(
-                'Name of the deploy group which you want to get status for. '
-                'If specified together with --instances and/or --clusters, will %s common instances only.' % lower
-            ),
-        ).completer = lazy_choices_completer(list_deploy_groups)
-        status_parser.add_argument(
-            '-o', '--owner',
-            help='Team to filter instances by.',
-        ).completer = lazy_choices_completer(list_teams)
-        status_parser.add_argument(
-            '-c', '--clusters',
-            help="A comma-separated list of clusters to view. "
-            "For example: --clusters norcal-prod,nova-prod",
-            required=True,
-        ).completer = lazy_choices_completer(list_clusters)
-
+        add_instance_filter_arguments(status_parser, verb=lower)
         status_parser.add_argument(
             '-d', '--soa-dir',
             dest="soa_dir",
