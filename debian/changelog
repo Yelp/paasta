@@ -1,3 +1,10 @@
+paasta-tools (0.69.49) xenial; urgency=medium
+
+  * 0.69.49 tagged with 'make release'
+    Commit: Merge branch "fix_paasta_stop"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 23 Mar 2018 15:59:27 -0700
+
 paasta-tools (0.69.48) xenial; urgency=medium
 
   * 0.69.48 tagged with 'make release'
