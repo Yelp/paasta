@@ -1,3 +1,11 @@
+paasta-tools (0.69.48) xenial; urgency=medium
+
+  * 0.69.48 tagged with 'make release'
+    Commit: Merge pull request #1777 from Yelp/hliu_monitoring_spark
+    Added PAASTA_SERVICE and PAASTA_INSTANCE to spark executor envs
+
+ -- Huadong Liu <hliu@yelp.com>  Fri, 23 Mar 2018 12:33:56 -0700
+
 paasta-tools (0.69.47) xenial; urgency=medium
 
   * 0.69.47 tagged with 'make release'
