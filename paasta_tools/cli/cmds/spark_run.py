@@ -279,6 +279,9 @@ def get_spark_conf_str(
 
     spark_conf.append('--conf spark.mesos.executor.docker.volumes=%s' % ','.join(volumes))
 
+    spark_conf.append('--conf spark.executorEnv.PAASTA_SERVICE=%s' % args.service)
+    spark_conf.append('--conf spark.executorEnv.PAASTA_INSTANCE=%s_%s' % (args.instance, get_username()))
+
     return ' '.join(spark_conf)
 
 
