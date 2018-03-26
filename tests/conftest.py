@@ -1,6 +1,16 @@
+import time
+
 import pytest
 
 from paasta_tools.utils import SystemPaastaConfig
+
+
+def time_to_feel_bad(*args, **kwarg):
+    raise Exception("This test called time.sleep() which is bad and slows down our test suite")
+
+
+time.true_slow_sleep = time.sleep
+time.sleep = time_to_feel_bad
 
 
 @pytest.fixture

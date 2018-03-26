@@ -17,8 +17,8 @@ import os
 import stat
 import sys
 import time
-from typing import Dict
-from typing import List
+from typing import Dict  # noqa
+from typing import List  # noqa
 
 import mock
 import pytest
@@ -2053,7 +2053,7 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
     my_file = tmpdir.join('my-file')
     with open(str(my_file), 'w') as f:
         with utils.timed_flock(f, seconds=1):
-            time.sleep(2)
+            time.true_slow_sleep(0.1)
         assert mock_flock.mock_calls == [
             mock.call(f.fileno(), utils.fcntl.LOCK_EX),
             mock.call(f.fileno(), utils.fcntl.LOCK_UN),
