@@ -14,6 +14,7 @@
 import mock
 
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
+from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_spark_conf_str
 from paasta_tools.utils import InstanceConfig
@@ -155,3 +156,20 @@ def test_configure_and_run_docker_container(
         docker_cmd='pyspark --conf spark.app.name=fake_app',
         dry_run=True,
     )
+
+
+def test_get_docker_cmd_add_spark_conf_str():
+    args = mock.Mock(cmd='pyspark -v')
+    instance_config = None
+    spark_conf_str = '--conf spark.app.name=fake_app'
+
+    docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
+    assert docker_cmd == 'pyspark --conf spark.app.name=fake_app -v'
+
+
+def test_get_docker_cmd_other_cmd():
+    args = mock.Mock(cmd='bash')
+    instance_config = None
+    spark_conf_str = '--conf spark.app.name=fake_app'
+
+    assert get_docker_cmd(args, instance_config, spark_conf_str) == 'bash'
