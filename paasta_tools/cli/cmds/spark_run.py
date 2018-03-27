@@ -76,8 +76,7 @@ def add_subparser(subparsers):
         help=(
             "The name of the cluster you wish to run Spark on."
         ),
-        choices=['norcal-devc', 'pnw-devc', 'mesosstage'],
-        required=True,
+        default='norcal-devc',
     )
 
     list_parser.add_argument(
@@ -88,6 +87,12 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
+        default='default',
+    )
+
+    list_parser.add_argument(
+        '--aws-profile',
+        help="Name of the AWS profile to load credentials for AWS services like s3.",
         default='default',
     )
 
@@ -202,7 +207,7 @@ def get_spark_env(
 ):
     spark_env = {}
 
-    creds = Session().get_credentials()
+    creds = Session(profile=args.aws_profile).get_credentials()
     spark_env['AWS_ACCESS_KEY_ID'] = creds.access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
 
@@ -281,6 +286,7 @@ def get_spark_conf_str(
 
     spark_conf.append('--conf spark.executorEnv.PAASTA_SERVICE=%s' % args.service)
     spark_conf.append('--conf spark.executorEnv.PAASTA_INSTANCE=%s_%s' % (args.instance, get_username()))
+    spark_conf.append('--conf spark.executorEnv.PAASTA_CLUSTER=%s' % (args.cluster))
 
     return ' '.join(spark_conf)
 
