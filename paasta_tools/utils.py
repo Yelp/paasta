@@ -2067,7 +2067,7 @@ def get_soa_cluster_deploy_files(
 
     for yaml_file in glob.glob('%s/*.yaml' % service_path):
         try:
-            with open(yaml_file) as fh:
+            with open(yaml_file):
                 cluster_re_match = re.search(search_re, yaml_file)
                 if cluster_re_match is not None:
                     cluster = cluster_re_match.group(2)

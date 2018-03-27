@@ -597,35 +597,37 @@ def test_missing_cluster_configs_are_ignored():
         actual = utils.list_clusters(soa_dir=fake_soa_dir)
         assert actual == expected
         mock_join_path.assert_called_once_with(fake_soa_dir, '*')
-        mock_glob.assert_called_once_with('%s/*/*.yaml' % fake_soa_dir)    
+        mock_glob.assert_called_once_with('%s/*/*.yaml' % fake_soa_dir)
 
 
 def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = '/nail/etc/services'
     fake_soa_cluster_configs = [
-        ['cluster1','/nail/etc/services/service1/marathon-cluster1.yaml'],
-        ['cluster2','/nail/etc/services/service1/chronos-cluster2.yaml']
+        ['cluster1', '/nail/etc/services/service1/marathon-cluster1.yaml'],
+        ['cluster2', '/nail/etc/services/service1/chronos-cluster2.yaml'],
     ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
-        'paasta_tools.utils.get_soa_cluster_deploy_files', autospec=True, return_value=fake_soa_cluster_configs
-    ) as mock_get_soa:
+        'paasta_tools.utils.get_soa_cluster_deploy_files', autospec=True, return_value=fake_soa_cluster_configs,
+    ):
         actual = utils.list_clusters(soa_dir=fake_soa_dir)
         assert actual == expected
+
 
 def test_list_clusters_with_service():
     fake_soa_dir = '/nail/etc/services'
     fake_service = 'fake_service'
     fake_soa_cluster_configs = [
-        ['cluster1','/nail/etc/services/service1/marathon-cluster1.yaml'],
-        ['cluster2','/nail/etc/services/service1/chronos-cluster2.yaml']
+        ['cluster1', '/nail/etc/services/service1/marathon-cluster1.yaml'],
+        ['cluster2', '/nail/etc/services/service1/chronos-cluster2.yaml'],
     ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
-        'paasta_tools.utils.get_soa_cluster_deploy_files', autospec=True, return_value=fake_soa_cluster_configs
-    ) as mock_get_soa:
+        'paasta_tools.utils.get_soa_cluster_deploy_files', autospec=True, return_value=fake_soa_cluster_configs,
+    ):
         actual = utils.list_clusters(fake_service, fake_soa_dir)
         assert actual == expected
+
 
 def test_list_clusters_ignores_bogus_clusters():
     fake_soa_dir = '/nail/etc/services'
@@ -642,7 +644,8 @@ def test_list_clusters_ignores_bogus_clusters():
     ), mock.patch(
         'glob.glob', autospec=True, return_value=fake_cluster_configs,
     ), mock.patch(
-        'builtins.open', mock.mock_open(read_data="fakedata")) as mock_file:
+        'builtins.open', autospec=None, path=mock.mock_open(read_data="fakedata"),
+    ):
         actual = utils.list_clusters(service=fake_service)
         assert actual == expected
 

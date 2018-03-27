@@ -31,7 +31,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import list_teams
-from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
