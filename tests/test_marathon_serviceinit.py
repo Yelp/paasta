@@ -91,12 +91,12 @@ def test_status_marathon_job_verbose():
     task = mock.Mock()
     app = mock.create_autospec(
         marathon.models.app.MarathonApp,
-        id="my_service.my_instance.gitAAAAA.configBBBBB",
+        id="servicename.instancename.gitAAAAA.configBBBBB",
         tasks=[task],
     )
     client.get_app.return_value = app
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     with mock.patch(
         'paasta_tools.marathon_serviceinit.marathon_tools.get_marathon_apps_with_clients', autospec=True,
     ) as mock_get_marathon_apps_with_clients, mock.patch(
@@ -124,11 +124,12 @@ def test_status_marathon_job_verbose():
             dashboards=None,
             verbose=1,
             normal_instance_count=3,
-            desired_app_id='my_service.my_instance.gitAAAAA.configBBBBB',
+            desired_app_id='servicename.instancename.gitAAAAA.configBBBBB',
         )
         mock_get_marathon_apps_with_clients.assert_called_once_with(
-            [client],
+            clients=[client],
             embed_tasks=True,
+            service_name=service,
         )
         mock_get_matching_apps_with_clients.assert_called_once_with(
             service,
@@ -278,7 +279,7 @@ def test_status_marathon_app_column_alignment():
 
 def tests_status_marathon_job_when_running_running_tasks_with_deployments():
     client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
-    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app_id = 'servicename.instancename.gitAAAA.configBBBB'
     app = mock.Mock(
         name="app",
         id=f"/{app_id}",
@@ -289,8 +290,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_deployments():
     client.get_app.return_value = app
     client.list_apps.return_value = [app]
     clients = marathon_tools.MarathonClients(current=[client], previous=[client])
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'my_cluster'
     soa_dir = '/soa/dir'
     job_config = mock.Mock()
@@ -319,7 +320,7 @@ def tests_status_marathon_job_when_running_running_tasks_with_deployments():
 
 def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment():
     client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
-    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app_id = 'servicename.instancename.gitAAAA.configBBBB'
     app = mock.Mock(
         name="app",
         id=f"/{app_id}",
@@ -330,8 +331,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment
     client.get_app.return_value = app
     client.list_apps.return_value = [app]
     clients = marathon_tools.MarathonClients(current=[client], previous=[client])
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'my_cluster'
     soa_dir = '/soa/dir'
     job_config = mock.Mock()
@@ -363,7 +364,7 @@ def tests_status_marathon_job_when_running_running_tasks_with_delayed_deployment
 
 def tests_status_marathon_job_when_running_running_tasks_with_waiting_deployment():
     client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
-    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app_id = 'servicename.instancename.gitAAAA.configBBBB'
     app = mock.Mock(
         name="app",
         id=f"/{app_id}",
@@ -374,8 +375,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_waiting_deployment
     client.get_app.return_value = app
     client.list_apps.return_value = [app]
     clients = marathon_tools.MarathonClients(current=[client], previous=[client])
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'my_cluster'
     soa_dir = '/soa/dir'
     job_config = mock.Mock()
@@ -407,7 +408,7 @@ def tests_status_marathon_job_when_running_running_tasks_with_waiting_deployment
 
 def tests_status_marathon_job_when_running_running_tasks_with_suspended_deployment():
     client = mock.create_autospec(marathon.MarathonClient, servers=['server'], name="client")
-    app_id = 'my--service.my--instance.gitAAAA.configBBBB'
+    app_id = 'servicename.instancename.gitAAAA.configBBBB'
     app = mock.Mock(
         name="app",
         id=f"/{app_id}",
@@ -418,8 +419,8 @@ def tests_status_marathon_job_when_running_running_tasks_with_suspended_deployme
     client.get_app.return_value = app
     client.list_apps.return_value = [app]
     clients = marathon_tools.MarathonClients(current=[client], previous=[client])
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'my_cluster'
     soa_dir = '/soa/dir'
     job_config = mock.Mock()
@@ -470,9 +471,8 @@ def test_format_haproxy_backend_row():
 
 
 def test_status_smartstack_backends_normal():
-    service = 'my_service'
-    instance = 'my_instance'
-    service_instance = compose_job_id(service, instance)
+    service = 'servicename'
+    instance = 'instancename'
 
     cluster = 'fake_cluster'
     good_task = mock.Mock()
@@ -492,17 +492,14 @@ def test_status_smartstack_backends_normal():
     }
 
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
     ) as mock_get_backends, mock.patch(
         'paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True,
     ) as mock_match_backends_and_tasks:
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
             'hostname': 'fakehost',
             'attributes': {
@@ -510,7 +507,6 @@ def test_status_smartstack_backends_normal():
             },
         }]
 
-        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
@@ -523,6 +519,7 @@ def test_status_smartstack_backends_normal():
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
@@ -533,7 +530,7 @@ def test_status_smartstack_backends_normal():
             system_deploy_whitelist=[],
         )
         mock_get_backends.assert_called_once_with(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='fakehost',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
@@ -543,8 +540,8 @@ def test_status_smartstack_backends_normal():
 
 
 def test_status_smartstack_backends_different_nerve_ns():
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     different_ns = 'different_ns'
     service_instance = compose_job_id(service, different_ns)
 
@@ -566,17 +563,14 @@ def test_status_smartstack_backends_different_nerve_ns():
     }
 
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
     ) as mock_get_backends, mock.patch(
         'paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True,
     ) as mock_match_backends_and_tasks:
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [{
             'hostname': 'fakehost',
             'attributes': {
@@ -584,29 +578,33 @@ def test_status_smartstack_backends_different_nerve_ns():
             },
         }]
 
-        mock_read_reg.return_value = service_instance
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
             (haproxy_backends_by_task[bad_task], None),
             (None, other_task),
         ]
-        mock_read_reg.return_value = compose_job_id(service, different_ns)
+
         tasks = [good_task, other_task]
-        actual = marathon_serviceinit.status_smartstack_backends(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            job_config=fake_marathon_job_config,
-            tasks=tasks,
-            expected_count=len(haproxy_backends_by_task),
-            soa_dir=None,
-            verbose=False,
-            synapse_port=123456,
-            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-            system_deploy_blacklist=[],
-            system_deploy_whitelist=[],
-        )
+        with mock.patch.object(
+            fake_marathon_job_config, 'get_registrations',
+            return_value=[compose_job_id(service, different_ns)],
+        ):
+            actual = marathon_serviceinit.status_smartstack_backends(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                job_config=fake_marathon_job_config,
+                service_namespace_config=fake_service_namespace_config,
+                tasks=tasks,
+                expected_count=len(haproxy_backends_by_task),
+                soa_dir=None,
+                verbose=False,
+                synapse_port=123456,
+                synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+                system_deploy_blacklist=[],
+                system_deploy_whitelist=[],
+            )
         mock_get_backends.assert_called_once_with(
             service_instance,
             synapse_host='fakehost',
@@ -618,27 +616,24 @@ def test_status_smartstack_backends_different_nerve_ns():
 
 
 def test_status_smartstack_backends_no_smartstack_replication_info():
-    service = 'my_service'
-    instance = 'my_instance'
-    service_instance = compose_job_id(service, instance)
+    service = 'servicename'
+    instance = 'instancename'
+
     cluster = 'fake_cluster'
     tasks = mock.Mock()
     normal_count = 10
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist:
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = service_instance
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_all_slaves_for_blacklist_whitelist.return_value = {}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -648,13 +643,12 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
             system_deploy_blacklist=[],
             system_deploy_whitelist=[],
         )
-        assert "%s is NOT in smartstack" % service_instance in actual
+        assert "servicename.fake_nerve_ns is NOT in smartstack" in actual
 
 
 def test_status_smartstack_backends_multiple_locations():
-    service = 'my_service'
-    instance = 'my_instance'
-    service_instance = compose_job_id(service, instance)
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
@@ -664,18 +658,14 @@ def test_status_smartstack_backends_multiple_locations():
         'check_status': 'L7OK', 'check_duration': 1,
     }
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
     ) as mock_get_backends, mock.patch(
         'paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True,
     ) as mock_match_backends_and_tasks:
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = service_instance
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, good_task),
@@ -700,6 +690,7 @@ def test_status_smartstack_backends_multiple_locations():
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=len(mock_get_backends.return_value),
             soa_dir=None,
@@ -710,13 +701,13 @@ def test_status_smartstack_backends_multiple_locations():
             system_deploy_whitelist=[],
         )
         mock_get_backends.assert_any_call(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='fakehost',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='fakeotherhost',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
@@ -726,9 +717,8 @@ def test_status_smartstack_backends_multiple_locations():
 
 
 def test_status_smartstack_backends_multiple_locations_expected_count():
-    service = 'my_service'
-    instance = 'my_instance'
-    service_instance = compose_job_id(service, instance)
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'fake_cluster'
     normal_count = 10
 
@@ -740,10 +730,6 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
         'check_status': 'L7OK', 'check_duration': 1,
     }
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
@@ -752,8 +738,8 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
     ) as mock_match_backends_and_tasks, mock.patch(
         'paasta_tools.marathon_serviceinit.haproxy_backend_report', autospec=True,
     ) as mock_haproxy_backend_report:
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = service_instance
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, good_task),
@@ -778,6 +764,7 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -788,13 +775,13 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             system_deploy_whitelist=[],
         )
         mock_get_backends.assert_any_call(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='hostname1',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='hostname2',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
@@ -804,9 +791,8 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
 
 
 def test_status_smartstack_backends_verbose_multiple_apps():
-    service = 'my_service'
-    instance = 'my_instance'
-    service_instance = compose_job_id(service, instance)
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'fake_cluster'
 
     good_task = mock.Mock()
@@ -826,18 +812,14 @@ def test_status_smartstack_backends_verbose_multiple_apps():
     }
 
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
     ) as mock_get_backends, mock.patch(
         'paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True,
     ) as mock_match_backends_and_tasks:
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = service_instance
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_backends.return_value = haproxy_backends_by_task.values()
         mock_match_backends_and_tasks.return_value = [
             (haproxy_backends_by_task[good_task], good_task),
@@ -858,6 +840,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
@@ -868,7 +851,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             system_deploy_whitelist=[],
         )
         mock_get_backends.assert_called_once_with(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='hostname1',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
@@ -879,9 +862,8 @@ def test_status_smartstack_backends_verbose_multiple_apps():
 
 
 def test_status_smartstack_backends_verbose_multiple_locations():
-    service = 'my_service'
-    instance = 'my_instance'
-    service_instance = compose_job_id(service, instance)
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
@@ -896,10 +878,6 @@ def test_status_smartstack_backends_verbose_multiple_locations():
         'check_status': 'L7OK', 'check_duration': 1,
     }
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
@@ -908,8 +886,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
         'paasta_tools.marathon_serviceinit.match_backends_and_tasks',
         autospec=True, side_effect=[[(fake_backend, good_task)], [(fake_other_backend, good_task)]],
     ):
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = service_instance
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_all_slaves_for_blacklist_whitelist.return_value = [
             {
                 'hostname': 'hostname1',
@@ -930,6 +908,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=1,
             soa_dir=None,
@@ -940,13 +919,13 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             system_deploy_whitelist=[],
         )
         mock_get_backends.assert_any_call(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='hostname1',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
-            service_instance,
+            'servicename.fake_nerve_ns',
             synapse_host='hostname2',
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
@@ -962,8 +941,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
 
 
 def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'fake_cluster'
     normal_count = 10
     good_task = mock.Mock()
@@ -974,10 +953,6 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
         'check_status': 'L7OK', 'check_duration': 1,
     }
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_mesos_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
@@ -992,8 +967,9 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
                 },
             },
         ]
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = compose_job_id(service, instance)
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
+
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, good_task),
@@ -1004,6 +980,7 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -1017,8 +994,8 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
 
 
 def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unrelated_tasks():
-    service = 'my_service'
-    instance = 'my_instance'
+    service = 'servicename'
+    instance = 'instancename'
     cluster = 'fake_cluster'
     normal_count = 10
     good_task = mock.Mock()
@@ -1029,10 +1006,6 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
         'check_status': 'L7OK', 'check_duration': 1,
     }
     with mock.patch(
-        'paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
-    ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.marathon_tools.read_registration_for_service_instance', autospec=True,
-    ) as mock_read_reg, mock.patch(
         'paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist', autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
         'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
@@ -1047,8 +1020,8 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
                 },
             },
         ]
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
-        mock_read_reg.return_value = compose_job_id(service, instance)
+        fake_service_namespace_config = mock.Mock()
+        fake_service_namespace_config.get_discover.return_value = 'fake_discover'
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [
             (fake_backend, None),
@@ -1059,6 +1032,7 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             instance=instance,
             cluster=cluster,
             job_config=fake_marathon_job_config,
+            service_namespace_config=fake_service_namespace_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -1131,15 +1105,15 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
     fake_instance = 'fake_instance'
     fake_cluster = 'fake_cluster'
     soa_dir = 'fake_soa_dir'
-    with mock.patch(
-        'paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True,
-        return_value=mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
+    with mock.patch.object(
+        fake_marathon_job_config, 'format_marathon_app_dict', autospec=True, side_effect=NoDockerImageError,
     ), mock.patch(
         'paasta_tools.marathon_serviceinit.load_system_paasta_config', autospec=True,
         return_value=SystemPaastaConfig({}, "/fake/config"),
     ):
         actual = marathon_serviceinit.perform_command(
             'start', fake_service, fake_instance, fake_cluster, False, soa_dir,
+            job_config=fake_marathon_job_config,
             clients=mock.Mock(),
         )
         assert actual == 1
@@ -1190,7 +1164,7 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
         'socket.gethostbyname', side_effect=lambda name: host_ip_mapping[name], autospec=True,
     ):
         actual = marathon_serviceinit.pretty_print_smartstack_backends_for_locations(
-            service_instance='fake_service.fake_instance',
+            registration='fake_service.fake_instance',
             tasks=tasks,
             locations=hosts_grouped_by_location,
             expected_count=3,

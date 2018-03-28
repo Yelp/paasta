@@ -176,7 +176,7 @@ def test_load_system_paasta_config():
     ) as json_patch, mock.patch(
         'paasta_tools.utils.deep_merge_dictionaries', autospec=True, return_value=json_load_return_value,
     ) as mock_deep_merge:
-        actual = utils.load_system_paasta_config(path='/some/fake/dir')
+        actual = utils.load_system_paasta_config_no_cache(path='/some/fake/dir')
         assert actual == expected
         # Kinda weird but without this load_system_paasta_config() can (and
         # did! during development) return a plain dict without the test
@@ -192,7 +192,7 @@ def test_load_system_paasta_config_file_non_existent_dir():
     fake_path = '/var/dir_of_fake'
     with mock.patch('os.path.isdir', return_value=False, autospec=True):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
-            utils.load_system_paasta_config(fake_path)
+            utils.load_system_paasta_config_no_cache(fake_path)
         expected = "Could not find system paasta configuration directory: %s" % fake_path
         assert str(excinfo.value) == expected
 
@@ -205,7 +205,7 @@ def test_load_system_paasta_config_file_non_readable_dir():
         'os.access', return_value=False, autospec=True,
     ):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
-            utils.load_system_paasta_config(fake_path)
+            utils.load_system_paasta_config_no_cache(fake_path)
         expected = "Could not read from system paasta configuration directory: %s" % fake_path
         assert str(excinfo.value) == expected
 
@@ -222,7 +222,7 @@ def test_load_system_paasta_config_file_dne():
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True, return_value=[fake_path],
     ):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
-            utils.load_system_paasta_config(fake_path)
+            utils.load_system_paasta_config_no_cache(fake_path)
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
 
@@ -243,7 +243,7 @@ def test_load_system_paasta_config_merge_lexographically():
     ), mock.patch(
         'paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b],
     ):
-        actual = utils.load_system_paasta_config(path='/some/fake/dir')
+        actual = utils.load_system_paasta_config_no_cache(path='/some/fake/dir')
         assert actual == expected
 
 

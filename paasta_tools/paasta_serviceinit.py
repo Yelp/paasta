@@ -30,6 +30,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import paasta_native_serviceinit
 from paasta_tools import paasta_remote_run
 from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -109,7 +110,7 @@ class PaastaClients():
         if self._marathon is None:
             system_paasta_config = load_system_paasta_config()
             marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
-            self._marathon = marathon_tools.get_marathon_clients(marathon_servers)
+            self._marathon = marathon_tools.get_marathon_clients(marathon_servers, cached=True)
         return self._marathon
 
     def chronos(self) -> ChronosClient:
@@ -181,7 +182,16 @@ def main() -> None:
     if len(instance_types_map['adhoc']) > 0:
         remote_run_frameworks = paasta_remote_run.remote_run_frameworks()
 
+    service_config_loader = PaastaServiceConfigLoader(service)
+
     for instance_type in instance_types:
+
+        if instance_type == 'marathon':
+            job_configs = {jc.instance: jc for jc in service_config_loader.instance_configs(
+                cluster=cluster,
+                instance_type_class=marathon_tools.MarathonServiceConfig,
+            )}
+
         for instance in instance_types_map[instance_type]:
             try:
                 version = get_deployment_version(
@@ -200,6 +210,7 @@ def main() -> None:
                         soa_dir=args.soa_dir,
                         app_id=args.app_id,
                         clients=clients.marathon(),
+                        job_config=job_configs[instance],
                     )
                 elif instance_type == 'chronos':
                     return_code = chronos_serviceinit.perform_command(

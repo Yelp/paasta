@@ -1426,7 +1426,12 @@ SystemPaastaConfigDict = TypedDict(
 )
 
 
+@time_cache(ttl=60)
 def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
+    return load_system_paasta_config_no_cache(path)
+
+
+def load_system_paasta_config_no_cache(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
     """
     Reads Paasta configs in specified directory in lexicographical order and deep merges
     the dictionaries (last file wins).
