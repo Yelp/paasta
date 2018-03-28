@@ -2069,10 +2069,14 @@ def get_soa_cluster_deploy_files(
     search_re = r'/.*/(' + instance_types + r')-([0-9a-z-_]*)\.yaml$'
 
     for yaml_file in glob.glob('%s/*.yaml' % service_path):
-        cluster_re_match = re.search(search_re, yaml_file)
-        if cluster_re_match is not None:
-            cluster = cluster_re_match.group(2)
-            yield (cluster, yaml_file)
+        try:
+            with open(yaml_file):
+                cluster_re_match = re.search(search_re, yaml_file)
+                if cluster_re_match is not None:
+                    cluster = cluster_re_match.group(2)
+                    yield (cluster, yaml_file)
+        except IOError as err:
+            print("Error opening %s: %s" % (yaml_file, err))
 
 
 def list_clusters(service: str=None, soa_dir: str=DEFAULT_SOA_DIR, instance_type: str=None) -> List[str]:
