@@ -163,25 +163,32 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
         sha=commit,
     )
 
-    try:
-        remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
-    except Exception as e:
-        loglines = ["Failed to mark %s for deployment in deploy group %s!" % (commit, deploy_group)]
-        for line in str(e).split('\n'):
-            loglines.append(line)
-        return_code = 1
-    else:
-        loglines = ["Marked %s for deployment in deploy group %s" % (commit, deploy_group)]
-        return_code = 0
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
+        except Exception as e:
+            logline = "Failed to mark {} for deployment in deploy group {}! (attempt {}/{})".format(
+                commit, deploy_group, attempt, max_attempts,
+            )
+            _log(
+                service=service,
+                line=logline,
+                component='deploy',
+                level='event',
+            )
+            time.sleep(5 * attempt)
+        else:
+            logline = "Marked %s for deployment in deploy group %s" % (commit, deploy_group)
+            _log(
+                service=service,
+                line=logline,
+                component='deploy',
+                level='event',
+            )
+            return 0
 
-    for logline in loglines:
-        _log(
-            service=service,
-            line=logline,
-            component='deploy',
-            level='event',
-        )
-    return return_code
+    return 1
 
 
 def report_waiting_aborted(service, deploy_group):

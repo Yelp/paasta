@@ -79,11 +79,7 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
             commit='fake_commit',
         )
     assert actual == 1
-    mock_create_remote_refs.assert_called_once_with(
-        git_url='fake_git_url',
-        ref_mutator=ANY,
-        force=True,
-    )
+    assert mock_create_remote_refs.call_count == 3
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
