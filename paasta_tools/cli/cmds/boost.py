@@ -52,7 +52,7 @@ def add_subparser(subparsers):
         If auto-completion doesn't work, you can get a list of cluster with `paasta list-clusters'""",
     ).completer = lazy_choices_completer(list_clusters)
     boost_parser.add_argument(
-        '-d', '--soa-dir',
+        '--soa-dir',
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -71,10 +71,10 @@ def add_subparser(subparsers):
         help="Boost factor to apply. Default is 1.5. A big failover should be 2, 3 is the max.",
     )
     boost_parser.add_argument(
-        '--duration',
+        '-d', '--duration',
         type=int,
         default=cluster_boost.DEFAULT_BOOST_DURATION,
-        help="Duration of the capacity boost in minutes. Default is 40min.",
+        help="Duration of the capacity boost in minutes. Default is 40",
     )
     boost_parser.add_argument(
         '-f', '--force',
