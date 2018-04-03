@@ -526,7 +526,6 @@ def perform_command(
             return 1
 
     normal_instance_count = job_config.get_instances()
-    # proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
     current_client = clients.get_current_client_for_service(job_config)
 
