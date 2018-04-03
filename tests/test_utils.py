@@ -588,13 +588,13 @@ def test_remove_ansi_escape_sequences():
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
-def test_list_clusters_no_service_given_lists_all_of_them():
+def test_missing_cluster_configs_are_ignored():
     fake_soa_dir = '/nail/etc/services'
     fake_cluster_configs = [
         '/nail/etc/services/service1/marathon-cluster1.yaml',
         '/nail/etc/services/service2/chronos-cluster2.yaml',
     ]
-    expected = ['cluster1', 'cluster2']
+    expected = []
     with mock.patch(
         'os.path.join', autospec=True, return_value='%s/*' % fake_soa_dir,
     ) as mock_join_path, mock.patch(
@@ -606,23 +606,33 @@ def test_list_clusters_no_service_given_lists_all_of_them():
         mock_glob.assert_called_once_with('%s/*/*.yaml' % fake_soa_dir)
 
 
-def test_list_clusters_with_service():
+def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = '/nail/etc/services'
-    fake_service = 'fake_service'
-    fake_cluster_configs = [
-        '/nail/etc/services/service1/marathon-cluster1.yaml',
-        '/nail/etc/services/service1/chronos-cluster2.yaml',
+    fake_soa_cluster_configs = [
+        ['cluster1', '/nail/etc/services/service1/marathon-cluster1.yaml'],
+        ['cluster2', '/nail/etc/services/service1/chronos-cluster2.yaml'],
     ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
-        'os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service),
-    ) as mock_join_path, mock.patch(
-        'glob.glob', autospec=True, return_value=fake_cluster_configs,
-    ) as mock_glob:
+        'paasta_tools.utils.get_soa_cluster_deploy_files', autospec=True, return_value=fake_soa_cluster_configs,
+    ):
+        actual = utils.list_clusters(soa_dir=fake_soa_dir)
+        assert actual == expected
+
+
+def test_list_clusters_with_service():
+    fake_soa_dir = '/nail/etc/services'
+    fake_service = 'fake_service'
+    fake_soa_cluster_configs = [
+        ['cluster1', '/nail/etc/services/service1/marathon-cluster1.yaml'],
+        ['cluster2', '/nail/etc/services/service1/chronos-cluster2.yaml'],
+    ]
+    expected = ['cluster1', 'cluster2']
+    with mock.patch(
+        'paasta_tools.utils.get_soa_cluster_deploy_files', autospec=True, return_value=fake_soa_cluster_configs,
+    ):
         actual = utils.list_clusters(fake_service, fake_soa_dir)
         assert actual == expected
-        mock_join_path.assert_called_once_with(fake_soa_dir, fake_service)
-        mock_glob.assert_called_once_with('%s/%s/*.yaml' % (fake_soa_dir, fake_service))
 
 
 def test_list_clusters_ignores_bogus_clusters():
@@ -639,6 +649,8 @@ def test_list_clusters_ignores_bogus_clusters():
         'os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service),
     ), mock.patch(
         'glob.glob', autospec=True, return_value=fake_cluster_configs,
+    ), mock.patch(
+        'builtins.open', autospec=None, path=mock.mock_open(read_data="fakedata"),
     ):
         actual = utils.list_clusters(service=fake_service)
         assert actual == expected

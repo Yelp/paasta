@@ -383,7 +383,7 @@ def add_subparser(subparsers):
         type=str,
         dest='vault_token_file',
         required=False,
-        default='/root/.vault-token',
+        default='/var/spool/.paasta_vault_token',
     )
     list_parser.add_argument(
         '--skip-secrets',
