@@ -34,6 +34,7 @@ import threading
 import time
 from collections import OrderedDict
 from fnmatch import fnmatch
+from functools import lru_cache
 from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
@@ -45,6 +46,7 @@ from typing import cast
 from typing import Collection
 from typing import ContextManager
 from typing import Dict
+from typing import FrozenSet
 from typing import IO
 from typing import Iterable
 from typing import Iterator
@@ -1426,17 +1428,11 @@ SystemPaastaConfigDict = TypedDict(
 )
 
 
-@time_cache(ttl=60)
 def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
-    return load_system_paasta_config_no_cache(path)
-
-
-def load_system_paasta_config_no_cache(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
     """
     Reads Paasta configs in specified directory in lexicographical order and deep merges
     the dictionaries (last file wins).
     """
-    config: SystemPaastaConfigDict = {}
     if not os.path.isdir(path):
         raise PaastaNotConfiguredError("Could not find system paasta configuration directory: %s" % path)
 
@@ -1444,11 +1440,19 @@ def load_system_paasta_config_no_cache(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DI
         raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
 
     try:
-        for config_file in get_readable_files_in_glob(glob="*.json", path=path):
-            with open(config_file) as f:
-                config = deep_merge_dictionaries(json.load(f), config)
+        file_stats = frozenset({(fn, os.stat(fn)) for fn in get_readable_files_in_glob(glob="*.json", path=path)})
+        return parse_system_paasta_config(file_stats, path)
     except IOError as e:
         raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+
+
+@lru_cache()
+def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]], path: str) -> 'SystemPaastaConfig':
+    """Pass in a dictionary of filename -> os.stat_result, and this returns the merged"""
+    config: SystemPaastaConfigDict = {}
+    for filename, _ in file_stats:
+        with open(filename) as f:
+            config = deep_merge_dictionaries(json.load(f), config)
     return SystemPaastaConfig(config, path)
 
 
