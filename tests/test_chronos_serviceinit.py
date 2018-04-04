@@ -401,7 +401,7 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
     ):
         actual = chronos_serviceinit.format_chronos_job_status(mock_client, example_job, running_tasks, verbosity_level)
     mock_status_mesos_tasks_verbose.assert_called_once_with(
-        job_id=example_job['name'],
+        filter_string=example_job['name'],
         get_short_task_id=chronos_serviceinit.get_short_task_id,
         tail_lines=expected_tail_lines,
     )

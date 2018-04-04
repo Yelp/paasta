@@ -6,10 +6,7 @@ from paasta_tools.utils import paasta_print
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
-    if verbose > 0:
-        tail_lines = calculate_tail_lines(verbose_level=verbose)
-    else:
-        tail_lines = 0
+    tail_lines = calculate_tail_lines(verbose_level=verbose)
 
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo

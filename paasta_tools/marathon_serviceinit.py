@@ -463,26 +463,42 @@ def get_short_task_id(task_id):
     return task_id.split(marathon_tools.MESOS_TASK_SPACER)[-1]
 
 
-def status_mesos_tasks(service, instance, normal_instance_count):
+def status_mesos_tasks(
+    service: str,
+    instance: str,
+    normal_instance_count: int,
+    verbose: int,
+) -> str:
     job_id = marathon_tools.format_job_id(service, instance)
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
     filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
+
     try:
         count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string))
         if count >= normal_instance_count:
             status = PaastaColors.green("Healthy")
-            count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
+            count_str = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
         elif count == 0:
             status = PaastaColors.red("Critical")
-            count = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
+            count_str = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
         else:
             status = PaastaColors.yellow("Warning")
-            count = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
+            count_str = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
         running_string = PaastaColors.bold('TASK_RUNNING')
-        return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
+        output = "Mesos:      %s - %s tasks in the %s state." % (status, count_str, running_string)
     except ReadTimeout:
         return "Error: talking to Mesos timed out. It may be overloaded."
+
+    if verbose > 0:
+        tail_lines = calculate_tail_lines(verbose_level=verbose)
+        output += '\n' + status_mesos_tasks_verbose(
+            filter_string=filter_string,
+            get_short_task_id=get_short_task_id,
+            tail_lines=tail_lines,
+        )
+
+    return output
 
 
 def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
@@ -550,14 +566,7 @@ def perform_command(
             verbose=verbose,
         )
         paasta_print(out)
-        paasta_print(status_mesos_tasks(service, instance, normal_instance_count))
-        if verbose > 0:
-            tail_lines = calculate_tail_lines(verbose_level=verbose)
-            paasta_print(status_mesos_tasks_verbose(
-                job_id=app_id,
-                get_short_task_id=get_short_task_id,
-                tail_lines=tail_lines,
-            ))
+        paasta_print(status_mesos_tasks(service, instance, normal_instance_count, verbose))
         if proxy_port is not None:
             normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
                 service,

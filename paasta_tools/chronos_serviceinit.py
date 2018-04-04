@@ -278,7 +278,7 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
     if verbose > 0:
         tail_lines = calculate_tail_lines(verbose_level=verbose)
         mesos_status_verbose = status_mesos_tasks_verbose(
-            job_id=job["name"],
+            filter_string=job["name"],
             get_short_task_id=get_short_task_id,
             tail_lines=tail_lines,
         )
