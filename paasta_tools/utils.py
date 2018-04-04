@@ -1448,7 +1448,7 @@ def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'Sy
 
 @lru_cache()
 def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]], path: str) -> 'SystemPaastaConfig':
-    """Pass in a dictionary of filename -> os.stat_result, and this returns the merged"""
+    """Pass in a dictionary of filename -> os.stat_result, and this returns the merged parsed configs"""
     config: SystemPaastaConfigDict = {}
     for filename, _ in file_stats:
         with open(filename) as f:
