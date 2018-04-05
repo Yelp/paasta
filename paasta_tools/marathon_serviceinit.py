@@ -75,7 +75,9 @@ def bouncing_status_human(app_count, bounce_method):
 
 
 def get_bouncing_status(service, instance, client, job_config):
-    apps = marathon_tools.get_matching_appids(service, instance, client)
+    # embed_tasks=True here so that we're making the same HTTP call as the other parts of this code, so the call can be
+    # cached.
+    apps = marathon_tools.get_matching_appids(service, instance, client, embed_tasks=True)
     app_count = len(apps)
     bounce_method = job_config.get_bounce_method()
     return bouncing_status_human(app_count, bounce_method)
@@ -170,6 +172,7 @@ def status_marathon_job(
     marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
         clients=clients.get_all_clients_for_service(job_config),
         embed_tasks=True,
+        service_name=service,
     )
     all_tasks = []
     all_output = [""]  # One entry that will be replaced with status_marathon_job_human output later.
@@ -357,6 +360,7 @@ def status_smartstack_backends(
     service,
     instance,
     job_config,
+    service_namespace_config,
     cluster,
     tasks,
     expected_count,
@@ -372,15 +376,9 @@ def status_smartstack_backends(
     return: A newline separated string of the smarststack backend status
     """
     output = []
-    service_instance = marathon_tools.read_registration_for_service_instance(
-        service, instance, cluster,
-    )
 
-    service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service,
-        namespace=instance,
-        soa_dir=soa_dir,
-    )
+    registration = job_config.get_registrations()[0]
+
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist(
         system_deploy_blacklist=system_deploy_blacklist,
@@ -404,15 +402,15 @@ def status_smartstack_backends(
     }
 
     if len(grouped_slave_hostname) == 0:
-        output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
+        output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % registration)
     else:
         output.append("Smartstack:")
         if verbose:
-            output.append("  Haproxy Service Name: %s" % service_instance)
+            output.append("  Haproxy Service Name: %s" % registration)
             output.append("  Backends:")
 
         output.extend(pretty_print_smartstack_backends_for_locations(
-            service_instance=service_instance,
+            registration=registration,
             tasks=tasks,
             locations=grouped_slave_hostname,
             expected_count=expected_count,
@@ -424,7 +422,7 @@ def status_smartstack_backends(
 
 
 def pretty_print_smartstack_backends_for_locations(
-    service_instance, tasks, locations, expected_count, verbose,
+    registration, tasks, locations, expected_count, verbose,
     synapse_port, synapse_haproxy_url_format,
 ):
     """
@@ -438,7 +436,7 @@ def pretty_print_smartstack_backends_for_locations(
         synapse_host = hosts[0]
         sorted_backends = sorted(
             get_backends(
-                service_instance,
+                registration,
                 synapse_host=synapse_host,
                 synapse_port=synapse_port,
                 synapse_haproxy_url_format=synapse_haproxy_url_format,
@@ -505,6 +503,7 @@ def perform_command(
     verbose: int,
     soa_dir: str,
     clients: marathon_tools.MarathonClients,
+    job_config: marathon_tools.MarathonServiceConfig,
     app_id: str=None,
 ) -> int:
     """Performs a start/stop/restart/status on an instance
@@ -518,7 +517,6 @@ def perform_command(
     """
     system_config = load_system_paasta_config()
 
-    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     if not app_id:
         try:
             app_id = job_config.format_marathon_app_dict()['id']
@@ -528,7 +526,6 @@ def perform_command(
             return 1
 
     normal_instance_count = job_config.get_instances()
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
     current_client = clients.get_current_client_for_service(job_config)
 
@@ -558,6 +555,13 @@ def perform_command(
                 get_short_task_id=get_short_task_id,
                 tail_lines=tail_lines,
             ))
+
+        service_namespace_config = marathon_tools.load_service_namespace_config(
+            service=service,
+            namespace=job_config.get_nerve_namespace(),
+            soa_dir=soa_dir,
+        )
+        proxy_port = service_namespace_config.get('proxy_port')
         if proxy_port is not None:
             normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
                 service,
@@ -569,6 +573,7 @@ def perform_command(
                 instance=instance,
                 cluster=cluster,
                 job_config=job_config,
+                service_namespace_config=service_namespace_config,
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,

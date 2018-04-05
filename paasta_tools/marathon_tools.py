@@ -1384,11 +1384,11 @@ def get_expected_instance_count_for_namespace(
     return total_expected
 
 
-def get_matching_appids(service: str, instance: str, client: MarathonClient) -> List[str]:
+def get_matching_appids(service: str, instance: str, client: MarathonClient, embed_tasks: bool=False) -> List[str]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
-    marathon_apps = get_all_marathon_apps(client)
+    marathon_apps = get_all_marathon_apps(client, service_name=service, embed_tasks=embed_tasks)
     return [app.id for app in marathon_apps if does_app_id_match(service, instance, app.id)]
 
 
@@ -1413,17 +1413,25 @@ def does_app_id_match(service: str, instance: str, app_id: str) -> bool:
     return app_id.startswith(expected_prefix)
 
 
-def get_all_marathon_apps(client: MarathonClient, embed_tasks: bool=False) -> List[MarathonApp]:
-    return client.list_apps(embed_tasks=embed_tasks)
+def get_all_marathon_apps(
+    client: MarathonClient,
+    service_name: Optional[str]=None,
+    embed_tasks: bool=False,
+) -> List[MarathonApp]:
+    if service_name:
+        return client.list_apps(embed_tasks=embed_tasks, app_id='/' + format_job_id(service=service_name, instance=''))
+    else:
+        return client.list_apps(embed_tasks=embed_tasks)
 
 
 def get_marathon_apps_with_clients(
     clients: Collection[MarathonClient],
+    service_name: Optional[str]=None,
     embed_tasks: bool=False,
 ) -> List[Tuple[MarathonApp, MarathonClient]]:
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
     for client in clients:
-        for app in get_all_marathon_apps(client, embed_tasks=embed_tasks):
+        for app in get_all_marathon_apps(client, service_name, embed_tasks=embed_tasks):
             marathon_apps_with_clients.append((app, client))
     return marathon_apps_with_clients
 

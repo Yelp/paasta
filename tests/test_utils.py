@@ -174,6 +174,8 @@ def test_load_system_paasta_config():
     ), mock.patch(
         'paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value,
     ) as json_patch, mock.patch(
+        'paasta_tools.utils.os.stat', autospec=True,
+    ), mock.patch(
         'paasta_tools.utils.deep_merge_dictionaries', autospec=True, return_value=json_load_return_value,
     ) as mock_deep_merge:
         actual = utils.load_system_paasta_config(path='/some/fake/dir')
@@ -219,6 +221,8 @@ def test_load_system_paasta_config_file_dne():
     ), mock.patch(
         'builtins.open', side_effect=IOError(2, 'a', 'b'), autospec=None,
     ), mock.patch(
+        'paasta_tools.utils.os.stat', autospec=True,
+    ), mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True, return_value=[fake_path],
     ):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
@@ -237,6 +241,8 @@ def test_load_system_paasta_config_merge_lexographically():
         'os.access', return_value=True, autospec=True,
     ), mock.patch(
         'builtins.open', file_mock, autospec=None,
+    ), mock.patch(
+        'paasta_tools.utils.os.stat', autospec=True,
     ), mock.patch(
         'paasta_tools.utils.get_readable_files_in_glob', autospec=True,
         return_value=['a', 'b'],
