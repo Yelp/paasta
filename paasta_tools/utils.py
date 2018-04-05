@@ -2590,7 +2590,7 @@ class ZookeeperPool(object):
 
 
 def calculate_tail_lines(verbose_level: int) -> int:
-    if verbose_level == 1:
+    if verbose_level <= 1:
         return 0
     else:
         return 10 ** (verbose_level - 1)

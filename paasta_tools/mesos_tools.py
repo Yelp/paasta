@@ -18,6 +18,8 @@ import logging
 import re
 import socket
 from collections import namedtuple
+from typing import Callable
+from typing import List
 from urllib.parse import urlparse
 
 import humanize
@@ -426,18 +428,22 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     return output
 
 
-def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
+def status_mesos_tasks_verbose(
+    filter_string: str,
+    get_short_task_id: Callable[[str], str],
+    tail_lines: int=0,
+) -> str:
     """Returns detailed information about the mesos tasks for a service.
 
-    :param job_id: An id used for looking up Mesos tasks
+    :param filter_string: An id used for looking up Mesos tasks
     :param get_short_task_id: A function which given a
                               task_id returns a short task_id suitable for
                               printing.
     :param tail_lines: int representing the number of lines of stdout/err to
                        report.
     """
-    output = []
-    running_and_active_tasks = select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), job_id)
+    output: List[str] = []
+    running_and_active_tasks = select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string)
     list_title = "Running Tasks:"
     table_header = [
         "Mesos Task ID",
@@ -456,7 +462,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_lines=0):
         tail_lines=tail_lines,
     ))
 
-    non_running_tasks = select_tasks_by_id(get_cached_list_of_not_running_tasks_from_frameworks(), job_id)
+    non_running_tasks = select_tasks_by_id(get_cached_list_of_not_running_tasks_from_frameworks(), filter_string)
     # Order the tasks by timestamp
     non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))

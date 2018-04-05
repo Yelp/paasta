@@ -1073,7 +1073,7 @@ def test_status_mesos_tasks_working():
         mock_tasks.return_value = [{'id': 'unused{0}unused{0}'.format(marathon_tools.MESOS_TASK_SPACER)}
                                    for _ in range(2)]
         normal_count = 2
-        actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+        actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count, verbose=0)
         assert 'Healthy' in actual
 
 
@@ -1085,7 +1085,7 @@ def test_status_mesos_tasks_warning():
         mock_tasks.return_value = [{'id': 'fake{0}fake{0}'.format(marathon_tools.MESOS_TASK_SPACER)}
                                    for _ in range(2)]
         normal_count = 4
-        actual = marathon_serviceinit.status_mesos_tasks('fake', 'fake', normal_count)
+        actual = marathon_serviceinit.status_mesos_tasks('fake', 'fake', normal_count, verbose=0)
         assert 'Warning' in actual
 
 
@@ -1096,7 +1096,7 @@ def test_status_mesos_tasks_critical():
     ) as mock_tasks:
         mock_tasks.return_value = []
         normal_count = 10
-        actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+        actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count, verbose=0)
         assert 'Critical' in actual
 
 

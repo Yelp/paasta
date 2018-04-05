@@ -56,7 +56,7 @@ def test_filter_not_running_tasks():
 )
 def test_status_mesos_tasks_verbose(test_case):
     tail_lines, expected_format_tail_call_count = test_case
-    job_id = format_job_id('fake_service', 'fake_instance')
+    filter_string = format_job_id('fake_service', 'fake_instance')
 
     with mock.patch(
         'paasta_tools.mesos_tools.get_cached_list_of_running_tasks_from_frameworks', autospec=True,
@@ -69,10 +69,10 @@ def test_status_mesos_tasks_verbose(test_case):
     ) as format_non_running_mesos_task_row_patch, mock.patch(
         'paasta_tools.mesos_tools.format_stdstreams_tail_for_task', autospec=True,
     ) as format_stdstreams_tail_for_task_patch:
-        get_cached_list_of_running_tasks_from_frameworks_patch.return_value = [{'id': job_id}]
+        get_cached_list_of_running_tasks_from_frameworks_patch.return_value = [{'id': filter_string}]
 
         template_task_return = {
-            'id': job_id,
+            'id': filter_string,
             'statuses': [{'timestamp': '##########'}],
             'state': 'NOT_RUNNING',
         }
@@ -88,13 +88,16 @@ def test_status_mesos_tasks_verbose(test_case):
         format_stdstreams_tail_for_task_patch.return_value = ['tail']
 
         actual = mesos_tools.status_mesos_tasks_verbose(
-            job_id=job_id,
+            filter_string=filter_string,
             get_short_task_id=mock.sentinel.get_short_task_id,
             tail_lines=tail_lines,
         )
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
-        format_running_mesos_task_row_patch.assert_called_once_with({'id': job_id}, mock.sentinel.get_short_task_id)
+        format_running_mesos_task_row_patch.assert_called_once_with(
+            {'id': filter_string},
+            mock.sentinel.get_short_task_id,
+        )
         assert format_non_running_mesos_task_row_patch.call_count == 10  # maximum n of tasks we display
         assert format_stdstreams_tail_for_task_patch.call_count == expected_format_tail_call_count
 
