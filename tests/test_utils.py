@@ -187,7 +187,7 @@ def test_load_system_paasta_config():
         open_file_patch.assert_any_call('/some/fake/dir/some_file.json')
         json_patch.assert_any_call(file_mock.return_value.__enter__.return_value)
         assert json_patch.call_count == 1
-        mock_deep_merge.assert_called_with(json_load_return_value, {})
+        mock_deep_merge.assert_called_with(json_load_return_value, {}, allow_duplicate_keys=False)
 
 
 def test_load_system_paasta_config_file_non_existent_dir():
@@ -230,10 +230,9 @@ def test_load_system_paasta_config_file_dne():
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
 
-def test_load_system_paasta_config_merge_lexographically():
+def test_load_system_paasta_config_duplicate_keys_errors():
     fake_file_a = {'cluster': 'this value will be overriden', 'sensu_host': 'fake_data'}
     fake_file_b = {'cluster': 'overriding value'}
-    expected = utils.SystemPaastaConfig({'cluster': 'overriding value', 'sensu_host': 'fake_data'}, '/some/fake/dir')
     file_mock = mock.mock_open()
     with mock.patch(
         'os.path.isdir', return_value=True, autospec=True,
@@ -249,8 +248,8 @@ def test_load_system_paasta_config_merge_lexographically():
     ), mock.patch(
         'paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b],
     ):
-        actual = utils.load_system_paasta_config(path='/some/fake/dir')
-        assert actual == expected
+        with raises(utils.DuplicateKeyError):
+            utils.load_system_paasta_config(path='/some/fake/dir')
 
 
 def test_SystemPaastaConfig_get_cluster():
@@ -1927,7 +1926,53 @@ def test_deep_merge_dictionaries():
         'overwriting_key': 'value',
         'overwriting_dict': {'test': 'value'},
     }
-    assert utils.deep_merge_dictionaries(overrides, defaults) == expected
+    assert utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=True) == expected
+
+
+def test_deep_merge_dictionaries_no_duplicate_keys_allowed():
+    # Nested dicts should be allowed
+    overrides = {
+        "nested": {
+            "a": "override",
+        },
+    }
+    defaults = {
+        "nested": {
+            "b": "default",
+        },
+    }
+    expected = {
+        "nested": {
+            "a": "override",
+            "b": "default",
+        },
+    }
+    assert utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=True) == expected
+    del expected
+
+    overrides = {
+        "a": "override",
+    }
+    defaults = {
+        "a": "default",
+    }
+
+    with raises(utils.DuplicateKeyError):
+        utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=False)
+
+    overrides = {
+        "nested": {
+            "a": "override",
+        },
+    }
+    defaults = {
+        "nested": {
+            "a": "default",
+        },
+    }
+
+    with raises(utils.DuplicateKeyError):
+        utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=False)
 
 
 def test_function_composition():
