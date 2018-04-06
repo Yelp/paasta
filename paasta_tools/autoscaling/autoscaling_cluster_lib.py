@@ -380,7 +380,6 @@ class ClusterAutoscaler(object):
         :param should_drain: whether we should drain hosts before waiting to stop them
         :param timer: a Timer object to keep terminates happening once every n seconds accross co-routines
         """
-        ec2_client = boto3.client('ec2', region_name=region)
         self.log.info("Starting TERMINATING: {} (Hostname = {}, IP = {})".format(
             slave.instance_id,
             slave.hostname,
@@ -403,13 +402,7 @@ class ClusterAutoscaler(object):
                         slave.hostname,
                         slave.ip,
                     ))
-                    try:
-                        ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
-                    except ClientError as e:
-                        if e.response['Error'].get('Code') == 'DryRunOperation':
-                            pass
-                        else:
-                            raise
+                    self.terminate_instances([instance_id])
                     break
                 else:
                     self.log.info("Instance {}: NOT ready to kill".format(instance_id))
@@ -420,13 +413,20 @@ class ClusterAutoscaler(object):
                 timer.timeout,
                 slave.pid,
             ))
-            try:
-                ec2_client.terminate_instances(InstanceIds=[instance_id], DryRun=dry_run)
-            except ClientError as e:
-                if e.response['Error'].get('Code') == 'DryRunOperation':
-                    pass
-                else:
-                    raise
+            self.terminate_instances([instance_id])
+
+    def terminate_instances(self, instance_ids: List[str]) -> None:
+        ec2_client = boto3.client('ec2', region_name=self.resource['region'])
+        try:
+            ec2_client.terminate_instances(
+                InstanceIds=instance_ids,
+                DryRun=self.dry_run,
+            )
+        except ClientError as e:
+            if e.response['Error'].get('Code') == 'DryRunOperation':
+                pass
+            else:
+                raise
 
     async def scale_resource(
         self,
@@ -458,11 +458,30 @@ class ClusterAutoscaler(object):
             killable_capacity = round(sum([slave.instance_weight for slave in filtered_slaves]), 2)
             amount_to_decrease = round(delta * -1, 2)
             if amount_to_decrease > killable_capacity:
-                self.log.error(
-                    "Didn't find enough candidates to kill. This shouldn't happen so let's not kill anything! "
-                    "Amount wanted to decrease: %s, killable capacity: %s" % (amount_to_decrease, killable_capacity),
+                instance_ids_in_mesos = {
+                    slave.instance_id for slave in filtered_slaves
+                }
+                instance_ids_not_in_mesos = [
+                    instance['InstanceId'] for instance in self.instances
+                    if instance['InstanceId'] not in instance_ids_in_mesos
+                ]
+                self.log.warning(
+                    "Didn't find enough candidates to kill. This may mean that "
+                    "some instances have not yet joined the cluster. Since we "
+                    "are scaling down, we will kill the instances in this "
+                    "pool that have not joined.\n"
+                    "Desired decrease in capacity: %s, killable capacity: %s\n"
+                    "Setting capacity to %s and killing instances %s before "
+                    "proceeding scale down" % (
+                        amount_to_decrease,
+                        killable_capacity,
+                        killable_capacity,
+                        instance_ids_not_in_mesos,
+                    ),
                 )
-                return
+                self.set_capacity(killable_capacity)
+                self.terminate_instances(instance_ids_not_in_mesos)
+
             await self.downscale_aws_resource(
                 filtered_slaves=filtered_slaves,
                 current_capacity=current_capacity,
