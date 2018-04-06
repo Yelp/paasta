@@ -64,6 +64,8 @@ SmartStack, **no web requests should be lost under normal circumstances**.
 brutal
 """"""
 
+.. warning:: The ``brutal`` bounce is NOT safe, and performs NO healthchecks before proceeding. Do NOT use this bounce method on a production service!
+
 The ``brutal`` bounce replaces old tasks with new tasks with no regards to
 safety. It launches new tasks immediately and kills old tasks immediately
 without draining them.
@@ -104,6 +106,8 @@ combined with a limited cluster size.
 
 downthenup
 """"""""""
+
+.. warning:: The ``downthenup`` bounce is NOT safe, and performs NO healthchecks before proceeding. Do NOT use this bounce method on a production service!
 
 The ``downthenup`` bounce will wait until all old copies of a service are gone
 before launching any new copies of a service. This bounce method is commonly
