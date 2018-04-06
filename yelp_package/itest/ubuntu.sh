@@ -67,9 +67,7 @@ mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/yelp_package/itest/fake_services /nail/etc/services
 
 mkdir -p /etc/paasta
-[ -L /etc/paasta/marathon.json ] || ln -s /work/yelp_package/itest/marathon.json /etc/paasta/marathon.json
 [ -L /etc/paasta/volumes.json ] || ln -s /work/yelp_package/itest/volumes.json /etc/paasta/volumes.json
-[ -L /etc/paasta/chronos.json ] || ln -s /work/yelp_package/itest/chronos.json /etc/paasta/chronos.json
 [ -L /etc/paasta/cluster.json ] || ln -s /work/yelp_package/itest/cluster.json /etc/paasta/cluster.json
 
 # If left there, they are included in the python path and can pollute the tests.

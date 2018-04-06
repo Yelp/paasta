@@ -2549,7 +2549,11 @@ class DuplicateKeyError(Exception):
     pass
 
 
-def deep_merge_dictionaries(overrides: _DeepMergeT, defaults: _DeepMergeT, allow_duplicate_keys=True) -> _DeepMergeT:
+def deep_merge_dictionaries(
+    overrides: _DeepMergeT,
+    defaults: _DeepMergeT,
+    allow_duplicate_keys: bool=True,
+) -> _DeepMergeT:
     """
     Merges two dictionaries.
     """
