@@ -127,6 +127,22 @@ def commit(filename, serv):
     subprocess.check_call(('git', 'commit', '-n', '-m', message))
 
 
+def get_reviewers_in_group(group_name):
+    """Using rbt's target-groups argument overrides our configured default review groups.
+    So we'll expand the group into usernames and pass those users in the group individually.
+    """
+    rightsizer_reviewers = json.loads(
+        subprocess.check_output((
+            'rbt',
+            'api-get',
+            '--server', 'https://reviewboard.yelpcorp.com',
+            'groups/{}/users/'.format(group_name),
+            )
+        ).decode('UTF-8')
+    )
+    return [user.get('username', '') for user in rightsizer_reviewers.get('users', {})]
+
+
 def get_reviewers(filename):
     recent_authors = set()
     authors = subprocess.check_output((
@@ -142,15 +158,15 @@ def get_reviewers(filename):
 
 
 def review(filename, description, provisioned_state, manual_rb):
-    reviewers = ' '.join(get_reviewers(filename))
+    all_reviewers = get_reviewers(filename).union(get_reviewers_in_group('right-sizer'))
+    reviewers_arg = ' '.join(all_reviewers)
     if manual_rb:
         subprocess.check_call((
             'review-branch',
             '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
             '--description="{}"'.format(description),
-            '--reviewers', reviewers,
+            '--reviewers', reviewers_arg,
             '--server', 'https://reviewboard.yelpcorp.com',
-            '--target-groups', 'operations perf',
         ))
     else:
         subprocess.check_call((
@@ -158,9 +174,8 @@ def review(filename, description, provisioned_state, manual_rb):
             '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
             '--description="{}"'.format(description),
             '-p',
-            '--reviewers', reviewers,
+            '--reviewers', reviewers_arg,
             '--server', 'https://reviewboard.yelpcorp.com',
-            '--target-groups', 'operations perf',
         ))
 
 
@@ -224,9 +239,8 @@ def main(argv=None):
         serv['state'] = provisioned_state
         ticket_desc = (
             "This ticket and CR have been auto-generated to help keep PaaSTA right-sized."
-            "\nPERF will review this CR and give a shipit. After that shipit and your own sanity check of the new"
-            " value, proceed to merge and push the branch that jenkins created. Open an issue with any concerns"
-            " and someone from PERF will respond."
+            "\nPERF will review this CR and give a shipit. Then an ops deputy from your team should merge, if these values make sense for your service."
+            "\nOpen an issue with any concerns and someone from PERF will respond."
             "\nWe suspect that {s}.{i} in {c} may have been {o}-provisioned"
             " during the 1 week prior to {d}. It initially had {x} cpus, but based on the below dashboard,"
             " we recommend {y} cpus."
