@@ -1452,7 +1452,7 @@ def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]]
     config: SystemPaastaConfigDict = {}
     for filename, _ in file_stats:
         with open(filename) as f:
-            config = deep_merge_dictionaries(json.load(f), config)
+            config = deep_merge_dictionaries(json.load(f), config, allow_duplicate_keys=False)
     return SystemPaastaConfig(config, path)
 
 
@@ -2545,7 +2545,15 @@ def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int=2) 
 _DeepMergeT = TypeVar('_DeepMergeT', bound=Any)
 
 
-def deep_merge_dictionaries(overrides: _DeepMergeT, defaults: _DeepMergeT) -> _DeepMergeT:
+class DuplicateKeyError(Exception):
+    pass
+
+
+def deep_merge_dictionaries(
+    overrides: _DeepMergeT,
+    defaults: _DeepMergeT,
+    allow_duplicate_keys: bool=True,
+) -> _DeepMergeT:
     """
     Merges two dictionaries.
     """
@@ -2554,11 +2562,18 @@ def deep_merge_dictionaries(overrides: _DeepMergeT, defaults: _DeepMergeT) -> _D
     while stack:
         source_dict, result_dict = stack.pop()
         for key, value in source_dict.items():
-            child = result_dict.setdefault(key, {})
-            if isinstance(value, dict) and isinstance(child, dict):
-                stack.append((value, child))
-            else:
+            try:
+                child = result_dict[key]
+            except KeyError:
                 result_dict[key] = value
+            else:
+                if isinstance(value, dict) and isinstance(child, dict):
+                    stack.append((value, child))
+                else:
+                    if allow_duplicate_keys:
+                        result_dict[key] = value
+                    else:
+                        raise DuplicateKeyError(f"defaults and overrides both have key {key}")
     return result
 
 
