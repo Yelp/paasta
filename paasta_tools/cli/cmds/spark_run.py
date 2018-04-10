@@ -458,6 +458,15 @@ def validate_work_dir(s):
 
 
 def paasta_spark_run(args):
+    if args.max_cores < args.executor_cores:
+        paasta_print(
+            "Total number of cores %d is less than per-executor cores %d" % (
+                args.max_cores,
+                args.executor_cores,
+            ),
+        )
+        sys.exit(1)
+
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
     validate_work_dir(args.work_dir)
