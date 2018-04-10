@@ -1036,7 +1036,9 @@ class TestClusterAutoscaler(unittest.TestCase):
             autospec=True,
         ) as mock_downscale_aws_resource, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.set_capacity', autospec=True,
-        ) as mock_set_capacity:
+        ) as mock_set_capacity, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.terminate_instances', autospec=True,
+        ) as mock_terminate_instances:
             mock_set_capacity.return_value = True
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
@@ -1069,6 +1071,23 @@ class TestClusterAutoscaler(unittest.TestCase):
                 filtered_slaves=mock_filter_aws_slaves.return_value,
                 current_capacity=3.3,
                 target_capacity=0,
+            )
+            mock_set_capacity.reset_mock()
+
+            # test scale down when not all slaves have joined cluster
+            mock_slave_1 = mock.Mock(instance_weight=0.7, instance_id='abc')
+            mock_slave_2 = mock.Mock(instance_weight=1.1, instance_id='def')
+            mock_filter_aws_slaves.return_value = [mock_slave_1, mock_slave_2]
+            self.autoscaler.instances = [
+                {'InstanceId': 'abc'},
+                {'InstanceId': 'def'},
+                {'InstanceId': 'ghi'},
+            ]
+            _run(self.autoscaler.scale_resource(3.5, 1.8))
+            mock_set_capacity.assert_called_once_with(self.autoscaler, 1.8)
+            mock_terminate_instances.assert_called_once_with(
+                self.autoscaler,
+                ['ghi'],
             )
 
     def test_downscale_aws_resource(self):
@@ -1405,14 +1424,12 @@ class TestClusterAutoscaler(unittest.TestCase):
 
     def test_wait_and_terminate(self):
         with mock.patch(
-            'boto3.client', autospec=True,
-        ) as mock_ec2_client, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.terminate_instances', autospec=True,
+        ) as mock_terminate_instances, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.asyncio.sleep', autospec=True,
         ) as mock_sleep, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.is_safe_to_kill', autospec=True,
         ) as mock_is_safe_to_kill:
-            mock_terminate_instances = mock.Mock()
-            mock_ec2_client.return_value = mock.Mock(terminate_instances=mock_terminate_instances)
             mock_timer = mock.Mock()
             mock_timer.ready = lambda: False
             mock_sleep.side_effect = just_sleep
@@ -1428,7 +1445,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                 slave=mock_slave_to_kill, drain_timeout=600, dry_run=False, timer=mock_timer,
                 region='westeros-1', should_drain=True,
             ))
-            mock_terminate_instances.assert_called_with(InstanceIds=['i-blah123'], DryRun=False)
+            mock_terminate_instances.assert_called_with(self.autoscaler, ['i-blah123'])
             mock_is_safe_to_kill.assert_called_with('hostblah')
 
             mock_is_safe_to_kill.side_effect = [False, False, True]
@@ -1653,6 +1670,32 @@ class TestClusterAutoscaler(unittest.TestCase):
             assert len(ret) == 567
             assert ret == ips
             assert mock_describe_instances.call_count == 3
+
+    def test_terminate_instances(self):
+        with mock.patch('boto3.client', autospec=True) as mock_boto_client:
+            mock_terminate_instances = mock.Mock()
+            mock_boto_client.return_value = mock.Mock(
+                terminate_instances=mock_terminate_instances,
+            )
+
+            instances_to_terminate = ['abc', 'def']
+            self.autoscaler.terminate_instances(instances_to_terminate)
+            mock_boto_client.assert_called_once_with(
+                'ec2',
+                region_name=self.autoscaler.resource['region'],
+            )
+            mock_terminate_instances.assert_called_once_with(
+                InstanceIds=instances_to_terminate,
+                DryRun=False,
+            )
+
+            # DryRunOperation error should be swallowed during dry run
+            self.autoscaler.dry_run = True
+            mock_terminate_instances.side_effect = ClientError(
+                {'Error': {'Code': 'DryRunOperation'}},
+                'TerminateInstances',
+            )
+            self.autoscaler.terminate_instances(instances_to_terminate)
 
 
 class TestPaastaAwsSlave(unittest.TestCase):
