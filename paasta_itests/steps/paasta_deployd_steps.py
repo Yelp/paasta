@@ -6,9 +6,11 @@ import time
 from subprocess import PIPE
 from subprocess import Popen
 
+import mock
 import service_configuration_lib
 from behave import given
 from behave import then
+from behave import when
 from itest_utils import get_service_connection_string
 from kazoo.exceptions import NodeExistsError
 from steps.setup_steps import modify_configs
@@ -16,6 +18,7 @@ from steps.setup_steps import modify_configs
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import ZookeeperPool
 
 
@@ -161,3 +164,19 @@ def add_env_var(context, var, val, service, instance, framework):
     field = 'env'
     value = {var: val}
     modify_configs(context, field, framework, service, instance, value)
+
+
+@when('we set some arbitrary data at "{zookeeper_path}" in ZK')
+def zookeeper_write_bogus_key(context, zookeeper_path):
+    with mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts):
+        with ZookeeperPool() as zookeeper_client:
+            zookeeper_client.ensure_path(zookeeper_path)
+            zookeeper_client.set(zookeeper_path, b"WHATEVER")
+
+
+@given('we remove autoscaling ZK keys for test-service')
+def zookeeper_rmr_keys(context):
+    context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
+    with mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts):
+        with ZookeeperPool() as zookeeper_client:
+            zookeeper_client.delete("/autoscaling/test-service", recursive=True)

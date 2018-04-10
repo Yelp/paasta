@@ -113,6 +113,12 @@ class TestAutoscalerWatcher(unittest.TestCase):
             self.watcher.watch_folder('/rick/beth')
             mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances', enqueue=False)
 
+            mock_watch_node.reset_mock()
+            mock_watcher = mock.Mock(_client=mock.Mock(get_children=mock.Mock(return_value=[])))
+            mock_children_watch.return_value = mock_watcher
+            self.watcher.watch_folder('/rick/beth/instances')
+            mock_watch_node.assert_called_with(self.watcher, '/rick/beth/instances', enqueue=False)
+
             mock_watcher = mock.Mock(_client=mock.Mock(get_children=mock.Mock(return_value=['instances'])))
             mock_children_watch.return_value = mock_watcher
             self.watcher.watch_folder('/rick/beth', enqueue_children=True)

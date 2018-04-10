@@ -51,13 +51,14 @@ class AutoscalerWatcher(PaastaWatcher):
         """recursive nonsense"""
         if "autoscaling.lock" in path:
             return
+        if path.split('/')[-1] == 'instances':
+            self.watch_node(path, enqueue=enqueue_children)
+            return
         self.log.info("Adding folder watch on {}".format(path))
         watcher = ChildrenWatch(self.zk, path, func=self.process_folder_event, send_event=True)
         self.watchers[path] = watcher
         children = watcher._client.get_children(watcher._path)
-        if children and ('instances' in children):
-            self.watch_node("{}/instances".format(path), enqueue=enqueue_children)
-        elif children:
+        if children:
             for child in children:
                 self.watch_folder("{}/{}".format(path, child), enqueue_children=enqueue_children)
 
