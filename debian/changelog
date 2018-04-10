@@ -1,3 +1,10 @@
+paasta-tools (0.70.1) xenial; urgency=medium
+
+  * 0.70.1 tagged with 'make release'
+    Commit: Merge branch "fix_internal_build"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 09 Apr 2018 18:30:40 -0700
+
 paasta-tools (0.70.0) xenial; urgency=medium
 
   * 0.70.0 tagged with 'make release'
