@@ -132,13 +132,14 @@ def get_reviewers_in_group(group_name):
     So we'll expand the group into usernames and pass those users in the group individually.
     """
     rightsizer_reviewers = json.loads(
-        subprocess.check_output((
-            'rbt',
-            'api-get',
-            '--server', 'https://reviewboard.yelpcorp.com',
-            'groups/{}/users/'.format(group_name),
-            )
-        ).decode('UTF-8')
+        subprocess.check_output(
+            (
+                'rbt',
+                'api-get',
+                '--server', 'https://reviewboard.yelpcorp.com',
+                'groups/{}/users/'.format(group_name),
+            ),
+        ).decode('UTF-8'),
     )
     return [user.get('username', '') for user in rightsizer_reviewers.get('users', {})]
 
@@ -239,7 +240,8 @@ def main(argv=None):
         serv['state'] = provisioned_state
         ticket_desc = (
             "This ticket and CR have been auto-generated to help keep PaaSTA right-sized."
-            "\nPERF will review this CR and give a shipit. Then an ops deputy from your team should merge, if these values make sense for your service."
+            "\nPERF will review this CR and give a shipit. Then an ops deputy from your team can merge"
+            " if these values look good for your service after review."
             "\nOpen an issue with any concerns and someone from PERF will respond."
             "\nWe suspect that {s}.{i} in {c} may have been {o}-provisioned"
             " during the 1 week prior to {d}. It initially had {x} cpus, but based on the below dashboard,"
