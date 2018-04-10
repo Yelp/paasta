@@ -24,9 +24,8 @@ RUN apt-get update > /dev/null && \
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
         debhelper \
-        dpkg-dev \
-        gcc \
         gdebi-core \
         git \
         help2man \
