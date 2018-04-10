@@ -1,5 +1,5 @@
 {
   "api_endpoints": {
-    "testcluster": "http://mesosmaster:5054"
+    "testcluster": "http://paasta_api:5054"
   }
 }
