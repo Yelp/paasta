@@ -470,7 +470,7 @@ def check_ssh_on_master(master, timeout=10):
         hint = 'HINT: Is there network latency? Try running somewhere closer to the cluster.'
     else:  # unknown error
         reason = 'Return code was %d which is an unknown failure.' % rc
-        hint = 'HINT: Talk to #operations and pastebin this output'
+        hint = 'HINT: Talk to #paasta and pastebin this output'
     output = ('ERROR cannot run check command %(check_command)s\n'
               '%(reason)s\n'
               '%(hint)s\n'
