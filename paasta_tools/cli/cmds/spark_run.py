@@ -5,6 +5,7 @@ import socket
 import sys
 
 from botocore.session import Session
+from ruamel.yaml import YAML
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
@@ -27,6 +28,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
+AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
+DEFAULT_SERVICE = 'spark'
 DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
@@ -61,7 +64,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-s', '--service',
         help="The name of the service from which the Spark image is built.",
-        default='spark',
+        default=DEFAULT_SERVICE,
     ).completer = lazy_choices_completer(list_services)
 
     list_parser.add_argument(
@@ -87,12 +90,6 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
-        default='default',
-    )
-
-    list_parser.add_argument(
-        '--aws-profile',
-        help="Name of the AWS profile to load credentials for AWS services like s3.",
         default='default',
     )
 
@@ -172,6 +169,31 @@ def add_subparser(subparsers):
         help='Number of CPU cores for the Spark driver',
     )
 
+    aws_group = list_parser.add_argument_group(
+        title='AWS credentials options',
+        description='If --aws-credentials-yaml is specified, it overrides all '
+        'other options. Otherwise, if -s/--service is specified, spark-run '
+        'looks for service credentials in /etc/boto_cfg/[service].yaml. If '
+        'it does not find the service credentials or no service is '
+        'specified, spark-run falls back to the boto default behavior '
+        '(checking ~/.aws/credentials, ~/.boto, etc).',
+    )
+
+    aws_group.add_argument(
+        '--aws-credentials-yaml',
+        help='Load aws keys from the provided yaml file. The yaml file must '
+        'have keys for aws_access_key_id and aws_secret_access_key.',
+    )
+
+    aws_group.add_argument(
+        '--aws-profile',
+        help="Name of the AWS profile to load credentials from. Only used when "
+        "--aws-credentials-yaml is not specified and --service is either "
+        "not specified or the service does not have credentials in "
+        "/etc/boto_cfg",
+        default='default',
+    )
+
     list_parser.set_defaults(command=paasta_spark_run)
 
 
@@ -207,9 +229,9 @@ def get_spark_env(
 ):
     spark_env = {}
 
-    creds = Session(profile=args.aws_profile).get_credentials()
-    spark_env['AWS_ACCESS_KEY_ID'] = creds.access_key
-    spark_env['AWS_SECRET_ACCESS_KEY'] = creds.secret_key
+    access_key, secret_key = get_aws_credentials(args)
+    spark_env['AWS_ACCESS_KEY_ID'] = access_key
+    spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
 
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
@@ -222,6 +244,52 @@ def get_spark_env(
         spark_env['JUPYTER_DATA_DIR'] = dirs[1] + '/.jupyter'
 
     return spark_env
+
+
+def get_aws_credentials(args):
+    if args.aws_credentials_yaml:
+        return load_aws_credentials_from_yaml(args.aws_credentials_yaml)
+    elif args.service != DEFAULT_SERVICE:
+        service_credentials_path = get_service_aws_credentials_path(args.service)
+        if os.path.exists(service_credentials_path):
+            return load_aws_credentials_from_yaml(service_credentials_path)
+        else:
+            paasta_print(
+                PaastaColors.yellow(
+                    'Did not find service AWS credentials at %s.  Falling back to '
+                    'user credentials.' % (service_credentials_path),
+                ),
+            )
+
+    creds = Session(profile=args.aws_profile).get_credentials()
+    return creds.access_key, creds.secret_key
+
+
+def get_service_aws_credentials_path(service_name):
+    service_yaml = '%s.yaml' % service_name
+    return os.path.join(AWS_CREDENTIALS_DIR, service_yaml)
+
+
+def load_aws_credentials_from_yaml(yaml_file_path):
+    with open(yaml_file_path, 'r') as yaml_file:
+        try:
+            credentials_yaml = YAML().load(yaml_file.read())
+        except Exception as e:
+            paasta_print(
+                PaastaColors.red(
+                    'Encountered %s when trying to parse AWS credentials yaml %s. '
+                    'Supressing further output to avoid leaking credentials.' % (
+                        type(e),
+                        yaml_file_path,
+                    ),
+                ),
+            )
+            sys.exit(1)
+
+        return (
+            credentials_yaml['aws_access_key_id'],
+            credentials_yaml['aws_secret_access_key'],
+        )
 
 
 def get_spark_conf_str(

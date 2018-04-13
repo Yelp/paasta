@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+import pytest
 
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
+from paasta_tools.cli.cmds.spark_run import DEFAULT_SERVICE
+from paasta_tools.cli.cmds.spark_run import get_aws_credentials
 from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_spark_conf_str
+from paasta_tools.cli.cmds.spark_run import load_aws_credentials_from_yaml
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -77,7 +81,7 @@ def test_get_spark_conf_str(
     assert 'spark.master=mesos://fake_leader:5050' in spark_conf
 
 
-@mock.patch('paasta_tools.cli.cmds.spark_run.Session.get_credentials', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.os.path.exists', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_username', autospec=True)
@@ -89,13 +93,13 @@ def test_configure_and_run_docker_container(
     mock_get_username,
     mock_pick_random_port,
     mock_os_path_exists,
-    mock_get_credentials,
+    mock_get_aws_credentials,
 ):
     mock_pick_random_port.return_value = 123
     mock_get_username.return_value = 'fake_user'
     mock_get_spark_conf_str.return_value = '--conf spark.app.name=fake_app'
     mock_run_docker_container.return_value = 0
-    mock_get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
+    mock_get_aws_credentials.return_value = ('id', 'secret')
 
     args = mock.MagicMock()
     args.cluster = 'fake_cluster'
@@ -173,3 +177,66 @@ def test_get_docker_cmd_other_cmd():
     spark_conf_str = '--conf spark.app.name=fake_app'
 
     assert get_docker_cmd(args, instance_config, spark_conf_str) == 'bash'
+
+
+def test_load_aws_credentials_from_yaml(tmpdir):
+    fake_access_key_id = 'fake_access_key_id'
+    fake_secret_access_key = 'fake_secret_access_key'
+    yaml_file = tmpdir.join('test.yaml')
+    yaml_file.write(
+        f'aws_access_key_id: "{fake_access_key_id}"\n'
+        f'aws_secret_access_key: "{fake_secret_access_key}"',
+    )
+
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_yaml(yaml_file)
+    assert aws_access_key_id == fake_access_key_id
+    assert aws_secret_access_key == fake_secret_access_key
+
+
+class TestGetAwsCredentials:
+
+    @pytest.fixture(autouse=True)
+    def mock_load_aws_credentials_from_yaml(self):
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.load_aws_credentials_from_yaml',
+            autospec=True,
+        ) as self.mock_load_aws_credentials_from_yaml:
+            yield
+
+    def test_yaml_provided(self):
+        args = mock.Mock(aws_credentials_yaml='credentials.yaml')
+        credentials = get_aws_credentials(args)
+
+        self.mock_load_aws_credentials_from_yaml.assert_called_once_with('credentials.yaml')
+        assert credentials == self.mock_load_aws_credentials_from_yaml.return_value
+
+    @mock.patch('paasta_tools.cli.cmds.spark_run.os', autospec=True)
+    @mock.patch('paasta_tools.cli.cmds.spark_run.get_service_aws_credentials_path', autospec=True)
+    def test_service_provided_no_yaml(self, mock_get_credentials_path, mock_os):
+        args = mock.Mock(aws_credentials_yaml=None, service='service_name')
+        mock_os.path.exists.return_value = True
+        credentials = get_aws_credentials(args)
+
+        mock_get_credentials_path.assert_called_once_with(args.service)
+        self.mock_load_aws_credentials_from_yaml.assert_called_once_with(
+            mock_get_credentials_path.return_value,
+        )
+        assert credentials == self.mock_load_aws_credentials_from_yaml.return_value
+
+    @mock.patch('paasta_tools.cli.cmds.spark_run.Session.get_credentials', autospec=True)
+    def test_use_default_creds(self, mock_get_credentials):
+        args = mock.Mock(aws_credentials_yaml=None, service=DEFAULT_SERVICE)
+        mock_get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
+        credentials = get_aws_credentials(args)
+
+        assert credentials == ('id', 'secret')
+
+    @mock.patch('paasta_tools.cli.cmds.spark_run.os', autospec=True)
+    @mock.patch('paasta_tools.cli.cmds.spark_run.Session.get_credentials', autospec=True)
+    def test_service_provided_fallback_to_default(self, mock_get_credentials, mock_os):
+        args = mock.Mock(aws_credentials_yaml=None, service='service_name')
+        mock_os.path.exists.return_value = False
+        mock_get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
+        credentials = get_aws_credentials(args)
+
+        assert credentials == ('id', 'secret')
