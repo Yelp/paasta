@@ -250,7 +250,7 @@ def test_print_cluster_status_missing_deploys_in_red(
     expected_output = (
         "\n"
         "cluster: a_cluster\n"
-        "  instance: %s\n"
+        "    Instance: %s\n"
         "    Git sha:    None (not deployed yet)\n"
         "    %s\n"
         % (

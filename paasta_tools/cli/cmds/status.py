@@ -177,7 +177,7 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
         paasta_print(exc.response.text)
         return exc.status_code
 
-    paasta_print('instance: %s' % PaastaColors.blue(instance))
+    paasta_print('Instance: %s' % PaastaColors.blue(instance))
     paasta_print('Git sha:    %s (desired)' % status.git_sha)
 
     marathon_status = status.marathon
@@ -246,7 +246,7 @@ def report_status_for_cluster(
 
         # Case: service NOT deployed to cluster.instance
         else:
-            output.append('  instance: %s' % PaastaColors.red(instance))
+            output.append('    Instance: %s' % PaastaColors.red(instance))
             output.append('    Git sha:    None (not deployed yet)')
 
     return_code = 0
