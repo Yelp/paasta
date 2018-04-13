@@ -453,8 +453,14 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
 
     # Default cli options to start the jupyter notebook server.
     if original_docker_cmd == 'jupyter':
-        return 'jupyter notebook -y --ip=%s --notebook-dir=%s' % (
-            socket.getfqdn(), args.work_dir.split(':')[1],
+        # Shutdown idle kernels that are not connected after one hour.
+        # Shutdown connected kernels if they use more than 32 cores.
+        cull_opts = '--MappingKernelManager.cull_idle_timeout=3600 '
+        if args.max_cores > 32:
+            cull_opts += '--MappingKernelManager.cull_connected=True '
+
+        return 'jupyter notebook -y --ip=%s --notebook-dir=%s %s' % (
+            socket.getfqdn(), args.work_dir.split(':')[1], cull_opts,
         )
     # Spark options are passed as options to pyspark and spark-shell.
     # For jupyter, environment variable SPARK_OPTS is set instead.
