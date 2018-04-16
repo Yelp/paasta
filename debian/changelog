@@ -1,3 +1,11 @@
+paasta-tools (0.70.3) xenial; urgency=medium
+
+  * 0.70.3 tagged with 'make release'
+    Commit: Merge pull request #1799 from Yelp/shared-ip-check  Add
+    script to monitor for containers sharing an IP
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 16 Apr 2018 11:22:53 -0700
+
 paasta-tools (0.70.2) xenial; urgency=medium
 
   * 0.70.2 tagged with 'make release'
