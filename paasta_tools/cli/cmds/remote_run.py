@@ -51,7 +51,7 @@ def add_start_args_to_parser(parser):
         '-t', '--staging-timeout',
         help='A timeout for the task to be launching before killed',
         required=False,
-        default=60,
+        default=240,
         type=float,
     )
     parser.add_argument(
