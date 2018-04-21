@@ -356,6 +356,11 @@ def get_spark_conf_str(
     spark_conf.append('--conf spark.executorEnv.PAASTA_INSTANCE=%s_%s' % (args.instance, get_username()))
     spark_conf.append('--conf spark.executorEnv.PAASTA_CLUSTER=%s' % (args.cluster))
 
+    # Labels for CloudHealth
+    para_service = 'label=paasta_service=%s' % args.service
+    para_instance = 'label=paasta_instance=%s_%s' % (args.instance, get_username())
+    spark_conf.append('--conf spark.mesos.executor.docker.parameters=%s,%s' % (para_service, para_instance))
+
     return ' '.join(spark_conf)
 
 
