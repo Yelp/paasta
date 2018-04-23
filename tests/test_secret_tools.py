@@ -16,9 +16,11 @@ from json.decoder import JSONDecodeError
 import mock
 
 from paasta_tools.secret_tools import get_hmac_for_secret
+from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def test_is_secret_ref():
@@ -92,3 +94,27 @@ def test_get_secret_provider():
             some='thing',
         )
         assert ret == mock_secret_provider.return_value
+
+
+def test_get_secret_hashes():
+    with mock.patch(
+        'paasta_tools.secret_tools.is_secret_ref', autospec=True, return_value=False,
+    ) as mock_is_secret_ref, mock.patch(
+        'paasta_tools.secret_tools.get_hmac_for_secret', autospec=True,
+    ) as mock_get_hmac_for_secret:
+        env = {'SOME_VAR': 'SOME_VAL'}
+
+        assert get_secret_hashes(env, 'dev', 'service', DEFAULT_SOA_DIR) == {}
+        mock_is_secret_ref.assert_called_with("SOME_VAL")
+        assert not mock_get_hmac_for_secret.called
+
+        mock_is_secret_ref.return_value = True
+        expected = {"SOME_VAL": mock_get_hmac_for_secret.return_value}
+        assert get_secret_hashes(env, 'dev', 'service', DEFAULT_SOA_DIR) == expected
+        mock_is_secret_ref.assert_called_with("SOME_VAL")
+        mock_get_hmac_for_secret.assert_called_with(
+            env_var_val="SOME_VAL",
+            service="service",
+            soa_dir=DEFAULT_SOA_DIR,
+            secret_environment='dev',
+        )

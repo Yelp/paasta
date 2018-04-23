@@ -59,8 +59,7 @@ from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.secret_tools import get_hmac_for_secret
-from paasta_tools.secret_tools import is_secret_ref
+from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.utils import _log
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
@@ -740,27 +739,15 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         """
         ahash = {key: copy.deepcopy(value) for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
         ahash['container']['docker']['parameters'] = self.format_docker_parameters(with_labels=False)  # type: ignore
-        secret_hashes = self.get_secret_hashes(config['env'], system_paasta_config.get_vault_environment())
+        secret_hashes = get_secret_hashes(
+            environment_variables=config['env'],
+            secret_environment=system_paasta_config.get_vault_environment(),
+            service=self.service,
+            soa_dir=self.soa_dir,
+        )
         if secret_hashes:
             ahash['paasta_secrets'] = secret_hashes
         return ahash
-
-    def get_secret_hashes(
-        self,
-        env: Dict[str, str],
-        vault_environment: str,
-    ) -> Dict[str, str]:
-
-        secret_hashes = {}
-        for _, env_var_val in env.items():
-            if is_secret_ref(env_var_val):
-                secret_hashes[env_var_val] = get_hmac_for_secret(
-                    env_var_val=env_var_val,
-                    service=self.service,
-                    soa_dir=self.soa_dir,
-                    vault_environment=vault_environment,
-                )
-        return secret_hashes
 
     def get_healthchecks(
         self,

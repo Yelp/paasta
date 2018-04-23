@@ -21,6 +21,7 @@ from pytest import raises
 from paasta_tools import chronos_tools
 from paasta_tools.chronos_tools import _get_related_jobs_and_configs
 from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.chronos_tools import get_config_for_bounce_hash
 from paasta_tools.chronos_tools import get_related_jobs_configs
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -1392,11 +1393,17 @@ class TestChronosTools:
             'paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True,
         ), mock.patch(
             'paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True,
-        ):
+        ) as mock_get_config_hash, mock.patch(
+            'paasta_tools.chronos_tools.get_config_for_bounce_hash', autospec=True,
+        ) as mock_get_config_for_bounce_hash:
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
+            mock_get_config_hash.assert_called_with(
+                config=mock_get_config_for_bounce_hash.return_value,
+                force_bounce=None,
+            )
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
@@ -1448,6 +1455,8 @@ class TestChronosTools:
             'paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True,
         ), mock.patch(
             'paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True,
+        ), mock.patch(
+            'paasta_tools.chronos_tools.get_config_for_bounce_hash', autospec=True,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
@@ -1519,6 +1528,8 @@ class TestChronosTools:
             'paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True,
         ), mock.patch(
             'paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True,
+        ), mock.patch(
+            'paasta_tools.chronos_tools.get_config_for_bounce_hash', autospec=True,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
@@ -1587,6 +1598,8 @@ class TestChronosTools:
             'paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True,
         ), mock.patch(
             'paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True,
+        ), mock.patch(
+            'paasta_tools.chronos_tools.get_config_for_bounce_hash', autospec=True,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
@@ -1671,6 +1684,8 @@ class TestChronosTools:
             'paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True,
         ), mock.patch(
             'paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash, autospec=True,
+        ), mock.patch(
+            'paasta_tools.chronos_tools.get_config_for_bounce_hash', autospec=True,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
@@ -2103,3 +2118,47 @@ class TestChronosTools:
         )
 
         assert related_jobs_configs == expected_related_jobs_configs
+
+    def test_get_config_for_bounce_hash(self):
+        with mock.patch(
+            'paasta_tools.chronos_tools.get_secret_hashes', autospec=True,
+        ) as mock_get_secret_hashes:
+            mock_system_config = mock.Mock()
+            mock_get_secret_hashes.return_value = {}
+            mock_config = {
+                'thing': 'blah',
+                'environmentVariables': [],
+            }
+            ret = get_config_for_bounce_hash(mock_config, 'service1', '/nail/blah', mock_system_config)
+            mock_get_secret_hashes.assert_called_with(
+                environment_variables={},
+                secret_environment=mock_system_config.get_vault_environment.return_value,
+                service='service1',
+                soa_dir='/nail/blah',
+            )
+            assert ret == mock_config
+            mock_config = {
+                'thing': 'blah',
+                'environmentVariables': [
+                    {'name': 'SOME', 'value': 'VAL'},
+                    {'name': 'THING1', 'value': 'ANOTHER'},
+                ],
+            }
+            mock_get_secret_hashes.return_value = {'SOME': 'hash'}
+
+            ret = get_config_for_bounce_hash(mock_config, 'service1', '/nail/blah', mock_system_config)
+            mock_get_secret_hashes.assert_called_with(
+                environment_variables={'SOME': 'VAL', 'THING1': 'ANOTHER'},
+                secret_environment=mock_system_config.get_vault_environment.return_value,
+                service='service1',
+                soa_dir='/nail/blah',
+            )
+            expected = {
+                'thing': 'blah',
+                'environmentVariables': [
+                    {'name': 'SOME', 'value': 'VAL'},
+                    {'name': 'THING1', 'value': 'ANOTHER'},
+                ],
+                'paasta_secrets': {'SOME': 'hash'},
+            }
+            assert ret == expected

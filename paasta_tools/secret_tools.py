@@ -37,7 +37,7 @@ def get_hmac_for_secret(
     env_var_val: str,
     service: str,
     soa_dir: str,
-    vault_environment: str,
+    secret_environment: str,
 ) -> Optional[str]:
     secret_name = get_secret_name_from_ref(env_var_val)
     secret_path = os.path.join(
@@ -49,10 +49,10 @@ def get_hmac_for_secret(
         with open(secret_path, 'r') as json_secret_file:
             secret_file = json.load(json_secret_file)
             try:
-                return secret_file['environments'][vault_environment]['signature']
+                return secret_file['environments'][secret_environment]['signature']
             except KeyError:
                 print("Failed to get secret signature at environments:{}:signature in json"
-                      " file".format(vault_environment))
+                      " file".format(secret_environment))
                 return None
     except IOError as e:
         print("Failed to open json secret at {}".format(secret_path))
@@ -80,3 +80,22 @@ def get_secret_provider(
         cluster_names=cluster_names,
         **secret_provider_kwargs,
     )
+
+
+def get_secret_hashes(
+    environment_variables: Dict[str, str],
+    secret_environment: str,
+    service: str,
+    soa_dir: str,
+) -> Dict[str, str]:
+
+    secret_hashes = {}
+    for env_var_val in environment_variables.values():
+        if is_secret_ref(env_var_val):
+            secret_hashes[env_var_val] = get_hmac_for_secret(
+                env_var_val=env_var_val,
+                service=service,
+                soa_dir=soa_dir,
+                secret_environment=secret_environment,
+            )
+    return secret_hashes

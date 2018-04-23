@@ -31,6 +31,7 @@ from crontab import CronSlices
 from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import mesos_services_running_here
+from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -651,14 +652,33 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     )
     complete_config['disabled'] = resolved_disabled_state
 
+    config_for_hash = get_config_for_bounce_hash(
+        complete_config=complete_config,
+        service=service,
+        soa_dir=soa_dir,
+        system_paasta_config=system_paasta_config,
+    )
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
     complete_config['description'] = get_config_hash(
-        config=complete_config,
+        config=config_for_hash,
         force_bounce=chronos_job_config.get_force_bounce(),
     )
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
+    return complete_config
+
+
+def get_config_for_bounce_hash(complete_config, service, soa_dir, system_paasta_config):
+    environment_variables = {x['name']: x['value'] for x in complete_config['environmentVariables']}
+    secret_hashes = get_secret_hashes(
+        environment_variables=environment_variables,
+        secret_environment=system_paasta_config.get_vault_environment(),
+        service=service,
+        soa_dir=soa_dir,
+    )
+    if secret_hashes:
+        complete_config['paasta_secrets'] = secret_hashes
     return complete_config
 
 
