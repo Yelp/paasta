@@ -24,10 +24,10 @@ from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
 from time import sleep
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Set
+from typing import Any  # noqa
+from typing import Dict  # noqa
+from typing import List  # noqa
+from typing import Set  # noqa
 
 import isodate
 import pytz
@@ -550,7 +550,7 @@ class ScribeLogReader(LogReader):
         scribe_envs: Set[str] = set()
         for cluster in clusters:
             scribe_envs.update(self.determine_scribereader_envs(components, cluster))
-        log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
+        log.debug("Connect to these scribe envs to tail scribe logs: %s" % scribe_envs)
 
         for scribe_env in scribe_envs:
             # These components all get grouped in one call for backwards compatibility
@@ -826,8 +826,8 @@ class ScribeLogReader(LogReader):
         start_date_yst = start_time.astimezone(pytz.timezone('America/Los_Angeles')).date()
         end_date_yst = end_time.astimezone(pytz.timezone('America/Los_Angeles')).date()
 
-        log.info("Running the equivalent of 'scribereader -e %s %s --min-date %s --max-date %s"
-                 % (scribe_env, stream_name, start_date_yst, end_date_yst))
+        log.debug("Running the equivalent of 'scribereader -e %s %s --min-date %s --max-date %s"
+                  % (scribe_env, stream_name, start_date_yst, end_date_yst))
         return scribereader.get_stream_reader(
             stream_name=stream_name,
             reader_host=host,
@@ -850,6 +850,7 @@ class ScribeLogReader(LogReader):
         # this method
         @contextmanager
         def fake_context():
+            log.debug("Running the equivalent of 'scribereader -e %s %s'" % (scribe_env, stream_name))
             yield scribereader.get_stream_tailer(stream_name, host, port, True, line_count)
 
         return fake_context()
@@ -1028,7 +1029,11 @@ def validate_filtering_args(args, log_reader):
 
 def pick_default_log_mode(args, log_reader, service, levels, components, clusters, instances):
     if log_reader.SUPPORTS_LINE_COUNT:
-        paasta_print(PaastaColors.cyan("Fetching the last 100 lines and applying filters..."), file=sys.stderr)
+        paasta_print(
+            PaastaColors.cyan(
+                "Fetching 100 lines and applying filters. Try -n 1000 for more lines...",
+            ), file=sys.stderr,
+        )
         log_reader.print_last_n_logs(
             service=service,
             line_count=100,
@@ -1096,11 +1101,11 @@ def paasta_logs(args):
     if args.verbose:
         log.setLevel(logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        log.setLevel(logging.INFO)
 
     levels = [DEFAULT_LOGLEVEL, 'debug']
 
-    log.info("Going to get logs for %s on clusters %s" % (service, clusters))
+    log.debug("Going to get logs for %s on clusters %s" % (service, clusters))
 
     log_reader = get_log_reader()
 
