@@ -179,6 +179,14 @@ def test_get_docker_cmd_other_cmd():
     assert get_docker_cmd(args, instance_config, spark_conf_str) == 'bash'
 
 
+def test_get_docker_cmd_jupyter_timeout():
+    args = mock.Mock(cmd='jupyter', timeout=3600, max_cores=30, work_dir='test:test')
+    assert 'cull_idle_timeout' in get_docker_cmd(args, None, None)
+
+    args.timeout = -1
+    assert 'cull_idle_timeout' not in get_docker_cmd(args, None, None)
+
+
 def test_load_aws_credentials_from_yaml(tmpdir):
     fake_access_key_id = 'fake_access_key_id'
     fake_secret_access_key = 'fake_secret_access_key'
