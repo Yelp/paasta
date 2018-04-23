@@ -169,6 +169,13 @@ def add_subparser(subparsers):
         help='Number of CPU cores for the Spark driver',
     )
 
+    list_parser.add_argument(
+        '-t', '--timeout',
+        type=int,
+        help='Number of seconds to wait before terminating an idle framework.',
+        default=3600,
+    )
+
     aws_group = list_parser.add_argument_group(
         title='AWS credentials options',
         description='If --aws-credentials-yaml is specified, it overrides all '
@@ -457,10 +464,10 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
         return None
 
     # Default cli options to start the jupyter notebook server.
-    if original_docker_cmd == 'jupyter':
-        # Shutdown idle kernels that are not connected after one hour.
+    if original_docker_cmd == 'jupyter' and args.timeout >= 0:
+        # Shutdown idle kernels that are not connected after the timeout period.
         # Shutdown connected kernels if they use more than 32 cores.
-        cull_opts = '--MappingKernelManager.cull_idle_timeout=3600 '
+        cull_opts = '--MappingKernelManager.cull_idle_timeout=%d ' % args.timeout
         if args.max_cores > 32:
             cull_opts += '--MappingKernelManager.cull_connected=True '
 
