@@ -380,13 +380,10 @@ def run_docker_container(
         docker_cmd=docker_cmd,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
-    joined_docker_run_cmd = ' '.join(docker_run_cmd)
 
     if dry_run:
         paasta_print(json.dumps(docker_run_cmd))
         return 0
-    else:
-        paasta_print('Running docker command:\n%s' % PaastaColors.grey(joined_docker_run_cmd))
 
     os.execlp('paasta_docker_wrapper', *docker_run_cmd)
     return 0
