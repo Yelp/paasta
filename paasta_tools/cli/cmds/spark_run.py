@@ -194,6 +194,28 @@ def add_subparser(subparsers):
         default='default',
     )
 
+    jupyter_group = list_parser.add_argument_group(
+        title='Jupyter kernel culling options',
+        description='Idle kernels will be culled by default. Idle '
+        'kernels with connections can be overridden not to be culled.',
+    )
+
+    jupyter_group.add_argument(
+        '--cull-idle-timeout',
+        type=int,
+        default=7200,
+        help='Timeout (in seconds) after which a kernel is considered idle and '
+        'ready to be culled.',
+    )
+
+    jupyter_group.add_argument(
+        '--not-cull-connected',
+        action='store_true',
+        default=False,
+        help='By default, connected idle kernels are culled after timeout. '
+        'They can be skipped if not-cull-connected is specified.',
+    )
+
     list_parser.set_defaults(command=paasta_spark_run)
 
 
@@ -455,10 +477,8 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
 
     # Default cli options to start the jupyter notebook server.
     if original_docker_cmd == 'jupyter':
-        # Shutdown idle kernels that are not connected after one hour.
-        # Shutdown connected kernels if they use more than 32 cores.
-        cull_opts = '--MappingKernelManager.cull_idle_timeout=3600 '
-        if args.max_cores > 32:
+        cull_opts = '--MappingKernelManager.cull_idle_timeout=%s ' % args.cull_idle_timeout
+        if args.not_cull_connected is False:
             cull_opts += '--MappingKernelManager.cull_connected=True '
 
         return 'jupyter notebook -y --ip=%s --notebook-dir=%s %s' % (
