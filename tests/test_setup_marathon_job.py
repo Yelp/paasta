@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import re
 from typing import Any
 from typing import Dict
 from typing import List
@@ -1795,7 +1796,7 @@ def make_fake_drain_method(
 ):
     async def is_safe_to_kill(task):  # pragma: no cover
         if is_safe_to_kill_func:
-            is_safe_to_kill_func()
+            return is_safe_to_kill_func()
         else:
             return True
 
@@ -1827,7 +1828,7 @@ def make_fake_drain_method(
 
 class TestGetOldHappyUnhappyDrainingTasks(object):
     def fake_task(self, state, happiness):
-        return mock.Mock(_drain_state=state, _happiness=happiness)
+        return mock.Mock(_drain_state=state, _happiness=happiness, id=f"fake_{state}_{happiness}")
 
     def fake_get_happy_tasks(self, app, service, nerve_ns, system_paasta_config, **kwargs):
         return [t for t in app.tasks if t._happiness == 'happy']
@@ -1953,6 +1954,60 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
         assert actual_draining_tasks == expected_draining_tasks
         assert actual_at_risk_tasks == expected_at_risk_tasks
 
+    def test_get_tasks_by_state_for_app_catches_exceptions_in_is_draining(self, system_paasta_config):
+        fake_name = 'whoa'
+        fake_instance = 'the_earth_is_tiny'
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
+
+        fake_app = mock.Mock(
+            id=fake_id,
+            tasks=[
+                self.fake_task('up', 'happy'),
+                self.fake_task('up', 'unhappy'),
+                self.fake_task('down', 'unhappy'),
+            ],
+        )
+
+        def is_draining_func(*args, **kwargs):
+            raise Exception('ohai')
+
+        fake_log_deploy_error = mock.Mock()
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_happy_tasks', side_effect=self.fake_get_happy_tasks, autospec=True,
+        ):
+            setup_marathon_job.get_tasks_by_state_for_app(
+                app=fake_app,
+                drain_method=make_fake_drain_method(
+                    is_draining_func=is_draining_func,
+                ),
+                service=fake_name,
+                nerve_ns=fake_instance,
+                bounce_health_params={},
+                system_paasta_config=system_paasta_config,
+                log_deploy_error=fake_log_deploy_error,
+                draining_hosts=[],
+            )
+
+        fake_log_deploy_error.assert_any_call(
+            RegexMatcher(
+                'Ignoring exception during is_draining of task fake_down_unhappy: Traceback \(most recent call last\):'
+                '.*Exception: ohai',
+                flags=re.DOTALL,
+            ),
+        )
+
+
+class RegexMatcher:
+    def __init__(self, pattern, flags=0):
+        self.pattern = pattern
+        self.flags = flags
+
+    def __eq__(self, other):
+        return bool(re.match(self.pattern, other, self.flags))
+
+    def __repr__(self):  # pragma: no cover
+        return f"RegexMatcher(pattern={self.pattern!r}, flags={self.flags!r})"
+
 
 class TestDrainTasksAndFindTasksToKill(object):
     def test_catches_exception_during_drain(self):
@@ -1979,19 +2034,32 @@ class TestDrainTasksAndFindTasksToKill(object):
         )
 
         fake_log_bounce_action.assert_any_call(
+            line=RegexMatcher(
+                'fake bounce killing task to_drain due to exception when draining: '
+                'Traceback \(most recent call last\):'
+                '.*'
+                'Exception: Hello',
+                flags=re.MULTILINE | re.DOTALL,
+            ),
+        )
+
+        fake_log_bounce_action.assert_any_call(
             line="fake bounce killing not_running or drained task to_drain TASK_FOO",
         )
 
     def test_catches_exception_during_is_safe_to_kill(self):
         tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
-            (mock.Mock(id='to_drain', state='TASK_FOO'), mock.Mock()),
+            (mock.Mock(id='to_drain', state='TASK_RUNNING'), mock.Mock()),
         }
         already_draining_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         at_risk_tasks: Set[Tuple[MarathonTask, MarathonClient]] = set()
         fake_drain_method = make_fake_drain_method(
             is_safe_to_kill_func=mock.Mock(side_effect=Exception('Hello')),
         )
-        fake_log_bounce_action = mock.Mock()
+
+        def _paasta_print(line, level=None):
+            paasta_print(line)
+        fake_log_bounce_action = mock.Mock(side_effect=_paasta_print)
 
         setup_marathon_job.drain_tasks_and_find_tasks_to_kill(
             tasks_to_drain=tasks_to_drain,
@@ -2002,8 +2070,14 @@ class TestDrainTasksAndFindTasksToKill(object):
             at_risk_tasks=at_risk_tasks,
         )
 
-        fake_log_bounce_action.assert_called_with(
-            line='fake bounce killing not_running or drained task to_drain TASK_FOO',
+        fake_log_bounce_action.assert_any_call(
+            line=RegexMatcher(
+                'fake bounce killing task to_drain due to exception in is_safe_to_kill: '
+                'Traceback \(most recent call last\):'
+                '.*'
+                'Exception: Hello',
+                flags=re.MULTILINE | re.DOTALL,
+            ),
         )
 
 
@@ -2027,3 +2101,8 @@ def test_undrain_tasks():
     fake_drain_method.stop_draining.assert_any_call(to_undrain[0])
     fake_drain_method.stop_draining.assert_any_call(to_undrain[1])
     assert fake_log_deploy_error.call_count == 2
+    fake_log_deploy_error.assert_any_call(RegexMatcher(
+        "Ignoring exception during stop_draining of task task1: Traceback \\(most recent call last\\):.*"
+        "Exception: Hello",
+        flags=re.DOTALL,
+    ))

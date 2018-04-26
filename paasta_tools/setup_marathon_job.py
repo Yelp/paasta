@@ -177,9 +177,10 @@ def drain_tasks_and_find_tasks_to_kill(
                 return
             try:
                 await drain_method.drain(task)
-            except Exception as e:
+            except Exception:
                 log_bounce_action(
-                    line=("%s bounce killing task %s due to exception when draining: %s" % (bounce_method, task.id, e)),
+                    line=f"{bounce_method} bounce killing task {task.id} "
+                         f"due to exception when draining: {traceback.format_exc()}",
                 )
                 tasks_to_kill.add((task, client))
 
@@ -198,10 +199,11 @@ def drain_tasks_and_find_tasks_to_kill(
                         bounce_method, task.id, task.state,
                     ),
                 )
-        except Exception as e:
+        except Exception:
             tasks_to_kill.add((task, client))
             log_bounce_action(
-                line='%s bounce killing task %s due to exception in is_safe_to_kill: %s' % (bounce_method, task.id, e),
+                line=f'{bounce_method} bounce killing task {task.id} '
+                     f'due to exception in is_safe_to_kill: {traceback.format_exc()}',
             )
 
     if all_draining_tasks:
@@ -416,10 +418,10 @@ def get_tasks_by_state_for_app(
     async def categorize_task(task: MarathonTask) -> None:
         try:
             is_draining = await drain_method.is_draining(task)
-        except Exception as e:
+        except Exception:
             log_deploy_error(
-                "Ignoring exception during is_draining of task %s:"
-                " %s. Treating task as 'unhappy'." % (task, e),
+                f"Ignoring exception during is_draining of task {task.id}: "
+                f"{traceback.format_exc()}. Treating task as 'unhappy'.",
             )
             state = 'unhappy'
         else:
@@ -507,7 +509,7 @@ def undrain_tasks(
             try:
                 await drain_method.stop_draining(task)
             except Exception as e:
-                log_deploy_error("Ignoring exception during stop_draining of task %s: %s." % (task, e))
+                log_deploy_error(f"Ignoring exception during stop_draining of task {task.id}: {traceback.format_exc()}")
 
     if to_undrain:
         a_sync.block(
