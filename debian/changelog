@@ -1,3 +1,10 @@
+paasta-tools (0.70.5) xenial; urgency=medium
+
+  * 0.70.5 tagged with 'make release'
+    Commit: Merge branch "repr_exceptions"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Apr 2018 14:27:12 -0700
+
 paasta-tools (0.70.4) xenial; urgency=medium
 
   * 0.70.4 tagged with 'make release'
