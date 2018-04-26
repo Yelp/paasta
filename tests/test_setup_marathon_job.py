@@ -1988,8 +1988,6 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 draining_hosts=[],
             )
 
-        print(fake_log_deploy_error.mock_calls)
-
         fake_log_deploy_error.assert_any_call(
             RegexMatcher(
                 'Ignoring exception during is_draining of task fake_down_unhappy: Traceback \(most recent call last\):'
@@ -2007,7 +2005,7 @@ class RegexMatcher:
     def __eq__(self, other):
         return bool(re.match(self.pattern, other, self.flags))
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return f"RegexMatcher(pattern={self.pattern!r}, flags={self.flags!r})"
 
 
@@ -2103,7 +2101,6 @@ def test_undrain_tasks():
     fake_drain_method.stop_draining.assert_any_call(to_undrain[0])
     fake_drain_method.stop_draining.assert_any_call(to_undrain[1])
     assert fake_log_deploy_error.call_count == 2
-    print(fake_log_deploy_error.mock_calls)
     fake_log_deploy_error.assert_any_call(RegexMatcher(
         "Ignoring exception during stop_draining of task task1: Traceback \\(most recent call last\\):.*"
         "Exception: Hello",
