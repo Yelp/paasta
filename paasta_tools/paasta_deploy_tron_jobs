@@ -1,0 +1,2 @@
+#!/bin/bash
+list_tron_namespaces | xargs -n 1 -r -P 1 setup_tron_namespace
