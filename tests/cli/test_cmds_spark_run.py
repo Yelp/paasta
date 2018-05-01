@@ -48,7 +48,7 @@ def test_get_docker_run_cmd(
         docker_cmd,
     )
 
-    assert actual[6:] == [
+    assert actual[5:] == [
         '--user=1234:100',
         '--name=fake_name',
         '--env', 'k1=v1', '--env', 'k2=v2',

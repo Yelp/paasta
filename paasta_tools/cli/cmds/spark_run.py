@@ -229,8 +229,11 @@ def get_docker_run_cmd(
     cmd = ['paasta_docker_wrapper', 'run']
     cmd.append('--rm')
     cmd.append('--net=host')
-    cmd.append('--interactive=true')
-    cmd.append('--tty=true')
+
+    if 'spark-submit' not in docker_cmd and 'jupyter' not in docker_cmd:
+        cmd.append('--interactive=true')
+        if sys.stdout.isatty():
+            cmd.append('--tty=true')
 
     cmd.append('--user=%d:%d' % (os.geteuid(), os.getegid()))
     cmd.append('--name=%s' % container_name)
