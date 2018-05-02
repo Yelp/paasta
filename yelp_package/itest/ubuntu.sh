@@ -21,6 +21,7 @@ check_marathon_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
 cleanup_marathon_jobs
+cleanup_tron_namespaces
 deploy_chronos_jobs
 deploy_marathon_services
 deploy_tron_jobs

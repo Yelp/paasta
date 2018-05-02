@@ -122,6 +122,7 @@ setup(
             'paasta-deployd=paasta_tools.deployd.master:main',
             'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
             'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
+            'paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main',
             'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',
             'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
             'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',

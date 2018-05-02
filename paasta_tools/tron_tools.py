@@ -13,6 +13,7 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 
@@ -68,12 +69,28 @@ class TronClient:
             },
         )
 
+    def list_namespaces(self):
+        response = self._get('/api')
+        return response.get('namespaces', [])
+
 
 def get_tron_client():
     # TODO: add tron system paasta config
     host = 'tron-playground'
     port = 8089
     return TronClient(host, port)
+
+
+def compose_instance(job, action):
+    return '%s%s%s' % (job, SPACER, action)
+
+
+def decompose_instance(instance):
+    """Get (job_name, action_name) from an instance."""
+    decomposed = instance.split(SPACER)
+    if len(decomposed) != 2:
+        raise InvalidInstanceConfig('Invalid instance name: %s' % instance)
+    return (decomposed[0], decomposed[1])
 
 
 class TronActionConfig(InstanceConfig):
@@ -88,7 +105,7 @@ class TronActionConfig(InstanceConfig):
             branch_dict=branch_dict,
             soa_dir=soa_dir,
         )
-        self.job, self.action = instance.split(SPACER)
+        self.job, self.action = decompose_instance(instance)
 
     def get_job_name(self):
         return self.job
@@ -283,9 +300,10 @@ class TronJobConfig:
         # Only pass non-None values, so Tron will use defaults for others
         return {key: val for key, val in job_config.items() if val is not None}
 
-
-def compose_instance(job, action):
-    return '%s%s%s' % (job, SPACER, action)
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.config_dict == other.config_dict
+        return False
 
 
 def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
