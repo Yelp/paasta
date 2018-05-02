@@ -28,8 +28,8 @@ from mypy_extensions import TypedDict
 from paasta_tools.utils import get_user_agent
 
 _drain_methods: Dict[str, Type["DrainMethod"]] = {}
-HACHECK_CONN_TIMEOUT = 3
-HACHECK_READ_TIMEOUT = 1
+HACHECK_CONN_TIMEOUT = 30
+HACHECK_READ_TIMEOUT = 10
 
 
 _RegisterDrainMethod_T = TypeVar('_RegisterDrainMethod_T', bound=Type["DrainMethod"])
