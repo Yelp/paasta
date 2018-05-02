@@ -1422,7 +1422,7 @@ SystemPaastaConfigDict = TypedDict(
         'filter_bogus_mesos_cputime_enabled': bool,
         'vault_cluster_map': Dict,
         'secret_provider': str,
-
+        'slack': Dict[str, str],
     },
     total=False,
 )
@@ -1799,6 +1799,11 @@ class SystemPaastaConfig(object):
         """ Get the name for the configured secret_provider, used to
         decrypt secrets"""
         return self.config_dict.get('secret_provider', 'paasta_tools.secret_providers')
+
+    def get_slack_token(self) -> str:
+        """ Get a slack token for slack notifications. Returns None if there is
+        none available """
+        return self.config_dict.get('slack', {}).get('token', None)
 
 
 def _run(
