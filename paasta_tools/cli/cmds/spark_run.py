@@ -36,6 +36,31 @@ DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
 
 
+deprecated_opts = {
+    'j': 'spark.jars',
+    'jars': 'spark.jars',
+    'max-cores': 'spark.cores.max',
+    'executor-cores': 'spark.executor.cores',
+    'executor-memory': 'spark.executor.memory',
+    'driver-max-result-size': 'spark.driver.maxResultSize',
+    'driver-cores': 'spark.driver.cores',
+    'driver-memory': 'spark.driver.memory',
+}
+
+
+class DeprecatedAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        paasta_print(
+            PaastaColors.red(
+                "Use of %s is deprecated. Please use %s=value in --spark-args." % (
+                    option_string,
+                    deprecated_opts[option_string.strip('-')],
+                ),
+            ),
+        )
+        sys.exit(1)
+
+
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'spark-run',
@@ -83,11 +108,6 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
-        '-j', '--jars',
-        help="Comma-separated list of local jars to include on the driver and executor classpaths.",
-    )
-
-    list_parser.add_argument(
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
         default='default',
@@ -131,42 +151,52 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
+        '--spark-args',
+        help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html. '
+        'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
+        'spark.executor.cores=4".',
+    )
+
+    list_parser.add_argument(
+        '-j', '--jars',
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+
+    list_parser.add_argument(
         '--executor-memory',
-        type=int,
-        help='Size of Spark executor memory in GB',
-        default=4,
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
 
     list_parser.add_argument(
         '--executor-cores',
-        type=int,
-        help='Number of CPU cores for each Spark executor',
-        default=2,
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
 
     list_parser.add_argument(
         '--max-cores',
-        type=int,
-        help='The total number of CPU cores for all Spark executors',
-        default=4,
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
 
     list_parser.add_argument(
         '--driver-max-result-size',
-        type=int,
-        help='Limit of total size in GB of serialized results of all partitions',
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
 
     list_parser.add_argument(
         '--driver-memory',
-        type=int,
-        help='Size of Spark driver memory in GB',
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
 
     list_parser.add_argument(
         '--driver-cores',
-        type=int,
-        help='Number of CPU cores for the Spark driver',
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
 
     aws_group = list_parser.add_argument_group(
@@ -325,67 +355,111 @@ def get_spark_conf_str(
     system_paasta_config,
     volumes,
 ):
-    spark_conf = list()
-    spark_conf.append('--conf spark.app.name=%s' % container_name)
-    spark_conf.append('--conf spark.ui.port=%d' % spark_ui_port)
+    # User configurable Spark options
+    user_args = {
+        'spark.cores.max': '4',
+        'spark.executor.cores': '2',
+        'spark.executor.memory': '4g',
+        # Use \; for multiple constraints. e.g.
+        # instance_type:m4.10xlarge\;pool:default
+        'spark.mesos.constraints': 'pool:%s' % args.pool,
+        'spark.mesos.executor.docker.forcePullImage': 'true',
+    }
 
+    # Spark options managed by PaaSTA
     cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=args.cluster)
     mesos_address = '{}:{}'.format(
         find_mesos_leader(cluster_fqdn),
         MESOS_MASTER_PORT,
     )
-    spark_conf.append('--conf spark.master=mesos://%s' % mesos_address)
+    non_user_args = {
+        'spark.master': 'mesos://%s' % mesos_address,
+        'spark.app.name': container_name,
+        'spark.ui.port': spark_ui_port,
+        'spark.executorEnv.PAASTA_SERVICE': args.service,
+        'spark.executorEnv.PAASTA_INSTANCE': '%s_%s' % (args.instance, get_username()),
+        'spark.executorEnv.PAASTA_CLUSTER': args.cluster,
+        'spark.mesos.executor.docker.parameters': 'label=paasta_service=%s,label=paasta_instance=%s_%s' % (
+            args.service, args.instance, get_username(),
+        ),
+        'spark.mesos.executor.docker.volumes': ','.join(volumes),
+        'spark.mesos.executor.docker.image': docker_img,
+        'spark.mesos.principal': args.mesos_principal,
+        'spark.mesos.secret': args.mesos_secret,
+        # derby.system.home property defaulting to '.',
+        # which requires directory permission changes.
+        'spark.driver.extraJavaOptions': '-Dderby.system.home=/tmp/derby',
+    }
 
-    spark_conf.append('--conf spark.cores.max=%d' % args.max_cores)
-    spark_conf.append('--conf spark.executor.memory=%dg' % args.executor_memory)
-    spark_conf.append('--conf spark.executor.cores=%d' % args.executor_cores)
-
-    if args.driver_max_result_size:
-        spark_conf.append('--conf spark.driver.maxResultSize=%dg' % args.driver_max_result_size)
-    if args.driver_memory:
-        spark_conf.append('--conf spark.driver.memory=%dg' % args.driver_memory)
-    if args.driver_cores:
-        spark_conf.append('--conf spark.driver.cores=%d' % args.driver_cores)
-
-    spark_conf.append('--conf spark.mesos.executor.docker.image=%s' % docker_img)
-    if not args.build and not args.image:
-        spark_conf.append('--conf spark.mesos.uris=file:///root/.dockercfg')
-
-    if args.jars:
-        spark_conf.append('--conf spark.jars=%s' % args.jars)
-
-    spark_conf.append('--conf spark.mesos.principal=%s' % args.mesos_principal)
     if not args.mesos_secret:
         try:
             with open(DEFAULT_SPARK_MESOS_SECRET_FILE, 'r') as f:
                 mesos_secret = f.read()
-                spark_conf.append('--conf spark.mesos.secret=%s' % mesos_secret)
+                non_user_args['spark.mesos.secret'] = mesos_secret
         except IOError:
             paasta_print(
                 'Cannot load mesos secret from %s' % DEFAULT_SPARK_MESOS_SECRET_FILE,
                 file=sys.stderr,
             )
             sys.exit(1)
-    else:
-        spark_conf.append('--conf spark.mesos.secret=%s' % args.mesos_secret)
 
-    # derby.system.home property defaulting to '.',
-    # which requires directory permission changes.
-    spark_conf.append('--conf spark.driver.extraJavaOptions=-Dderby.system.home=/tmp/derby')
+    if not args.build and not args.image:
+        non_user_args['spark.mesos.uris'] = 'file:///root/.dockercfg'
 
-    spark_conf.append('--conf spark.mesos.constraints=pool:%s' % args.pool)
+    if args.spark_args:
+        spark_args = args.spark_args.split()
+        for spark_arg in spark_args:
+            fields = spark_arg.split('=')
+            if len(fields) != 2:
+                paasta_print(
+                    PaastaColors.red(
+                        "Spark option %s is not in format option=value." % spark_arg,
+                    ),
+                    file=sys.stderr,
+                )
+                sys.exit(1)
 
-    spark_conf.append('--conf spark.mesos.executor.docker.volumes=%s' % ','.join(volumes))
+            if fields[0] in non_user_args:
+                paasta_print(
+                    PaastaColors.red(
+                        "Spark option %s is set by PaaSTA with %s." % (
+                            fields[0],
+                            non_user_args[fields[0]],
+                        ),
+                    ),
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            # Update default configuration
+            user_args[fields[0]] = fields[1]
 
-    spark_conf.append('--conf spark.executorEnv.PAASTA_SERVICE=%s' % args.service)
-    spark_conf.append('--conf spark.executorEnv.PAASTA_INSTANCE=%s_%s' % (args.instance, get_username()))
-    spark_conf.append('--conf spark.executorEnv.PAASTA_CLUSTER=%s' % (args.cluster))
+    if int(user_args['spark.cores.max']) < int(user_args['spark.executor.cores']):
+        paasta_print(
+            PaastaColors.red(
+                "Total number of cores %s is less than per-executor cores %s." % (
+                    user_args['spark.cores.max'],
+                    user_args['spark.executor.cores'],
+                ),
+            ),
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-    # Labels for CloudHealth
-    para_service = 'label=paasta_service=%s' % args.service
-    para_instance = 'label=paasta_instance=%s_%s' % (args.instance, get_username())
-    spark_conf.append('--conf spark.mesos.executor.docker.parameters=%s,%s' % (para_service, para_instance))
+    exec_mem = user_args['spark.executor.memory']
+    if exec_mem[-1] != 'g' or not exec_mem[:-1].isdigit() or int(exec_mem[:-1]) > 32:
+        paasta_print(
+            PaastaColors.red(
+                "Executor memory %s not in format dg (d<=32)." % (
+                    user_args['spark.executor.memory'],
+                ),
+            ),
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
+    spark_conf = list()
+    for opt, val in dict(non_user_args, **user_args).items():
+        spark_conf.append('--conf %s=%s' % (opt, val))
     return ' '.join(spark_conf)
 
 
@@ -557,15 +631,6 @@ def validate_work_dir(s):
 
 
 def paasta_spark_run(args):
-    if args.max_cores < args.executor_cores:
-        paasta_print(
-            "Total number of cores %d is less than per-executor cores %d" % (
-                args.max_cores,
-                args.executor_cores,
-            ),
-        )
-        sys.exit(1)
-
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
     validate_work_dir(args.work_dir)
