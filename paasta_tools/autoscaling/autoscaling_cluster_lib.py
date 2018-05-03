@@ -136,6 +136,7 @@ class ClusterAutoscaler(object):
         self.config_folder = config_folder
         self.dry_run = dry_run
         self.utilization_error = utilization_error
+        self.ideal_capacity: Optional[int] = None
         self.draining_enabled = draining_enabled
         if log_level is not None:
             self.log.setLevel(log_level)
@@ -169,21 +170,25 @@ class ClusterAutoscaler(object):
         self.max_gauge = self.metrics.create_gauge('max_capacity', **dims)
         self.min_gauge = self.metrics.create_gauge('min_capacity', **dims)
         self.mesos_error_gauge = self.metrics.create_gauge('mesos_error', **dims)
+        self.aws_instances_gauge = self.metrics.create_gauge('aws_instances', **dims)
+        self.mesos_slaves_gauge = self.metrics.create_gauge('mesos_slaves', **dims)
 
     def emit_metrics(
         self,
-        current: float,
-        target: float,
-        ideal: float,
+        current_capacity: float,
+        target_capacity: float,
+        mesos_slave_count: int,
     ) -> None:
         if not self.enable_metrics:
             return None
-        self.current_gauge.set(current)
-        self.target_gauge.set(target)
-        self.ideal_gauge.set(ideal)
+        self.current_gauge.set(current_capacity)
+        self.target_gauge.set(target_capacity)
+        self.ideal_gauge.set(self.ideal_capacity)
         self.min_gauge.set(self.resource['min_capacity'])
         self.max_gauge.set(self.resource['max_capacity'])
         self.mesos_error_gauge.set(self.utilization_error)
+        self.aws_instances_gauge.set(len(self.instances))
+        self.mesos_slaves_gauge.set(mesos_slave_count)
 
     def set_capacity(self, capacity: float) -> Optional[Any]:
         pass
@@ -301,13 +306,6 @@ class ClusterAutoscaler(object):
         }
         return slaves
 
-    def get_pool_slaves(self, mesos_state: MesosState) -> Dict[str, Dict]:
-        slaves = {
-            slave['id']: slave for slave in mesos_state.get('slaves', [])
-            if slave['attributes'].get('pool', 'default') == self.resource['pool']
-        }
-        return slaves
-
     def check_expected_slaves(
         self,
         slaves: Dict[str, Dict],
@@ -317,27 +315,38 @@ class ClusterAutoscaler(object):
         if current_instances == 0:
             error_message = ("No instances are active, not scaling until the instances are attached to mesos")
             raise ClusterAutoscalingError(error_message)
-        if expected_instances:
-            self.log.info("Found %.2f%% slaves registered in mesos for this resource (%d/%d)" % (
-                float(float(current_instances) / float(expected_instances)) * 100,
-                current_instances,
-                expected_instances,
-            ))
-            if float(current_instances) / expected_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
-                error_message = (
-                    "We currently have %d instances active in mesos out of a desired %d.\n"
-                    "Refusing to scale because we either need to wait for the requests to be "
-                    "filled, or the new instances are not healthy for some reason.\n"
-                ) % (
-                    current_instances, expected_instances,
+        if not expected_instances:
+            return None
+
+        self.log.info("Found %.2f%% slaves registered in mesos for this resource (%d/%d)" % (
+            float(float(current_instances) / float(expected_instances)) * 100,
+            current_instances,
+            expected_instances,
+        ))
+        if float(current_instances) / expected_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
+            error_message = (
+                "We currently have %d instances active in mesos out of a desired %d.\n"
+            ) % (
+                current_instances, expected_instances,
+            )
+            if self.sfr and self.sfr['SpotFleetRequestState'] == 'cancelled_running':
+                log.warn(
+                    error_message + "But this is an sfr in cancelled_running state, so continuing anyways",
                 )
-                if self.sfr and self.sfr['SpotFleetRequestState'] == 'cancelled_running':
-                    log.warn(
-                        error_message + "But this is an sfr in cancelled_running state, so continuing anyways",
-                    )
-                    return None
-                error_message += "(refusing to go past %.2f%% missing instances)" % MISSING_SLAVE_PANIC_THRESHOLD
-                raise ClusterAutoscalingError(error_message)
+                return None
+            if self.utilization_error < 0:
+                log.warn(
+                    error_message + "Continuing because we are scaling down and we don't need any "
+                    "of the unregistered instances.",
+                )
+                return None
+
+            error_message += (
+                "Refusing to scale because we either need to wait for the requests to be "
+                "filled, or the new instances are not healthy for some reason.\n"
+                "(refusing to go past %.2f%% missing instances)"
+            ) % MISSING_SLAVE_PANIC_THRESHOLD
+            raise ClusterAutoscalingError(error_message)
 
     def can_kill(
         self,
@@ -741,6 +750,11 @@ class SpotAutoscaler(ClusterAutoscaler):
         self.sfr = self.get_sfr(self.resource['id'], region=self.resource['region'])
         if self.sfr:
             self.instances = self.get_spot_fleet_instances(self.resource['id'], region=self.resource['region'])
+            if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
+                self.utilization_error = -1
+                self.resource['min_capacity'] = 0
+
+            self.ideal_capacity = self.get_ideal_capacity()
 
     @property
     def exists(self) -> bool:
@@ -779,17 +793,6 @@ class SpotAutoscaler(ClusterAutoscaler):
             self.log.error("SFR not found, removing config file.".format(self.resource['id']))
             self.cleanup_cancelled_config(self.resource['id'], self.config_folder, dry_run=self.dry_run)
             return 0, 0
-        elif self.sfr['SpotFleetRequestState'] in ['cancelled_running', 'active']:
-            expected_instances = len(self.instances)
-            if expected_instances == 0:
-                self.log.warning(
-                    "No instances found in SFR, this shouldn't be possible so we "
-                    "do nothing",
-                )
-                return 0, 0
-            slaves = self.get_aws_slaves(mesos_state)
-            self.check_expected_slaves(slaves, expected_instances)
-            error = self.utilization_error
         elif self.sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
             self.log.warning(
                 "Not scaling an SFR in state: {} so {}, skipping...".format(
@@ -798,25 +801,35 @@ class SpotAutoscaler(ClusterAutoscaler):
                 ),
             )
             return 0, 0
-        else:
+        elif self.sfr['SpotFleetRequestState'] not in ['cancelled_running', 'active']:
             self.log.error("Unexpected SFR state: {} for {}".format(
                 self.sfr['SpotFleetRequestState'],
                 self.resource['id'],
             ))
             raise ClusterAutoscalingError
-        current, target = self.get_spot_fleet_delta(error)
+
+        expected_instances = len(self.instances)
+        if expected_instances == 0:
+            self.log.warning(
+                "No instances found in SFR, this shouldn't be possible so we "
+                "do nothing",
+            )
+            return 0, 0
+        slaves = self.get_aws_slaves(mesos_state)
+        self.check_expected_slaves(slaves, expected_instances)
+        current, target = self.get_spot_fleet_delta()
+
         if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
-            self.resource['min_capacity'] = 0
-            slaves = self.get_pool_slaves(mesos_state)
-            pool_error = self.utilization_error
-            if pool_error > 0:
+            if self.utilization_error > 0:
                 self.log.info(
                     "Not scaling cancelled SFR %s because we are under provisioned" % (self.resource['id']),
                 )
                 return 0, 0
-            current, target = self.get_spot_fleet_delta(-1)
+
             if target == 1:
                 target = 0
+
+        self.emit_metrics(current, target, mesos_slave_count=len(slaves))
         return current, target
 
     def is_aws_launching_instances(self) -> bool:
@@ -828,33 +841,34 @@ class SpotAutoscaler(ClusterAutoscaler):
     def current_capacity(self) -> float:
         return float(self.sfr['SpotFleetRequestConfig']['FulfilledCapacity'])
 
-    def get_spot_fleet_delta(self, error: float) -> Tuple[float, int]:
+    def get_ideal_capacity(self) -> int:
+        return int(ceil((1 + self.utilization_error) * self.current_capacity))
+
+    def get_spot_fleet_delta(self) -> Tuple[float, int]:
         current_capacity = self.current_capacity
-        ideal_capacity = int(ceil((1 + error) * current_capacity))
-        self.log.debug("Ideal calculated capacity is %d instances" % ideal_capacity)
         new_capacity = int(min(
             max(
                 self.resource['min_capacity'],
                 floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
-                ideal_capacity,
+                self.ideal_capacity,
                 1,  # A SFR cannot scale below 1 instance
             ),
             ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
             self.resource['max_capacity'],
         ))
         new_capacity = max(new_capacity, self.resource['min_capacity'])
-        self.log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
+        self.log.debug("The ideal capacity to scale to is %d instances" % self.ideal_capacity)
         self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
-        if ideal_capacity > self.resource['max_capacity']:
+        if self.ideal_capacity > self.resource['max_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!" % (
-                    ideal_capacity, self.resource['max_capacity'],
+                    self.ideal_capacity, self.resource['max_capacity'],
                 ),
             )
-        if ideal_capacity < self.resource['min_capacity']:
+        if self.ideal_capacity < self.resource['min_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
-                    ideal_capacity, self.resource['min_capacity'],
+                    self.ideal_capacity, self.resource['min_capacity'],
                 ),
             )
         return current_capacity, new_capacity
@@ -918,6 +932,15 @@ class AsgAutoscaler(ClusterAutoscaler):
         if self.asg:
             self.instances = self.asg['Instances']
 
+            if len(self.instances) == 0:
+                self.log.warning(
+                    "This ASG has no instances, delta should be 1 to "
+                    "launch first instance unless max/min capacity override",
+                )
+                self.utilization_error = 1
+
+            self.ideal_capacity = self.get_ideal_capacity()
+
     @property
     def exists(self) -> bool:
         return True if self.asg else False
@@ -943,16 +966,12 @@ class AsgAutoscaler(ClusterAutoscaler):
             )
             return 0, 0
         expected_instances = len(self.instances)
-        if expected_instances == 0:
-            self.log.warning(
-                "This ASG has no instances, delta should be 1 to "
-                "launch first instance unless max/min capacity override",
-            )
-            return self.get_asg_delta(1)
         slaves = self.get_aws_slaves(mesos_state)
         self.check_expected_slaves(slaves, expected_instances)
-        error = self.utilization_error
-        return self.get_asg_delta(error)
+        current, target = self.get_asg_delta()
+
+        self.emit_metrics(current, target, mesos_slave_count=len(slaves))
+        return current, target
 
     def is_aws_launching_instances(self) -> bool:
         fulfilled_capacity = len(self.asg['Instances'])
@@ -963,21 +982,25 @@ class AsgAutoscaler(ClusterAutoscaler):
     def current_capacity(self) -> int:
         return len(self.asg['Instances'])
 
-    def get_asg_delta(self, error: float) -> Tuple[int, int]:
-        current_capacity = self.current_capacity
-        if current_capacity == 0:
-            new_capacity = int(min(
+    def get_ideal_capacity(self) -> int:
+        if self.current_capacity == 0:
+            return int(min(
                 max(1, self.resource['min_capacity']),
                 self.resource['max_capacity'],
             ))
-            ideal_capacity = new_capacity
         else:
-            ideal_capacity = int(ceil((1 + error) * current_capacity))
+            return int(ceil((1 + self.utilization_error) * self.current_capacity))
+
+    def get_asg_delta(self) -> Tuple[int, int]:
+        current_capacity = self.current_capacity
+        if current_capacity == 0:
+            new_capacity = self.ideal_capacity
+        else:
             new_capacity = int(min(
                 max(
                     self.resource['min_capacity'],
                     floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
-                    ideal_capacity,
+                    self.ideal_capacity,
                     0,
                 ),
                 ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
@@ -985,18 +1008,18 @@ class AsgAutoscaler(ClusterAutoscaler):
                 max(self.resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA))),
             ))
         new_capacity = max(new_capacity, self.resource['min_capacity'])
-        self.log.debug("The ideal capacity to scale to is %d instances" % ideal_capacity)
+        self.log.debug("The ideal capacity to scale to is %d instances" % self.ideal_capacity)
         self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
-        if ideal_capacity > self.resource['max_capacity']:
+        if self.ideal_capacity > self.resource['max_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!" % (
-                    ideal_capacity, self.resource['max_capacity'],
+                    self.ideal_capacity, self.resource['max_capacity'],
                 ),
             )
-        if ideal_capacity < self.resource['min_capacity']:
+        if self.ideal_capacity < self.resource['min_capacity']:
             self.log.warning(
                 "Our ideal capacity (%d) is lower than min_capacity (%d). Consider lowering min_capacity!" % (
-                    ideal_capacity, self.resource['min_capacity'],
+                    self.ideal_capacity, self.resource['min_capacity'],
                 ),
             )
         return current_capacity, new_capacity

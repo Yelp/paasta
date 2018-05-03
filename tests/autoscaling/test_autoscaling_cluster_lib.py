@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import contextlib
 import unittest
 import warnings
 from math import floor
@@ -440,25 +441,36 @@ def test_autoscaling_info_for_resources():
 
 class TestAsgAutoscaler(unittest.TestCase):
 
+    mock_resource = {
+        'id': 'asg-blah', 'type': 'aws_autoscaling_group',
+        'region': 'westeros-1', 'pool': 'default',
+    }
+    mock_config_folder = '/nail/blah'
+    mock_pool_settings = {'drain_timeout': 123}
+
     def setUp(self):
+        self.autoscaler = self.create_autoscaler()
+
+    def create_autoscaler(self, utilization_error=0.3, resource=None, asg=None):
         with mock.patch(
-            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg', autospec=True, return_value={},
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg',
+            autospec=True,
+            return_value=asg or {},
         ):
-            mock_resource = {
-                'id': 'asg-blah', 'type': 'aws_autoscaling_group',
-                'region': 'westeros-1', 'pool': 'default',
-            }
-            mock_pool_settings = {'drain_timeout': 123}
-            mock_config_folder = '/nail/blah'
-            mock_utilization_error = 0.3
-            self.autoscaler = autoscaling_cluster_lib.AsgAutoscaler(
-                mock_resource,
-                mock_pool_settings,
-                mock_config_folder,
+            autoscaler = autoscaling_cluster_lib.AsgAutoscaler(
+                resource or self.mock_resource,
+                self.mock_pool_settings,
+                self.mock_config_folder,
                 False,
-                mock_utilization_error,
+                utilization_error,
             )
-            self.autoscaler.instances = []
+            autoscaler.instances = []
+            return autoscaler
+
+    def create_mock_resource(self, **kwargs):
+        mock_resource = self.mock_resource.copy()
+        mock_resource.update(**kwargs)
+        return mock_resource
 
     def test_exists(self):
         self.autoscaler.asg = mock.Mock()
@@ -522,86 +534,58 @@ class TestAsgAutoscaler(unittest.TestCase):
         assert ret is None
 
     def test_get_asg_delta(self):
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 5}
-        ret = self.autoscaler.get_asg_delta(-0.2)
+        resource = self.create_mock_resource(min_capacity=2, max_capacity=10)
+        asg = {'Instances': [mock.Mock()] * 5}
+
+        autoscaler = self.create_autoscaler(utilization_error=-0.2, resource=resource, asg=asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (5, 4)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 5}
-        ret = self.autoscaler.get_asg_delta(0.2)
+        autoscaler = self.create_autoscaler(utilization_error=0.2, resource=resource, asg=asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (5, 6)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 10}
-        ret = self.autoscaler.get_asg_delta(0.2)
+        big_asg = {'Instances': [mock.Mock()] * 10}
+        autoscaler = self.create_autoscaler(utilization_error=0.2, resource=resource, asg=big_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (10, 10)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 2}
-        ret = self.autoscaler.get_asg_delta(-0.2)
+        small_asg = {'Instances': [mock.Mock()] * 2}
+        autoscaler = self.create_autoscaler(utilization_error=-0.2, resource=resource, asg=small_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (2, 2)
 
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 2}
-        ret = self.autoscaler.get_asg_delta(-1)
+        resource_zero_min = self.create_mock_resource(min_capacity=0, max_capacity=10)
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource_zero_min, asg=small_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (2, 1)
 
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 1}
-        ret = self.autoscaler.get_asg_delta(-1)
+        tiny_asg = {'Instances': [mock.Mock()] * 1}
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource_zero_min, asg=tiny_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (1, 0)
 
-        # zero instances means we should launch one
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 10,
-        }
-        self.autoscaler.asg = {'Instances': []}
-        ret = self.autoscaler.get_asg_delta(-1)
+        empty_asg = {'Instances': []}
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource_zero_min, asg=empty_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (0, 1)
 
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 100,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 20}
-        ret = self.autoscaler.get_asg_delta(-0.5)
+        resource_big_max = self.create_mock_resource(min_capacity=0, max_capacity=100)
+        bigger_asg = {'Instances': [mock.Mock()] * 20}
+        autoscaler = self.create_autoscaler(utilization_error=-0.5, resource=resource_big_max, asg=bigger_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
 
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 0,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * 20}
-        ret = self.autoscaler.get_asg_delta(-0.5)
+        resource_zeroes = self.create_mock_resource(min_capacity=0, max_capacity=0)
+        autoscaler = self.create_autoscaler(utilization_error=-0.5, resource=resource_zeroes, asg=bigger_asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
 
+        resource = self.create_mock_resource(min_capacity=10, max_capacity=40)
         current_instances = int((10 * (1 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA)) - 1)
-        self.autoscaler.resource = {
-            'min_capacity': 10,
-            'max_capacity': 40,
-        }
-        self.autoscaler.asg = {'Instances': [mock.Mock()] * current_instances}
-        ret = self.autoscaler.get_asg_delta(-1)
+        asg = {'Instances': [mock.Mock()] * current_instances}
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource, asg=asg)
+        ret = autoscaler.get_asg_delta()
         assert ret == (current_instances, 10)
 
     def test_asg_metrics_provider(self):
@@ -617,7 +601,10 @@ class TestAsgAutoscaler(unittest.TestCase):
         ) as mock_cleanup_cancelled_config, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.is_aws_launching_instances',
             autospec=True,
-        ) as mock_is_aws_launching_asg_instances:
+        ) as mock_is_aws_launching_asg_instances, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.emit_metrics',
+            autospec=True,
+        ) as mock_emit_metrics:
             mock_get_asg_delta.return_value = 1, 2
             self.autoscaler.pool_settings = {}
             mock_is_aws_launching_asg_instances.return_value = False
@@ -638,9 +625,11 @@ class TestAsgAutoscaler(unittest.TestCase):
             # active ASG
             self.autoscaler.asg = {'some': 'stuff'}
             mock_cleanup_cancelled_config.reset_mock()
+            mock_emit_metrics.reset_mock()
             self.autoscaler.instances = [mock.Mock(), mock.Mock()]
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
-            mock_get_asg_delta.assert_called_with(self.autoscaler, float(0.3))
+            mock_get_asg_delta.assert_called_with(self.autoscaler)
+            mock_emit_metrics.assert_called_once_with(self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves))
             assert not mock_cleanup_cancelled_config.called
             assert ret == (1, 2)
 
@@ -654,7 +643,19 @@ class TestAsgAutoscaler(unittest.TestCase):
             self.autoscaler.instances = []
             mock_is_aws_launching_asg_instances.return_value = False
             self.autoscaler.metrics_provider(mock_mesos_state)
-            mock_get_asg_delta.assert_called_with(self.autoscaler, 1)
+            mock_get_asg_delta.assert_called_with(self.autoscaler)
+
+            # ASG scaling up with too many unregistered instances
+            self.autoscaler.instances = [mock.Mock() for _ in range(10)]
+            with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
+                self.autoscaler.metrics_provider(mock_mesos_state)
+
+            # ASG scaling down with many unregistered instances
+            mock_emit_metrics.reset_mock()
+            self.autoscaler.utilization_error = -0.1
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            mock_emit_metrics.assert_called_once_with(self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves))
+            assert ret == (1, 2)
 
     def test_is_aws_launching_asg_instances(self):
         self.autoscaler.asg = {'DesiredCapacity': 3, 'Instances': [mock.Mock(), mock.Mock()]}
@@ -669,27 +670,43 @@ class TestAsgAutoscaler(unittest.TestCase):
 
 class TestSpotAutoscaler(unittest.TestCase):
 
+    mock_resource = {'id': 'sfr-blah', 'type': 'sfr', 'region': 'westeros-1', 'pool': 'default'}
+    mock_pool_settings = {'drain_timeout': 123}
+    mock_config_folder = '/nail/blah'
+
     def setUp(self):
+        self.autoscaler = self.create_autoscaler()
+
+    def create_autoscaler(self, utilization_error=0.3, resource=None, sfr=None):
         with mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_sfr', autospec=True,
         ) as mock_get_sfr, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_instances',
             autospec=True,
         ) as mock_get_spot_fleet_instances:
-            mock_get_sfr.return_value = {}
+            mock_get_sfr.return_value = sfr or {}
             mock_get_spot_fleet_instances.return_value = []
 
-            mock_resource = {'id': 'sfr-blah', 'type': 'sfr', 'region': 'westeros-1', 'pool': 'default'}
-            mock_pool_settings = {'drain_timeout': 123}
-            mock_config_folder = '/nail/blah'
-            mock_utilization_error = 0.3
-            self.autoscaler = autoscaling_cluster_lib.SpotAutoscaler(
-                mock_resource,
-                mock_pool_settings,
-                mock_config_folder,
+            return autoscaling_cluster_lib.SpotAutoscaler(
+                resource or self.mock_resource,
+                self.mock_pool_settings,
+                self.mock_config_folder,
                 False,
-                mock_utilization_error,
+                utilization_error,
             )
+
+    def create_mock_resource(self, **kwargs):
+        mock_resource = self.mock_resource.copy()
+        mock_resource.update(**kwargs)
+        return mock_resource
+
+    def create_mock_sfr(self, fulfilled_capacity, request_state='active'):
+        return {
+            'SpotFleetRequestState': request_state,
+            'SpotFleetRequestConfig': {
+                'FulfilledCapacity': fulfilled_capacity,
+            },
+        }
 
     def test_exists(self):
         self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
@@ -745,6 +762,14 @@ class TestSpotAutoscaler(unittest.TestCase):
 
         self.autoscaler.sfr = None
         assert self.autoscaler.is_resource_cancelled()
+
+    def test_cancelled_running(self):
+        sfr = self.create_mock_sfr(fulfilled_capacity=4, request_state='cancelled_running')
+        resource = self.create_mock_resource(min_capacity=4, max_capacity=10)
+        autoscaler = self.create_autoscaler(utilization_error=0.1, resource=resource, sfr=sfr)
+
+        assert autoscaler.utilization_error == -1
+        assert autoscaler.resource['min_capacity'] == 0
 
     def test_get_sfr(self):
         with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
@@ -811,69 +836,56 @@ class TestSpotAutoscaler(unittest.TestCase):
         assert ret == {'c4.blah': 123, 'm4.whatever': 456}
 
     def test_get_spot_fleet_delta(self):
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 5}}
-        ret = self.autoscaler.get_spot_fleet_delta(-0.2)
+        resource = self.create_mock_resource(min_capacity=2, max_capacity=10)
+
+        sfr = self.create_mock_sfr(fulfilled_capacity=5)
+        autoscaler = self.create_autoscaler(utilization_error=-0.2, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (5, 4)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 7.3}}
-        ret = self.autoscaler.get_spot_fleet_delta(-0.2)
+        sfr = self.create_mock_sfr(fulfilled_capacity=7.3)
+        autoscaler = self.create_autoscaler(utilization_error=-0.2, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (7.3, 6)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 5}}
-        ret = self.autoscaler.get_spot_fleet_delta(0.2)
+        sfr = self.create_mock_sfr(fulfilled_capacity=5)
+        autoscaler = self.create_autoscaler(utilization_error=0.2, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (5, 6)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 10}}
-        ret = self.autoscaler.get_spot_fleet_delta(0.2)
+        sfr = self.create_mock_sfr(fulfilled_capacity=10)
+        autoscaler = self.create_autoscaler(utilization_error=0.2, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (10, 10)
 
-        self.autoscaler.resource = {
-            'min_capacity': 2,
-            'max_capacity': 10,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 2}}
-        ret = self.autoscaler.get_spot_fleet_delta(-0.2)
+        sfr = self.create_mock_sfr(fulfilled_capacity=2)
+        autoscaler = self.create_autoscaler(utilization_error=-0.2, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (2, 2)
 
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 10,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 1}}
-        ret = self.autoscaler.get_spot_fleet_delta(-1)
+        resource = self.create_mock_resource(min_capacity=2, max_capacity=10)
+        sfr = self.create_mock_sfr(fulfilled_capacity=5, request_state='cancelled_running')
+        autoscaler = self.create_autoscaler(utilization_error=0.2, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
+        assert ret == (5, 4)
+
+        resource = self.create_mock_resource(min_capacity=0, max_capacity=10)
+        sfr = self.create_mock_sfr(fulfilled_capacity=1)
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (1, 1)
 
-        self.autoscaler.resource = {
-            'min_capacity': 0,
-            'max_capacity': 100,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': 20}}
-        ret = self.autoscaler.get_spot_fleet_delta(-0.5)
+        resource = self.create_mock_resource(min_capacity=0, max_capacity=100)
+        sfr = self.create_mock_sfr(fulfilled_capacity=20)
+        autoscaler = self.create_autoscaler(utilization_error=-0.5, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (20, int(floor(20 * (1.0 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA))))
 
+        resource = self.create_mock_resource(min_capacity=10, max_capacity=100)
         current_instances = (10 * (1 - autoscaling_cluster_lib.MAX_CLUSTER_DELTA)) - 1
-        self.autoscaler.resource = {
-            'min_capacity': 10,
-            'max_capacity': 40,
-        }
-        self.autoscaler.sfr = {'SpotFleetRequestConfig': {'FulfilledCapacity': current_instances}}
-        ret = self.autoscaler.get_spot_fleet_delta(-1)
+        sfr = self.create_mock_sfr(fulfilled_capacity=current_instances)
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
         assert ret == (current_instances, 10)
 
     def test_spotfleet_metrics_provider(self):
@@ -883,9 +895,6 @@ class TestSpotAutoscaler(unittest.TestCase):
         ) as mock_get_spot_fleet_delta, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_aws_slaves', autospec=True,
         ) as mock_get_aws_slaves, mock.patch(
-            'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_pool_slaves',
-            autospec=True,
-        ) as mock_get_pool_slaves, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
         ) as mock_get_mesos_master, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.cleanup_cancelled_config',
@@ -893,7 +902,10 @@ class TestSpotAutoscaler(unittest.TestCase):
         ) as mock_cleanup_cancelled_config, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.is_aws_launching_instances',
             autospec=True,
-        ) as mock_is_aws_launching_sfr_instances:
+        ) as mock_is_aws_launching_sfr_instances, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.emit_metrics',
+            autospec=True,
+        ) as mock_emit_metrics:
             mock_get_spot_fleet_delta.return_value = 1, 2
             self.autoscaler.pool_settings = {}
             mock_is_aws_launching_sfr_instances.return_value = False
@@ -903,7 +915,6 @@ class TestSpotAutoscaler(unittest.TestCase):
 
             mock_slaves = ['one', 'two']
             mock_get_aws_slaves.return_value = mock_slaves
-            mock_get_pool_slaves.return_value = mock_slaves
 
             # cancelled SFR
             self.autoscaler.instances = [mock.Mock(), mock.Mock()]
@@ -923,22 +934,48 @@ class TestSpotAutoscaler(unittest.TestCase):
 
             # active SFR
             mock_cleanup_cancelled_config.reset_mock()
+            mock_emit_metrics.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
-            mock_get_spot_fleet_delta.assert_called_with(self.autoscaler, float(0.3))
+            mock_get_spot_fleet_delta.assert_called_with(self.autoscaler)
+            mock_emit_metrics.assert_called_once_with(
+                self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves),
+            )
             assert not mock_cleanup_cancelled_config.called
             assert ret == (1, 2)
 
+            # SFR scaling up with too many unregistered instances
+            mock_emit_metrics.reset_mock()
+            self.autoscaler.instances = [mock.Mock() for _ in range(10)]
+            with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
+                self.autoscaler.metrics_provider(mock_mesos_state)
+
+            # SFR scaling down with many unregistered instances
+            self.autoscaler.utilization_error = -0.1
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            mock_emit_metrics.assert_called_once_with(
+                self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves),
+            )
+            assert ret == (1, 2)
+
+            self.autoscaler.instances = [mock.Mock(), mock.Mock()]
+            self.autoscaler.utilization_error = 0.3
+
             # active SFR with AWS still provisioning
+            mock_emit_metrics.reset_mock()
             mock_get_spot_fleet_delta.reset_mock()
             mock_cleanup_cancelled_config.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             mock_is_aws_launching_sfr_instances.return_value = True
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            mock_emit_metrics.assert_called_once_with(
+                self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves),
+            )
             assert ret == (1, 2)
             assert mock_get_spot_fleet_delta.called
 
             # cancelled_running SFR
+            mock_emit_metrics.reset_mock()
             mock_cleanup_cancelled_config.reset_mock()
             mock_get_spot_fleet_delta.reset_mock()
             self.autoscaler.sfr = {'SpotFleetRequestState': 'cancelled_running'}
@@ -948,6 +985,9 @@ class TestSpotAutoscaler(unittest.TestCase):
             mock_get_spot_fleet_delta.return_value = 2, 1
             self.autoscaler.utilization_error = -0.2
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            mock_emit_metrics.assert_called_once_with(
+                self.autoscaler, 2, 0, mesos_slave_count=len(mock_slaves),
+            )
 
             assert ret == (2, 0)
             mock_get_spot_fleet_delta.return_value = 4, 2
@@ -978,17 +1018,62 @@ class TestSpotAutoscaler(unittest.TestCase):
 class TestClusterAutoscaler(unittest.TestCase):
 
     def setUp(self):
-        mock_resource = {'id': 'sfr-blah', 'type': 'sfr', 'region': 'westeros-1', 'pool': 'default'}
+        mock_resource = {
+            'id': 'sfr-blah',
+            'type': 'sfr',
+            'region': 'westeros-1',
+            'pool': 'default',
+            'min_capacity': 3,
+            'max_capacity': 10,
+        }
         mock_pool_settings = {'drain_timeout': 123}
         mock_config_folder = '/nail/blah'
         mock_utilization_error = 0.3
-        self.autoscaler = autoscaling_cluster_lib.ClusterAutoscaler(
-            mock_resource,
-            mock_pool_settings,
-            mock_config_folder,
-            False,
-            mock_utilization_error,
-        )
+
+        with mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_metrics_interface',
+            autospec=True,
+        ), mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config',
+            autospec=True,
+        ):
+            self.autoscaler = autoscaling_cluster_lib.ClusterAutoscaler(
+                mock_resource,
+                mock_pool_settings,
+                mock_config_folder,
+                False,
+                mock_utilization_error,
+                enable_metrics=True,
+            )
+
+    def test_emit_metrics(self):
+        patchers = [
+            mock.patch.object(self.autoscaler, gauge)
+            for gauge in (
+                'target_gauge', 'current_gauge', 'ideal_gauge', 'max_gauge',
+                'min_gauge', 'mesos_error_gauge', 'aws_instances_gauge',
+                'mesos_slaves_gauge',
+            )
+        ]
+        with contextlib.ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
+
+            self.autoscaler.ideal_capacity = 4
+            self.autoscaler.emit_metrics(
+                current_capacity=1,
+                target_capacity=2,
+                mesos_slave_count=5,
+            )
+
+            self.autoscaler.current_gauge.set.assert_called_once_with(1)
+            self.autoscaler.target_gauge.set.assert_called_once_with(2)
+            self.autoscaler.ideal_gauge.set.assert_called_once_with(4)
+            self.autoscaler.min_gauge.set.assert_called_once_with(3)
+            self.autoscaler.max_gauge.set.assert_called_once_with(10)
+            self.autoscaler.mesos_error_gauge.set.assert_called_once_with(0.3)
+            self.autoscaler.aws_instances_gauge.set.assert_called_once_with(0)
+            self.autoscaler.mesos_slaves_gauge.set.assert_called_once_with(5)
 
     def test_describe_instance(self):
         with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
@@ -1637,23 +1722,6 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_os_remove.reset_mock()
             self.autoscaler.cleanup_cancelled_config('sfr-blah-not-exist', '/nail')
             assert not mock_os_remove.called
-
-    def test_get_pool_slaves(self):
-        self.autoscaler.resource = {'pool': 'default'}
-        mock_mesos_state = {'slaves': [
-            {
-                'id': 'id1',
-                'attributes': {'pool': 'default'},
-                'pid': 'pid1',
-            },
-            {
-                'id': 'id3',
-                'attributes': {'pool': 'notdefault'},
-                'pid': 'pid3',
-            },
-        ]}
-        ret = self.autoscaler.get_pool_slaves(mock_mesos_state)
-        assert ret == {'id1': mock_mesos_state['slaves'][0]}
 
     def test_instace_descriptions_for_ips_splits_ips(self):
         with mock.patch(
