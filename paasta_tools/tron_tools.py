@@ -23,62 +23,43 @@ log = logging.getLogger(__name__)
 SPACER = '.'
 
 
-class TronClient:
+class TronNotConfigured(Exception):
+    pass
 
-    def __init__(self, host, port):
-        self.server = 'http://{}:{}'.format(host, port)
 
-    def _request(self, method, url, data):
-        headers = {'User-Agent': get_user_agent()}
-        kwargs = {
-            'url': urljoin(self.server, url),
-            'headers': headers,
-        }
-        if method == 'GET':
-            kwargs['params'] = data
-            response = requests.get(**kwargs)
-        elif method == 'POST':
-            kwargs['data'] = data
-            response = requests.post(**kwargs)
-        else:
-            raise ValueError('Unrecognized method: {}'.format(method))
+class TronConfig(dict):
 
-        # Raise an exception if unsuccessful.
-        response.raise_for_status()
-        return response.json()
+    def __init__(self, config):
+        super(TronConfig, self).__init__(config)
 
-    def _get(self, url, data=None):
-        return self._request('GET', url, data)
+    def get_cluster_name(self):
+        """:returns The name of the Tron cluster"""
+        try:
+            return self['cluster_name']
+        except KeyError:
+            raise TronNotConfigured('Could not find name of Tron cluster in system Tron config')
 
-    def _post(self, url, data=None):
-        return self._request('POST', url, data)
+    def get_default_paasta_cluster(self):
+        """:returns The PaaSTA cluster to run actions on by default"""
+        try:
+            return self['default_paasta_cluster']
+        except KeyError:
+            raise TronNotConfigured('Could not find default PaaSTA cluster in system Tron config')
 
-    def update_namespace(self, namespace, new_config, skip_if_unchanged=True):
-        current_config = self._get('/api/config', {'name': namespace})
-        if skip_if_unchanged and new_config == current_config['config']:
-            log.info('No change in config, skipping update.')
-            return
+    def get_url(self):
+        """:returns The URL for the Tron master's API"""
+        try:
+            return self['url']
+        except KeyError:
+            raise TronNotConfigured('Could not find URL of Tron master in system Tron config')
 
-        self._post(
-            '/api/config',
-            data={
-                'name': namespace,
-                'config': new_config,
-                'hash': current_config['hash'],
-                'check': 0,
-            },
-        )
 
-    def list_namespaces(self):
-        response = self._get('/api')
-        return response.get('namespaces', [])
+def load_tron_config():
+    return TronConfig(load_system_paasta_config().get_tron_config())
 
 
 def get_tron_client():
-    # TODO: add tron system paasta config
-    host = 'tron-playground'
-    port = 8089
-    return TronClient(host, port)
+    return TronClient(load_tron_config().get_url())
 
 
 def compose_instance(job, action):
@@ -321,30 +302,30 @@ def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
 
 def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
-    cluster_fqdn_format = system_paasta_config.get_cluster_fqdn_format()
+    tron_config = load_tron_config()
 
-    # TODO: add tron system paasta config
-    tron_cluster = 'playground'
-    default_paasta_cluster = 'norcal-devc'
-
-    job_configs, tron_config = load_tron_service_config(service, tron_cluster, soa_dir)
-    tron_config['jobs'] = [
+    job_configs, other_config = load_tron_service_config(
+        service=service,
+        tron_cluster=tron_config.get_cluster_name(),
+        soa_dir=soa_dir,
+    )
+    other_config['jobs'] = [
         job_config.format_tron_job_dict(
-            cluster_fqdn_format,
-            default_paasta_cluster,
+            cluster_fqdn_format=system_paasta_config.get_cluster_fqdn_format(),
+            default_paasta_cluster=tron_config.get_default_paasta_cluster(),
         ) for job_config in job_configs
     ]
 
     return yaml.dump(
-        tron_config,
+        other_config,
         Dumper=Dumper,
         default_flow_style=False,
     )
 
 
 def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    if cluster is None:
-        cluster = 'playground'  # TODO
+    if not cluster:
+        cluster = load_tron_config().get_cluster_name()
 
     config_dir = os.path.join(
         os.path.abspath(soa_dir),
