@@ -74,6 +74,7 @@ service-configuration-lib==0.12.0
 setuptools==37.0.0
 simplejson==3.10.0
 six==1.11.0
+slackclient==1.2.1
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2
@@ -89,6 +90,7 @@ utaw==0.2.0
 venusian==1.1.0
 webcolors==1.7
 WebOb==1.7.4
+websocket-client==0.44.0
 whichcraft==0.4.0
 wsgicors==0.7.0
 yarl==1.1.1
