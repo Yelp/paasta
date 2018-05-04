@@ -71,8 +71,8 @@ def test_get_service_info():
         assert 'tcp://bar:1234' in actual
         assert 'Dashboard' in actual
         assert '%s (Sensu Alerts)' % PaastaColors.cyan('https://uchiwa.yelpcorp.com/#/events?q=fake_service') in actual
-        mock_get_team.assert_called_with(service='fake_service', overrides={})
-        mock_get_runbook.assert_called_with(service='fake_service', overrides={})
+        mock_get_team.assert_called_with(service='fake_service', overrides={}, soa_dir='/fake/soa/dir')
+        mock_get_runbook.assert_called_with(service='fake_service', overrides={}, soa_dir='/fake/soa/dir')
 
 
 def test_deployments_to_clusters():
