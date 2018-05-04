@@ -130,6 +130,7 @@ class ClusterAutoscaler(object):
         log_level: str=None,
         draining_enabled: bool=True,
         enable_metrics: bool=False,
+        enable_maintenance_reservation: bool=True,
     ) -> None:
         self.resource = resource
         self.pool_settings = pool_settings
@@ -143,6 +144,7 @@ class ClusterAutoscaler(object):
         self.instances: List[Dict] = []
         self.sfr: Optional[Dict[str, Any]] = None
         self.enable_metrics = enable_metrics
+        self.enable_maintenance_reservation = enable_maintenance_reservation
 
         self.setup_metrics()
 
@@ -532,7 +534,12 @@ class ClusterAutoscaler(object):
         if should_drain:
             try:
                 drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
-                drain([drain_host_string], start, duration)
+                drain(
+                    hostnames=[drain_host_string],
+                    start=start,
+                    duration=duration,
+                    reserve_resources=self.enable_maintenance_reservation,
+                )
             except HTTPError as e:
                 self.log.error("Failed to start drain "
                                "on {}: {}\n Trying next host".format(slave_to_kill.hostname, e))
@@ -546,7 +553,10 @@ class ClusterAutoscaler(object):
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info("Undraining {}".format(slave_to_kill.pid))
             if should_drain:
-                undrain([drain_host_string])
+                undrain(
+                    hostnames=[drain_host_string],
+                    unreserve_resources=self.enable_maintenance_reservation,
+                )
             raise
         self.log.info("Waiting for instance to drain before we terminate")
         try:
@@ -558,13 +568,21 @@ class ClusterAutoscaler(object):
                 region=self.resource['region'],
                 should_drain=should_drain,
             )
+            if should_drain:
+                undrain(
+                    hostnames=[drain_host_string],
+                    unreserve_resources=self.enable_maintenance_reservation,
+                )
         except ClientError as e:
             self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
             self.log.error("Setting resource capacity back to {}".format(self.capacity - capacity_diff))
             self.set_capacity(self.capacity - capacity_diff)
             self.log.info("Undraining {}".format(slave_to_kill.pid))
             if should_drain:
-                undrain([drain_host_string])
+                undrain(
+                    hostnames=[drain_host_string],
+                    unreserve_resources=self.enable_maintenance_reservation,
+                )
 
     def filter_aws_slaves(self, slaves_list: Iterable[Dict[str, SlaveTaskCount]]) -> List['PaastaAwsSlave']:
         ips = self.get_instance_ips(self.instances, region=self.resource['region'])
@@ -1170,6 +1188,7 @@ def autoscale_local_cluster(
                 utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
                 enable_metrics=True,
+                enable_maintenance_reservation=system_config.get_maintenance_resource_reservation_enabled(),
             )
             autoscaling_scalers[(resource['region'], resource['pool'])].append(scaler)
         except KeyError:
@@ -1261,7 +1280,6 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     pool_settings = system_config.get_resource_pool_settings()
-    system_config = load_system_paasta_config()
     all_pool_settings = system_config.get_resource_pool_settings()
     utilization_errors = get_all_utilization_errors(
         autoscaling_resources=autoscaling_resources,

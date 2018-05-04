@@ -1423,6 +1423,7 @@ SystemPaastaConfigDict = TypedDict(
         'vault_cluster_map': Dict,
         'secret_provider': str,
         'slack': Dict[str, str],
+        'maintenance_resource_reservation_enabled': bool,
     },
     total=False,
 )
@@ -1647,6 +1648,13 @@ class SystemPaastaConfig(object):
 
         :returns A bool"""
         return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
+
+    def get_maintenance_resource_reservation_enabled(self) -> bool:
+        """ Enable un/reserving of resources when we un/drain a host in mesos maintenance
+        *and* after tasks are killed in setup_marathon_job etc.
+
+        :returns A bool"""
+        return self.config_dict.get('maintenance_resource_reservation_enabled', True)
 
     def get_filter_bogus_mesos_cputime_enabled(self) -> bool:
         """ Filters out mesos cputime values if they are greater than

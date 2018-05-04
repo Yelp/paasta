@@ -1448,8 +1448,12 @@ class TestClusterAutoscaler(unittest.TestCase):
                 self.capacity = capacity
 
             mock_set_capacity.side_effect = _set_capacity
-
-            mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
+            mock_drain.assert_called_with(
+                hostnames=['host1|10.1.1.1'],
+                start=mock_start,
+                duration=600 * 1000000000,
+                reserve_resources=True,
+            )
             set_call_1 = mock.call(self.autoscaler, 4)
             mock_set_capacity.assert_has_calls([set_call_1])
             mock_wait_and_terminate.assert_called_with(
@@ -1467,13 +1471,21 @@ class TestClusterAutoscaler(unittest.TestCase):
                 capacity_diff=-1,
                 timer=mock_timer,
             ))
-            mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
+            mock_drain.assert_called_with(
+                hostnames=['host1|10.1.1.1'],
+                start=mock_start,
+                duration=600 * 1000000000,
+                reserve_resources=True,
+            )
             mock_set_capacity.assert_has_calls([set_call_1, set_call_2])
             mock_wait_and_terminate.assert_called_with(
                 self.autoscaler, slave=mock_slave, drain_timeout=123, dry_run=False,
                 region='westeros-1', should_drain=True, timer=mock_timer,
             )
-            mock_undrain.assert_called_with(['host1|10.1.1.1'])
+            mock_undrain.assert_called_with(
+                hostnames=['host1|10.1.1.1'],
+                unreserve_resources=True,
+            )
 
             # test we cleanup if a set spot capacity fails
             mock_wait_and_terminate.side_effect = just_sleep
@@ -1486,9 +1498,17 @@ class TestClusterAutoscaler(unittest.TestCase):
                     capacity_diff=-1,
                     timer=mock_timer,
                 ))
-            mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
+            mock_drain.assert_called_with(
+                hostnames=['host1|10.1.1.1'],
+                start=mock_start,
+                duration=600 * 1000000000,
+                reserve_resources=True,
+            )
             mock_set_capacity.assert_has_calls([set_call_1])
-            mock_undrain.assert_called_with(['host1|10.1.1.1'])
+            mock_undrain.assert_called_with(
+                hostnames=['host1|10.1.1.1'],
+                unreserve_resources=True,
+            )
             assert not mock_wait_and_terminate.called
 
             # test we cleanup if a drain fails
@@ -1503,7 +1523,12 @@ class TestClusterAutoscaler(unittest.TestCase):
                     capacity_diff=-1,
                     timer=mock_timer,
                 ))
-            mock_drain.assert_called_with(['host1|10.1.1.1'], mock_start, 600 * 1000000000)
+            mock_drain.assert_called_with(
+                hostnames=['host1|10.1.1.1'],
+                start=mock_start,
+                duration=600 * 1000000000,
+                reserve_resources=True,
+            )
             assert not mock_set_capacity.called
             assert not mock_wait_and_terminate.called
 

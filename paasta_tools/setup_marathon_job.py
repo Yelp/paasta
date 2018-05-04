@@ -244,6 +244,7 @@ def do_bounce(
     soa_dir: str,
     job_config: marathon_tools.MarathonServiceConfig,
     bounce_margin_factor: float=1.0,
+    enable_maintenance_reservation: bool=True,
 ) -> Optional[float]:
     def log_bounce_action(line: str, level: str='debug') -> None:
         return _log(
@@ -330,13 +331,14 @@ def do_bounce(
     for client, tasks in tasks_to_kill_by_client.items():
         kill_given_tasks(client=client, task_ids=[task.id for task in tasks], scale=True)
 
-    for task in bounce_lib.flatten_tasks(old_app_at_risk_tasks):
-        if task in tasks_to_kill:
-            hostname = task.host
-            try:
-                reserve_all_resources([hostname])
-            except HTTPError:
-                log.warning("Failed to reserve resources on %s" % hostname)
+    if enable_maintenance_reservation:
+        for task in bounce_lib.flatten_tasks(old_app_at_risk_tasks):
+            if task in tasks_to_kill:
+                hostname = task.host
+                try:
+                    reserve_all_resources([hostname])
+                except HTTPError:
+                    log.warning("Failed to reserve resources on %s" % hostname)
 
     apps_to_kill: List[Tuple[str, MarathonClient]] = []
     for app, client in old_app_live_happy_tasks.keys():
@@ -723,6 +725,7 @@ def deploy_service(
             soa_dir=soa_dir,
             job_config=job_config,
             bounce_margin_factor=bounce_margin_factor,
+            enable_maintenance_reservation=system_paasta_config.get_maintenance_resource_reservation_enabled(),
         )
     except bounce_lib.LockHeldException:
         logline = 'Failed to get lock to create marathon app for %s.%s' % (service, instance)
