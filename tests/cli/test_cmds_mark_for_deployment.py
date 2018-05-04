@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import mock
 from mock import ANY
 from mock import patch
 from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.slack import PaastaSlackClient
 from paasta_tools.utils import TimeoutError
 
 
@@ -179,3 +181,51 @@ def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
         commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
         git_url='git://false.repo/services/test_services',
     )
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
+def test_slack_deploy_notifier(mock_client):
+    fake_psc = mock.create_autospec(PaastaSlackClient)
+    mock_client.return_value = fake_psc
+    sdn = mark_for_deployment.SlackDeployNotifier(
+        service='testservice',
+        deploy_info={
+            'pipeline':
+            [
+                {'step': 'test_deploy_group', 'slack_notify': True, },
+            ],
+        },
+        deploy_group='test_deploy_group',
+        commit='newcommit',
+        old_commit='oldcommit',
+    )
+    assert sdn.notify_after_mark(ret=1) is None
+    assert sdn.notify_after_mark(ret=0) is None
+    assert sdn.notify_after_good_deploy() is None
+    assert sdn.notify_after_auto_rollback() is None
+    assert sdn.notify_after_abort() is None
+    assert fake_psc.post.call_count >= 0
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
+def test_slack_deploy_notifier_on_non_notify_groups(mock_client):
+    fake_psc = mock.create_autospec(PaastaSlackClient)
+    mock_client.return_value = fake_psc
+    sdn = mark_for_deployment.SlackDeployNotifier(
+        service='testservice',
+        deploy_info={
+            'pipeline':
+            [
+                {'step': 'test_deploy_group', 'slack_notify': False, },
+            ],
+        },
+        deploy_group='test_deploy_group',
+        commit='newcommit',
+        old_commit='oldcommit',
+    )
+    assert sdn.notify_after_mark(ret=1) is None
+    assert sdn.notify_after_mark(ret=0) is None
+    assert sdn.notify_after_good_deploy() is None
+    assert sdn.notify_after_auto_rollback() is None
+    assert sdn.notify_after_abort() is None
+    assert fake_psc.post.call_count == 0
