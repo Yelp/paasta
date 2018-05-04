@@ -1,8 +1,5 @@
-import logging
 import os
-from urllib.parse import urljoin
 
-import requests
 import service_configuration_lib
 import yaml
 try:
@@ -10,15 +7,13 @@ try:
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper
 
+from paasta_tools.tron.client import TronClient
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 
-
-log = logging.getLogger(__name__)
 
 SPACER = '.'
 
