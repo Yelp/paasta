@@ -174,7 +174,7 @@ def add_subparser(subparsers):
 
     list_parser = main_subs.add_parser(
         'list',
-        help="Stop task subcommand",
+        help="List tasks subcommand",
     )
     add_common_args_to_parser(list_parser)
 
