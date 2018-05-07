@@ -10,10 +10,12 @@ DIST = ['trusty', 'xenial']
 ircMsgResult(CHANNELS) {
     ystage('Test') {
         node {
-            clone(
-                PACKAGE_NAME,
-            )
-            sh 'make itest'
+            ensureCleanWorkspace {
+                clone(
+                    PACKAGE_NAME,
+                )
+                sh 'make itest'
+            }
         }
     }
 
