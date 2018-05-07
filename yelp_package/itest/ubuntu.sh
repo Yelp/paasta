@@ -71,7 +71,7 @@ mkdir -p /etc/paasta
 [ -L /etc/paasta/cluster.json ] || ln -s /work/yelp_package/itest/cluster.json /etc/paasta/cluster.json
 
 # If left there, they are included in the python path and can pollute the tests.
-rm -r debian/paasta-tools/
+rm -rf debian/paasta-tools/
 
 if dpkg -i /work/dist/"$1"; then
   echo "Looks like it installed correctly"

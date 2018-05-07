@@ -54,7 +54,7 @@ package_%: build_$$*_docker
 	$(ADD_VERSION_SUFFIX)
 	cat ../extra-linux-requirements.txt >> ../requirements.txt
 
-	$(DOCKER_RUN) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
+	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
