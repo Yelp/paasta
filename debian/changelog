@@ -1,3 +1,18 @@
+paasta-tools (0.70.7) xenial; urgency=medium
+
+  * 0.70.7 tagged with 'make release'
+    Commit: Merge branch "bump_drain_timeouts"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 03 May 2018 10:11:39 -0700
+
+paasta-tools (0.70.6) xenial; urgency=medium
+
+  * 0.70.6 tagged with 'make release'
+    Commit: Merge pull request #1814 from Yelp/hliu_spark_run_it  Do not
+    use --it for spark-submit and jupyter
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 02 May 2018 11:09:19 -0700
+
 paasta-tools (0.70.5) xenial; urgency=medium
 
   * 0.70.5 tagged with 'make release'
