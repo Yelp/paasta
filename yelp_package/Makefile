@@ -54,6 +54,7 @@ package_%: build_$$*_docker
 	$(ADD_VERSION_SUFFIX)
 	cat ../extra-linux-requirements.txt >> ../requirements.txt
 
+	# noddebs to work around https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=897569
 	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
