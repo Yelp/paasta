@@ -70,11 +70,8 @@ def add_common_args_to_parser(parser):
     ).completer = lazy_choices_completer(list_services)
     parser.add_argument(
         '-c', '--cluster',
-        help=(
-            'The name of the cluster you wish to run your task on. '
-            'If omitted, uses the default cluster defined in the paasta'
-            'remote-run configs'
-        ),
+        required=True,
+        help=('The name of the cluster you wish to run your task on.'),
     ).completer = lazy_choices_completer(list_clusters)
     parser.add_argument(
         '-y', '--yelpsoa-config-root',
