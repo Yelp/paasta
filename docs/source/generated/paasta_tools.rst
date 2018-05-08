@@ -72,6 +72,7 @@ Submodules
    paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
    paasta_tools.setup_marathon_job
+   paasta_tools.slack
    paasta_tools.smartstack_tools
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.utils

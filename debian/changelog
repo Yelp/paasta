@@ -1,3 +1,11 @@
+paasta-tools (0.70.9) xenial; urgency=medium
+
+  * 0.70.9 tagged with 'make release'
+    Commit: Merge pull request #1820 from Yelp/add-flag-disable-
+    reservation  Add a flag to disable reservation on maint calls
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 08 May 2018 07:46:03 -0700
+
 paasta-tools (0.70.8) xenial; urgency=medium
 
   * 0.70.8 tagged with 'make release'
