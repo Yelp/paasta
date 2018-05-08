@@ -7,13 +7,15 @@ CHANNELS = ['paasta']
 PACKAGE_NAME = 'mirrors/Yelp/paasta'
 DIST = ['trusty', 'xenial']
 
+commit = ''
+
 ircMsgResult(CHANNELS) {
     ystage('Test') {
         node {
             ensureCleanWorkspace {
-                clone(
+                commit = clone(
                     PACKAGE_NAME,
-                )
+                )['GIT_COMMIT']
                 sh 'make itest'
             }
         }
