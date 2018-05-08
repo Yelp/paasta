@@ -8,8 +8,14 @@ TODO
 """
 import argparse
 import logging
+import sys
 
 from paasta_tools import tron_tools
+from paasta_tools.tron.client import TronRequestError
+from paasta_tools.tron_tools import InvalidTronConfig
+from paasta_tools.tron_tools import TronNotConfigured
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 log = logging.getLogger(__name__)
@@ -42,14 +48,22 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    # TODO: handle different types of errors
-    new_config = tron_tools.create_complete_config(
-        service=args.service,
-        soa_dir=args.soa_dir,
-    )
-
-    client = tron_tools.get_tron_client()
-    client.update_namespace(args.service, new_config)
+    try:
+        new_config = tron_tools.create_complete_config(
+            service=args.service,
+            soa_dir=args.soa_dir,
+        )
+        client = tron_tools.get_tron_client()
+        client.update_namespace(args.service, new_config)
+    except (
+        InvalidTronConfig,
+        NoConfigurationForServiceError,
+        TronNotConfigured,
+        PaastaNotConfiguredError,
+        TronRequestError,
+    ) as e:
+        log.error('Update for {namespace} failed: {error}'.format(namespace=args.service, error=str(e)))
+        sys.exit(1)
 
 
 if __name__ == "__main__":

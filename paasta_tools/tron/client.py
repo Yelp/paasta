@@ -9,6 +9,10 @@ from paasta_tools.utils import get_user_agent
 log = logging.getLogger(__name__)
 
 
+class TronRequestError(Exception):
+    pass
+
+
 class TronClient:
 
     def __init__(self, url):
@@ -29,9 +33,24 @@ class TronClient:
         else:
             raise ValueError('Unrecognized method: {}'.format(method))
 
-        # Raise an exception if unsuccessful.
-        response.raise_for_status()
-        return response.json()
+        return self._get_response_or_error(response)
+
+    def _get_response_or_error(self, response):
+        try:
+            result = response.json()
+            if 'error' in result:
+                raise TronRequestError(result['error'])
+            return result
+        except ValueError:  # Not JSON
+            if not response.ok:
+                raise TronRequestError(
+                    'Status code {status_code} for {url}: {reason}'.format(
+                        status_code=response.status_code,
+                        url=response.url,
+                        reason=response.reason,
+                    ),
+                )
+            return response.text
 
     def _get(self, url, data=None):
         return self._request('GET', url, data)
@@ -45,7 +64,7 @@ class TronClient:
             log.info('No change in config, skipping update.')
             return
 
-        self._post(
+        return self._post(
             '/api/config',
             data={
                 'name': namespace,

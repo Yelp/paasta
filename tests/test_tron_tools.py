@@ -3,6 +3,8 @@ import pytest
 
 from paasta_tools import tron_tools
 from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 class TestTronConfig:
@@ -276,6 +278,30 @@ class TestTronJobConfig:
             soa_dir=soa_dir,
         )
 
+    @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
+    def test_get_action_config_no_deployment(
+        self,
+        mock_load_deployments,
+    ):
+        action_dict = {
+            'name': 'normal',
+            'command': 'echo first',
+        }
+        job_dict = {
+            'name': 'my_job',
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'service': 'my_service',
+            'deploy_group': 'prod',
+            'max_runtime': '2h',
+            'actions': [action_dict],
+        }
+        job_config = tron_tools.TronJobConfig(job_dict)
+        mock_load_deployments.side_effect = NoDeploymentsAvailable
+
+        with pytest.raises(tron_tools.InvalidTronConfig):
+            job_config._get_action_config(action_dict, 'some-cluster')
+
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
     def test_format_tron_job_dict(
         self,
@@ -399,6 +425,17 @@ class TestTronTools:
             mock.call(job_1, soa_dir),
             mock.call(job_2, soa_dir),
         ]
+        expected_filename = '/other/services/tron/dev/foo.yaml'
+        mock_read_file.assert_called_once_with(expected_filename)
+
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
+    def test_load_tron_service_config_empty(self, mock_read_file):
+        mock_read_file.return_value = {}
+        soa_dir = '/other/services'
+
+        with pytest.raises(NoConfigurationForServiceError):
+            tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+
         expected_filename = '/other/services/tron/dev/foo.yaml'
         mock_read_file.assert_called_once_with(expected_filename)
 

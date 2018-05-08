@@ -13,12 +13,18 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 SPACER = '.'
 
 
 class TronNotConfigured(Exception):
+    pass
+
+
+class InvalidTronConfig(Exception):
     pass
 
 
@@ -211,14 +217,25 @@ class TronJobConfig:
         action_service = action_dict.setdefault('service', self.get_service())
         action_deploy_group = action_dict.setdefault('deploy_group', self.get_deploy_group())
         if action_service and action_deploy_group:
-            deployments_json = load_v2_deployments_json(action_service, soa_dir=self.soa_dir)
-            branch_dict = {
-                'docker_image': deployments_json.get_docker_image_for_deploy_group(action_deploy_group),
-                'git_sha': deployments_json.get_git_sha_for_deploy_group(action_deploy_group),
-                # TODO: add Tron instances when generating deployments json
-                'desired_state': 'start',
-                'force_bounce': None,
-            }
+            try:
+                deployments_json = load_v2_deployments_json(action_service, soa_dir=self.soa_dir)
+                branch_dict = {
+                    'docker_image': deployments_json.get_docker_image_for_deploy_group(action_deploy_group),
+                    'git_sha': deployments_json.get_git_sha_for_deploy_group(action_deploy_group),
+                    # TODO: add Tron instances when generating deployments json
+                    'desired_state': 'start',
+                    'force_bounce': None,
+                }
+            except NoDeploymentsAvailable:
+                raise InvalidTronConfig(
+                    'No deployment found for action {action} in job {job}, looking for {deploy_group}'
+                    'in service {service}'.format(
+                        action=action_dict.get('name'),
+                        job=self.get_name(),
+                        deploy_group=action_deploy_group,
+                        service=action_service,
+                    ),
+                )
         else:
             branch_dict = {}
 
@@ -287,6 +304,8 @@ def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
         os.path.abspath(soa_dir), 'tron', tron_cluster, service + '.yaml',
     )
     config = service_configuration_lib._read_yaml_file(tron_conf_file)
+    if not config:
+        raise NoConfigurationForServiceError('No configuration found for Tron at %s' % tron_conf_file)
 
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
     job_configs = []
