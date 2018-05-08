@@ -520,6 +520,12 @@ def test_drain(
     drain(hostnames=['some-host'], start='some-start', duration='some-duration')
     assert mock_operator_api.call_count == 2
 
+    mock_reserve_all_resources.reset_mock()
+    mock_operator_api.reset_mock()
+    drain(hostnames=['some-host'], start='some-start', duration='some-duration', reserve_resources=False)
+    assert mock_reserve_all_resources.call_count == 0
+    assert mock_operator_api.return_value.call_count == 1
+
 
 @mock.patch('paasta_tools.mesos_maintenance.operator_api', autospec=True)
 @mock.patch('paasta_tools.mesos_maintenance.build_maintenance_schedule_payload', autospec=True)
@@ -549,6 +555,12 @@ def test_undrain(
     mock_unreserve_all_resources.side_effect = HTTPError()
     undrain(hostnames=['some-host'])
     assert mock_operator_api.call_count == 2
+
+    mock_operator_api.reset_mock()
+    mock_unreserve_all_resources.reset_mock()
+    undrain(hostnames=['some-host'], unreserve_resources=False)
+    assert mock_operator_api.call_count == 1
+    assert mock_unreserve_all_resources.call_count == 0
 
 
 @mock.patch(

@@ -614,18 +614,20 @@ def unreserve_all_resources(hostnames):
                 raise HTTPError("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
 
 
-def drain(hostnames, start, duration):
+def drain(hostnames, start, duration, reserve_resources=True):
     """Schedules a maintenance window for the specified hosts and marks them as draining.
     :param hostnames: a list of hostnames
     :param start: the time to start the maintenance, represented as number of nanoseconds since the epoch
     :param duration: length of the maintenance window, represented as number of nanoseconds since the epoch
+    :param reserve_resources: bool setting to also reserve the free resources on the agent before the drain call
     :returns: None
     """
     log.info("Draining: %s" % hostnames)
-    try:
-        reserve_all_resources(hostnames)
-    except HTTPError as e:
-        log.warning("Failed to reserve resources, will continue to drain: %s" % e)
+    if reserve_resources:
+        try:
+            reserve_all_resources(hostnames)
+        except HTTPError as e:
+            log.warning("Failed to reserve resources, will continue to drain: %s" % e)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = operator_api()
     try:
@@ -635,17 +637,19 @@ def drain(hostnames, start, duration):
     return drain_output
 
 
-def undrain(hostnames):
+def undrain(hostnames, unreserve_resources=True):
     """Unschedules the maintenance window for the specified hosts and unmarks them as draining. They are ready for
     regular use.
     :param hostnames: a list of hostnames
+    :param unreserve_resources: bool setting to also unreserve resources on the agent before the undrain call
     :returns: None
     """
     log.info("Undraining: %s" % hostnames)
-    try:
-        unreserve_all_resources(hostnames)
-    except HTTPError as e:
-        log.warning("Failed to unreserve resources, will continue to undrain: %s" % e)
+    if unreserve_resources:
+        try:
+            unreserve_all_resources(hostnames)
+        except HTTPError as e:
+            log.warning("Failed to unreserve resources, will continue to undrain: %s" % e)
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     client_fn = operator_api()
