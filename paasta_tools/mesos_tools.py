@@ -20,6 +20,9 @@ import socket
 from collections import namedtuple
 from typing import Callable
 from typing import List
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 from urllib.parse import urlparse
 
 import humanize
@@ -31,6 +34,7 @@ import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
+from paasta_tools.mesos.task import Task
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import format_table
@@ -308,7 +312,7 @@ def get_cpu_usage(task):
         return "Timed Out"
 
 
-def format_running_mesos_task_row(task, get_short_task_id):
+def format_running_mesos_task_row(task: Task, get_short_task_id: Callable[[str], str]) -> Tuple[str, ...]:
     """Returns a pretty formatted string of a running mesos task attributes"""
     return (
         get_short_task_id(task['id']),
@@ -319,7 +323,7 @@ def format_running_mesos_task_row(task, get_short_task_id):
     )
 
 
-def format_non_running_mesos_task_row(task, get_short_task_id):
+def format_non_running_mesos_task_row(task: Task, get_short_task_id: Callable[[str], str]) -> Tuple[str, ...]:
     """Returns a pretty formatted string of a running mesos task attributes"""
     return (
         PaastaColors.grey(get_short_task_id(task['id'])),
@@ -391,7 +395,15 @@ def zip_tasks_verbose_output(table, stdstreams):
     return output
 
 
-def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_lines):
+def format_task_list(
+    tasks: Sequence[Task],
+    list_title: str,
+    table_header: Sequence[str],
+    get_short_task_id: Callable[[str], str],
+    format_task_row: Callable[[Task, Callable[[str], str]], Union[Sequence[str], str]],
+    grey: bool,
+    tail_lines: int,
+) -> List[str]:
     """Formats a list of tasks, returns a list of output lines
     :param tasks: List of tasks as returned by get_*_tasks_from_all_frameworks.
     :param list_title: 'Running Tasks:' or 'Non-Running Tasks'.
@@ -410,7 +422,7 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
             return(PaastaColors.grey(x))
     output = []
     output.append(colorize("  %s" % list_title))
-    table_rows = [
+    table_rows: List[Union[str, Sequence[str]]] = [
         [colorize(th) for th in table_header],
     ]
     for task in tasks:
