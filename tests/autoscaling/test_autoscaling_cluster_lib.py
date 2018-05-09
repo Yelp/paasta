@@ -763,13 +763,21 @@ class TestSpotAutoscaler(unittest.TestCase):
         self.autoscaler.sfr = None
         assert self.autoscaler.is_resource_cancelled()
 
-    def test_cancelled_running(self):
+    def test_cancelled_running_scale_down(self):
+        sfr = self.create_mock_sfr(fulfilled_capacity=4, request_state='cancelled_running')
+        resource = self.create_mock_resource(min_capacity=4, max_capacity=10)
+        autoscaler = self.create_autoscaler(utilization_error=-0.1, resource=resource, sfr=sfr)
+
+        assert autoscaler.utilization_error == -1
+        assert autoscaler.resource['min_capacity'] == 0
+
+    def test_cancelled_running_scale_up(self):
         sfr = self.create_mock_sfr(fulfilled_capacity=4, request_state='cancelled_running')
         resource = self.create_mock_resource(min_capacity=4, max_capacity=10)
         autoscaler = self.create_autoscaler(utilization_error=0.1, resource=resource, sfr=sfr)
 
-        assert autoscaler.utilization_error == -1
-        assert autoscaler.resource['min_capacity'] == 0
+        assert autoscaler.utilization_error == 0.1
+        assert autoscaler.resource['min_capacity'] == 4
 
     def test_get_sfr(self):
         with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
@@ -862,12 +870,6 @@ class TestSpotAutoscaler(unittest.TestCase):
         autoscaler = self.create_autoscaler(utilization_error=-0.2, resource=resource, sfr=sfr)
         ret = autoscaler.get_spot_fleet_delta()
         assert ret == (2, 2)
-
-        resource = self.create_mock_resource(min_capacity=2, max_capacity=10)
-        sfr = self.create_mock_sfr(fulfilled_capacity=5, request_state='cancelled_running')
-        autoscaler = self.create_autoscaler(utilization_error=0.2, resource=resource, sfr=sfr)
-        ret = autoscaler.get_spot_fleet_delta()
-        assert ret == (5, 4)
 
         resource = self.create_mock_resource(min_capacity=0, max_capacity=10)
         sfr = self.create_mock_sfr(fulfilled_capacity=1)

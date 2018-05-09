@@ -146,6 +146,7 @@ class ClusterAutoscaler(object):
         self.enable_metrics = enable_metrics
         self.enable_maintenance_reservation = enable_maintenance_reservation
 
+        self.log.info('Initialized with utilization error %s' % self.utilization_error)
         self.setup_metrics()
 
     @property
@@ -768,7 +769,12 @@ class SpotAutoscaler(ClusterAutoscaler):
         self.sfr = self.get_sfr(self.resource['id'], region=self.resource['region'])
         if self.sfr:
             self.instances = self.get_spot_fleet_instances(self.resource['id'], region=self.resource['region'])
-            if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
+            if self.sfr['SpotFleetRequestState'] == 'cancelled_running' and self.utilization_error < 0:
+                self.log.warn(
+                    'We are in cancelled_running with utilization_error < 0, '
+                    'resetting utilization error to -1, min_capacity to 0 in '
+                    'order to fully scale down.',
+                )
                 self.utilization_error = -1
                 self.resource['min_capacity'] = 0
 
@@ -819,6 +825,9 @@ class SpotAutoscaler(ClusterAutoscaler):
                 ),
             )
             return 0, 0
+        elif self.sfr['SpotFleetRequestState'] == 'cancelled_running' and self.utilization_error > 0:
+            self.log.warning("Cannot scale cancelled_running SFR upwards, skipping.")
+            return 0, 0
         elif self.sfr['SpotFleetRequestState'] not in ['cancelled_running', 'active']:
             self.log.error("Unexpected SFR state: {} for {}".format(
                 self.sfr['SpotFleetRequestState'],
@@ -837,15 +846,8 @@ class SpotAutoscaler(ClusterAutoscaler):
         self.check_expected_slaves(slaves, expected_instances)
         current, target = self.get_spot_fleet_delta()
 
-        if self.sfr['SpotFleetRequestState'] == 'cancelled_running':
-            if self.utilization_error > 0:
-                self.log.info(
-                    "Not scaling cancelled SFR %s because we are under provisioned" % (self.resource['id']),
-                )
-                return 0, 0
-
-            if target == 1:
-                target = 0
+        if self.sfr['SpotFleetRequestState'] == 'cancelled_running' and target == 1:
+            target = 0
 
         self.emit_metrics(current, target, mesos_slave_count=len(slaves))
         return current, target
@@ -1175,6 +1177,7 @@ def autoscale_local_cluster(
         mesos_state=mesos_state,
         system_config=system_config,
     )
+    log.info("Utilization errors: %s" % utilization_errors)
     autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
