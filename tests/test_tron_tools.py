@@ -111,96 +111,6 @@ class TestTronActionConfig:
         )
         assert action_config.get_executor() == 'mesos'
 
-    def test_format_tron_action_dict_default_executor(self):
-        action_dict = {
-            'name': 'do_something',
-            'command': 'echo something',
-            'requires': ['required_action'],
-            'retries': 2,
-        }
-        branch_dict = {
-            'docker_image': 'my_service:paasta-123abcde',
-            'git_sha': 'aabbcc44',
-            'desired_state': 'start',
-            'force_bounce': None,
-        }
-        action_config = tron_tools.TronActionConfig(
-            service='my_service',
-            instance=tron_tools.compose_instance('my_job', 'do_something'),
-            config_dict=action_dict,
-            branch_dict=branch_dict,
-        )
-        result = action_config.format_tron_action_dict('{cluster:s}.com')
-        assert result == {
-            'name': 'do_something',
-            'command': 'echo something',
-            'requires': ['required_action'],
-            'retries': 2,
-            'executor': 'ssh',
-        }
-
-    def test_format_tron_action_dict_paasta(self):
-        action_dict = {
-            'name': 'do_something',
-            'command': 'echo something',
-            'requires': ['required_action'],
-            'retries': 2,
-            'cluster': 'paasta-dev',
-            'service': 'my_service',
-            'deploy_group': 'prod',
-            'executor': 'paasta',
-            'cpus': 2,
-            'mem': 1200,
-            'pool': 'special_pool',
-            'env': {'SHELL': '/bin/bash'},
-            'extra_volumes': [
-                {'containerPath': '/nail/tmp', 'hostPath': '/nail/tmp', 'mode': 'RW'},
-            ],
-        }
-        branch_dict = {
-            'docker_image': 'my_service:paasta-123abcde',
-            'git_sha': 'aabbcc44',
-            'desired_state': 'start',
-            'force_bounce': None,
-        }
-        action_config = tron_tools.TronActionConfig(
-            service='my_service',
-            instance=tron_tools.compose_instance('my_job', 'do_something'),
-            config_dict=action_dict,
-            branch_dict=branch_dict,
-        )
-
-        with mock.patch.object(
-            action_config,
-            'get_docker_registry',
-            return_value='docker-registry.com:400',
-        ):
-            result = action_config.format_tron_action_dict('{cluster:s}.com')
-
-        assert result == {
-            'name': 'do_something',
-            'command': 'echo something',
-            'requires': ['required_action'],
-            'retries': 2,
-            'mesos_address': 'paasta-dev.com',
-            'docker_image': mock.ANY,
-            'executor': 'mesos',
-            'cpus': 2,
-            'mem': 1200,
-            'env': mock.ANY,
-            'extra_volumes': [{
-                'container_path': '/nail/tmp',
-                'host_path': '/nail/tmp',
-                'mode': 'RW',
-            }],
-            'docker_parameters': mock.ANY,
-            'constraints': [['pool', 'LIKE', 'special_pool']],
-        }
-        expected_docker = '%s/%s' % ('docker-registry.com:400', branch_dict['docker_image'])
-        assert result['docker_image'] == expected_docker
-        assert result['env']['SHELL'] == '/bin/bash'
-        assert isinstance(result['docker_parameters'], list)
-
 
 class TestTronJobConfig:
 
@@ -303,8 +213,10 @@ class TestTronJobConfig:
             job_config._get_action_config(action_dict, 'some-cluster')
 
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.format_tron_action_dict', autospec=True)
     def test_format_tron_job_dict(
         self,
+        mock_format_action,
         mock_get_action_config,
     ):
         action_dict = {
@@ -325,22 +237,24 @@ class TestTronJobConfig:
         fqdn_format = 'paasta-{cluster:s}'
         default_cluster = 'paasta-dev'
 
-        result = job_config.format_tron_job_dict(fqdn_format, default_cluster)
+        result = tron_tools.format_tron_job_dict(job_config, fqdn_format, default_cluster)
 
         mock_get_action_config.assert_called_once_with(job_config, action_dict, default_cluster)
-        mock_get_action_config.return_value.format_tron_action_dict.assert_called_once_with(fqdn_format)
+        mock_format_action.assert_called_once_with(mock_get_action_config.return_value, fqdn_format)
 
         assert result == {
             'name': 'my_job',
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
             'max_runtime': '2h',
-            'actions': [mock_get_action_config.return_value.format_tron_action_dict.return_value],
+            'actions': [mock_format_action.return_value],
         }
 
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.format_tron_action_dict', autospec=True)
     def test_format_tron_job_dict_with_cleanup_action(
         self,
+        mock_format_action,
         mock_get_action_config,
     ):
         job_dict = {
@@ -360,17 +274,17 @@ class TestTronJobConfig:
         }
         job_config = tron_tools.TronJobConfig(job_dict)
 
-        result = job_config.format_tron_job_dict('paasta-{cluster:s}', 'paasta-dev')
+        result = tron_tools.format_tron_job_dict(job_config, 'paasta-{cluster:s}', 'paasta-dev')
 
         assert mock_get_action_config.call_count == 2
-        assert mock_get_action_config.return_value.format_tron_action_dict.call_count == 2
+        assert mock_format_action.call_count == 2
         assert result == {
             'name': 'my_job',
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
             'max_runtime': '2h',
-            'actions': [mock_get_action_config.return_value.format_tron_action_dict.return_value],
-            'cleanup_action': mock_get_action_config.return_value.format_tron_action_dict.return_value,
+            'actions': [mock_format_action.return_value],
+            'cleanup_action': mock_format_action.return_value,
         }
 
 
@@ -401,6 +315,96 @@ class TestTronTools:
     def test_decompose_instance_invalid(self):
         with pytest.raises(InvalidInstanceConfig):
             tron_tools.decompose_instance('job_a')
+
+    def test_format_tron_action_dict_default_executor(self):
+        action_dict = {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+        }
+        branch_dict = {
+            'docker_image': 'my_service:paasta-123abcde',
+            'git_sha': 'aabbcc44',
+            'desired_state': 'start',
+            'force_bounce': None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service='my_service',
+            instance=tron_tools.compose_instance('my_job', 'do_something'),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+        )
+        result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+        assert result == {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'executor': 'ssh',
+        }
+
+    def test_format_tron_action_dict_paasta(self):
+        action_dict = {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'cluster': 'paasta-dev',
+            'service': 'my_service',
+            'deploy_group': 'prod',
+            'executor': 'paasta',
+            'cpus': 2,
+            'mem': 1200,
+            'pool': 'special_pool',
+            'env': {'SHELL': '/bin/bash'},
+            'extra_volumes': [
+                {'containerPath': '/nail/tmp', 'hostPath': '/nail/tmp', 'mode': 'RW'},
+            ],
+        }
+        branch_dict = {
+            'docker_image': 'my_service:paasta-123abcde',
+            'git_sha': 'aabbcc44',
+            'desired_state': 'start',
+            'force_bounce': None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service='my_service',
+            instance=tron_tools.compose_instance('my_job', 'do_something'),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+        )
+
+        with mock.patch.object(
+            action_config,
+            'get_docker_registry',
+            return_value='docker-registry.com:400',
+        ):
+            result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+
+        assert result == {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'mesos_address': 'paasta-dev.com',
+            'docker_image': mock.ANY,
+            'executor': 'mesos',
+            'cpus': 2,
+            'mem': 1200,
+            'env': mock.ANY,
+            'extra_volumes': [{
+                'container_path': '/nail/tmp',
+                'host_path': '/nail/tmp',
+                'mode': 'RW',
+            }],
+            'docker_parameters': mock.ANY,
+            'constraints': [['pool', 'LIKE', 'special_pool']],
+        }
+        expected_docker = '%s/%s' % ('docker-registry.com:400', branch_dict['docker_image'])
+        assert result['docker_image'] == expected_docker
+        assert result['env']['SHELL'] == '/bin/bash'
+        assert isinstance(result['docker_parameters'], list)
 
     @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
     @mock.patch('paasta_tools.tron_tools.TronJobConfig', autospec=True)
@@ -442,7 +446,7 @@ class TestTronTools:
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.TronJobConfig.format_tron_job_dict', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.format_tron_job_dict', autospec=True)
     @mock.patch('paasta_tools.tron_tools.yaml.dump', autospec=True)
     def test_create_complete_config(
         self,

@@ -146,40 +146,6 @@ class TronActionConfig(InstanceConfig):
             constraints.extend(self.get_pool_constraints())
             return constraints
 
-    def format_tron_action_dict(self, cluster_fqdn_format):
-        executor = self.get_executor()
-        action_config = {
-            'name': self.get_action_name(),
-            'command': self.get_cmd(),
-            'executor': executor,
-            'requires': self.get_requires(),
-            'node': self.get_node(),
-            'retries': self.get_retries(),
-        }
-        if executor == 'mesos':
-            action_config['mesos_address'] = cluster_fqdn_format.format(cluster=self.get_cluster())
-            action_config['cpus'] = self.get_cpus()
-            action_config['mem'] = self.get_mem()
-            action_config['docker_image'] = self.get_docker_url()
-            action_config['env'] = self.get_env()
-            action_config['extra_volumes'] = [
-                {
-                    'container_path': v['containerPath'],
-                    'host_path': v['hostPath'],
-                    'mode': v['mode'],
-                } for v in self.get_extra_volumes()
-            ]
-            action_config['docker_parameters'] = [
-                {
-                    'key': param['key'],
-                    'value': param['value'],
-                } for param in self.format_docker_parameters()
-            ]
-            action_config['constraints'] = self.get_calculated_constraints()
-
-        # Only pass non-None values, so Tron will use defaults for others
-        return {key: val for key, val in action_config.items() if val is not None}
-
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
@@ -281,37 +247,85 @@ class TronJobConfig:
             return None
         return self._get_action_config(action_dict, default_paasta_cluster)
 
-    def format_tron_job_dict(self, cluster_fqdn_format, default_paasta_cluster):
-        action_dicts = [
-            action_config.format_tron_action_dict(cluster_fqdn_format)
-            for action_config in self.get_actions(default_paasta_cluster)
-        ]
-
-        job_config = {
-            'name': self.get_name(),
-            'node': self.get_node(),
-            'schedule': self.get_schedule(),
-            'actions': action_dicts,
-            'monitoring': self.get_monitoring(),
-            'queueing': self.get_queueing(),
-            'run_limit': self.get_run_limit(),
-            'all_nodes': self.get_all_nodes(),
-            'enabled': self.get_enabled(),
-            'allow_overlap': self.get_allow_overlap(),
-            'max_runtime': self.get_max_runtime(),
-            'time_zone': self.get_time_zone(),
-        }
-        cleanup_config = self.get_cleanup_action(default_paasta_cluster)
-        if cleanup_config:
-            job_config['cleanup_action'] = cleanup_config.format_tron_action_dict(cluster_fqdn_format)
-
-        # Only pass non-None values, so Tron will use defaults for others
-        return {key: val for key, val in job_config.items() if val is not None}
-
     def __eq__(self, other):
         if isinstance(other, type(self)):
             return self.config_dict == other.config_dict
         return False
+
+
+def format_tron_action_dict(action_config, cluster_fqdn_format):
+    """Generate a dict of tronfig for an action, from the TronActionConfig.
+
+    :param job_config: TronActionConfig
+    :param cluster_fqdn_format: format string for the Mesos masters, given the cluster
+    """
+    executor = action_config.get_executor()
+    result = {
+        'name': action_config.get_action_name(),
+        'command': action_config.get_cmd(),
+        'executor': executor,
+        'requires': action_config.get_requires(),
+        'node': action_config.get_node(),
+        'retries': action_config.get_retries(),
+    }
+    if executor == 'mesos':
+        result['mesos_address'] = cluster_fqdn_format.format(cluster=action_config.get_cluster())
+        result['cpus'] = action_config.get_cpus()
+        result['mem'] = action_config.get_mem()
+        result['docker_image'] = action_config.get_docker_url()
+        result['env'] = action_config.get_env()
+        result['extra_volumes'] = [
+            {
+                'container_path': v['containerPath'],
+                'host_path': v['hostPath'],
+                'mode': v['mode'],
+            } for v in action_config.get_extra_volumes()
+        ]
+        result['docker_parameters'] = [
+            {
+                'key': param['key'],
+                'value': param['value'],
+            } for param in action_config.format_docker_parameters()
+        ]
+        result['constraints'] = action_config.get_calculated_constraints()
+
+    # Only pass non-None values, so Tron will use defaults for others
+    return {key: val for key, val in result.items() if val is not None}
+
+
+def format_tron_job_dict(job_config, cluster_fqdn_format, default_paasta_cluster):
+    """Generate a dict of tronfig for a job, from the TronJobConfig.
+
+    :param job_config: TronJobConfig
+    :param cluster_fqdn_format: format string for the Mesos masters, given the cluster
+    :param default_paasta_cluster: str, PaaSTA cluster to use for each action that
+        does not specify a cluster
+    """
+    action_dicts = [
+        format_tron_action_dict(action_config, cluster_fqdn_format)
+        for action_config in job_config.get_actions(default_paasta_cluster)
+    ]
+
+    result = {
+        'name': job_config.get_name(),
+        'node': job_config.get_node(),
+        'schedule': job_config.get_schedule(),
+        'actions': action_dicts,
+        'monitoring': job_config.get_monitoring(),
+        'queueing': job_config.get_queueing(),
+        'run_limit': job_config.get_run_limit(),
+        'all_nodes': job_config.get_all_nodes(),
+        'enabled': job_config.get_enabled(),
+        'allow_overlap': job_config.get_allow_overlap(),
+        'max_runtime': job_config.get_max_runtime(),
+        'time_zone': job_config.get_time_zone(),
+    }
+    cleanup_config = job_config.get_cleanup_action(default_paasta_cluster)
+    if cleanup_config:
+        result['cleanup_action'] = format_tron_action_dict(cleanup_config, cluster_fqdn_format)
+
+    # Only pass non-None values, so Tron will use defaults for others
+    return {key: val for key, val in result.items() if val is not None}
 
 
 def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
@@ -341,7 +355,8 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
         soa_dir=soa_dir,
     )
     other_config['jobs'] = [
-        job_config.format_tron_job_dict(
+        format_tron_job_dict(
+            job_config=job_config,
             cluster_fqdn_format=system_paasta_config.get_cluster_fqdn_format(),
             default_paasta_cluster=tron_config.get_default_paasta_cluster(),
         ) for job_config in job_configs
