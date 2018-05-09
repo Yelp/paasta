@@ -75,6 +75,7 @@ def add_common_args_to_parser(parser):
             'If omitted, uses the default cluster defined in the paasta'
             'remote-run configs'
         ),
+        default=None,
     ).completer = lazy_choices_completer(list_clusters)
     parser.add_argument(
         '-y', '--yelpsoa-config-root',
@@ -203,7 +204,6 @@ def paasta_remote_run(args):
     args_vars = vars(args)
     args_keys = {
         'service': None,
-        'cluster': None,
         'yelpsoa_config_root': DEFAULT_SOA_DIR,
         'cmd': None,
         'verbose': False,
@@ -242,9 +242,23 @@ def paasta_remote_run(args):
             ['--constraints-json', quote(json.dumps(constraints))],
         )
 
+    if not args.cluster:
+        default_cluster = system_paasta_config.get_remote_run_config().get('default_cluster')
+        if not default_cluster and not args.cluster:
+            paasta_print(PaastaColors.red("Error: no cluster specified and no default cluster available"))
+            return 1
+        cluster = default_cluster
+    else:
+        cluster = args.cluster
+
+    cmd_parts.extend(
+        ['--cluster', quote(cluster)],
+    )
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
-        args.cluster, system_paasta_config, cmd_parts,
+        cluster=cluster,
+        system_paasta_config=system_paasta_config,
+        cmd_parts=cmd_parts,
         graceful_exit=graceful_exit,
     )
 
