@@ -1,3 +1,15 @@
+# Copyright 2015-2018 Yelp Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import os
 
 import service_configuration_lib
@@ -29,6 +41,7 @@ class InvalidTronConfig(Exception):
 
 
 class TronConfig(dict):
+    """System-level configuration for Tron."""
 
     def __init__(self, config):
         super(TronConfig, self).__init__(config)
@@ -115,6 +128,7 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get('requires')
 
     def get_calculated_constraints(self):
+        """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
         if constraints is not None:
             return constraints
@@ -168,6 +182,7 @@ class TronActionConfig(InstanceConfig):
 
 
 class TronJobConfig:
+    """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
     def __init__(self, config_dict, soa_dir=DEFAULT_SOA_DIR):
         self.config_dict = config_dict
@@ -300,6 +315,7 @@ class TronJobConfig:
 
 
 def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
+    """Load all configured jobs for a service, and any additional config values."""
     tron_conf_file = os.path.join(
         os.path.abspath(soa_dir), 'tron', tron_cluster, service + '.yaml',
     )
@@ -315,6 +331,7 @@ def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
+    """Generate a namespace configuration file for Tron, for a service."""
     system_paasta_config = load_system_paasta_config()
     tron_config = load_tron_config()
 
@@ -338,6 +355,7 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
 
 
 def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Get all the namespaces that are configured in a particular Tron cluster."""
     if not cluster:
         cluster = load_tron_config().get_cluster_name()
 
