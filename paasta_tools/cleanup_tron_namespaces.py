@@ -20,6 +20,7 @@ Gets the list of namespaces from Tron, then compares to the namespaces
 defined in SOA configs.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
+- --dry-run: Print namespaces to be deleted instead of deleting them
 """
 import argparse
 import sys
@@ -35,6 +36,10 @@ def parse_args():
         default=tron_tools.DEFAULT_SOA_DIR,
         help='Use a different soa config directory',
     )
+    parser.add_argument(
+        '--dry-run', dest='dry_run', action='store_true',
+        help='Print namespaces to be deleted, instead of deleting them',
+    )
     args = parser.parse_args()
     return args
 
@@ -49,6 +54,10 @@ def main():
 
     if not to_delete:
         paasta_print('No Tron namespaces to remove')
+        sys.exit(0)
+
+    if args.dry_run:
+        paasta_print('Dry run, would have removed namespaces:\n  ' + '\n  '.join(to_delete))
         sys.exit(0)
 
     successes = []
