@@ -1447,6 +1447,17 @@ def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'Sy
         raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
 
 
+def optionally_load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
+    """
+    Tries to load the system paasta config, but will return an empty configuration if not available,
+    without raising.
+    """
+    try:
+        return load_system_paasta_config(path=path)
+    except PaastaNotConfiguredError:
+        return SystemPaastaConfig({}, "")
+
+
 @lru_cache()
 def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]], path: str) -> 'SystemPaastaConfig':
     """Pass in a dictionary of filename -> os.stat_result, and this returns the merged parsed configs"""

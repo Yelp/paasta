@@ -16,9 +16,7 @@
 of a docker image to a cluster.instance.
 """
 import logging
-from argparse import ArgumentTypeError
 
-from paasta_tools import remote_git
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.mark_for_deployment import report_waiting_aborted
 from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
@@ -26,8 +24,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import NoSuchService
-from paasta_tools.cli.utils import short_to_full_git_sha
-from paasta_tools.cli.utils import validate_full_git_sha
+from paasta_tools.cli.utils import validate_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
@@ -136,7 +133,7 @@ def get_latest_marked_sha(git_url, deploy_group):
     return refs[last_ref] if last_ref else ''
 
 
-def validate_git_sha(git_sha, git_url, deploy_group, service):
+def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
     """Verify if git_sha is the latest sha marked for deployment.
 
     Raise exception when the provided git_sha is not the latest
@@ -197,22 +194,12 @@ def paasta_wait_for_deployment(args):
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
-    try:
-        validate_full_git_sha(args.commit)
-    except ArgumentTypeError:
-        refs = remote_git.list_remote_refs(args.git_url)
-        commits = short_to_full_git_sha(short=args.commit, refs=refs)
-        if len(commits) != 1:
-            raise ValueError(
-                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
-                (args.commit, len(commits)),
-            )
-        args.commit = commits[0]
+    args.commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
 
     try:
         validate_service_name(service, soa_dir=args.soa_dir)
         validate_deploy_group(args.deploy_group, service, args.soa_dir)
-        validate_git_sha(
+        validate_git_sha_is_latest(
             args.commit, args.git_url,
             args.deploy_group, service,
         )

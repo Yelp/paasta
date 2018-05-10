@@ -23,7 +23,7 @@ from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
-from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha
+from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha_is_latest
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.remote_git import LSRemoteException
@@ -312,11 +312,13 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.PaastaServiceConfigLoader', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha', autospec=True)
+@patch('paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha_is_latest', autospec=True)
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups', autospec=True)
 def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock_list_deploy_groups,
-    mock_validate_service_name,
+    mock_validate_git_sha_is_latest,
     mock_validate_git_sha,
+    mock_validate_service_name,
     mock_paasta_service_config_loader,
     mock_load_system_paasta_config,
     system_paasta_config,
@@ -358,7 +360,7 @@ def test_get_latest_marked_sha_bad(mock_list_remote_refs):
 def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs):
     test_error_message = 'Git error'
     mock_list_remote_refs.side_effect = LSRemoteException(test_error_message)
-    assert validate_git_sha(
+    assert validate_git_sha_is_latest(
         'fake sha', 'fake_git_url',
         'fake_group', 'fake_service',
     ) is None

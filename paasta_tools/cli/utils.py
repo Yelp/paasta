@@ -30,6 +30,7 @@ import ephemeral_port_reserve
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
 
+from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
@@ -880,6 +881,21 @@ def validate_full_git_sha(value):
             "%s is not a full git sha, and PaaSTA needs the full sha" % value,
         )
     return value
+
+
+def validate_git_sha(sha, git_url):
+    try:
+        validate_full_git_sha(sha)
+        return sha
+    except argparse.ArgumentTypeError:
+        refs = remote_git.list_remote_refs(git_url)
+        commits = short_to_full_git_sha(short=sha, refs=refs)
+        if len(commits) != 1:
+            raise ValueError(
+                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
+                (sha, len(commits)),
+            )
+        return commits[0]
 
 
 def get_subparser(subparsers, function, command, help_text, description):

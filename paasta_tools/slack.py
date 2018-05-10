@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2017 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +16,7 @@ import os
 
 from slackclient import SlackClient
 
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import optionally_load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -30,21 +29,23 @@ class PaastaSlackClient(SlackClient):
             self.sc = SlackClient(token)
         self.token = token
 
-    def post(self, channel, message):
+    def post(self, channels, message):
         if self.token is not None:
-            response = self.sc.api_call(
-                "chat.postMessage",
-                channel=channel,
-                text=message,
-            )
-            if response["ok"] is not True:
-                log.error("Posting to slack failed: {}".format(response["error"]))
+            for channel in channels:
+                log.info("Slack noification [{}]: {}".format(channel, message))
+                response = self.sc.api_call(
+                    "chat.postMessage",
+                    channel=channel,
+                    text=message,
+                )
+                if response["ok"] is not True:
+                    log.error("Posting to slack failed: {}".format(response["error"]))
         else:
-            log.info("(not sent to Slack) {}: {}".format(channel, message))
+            log.info("(not sent to Slack) {}: {}".format(channels, message))
 
 
 def get_slack_client():
     token = os.environ.get("SLACK_API_TOKEN", None)
     if token is None:
-        token = load_system_paasta_config().get_slack_token()
+        token = optionally_load_system_paasta_config().get_slack_token()
     return PaastaSlackClient(token=token)

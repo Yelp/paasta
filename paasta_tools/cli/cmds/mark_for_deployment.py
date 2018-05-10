@@ -15,11 +15,13 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+import getpass
 import logging
 import math
+import os
+import socket
 import sys
 import time
-from argparse import ArgumentTypeError
 from queue import Empty
 from queue import Queue
 from threading import Event
@@ -28,6 +30,7 @@ from threading import Thread
 import progressbar
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
+from service_configuration_lib import read_deploy
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
@@ -35,14 +38,14 @@ from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_re
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
-from paasta_tools.cli.utils import short_to_full_git_sha
-from paasta_tools.cli.utils import validate_full_git_sha
+from paasta_tools.cli.utils import validate_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
@@ -187,7 +190,6 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
                 level='event',
             )
             return 0
-
     return 1
 
 
@@ -202,6 +204,88 @@ def report_waiting_aborted(service, deploy_group):
     paasta_print()
 
 
+class SlackDeployNotifier(object):
+    def __init__(self, service, deploy_info, deploy_group, commit, old_commit):
+        self.sc = get_slack_client()
+        self.service = service
+        self.deploy_info = deploy_info
+        self.deploy_group = deploy_group
+        self.channels = deploy_info.get('slack_channels', [])
+        self.commit = commit
+        self.old_commit = old_commit
+
+    def deploy_group_is_set_to_notify(self):
+        for step in self.deploy_info.get('pipeline', []):
+            if step.get('step', '') == self.deploy_group:
+                return step.get('slack_notify', False)
+        return False
+
+    def post(self, **kwargs):
+        if self.deploy_group_is_set_to_notify():
+            self.sc.post(**kwargs)
+
+    def notify_after_mark(self, ret):
+        if ret == 0:
+            message = (
+                f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*. "
+                "Will start deploying soon!"
+            )
+            self.post(channels=self.channels, message=message)
+            if self.old_commit is not None and self.commit != self.old_commit:
+                mes = (
+                    "Roll it back at any time with:\n"
+                    f"```paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
+                    f"--commit {self.old_commit}```"
+                )
+                self.post(channels=self.channels, message=mes)
+        else:
+            message = f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit}*."
+            self.post(channels=self.channels, message=message)
+            build_url = os.environ.get('BUILD_URL')
+            if build_url is not None:
+                message = "Please see the jenkins output: {}/console".format(build_url)
+                self.post(channels=self.channels, message=message)
+            else:
+                message = "(Run by {} on {})".format(getpass.getuser(), socket.getfqdn())
+                self.post(channels=self.channels, message=message)
+
+    def notify_after_good_deploy(self):
+        message = f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*."
+        self.post(channels=self.channels, message=message)
+        if self.old_commit is not None and self.commit != self.old_commit:
+            mes = (
+                "If you need to roll back, run:\n"
+                f"```paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
+                f"--commit {self.commit}```"
+            )
+            self.post(channels=self.channels, message=mes)
+
+    def notify_after_auto_rollback(self):
+        message = (
+            "*{self.service}* - Deployment of {self.commit} for {self.deploy_group} failed!"
+            "\nAuto-rolling back to {}"
+        )
+        self.post(channels=self.channels, message=message)
+
+    def notify_after_abort(self):
+        message = (
+            f"*{self.service} - Deployment of {self.commit} to {self.deploy_group} aborted.\n"
+            "PaaSTA will keep trying to deploy this code until it is healthy."
+        )
+        self.post(channels=self.channels, message=message)
+        if self.old_commit is not None and self.commit != self.old_commit:
+            mes = (
+                "If you need to roll back, run:\n"
+                f"```paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}"
+            )
+            self.post(channels=self.channels, message=mes)
+
+
+def get_deploy_info(service, soa_dir):
+    file_path = os.path.join(soa_dir, service, 'deploy.yaml')
+    return read_deploy(file_path)
+
+
 def paasta_mark_for_deployment(args):
     """Wrapping mark_for_deployment"""
     if args.verbose:
@@ -214,11 +298,12 @@ def paasta_mark_for_deployment(args):
         service = service.split('services-', 1)[1]
     validate_service_name(service, soa_dir=args.soa_dir)
 
+    deploy_group = args.deploy_group
     in_use_deploy_groups = list_deploy_groups(
         service=service,
         soa_dir=args.soa_dir,
     )
-    _, invalid_deploy_groups = validate_given_deploy_groups(in_use_deploy_groups, [args.deploy_group])
+    _, invalid_deploy_groups = validate_given_deploy_groups(in_use_deploy_groups, [deploy_group])
 
     if len(invalid_deploy_groups) == 1:
         paasta_print(PaastaColors.red(
@@ -235,77 +320,79 @@ def paasta_mark_for_deployment(args):
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
-    try:
-        validate_full_git_sha(args.commit)
-    except ArgumentTypeError:
-        refs = remote_git.list_remote_refs(args.git_url)
-        commits = short_to_full_git_sha(short=args.commit, refs=refs)
-        if len(commits) != 1:
-            raise ValueError(
-                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
-                (args.commit, len(commits)),
-            )
-        args.commit = commits[0]
+    commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
 
-    old_git_sha = get_currently_deployed_sha(service=service, deploy_group=args.deploy_group)
-    if old_git_sha == args.commit:
+    old_git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group)
+    if old_git_sha == commit:
         paasta_print("Warning: The sha asked to be deployed already matches what is set to be deployed:")
         paasta_print(old_git_sha)
         paasta_print("Continuing anyway.")
 
     if args.verify_image:
-        if not is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
-            raise ValueError('Failed to find image in the registry for the following sha %s' % args.commit)
+        if not is_docker_image_already_in_registry(service, args.soa_dir, commit):
+            raise ValueError('Failed to find image in the registry for the following sha %s' % commit)
+
+    deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
+    slack_notifier = SlackDeployNotifier(
+        deploy_info=deploy_info, service=service,
+        deploy_group=deploy_group, commit=commit, old_commit=old_git_sha,
+    )
 
     ret = mark_for_deployment(
         git_url=args.git_url,
-        deploy_group=args.deploy_group,
+        deploy_group=deploy_group,
         service=service,
-        commit=args.commit,
+        commit=commit,
     )
+    slack_notifier.notify_after_mark(ret=ret)
+
     if args.block and ret == 0:
         try:
             wait_for_deployment(
                 service=service,
-                deploy_group=args.deploy_group,
-                git_sha=args.commit,
+                deploy_group=deploy_group,
+                git_sha=commit,
                 soa_dir=args.soa_dir,
                 timeout=args.timeout,
             )
-            line = "Deployment of {} for {} complete".format(args.commit, args.deploy_group)
+            line = "Deployment of {} for {} complete".format(commit, deploy_group)
             _log(
                 service=service,
                 component='deploy',
                 line=line,
                 level='event',
             )
+            slack_notifier.notify_after_good_deploy()
         except (KeyboardInterrupt, TimeoutError):
             if args.auto_rollback is True:
-                if old_git_sha == args.commit:
+                if old_git_sha == commit:
                     paasta_print("Error: --auto-rollback was requested, but the previous sha")
                     paasta_print("is the same that was requested with --commit. Can't rollback")
                     paasta_print("automatically.")
                 else:
                     paasta_print("Auto-Rollback requested. Marking the previous sha")
-                    paasta_print("(%s) for %s as desired." % (args.deploy_group, old_git_sha))
+                    paasta_print("(%s) for %s as desired." % (deploy_group, old_git_sha))
                     mark_for_deployment(
                         git_url=args.git_url,
-                        deploy_group=args.deploy_group,
+                        deploy_group=deploy_group,
                         service=service,
                         commit=old_git_sha,
                     )
+                    slack_notifier.notify_after_auto_rollback()
             else:
-                report_waiting_aborted(service, args.deploy_group)
+                report_waiting_aborted(service, deploy_group)
+                slack_notifier.notify_after_abort()
             ret = 1
         except NoSuchCluster:
-            report_waiting_aborted(service, args.deploy_group)
-    if old_git_sha is not None and old_git_sha != args.commit and not args.auto_rollback:
+            report_waiting_aborted(service, deploy_group)
+            slack_notifier.notify_after_abort()
+    if old_git_sha is not None and old_git_sha != commit and not args.auto_rollback:
         paasta_print()
         paasta_print("If you wish to roll back, you can run:")
         paasta_print()
         paasta_print(
             PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
-                service, args.deploy_group, old_git_sha,
+                service, deploy_group, old_git_sha,
             )),
         )
     return ret
