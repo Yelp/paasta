@@ -29,12 +29,10 @@ opt/venvs/paasta-tools/bin/paasta_chronos_rerun usr/bin/paasta_chronos_rerun
 opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/paasta_cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
-opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/cleanup_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/paasta_cleanup_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_cluster_boost.py usr/bin/paasta_cluster_boost
 opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/deploy_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/paasta_deploy_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/deploy_tron_jobs
 opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/paasta_deploy_tron_jobs
 opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd
 opt/venvs/paasta-tools/bin/paasta_docker_wrapper usr/bin/paasta_docker_wrapper
@@ -43,7 +41,6 @@ opt/venvs/paasta-tools/bin/paasta_firewall_logging usr/bin/paasta_firewall_loggi
 opt/venvs/paasta-tools/bin/paasta_firewall_update usr/bin/paasta_firewall_update
 opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/list_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/paasta_list_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_list_tron_namespaces usr/bin/list_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_list_tron_namespaces usr/bin/paasta_list_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_maintenance.py usr/bin/paasta_maintenance
 opt/venvs/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus
@@ -53,7 +50,6 @@ opt/venvs/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
 opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/paasta_setup_chronos_job
 opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/setup_chronos_job
 opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron_namespace
-opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/setup_tron_namespace
 opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh etc/bash_completion.d/paasta.bash
 opt/venvs/paasta-tools/bin/paasta usr/bin/paasta
 opt/venvs/paasta-tools/bin/setup_marathon_job.py usr/bin/setup_marathon_job

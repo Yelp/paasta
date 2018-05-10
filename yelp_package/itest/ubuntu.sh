@@ -21,16 +21,16 @@ check_marathon_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
 cleanup_marathon_jobs
-cleanup_tron_namespaces
+paasta_cleanup_tron_namespaces
 deploy_chronos_jobs
 deploy_marathon_services
-deploy_tron_jobs
+paasta_deploy_tron_jobs
 generate_deployments_for_service
 generate_services_file
 generate_services_yaml
 list_chronos_jobs
 list_marathon_service_instances
-list_tron_namespaces
+paasta_list_tron_namespaces
 paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
@@ -38,7 +38,7 @@ paasta_serviceinit
 setup_chronos_job
 chronos_rerun
 setup_marathon_job
-setup_tron_namespace
+paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
 
 MARATHON_SERVICES="fake_service_uno.main
