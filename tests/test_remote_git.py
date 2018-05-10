@@ -115,3 +115,24 @@ def test_create_remote_refs_allows_force_and_uses_the_provided_mutator(mock_dulw
     fake_git_client.send_pack.assert_called_once_with(
         'fake_path', mock.sentinel.ref_mutator, mock.ANY,
     )
+
+
+@mock.patch('paasta_tools.remote_git._run', autospec=True)
+def test_get_authors_fails_with_bad_url(mock_run):
+    expected = 1, mock.ANY
+    assert expected == remote_git.get_authors('bad', 'a', 'b')
+
+
+@mock.patch('paasta_tools.remote_git._run', autospec=True)
+def test_get_authors_fails_with_unknown(mock_run):
+    url = 'git@bitbucket.org:something.git'
+    expected = 1, mock.ANY
+    assert expected == remote_git.get_authors(url, 'a', 'b')
+
+
+@mock.patch('paasta_tools.remote_git._run', autospec=True)
+def test_get_authors_works_with_good_url(mock_run):
+    mock_run.return_value = (0, 'it worked')
+    expected = mock_run.return_value
+    assert expected == remote_git.get_authors('git@git.yelpcorp.com:yelp-main', 'a', 'b')
+    mock_run.assert_called_once_with(command='ssh git@git.yelpcorp.com yelp-main a b', timeout=5.0)

@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+
 import dulwich.client
 import dulwich.errors
 
+from paasta_tools.utils import _run
 from paasta_tools.utils import timeout
 
 
@@ -88,3 +91,27 @@ def list_remote_refs(git_url):
         return {k.decode('UTF-8'): v.decode('UTF-8') for k, v in refs.items()}
     except dulwich.errors.HangupException as e:
         raise LSRemoteException("Unable to fetch remote refs from %s: %s" % (git_url, e))
+
+
+def get_authors(git_url, from_sha, to_sha):
+    """ Gets the list of authors who contributed to a git changeset.
+    Currently only supports fetching this in a very "yelpy" way by
+    executing a gitolite command """
+    matches = re.match("(?P<git_server>.*):(?P<git_repo>.*)", git_url)
+    if matches is None:
+        return (1, f"could not understand the git url {git_url} for authors detection")
+    git_server = matches.group("git_server")
+    git_repo = matches.group("git_repo")
+    if git_server is None:
+        return 1, f"could not understand the git server in {git_url} for authors detection"
+    if git_repo is None:
+        return 1, f"could not understand the git repo in {git_url} for authors detection"
+
+    if "yelpcorp.com" in git_server:
+        ssh_command = f"ssh {git_server} {git_repo} {from_sha} {to_sha}"
+        return _run(
+            command=ssh_command,
+            timeout=5.0,
+        )
+    else:
+        return 1, f"Fetching authors not supported for {git_server}"
