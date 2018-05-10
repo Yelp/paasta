@@ -161,11 +161,14 @@ def paasta_to_task_config_kwargs(
     service,
     instance,
     native_job_config,
+    offer_timeout,
     system_paasta_config,
     config_overrides=None,
+    docker_image=None,
 ):
 
-    image = native_job_config.get_docker_url()
+    if docker_image is None:
+        docker_image = native_job_config.get_docker_url()
     docker_parameters = [
         {'key': param['key'], 'value': param['value']}
         for param in native_job_config.format_docker_parameters()
@@ -191,7 +194,7 @@ def paasta_to_task_config_kwargs(
     gpus = native_job_config.get_gpus()
 
     kwargs = {
-        'image': str(image),
+        'image': str(docker_image),
         'cpus': cpus,
         'mem': float(mem),
         'disk': float(disk),
@@ -203,6 +206,7 @@ def paasta_to_task_config_kwargs(
         'docker_parameters': docker_parameters,
         'containerizer': 'DOCKER',
         'environment': native_job_config.get_env_dictionary(),
+        'offer_timeout': offer_timeout,
     }
     if cmd:
         kwargs['cmd'] = cmd
@@ -218,7 +222,7 @@ def paasta_to_task_config_kwargs(
     kwargs['name'] = str(compose_job_id(
         service,
         instance,
-        git_hash=get_code_sha_from_dockerurl(image),
+        git_hash=get_code_sha_from_dockerurl(docker_image),
         config_hash=config_hash,
         spacer=MESOS_TASK_SPACER,
     ))
@@ -365,6 +369,8 @@ def remote_run_start(args):
                 system_paasta_config=system_paasta_config,
                 native_job_config=native_job_config,
                 config_overrides=overrides_dict,
+                docker_image=args.docker_image,
+                offer_timeout=args.staging_timeout,
             ),
         )
     except InvariantException as e:
@@ -405,7 +411,8 @@ def remote_run_start(args):
         paasta_print(
             PaastaColors.red("Signal received, shutting down scheduler."),
         )
-        runner.stop()
+        if runner is not None:
+            runner.stop()
         if _signum == signal.SIGTERM:
             sys.exit(143)
         else:

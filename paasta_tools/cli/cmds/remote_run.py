@@ -61,6 +61,12 @@ def add_start_args_to_parser(parser):
         default=None,
         type=int,
     )
+    parser.add_argument(
+        '--docker-image',
+        help='Docker image to use. Defaults to using the deployed docker image',
+        required=False,
+        default=None,
+    )
 
 
 def add_common_args_to_parser(parser):
@@ -215,6 +221,7 @@ def paasta_remote_run(args):
         'framework_id': None,
         'instances': None,
         'instance': None,
+        'docker_image': None,
     }
 
     # copy relevant arguments into cmd_parts
