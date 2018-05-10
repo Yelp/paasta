@@ -13,6 +13,7 @@ from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.marathon_tools import MarathonClients
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -263,6 +264,19 @@ def test_get_service_instances_needing_update():
 
         mock_configs = [
             mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError)),
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c138.c2.g2',
+                'instances': 2,
+            })),
+        ]
+        mock_load_marathon_service_config.side_effect = mock_configs
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
+        assert ret == [('universe', 'c138')]
+
+        mock_configs = [
+            mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoSlavesAvailableError)),
             mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
                 'id': 'universe.c138.c2.g2',
                 'instances': 2,
