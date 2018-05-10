@@ -22,7 +22,6 @@ import os
 import socket
 import sys
 import time
-from argparse import ArgumentTypeError
 from queue import Empty
 from queue import Queue
 from threading import Event
@@ -39,8 +38,7 @@ from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_re
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
-from paasta_tools.cli.utils import short_to_full_git_sha
-from paasta_tools.cli.utils import validate_full_git_sha
+from paasta_tools.cli.utils import validate_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
@@ -283,21 +281,6 @@ class SlackDeployNotifier(object):
             self.post(channels=self.channels, message=mes)
 
 
-def validate_commit(commit, git_url):
-    try:
-        validate_full_git_sha(commit)
-    except ArgumentTypeError:
-        refs = remote_git.list_remote_refs(git_url)
-        commits = short_to_full_git_sha(short=commit, refs=refs)
-        if len(commits) != 1:
-            raise ValueError(
-                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
-                (commit, len(commits)),
-            )
-        commit = commits[0]
-    return commit
-
-
 def get_deploy_info(service, soa_dir):
     file_path = os.path.join(soa_dir, service, 'deploy.yaml')
     return read_deploy(file_path)
@@ -337,7 +320,7 @@ def paasta_mark_for_deployment(args):
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
-    commit = validate_commit(args.commit, args.git_url)
+    commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
 
     old_git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group)
     if old_git_sha == commit:
