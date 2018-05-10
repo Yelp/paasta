@@ -1,3 +1,11 @@
+paasta-tools (0.70.11) xenial; urgency=medium
+
+  * 0.70.11 tagged with 'make release'
+    Commit: Merge pull request #1821 from Yelp/native_slack_mark  First
+    pass at native mark-for-deployment slack notifications
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 10 May 2018 14:03:06 -0700
+
 paasta-tools (0.70.10) xenial; urgency=medium
 
   * 0.70.10 tagged with 'make release'
