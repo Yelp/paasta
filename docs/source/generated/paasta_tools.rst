@@ -36,6 +36,7 @@ Submodules
    paasta_tools.cleanup_chronos_jobs
    paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
+   paasta_tools.cleanup_tron_namespaces
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
    paasta_tools.drain_lib
@@ -50,6 +51,7 @@ Submodules
    paasta_tools.iptables
    paasta_tools.list_chronos_jobs
    paasta_tools.list_marathon_service_instances
+   paasta_tools.list_tron_namespaces
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
    paasta_tools.marathon_dashboard
@@ -72,9 +74,11 @@ Submodules
    paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
    paasta_tools.setup_marathon_job
+   paasta_tools.setup_tron_namespace
    paasta_tools.slack
    paasta_tools.smartstack_tools
    paasta_tools.synapse_srv_namespaces_fact
+   paasta_tools.tron_tools
    paasta_tools.utils
 
 Module contents

@@ -1,3 +1,11 @@
+paasta-tools (0.71.0) xenial; urgency=medium
+
+  * 0.71.0 tagged with 'make release'
+    Commit: Merge pull request #1812 from Yelp/tron_tools  Deploy
+    scripts for Tron configs
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 11 May 2018 10:24:54 -0700
+
 paasta-tools (0.70.11) xenial; urgency=medium
 
   * 0.70.11 tagged with 'make release'
