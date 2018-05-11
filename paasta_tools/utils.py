@@ -1424,6 +1424,7 @@ SystemPaastaConfigDict = TypedDict(
         'secret_provider': str,
         'slack': Dict[str, str],
         'maintenance_resource_reservation_enabled': bool,
+        'tron': Dict,
     },
     total=False,
 )
@@ -1823,6 +1824,9 @@ class SystemPaastaConfig(object):
         """ Get a slack token for slack notifications. Returns None if there is
         none available """
         return self.config_dict.get('slack', {}).get('token', None)
+
+    def get_tron_config(self) -> dict:
+        return self.config_dict.get('tron', {})
 
 
 def _run(
