@@ -205,14 +205,37 @@ def report_waiting_aborted(service, deploy_group):
 
 
 class SlackDeployNotifier(object):
-    def __init__(self, service, deploy_info, deploy_group, commit, old_commit):
+    def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url):
         self.sc = get_slack_client()
         self.service = service
         self.deploy_info = deploy_info
         self.deploy_group = deploy_group
         self.channels = deploy_info.get('slack_channels', [])
         self.commit = commit
-        self.old_commit = old_commit
+        self.old_commit = self.lookup_production_deploy_group_sha() or old_commit
+        self.git_url = git_url
+        self.authors = self.get_authors_to_be_notified()
+
+    def lookup_production_deploy_group_sha(self):
+        prod_deploy_group = self.deploy_info.get('production_deploy_group', None)
+        if prod_deploy_group is None:
+            return None
+        else:
+            return get_currently_deployed_sha(service=self.service, deploy_group=prod_deploy_group)
+
+    def get_authors_to_be_notified(self):
+        ret, authors = remote_git.get_authors(
+            git_url=self.git_url, from_sha=self.old_commit, to_sha=self.commit,
+        )
+        if ret == 0:
+            if authors == "":
+                return ""
+            else:
+                slacky_authors = ", ".join([f"<@{a}>" for a in authors.split()])
+                log.debug(f"Pinging authors: {slacky_authors}")
+                return f"Pinging authors: {slacky_authors}"
+        else:
+            return f"(Could not get authors: {authors})"
 
     def deploy_group_is_set_to_notify(self):
         for step in self.deploy_info.get('pipeline', []):
@@ -223,19 +246,22 @@ class SlackDeployNotifier(object):
     def post(self, **kwargs):
         if self.deploy_group_is_set_to_notify():
             self.sc.post(**kwargs)
+        else:
+            log.debug(f"{self.deploy_group} isn't set to notify slack")
 
     def notify_after_mark(self, ret):
         if ret == 0:
-            message = (
-                f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*. "
-                "Will start deploying soon!"
+            mes = (
+                f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*.\n"
+                "Will start deploying soon!\n"
+                f"{self.authors}"
             )
-            self.post(channels=self.channels, message=message)
+            self.post(channels=self.channels, message=mes)
             if self.old_commit is not None and self.commit != self.old_commit:
                 mes = (
                     "Roll it back at any time with:\n"
-                    f"```paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                    f"--commit {self.old_commit}```"
+                    f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
+                    f"--commit {self.old_commit}`"
                 )
                 self.post(channels=self.channels, message=mes)
         else:
@@ -250,33 +276,36 @@ class SlackDeployNotifier(object):
                 self.post(channels=self.channels, message=message)
 
     def notify_after_good_deploy(self):
-        message = f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*."
+        message = (
+            f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
+            f"{self.authors}"
+        )
         self.post(channels=self.channels, message=message)
         if self.old_commit is not None and self.commit != self.old_commit:
             mes = (
                 "If you need to roll back, run:\n"
-                f"```paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                f"--commit {self.commit}```"
+                f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
+                f"--commit {self.old_commit}`"
             )
             self.post(channels=self.channels, message=mes)
 
     def notify_after_auto_rollback(self):
         message = (
-            "*{self.service}* - Deployment of {self.commit} for {self.deploy_group} failed!"
-            "\nAuto-rolling back to {}"
+            f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
+            f"Auto-rolling back to {self.old_commit}"
         )
         self.post(channels=self.channels, message=message)
 
     def notify_after_abort(self):
         message = (
-            f"*{self.service} - Deployment of {self.commit} to {self.deploy_group} aborted.\n"
+            f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*.\n"
             "PaaSTA will keep trying to deploy this code until it is healthy."
         )
         self.post(channels=self.channels, message=message)
         if self.old_commit is not None and self.commit != self.old_commit:
             mes = (
                 "If you need to roll back, run:\n"
-                f"```paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}"
+                f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"
             )
             self.post(channels=self.channels, message=mes)
 
@@ -335,7 +364,7 @@ def paasta_mark_for_deployment(args):
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
     slack_notifier = SlackDeployNotifier(
         deploy_info=deploy_info, service=service,
-        deploy_group=deploy_group, commit=commit, old_commit=old_git_sha,
+        deploy_group=deploy_group, commit=commit, old_commit=old_git_sha, git_url=args.git_url,
     )
 
     ret = mark_for_deployment(

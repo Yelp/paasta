@@ -184,9 +184,11 @@ def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
-def test_slack_deploy_notifier(mock_client):
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
+def test_slack_deploy_notifier(mock_get_authors, mock_client):
     fake_psc = mock.create_autospec(PaastaSlackClient)
     mock_client.return_value = fake_psc
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
     sdn = mark_for_deployment.SlackDeployNotifier(
         service='testservice',
         deploy_info={
@@ -198,6 +200,7 @@ def test_slack_deploy_notifier(mock_client):
         deploy_group='test_deploy_group',
         commit='newcommit',
         old_commit='oldcommit',
+        git_url="foo",
     )
     assert sdn.notify_after_mark(ret=1) is None
     assert sdn.notify_after_mark(ret=0) is None
@@ -205,12 +208,15 @@ def test_slack_deploy_notifier(mock_client):
     assert sdn.notify_after_auto_rollback() is None
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count >= 0
+    assert sdn.get_authors_to_be_notified() == "Pinging authors: <@fakeuser1>, <@fakeuser2>"
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
-def test_slack_deploy_notifier_on_non_notify_groups(mock_client):
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
+def test_slack_deploy_notifier_on_non_notify_groups(mock_get_authors, mock_client):
     fake_psc = mock.create_autospec(PaastaSlackClient)
     mock_client.return_value = fake_psc
+    mock_get_authors.return_value = 1, "fakeuser1 fakeuser2"
     sdn = mark_for_deployment.SlackDeployNotifier(
         service='testservice',
         deploy_info={
@@ -222,6 +228,7 @@ def test_slack_deploy_notifier_on_non_notify_groups(mock_client):
         deploy_group='test_deploy_group',
         commit='newcommit',
         old_commit='oldcommit',
+        git_url="foo",
     )
     assert sdn.notify_after_mark(ret=1) is None
     assert sdn.notify_after_mark(ret=0) is None
