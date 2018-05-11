@@ -1871,7 +1871,7 @@ def _run(
 
         if stdin_interrupt:
             def signal_handler(signum: int, frame: FrameType) -> None:
-                process.stdin.write("\n")
+                process.stdin.write("\n".encode('utf-8'))
                 process.stdin.flush()
                 process.wait()
             signal.signal(signal.SIGINT, signal_handler)
