@@ -81,7 +81,13 @@ class TronClient:
         :param skip_if_unchanged: boolean. If False, will send the update
             even if the current config matches the new config.
         """
-        current_config = self._get('/api/config', {'name': namespace})
+        current_config = self._get(
+            '/api/config',
+            {
+                'name': namespace,
+                'no_header': 1,
+            },
+        )
         if skip_if_unchanged and new_config == current_config['config']:
             log.info('No change in config, skipping update.')
             return

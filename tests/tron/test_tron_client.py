@@ -70,7 +70,7 @@ class TestTronClient:
         assert mock_requests.get.call_count == 1
         _, kwargs = mock_requests.get.call_args
         assert kwargs['url'] == self.tron_url + '/api/config'
-        assert kwargs['params'] == {'name': 'some_service'}
+        assert kwargs['params'] == {'name': 'some_service', 'no_header': 1}
 
         assert mock_requests.post.call_count == 1
         _, kwargs = mock_requests.post.call_args
