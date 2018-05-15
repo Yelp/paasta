@@ -17,8 +17,8 @@ import logging
 import sys
 
 from paasta_tools.autoscaling import cluster_boost
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 log = logging.getLogger(__name__)
 

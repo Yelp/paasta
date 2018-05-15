@@ -26,9 +26,9 @@ from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos_tools import get_mesos_master
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):

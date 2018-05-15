@@ -18,8 +18,8 @@ from behave import then
 from behave import when
 from path import Path
 
-from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 
 
 @given('a simple service to test')

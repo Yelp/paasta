@@ -18,9 +18,9 @@ from behave import when
 from itest_utils import get_service_connection_string
 from itest_utils import update_context_marathon_config
 
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import paasta_print
 
 
 @when('we delete a marathon app called "{job_id}" from "{cluster_name}" soa configs')

@@ -31,12 +31,12 @@ from paasta_tools import paasta_native_serviceinit
 from paasta_tools import paasta_remote_run
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)

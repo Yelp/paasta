@@ -38,9 +38,11 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
+from paasta_tools.run import _run
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
-from paasta_tools.utils import _run
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_username
@@ -49,8 +51,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timed_flock

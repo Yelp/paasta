@@ -37,14 +37,14 @@ from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):

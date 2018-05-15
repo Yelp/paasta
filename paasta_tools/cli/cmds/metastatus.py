@@ -14,11 +14,11 @@
 # limitations under the License.
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):

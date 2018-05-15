@@ -40,11 +40,11 @@ import pysensu_yelp
 
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.log_utils import _log
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import SmartstackReplicationChecker
-from paasta_tools.utils import _log
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated

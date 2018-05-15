@@ -30,7 +30,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import undrain
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def before_all(context):

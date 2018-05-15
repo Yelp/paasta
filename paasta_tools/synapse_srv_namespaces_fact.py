@@ -26,7 +26,7 @@ This is nice to use as a facter fact for Synapse stuff!
 import sys
 
 from paasta_tools import marathon_tools
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def main():

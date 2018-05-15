@@ -26,25 +26,19 @@ import os
 import pwd
 import queue
 import re
-import shlex
 import signal
 import sys
 import tempfile
 import threading
 import time
-from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import lru_cache
 from functools import wraps
-from subprocess import PIPE
-from subprocess import Popen
-from subprocess import STDOUT
 from types import FrameType
 from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Collection
-from typing import ContextManager
 from typing import Dict
 from typing import FrozenSet
 from typing import IO
@@ -56,11 +50,9 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
-from typing import Type
 from typing import TypeVar
 from typing import Union
 
-import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
@@ -87,11 +79,6 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'performance-check',
     'push-to-registry',
 )
-# Default values for _log
-ANY_CLUSTER = 'N/A'
-ANY_INSTANCE = 'N/A'
-DEFAULT_LOGLEVEL = 'event'
-no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
@@ -759,216 +746,6 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
         )
 
 
-_ComposeRetT = TypeVar('_ComposeRetT')
-_ComposeInnerRetT = TypeVar('_ComposeInnerRetT')
-
-
-def compose(
-    func_one: Callable[[_ComposeInnerRetT], _ComposeRetT],
-    func_two: Callable[..., _ComposeInnerRetT],
-) -> Callable[..., _ComposeRetT]:
-    def composed(*args: Any, **kwargs: Any) -> _ComposeRetT:
-        return func_one(func_two(*args, **kwargs))
-    return composed
-
-
-class PaastaColors:
-
-    """Collection of static variables and methods to assist in coloring text."""
-    # ANSI colour codes
-    BLUE = '\033[34m'
-    BOLD = '\033[1m'
-    CYAN = '\033[36m'
-    DEFAULT = '\033[0m'
-    GREEN = '\033[32m'
-    GREY = '\033[38;5;242m'
-    MAGENTA = '\033[35m'
-    RED = '\033[31m'
-    YELLOW = '\033[33m'
-
-    @staticmethod
-    def bold(text: str) -> str:
-        """Return bolded text.
-
-        :param text: a string
-        :return: text colour coded with ANSI bold
-        """
-        return PaastaColors.color_text(PaastaColors.BOLD, text)
-
-    @staticmethod
-    def blue(text: str) -> str:
-        """Return text that can be printed blue.
-
-        :param text: a string
-        :return: text colour coded with ANSI blue
-        """
-        return PaastaColors.color_text(PaastaColors.BLUE, text)
-
-    @staticmethod
-    def green(text: str) -> str:
-        """Return text that can be printed green.
-
-        :param text: a string
-        :return: text colour coded with ANSI green"""
-        return PaastaColors.color_text(PaastaColors.GREEN, text)
-
-    @staticmethod
-    def red(text: str) -> str:
-        """Return text that can be printed red.
-
-        :param text: a string
-        :return: text colour coded with ANSI red"""
-        return PaastaColors.color_text(PaastaColors.RED, text)
-
-    @staticmethod
-    def magenta(text: str) -> str:
-        """Return text that can be printed magenta.
-
-        :param text: a string
-        :return: text colour coded with ANSI magenta"""
-        return PaastaColors.color_text(PaastaColors.MAGENTA, text)
-
-    @staticmethod
-    def color_text(color: str, text: str) -> str:
-        """Return text that can be printed color.
-
-        :param color: ANSI colour code
-        :param text: a string
-        :return: a string with ANSI colour encoding"""
-        # any time text returns to default, we want to insert our color.
-        replaced = text.replace(PaastaColors.DEFAULT, PaastaColors.DEFAULT + color)
-        # then wrap the beginning and end in our color/default.
-        return color + replaced + PaastaColors.DEFAULT
-
-    @staticmethod
-    def cyan(text: str) -> str:
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI cyan"""
-        return PaastaColors.color_text(PaastaColors.CYAN, text)
-
-    @staticmethod
-    def yellow(text: str) -> str:
-        """Return text that can be printed yellow.
-
-        :param text: a string
-        :return: text colour coded with ANSI yellow"""
-        return PaastaColors.color_text(PaastaColors.YELLOW, text)
-
-    @staticmethod
-    def grey(text: str) -> str:
-        return PaastaColors.color_text(PaastaColors.GREY, text)
-
-    @staticmethod
-    def default(text: str) -> str:
-        return PaastaColors.color_text(PaastaColors.DEFAULT, text)
-
-
-LOG_COMPONENTS = OrderedDict([
-    (
-        'build', {
-            'color': PaastaColors.blue,
-            'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
-            'source_env': 'devc',
-        },
-    ),
-    (
-        'deploy', {
-            'color': PaastaColors.cyan,
-            'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
-            'additional_source_envs': ['devc'],
-        },
-    ),
-    (
-        'monitoring', {
-            'color': PaastaColors.green,
-            'help': 'Logs from Sensu checks for the service',
-        },
-    ),
-    (
-        'marathon', {
-            'color': PaastaColors.magenta,
-            'help': 'Logs from Marathon for the service',
-        },
-    ),
-    (
-        'chronos', {
-            'color': PaastaColors.red,
-            'help': 'Logs from Chronos for the service',
-        },
-    ),
-    (
-        'app_output', {
-            'color': compose(PaastaColors.yellow, PaastaColors.bold),
-            'help': 'Stderr and stdout of the actual process spawned by Mesos. '
-                    'Convenience alias for both the stdout and stderr components',
-        },
-    ),
-    (
-        'stdout', {
-            'color': PaastaColors.yellow,
-            'help': 'Stdout from the process spawned by Mesos.',
-        },
-    ),
-    (
-        'stderr', {
-            'color': PaastaColors.yellow,
-            'help': 'Stderr from the process spawned by Mesos.',
-        },
-    ),
-    (
-        'security', {
-            'color': PaastaColors.red,
-            'help': 'Logs from security-related services such as firewall monitoring',
-        },
-    ),
-    (
-        'oom', {
-            'color': PaastaColors.red,
-            'help': 'Kernel OOM events.',
-        },
-    ),
-    # I'm leaving these planned components here since they provide some hints
-    # about where we want to go. See PAASTA-78.
-    #
-    # But I'm commenting them out so they don't delude users into believing we
-    # can expose logs that we cannot actually expose. See PAASTA-927.
-    #
-    # ('app_request', {
-    #     'color': PaastaColors.bold,
-    #     'help': 'The request log for the service. Defaults to "service_NAME_requests"',
-    #     'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
-    # }),
-    # ('app_errors', {
-    #     'color': PaastaColors.red,
-    #     'help': 'Application error log, defaults to "stream_service_NAME_errors"',
-    #     'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
-    # }),
-    # ('lb_requests', {
-    #     'color': PaastaColors.bold,
-    #     'help': 'All requests from Smartstack haproxy',
-    #     'command': 'NA - TODO: SRV-1130',
-    # }),
-    # ('lb_errors', {
-    #     'color': PaastaColors.red,
-    #     'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
-    #     'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
-    # }),
-])
-
-
-class NoSuchLogComponent(Exception):
-    pass
-
-
-def validate_log_component(component: str) -> bool:
-    if component in LOG_COMPONENTS.keys():
-        return True
-    else:
-        raise NoSuchLogComponent
-
-
 def get_git_url(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> str:
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
@@ -999,10 +776,6 @@ def get_service_docker_registry(
         return system_config.get_system_docker_registry()
 
 
-class NoSuchLogLevel(Exception):
-    pass
-
-
 LogWriterConfig = TypedDict(
     'LogWriterConfig',
     {
@@ -1020,245 +793,7 @@ LogReaderConfig = TypedDict(
 )
 
 
-# The active log writer.
-_log_writer = None
-# The map of name -> LogWriter subclasses, used by configure_log.
-_log_writer_classes = {}
-
-
-class LogWriter(object):
-    def __init__(self, **kwargs: Any) -> None:
-        pass
-
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
-    ) -> None:
-        raise NotImplementedError()
-
-
-_LogWriterTypeT = TypeVar('_LogWriterTypeT', bound=Type[LogWriter])
-
-
-def register_log_writer(name: str) -> Callable[[_LogWriterTypeT], _LogWriterTypeT]:
-    """Returns a decorator that registers that log writer class at a given name
-    so get_log_writer_class can find it."""
-    def outer(log_writer_class: _LogWriterTypeT) -> _LogWriterTypeT:
-        _log_writer_classes[name] = log_writer_class
-        return log_writer_class
-    return outer
-
-
-def get_log_writer_class(name: str) -> Type[LogWriter]:
-    return _log_writer_classes[name]
-
-
-def list_log_writers() -> Iterable[str]:
-    return _log_writer_classes.keys()
-
-
-def configure_log() -> None:
-    """We will log to the yocalhost binded scribe."""
-    log_writer_config = load_system_paasta_config().get_log_writer()
-    global _log_writer
-    LogWriterClass = get_log_writer_class(log_writer_config['driver'])
-    _log_writer = LogWriterClass(**log_writer_config.get('options', {}))
-
-
-def _log(
-    service: str,
-    line: str,
-    component: str,
-    level: str=DEFAULT_LOGLEVEL,
-    cluster: str=ANY_CLUSTER,
-    instance: str=ANY_INSTANCE,
-) -> None:
-    if _log_writer is None:
-        configure_log()
-    return _log_writer.log(
-        service=service,
-        line=line,
-        component=component,
-        level=level,
-        cluster=cluster,
-        instance=instance,
-    )
-
-
-def _now() -> str:
-    return datetime.datetime.utcnow().isoformat()
-
-
-def remove_ansi_escape_sequences(line: str) -> str:
-    """Removes ansi escape sequences from the given line."""
-    return no_escape.sub('', line)
-
-
-def format_log_line(
-    level: str,
-    cluster: str,
-    service: str,
-    instance: str,
-    component: str,
-    line: str,
-    timestamp: str=None,
-) -> str:
-    """Accepts a string 'line'.
-
-    Returns an appropriately-formatted dictionary which can be serialized to
-    JSON for logging and which contains 'line'.
-    """
-    validate_log_component(component)
-    if not timestamp:
-        timestamp = _now()
-    line = remove_ansi_escape_sequences(line)
-    message = json.dumps(
-        {
-            'timestamp': timestamp,
-            'level': level,
-            'cluster': cluster,
-            'service': service,
-            'instance': instance,
-            'component': component,
-            'message': line,
-        }, sort_keys=True,
-    )
-    return message
-
-
-def get_log_name_for_service(service: str, prefix: str=None) -> str:
-    if prefix:
-        return 'stream_paasta_%s_%s' % (prefix, service)
-    return 'stream_paasta_%s' % service
-
-
-@register_log_writer('scribe')
-class ScribeLogWriter(LogWriter):
-    def __init__(
-        self,
-        scribe_host: str='169.254.255.254',
-        scribe_port: int=1463,
-        scribe_disable: bool=False,
-        **kwargs: Any,
-    ) -> None:
-        self.clog = __import__('clog')
-        self.clog.config.configure(scribe_host=scribe_host, scribe_port=scribe_port, scribe_disable=scribe_disable)
-
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
-    ) -> None:
-        """This expects someone (currently the paasta cli main()) to have already
-        configured the log object. We'll just write things to it.
-        """
-        if level == 'event':
-            paasta_print("[service %s] %s" % (service, line), file=sys.stdout)
-        elif level == 'debug':
-            paasta_print("[service %s] %s" % (service, line), file=sys.stderr)
-        else:
-            raise NoSuchLogLevel
-        log_name = get_log_name_for_service(service)
-        formatted_line = format_log_line(level, cluster, service, instance, component, line)
-        self.clog.log_line(log_name, formatted_line)
-
-
-@register_log_writer('null')
-class NullLogWriter(LogWriter):
-    """A LogWriter class that doesn't do anything. Primarily useful for integration tests where we don't care about
-    logs."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        pass
-
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
-    ) -> None:
-        pass
-
-
-@contextlib.contextmanager
-def _empty_context() -> Iterator[None]:
-    yield
-
-
 _AnyIO = Union[io.IOBase, IO]
-
-
-@register_log_writer('file')
-class FileLogWriter(LogWriter):
-    def __init__(
-        self,
-        path_format: str,
-        mode: str='a+',
-        line_delimeter: str='\n',
-        flock: bool=False,
-    ) -> None:
-        self.path_format = path_format
-        self.mode = mode
-        self.flock = flock
-        self.line_delimeter = line_delimeter
-
-    def maybe_flock(self, fd: _AnyIO) -> ContextManager:
-        if self.flock:
-            # https://github.com/python/typeshed/issues/1548
-            return flock(fd)
-        else:
-            return _empty_context()
-
-    def format_path(self, service: str, component: str, level: str, cluster: str, instance: str) -> str:
-        return self.path_format.format(
-            service=service,
-            component=component,
-            level=level,
-            cluster=cluster,
-            instance=instance,
-        )
-
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
-    ) -> None:
-        path = self.format_path(service, component, level, cluster, instance)
-
-        # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
-        # and on Linux, writes to O_APPEND files with a single write syscall are atomic.
-        #
-        # https://docs.python.org/2/library/io.html#io.FileIO
-        # http://article.gmane.org/gmane.linux.kernel/43445
-
-        to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
-
-        try:
-            with io.FileIO(path, mode=self.mode, closefd=True) as f:
-                with self.maybe_flock(f):
-                    # remove type ignore comment below once https://github.com/python/typeshed/pull/1541 is merged.
-                    f.write(to_write.encode('UTF-8'))  # type: ignore
-        except IOError as e:
-            paasta_print(
-                "Could not log to %s: %s: %s -- would have logged: %s" % (path, type(e).__name__, str(e), to_write),
-                file=sys.stderr,
-            )
 
 
 @contextlib.contextmanager
@@ -1283,22 +818,6 @@ def timed_flock(fd: _AnyIO, seconds: int=1) -> Iterator[None]:
         yield
     finally:
         flock_context.__exit__(*sys.exc_info())
-
-
-def _timeout(process: Popen) -> None:
-    """Helper function for _run. It terminates the process.
-    Doesn't raise OSError, if we try to terminate a non-existing
-    process as there can be a very small window between poll() and kill()
-    """
-    if process.poll() is None:
-        try:
-            # sending SIGKILL to the process
-            process.kill()
-        except OSError as e:
-            # No such process error
-            # The process could have been terminated meanwhile
-            if e.errno != errno.ESRCH:
-                raise
 
 
 class PaastaNotConfiguredError(Exception):
@@ -1814,110 +1333,6 @@ class SystemPaastaConfig(object):
         return self.config_dict.get('slack', {}).get('token', None)
 
 
-def _run(
-    command: Union[str, List[str]],
-    env: Mapping[str, str]=os.environ,
-    timeout: float=None,
-    log: bool=False,
-    stream: bool=False,
-    stdin: Any=None,
-    stdin_interrupt: bool=False,
-    popen_kwargs: Dict={},
-    **kwargs: Any,
-) -> Tuple[int, str]:
-    """Given a command, run it. Return a tuple of the return code and any
-    output.
-
-    :param timeout: If specified, the command will be terminated after timeout
-        seconds.
-    :param log: If True, the _log will be handled by _run. If set, it is mandatory
-        to pass at least a :service: and a :component: parameter. Optionally you
-        can pass :cluster:, :instance: and :loglevel: parameters for logging.
-    We wanted to use plumbum instead of rolling our own thing with
-    subprocess.Popen but were blocked by
-    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
-    magic.
-    """
-    output = []
-    if log:
-        service = kwargs['service']
-        component = kwargs['component']
-        cluster = kwargs.get('cluster', ANY_CLUSTER)
-        instance = kwargs.get('instance', ANY_INSTANCE)
-        loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
-    try:
-        if not isinstance(command, list):
-            command = shlex.split(command)
-        popen_kwargs['stdout'] = PIPE
-        popen_kwargs['stderr'] = STDOUT
-        popen_kwargs['stdin'] = stdin
-        popen_kwargs['env'] = env
-        process = Popen(command, **popen_kwargs)
-
-        if stdin_interrupt:
-            def signal_handler(signum: int, frame: FrameType) -> None:
-                process.stdin.write("\n")
-                process.stdin.flush()
-                process.wait()
-            signal.signal(signal.SIGINT, signal_handler)
-            signal.signal(signal.SIGTERM, signal_handler)
-
-        # start the timer if we specified a timeout
-        if timeout:
-            proctimer = threading.Timer(timeout, _timeout, [process])
-            proctimer.start()
-        for linestr in iter(process.stdout.readline, b''):
-            line = linestr.decode('utf-8')
-            # additional indentation is for the paasta status command only
-            if stream:
-                if ('paasta_serviceinit status' in command):
-                    if 'instance: ' in line:
-                        paasta_print('  ' + line.rstrip('\n'))
-                    else:
-                        paasta_print('    ' + line.rstrip('\n'))
-                else:
-                    paasta_print(line.rstrip('\n'))
-            else:
-                output.append(line.rstrip('\n'))
-
-            if log:
-                _log(
-                    service=service,
-                    line=line.rstrip('\n'),
-                    component=component,
-                    level=loglevel,
-                    cluster=cluster,
-                    instance=instance,
-                )
-        # when finished, get the exit code
-        process.wait()
-        returncode = process.returncode
-    except OSError as e:
-        if log:
-            _log(
-                service=service,
-                line=e.strerror.rstrip('\n'),
-                component=component,
-                level=loglevel,
-                cluster=cluster,
-                instance=instance,
-            )
-        output.append(e.strerror.rstrip('\n'))
-        returncode = e.errno
-    except (KeyboardInterrupt, SystemExit):
-        # need to clean up the timing thread here
-        if timeout:
-            proctimer.cancel()
-        raise
-    else:
-        # Stop the timer
-        if timeout:
-            proctimer.cancel()
-    if returncode == -9:
-        output.append("Command '%s' timed out (longer than %ss)" % (command, timeout))
-    return returncode, '\n'.join(output)
-
-
 def get_umask() -> int:
     """Get the current umask for this process. NOT THREAD SAFE."""
     old_umask = os.umask(0o0022)
@@ -2279,11 +1694,6 @@ class Timeout:
         signal.signal(signal.SIGALRM, self.old_handler)
 
 
-def print_with_indent(line: str, indent: int=2) -> None:
-    """Print a line with a given indent level"""
-    paasta_print(" " * indent + line)
-
-
 class NoDeploymentsAvailable(Exception):
     pass
 
@@ -2514,47 +1924,6 @@ def deploy_whitelist_to_constraints(deploy_whitelist: DeployWhitelist) -> List[C
     return []
 
 
-def terminal_len(text: str) -> int:
-    """Return the number of characters that text will take up on a terminal. """
-    return len(remove_ansi_escape_sequences(text))
-
-
-def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int=2) -> List[str]:
-    """Formats a table for use on the command line.
-
-    :param rows: List of rows, each of which can either be a tuple of strings containing the row's values, or a string
-                 to be inserted verbatim. Each row (except literal strings) should be the same number of elements as
-                 all the others.
-    :returns: A string containing rows formatted as a table.
-    """
-
-    list_rows = [r for r in rows if not isinstance(r, str)]
-
-    # If all of the rows are strings, we have nothing to do, so short-circuit.
-    if not list_rows:
-        return cast(List[str], rows)
-
-    widths = []
-    for i in range(len(list_rows[0])):
-        widths.append(max(terminal_len(r[i]) for r in list_rows))
-
-    expanded_rows = []
-    for row in rows:
-        if isinstance(row, str):
-            expanded_rows.append([row])
-        else:
-            expanded_row = []
-            for i, cell in enumerate(row):
-                if i == len(row) - 1:
-                    padding = ''
-                else:
-                    padding = ' ' * (widths[i] - terminal_len(cell))
-                expanded_row.append(cell + padding)
-            expanded_rows.append(expanded_row)
-
-    return [(' ' * min_spacing).join(r) for r in expanded_rows]
-
-
 _DeepMergeT = TypeVar('_DeepMergeT', bound=Any)
 
 
@@ -2660,61 +2029,6 @@ def mean(iterable: Collection[float]) -> float:
     Returns the average value of an iterable
     """
     return sum(iterable) / len(iterable)
-
-
-def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
-    if not sys.stdin.isatty():
-        paasta_print(
-            'No {choosing} specified and no TTY present to ask.'
-            'Please specify a {choosing} using the cli.'.format(choosing=choosing),
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    if not sequence:
-        paasta_print(
-            'PaaSTA needs to pick a {choosing} but none were found.'.format(choosing=choosing),
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    global_actions = [str('quit')]
-    choices = [(str(item), str(item)) for item in sequence]
-
-    chooser = choice.Menu(choices=choices, global_actions=global_actions)
-    chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
-        choosing=str(choosing),
-    )
-    try:
-        result = chooser.ask()
-    except (KeyboardInterrupt, EOFError):
-        paasta_print('')
-        sys.exit(1)
-
-    if isinstance(result, tuple) and result[1] == str('quit'):
-        sys.exit(1)
-    else:
-        return result
-
-
-def to_bytes(obj: Any) -> bytes:
-    if isinstance(obj, bytes):
-        return obj
-    elif isinstance(obj, str):
-        return obj.encode('UTF-8')
-    else:
-        return str(obj).encode('UTF-8')
-
-
-def paasta_print(*args: Any, **kwargs: Any) -> None:
-    f = kwargs.pop('file', sys.stdout)
-    f = getattr(f, 'buffer', f)
-    end = to_bytes(kwargs.pop('end', '\n'))
-    sep = to_bytes(kwargs.pop('sep', ' '))
-    assert not kwargs, kwargs
-    to_print = sep.join(to_bytes(x) for x in args) + end
-    f.write(to_print)
-    f.flush()
 
 
 _TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')

@@ -20,8 +20,8 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):

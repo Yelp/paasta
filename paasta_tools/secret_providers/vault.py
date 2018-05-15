@@ -16,7 +16,7 @@ except ImportError:
     encrypt_secret = None
 
 from paasta_tools.secret_providers import BaseSecretProvider
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.secret_tools import get_secret_name_from_ref
 
 

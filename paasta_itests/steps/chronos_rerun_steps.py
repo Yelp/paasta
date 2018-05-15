@@ -18,7 +18,7 @@ from behave import when
 
 from paasta_tools import chronos_tools
 from paasta_tools.chronos_tools import SPACER
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
 
 
 @when('we run chronos_rerun for service_instance "{service_instance}"')

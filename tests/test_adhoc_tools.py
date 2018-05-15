@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+from pytest import raises
 
 from paasta_tools import adhoc_tools
 from paasta_tools.utils import DeploymentsJsonV2
@@ -67,3 +68,64 @@ def test_get_default_interactive_config_reads_from_tty():
         )
         assert result.get_deploy_group() == 'fake_deploygroup'
         assert result.get_docker_image() == mock.sentinel.docker_image
+
+
+def test_prompt_pick_one_happy():
+    with mock.patch(
+        'paasta_tools.adhoc_tools.sys.stdin', autospec=True,
+    ) as mock_stdin, mock.patch(
+        'paasta_tools.adhoc_tools.choice.Menu', autospec=True,
+    ) as mock_menu:
+        mock_stdin.isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value='choiceA'))
+        assert adhoc_tools.prompt_pick_one(['choiceA'], 'test') == 'choiceA'
+
+
+def test_prompt_pick_one_quit():
+    with mock.patch(
+        'paasta_tools.adhoc_tools.sys.stdin', autospec=True,
+    ) as mock_stdin, mock.patch(
+        'paasta_tools.adhoc_tools.choice.Menu', autospec=True,
+    ) as mock_menu:
+        mock_stdin.isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'quit')))
+        with raises(SystemExit):
+            adhoc_tools.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
+def test_prompt_pick_one_keyboard_interrupt():
+    with mock.patch(
+        'paasta_tools.adhoc_tools.sys.stdin', autospec=True,
+    ) as mock_stdin, mock.patch(
+        'paasta_tools.adhoc_tools.choice.Menu', autospec=True,
+    ) as mock_menu:
+        mock_stdin.isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=KeyboardInterrupt))
+        with raises(SystemExit):
+            adhoc_tools.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
+def test_prompt_pick_one_eoferror():
+    with mock.patch(
+        'paasta_tools.adhoc_tools.sys.stdin', autospec=True,
+    ) as mock_stdin, mock.patch(
+        'paasta_tools.adhoc_tools.choice.Menu', autospec=True,
+    ) as mock_menu:
+        mock_stdin.isatty.return_value = True
+        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=EOFError))
+        with raises(SystemExit):
+            adhoc_tools.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
+def test_prompt_pick_one_exits_no_tty():
+    with mock.patch('paasta_tools.adhoc_tools.sys.stdin', autospec=True) as mock_stdin:
+        mock_stdin.isatty.return_value = False
+        with raises(SystemExit):
+            adhoc_tools.prompt_pick_one(['choiceA', 'choiceB'], 'test')
+
+
+def test_prompt_pick_one_exits_no_choices():
+    with mock.patch('paasta_tools.adhoc_tools.sys.stdin', autospec=True) as mock_stdin:
+        mock_stdin.isatty.return_value = True
+        with raises(SystemExit):
+            adhoc_tools.prompt_pick_one([], 'test')

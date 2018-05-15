@@ -9,8 +9,8 @@ import sys
 import syslogmp
 
 from paasta_tools.firewall import services_running_here
-from paasta_tools.utils import _log
-from paasta_tools.utils import configure_log
+from paasta_tools.log_utils import _log
+from paasta_tools.log_utils import configure_log
 from paasta_tools.utils import load_system_paasta_config
 
 DEFAULT_NUM_WORKERS = 5

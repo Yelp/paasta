@@ -15,7 +15,7 @@
 from paasta_tools.autoscaling.pause_service_autoscaler import delete_service_autoscale_pause_time
 from paasta_tools.autoscaling.pause_service_autoscaler import get_service_autoscale_pause_time
 from paasta_tools.autoscaling.pause_service_autoscaler import update_service_autoscale_pause_time
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 MAX_PAUSE_DURATION = 320
 

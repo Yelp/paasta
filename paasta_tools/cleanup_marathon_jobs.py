@@ -40,8 +40,8 @@ import pysensu_yelp
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
+from paasta_tools.log_utils import _log
 from paasta_tools.monitoring_tools import send_event
-from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InvalidJobNameError

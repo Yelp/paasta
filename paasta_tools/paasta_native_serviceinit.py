@@ -1,8 +1,8 @@
 from paasta_tools.frameworks.native_scheduler import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import paasta_print
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):

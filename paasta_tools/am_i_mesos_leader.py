@@ -22,7 +22,7 @@ Exits 0 if this is the leader, and 1 if it isn't.
 from sys import exit
 
 from paasta_tools.mesos_tools import is_mesos_leader
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def main():

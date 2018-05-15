@@ -31,8 +31,8 @@ import sys
 from contextlib import contextmanager
 
 from paasta_tools.mesos_tools import get_container_id_for_mesos_id
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import get_docker_client
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():

@@ -41,16 +41,16 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.log_utils import _log
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import _log
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
 
 

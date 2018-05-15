@@ -19,7 +19,7 @@ from chronos import ChronosAPIError
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.metrics.metastatus_lib import assert_chronos_scheduled_jobs
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def check_chronos_jobs():

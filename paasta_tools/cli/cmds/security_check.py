@@ -16,9 +16,9 @@ import pysensu_yelp
 
 from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
 from paasta_tools.monitoring_tools import send_event
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):

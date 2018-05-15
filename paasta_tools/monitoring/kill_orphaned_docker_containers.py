@@ -3,9 +3,9 @@ import argparse
 import sys
 
 from paasta_tools import mesos_tools
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_running_mesos_docker_containers
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():

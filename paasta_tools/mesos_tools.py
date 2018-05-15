@@ -35,12 +35,12 @@ from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.task import Task
+from paasta_tools.text_utils import format_table
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
-from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError

@@ -26,11 +26,11 @@ import copy
 import datetime
 
 from paasta_tools import chronos_tools
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():

@@ -34,6 +34,7 @@ from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
+from paasta_tools.log_utils import _log
 from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
@@ -47,7 +48,6 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import get_all_running_tasks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
-from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster

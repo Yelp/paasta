@@ -19,7 +19,7 @@ from marathon.exceptions import MarathonError
 
 from paasta_tools import marathon_tools
 from paasta_tools.metrics.metastatus_lib import assert_marathon_apps
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def check_marathon_apps():

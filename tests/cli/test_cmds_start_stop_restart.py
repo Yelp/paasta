@@ -96,7 +96,7 @@ def test_log_event():
     ), mock.patch(
         'socket.getfqdn', autospec=True, return_value='fake_fqdn',
     ), mock.patch(
-        'paasta_tools.utils._log', autospec=True,
+        'paasta_tools.log_utils._log', autospec=True,
     ) as mock_log:
         service_config = MarathonServiceConfig(
             cluster='fake_cluster',

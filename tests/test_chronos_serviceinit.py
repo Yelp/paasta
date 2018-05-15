@@ -21,8 +21,8 @@ import pytz
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import chronos_tools
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
-from paasta_tools.utils import PaastaColors
 
 
 def test_start_chronos_job():

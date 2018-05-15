@@ -31,8 +31,8 @@ from paasta_tools.frameworks.native_service_config import TaskInfo
 from paasta_tools.frameworks.task_store import MesosTaskParameters
 from paasta_tools.frameworks.task_store import TaskStore
 from paasta_tools.frameworks.task_store import ZKTaskStore
-from paasta_tools.utils import _log
-from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.log_utils import _log
+from paasta_tools.log_utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import SystemPaastaConfig

@@ -30,7 +30,7 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import load_smartstack_info_for_service
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 log = logging.getLogger(__name__)
 

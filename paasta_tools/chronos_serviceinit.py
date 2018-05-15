@@ -18,14 +18,14 @@ import humanize
 import isodate
 
 from paasta_tools import chronos_tools
+from paasta_tools.log_utils import _log
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
-from paasta_tools.utils import _log
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import datetime_from_utc_to_local
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger(__name__)

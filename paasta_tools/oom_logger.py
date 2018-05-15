@@ -40,8 +40,8 @@ from collections import namedtuple
 from clog.loggers import ScribeLogger
 from docker.errors import APIError
 
-from paasta_tools.utils import _log
-from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.log_utils import _log
+from paasta_tools.log_utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import load_system_paasta_config
 
