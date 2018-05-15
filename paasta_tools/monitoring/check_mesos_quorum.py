@@ -15,7 +15,7 @@
 import sys
 
 from paasta_tools.metrics.metastatus_lib import assert_quorum_size
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def check_mesos_quorum():

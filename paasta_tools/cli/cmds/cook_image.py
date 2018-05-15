@@ -18,10 +18,10 @@ import sys
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.utils import validate_service_name
-from paasta_tools.utils import _log
-from paasta_tools.utils import _run
+from paasta_tools.log_utils import _log
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import get_username
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):

@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):

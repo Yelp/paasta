@@ -16,9 +16,9 @@ from behave import then
 from behave import when
 from marathon import MarathonApp
 
-from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import remove_ansi_escape_sequences
 
 CONTAINER = {
     'type': 'DOCKER',

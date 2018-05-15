@@ -29,12 +29,12 @@ from dulwich.repo import Repo
 from paasta_tools import generate_deployments_for_service
 from paasta_tools.cli.cmds.mark_for_deployment import paasta_mark_for_deployment
 from paasta_tools.cli.cmds.start_stop_restart import paasta_stop
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import DeploymentsJsonV1
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import format_timestamp
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import load_deployments_json
-from paasta_tools.utils import paasta_print
 
 
 @given('a test git repo is setup with commits')

@@ -21,11 +21,11 @@ import mock
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
+from paasta_tools.text_utils import PaastaColors
+from paasta_tools.text_utils import remove_ansi_escape_sequences
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
 

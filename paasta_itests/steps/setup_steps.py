@@ -26,8 +26,8 @@ from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import paasta_print
 
 
 def _get_marathon_connection_string(service='marathon'):

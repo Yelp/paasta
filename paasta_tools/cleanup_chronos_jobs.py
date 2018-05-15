@@ -36,9 +36,9 @@ from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import utils
 from paasta_tools.check_chronos_jobs import check_chronos_job_name
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():

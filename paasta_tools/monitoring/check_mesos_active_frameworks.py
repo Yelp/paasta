@@ -18,7 +18,7 @@ import sys
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics.metastatus_lib import assert_frameworks_exist
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def parse_args():

@@ -20,8 +20,8 @@ from collections import defaultdict
 from bravado.exception import HTTPError
 
 from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def parse_capacity_check_options():

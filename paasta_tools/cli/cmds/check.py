@@ -33,15 +33,15 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 
 def get_pipeline_config(service, soa_dir):

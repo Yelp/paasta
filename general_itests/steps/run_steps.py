@@ -16,7 +16,7 @@ import signal
 from behave import then
 from behave import when
 
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
 
 
 @when('we run a trivial command with timeout {timeout} seconds')

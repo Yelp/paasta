@@ -18,6 +18,7 @@ import sys
 
 import choice
 
+from paasta_tools import log_utils
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
@@ -26,9 +27,9 @@ from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -89,7 +90,7 @@ def log_event(service_config, desired_state):
         service_config.get_instance(), service_config.get_service(),
         desired_state, user, host,
     )
-    utils._log(
+    log_utils._log(
         service=service_config.get_service(),
         level='event',
         cluster=service_config.get_cluster(),

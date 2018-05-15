@@ -25,10 +25,10 @@ from behave import when
 import paasta_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 @when('we run the marathon app "{job_id}" with "{instances:d}" instances')

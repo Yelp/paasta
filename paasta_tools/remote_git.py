@@ -16,7 +16,7 @@ import re
 import dulwich.client
 import dulwich.errors
 
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
 from paasta_tools.utils import timeout
 
 

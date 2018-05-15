@@ -36,9 +36,9 @@ from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.mesos_tools import is_task_terminal
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import print_with_indent
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
+from paasta_tools.text_utils import print_with_indent
 
 
 class ResourceInfo(namedtuple('ResourceInfo', ['cpus', 'mem', 'disk', 'gpus'])):

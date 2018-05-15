@@ -23,7 +23,7 @@ from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
 from paasta_tools.frameworks.native_service_config import TaskInfo
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 class AdhocScheduler(NativeScheduler):

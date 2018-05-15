@@ -24,8 +24,8 @@ from pytest import raises
 
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import logs
-from paasta_tools.utils import ANY_CLUSTER
-from paasta_tools.utils import format_log_line
+from paasta_tools.log_utils import ANY_CLUSTER
+from paasta_tools.log_utils import format_log_line
 
 
 try:  # pragma: no cover (yelpy)

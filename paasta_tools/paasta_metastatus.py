@@ -35,11 +35,11 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
-from paasta_tools.utils import format_table
+from paasta_tools.text_utils import format_table
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
+from paasta_tools.text_utils import print_with_indent
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import print_with_indent
 
 
 logging.basicConfig()

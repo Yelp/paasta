@@ -26,6 +26,7 @@ from requests.exceptions import ReadTimeout
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
+from paasta_tools.log_utils import _log
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
@@ -34,17 +35,16 @@ from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import match_backends_and_tasks
-from paasta_tools.utils import _log
+from paasta_tools.text_utils import format_table
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
+from paasta_tools.text_utils import remove_ansi_escape_sequences
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
-from paasta_tools.utils import format_table
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import remove_ansi_escape_sequences
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())

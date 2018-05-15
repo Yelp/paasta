@@ -12,8 +12,8 @@ from paasta_tools.metrics.metastatus_lib import calculate_resource_utilization_f
 from paasta_tools.metrics.metastatus_lib import filter_tasks_for_slaves
 from paasta_tools.metrics.metastatus_lib import get_all_tasks_from_state
 from paasta_tools.metrics.metastatus_lib import resource_utillizations_from_resource_info
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 
 
 def main(hostnames):

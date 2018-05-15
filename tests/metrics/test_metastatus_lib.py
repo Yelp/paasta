@@ -20,8 +20,8 @@ from mock import Mock
 from mock import patch
 
 from paasta_tools.metrics import metastatus_lib
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 
 
 def test_ok_check_threshold():

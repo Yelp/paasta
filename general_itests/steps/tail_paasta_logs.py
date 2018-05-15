@@ -18,7 +18,7 @@ from behave import then
 from behave import when
 
 from paasta_tools.cli.cmds import logs
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 @when('we tail paasta logs and let threads run')

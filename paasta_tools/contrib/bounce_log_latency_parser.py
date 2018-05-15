@@ -5,7 +5,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def get_datetime_from_ts(ts):

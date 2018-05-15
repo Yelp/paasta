@@ -24,8 +24,8 @@ from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 @given('a new adhoc config to be deployed')

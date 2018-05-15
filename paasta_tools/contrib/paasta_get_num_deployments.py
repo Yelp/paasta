@@ -3,7 +3,7 @@ import argparse
 import itertools
 
 from paasta_tools.marathon_tools import get_list_of_marathon_clients
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def parse_args():

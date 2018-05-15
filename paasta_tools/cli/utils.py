@@ -36,14 +36,14 @@ from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
-from paasta_tools.utils import _run
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)

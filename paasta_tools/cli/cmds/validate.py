@@ -33,10 +33,10 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import paasta_print
 
 
 SCHEMA_VALID = success("Successfully validated schema")

@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import sys
+from typing import Collection
 
+import choice
 import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import prompt_pick_one
-
 
 log = logging.getLogger(__name__)
 
@@ -151,3 +153,38 @@ def get_default_interactive_config(
         job_config.config_dict.setdefault(key, value)
 
     return job_config
+
+
+def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
+    if not sys.stdin.isatty():
+        paasta_print(
+            'No {choosing} specified and no TTY present to ask.'
+            'Please specify a {choosing} using the cli.'.format(choosing=choosing),
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if not sequence:
+        paasta_print(
+            'PaaSTA needs to pick a {choosing} but none were found.'.format(choosing=choosing),
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    global_actions = [str('quit')]
+    choices = [(str(item), str(item)) for item in sequence]
+
+    chooser = choice.Menu(choices=choices, global_actions=global_actions)
+    chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
+        choosing=str(choosing),
+    )
+    try:
+        result = chooser.ask()
+    except (KeyboardInterrupt, EOFError):
+        paasta_print('')
+        sys.exit(1)
+
+    if isinstance(result, tuple) and result[1] == str('quit'):
+        sys.exit(1)
+    else:
+        return result

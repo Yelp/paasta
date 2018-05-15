@@ -17,7 +17,7 @@ import sys
 
 from paasta_tools import utils
 from paasta_tools.smartstack_tools import get_replication_for_services
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def check_replication(

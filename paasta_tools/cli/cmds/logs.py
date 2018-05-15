@@ -34,7 +34,7 @@ import pytz
 import ujson as json
 from dateutil import tz
 
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 try:
     from scribereader import scribereader
@@ -50,17 +50,17 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
-from paasta_tools.utils import ANY_CLUSTER
+from paasta_tools.log_utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
-from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.log_utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import format_log_line
+from paasta_tools.log_utils import format_log_line
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import LOG_COMPONENTS
-from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import get_log_name_for_service
+from paasta_tools.log_utils import LOG_COMPONENTS
+from paasta_tools.text_utils import PaastaColors
+from paasta_tools.log_utils import get_log_name_for_service
 
 
 DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring', 'oom', 'stdout', 'stderr']

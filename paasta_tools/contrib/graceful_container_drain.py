@@ -12,7 +12,7 @@ from subprocess import STDOUT
 
 import yaml
 
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def _timeout(process):

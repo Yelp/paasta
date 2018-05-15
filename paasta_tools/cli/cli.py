@@ -24,7 +24,7 @@ import pkg_resources
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):

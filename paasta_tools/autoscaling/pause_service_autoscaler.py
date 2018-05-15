@@ -4,7 +4,7 @@ from datetime import datetime
 from tzlocal import get_localzone
 
 from paasta_tools.api import client
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 def get_service_autoscale_pause_time(cluster):

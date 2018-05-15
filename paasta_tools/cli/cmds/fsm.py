@@ -19,9 +19,9 @@ import sys
 from cookiecutter.main import cookiecutter
 
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 
 @contextlib.contextmanager

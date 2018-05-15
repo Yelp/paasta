@@ -35,11 +35,11 @@ from paasta_tools import setup_marathon_job
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import paasta_print
 
 
 class TestSetupMarathonJob:

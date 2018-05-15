@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-import json
 import os
 import stat
-import sys
 import time
 from typing import Dict  # noqa
 from typing import List  # noqa
@@ -49,98 +47,12 @@ def test_get_git_url_default():
         mock_read_service_configuration.assert_called_once_with(service, soa_dir=utils.DEFAULT_SOA_DIR)
 
 
-def test_format_log_line():
-    input_line = 'foo'
-    fake_cluster = 'fake_cluster'
-    fake_service = 'fake_service'
-    fake_instance = 'fake_instance'
-    fake_component = 'build'
-    fake_level = 'debug'
-    fake_now = 'fake_now'
-    expected = json.dumps(
-        {
-            'timestamp': fake_now,
-            'level': fake_level,
-            'cluster': fake_cluster,
-            'service': fake_service,
-            'instance': fake_instance,
-            'component': fake_component,
-            'message': input_line,
-        }, sort_keys=True,
-    )
-    with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
-        mock_now.return_value = fake_now
-        actual = utils.format_log_line(
-            level=fake_level,
-            cluster=fake_cluster,
-            service=fake_service,
-            instance=fake_instance,
-            component=fake_component,
-            line=input_line,
-        )
-        assert actual == expected
-
-
 def test_deploy_whitelist_to_constraints():
     fake_whitelist = ('fake_location_type', ['fake_location', 'anotherfake_location'],)
     expected_constraints = [['fake_location_type', 'LIKE', 'fake_location|anotherfake_location']]
 
     constraints = utils.deploy_whitelist_to_constraints(fake_whitelist)
     assert constraints == expected_constraints
-
-
-def test_format_log_line_with_timestamp():
-    input_line = 'foo'
-    fake_cluster = 'fake_cluster'
-    fake_service = 'fake_service'
-    fake_instance = 'fake_instance'
-    fake_component = 'build'
-    fake_level = 'debug'
-    fake_timestamp = 'fake_timestamp'
-    expected = json.dumps(
-        {
-            'timestamp': fake_timestamp,
-            'level': fake_level,
-            'cluster': fake_cluster,
-            'service': fake_service,
-            'instance': fake_instance,
-            'component': fake_component,
-            'message': input_line,
-        }, sort_keys=True,
-    )
-    actual = utils.format_log_line(
-        fake_level,
-        fake_cluster,
-        fake_service,
-        fake_instance,
-        fake_component,
-        input_line,
-        timestamp=fake_timestamp,
-    )
-    assert actual == expected
-
-
-def test_format_log_line_rejects_invalid_components():
-    with raises(utils.NoSuchLogComponent):
-        utils.format_log_line(
-            level='debug',
-            cluster='fake_cluster',
-            service='fake_service',
-            instance='fake_instance',
-            line='fake_line',
-            component='BOGUS_COMPONENT',
-        )
-
-
-def test_ScribeLogWriter_log_raise_on_unknown_level():
-    with raises(utils.NoSuchLogLevel):
-        utils.ScribeLogWriter().log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
-
-
-def test_get_log_name_for_service():
-    service = 'foo'
-    expected = 'stream_paasta_%s' % service
-    assert utils.get_log_name_for_service(service) == expected
 
 
 def test_get_readable_files_in_glob_ignores_unreadable(tmpdir):
@@ -452,16 +364,6 @@ def test_atomic_file_write_itest(umask_022, tmpdir):
     assert stat.S_IMODE(file_stat.st_mode) == 0o0644
 
 
-def test_configure_log():
-    fake_log_writer_config = {'driver': 'fake', 'options': {'fake_arg': 'something'}}
-    with mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True) as mock_load_system_paasta_config:
-        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer_config
-        with mock.patch('paasta_tools.utils.get_log_writer_class', autospec=True) as mock_get_log_writer_class:
-            utils.configure_log()
-            mock_get_log_writer_class.assert_called_once_with('fake')
-            mock_get_log_writer_class('fake').assert_called_once_with(fake_arg='something')
-
-
 def test_compose_job_id_without_hashes():
     fake_service = "my_cool_service"
     fake_instance = "main"
@@ -579,12 +481,6 @@ def test_check_docker_image_true(mock_build_docker_image_name):
             },
         ]
         assert utils.check_docker_image(fake_app, fake_commit) is True
-
-
-def test_remove_ansi_escape_sequences():
-    plain_string = 'blackandwhite'
-    colored_string = '\033[34m' + plain_string + '\033[0m'
-    assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
 def test_missing_cluster_configs_are_ignored():
@@ -793,23 +689,6 @@ def test_get_services_for_cluster_ignores_underscore():
         assert expected == actual
 
 
-def test_color_text():
-    expected = "%shi%s" % (utils.PaastaColors.RED, utils.PaastaColors.DEFAULT)
-    actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "hi")
-    assert actual == expected
-
-
-def test_color_text_nested():
-    expected = "%sred%sblue%sred%s" % (
-        utils.PaastaColors.RED,
-        utils.PaastaColors.BLUE,
-        utils.PaastaColors.DEFAULT + utils.PaastaColors.RED,
-        utils.PaastaColors.DEFAULT,
-    )
-    actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "red%sred" % utils.PaastaColors.blue("blue"))
-    assert actual == expected
-
-
 def test_DeploymentsJson_read():
     file_mock = mock.mock_open()
     fake_dir = '/var/dir_of_fake'
@@ -860,28 +739,6 @@ def test_get_running_mesos_docker_containers():
         docker_client = mock_docker.return_value
         docker_client.containers.return_value = fake_container_data
         assert len(utils.get_running_mesos_docker_containers()) == 1
-
-
-def test_run_cancels_timer_thread_on_keyboard_interrupt():
-    mock_process = mock.Mock()
-    mock_timer_object = mock.Mock()
-    with mock.patch(
-        'paasta_tools.utils.Popen', autospec=True, return_value=mock_process,
-    ), mock.patch(
-        'paasta_tools.utils.threading.Timer', autospec=True, return_value=mock_timer_object,
-    ):
-        mock_process.stdout.readline.side_effect = KeyboardInterrupt
-        with raises(KeyboardInterrupt):
-            utils._run('sh echo foo', timeout=10)
-        assert mock_timer_object.cancel.call_count == 1
-
-
-def test_run_returns_when_popen_fails():
-    fake_exception = OSError(1234, 'fake error')
-    with mock.patch('paasta_tools.utils.Popen', autospec=True, side_effect=fake_exception):
-        return_code, output = utils._run('nonexistant command', timeout=10)
-    assert return_code == 1234
-    assert 'fake error' in output
 
 
 @pytest.mark.parametrize(
@@ -1731,158 +1588,10 @@ def test_validate_service_instance_invalid():
             )
 
 
-def test_terminal_len():
-    assert len('some text') == utils.terminal_len(utils.PaastaColors.red('some text'))
-
-
-def test_format_table():
-    actual = utils.format_table(
-        [
-            ['looooong', 'y', 'z'],
-            ['a', 'looooong', 'c'],
-            ['j', 'k', 'looooong'],
-        ],
-    )
-    expected = [
-        'looooong  y         z',
-        'a         looooong  c',
-        'j         k         looooong',
-    ]
-    assert actual == expected
-    assert ["a     b     c"] == utils.format_table([['a', 'b', 'c']], min_spacing=5)
-
-
-def test_format_table_with_interjected_lines():
-    actual = utils.format_table(
-        [
-            ['looooong', 'y', 'z'],
-            'interjection',
-            ['a', 'looooong', 'c'],
-            'unicode interjection',
-            ['j', 'k', 'looooong'],
-        ],
-    )
-    expected = [
-        'looooong  y         z',
-        'interjection',
-        'a         looooong  c',
-        'unicode interjection',
-        'j         k         looooong',
-    ]
-    assert actual == expected
-
-
-def test_format_table_all_strings():
-    actual = utils.format_table(['foo', 'bar', 'baz'])
-    expected = ['foo', 'bar', 'baz']
-    assert actual == expected
-
-
 def test_parse_timestamp():
     actual = utils.parse_timestamp('19700101T000000')
     expected = datetime.datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0)
     assert actual == expected
-
-
-def test_null_log_writer():
-    """Basic smoke test for NullLogWriter"""
-    lw = utils.NullLogWriter(driver='null')
-    lw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
-
-
-class TestFileLogWriter:
-    def test_smoke(self):
-        """Smoke test for FileLogWriter"""
-        fw = utils.FileLogWriter('/dev/null')
-        fw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
-
-    def test_format_path(self):
-        """Test the path formatting for FileLogWriter"""
-        fw = utils.FileLogWriter("/logs/{service}/{component}/{level}/{cluster}/{instance}")
-        expected = "/logs/a/b/c/d/e"
-        assert expected == fw.format_path("a", "b", "c", "d", "e")
-
-    def test_maybe_flock(self):
-        """Make sure we flock and unflock when flock=True"""
-        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
-            fw = utils.FileLogWriter("/dev/null", flock=True)
-            mock_file = mock.Mock()
-            with fw.maybe_flock(mock_file):
-                mock_fcntl.flock.assert_called_once_with(mock_file.fileno(), mock_fcntl.LOCK_EX)
-                mock_fcntl.flock.reset_mock()
-
-            mock_fcntl.flock.assert_called_once_with(mock_file.fileno(), mock_fcntl.LOCK_UN)
-
-    def test_maybe_flock_flock_false(self):
-        """Make sure we don't flock/unflock when flock=False"""
-        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
-            fw = utils.FileLogWriter("/dev/null", flock=False)
-            mock_file = mock.Mock()
-            with fw.maybe_flock(mock_file):
-                assert mock_fcntl.flock.call_count == 0
-
-            assert mock_fcntl.flock.call_count == 0
-
-    def test_log_makes_exactly_one_write_call(self):
-        """We want to make sure that log() makes exactly one call to write, since that's how we ensure atomicity."""
-        fake_file = mock.Mock()
-        fake_contextmgr = mock.Mock(
-            __enter__=lambda _self: fake_file,
-            __exit__=lambda _self, t, v, tb: None,
-        )
-
-        fake_line = "text" * 1000000
-
-        with mock.patch("paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True) as mock_FileIO:
-            fw = utils.FileLogWriter("/dev/null", flock=False)
-
-            with mock.patch("paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True) as fake_fll:
-                fw.log("service", "line", "component", level="level", cluster="cluster", instance="instance")
-
-            fake_fll.assert_called_once_with("level", "cluster", "service", "instance", "component", "line")
-
-            mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
-            fake_file.write.assert_called_once_with("{}\n".format(fake_line).encode('UTF-8'))
-
-    def test_write_raises_IOError(self):
-        fake_file = mock.Mock()
-        fake_file.write.side_effect = IOError("hurp durp")
-
-        fake_contextmgr = mock.Mock(
-            __enter__=lambda _self: fake_file,
-            __exit__=lambda _self, t, v, tb: None,
-        )
-
-        fake_line = "line"
-
-        with mock.patch(
-            "paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True,
-        ), mock.patch(
-            "paasta_tools.utils.paasta_print", autospec=True,
-        ) as mock_print, mock.patch(
-            "paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True,
-        ):
-            fw = utils.FileLogWriter("/dev/null", flock=False)
-            fw.log(
-                service="service",
-                line="line",
-                component="build",
-                level="level",
-                cluster="cluster",
-                instance="instance",
-            )
-
-        mock_print.assert_called_once_with(
-            mock.ANY,
-            file=sys.stderr,
-        )
-
-        # On python3, they merged IOError and OSError. Once paasta is fully py3, replace mock.ANY above with the OSError
-        # message below.
-        assert mock_print.call_args[0][0] in {
-            "Could not log to /dev/null: IOError: hurp durp -- would have logged: line\n",
-            "Could not log to /dev/null: OSError: hurp durp -- would have logged: line\n",
-        }
 
 
 def test_deep_merge_dictionaries():
@@ -1975,17 +1684,6 @@ def test_deep_merge_dictionaries_no_duplicate_keys_allowed():
         utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=False)
 
 
-def test_function_composition():
-    def func_one(count):
-        return count + 1
-
-    def func_two(count):
-        return count + 1
-
-    composed_func = utils.compose(func_one, func_two)
-    assert composed_func(0) == 2
-
-
 def test_is_deploy_step():
     assert utils.is_deploy_step('prod.main')
     assert utils.is_deploy_step('thingy')
@@ -2002,67 +1700,6 @@ def test_long_job_id_to_short_job_id():
 def test_mean():
     iterable = [1.0, 2.0, 3.0]
     assert utils.mean(iterable) == 2.0
-
-
-def test_prompt_pick_one_happy():
-    with mock.patch(
-        'paasta_tools.utils.sys.stdin', autospec=True,
-    ) as mock_stdin, mock.patch(
-        'paasta_tools.utils.choice.Menu', autospec=True,
-    ) as mock_menu:
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value='choiceA'))
-        assert utils.prompt_pick_one(['choiceA'], 'test') == 'choiceA'
-
-
-def test_prompt_pick_one_quit():
-    with mock.patch(
-        'paasta_tools.utils.sys.stdin', autospec=True,
-    ) as mock_stdin, mock.patch(
-        'paasta_tools.utils.choice.Menu', autospec=True,
-    ) as mock_menu:
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(return_value=(None, 'quit')))
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
-
-
-def test_prompt_pick_one_keyboard_interrupt():
-    with mock.patch(
-        'paasta_tools.utils.sys.stdin', autospec=True,
-    ) as mock_stdin, mock.patch(
-        'paasta_tools.utils.choice.Menu', autospec=True,
-    ) as mock_menu:
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=KeyboardInterrupt))
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
-
-
-def test_prompt_pick_one_eoferror():
-    with mock.patch(
-        'paasta_tools.utils.sys.stdin', autospec=True,
-    ) as mock_stdin, mock.patch(
-        'paasta_tools.utils.choice.Menu', autospec=True,
-    ) as mock_menu:
-        mock_stdin.isatty.return_value = True
-        mock_menu.return_value = mock.Mock(ask=mock.Mock(side_effect=EOFError))
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
-
-
-def test_prompt_pick_one_exits_no_tty():
-    with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
-        mock_stdin.isatty.return_value = False
-        with raises(SystemExit):
-            utils.prompt_pick_one(['choiceA', 'choiceB'], 'test')
-
-
-def test_prompt_pick_one_exits_no_choices():
-    with mock.patch('paasta_tools.utils.sys.stdin', autospec=True) as mock_stdin:
-        mock_stdin.isatty.return_value = True
-        with raises(SystemExit):
-            utils.prompt_pick_one([], 'test')
 
 
 def test_get_code_sha_from_dockerurl():

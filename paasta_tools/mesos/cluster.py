@@ -18,7 +18,7 @@ from typing import Set
 
 from . import exceptions
 from . import parallel
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 missing_slave: Set[str] = set()
 

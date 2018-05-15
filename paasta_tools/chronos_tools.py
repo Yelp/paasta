@@ -32,6 +32,8 @@ from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.secret_tools import get_secret_hashes
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -43,8 +45,6 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import timeout

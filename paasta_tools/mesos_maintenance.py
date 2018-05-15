@@ -30,7 +30,7 @@ from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
-from paasta_tools.utils import to_bytes
+from paasta_tools.text_utils import to_bytes
 
 
 log = logging.getLogger(__name__)

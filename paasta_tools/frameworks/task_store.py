@@ -13,7 +13,7 @@ from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import ZnodeStat
 
-from paasta_tools.utils import _log
+from paasta_tools.log_utils import _log
 
 
 class MesosTaskParametersIsImmutableError(Exception):

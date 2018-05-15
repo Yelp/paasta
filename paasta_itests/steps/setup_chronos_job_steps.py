@@ -17,8 +17,8 @@ from behave import then
 from behave import when
 
 from paasta_tools import chronos_tools
-from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
+from paasta_tools.run import _run
+from paasta_tools.text_utils import paasta_print
 
 
 @then('we should see a job for the service "{service}" and instance "{instance}" in the job list')

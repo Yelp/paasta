@@ -18,7 +18,7 @@ import logging
 import sys
 import time
 
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 debug = logging.debug
 

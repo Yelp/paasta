@@ -25,11 +25,11 @@ from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.text_utils import paasta_print
+from paasta_tools.text_utils import PaastaColors
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import paasta_print
-from paasta_tools.utils import PaastaColors
 
 NO_DESCRIPTION_MESSAGE = (
     "No 'description' entry in service.yaml. Please a one line sentance that describes this service"

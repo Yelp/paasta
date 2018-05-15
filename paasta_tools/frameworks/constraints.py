@@ -4,7 +4,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 
-from paasta_tools.utils import paasta_print
+from paasta_tools.text_utils import paasta_print
 
 
 ConstraintState = Dict[str, Dict[str, Any]]

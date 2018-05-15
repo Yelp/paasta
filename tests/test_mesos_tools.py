@@ -25,7 +25,7 @@ from paasta_tools import mesos
 from paasta_tools import mesos_tools
 from paasta_tools import utils
 from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.utils import PaastaColors
+from paasta_tools.text_utils import PaastaColors
 
 
 def test_filter_running_tasks():

@@ -8,9 +8,9 @@ from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools.setup_marathon_job import do_bounce
 from paasta_tools.setup_marathon_job import get_tasks_by_state
+from paasta_tools.text_utils import paasta_print
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
