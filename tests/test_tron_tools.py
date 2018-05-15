@@ -429,7 +429,7 @@ class TestTronTools:
             mock.call(job_1, soa_dir),
             mock.call(job_2, soa_dir),
         ]
-        expected_filename = '/other/services/tron/dev/foo.yaml'
+        expected_filename = '/other/services/foo/tron-dev.yaml'
         mock_read_file.assert_called_once_with(expected_filename)
 
     @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
@@ -440,7 +440,7 @@ class TestTronTools:
         with pytest.raises(NoConfigurationForServiceError):
             tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
 
-        expected_filename = '/other/services/tron/dev/foo.yaml'
+        expected_filename = '/other/services/foo/tron-dev.yaml'
         mock_read_file.assert_called_once_with(expected_filename)
 
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
@@ -488,29 +488,28 @@ class TestTronTools:
             default_flow_style=mock.ANY,
         )
 
-    @mock.patch('os.listdir', autospec=True)
-    def test_get_tron_namespaces_for_cluster(self, mock_ls):
+    @mock.patch('os.walk', autospec=True)
+    def test_get_tron_namespaces_for_cluster(self, mock_walk):
         cluster_name = 'stage'
         expected_namespaces = ['foo', 'app']
-        mock_ls.return_value = [namespace + '.yaml' for namespace in expected_namespaces]
+        mock_walk.return_value = [('/my_soa_dir/foo', [], ['tron-stage.yaml']), ('/my_soa_dir/app', [], ['tron-stage.yaml']), ('my_soa_dir/woo', [], ['something-else.yaml'])]
         soa_dir = '/my_soa_dir'
-        expected_config_dir = '{}/tron/{}'.format(soa_dir, cluster_name)
 
         namespaces = tron_tools.get_tron_namespaces_for_cluster(
             cluster=cluster_name,
             soa_dir=soa_dir,
         )
         assert namespaces == expected_namespaces
-        mock_ls.assert_called_once_with(expected_config_dir)
 
-    @mock.patch('os.listdir', autospec=True)
+    @mock.patch('os.walk', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
-    def test_get_tron_namespaces_for_cluster_default(self, mock_system_tron_config, mock_ls):
+    def test_get_tron_namespaces_for_cluster_default(self, mock_system_tron_config, mock_walk):
         mock_system_tron_config.return_value.get_cluster_name.return_value = 'this-cluster'
+        mock_walk.return_value = [('/my_soa_dir/this-service', [], ['tron-this-cluster.yaml'])]
         soa_dir = '/my_soa_dir'
-        expected_config_dir = '{}/tron/{}'.format(soa_dir, 'this-cluster')
+        expected_namespaces = ['this-service']
 
-        tron_tools.get_tron_namespaces_for_cluster(
+        namespaces = tron_tools.get_tron_namespaces_for_cluster(
             soa_dir=soa_dir,
         )
-        mock_ls.assert_called_once_with(expected_config_dir)
+        assert namespaces == expected_namespaces

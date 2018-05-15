@@ -331,7 +331,7 @@ def format_tron_job_dict(job_config, cluster_fqdn_format, default_paasta_cluster
 def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
     tron_conf_file = os.path.join(
-        os.path.abspath(soa_dir), 'tron', tron_cluster, service + '.yaml',
+        os.path.abspath(soa_dir), service, 'tron-' + tron_cluster + '.yaml'
     )
     config = service_configuration_lib._read_yaml_file(tron_conf_file)
     if not config:
@@ -373,13 +373,8 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get all the namespaces that are configured in a particular Tron cluster."""
     if not cluster:
         cluster = load_tron_config().get_cluster_name()
-
-    config_dir = os.path.join(
-        os.path.abspath(soa_dir),
-        'tron',
-        cluster,
-    )
-    namespaces = [
-        os.path.splitext(filename)[0] for filename in os.listdir(config_dir)
-    ]
+    
+    tron_config_file = f'tron-{cluster}.yaml'
+    config_dirs = [_dir[0] for _dir in os.walk(os.path.abspath(soa_dir)) if tron_config_file in _dir[2]]
+    namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
     return namespaces
