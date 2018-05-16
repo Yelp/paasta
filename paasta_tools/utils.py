@@ -2472,9 +2472,12 @@ def get_code_sha_from_dockerurl(docker_url: str) -> str:
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the partial sha
     """
-    parts = docker_url.split('/')
-    parts = parts[-1].split('-')
-    return "git%s" % parts[-1][:8]
+    try:
+        parts = docker_url.split('/')
+        parts = parts[-1].split('-')
+        return "git%s" % parts[-1][:8]
+    except Exception as _:
+        return 'gitUNKNOWN'
 
 
 def is_under_replicated(num_available: int, expected_count: int, crit_threshold: int) -> Tuple[bool, float]:
