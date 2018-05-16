@@ -135,4 +135,4 @@ def test_get_authors_works_with_good_url(mock_run):
     mock_run.return_value = (0, 'it worked')
     expected = mock_run.return_value
     assert expected == remote_git.get_authors('git@git.yelpcorp.com:yelp-main', 'a', 'b')
-    mock_run.assert_called_once_with(command='ssh git@git.yelpcorp.com yelp-main a b', timeout=5.0)
+    mock_run.assert_called_once_with(command='ssh git@git.yelpcorp.com authors-of-changeset yelp-main a b', timeout=5.0)
