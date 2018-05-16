@@ -406,9 +406,10 @@ class TestTronTools:
         assert result['env']['SHELL'] == '/bin/bash'
         assert isinstance(result['docker_parameters'], list)
 
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
     @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
     @mock.patch('paasta_tools.tron_tools.TronJobConfig', autospec=True)
-    def test_load_tron_service_config(self, mock_job_config, mock_read_file):
+    def test_load_tron_from_service_dir(self, mock_job_config, mock_read_file, mock_read_service_info):
         job_1 = mock.Mock()
         job_2 = mock.Mock()
         config_dict = {
@@ -416,6 +417,36 @@ class TestTronTools:
             'other_value': 'string',
             'jobs': [job_1, job_2],
         }
+        mock_read_service_info.return_value = config_dict
+        mock_read_file.return_value = {}
+        soa_dir = '/other/services'
+
+        job_configs, extra_config = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        assert extra_config == {
+            'value_a': 20,
+            'other_value': 'string',
+        }
+        assert job_configs == [mock_job_config.return_value for i in range(2)]
+        assert mock_job_config.call_args_list == [
+            mock.call(job_1, soa_dir),
+            mock.call(job_2, soa_dir),
+        ]
+        assert mock_read_service_info.call_count == 1
+        assert mock_read_file.call_count == 0
+        mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', '/other/services')])
+
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.TronJobConfig', autospec=True)
+    def test_load_tron_from_tron_dir(self, mock_job_config, mock_read_file, mock_read_service_info):
+        job_1 = mock.Mock()
+        job_2 = mock.Mock()
+        config_dict = {
+            'value_a': 20,
+            'other_value': 'string',
+            'jobs': [job_1, job_2],
+        }
+        mock_read_service_info.return_value = {}
         mock_read_file.return_value = config_dict
         soa_dir = '/other/services'
 
@@ -429,19 +460,25 @@ class TestTronTools:
             mock.call(job_1, soa_dir),
             mock.call(job_2, soa_dir),
         ]
-        expected_filename = '/other/services/foo/tron-dev.yaml'
-        mock_read_file.assert_called_once_with(expected_filename)
+        assert mock_read_service_info.call_count == 1
+        assert mock_read_file.call_count == 1
+        mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', '/other/services')])
+        mock_read_file.assert_has_calls([mock.call('/other/services/tron/dev/foo.yaml')])
 
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
     @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
-    def test_load_tron_service_config_empty(self, mock_read_file):
+    def test_load_tron_service_config_empty(self, mock_read_file, mock_read_service_info):
         mock_read_file.return_value = {}
+        mock_read_service_info.return_value = {}
         soa_dir = '/other/services'
 
         with pytest.raises(NoConfigurationForServiceError):
             tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
 
-        expected_filename = '/other/services/foo/tron-dev.yaml'
-        mock_read_file.assert_called_once_with(expected_filename)
+        assert mock_read_file.call_count == 1
+        assert mock_read_service_info.call_count == 1
+        mock_read_file.assert_has_calls([mock.call('/other/services/tron/dev/foo.yaml')])
+        mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
 
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
@@ -489,21 +526,30 @@ class TestTronTools:
         )
 
     @mock.patch('os.walk', autospec=True)
-    def test_get_tron_namespaces_for_cluster(self, mock_walk):
+    @mock.patch('os.listdir', autospec=True)
+    def test_get_tron_namespaces_for_cluster(self, mock_ls, mock_walk):
         cluster_name = 'stage'
-        expected_namespaces = ['foo', 'app']
-        mock_walk.return_value = [('/my_soa_dir/foo', [], ['tron-stage.yaml']), ('/my_soa_dir/app', [], ['tron-stage.yaml']), ('my_soa_dir/woo', [], ['something-else.yaml'])]
+        expected_namespaces = ['app', 'foo', 'cool']
+        mock_walk.return_value = [
+            ('/my_soa_dir/foo', [], ['tron-stage.yaml']),
+            ('/my_soa_dir/app', [], ['tron-stage.yaml']),
+            ('my_soa_dir/woo', [], ['something-else.yaml']),
+        ]
+        mock_ls.return_value = ['cool.yaml']
         soa_dir = '/my_soa_dir'
 
         namespaces = tron_tools.get_tron_namespaces_for_cluster(
             cluster=cluster_name,
             soa_dir=soa_dir,
         )
-        assert namespaces == expected_namespaces
+        for expected_namespace in expected_namespaces:
+            assert expected_namespace in namespaces
+        assert len(namespaces) == 3
 
     @mock.patch('os.walk', autospec=True)
+    @mock.patch('os.listdir', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
-    def test_get_tron_namespaces_for_cluster_default(self, mock_system_tron_config, mock_walk):
+    def test_get_tron_namespaces_for_cluster_default(self, mock_system_tron_config, mock_ls, mock_walk):
         mock_system_tron_config.return_value.get_cluster_name.return_value = 'this-cluster'
         mock_walk.return_value = [('/my_soa_dir/this-service', [], ['tron-this-cluster.yaml'])]
         soa_dir = '/my_soa_dir'
