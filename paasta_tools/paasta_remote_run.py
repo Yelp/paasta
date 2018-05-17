@@ -360,6 +360,7 @@ def remote_run_start(args):
         soa_dir=soa_dir,
         instance_type=instance_type,
         config_overrides=overrides_dict,
+        load_deployments=not args.docker_image,
     )
     try:
         task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
