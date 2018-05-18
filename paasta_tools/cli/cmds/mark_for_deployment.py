@@ -251,13 +251,13 @@ class SlackDeployNotifier(object):
 
     def notify_after_mark(self, ret):
         if ret == 0:
-            mes = (
-                f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*.\n"
-                "Will start deploying soon!\n"
-                f"{self.authors}"
-            )
-            self.post(channels=self.channels, message=mes)
             if self.old_commit is not None and self.commit != self.old_commit:
+                mes = (
+                    f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*.\n"
+                    "Will start deploying soon!\n"
+                    f"{self.authors}"
+                )
+                self.post(channels=self.channels, message=mes)
                 mes = (
                     "Roll it back at any time with:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
@@ -265,23 +265,24 @@ class SlackDeployNotifier(object):
                 )
                 self.post(channels=self.channels, message=mes)
         else:
-            message = f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit}*."
-            self.post(channels=self.channels, message=message)
-            build_url = os.environ.get('BUILD_URL')
-            if build_url is not None:
-                message = "Please see the jenkins output: {}/console".format(build_url)
+            if self.old_commit is not None and self.commit != self.old_commit:
+                message = f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit}*."
                 self.post(channels=self.channels, message=message)
-            else:
-                message = "(Run by {} on {})".format(getpass.getuser(), socket.getfqdn())
-                self.post(channels=self.channels, message=message)
+                build_url = os.environ.get('BUILD_URL')
+                if build_url is not None:
+                    message = "Please see the jenkins output: {}/console".format(build_url)
+                    self.post(channels=self.channels, message=message)
+                else:
+                    message = "(Run by {} on {})".format(getpass.getuser(), socket.getfqdn())
+                    self.post(channels=self.channels, message=message)
 
     def notify_after_good_deploy(self):
-        message = (
-            f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
-            f"{self.authors}"
-        )
-        self.post(channels=self.channels, message=message)
         if self.old_commit is not None and self.commit != self.old_commit:
+            message = (
+                f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
+                f"{self.authors}"
+            )
+            self.post(channels=self.channels, message=message)
             mes = (
                 "If you need to roll back, run:\n"
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
@@ -290,19 +291,20 @@ class SlackDeployNotifier(object):
             self.post(channels=self.channels, message=mes)
 
     def notify_after_auto_rollback(self):
-        message = (
-            f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
-            f"Auto-rolling back to {self.old_commit}"
-        )
-        self.post(channels=self.channels, message=message)
+        if self.old_commit is not None and self.commit != self.old_commit:
+            message = (
+                f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
+                f"Auto-rolling back to {self.old_commit}"
+            )
+            self.post(channels=self.channels, message=message)
 
     def notify_after_abort(self):
-        message = (
-            f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*.\n"
-            "PaaSTA will keep trying to deploy this code until it is healthy."
-        )
-        self.post(channels=self.channels, message=message)
         if self.old_commit is not None and self.commit != self.old_commit:
+            message = (
+                f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*.\n"
+                "PaaSTA will keep trying to deploy this code until it is healthy."
+            )
+            self.post(channels=self.channels, message=message)
             mes = (
                 "If you need to roll back, run:\n"
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"
