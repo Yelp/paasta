@@ -14,6 +14,7 @@
 # limitations under the License.
 import logging
 
+import a_sync
 import humanize
 import isodate
 
@@ -321,7 +322,7 @@ def status_chronos_jobs(client, jobs, job_config, verbose):
         output.append("Desired:    %s" % desired_state)
         for job in jobs:
             running_task_count = len(select_tasks_by_id(
-                get_cached_list_of_running_tasks_from_frameworks(),
+                a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
                 job["name"],
             ))
             output.append(format_chronos_job_status(client, job, running_task_count, verbose))

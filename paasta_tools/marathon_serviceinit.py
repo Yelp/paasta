@@ -18,6 +18,7 @@ from typing import Dict
 from typing import List
 from typing import Tuple
 
+import a_sync
 import humanize
 import isodate
 from marathon.models.app import MarathonTask
@@ -473,7 +474,7 @@ def status_mesos_tasks(
     filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
 
     try:
-        count = len(select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string))
+        count = len(select_tasks_by_id(a_sync.block(get_cached_list_of_running_tasks_from_frameworks), filter_string))
         if count >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             count_str = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))

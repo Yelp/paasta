@@ -17,6 +17,7 @@ PaaSTA service instance status/start/stop etc.
 """
 import traceback
 
+import a_sync
 import marathon
 from pyramid.response import Response
 from pyramid.view import view_config
@@ -70,7 +71,10 @@ def chronos_instance_status(instance_status, service, instance, verbose):
     cstatus['status'] = {}
     if verbose:
         running_task_count = len(
-            select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), job_config.get_job_name()),
+            select_tasks_by_id(
+                a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
+                job_config.get_job_name(),
+            ),
         )
         cstatus['status']['mesos_state'] = 'running' if running_task_count else 'not_running'
     cstatus['status']['disabled_state'] = 'not_scheduled' if job_config.get_disabled() else 'scheduled'
@@ -109,7 +113,9 @@ def marathon_job_status(mstatus, client, job_config, verbose):
 
     mstatus['app_id'] = app_id
     if verbose is True:
-        mstatus['slaves'] = list({task.slave['hostname'] for task in get_running_tasks_from_frameworks(app_id)})
+        mstatus['slaves'] = list(
+            {task.slave['hostname'] for task in a_sync.block(get_running_tasks_from_frameworks, app_id)},
+        )
     mstatus['expected_instance_count'] = job_config.get_instances()
 
     try:
@@ -199,7 +205,7 @@ def instance_task(request):
     except KeyError:
         raise ApiFailure("Only marathon tasks supported", 400)
     try:
-        task = get_task(task_id, app_id=mstatus['app_id'])
+        task = a_sync.block(get_task, task_id, app_id=mstatus['app_id'])
     except TaskNotFound:
         raise ApiFailure("Task with id {} not found".format(task_id), 404)
     except Exception:
@@ -220,7 +226,7 @@ def instance_tasks(request):
         mstatus = status['marathon']
     except KeyError:
         raise ApiFailure("Only marathon tasks supported", 400)
-    tasks = get_tasks_from_app_id(mstatus['app_id'], slave_hostname=slave_hostname)
+    tasks = a_sync.block(get_tasks_from_app_id, mstatus['app_id'], slave_hostname=slave_hostname)
     if verbose:
         tasks = [add_executor_info(task) for task in tasks]
         tasks = [add_slave_info(task) for task in tasks]

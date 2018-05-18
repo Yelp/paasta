@@ -35,17 +35,16 @@ RUN apt-get update > /dev/null && \
         libyaml-dev \
         python3.6-dev \
         python-pip \
-        python-tox \
         wget \
         zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cd /tmp && \
+RUN apt-get update && cd /tmp && \
     wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
     gdebi -n dh-virtualenv*.deb && \
     rm dh-virtualenv_*.deb
 
-RUN pip install virtualenv==15.1.0
+RUN pip install virtualenv==15.1.0 tox-pip-extensions==1.2.1
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 

@@ -2,6 +2,8 @@
 import argparse
 import sys
 
+import a_sync
+
 from paasta_tools import mesos_tools
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_running_mesos_docker_containers
@@ -23,12 +25,13 @@ def parse_args():
     return args
 
 
-def main():
+@a_sync.to_blocking
+async def main():
     args = parse_args()
     docker_client = get_docker_client()
 
     running_mesos_task_ids = [task["id"] for task in mesos_tools.filter_running_tasks(
-        mesos_tools.get_running_tasks_from_frameworks(''),
+        await mesos_tools.get_running_tasks_from_frameworks(''),
     )]
     running_mesos_docker_containers = get_running_mesos_docker_containers()
 

@@ -22,8 +22,7 @@ import re
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
-import requests
-import requests.exceptions
+import aiohttp
 from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
 from retry import retry
@@ -36,6 +35,7 @@ from . import slave
 from . import task
 from . import util
 from . import zookeeper
+from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.utils import get_user_agent
 
 ZOOKEEPER_TIMEOUT = 1
@@ -76,8 +76,13 @@ class MesosMaster(object):
         replaced = host_url._replace(netloc=host_url.hostname + ':5055')
         return replaced.geturl()
 
-    @log.duration
-    def _request(self, url, method=requests.get, cached=False, **kwargs):
+    async def _request(
+        self,
+        url: str,
+        method: str='GET',
+        cached: bool=False,
+        **kwargs,
+    ) -> aiohttp.ClientResponse:
         headers = {'User-Agent': get_user_agent()}
 
         if cached and self.config.get("use_mesos_cache", False):
@@ -87,17 +92,27 @@ class MesosMaster(object):
             host = self.host
 
         try:
-            return method(
-                urljoin(host, url),
-                timeout=self.config["response_timeout"],
-                headers=headers,
-                **kwargs,
-            )
-        except requests.exceptions.ConnectionError:
+            async with aiohttp.ClientSession(
+                conn_timeout=self.config["response_timeout"],
+                read_timeout=self.config["response_timeout"],
+            ) as session:
+                async with session.request(
+                    method=method,
+                    url=urljoin(host, url),
+                    headers=headers,
+                    **kwargs,
+                ) as resp:
+                    # if nobody awaits resp.text() or resp.json() before we exit the session context manager, then the
+                    # http connection gets closed before we read the response; then later calls to resp.text/json will
+                    # fail.
+                    await resp.text()
+                    return resp
+
+        except aiohttp.client_exceptions.ClientConnectionError:
             raise exceptions.MasterNotAvailableException(
                 MISSING_MASTER.format(host),
             )
-        except requests.exceptions.TooManyRedirects:
+        except aiohttp.client_exceptions.TooManyRedirects:
             raise exceptions.MasterTemporarilyNotAvailableException(
                 (
                     "Unable to connect to master at %s, likely due to "
@@ -105,11 +120,11 @@ class MesosMaster(object):
                 ) % host,
             )
 
-    def fetch(self, url, **kwargs):
-        return self._request(url, **kwargs)
+    async def fetch(self, url, **kwargs):
+        return await self._request(url, **kwargs)
 
-    def post(self, url, **kwargs):
-        return self._request(url, method=requests.post, **kwargs)
+    async def post(self, url, **kwargs):
+        return await self._request(url, method='POST', **kwargs)
 
     def _file_resolver(self, cfg):
         return self.resolve(open(cfg[6:], "r+").read().strip())
@@ -181,16 +196,16 @@ class MesosMaster(object):
         else:
             return cfg
 
-    @util.CachedProperty(ttl=15)
-    def state(self):
-        return self.fetch("/master/state.json", cached=True).json()
+    @async_ttl_cache(ttl=15)
+    async def state(self):
+        return await (await self.fetch("/master/state.json", cached=True)).json()
 
-    def state_summary(self):
-        return self.fetch("/master/state-summary").json()
+    async def state_summary(self):
+        return await (await self.fetch("/master/state-summary")).json()
 
-    @util.memoize
-    def slave(self, fltr):
-        lst = self.slaves(fltr)
+    @async_ttl_cache(ttl=0)
+    async def slave(self, fltr):
+        lst = await self.slaves(fltr)
 
         log.debug("master.slave({})".format(fltr))
 
@@ -209,23 +224,23 @@ class MesosMaster(object):
 
         return lst[0]
 
-    def slaves(self, fltr=""):
+    async def slaves(self, fltr=""):
         return [
             slave.MesosSlave(self.config, x)
-            for x in self.state['slaves']
+            for x in (await self.state())['slaves']
             if fltr == x['id']
         ]
 
-    def _task_list(self, active_only=False):
+    async def _task_list(self, active_only=False):
         keys = ["tasks"]
         if not active_only:
             keys.append("completed_tasks")
         return itertools.chain(
-            *[util.merge(x, *keys) for x in self._framework_list(active_only)],
+            *[util.merge(x, *keys) for x in await self._framework_list(active_only)],
         )
 
-    def task(self, fltr):
-        lst = self.tasks(fltr)
+    async def task(self, fltr):
+        lst = await self.tasks(fltr)
 
         if len(lst) == 0:
             raise exceptions.TaskNotFoundException(
@@ -241,44 +256,44 @@ class MesosMaster(object):
             )
         return lst[0]
 
-    def orphan_tasks(self):
-        return self.state["orphan_tasks"]
+    async def orphan_tasks(self):
+        return (await self.state())["orphan_tasks"]
 
     # XXX - need to filter on task state as well as id
-    def tasks(self, fltr="", active_only=False):
+    async def tasks(self, fltr="", active_only=False):
         return [
             task.Task(self, x)
-            for x in self._task_list(active_only)
+            for x in await self._task_list(active_only)
             if fltr in x['id'] or fnmatch.fnmatch(x['id'], fltr)
         ]
 
-    def framework(self, fwid):
+    async def framework(self, fwid):
         return list(filter(
             lambda x: x.id == fwid,
-            self.frameworks(),
+            await self.frameworks(),
         ))[0]
 
-    def _framework_list(self, active_only=False):
+    async def _framework_list(self, active_only=False):
         keys = ["frameworks"]
         if not active_only:
             keys.append("completed_frameworks")
-        return util.merge(self._frameworks, *keys)
+        return util.merge(await self._frameworks(), *keys)
 
-    @util.CachedProperty(ttl=15)
-    def _frameworks(self):
-        return self.fetch("/master/frameworks", cached=True).json()
+    @async_ttl_cache(ttl=15)
+    async def _frameworks(self):
+        return await (await self.fetch("/master/frameworks", cached=True)).json()
 
-    def frameworks(self, active_only=False):
+    async def frameworks(self, active_only=False):
         return [framework.Framework(f)
-                for f in self._framework_list(active_only)]
+                for f in await self._framework_list(active_only)]
 
-    def teardown(self, framework_id):
-        return self.post(
+    async def teardown(self, framework_id):
+        return await self.post(
             "/master/teardown", data="frameworkId=%s" % framework_id,
         )
 
-    def metrics_snapshot(self):
-        return self.fetch("/metrics/snapshot").json()
+    async def metrics_snapshot(self):
+        return await (await self.fetch("/metrics/snapshot")).json()
 
     @property  # type: ignore
     @util.memoize

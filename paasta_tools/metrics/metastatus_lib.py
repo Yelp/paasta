@@ -25,6 +25,7 @@ from typing import List
 from typing import Tuple
 from typing import TypeVar
 
+import a_sync
 from humanize import naturalsize
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter  # noqa
@@ -328,7 +329,7 @@ def assert_slave_health(metrics):
 
 
 def assert_quorum_size():
-    masters, quorum = get_num_masters(), get_mesos_quorum()
+    masters, quorum = get_num_masters(), a_sync.block(get_mesos_quorum)
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
             message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),

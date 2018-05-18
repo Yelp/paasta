@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 import struct
 import time
@@ -21,6 +22,7 @@ from datetime import datetime
 from math import ceil
 from math import floor
 
+import a_sync
 import gevent
 import requests
 from gevent import monkey
@@ -372,16 +374,16 @@ def mesos_cpu_metrics_provider(
             last_time = 0.0
             last_cpu_data = []
 
-    monkey.patch_socket()
-    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
-    gevent.joinall(jobs, timeout=60)
-    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+    futures = [asyncio.ensure_future(task.stats()) for task in mesos_tasks]
+    if futures:
+        a_sync.block(asyncio.wait, futures, timeout=60)
+    mesos_tasks_stats = dict(zip([task['id'] for task in mesos_tasks], [fut.result() for fut in futures]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
     mesos_cpu_data = {}
-    for task_id, stats in mesos_tasks.items():
+    for task_id, stats in mesos_tasks_stats.items():
         if stats is not None:
             try:
                 utime = float(stats['cpus_user_time_secs'])
@@ -453,7 +455,7 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
 
 def get_autoscaling_info(apps_with_clients, service_config):
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-        all_mesos_tasks = get_cached_list_of_running_tasks_from_frameworks()
+        all_mesos_tasks = a_sync.block(get_cached_list_of_running_tasks_from_frameworks)
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
         system_paasta_config = load_system_paasta_config()
@@ -697,7 +699,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
             marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
             apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
-            all_mesos_tasks = get_all_running_tasks()
+            all_mesos_tasks = a_sync.block(get_all_running_tasks)
             if configs:
                 with ZookeeperPool():
                     for config in configs:

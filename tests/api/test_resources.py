@@ -13,6 +13,7 @@
 # limitations under the License.
 import json
 
+import asynctest
 import mock
 from pyramid import testing
 
@@ -46,7 +47,7 @@ def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_r
     request = testing.DummyRequest()
     request.swagger_data = {'groupings': None, 'filter': None}
     mock_mesos_state = mock.Mock()
-    mock_master = mock.Mock(state=mock_mesos_state)
+    mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
     mock_get_mesos_master.return_value = mock_master
 
     mock_get_resource_utilization_by_grouping.return_value = {
@@ -148,7 +149,7 @@ mock_mesos_state = {
 def test_resources_utilization_with_grouping(mock_get_mesos_master):
     request = testing.DummyRequest()
     request.swagger_data = {'groupings': ['region', 'pool'], 'filter': None}
-    mock_master = mock.Mock(state=mock_mesos_state)
+    mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)
@@ -163,7 +164,7 @@ def test_resources_utilization_with_grouping(mock_get_mesos_master):
 def test_resources_utilization_with_filter(mock_get_mesos_master):
     request = testing.DummyRequest()
     request.swagger_data = {'groupings': ['region', 'pool'], 'filter': ['region:top', 'pool:default,other']}
-    mock_master = mock.Mock(state=mock_mesos_state)
+    mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)

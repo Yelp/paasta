@@ -36,6 +36,7 @@ import os
 from datetime import datetime
 from datetime import timedelta
 
+import a_sync
 import pysensu_yelp
 
 from paasta_tools import marathon_tools
@@ -345,7 +346,7 @@ def main():
     all_tasks = []
     for client in all_clients:
         all_tasks.extend(client.list_tasks())
-    mesos_slaves = get_slaves()
+    mesos_slaves = a_sync.block(get_slaves)
     smartstack_replication_checker = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
 
     for service in list_services(soa_dir=args.soa_dir):

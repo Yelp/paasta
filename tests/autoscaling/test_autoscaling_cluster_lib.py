@@ -17,6 +17,7 @@ import unittest
 import warnings
 from math import floor
 
+import asynctest
 import mock
 from botocore.exceptions import ClientError
 from pytest import raises
@@ -167,7 +168,7 @@ def test_autoscale_local_cluster_with_cancelled():
             ('westeros-1', 'default'): -0.2,
         }
         mock_mesos_state = mock.Mock()
-        mock_master = mock.Mock(state=mock_mesos_state)
+        mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
         mock_get_mesos_master.return_value = mock_master
         calls = []
 
@@ -236,7 +237,7 @@ def test_autoscale_local_cluster():
             ('westeros-1', 'default'): -0.2,
         }
         mock_mesos_state = mock.Mock()
-        mock_master = mock.Mock(state=mock_mesos_state)
+        mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
         mock_get_mesos_master.return_value = mock_master
         calls = []
 

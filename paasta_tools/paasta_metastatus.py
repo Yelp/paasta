@@ -22,6 +22,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
+import a_sync
 import chronos
 from marathon.exceptions import MarathonError
 
@@ -82,7 +83,7 @@ def get_marathon_framework_ids(marathon_clients):
 def _run_mesos_checks(mesos_master, mesos_state):
     mesos_state_status = metastatus_lib.get_mesos_state_status(mesos_state)
 
-    metrics = mesos_master.metrics_snapshot()
+    metrics = a_sync.block(mesos_master.metrics_snapshot)
     mesos_metrics_status = metastatus_lib.get_mesos_resource_utilization_health(
         mesos_metrics=metrics,
         mesos_state=mesos_state,
@@ -170,7 +171,7 @@ def main(argv: Optional[List[str]]=None) -> None:
     marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))
 
     try:
-        mesos_state = master.state
+        mesos_state = a_sync.block(master.state)
         all_mesos_results = _run_mesos_checks(
             mesos_master=master,
             mesos_state=mesos_state,
