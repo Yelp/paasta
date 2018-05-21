@@ -814,7 +814,15 @@ class SpotAutoscaler(ClusterAutoscaler):
 
     def metrics_provider(self, mesos_state: MesosState) -> Tuple[float, int]:
         if not self.sfr or self.sfr['SpotFleetRequestState'] == 'cancelled':
-            self.log.error("SFR not found, removing config file.".format(self.resource['id']))
+            self.log.error("SFR not found or cancelled, removing config file.")
+            self.cleanup_cancelled_config(self.resource['id'], self.config_folder, dry_run=self.dry_run)
+            return 0, 0
+        elif self.sfr['SpotFleetRequestState'] == 'cancelled_running' and len(self.instances) == 0:
+            self.log.error(
+                "This is a cancelled_running SFR with no instances. This is not "
+                "a valid SFR state, and it should eventually be cancelled by AWS. "
+                "Removing its config.",
+            )
             self.cleanup_cancelled_config(self.resource['id'], self.config_folder, dry_run=self.dry_run)
             return 0, 0
         elif self.sfr['SpotFleetRequestState'] in ['submitted', 'modifying', 'cancelled_terminating']:
