@@ -1,3 +1,12 @@
+paasta-tools (0.73.0) xenial; urgency=medium
+
+  * 0.73.0 tagged with 'make release'
+    Commit: Merge pull request #1836 from Yelp/u/chl/TRON-
+    256_moving_tron_job_to_service_directories  read tron config files
+    from service directories
+
+ -- Chien-An Lai <chl@yelp.com>  Mon, 21 May 2018 10:54:14 -0700
+
 paasta-tools (0.72.0) xenial; urgency=medium
 
   * 0.72.0 tagged with 'make release'
