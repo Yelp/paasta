@@ -28,7 +28,6 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
-
 SPACER = '.'
 
 
@@ -330,12 +329,16 @@ def format_tron_job_dict(job_config, cluster_fqdn_format, default_paasta_cluster
 
 def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
-    tron_conf_file = os.path.join(
-        os.path.abspath(soa_dir), 'tron', tron_cluster, service + '.yaml',
-    )
-    config = service_configuration_lib._read_yaml_file(tron_conf_file)
+
+    config = service_configuration_lib.read_extra_service_information(service, 'tron-' + tron_cluster, soa_dir)
     if not config:
-        raise NoConfigurationForServiceError('No configuration found for Tron at %s' % tron_conf_file)
+        tron_conf_path = os.path.join(
+            os.path.abspath(soa_dir), 'tron', tron_cluster, service + '.yaml',
+        )
+        config = service_configuration_lib._read_yaml_file(tron_conf_path)
+
+    if not config:
+        raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
 
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
     job_configs = []
@@ -369,11 +372,14 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
     )
 
 
-def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get all the namespaces that are configured in a particular Tron cluster."""
-    if not cluster:
-        cluster = load_tron_config().get_cluster_name()
+def _get_tron_namespaces_from_service_dir(cluster, soa_dir):
+    tron_config_file = f'tron-{cluster}.yaml'
+    config_dirs = [_dir[0] for _dir in os.walk(os.path.abspath(soa_dir)) if tron_config_file in _dir[2]]
+    namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
+    return namespaces
 
+
+def _get_tron_namespaces_from_tron_dir(cluster, soa_dir):
     config_dir = os.path.join(
         os.path.abspath(soa_dir),
         'tron',
@@ -382,4 +388,15 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     namespaces = [
         os.path.splitext(filename)[0] for filename in os.listdir(config_dir)
     ]
+    return namespaces
+
+
+def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Get all the namespaces that are configured in a particular Tron cluster."""
+    if not cluster:
+        cluster = load_tron_config().get_cluster_name()
+
+    namespaces1 = _get_tron_namespaces_from_service_dir(cluster, soa_dir)
+    namespaces2 = _get_tron_namespaces_from_tron_dir(cluster, soa_dir)
+    namespaces = list(set(namespaces1 + namespaces2))
     return namespaces

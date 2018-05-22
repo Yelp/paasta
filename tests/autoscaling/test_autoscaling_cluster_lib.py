@@ -1001,8 +1001,16 @@ class TestSpotAutoscaler(unittest.TestCase):
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (0, 0)
 
+            # cancelled_running SFR with no instances
+            mock_cleanup_cancelled_config.reset_mock()
+            self.autoscaler.instances = []
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            assert ret == (0, 0)
+            mock_cleanup_cancelled_config.assert_called_with(self.autoscaler, 'sfr-blah', '/nail/blah', dry_run=False)
+
             # SFR with no instances
             mock_get_mesos_master.reset_mock()
+            self.autoscaler.sfr = {'SpotFleetRequestState': 'active'}
             self.autoscaler.instances = []
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (0, 0)
