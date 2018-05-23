@@ -377,7 +377,14 @@ def mesos_cpu_metrics_provider(
     futures = [asyncio.ensure_future(task.stats()) for task in mesos_tasks]
     if futures:
         a_sync.block(asyncio.wait, futures, timeout=60)
-    mesos_tasks_stats = dict(zip([task['id'] for task in mesos_tasks], [fut.result() for fut in futures]))
+
+    def results_or_None(fut):
+        try:
+            return fut.result()
+        except Exception:
+            return None
+
+    mesos_tasks_stats = dict(zip([task['id'] for task in mesos_tasks], [results_or_None(fut) for fut in futures]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time

@@ -235,7 +235,7 @@ def test_mesos_cpu_metrics_provider():
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
-        stats=asynctest.CoroutineMock(return_value=None),
+        stats=asynctest.CoroutineMock(side_effect=Exception),
     )
     fake_mesos_task_3 = mock.MagicMock(
         stats=asynctest.CoroutineMock(return_value={}),
