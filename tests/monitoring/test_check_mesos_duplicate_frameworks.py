@@ -28,15 +28,18 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
         mock_opts.check = 'marathon,chronos'
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
-        mock_master.state = asynctest.CoroutineMock(return_value={
-            'frameworks': [
-                {'name': 'marathon'},
-                {'name': 'marathon1'},
-                {'name': 'chronos'},
-                {'name': 'foobar'},
-                {'name': 'foobar'},
-            ],
-        })
+        mock_master.state = asynctest.CoroutineMock(
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value={
+                'frameworks': [
+                    {'name': 'marathon'},
+                    {'name': 'marathon1'},
+                    {'name': 'chronos'},
+                    {'name': 'foobar'},
+                    {'name': 'foobar'},
+                ],
+            },
+        )
         mock_get_mesos_master.return_value = mock_master
 
         with pytest.raises(SystemExit) as error:
@@ -59,16 +62,19 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
         mock_opts.check = 'marathon,chronos'
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
-        mock_master.state = asynctest.CoroutineMock(return_value={
-            'frameworks': [
-                {'name': 'marathon'},
-                {'name': 'marathon1'},
-                {'name': 'marathon1'},
-                {'name': 'chronos'},
-                {'name': 'foobar'},
-                {'name': 'foobar'},
-            ],
-        })
+        mock_master.state = asynctest.CoroutineMock(
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value={
+                'frameworks': [
+                    {'name': 'marathon'},
+                    {'name': 'marathon1'},
+                    {'name': 'marathon1'},
+                    {'name': 'chronos'},
+                    {'name': 'foobar'},
+                    {'name': 'foobar'},
+                ],
+            },
+        )
         mock_get_mesos_master.return_value = mock_master
 
         with pytest.raises(SystemExit) as error:

@@ -149,7 +149,12 @@ mock_mesos_state = {
 def test_resources_utilization_with_grouping(mock_get_mesos_master):
     request = testing.DummyRequest()
     request.swagger_data = {'groupings': ['region', 'pool'], 'filter': None}
-    mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
+    mock_master = mock.Mock(
+        state=asynctest.CoroutineMock(
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value=mock_mesos_state,
+        ),
+    )
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)
@@ -164,7 +169,12 @@ def test_resources_utilization_with_grouping(mock_get_mesos_master):
 def test_resources_utilization_with_filter(mock_get_mesos_master):
     request = testing.DummyRequest()
     request.swagger_data = {'groupings': ['region', 'pool'], 'filter': ['region:top', 'pool:default,other']}
-    mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
+    mock_master = mock.Mock(
+        state=asynctest.CoroutineMock(
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value=mock_mesos_state,
+        ),
+    )
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)

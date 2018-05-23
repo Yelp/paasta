@@ -703,7 +703,10 @@ def test_get_count_running_tasks_on_slave():
     ) as mock_get_mesos_task_count_by_slave:
         mock_master = mock.Mock()
         mock_mesos_state = mock.Mock()
-        mock_master.state_summary = asynctest.CoroutineMock(return_value=mock_mesos_state)
+        mock_master.state_summary = asynctest.CoroutineMock(
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value=mock_mesos_state,
+        )
         mock_get_master.return_value = mock_master
 
         mock_slave_counts = [
