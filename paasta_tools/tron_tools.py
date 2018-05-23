@@ -244,6 +244,9 @@ class TronJobConfig:
         action_dict = self.config_dict.get('cleanup_action')
         if not action_dict:
             return None
+
+        # TODO: we should keep this trickery outside paasta repo
+        action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
 
     def __eq__(self, other):
@@ -321,7 +324,9 @@ def format_tron_job_dict(job_config, cluster_fqdn_format, default_paasta_cluster
     }
     cleanup_config = job_config.get_cleanup_action(default_paasta_cluster)
     if cleanup_config:
-        result['cleanup_action'] = format_tron_action_dict(cleanup_config, cluster_fqdn_format)
+        cleanup_action = format_tron_action_dict(cleanup_config, cluster_fqdn_format)
+        del cleanup_action['name']
+        result['cleanup_action'] = cleanup_action
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
