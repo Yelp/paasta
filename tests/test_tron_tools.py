@@ -560,7 +560,6 @@ class TestTronTools:
         )
         assert namespaces == expected_namespaces
 
-
     @mock.patch('os.walk', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     def test_get_tron_namespaces_for_cluster_conflict(self, mock_ls, mock_walk):

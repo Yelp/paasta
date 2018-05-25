@@ -395,8 +395,10 @@ def _get_tron_namespaces_from_tron_dir(cluster, soa_dir):
     ]
     return namespaces
 
+
 class ConflictingNamespacesError(RuntimeError):
     pass
+
 
 def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get all the namespaces that are configured in a particular Tron cluster."""
@@ -409,7 +411,7 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     if namespaces1.intersection(namespaces2):
         raise ConflictingNamespacesError(
             "namespaces found in both service/*/tron and service/tron/*: {}".
-            format(namespaces1.intersection(namespaces2))
+            format(namespaces1.intersection(namespaces2)),
         )
 
     namespaces = list(namespaces1.union(namespaces2))
