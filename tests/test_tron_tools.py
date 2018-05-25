@@ -571,7 +571,7 @@ class TestTronTools:
         soa_dir = '/my_soa_dir'
 
         try:
-            namespaces = tron_tools.get_tron_namespaces_for_cluster(
+            tron_tools.get_tron_namespaces_for_cluster(
                 cluster=cluster_name,
                 soa_dir=soa_dir,
             )
