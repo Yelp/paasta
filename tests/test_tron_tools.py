@@ -570,11 +570,8 @@ class TestTronTools:
         mock_ls.return_value = ['cool.yaml']
         soa_dir = '/my_soa_dir'
 
-        try:
+        with pytest.raises(tron_tools.ConflictingNamespacesError):
             tron_tools.get_tron_namespaces_for_cluster(
                 cluster=cluster_name,
                 soa_dir=soa_dir,
             )
-            assert False, "no exception raised on conflicting namespaces"
-        except tron_tools.ConflictingNamespacesError as e:
-            assert True
