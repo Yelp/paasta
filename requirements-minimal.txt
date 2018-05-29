@@ -44,6 +44,5 @@ task-processing
 typing-extensions
 tzlocal
 ujson == 1.35
-websocket-client==0.44.0
 wsgicors
 yelp-clog >= 2.7.2
