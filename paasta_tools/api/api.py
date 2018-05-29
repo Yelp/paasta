@@ -127,7 +127,7 @@ def main(argv=None):
         # We create the Zookeeper pool here to prevent the context manager
         # tearing down the client after each request. This can cause an exception
         # if the API is dealing with two or more requests at the same time!
-        with ZookeeperPool() as _:  # noqa
+        with ZookeeperPool():
             server.serve_forever()
     except KeyboardInterrupt:
         exit(0)

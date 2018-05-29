@@ -2476,7 +2476,7 @@ def get_code_sha_from_dockerurl(docker_url: str) -> str:
         parts = docker_url.split('/')
         parts = parts[-1].split('-')
         return "git%s" % parts[-1][:8]
-    except Exception as _:
+    except Exception:
         return 'gitUNKNOWN'
 
 
