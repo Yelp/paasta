@@ -83,6 +83,7 @@ def main():
             except ConflictingNamespacesError as e:
                 log.error('Failed to list tron namespaces: {error}'.format(
                     error=str(e)))
+                sys.exit(1)
         else:
             services = [args.service]
 
