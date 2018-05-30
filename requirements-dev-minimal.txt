@@ -7,7 +7,7 @@ freezegun
 mock
 path.py
 pep8
-pre-commit==0.18.1
+pre-commit
 pylint
 pytest
 pytest-asyncio
