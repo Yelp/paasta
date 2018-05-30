@@ -71,48 +71,48 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING)
 
-        if args.all_namepsaces:
-            try:
-                services = tron_tools.get_tron_namespaces_for_cluster()
-            except Exception as e:
-                log.error('Failed to list tron namespaces: {error}'.format(
-                    error=str(e),
-                ))
-                sys.exit(1)
-        else:
-            services = args.services
+    if args.all_namespaces:
+        try:
+            services = tron_tools.get_tron_namespaces_for_cluster()
+        except Exception as e:
+            log.error('Failed to list tron namespaces: {error}'.format(
+                error=str(e),
+            ))
+            sys.exit(1)
+    else:
+        services = args.services
 
-        if not services:
-            log.warning("No namespaces found")
-            sys.exit(0)
+    if not services:
+        log.warning("No namespaces found")
+        sys.exit(0)
 
-        client = tron_tools.get_tron_client()
+    client = tron_tools.get_tron_client()
 
-        updated = []
-        failed = []
+    updated = []
+    failed = []
 
-        for service in services:
-            try:
-                new_config = tron_tools.create_complete_config(
-                    service=args.service,
-                    soa_dir=args.soa_dir,
-                )
-                client.update_namespace(args.service, new_config)
-                updated.append(service)
-            except Exception as e:
-                log.error('Update for {namespace} failed: {error}'.format(
-                    namespace=args.service, error=str(e),
-                ))
-                failed.append(service)
+    for service in services:
+        try:
+            new_config = tron_tools.create_complete_config(
+                service=args.service,
+                soa_dir=args.soa_dir,
+            )
+            client.update_namespace(args.service, new_config)
+            updated.append(service)
+        except Exception as e:
+            log.error('Update for {namespace} failed: {error}'.format(
+                namespace=args.service, error=str(e),
+            ))
+            failed.append(service)
 
-        log.info(
-            'Updated following namespaces: {updated}, failed: {failed}'.format(
-                updated=updated,
-                failed=failed,
-            ),
-        )
+    log.info(
+        'Updated following namespaces: {updated}, failed: {failed}'.format(
+            updated=updated,
+            failed=failed,
+        ),
+    )
 
-        sys.exit(1 if failed else 0)
+    sys.exit(1 if failed else 0)
 
 
 if __name__ == "__main__":
