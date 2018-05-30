@@ -151,6 +151,9 @@
                 "autoscaling": {
                     "type": "object"
                 },
+                "sfn_autoscaling": {
+                    "type": "object"
+                },
                 "drain_method": {
                     "enum": [ "noop", "hacheck", "http", "test" ],
                     "default": "noop"
