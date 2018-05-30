@@ -65,13 +65,14 @@ def parse_args():
 
 def main():
     args = parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARNING)
+    log_level = logging.DEBUG if args.verbose else logging.WARNING
+    logging.basicConfig(level=log_level)
 
     if args.all_namespaces:
+        if args.services:
+            log.error('Do not pass service names with --all flag')
+            sys.exit(1)
+
         try:
             services = tron_tools.get_tron_namespaces_for_cluster()
         except Exception as e:
