@@ -65,7 +65,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    log_level = logging.DEBUG if args.verbose else logging.WARNING
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(level=log_level)
 
     if args.all_namespaces:
