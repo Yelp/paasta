@@ -559,3 +559,19 @@ class TestTronTools:
             soa_dir=soa_dir,
         )
         assert namespaces == expected_namespaces
+
+    @mock.patch('os.walk', autospec=True)
+    @mock.patch('os.listdir', autospec=True)
+    def test_get_tron_namespaces_for_cluster_conflict(self, mock_ls, mock_walk):
+        cluster_name = 'stage'
+        mock_walk.return_value = [
+            ('/my_soa_dir/cool', [], ['tron-stage.yaml']),
+        ]
+        mock_ls.return_value = ['cool.yaml']
+        soa_dir = '/my_soa_dir'
+
+        with pytest.raises(tron_tools.ConflictingNamespacesError):
+            tron_tools.get_tron_namespaces_for_cluster(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+            )

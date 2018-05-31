@@ -45,7 +45,5 @@ typing-extensions
 tzlocal
 ujson == 1.35
 utaw == 0.2.0
-websocket-client==0.44.0
 wsgicors
-yelp-bytes
 yelp-clog >= 2.7.2

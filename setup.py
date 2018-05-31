@@ -76,7 +76,6 @@ setup(
         'tzlocal',
         'ujson == 1.35',
         'wsgicors',
-        'yelp-bytes',
         'yelp-clog >= 2.7.2',
     ],
     scripts=[
