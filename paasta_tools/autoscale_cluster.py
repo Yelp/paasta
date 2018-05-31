@@ -15,6 +15,8 @@
 import argparse
 import logging
 
+import a_sync
+
 from paasta_tools.autoscaling.autoscaling_cluster_lib import autoscale_local_cluster
 
 
@@ -54,7 +56,7 @@ def main(argv=None):
     else:
         logging.basicConfig(level=logging.WARNING, format=log_format)
 
-    autoscale_local_cluster(
+    a_sync.to_blocking(autoscale_local_cluster)(
         dry_run=args.dry_run,
         config_folder=args.autoscaler_configs,
         log_level=log_level,

@@ -317,13 +317,20 @@ async def get_cpu_usage(task):
         return "Timed Out"
 
 
+async def results_or_unknown(future: Awaitable[str]) -> str:
+    try:
+        return await future
+    except Exception:
+        return PaastaColors.red("Unknown")
+
+
 async def format_running_mesos_task_row(task: Task, get_short_task_id: Callable[[str], str]) -> Tuple[str, ...]:
     """Returns a pretty formatted string of a running mesos task attributes"""
 
     short_task_id = get_short_task_id(task['id'])
-    short_hostname_future = asyncio.ensure_future(get_short_hostname_from_task(task))
-    mem_usage_future = asyncio.ensure_future(get_mem_usage(task))
-    cpu_usage_future = asyncio.ensure_future(get_cpu_usage(task))
+    short_hostname_future = asyncio.ensure_future(results_or_unknown(get_short_hostname_from_task(task)))
+    mem_usage_future = asyncio.ensure_future(results_or_unknown(get_mem_usage(task)))
+    cpu_usage_future = asyncio.ensure_future(results_or_unknown(get_cpu_usage(task)))
     first_status_timestamp = get_first_status_timestamp(task)
 
     await asyncio.wait([short_hostname_future, mem_usage_future, cpu_usage_future])
@@ -341,7 +348,7 @@ async def format_non_running_mesos_task_row(task: Task, get_short_task_id: Calla
     """Returns a pretty formatted string of a running mesos task attributes"""
     return (
         PaastaColors.grey(get_short_task_id(task['id'])),
-        PaastaColors.grey(await get_short_hostname_from_task(task)),
+        PaastaColors.grey(await results_or_unknown(get_short_hostname_from_task(task))),
         PaastaColors.grey(get_first_status_timestamp(task)),
         PaastaColors.grey(task['state']),
     )

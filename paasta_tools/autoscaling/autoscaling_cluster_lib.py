@@ -33,7 +33,6 @@ from typing import Tuple
 from typing import Union
 
 import boto3
-from a_sync import to_blocking
 from botocore.exceptions import ClientError
 from mypy_extensions import TypedDict
 from requests.exceptions import HTTPError
@@ -1166,7 +1165,6 @@ def get_all_utilization_errors(
     return errors
 
 
-@to_blocking
 async def autoscale_local_cluster(
     config_folder: str,
     dry_run: bool=False,

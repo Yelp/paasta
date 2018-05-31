@@ -379,10 +379,10 @@ def mesos_cpu_metrics_provider(
         a_sync.block(asyncio.wait, futures, timeout=60)
 
     def results_or_None(fut):
-        try:
-            return fut.result()
-        except Exception:
+        if fut.exception():
             return None
+        else:
+            return fut.result()
 
     mesos_tasks_stats = dict(zip([task['id'] for task in mesos_tasks], [results_or_None(fut) for fut in futures]))
 

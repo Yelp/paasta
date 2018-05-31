@@ -20,6 +20,7 @@ from math import floor
 import asynctest
 import mock
 from botocore.exceptions import ClientError
+from pytest import mark
 from pytest import raises
 from requests.exceptions import HTTPError
 
@@ -117,7 +118,8 @@ def test_get_instances_from_ip():
     assert ret == mock_instances
 
 
-def test_autoscale_local_cluster_with_cancelled():
+@mark.asyncio
+async def test_autoscale_local_cluster_with_cancelled():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
     ) as mock_get_paasta_config, mock.patch(
@@ -178,14 +180,15 @@ def test_autoscale_local_cluster_with_cancelled():
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
         asyncio.set_event_loop(asyncio.new_event_loop())
-        autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
+        await autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
         assert mock_get_paasta_config.called
         autoscaled_resources = [call[0][0].resource for call in mock_autoscale_cluster_resource.call_args_list]
         assert autoscaled_resources[0] == mock_scaling_resources['id3']
         assert len(calls) == 1
 
 
-def test_autoscale_local_cluster():
+@mark.asyncio
+async def test_autoscale_local_cluster():
     with mock.patch(
         'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config', autospec=True,
     ) as mock_get_paasta_config, mock.patch(
@@ -247,7 +250,7 @@ def test_autoscale_local_cluster():
         mock_autoscale_cluster_resource.side_effect = fake_autoscale
 
         asyncio.set_event_loop(asyncio.new_event_loop())
-        autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
+        await autoscaling_cluster_lib.autoscale_local_cluster(config_folder='/nail/blah')
         assert mock_get_paasta_config.called
         autoscaled_resources = [call[0][0].resource for call in mock_autoscale_cluster_resource.call_args_list]
         assert mock_scaling_resources['id2'] in autoscaled_resources

@@ -12,13 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asynctest
 import mock
 
 from paasta_tools.autoscale_cluster import main
 
 
 @mock.patch('paasta_tools.autoscale_cluster.logging', autospec=True)
-@mock.patch('paasta_tools.autoscale_cluster.autoscale_local_cluster', autospec=True)
-def test_main(mock_autoscale_local_cluster, logging):
-    main(('--dry-run', '--autoscaler-configs=/nail/blah'))
-    mock_autoscale_local_cluster.assert_called_with(dry_run=True, config_folder='/nail/blah', log_level=None)
+def test_main(logging):
+    with asynctest.patch(
+        'paasta_tools.autoscale_cluster.autoscale_local_cluster',
+        autospec=True,
+    ) as mock_autoscale_local_cluster:
+        main(('--dry-run', '--autoscaler-configs=/nail/blah'))
+        mock_autoscale_local_cluster.assert_called_with(dry_run=True, config_folder='/nail/blah', log_level=None)
