@@ -15,7 +15,6 @@
     -   id: requirements-txt-fixer
     -   id: flake8
         exclude: ^docs/source/conf.py$
-    -   id: check-ast
     -   id: fix-encoding-pragma
         args: [--remove]
 -   repo: https://github.com/asottile/reorder_python_imports
