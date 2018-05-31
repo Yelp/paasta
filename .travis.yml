@@ -63,4 +63,5 @@ deploy:
 matrix:
   allow_failures:
     - env: TOXENV=example_cluster
+    - env: MAKE_TARGET=itest_bionic
   fast_finish: true
