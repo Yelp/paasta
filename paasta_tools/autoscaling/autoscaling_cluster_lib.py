@@ -97,7 +97,6 @@ DEFAULT_DRAIN_TIMEOUT = 600  # seconds
 
 AWS_SPOT_MODIFY_TIMEOUT = 30
 MISSING_SLAVE_PANIC_THRESHOLD = .3
-MAX_CLUSTER_DELTA = .2
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -127,6 +126,8 @@ class ClusterAutoscaler(object):
         config_folder: str,
         dry_run: bool,
         utilization_error: float,
+        max_increase: float,
+        max_decrease: float,
         log_level: str=None,
         draining_enabled: bool=True,
         enable_metrics: bool=False,
@@ -139,6 +140,8 @@ class ClusterAutoscaler(object):
         self.utilization_error = utilization_error
         self.ideal_capacity: Optional[int] = None
         self.draining_enabled = draining_enabled
+        self.max_increase = max_increase
+        self.max_decrease = max_decrease
         if log_level is not None:
             self.log.setLevel(log_level)
         self.instances: List[Dict] = []
@@ -877,11 +880,11 @@ class SpotAutoscaler(ClusterAutoscaler):
         new_capacity = int(min(
             max(
                 self.resource['min_capacity'],
-                floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
+                floor(current_capacity * (1.00 - self.max_decrease)),
                 self.ideal_capacity,
                 1,  # A SFR cannot scale below 1 instance
             ),
-            ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
+            ceil(current_capacity * (1.00 + self.max_increase)),
             self.resource['max_capacity'],
         ))
         new_capacity = max(new_capacity, self.resource['min_capacity'])
@@ -1027,13 +1030,13 @@ class AsgAutoscaler(ClusterAutoscaler):
             new_capacity = int(min(
                 max(
                     self.resource['min_capacity'],
-                    floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
+                    floor(current_capacity * (1.00 - self.max_decrease)),
                     self.ideal_capacity,
                     0,
                 ),
-                ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
+                ceil(current_capacity * (1.00 + self.max_increase)),
                 # if max and min set to 0 we still drain gradually
-                max(self.resource['max_capacity'], floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA))),
+                max(self.resource['max_capacity'], floor(current_capacity * (1.00 - self.max_decrease))),
             ))
         new_capacity = max(new_capacity, self.resource['min_capacity'])
         self.log.debug("The ideal capacity to scale to is %d instances" % self.ideal_capacity)
@@ -1195,6 +1198,8 @@ def autoscale_local_cluster(
                 pool_settings=pool_settings,
                 config_folder=config_folder,
                 dry_run=dry_run,
+                max_increase=system_config.get_cluster_autoscaler_max_increase(),
+                max_decrease=system_config.get_cluster_autoscaler_max_decrease(),
                 log_level=log_level,
                 utilization_error=utilization_errors[(resource['region'], resource['pool'])],
                 draining_enabled=autoscaling_draining_enabled,
@@ -1299,7 +1304,14 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
         system_config=system_config,
     )
     vals = [
-        autoscaling_info_for_resource(resource, pool_settings, mesos_state, utilization_errors)
+        autoscaling_info_for_resource(
+            resource=resource,
+            pool_settings=pool_settings,
+            mesos_state=mesos_state,
+            utilization_errors=utilization_errors,
+            max_increase=system_config.get_cluster_autoscaler_max_increase(),
+            max_decrease=system_config.get_cluster_autoscaler_max_decrease(),
+        )
         for resource in autoscaling_resources.values()
     ]
     return [x for x in vals if x is not None]
@@ -1310,12 +1322,16 @@ def autoscaling_info_for_resource(
     pool_settings: Dict[str, Dict],
     mesos_state: MesosState,
     utilization_errors: Dict[Tuple[str, str], float],
+    max_increase: float,
+    max_decrease: float,
 ) -> Optional[AutoscalingInfo]:
     scaler_ref = get_scaler(resource['type'])
     scaler = scaler_ref(
         resource=resource,
         pool_settings=pool_settings,
         config_folder=None,
+        max_increase=max_increase,
+        max_decrease=max_decrease,
         dry_run=True,
         utilization_error=utilization_errors[(resource['region'], resource['pool'])],
     )

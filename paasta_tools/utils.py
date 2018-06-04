@@ -1414,6 +1414,8 @@ SystemPaastaConfigDict = TypedDict(
         'deployd_log_level': str,
         'deployd_startup_oracle_enabled': bool,
         'cluster_autoscaling_draining_enabled': bool,
+        'cluster_autoscaler_max_decrease': float,
+        'cluster_autoscaler_max_increase': float,
         'use_mesos_healthchecks': bool,
         'taskproc': Dict,
         'disabled_watchers': List,
@@ -1660,6 +1662,18 @@ class SystemPaastaConfig(object):
 
         :returns A bool"""
         return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
+
+    def get_cluster_autoscaler_max_increase(self) -> float:
+        """ Set the maximum increase that the cluster autoscaler can make in each run
+
+        :returns A float"""
+        return self.config_dict.get('cluster_autoscaler_max_increase', 0.2)
+
+    def get_cluster_autoscaler_max_decrease(self) -> float:
+        """ Set the maximum decrease that the cluster autoscaler can make in each run
+
+        :returns A float"""
+        return self.config_dict.get('cluster_autoscaler_max_decrease', 0.1)
 
     def get_maintenance_resource_reservation_enabled(self) -> bool:
         """ Enable un/reserving of resources when we un/drain a host in mesos maintenance
