@@ -1,3 +1,11 @@
+paasta-tools (0.73.3) xenial; urgency=medium
+
+  * 0.73.3 tagged with 'make release'
+    Commit: Merge pull request #1849 from Yelp/autoscaler-configure-max-
+    delta  Split out MAX_CLUSTER_DELTA for cluster autoscaler
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 04 Jun 2018 08:07:54 -0700
+
 paasta-tools (0.73.2) xenial; urgency=medium
 
   * 0.73.2 tagged with 'make release'
