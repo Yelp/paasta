@@ -945,6 +945,12 @@ class TestSpotAutoscaler(unittest.TestCase):
         ret = autoscaler.get_spot_fleet_delta()
         assert ret == (current_instances, 10)
 
+        resource = self.create_mock_resource(min_capacity=1, max_capacity=10)
+        sfr = self.create_mock_sfr(fulfilled_capacity=1, request_state='cancelled_running')
+        autoscaler = self.create_autoscaler(utilization_error=-1, resource=resource, sfr=sfr)
+        ret = autoscaler.get_spot_fleet_delta()
+        assert ret == (1, 0)
+
     def test_spotfleet_metrics_provider(self):
         with mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.SpotAutoscaler.get_spot_fleet_delta',
@@ -1031,7 +1037,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             assert ret == (1, 2)
             assert mock_get_spot_fleet_delta.called
 
-            # cancelled_running SFR
+            # cancelled_running SFR trying to scale up
             mock_emit_metrics.reset_mock()
             mock_cleanup_cancelled_config.reset_mock()
             mock_get_spot_fleet_delta.reset_mock()
@@ -1039,14 +1045,15 @@ class TestSpotAutoscaler(unittest.TestCase):
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert not mock_cleanup_cancelled_config.called
             assert ret == (0, 0)
+
+            # cancelled_running SFR scaling down
             mock_get_spot_fleet_delta.return_value = 2, 1
             self.autoscaler.utilization_error = -0.2
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_emit_metrics.assert_called_once_with(
-                self.autoscaler, 2, 0, mesos_slave_count=len(mock_slaves),
+                self.autoscaler, 2, 1, mesos_slave_count=len(mock_slaves),
             )
-
-            assert ret == (2, 0)
+            assert ret == (2, 1)
             mock_get_spot_fleet_delta.return_value = 4, 2
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             assert ret == (4, 2)
