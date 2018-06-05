@@ -17,10 +17,12 @@ import datetime
 import os
 import re
 
+import a_sync
+
 from . import exceptions
 from . import framework
 from . import mesos_file
-from . import util
+from paasta_tools.async_utils import async_ttl_cache
 
 
 class Task(object):
@@ -32,76 +34,64 @@ class Task(object):
         self.__items = items
 
     def __str__(self):
-        return "{}:{}".format(self.slave, self["id"])
+        return "{}:{}".format(a_sync.block(self.slave), self["id"])
 
     def __getitem__(self, name):
         return self.__items[name]
 
-    @property
-    def executor(self):
-        return self.slave.task_executor(self["id"])
+    async def executor(self):
+        return await (await self.slave()).task_executor(self["id"])
 
-    @property
-    def framework(self):
-        return framework.Framework(self.master.framework(self["framework_id"]))
+    async def framework(self):
+        return framework.Framework(await self.master.framework(self["framework_id"]))
 
-    @util.CachedProperty()
-    def directory(self):
+    @async_ttl_cache()
+    async def directory(self):
         try:
-            return self.executor["directory"]
+            return (await self.executor())["directory"]
         except exceptions.MissingExecutor:
             return ""
 
-    @util.CachedProperty()
-    def slave(self):
-        return self.master.slave(self["slave_id"])
+    @async_ttl_cache()
+    async def slave(self):
+        return await self.master.slave(self["slave_id"])
 
-    def file(self, path):
-        return mesos_file.File(self.slave, self, path)
+    async def file(self, path):
+        return mesos_file.File(await self.slave(), self, path)
 
-    def file_list(self, path):
-        return self.slave.file_list(os.path.join(self.directory, path))
+    async def file_list(self, path):
+        return await (await self.slave()).file_list(os.path.join(self.directory, path))
 
-    @property
-    def stats(self):
+    async def stats(self):
         try:
-            return self.slave.task_stats(self["id"])
+            return await (await self.slave()).task_stats(self["id"])
         except exceptions.MissingExecutor:
             return {}
 
-    def stats_callable(self):
-        return self.stats
-
-    @property
-    def cpu_time(self):
-        st = self.stats
+    async def cpu_time(self):
+        st = await self.stats()
         secs = st.get("cpus_user_time_secs", 0) + \
             st.get("cpus_system_time_secs", 0)
         # timedelta has a resolution of .000000 while mesos only keeps .00
         return str(datetime.timedelta(seconds=secs)).rsplit(".", 1)[0]
 
-    @property
-    def cpu_limit(self):
-        return self.stats.get("cpus_limit", 0)
+    async def cpu_limit(self):
+        return (await self.stats()).get("cpus_limit", 0)
 
-    @property
-    def mem_limit(self):
-        return self.stats.get("mem_limit_bytes", 0)
+    async def mem_limit(self):
+        return (await self.stats()).get("mem_limit_bytes", 0)
 
-    @property
-    def rss(self):
-        return self.stats.get("mem_rss_bytes", 0)
+    async def rss(self):
+        return (await self.stats()).get("mem_rss_bytes", 0)
 
-    @property
-    def command(self):
+    async def command(self):
         try:
-            result = self.cmd_re.search(self.executor["name"])
+            result = self.cmd_re.search((await self.executor())["name"])
         except exceptions.MissingExecutor:
             result = None
         if not result:
             return "none"
         return result.group(1)
 
-    @property
-    def user(self):
-        return self.framework.user
+    async def user(self):
+        return (await self.framework()).user

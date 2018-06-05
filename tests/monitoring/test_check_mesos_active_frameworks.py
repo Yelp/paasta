@@ -13,6 +13,7 @@
 # limitations under the License.
 import mock
 import pytest
+from asynctest import CoroutineMock
 
 from paasta_tools.monitoring.check_mesos_active_frameworks import check_mesos_active_frameworks
 
@@ -27,11 +28,14 @@ def test_check_mesos_active_frameworks_fails(capfd):
         mock_opts.expected = 'foo,bar'
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
-        mock_master.state = {
-            'frameworks': [
-                {'name': 'foo'},
-            ],
-        }
+        mock_master.state = CoroutineMock(
+            func=CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value={
+                'frameworks': [
+                    {'name': 'foo'},
+                ],
+            },
+        )
         mock_get_mesos_master.return_value = mock_master
 
         with pytest.raises(SystemExit) as error:
@@ -53,12 +57,15 @@ def test_check_mesos_active_frameworks_succeeds(capfd):
         mock_opts.expected = 'foo,bar'
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
-        mock_master.state = {
-            'frameworks': [
-                {'name': 'foo'},
-                {'name': 'bar'},
-            ],
-        }
+        mock_master.state = CoroutineMock(
+            func=CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            return_value={
+                'frameworks': [
+                    {'name': 'foo'},
+                    {'name': 'bar'},
+                ],
+            },
+        )
         mock_get_mesos_master.return_value = mock_master
 
         with pytest.raises(SystemExit) as error:

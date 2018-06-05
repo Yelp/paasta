@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 import itertools
 import json
@@ -18,26 +19,34 @@ import logging
 import re
 import socket
 from collections import namedtuple
+from typing import Any
+from typing import Awaitable
 from typing import Callable
+from typing import Collection
 from typing import List
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 from urllib.parse import urlparse
 
+import a_sync
 import humanize
 import requests
 from kazoo.client import KazooClient
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
+from paasta_tools.mesos.task import Task
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
@@ -66,7 +75,7 @@ def get_mesos_config():
     return load_mesos_config(get_mesos_config_path())
 
 
-def get_mesos_master(**overrides):
+def get_mesos_master(**overrides: Any) -> MesosMaster:
     config = get_mesos_config()
     for k, v in overrides.items():
         config[k] = v
@@ -82,7 +91,8 @@ class MesosSlaveConnectionError(Exception):
     pass
 
 
-def get_mesos_leader():
+@a_sync.to_blocking
+async def get_mesos_leader() -> str:
     """Get the current mesos-master leader's hostname.
     Attempts to determine this by using mesos.cli to query ZooKeeper.
 
@@ -110,7 +120,7 @@ def get_mesos_leader():
         raise ValueError('Expected to receive a valid URL, got: %s' % url)
 
 
-def is_mesos_leader(hostname=MY_HOSTNAME):
+def is_mesos_leader(hostname: str=MY_HOSTNAME) -> bool:
     """Check if a hostname is the current mesos leader.
 
     :param hostname: The hostname to query mesos-master on
@@ -129,21 +139,21 @@ def find_mesos_leader(master):
     return urlparse(response.url).hostname
 
 
-def get_current_tasks(job_id):
+async def get_current_tasks(job_id: str) -> List[Task]:
     """ Returns a list of all the tasks with a given job id.
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
     mesos_master = get_mesos_master()
-    framework_tasks = mesos_master.tasks(fltr=job_id, active_only=False)
+    framework_tasks = await mesos_master.tasks(fltr=job_id, active_only=False)
     return framework_tasks
 
 
-def is_task_running(task):
+def is_task_running(task: Task) -> bool:
     return task['state'] == 'TASK_RUNNING'
 
 
-def filter_running_tasks(tasks):
+def filter_running_tasks(tasks: Collection[Task]) -> List[Task]:
     """ Filters those tasks where it's state is TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of running tasks
@@ -151,7 +161,7 @@ def filter_running_tasks(tasks):
     return [task for task in tasks if is_task_running(task)]
 
 
-def filter_not_running_tasks(tasks):
+def filter_not_running_tasks(tasks: Collection[Task]) -> List[Task]:
     """ Filters those tasks where it's state is *not* TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of tasks *not* running
@@ -159,62 +169,62 @@ def filter_not_running_tasks(tasks):
     return [task for task in tasks if not is_task_running(task)]
 
 
-def get_running_tasks_from_frameworks(job_id=''):
+async def get_running_tasks_from_frameworks(job_id=''):
     """ Will include tasks from active and completed frameworks
     but NOT orphaned tasks
     """
-    active_framework_tasks = get_current_tasks(job_id)
+    active_framework_tasks = await get_current_tasks(job_id)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
 
-def get_all_running_tasks():
+async def get_all_running_tasks() -> Collection[Task]:
     """ Will include all running tasks; for now orphans are not included
     """
-    framework_tasks = get_current_tasks('')
+    framework_tasks = await get_current_tasks('')
     mesos_master = get_mesos_master()
-    framework_tasks += mesos_master.orphan_tasks()
+    framework_tasks += await mesos_master.orphan_tasks()
     running_tasks = filter_running_tasks(framework_tasks)
     return running_tasks
 
 
-@time_cache(ttl=600)
-def get_cached_list_of_all_current_tasks():
+@async_ttl_cache(ttl=600)
+async def get_cached_list_of_all_current_tasks():
     """Returns a cached list of all mesos tasks.
 
     This function is used by 'paasta status' and 'paasta_serviceinit status'
     to avoid re-quering mesos master and re-parsing json to get mesos.Task objects.
 
 
-    The time_cache decorator caches the list for 600 seconds.
+    The async_ttl_cache decorator caches the list for 600 seconds.
     ttl doesn't really matter for this function because when we run 'paasta status'
     the corresponding HTTP request to mesos master is cached by requests_cache.
 
     :return tasks: a list of mesos.Task
     """
-    return get_current_tasks('')
+    return await get_current_tasks('')
 
 
-@time_cache(ttl=600)
-def get_cached_list_of_running_tasks_from_frameworks():
+@async_ttl_cache(ttl=600)
+async def get_cached_list_of_running_tasks_from_frameworks():
     """Retruns a cached list of all running mesos tasks.
     See the docstring for get_cached_list_of_all_current_tasks().
 
     :return tasks: a list of mesos.Task
     """
-    return [task for task in filter_running_tasks(get_cached_list_of_all_current_tasks())]
+    return [task for task in filter_running_tasks(await get_cached_list_of_all_current_tasks())]
 
 
-@time_cache(ttl=600)
-def get_cached_list_of_not_running_tasks_from_frameworks():
+@async_ttl_cache(ttl=600)
+async def get_cached_list_of_not_running_tasks_from_frameworks():
     """Retruns a cached list of mesos tasks that are NOT running.
     See the docstring for get_cached_list_of_all_current_tasks().
 
     :return tasks: a list of mesos.Task"""
-    return [task for task in filter_not_running_tasks(get_cached_list_of_all_current_tasks())]
+    return [task for task in filter_not_running_tasks(await get_cached_list_of_all_current_tasks())]
 
 
-def select_tasks_by_id(tasks, job_id=''):
+def select_tasks_by_id(tasks: Collection[Task], job_id: str='') -> List[Task]:
     """Retruns a list of the tasks with a given job_id.
 
     :param tasks: a list of mesos.Task.
@@ -224,24 +234,24 @@ def select_tasks_by_id(tasks, job_id=''):
     return [task for task in tasks if job_id in task['id']]
 
 
-def get_non_running_tasks_from_frameworks(job_id=''):
+async def get_non_running_tasks_from_frameworks(job_id: str='') -> List[Task]:
     """ Will include tasks from active and completed frameworks
     but NOT orphaned tasks
     """
-    active_framework_tasks = get_current_tasks(job_id)
+    active_framework_tasks = await get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
 
 
-def get_short_hostname_from_task(task):
+async def get_short_hostname_from_task(task: Task) -> str:
     try:
-        slave_hostname = task.slave['hostname']
+        slave_hostname = (await task.slave())['hostname']
         return slave_hostname.split(".")[0]
     except (AttributeError, SlaveDoesNotExist):
         return 'Unknown'
 
 
-def get_first_status_timestamp(task):
+def get_first_status_timestamp(task: Task):
     """Gets the first status timestamp from a task id and returns a human
     readable string with the local time and a humanized duration:
     ``2015-01-30T08:45 (an hour ago)``
@@ -254,11 +264,10 @@ def get_first_status_timestamp(task):
         return "Unknown"
 
 
-@timeout()
-def get_mem_usage(task):
+async def get_mem_usage(task: Task):
     try:
-        task_mem_limit = task.mem_limit
-        task_rss = task.rss
+        task_mem_limit = await task.mem_limit()
+        task_rss = await task.rss()
         if task_mem_limit == 0:
             return "Undef"
         mem_percent = task_rss / task_mem_limit * 100
@@ -273,8 +282,7 @@ def get_mem_usage(task):
         return "Timed Out"
 
 
-@timeout()
-def get_cpu_usage(task):
+async def get_cpu_usage(task):
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
     (the sum of system and user time), OVER the total cpu time the task
@@ -291,9 +299,10 @@ def get_cpu_usage(task):
         # The CPU shares has an additional .1 allocated to it for executor overhead.
         # We subtract this to the true number
         # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
-        cpu_shares = task.cpu_limit - .1
+        cpu_shares = (await task.cpu_limit()) - .1
         allocated_seconds = duration_seconds * cpu_shares
-        used_seconds = task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get('cpus_user_time_secs', 0.0)
+        task_stats = await task.stats()
+        used_seconds = task_stats.get('cpus_system_time_secs', 0.0) + task_stats.get('cpus_user_time_secs', 0.0)
         if allocated_seconds == 0:
             return "Undef"
         percent = round(100 * (used_seconds / allocated_seconds), 1)
@@ -308,22 +317,38 @@ def get_cpu_usage(task):
         return "Timed Out"
 
 
-def format_running_mesos_task_row(task, get_short_task_id):
+async def results_or_unknown(future: Awaitable[str]) -> str:
+    try:
+        return await future
+    except Exception:
+        return PaastaColors.red("Unknown")
+
+
+async def format_running_mesos_task_row(task: Task, get_short_task_id: Callable[[str], str]) -> Tuple[str, ...]:
     """Returns a pretty formatted string of a running mesos task attributes"""
+
+    short_task_id = get_short_task_id(task['id'])
+    short_hostname_future = asyncio.ensure_future(results_or_unknown(get_short_hostname_from_task(task)))
+    mem_usage_future = asyncio.ensure_future(results_or_unknown(get_mem_usage(task)))
+    cpu_usage_future = asyncio.ensure_future(results_or_unknown(get_cpu_usage(task)))
+    first_status_timestamp = get_first_status_timestamp(task)
+
+    await asyncio.wait([short_hostname_future, mem_usage_future, cpu_usage_future])
+
     return (
-        get_short_task_id(task['id']),
-        get_short_hostname_from_task(task),
-        get_mem_usage(task),
-        get_cpu_usage(task),
-        get_first_status_timestamp(task),
+        short_task_id,
+        short_hostname_future.result(),
+        mem_usage_future.result(),
+        cpu_usage_future.result(),
+        first_status_timestamp,
     )
 
 
-def format_non_running_mesos_task_row(task, get_short_task_id):
+async def format_non_running_mesos_task_row(task: Task, get_short_task_id: Callable[[str], str]) -> Tuple[str, ...]:
     """Returns a pretty formatted string of a running mesos task attributes"""
     return (
         PaastaColors.grey(get_short_task_id(task['id'])),
-        PaastaColors.grey(get_short_hostname_from_task(task)),
+        PaastaColors.grey(await results_or_unknown(get_short_hostname_from_task(task))),
         PaastaColors.grey(get_first_status_timestamp(task)),
         PaastaColors.grey(task['state']),
     )
@@ -391,7 +416,15 @@ def zip_tasks_verbose_output(table, stdstreams):
     return output
 
 
-def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_lines):
+async def format_task_list(
+    tasks: Sequence[Task],
+    list_title: str,
+    table_header: Sequence[str],
+    get_short_task_id: Callable[[str], str],
+    format_task_row: Callable[[Task, Callable[[str], str]], Awaitable[Union[Sequence[str], str]]],
+    grey: bool,
+    tail_lines: int,
+) -> List[str]:
     """Formats a list of tasks, returns a list of output lines
     :param tasks: List of tasks as returned by get_*_tasks_from_all_frameworks.
     :param list_title: 'Running Tasks:' or 'Non-Running Tasks'.
@@ -410,11 +443,17 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
             return(PaastaColors.grey(x))
     output = []
     output.append(colorize("  %s" % list_title))
-    table_rows = [
+    table_rows: List[Union[str, Sequence[str]]] = [
         [colorize(th) for th in table_header],
     ]
-    for task in tasks:
-        table_rows.append(format_task_row(task, get_short_task_id))
+
+    if tasks:
+        task_row_futures = [asyncio.ensure_future(format_task_row(task, get_short_task_id)) for task in tasks]
+        await asyncio.wait(task_row_futures)
+
+        for future in task_row_futures:
+            table_rows.append(future.result())
+
     tasks_table = ["    %s" % row for row in format_table(table_rows)]
     if tail_lines == 0:
         output.extend(tasks_table)
@@ -428,7 +467,8 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     return output
 
 
-def status_mesos_tasks_verbose(
+@a_sync.to_blocking
+async def status_mesos_tasks_verbose(
     filter_string: str,
     get_short_task_id: Callable[[str], str],
     tail_lines: int=0,
@@ -443,7 +483,10 @@ def status_mesos_tasks_verbose(
                        report.
     """
     output: List[str] = []
-    running_and_active_tasks = select_tasks_by_id(get_cached_list_of_running_tasks_from_frameworks(), filter_string)
+    running_and_active_tasks = select_tasks_by_id(
+        await get_cached_list_of_running_tasks_from_frameworks(),
+        filter_string,
+    )
     list_title = "Running Tasks:"
     table_header = [
         "Mesos Task ID",
@@ -452,7 +495,7 @@ def status_mesos_tasks_verbose(
         "CPU",
         "Deployed at what localtime",
     ]
-    output.extend(format_task_list(
+    output.extend(await format_task_list(
         tasks=running_and_active_tasks,
         list_title=list_title,
         table_header=table_header,
@@ -462,7 +505,7 @@ def status_mesos_tasks_verbose(
         tail_lines=tail_lines,
     ))
 
-    non_running_tasks = select_tasks_by_id(get_cached_list_of_not_running_tasks_from_frameworks(), filter_string)
+    non_running_tasks = select_tasks_by_id(await get_cached_list_of_not_running_tasks_from_frameworks(), filter_string)
     # Order the tasks by timestamp
     non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))
@@ -474,7 +517,7 @@ def status_mesos_tasks_verbose(
         "Deployed at what localtime",
         "Status",
     ]
-    output.extend(format_task_list(
+    output.extend(await format_task_list(
         tasks=non_running_tasks_ordered,
         list_title=list_title,
         table_header=table_header,
@@ -510,10 +553,10 @@ def get_local_slave_state(hostname=None):
     return json.loads(response.text)
 
 
-def get_mesos_quorum():
+async def get_mesos_quorum():
     """Returns the configured quorum size.
     :param state: mesos state dictionary"""
-    return int(get_master_flags()['flags']['quorum'])
+    return int((await get_master_flags())['flags']['quorum'])
 
 
 def get_all_tasks_from_state(mesos_state, include_orphans=False):
@@ -527,9 +570,9 @@ def get_all_tasks_from_state(mesos_state, include_orphans=False):
     return tasks
 
 
-def get_master_flags():
-    res = get_mesos_master().fetch("/master/flags")
-    return res.json()
+async def get_master_flags():
+    res = await get_mesos_master().fetch("/master/flags")
+    return await res.json()
 
 
 def get_zookeeper_host_path():
@@ -601,8 +644,10 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     }
 
 
-def get_slaves():
-    return get_mesos_master().fetch("/master/slaves").json()['slaves']
+# TODO: remove to_blocking, convert call sites (smartstack_tools and marathon_serviceinit) to asyncio.
+@a_sync.to_blocking
+async def get_slaves():
+    return (await (await get_mesos_master().fetch("/master/slaves")).json())['slaves']
 
 
 def filter_mesos_slaves_by_blacklist(slaves, blacklist: DeployBlacklist, whitelist: DeployWhitelist):
@@ -701,7 +746,8 @@ def get_mesos_network_for_net(net):
     return docker_mesos_net_mapping.get(net, net)
 
 
-def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
+@a_sync.to_blocking
+async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
     :param mesos_state: mesos state dict
@@ -709,20 +755,22 @@ def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     :param pool: pool of slaves to return (None means all)
     :returns: list of slave dicts {'task_count': SlaveTaskCount}
     """
-    all_mesos_tasks = get_all_running_tasks()  # empty string = all app ids
+    all_mesos_tasks = await get_all_running_tasks()  # empty string = all app ids
     slaves = {
         slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
     }
     for task in all_mesos_tasks:
         try:
-            if task.slave['id'] not in slaves:
-                log.debug("Slave {} not found for task".format(task.slave['id']))
+            task_slave = await task.slave()
+            if task_slave['id'] not in slaves:
+                log.debug("Slave {} not found for task".format(task_slave['id']))
                 continue
             else:
-                slaves[task.slave['id']]['count'] += 1
-                log.debug("Task framework: {}".format(task.framework.name))
-                if task.framework.name == CHRONOS_FRAMEWORK_NAME:
-                    slaves[task.slave['id']]['chronos_count'] += 1
+                slaves[task_slave['id']]['count'] += 1
+                task_framework = await task.framework()
+                log.debug("Task framework: {}".format(task_framework.name))
+                if task_framework.name == CHRONOS_FRAMEWORK_NAME:
+                    slaves[task_slave['id']]['chronos_count'] += 1
         except SlaveDoesNotExist:
             log.debug("Tried to get mesos slaves for task {}, but none existed.".format(task['id']))
             continue
@@ -752,7 +800,7 @@ def get_count_running_tasks_on_slave(hostname):
     or 0 if the slave is not found.
     :param hostname: hostname of the slave
     :returns: integer count of mesos tasks"""
-    mesos_state = get_mesos_master().state_summary()
+    mesos_state = a_sync.block(get_mesos_master().state_summary)
     task_counts = get_mesos_task_count_by_slave(mesos_state)
     counts = [slave['task_counts'].count for slave in task_counts if slave['task_counts'].slave['hostname'] == hostname]
     if counts:
@@ -770,12 +818,13 @@ def slave_pid_to_ip(slave_pid):
     return regex.match(slave_pid).group(1)
 
 
-def list_framework_ids(active_only=False):
-    return [f.id for f in get_mesos_master().frameworks(active_only=active_only)]
+async def list_framework_ids(active_only=False):
+    return [f.id for f in await get_mesos_master().frameworks(active_only=active_only)]
 
 
-def get_all_frameworks(active_only=False):
-    return get_mesos_master().frameworks(active_only=active_only)
+@a_sync.to_blocking
+async def get_all_frameworks(active_only=False):
+    return await get_mesos_master().frameworks(active_only=active_only)
 
 
 def terminate_framework(framework_id):
@@ -786,15 +835,15 @@ def terminate_framework(framework_id):
     resp.raise_for_status()
 
 
-def get_tasks_from_app_id(app_id, slave_hostname=None):
-    tasks = get_running_tasks_from_frameworks(app_id)
+async def get_tasks_from_app_id(app_id, slave_hostname=None):
+    tasks = await get_running_tasks_from_frameworks(app_id)
     if slave_hostname:
-        tasks = [task for task in tasks if filter_task_by_hostname(task, slave_hostname)]
+        tasks = [task for task in tasks if await filter_task_by_hostname(task, slave_hostname)]
     return tasks
 
 
-def get_task(task_id, app_id=''):
-    tasks = get_running_tasks_from_frameworks(app_id)
+async def get_task(task_id, app_id=''):
+    tasks = await get_running_tasks_from_frameworks(app_id)
     tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
     if len(tasks) < 1:
         raise TaskNotFound("Couldn't find task for given id: {}".format(task_id))
@@ -807,8 +856,8 @@ def filter_task_by_task_id(task, task_id):
     return task['id'] == task_id
 
 
-def filter_task_by_hostname(task, hostname):
-    return task.slave['hostname'].startswith(hostname)
+async def filter_task_by_hostname(task, hostname):
+    return (await task.slave())['hostname'].startswith(hostname)
 
 
 class TaskNotFound(Exception):
@@ -819,6 +868,7 @@ class TooManyTasks(Exception):
     pass
 
 
+# TODO: async this
 def mesos_services_running_here(framework_filter, parse_service_instance_from_executor_id, hostname=None):
     """See what paasta_native services are being run by a mesos-slave on this host.
 

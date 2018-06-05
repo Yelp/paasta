@@ -33,7 +33,7 @@ setup(
         # Make sure to modify requirements-minimal.txt as well!
         'a_sync >= 0.5.0',
         'argcomplete >= 0.8.1',
-        'aiohttp >= 2.3.3',
+        'aiohttp >= 3.2.1',
         'boto3',
         'botocore',
         'bravado >= 8.4.0',

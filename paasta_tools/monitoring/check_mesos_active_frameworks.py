@@ -15,6 +15,8 @@
 import argparse
 import sys
 
+from a_sync import block
+
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics.metastatus_lib import assert_frameworks_exist
@@ -32,14 +34,14 @@ def parse_args():
     return parser.parse_args()
 
 
-def check_mesos_active_frameworks():
+def check_mesos_active_frameworks() -> None:
     options = parse_args()
     expected = options.expected.split(',')
     master = get_mesos_master()
     try:
-        state = master.state
+        state = block(master.state)
     except MasterNotAvailableException as e:
-        paasta_print("CRITICAL: %s" % e.message)
+        paasta_print("CRITICAL: %s" % e.args[0])
         sys.exit(2)
 
     result = assert_frameworks_exist(state, expected)

@@ -1168,7 +1168,7 @@ def get_all_utilization_errors(
     return errors
 
 
-def autoscale_local_cluster(
+async def autoscale_local_cluster(
     config_folder: str,
     dry_run: bool=False,
     log_level: str=None,
@@ -1181,7 +1181,7 @@ def autoscale_local_cluster(
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     autoscaling_draining_enabled = system_config.get_cluster_autoscaling_draining_enabled()
     all_pool_settings = system_config.get_resource_pool_settings()
-    mesos_state = get_mesos_master().state
+    mesos_state = await get_mesos_master().state()
     utilization_errors = get_all_utilization_errors(
         autoscaling_resources=autoscaling_resources,
         all_pool_settings=all_pool_settings,
@@ -1214,9 +1214,7 @@ def autoscale_local_cluster(
         time.sleep(3)
     filtered_autoscaling_scalers = filter_scalers(autoscaling_scalers, utilization_errors)
     sorted_autoscaling_scalers = sort_scalers(filtered_autoscaling_scalers)
-    event_loop = asyncio.get_event_loop()
-    event_loop.run_until_complete(run_parallel_scalers(sorted_autoscaling_scalers, mesos_state))
-    event_loop.close()
+    await run_parallel_scalers(sorted_autoscaling_scalers, mesos_state)
 
 
 def sort_scalers(filtered_autoscaling_scalers: List[ClusterAutoscaler]) -> List[ClusterAutoscaler]:
@@ -1252,7 +1250,7 @@ def filter_scalers(
 async def run_parallel_scalers(
     sorted_autoscaling_scalers: List[ClusterAutoscaler],
     mesos_state: MesosState,
-):
+) -> None:
     scaling_tasks = []
     for scaler in sorted_autoscaling_scalers:
         scaling_tasks.append(asyncio.ensure_future(autoscale_cluster_resource(scaler, mesos_state)))
