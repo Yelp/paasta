@@ -857,9 +857,6 @@ class SpotAutoscaler(ClusterAutoscaler):
         self.check_expected_slaves(slaves, expected_instances)
         current, target = self.get_spot_fleet_delta()
 
-        if self.sfr['SpotFleetRequestState'] == 'cancelled_running' and target == 1:
-            target = 0
-
         self.emit_metrics(current, target, mesos_slave_count=len(slaves))
         return current, target
 
@@ -882,7 +879,9 @@ class SpotAutoscaler(ClusterAutoscaler):
                 self.resource['min_capacity'],
                 floor(current_capacity * (1.00 - self.max_decrease)),
                 self.ideal_capacity,
-                1,  # A SFR cannot scale below 1 instance
+
+                # Can only scale a cancelled_running SFR to 0 instances
+                0 if self.sfr['SpotFleetRequestState'] == 'cancelled_running' else 1,
             ),
             ceil(current_capacity * (1.00 + self.max_increase)),
             self.resource['max_capacity'],
