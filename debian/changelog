@@ -1,3 +1,10 @@
+paasta-tools (0.74.0) xenial; urgency=medium
+
+  * 0.74.0 tagged with 'make release'
+    Commit: Merge branch "status_parallelize_mesos_stats"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 05 Jun 2018 10:08:25 -0700
+
 paasta-tools (0.73.3) xenial; urgency=medium
 
   * 0.73.3 tagged with 'make release'
