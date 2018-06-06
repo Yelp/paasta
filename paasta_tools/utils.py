@@ -1247,7 +1247,10 @@ class FileLogWriter(LogWriter):
         # https://docs.python.org/2/library/io.html#io.FileIO
         # http://article.gmane.org/gmane.linux.kernel/43445
 
-        to_write = "{}{}".format(format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
+        to_write = "{}{}".format(
+            format_log_line(level, cluster, service, instance, component, line),
+            self.line_delimeter,
+        )
 
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:

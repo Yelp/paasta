@@ -51,7 +51,10 @@ class MesosTaskParameters(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "{}(\n    {})".format(type(self).__name__, ',\n    '.join(["%s=%r" % kv for kv in self.__dict__.items()]))
+        return "{}(\n    {})".format(
+            type(self).__name__,
+            ',\n    '.join(["%s=%r" % kv for kv in self.__dict__.items()]),
+        )
 
     def __setattr__(self, name, value):
         raise MesosTaskParametersIsImmutableError()
