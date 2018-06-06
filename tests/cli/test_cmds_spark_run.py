@@ -54,7 +54,7 @@ def test_get_docker_run_cmd(
         '--env', 'k1=v1', '--env', 'k2=v2',
         '--volume=v1:v1:rw', '--volume=v2:v2:rw',
         'fake-registry/fake-service',
-        'sh', '-c', 'pyspark', {}
+        'sh', '-c', 'pyspark', {},
     ]
 
 
