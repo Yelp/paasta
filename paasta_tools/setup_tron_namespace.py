@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument(
         '-a',
         '--all',
-        dest='all_namepsaces',
+        dest='all_namespaces',
         action='store_true',
         help='Update all available Tron namespaces.',
     )
