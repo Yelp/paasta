@@ -20,6 +20,7 @@ from collections import namedtuple
 from socket import getfqdn
 from socket import gethostbyname
 
+import a_sync
 from dateutil import parser
 from pytimeparse import timeparse
 from requests import Request
@@ -571,7 +572,7 @@ def reserve_all_resources(hostnames):
     """Dynamically reserve all available resources on the specified hosts
     :param hostnames: list of hostnames to reserve resources on
     """
-    mesos_state = get_mesos_master().state_summary()
+    mesos_state = a_sync.block(get_mesos_master().state_summary)
     components = hostnames_to_components(hostnames)
     hosts = components_to_hosts(components)
     known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
@@ -595,7 +596,7 @@ def unreserve_all_resources(hostnames):
     """Dynamically unreserve all available resources on the specified hosts
     :param hostnames: list of hostnames to unreserve resources on
     """
-    mesos_state = get_mesos_master().state_summary()
+    mesos_state = a_sync.block(get_mesos_master().state_summary)
     components = hostnames_to_components(hostnames)
     hosts = components_to_hosts(components)
     known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
