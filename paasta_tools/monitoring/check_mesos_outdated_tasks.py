@@ -17,6 +17,8 @@ import datetime
 import sys
 import time
 
+import a_sync
+
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import load_system_paasta_config
 
@@ -42,7 +44,7 @@ def parse_args():
 
 
 def get_mesos_state():
-    state = get_mesos_master(use_mesos_cache=True).state
+    state = a_sync.block(get_mesos_master(use_mesos_cache=True).state)
     return state
 
 
