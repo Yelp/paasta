@@ -40,12 +40,12 @@ class MesosTaskParameters(object):
         offer=None,
         resources=None,
     ):
-        self.__dict__['health'] = health
-        self.__dict__['mesos_task_state'] = mesos_task_state
-        self.__dict__['is_draining'] = is_draining
-        self.__dict__['is_healthy'] = is_healthy
-        self.__dict__['offer'] = offer
-        self.__dict__['resources'] = resources
+        self.health = health
+        self.mesos_task_state = mesos_task_state
+        self.is_draining = is_draining
+        self.is_healthy = is_healthy
+        self.offer = offer
+        self.resources = resources
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
