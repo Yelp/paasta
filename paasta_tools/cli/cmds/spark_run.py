@@ -34,7 +34,7 @@ DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
-
+SENSITIVE_ENV = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
 
 deprecated_opts = {
     'j': 'spark.jars',
@@ -260,6 +260,8 @@ def get_docker_run_cmd(
     cmd.append('--rm')
     cmd.append('--net=host')
 
+    sensitive_env = {}
+
     if 'spark-submit' not in docker_cmd and 'jupyter' not in docker_cmd:
         cmd.append('--interactive=true')
         if sys.stdout.isatty():
@@ -269,11 +271,16 @@ def get_docker_run_cmd(
     cmd.append('--name=%s' % container_name)
     for k, v in env.items():
         cmd.append('--env')
-        cmd.append('%s=%s' % (k, v))
+        if k in SENSITIVE_ENV:
+            sensitive_env[k] = v
+            cmd.append(k)
+        else:
+            cmd.append('%s=%s' % (k, v))
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     cmd.append('%s' % docker_img)
     cmd.extend(('sh', '-c', docker_cmd))
+    cmd.append(sensitive_env)
 
     return cmd
 
@@ -484,7 +491,7 @@ def run_docker_container(
         paasta_print(json.dumps(docker_run_cmd))
         return 0
 
-    os.execlp('paasta_docker_wrapper', *docker_run_cmd)
+    os.execlpe('paasta_docker_wrapper', *docker_run_cmd)
     return 0
 
 
