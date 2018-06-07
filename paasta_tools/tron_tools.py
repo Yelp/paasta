@@ -114,7 +114,7 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get('command')
 
     def get_executor(self):
-        executor = self.config_dict.get('executor', 'ssh')
+        executor = self.config_dict.get('executor', None)
         return 'mesos' if executor == 'paasta' else executor
 
     def get_node(self):

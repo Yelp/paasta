@@ -95,14 +95,15 @@ def main():
     for service in services:
         try:
             new_config = tron_tools.create_complete_config(
-                service=args.service,
+                service=service,
                 soa_dir=args.soa_dir,
             )
-            client.update_namespace(args.service, new_config)
+            client.update_namespace(service, new_config)
             updated.append(service)
         except Exception as e:
             log.error('Update for {namespace} failed: {error}'.format(
-                namespace=args.service, error=str(e),
+                namespace=service,
+                error=str(e),
             ))
             failed.append(service)
 
