@@ -187,7 +187,7 @@ async def test_get_mem_usage_divide_by_zero():
 def test_get_zookeeper_config():
     zk_hosts = '1.1.1.1:1111,2.2.2.2:2222,3.3.3.3:3333'
     zk_path = 'fake_path'
-    fake_state = {'flags': {'zk': 'zk://%s/%s' % (zk_hosts, zk_path)}}
+    fake_state = {'flags': {'zk': f'zk://{zk_hosts}/{zk_path}'}}
     expected = {'hosts': zk_hosts, 'path': zk_path}
     assert mesos_tools.get_zookeeper_config(fake_state) == expected
 
@@ -582,7 +582,7 @@ def test_format_stdstreams_tail_for_task(
             # reverse sort because stdout is supposed to always come before stderr in the output
             files.sort(key=lambda f: f[0], reverse=True)
             for f in files:
-                output.append(PaastaColors.blue("      %s tail for %s" % (f[0], task_id)))
+                output.append(PaastaColors.blue("      {} tail for {}".format(f[0], task_id)))
                 output.extend(f[1][-nlines:])
                 output.append(PaastaColors.blue("      %s EOF" % f[0]))
         else:

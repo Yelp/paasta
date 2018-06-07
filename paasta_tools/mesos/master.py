@@ -152,7 +152,7 @@ class MesosMaster(object):
 
             if len(leader) == 0:
                 raise exceptions.MasterNotAvailableException(
-                    "cannot find any masters at {}".format(cfg,),
+                    f"cannot find any masters at {cfg}",
                 )
             data, stat = zk.get(os.path.join(path, leader[0]))
 
@@ -169,7 +169,7 @@ class MesosMaster(object):
                     ip = parsed["address"].get("ip")
                     port = parsed["address"].get("port")
                     if ip and port:
-                        return "{ip}:{port}".format(ip=ip, port=port)
+                        return f"{ip}:{port}"
             except ValueError as parse_error:
                 log.debug(
                     "[WARN] No JSON content, probably connecting to older "
@@ -207,16 +207,16 @@ class MesosMaster(object):
     async def slave(self, fltr):
         lst = await self.slaves(fltr)
 
-        log.debug("master.slave({})".format(fltr))
+        log.debug(f"master.slave({fltr})")
 
         if len(lst) == 0:
             raise exceptions.SlaveDoesNotExist(
-                "Slave {} no longer exists.".format(fltr),
+                f"Slave {fltr} no longer exists.",
             )
 
         elif len(lst) > 1:
             raise exceptions.MultipleSlavesForIDError(
-                "Multiple slaves matching filter %s. %s" % (
+                "Multiple slaves matching filter {}. {}".format(
                     fltr,
                     ",".join([slave.id for slave in lst]),
                 ),
@@ -249,7 +249,7 @@ class MesosMaster(object):
 
         elif len(lst) > 1:
             raise exceptions.MultipleTasksForIDError(
-                "Multiple tasks matching filter %s. %s" % (
+                "Multiple tasks matching filter {}. {}".format(
                     fltr,
                     ",".join([task.id for task in lst]),
                 ),

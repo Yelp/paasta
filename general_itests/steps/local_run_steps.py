@@ -60,7 +60,7 @@ def see_expected_return_code(context):
 
 @then('we should see the environment variable "{var}" with the value "{val}" in the ouput')
 def env_var_in_output(context, var, val):
-    assert "%s=%s" % (var, val) in context.local_run_output
+    assert f"{var}={val}" in context.local_run_output
 
 
 @when('we run paasta local-run in non-interactive mode on a chronos job')

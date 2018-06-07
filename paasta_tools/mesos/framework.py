@@ -23,7 +23,7 @@ class Framework(object):
         return self.__items[name]
 
     def __str__(self):
-        return "{}:{}".format(self.name, self.id)
+        return f"{self.name}:{self.id}"
 
     @property
     def id(self):

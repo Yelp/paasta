@@ -116,7 +116,7 @@ def success(msg):
     :param msg: a string
     :return: a beautiful string
     """
-    return "%s %s" % (check_mark(), msg)
+    return "{} {}".format(check_mark(), msg)
 
 
 def failure(msg, link):
@@ -125,7 +125,7 @@ def failure(msg, link):
     :param msg: a string
     :return: a beautiful string
     """
-    return "%s %s %s" % (x_mark(), msg, PaastaColors.blue(link))
+    return "{} {} {}".format(x_mark(), msg, PaastaColors.blue(link))
 
 
 class PaastaCheckMessages:
@@ -405,7 +405,7 @@ def calculate_remote_masters(cluster, system_paasta_config):
         _, _, ips = gethostbyname_ex(cluster_fqdn)
         output = None
     except gaierror as e:
-        output = 'ERROR while doing DNS lookup of %s:\n%s\n ' % (cluster_fqdn, e.strerror)
+        output = f'ERROR while doing DNS lookup of {cluster_fqdn}:\n{e.strerror}\n '
         ips = []
     return (ips, output)
 
@@ -445,7 +445,7 @@ def connectable_master(cluster, system_paasta_config):
     master, output = find_connectable_master(masters)
     if not master:
         raise NoMasterError(
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output),
+            f'ERROR: could not find connectable master in cluster {cluster}\nOutput: {output}',
         )
 
     return master
@@ -508,7 +508,7 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     ssh_flags = ssh_flags.strip()
 
     command_parts = [
-        "ssh -A -o StrictHostKeyChecking=no %s %s sudo paasta_serviceinit" % (ssh_flags, master),
+        f"ssh -A -o StrictHostKeyChecking=no {ssh_flags} {master} sudo paasta_serviceinit",
         "-s %s" % service,
         "-i %s" % instances,
         verbose_flag,
@@ -569,7 +569,7 @@ def run_paasta_metastatus(
             ],
         ),
     )
-    command = ('ssh -A -n -o StrictHostKeyChecking=no %s sudo paasta_metastatus %s' % (
+    command = ('ssh -A -n -o StrictHostKeyChecking=no {} sudo paasta_metastatus {}'.format(
         master,
         cmd_args,
     )).strip()
@@ -611,9 +611,9 @@ def run_paasta_cluster_boost(
     else:
         verbose_flag = None
 
-    pool_flag = '--pool {}'.format(pool)
-    duration_flag = '--duration {}'.format(duration) if duration is not None else ''
-    boost_flag = '--boost {}'.format(boost) if boost is not None else ''
+    pool_flag = f'--pool {pool}'
+    duration_flag = f'--duration {duration}' if duration is not None else ''
+    boost_flag = f'--boost {boost}' if boost is not None else ''
     override_flag = '--force' if override is not None else ''
 
     cmd_args = " ".join(
@@ -628,7 +628,7 @@ def run_paasta_cluster_boost(
             ],
         ),
     )
-    command = ('ssh -A -n -o StrictHostKeyChecking=no %s paasta_cluster_boost %s' % (
+    command = ('ssh -A -n -o StrictHostKeyChecking=no {} paasta_cluster_boost {}'.format(
         master,
         cmd_args,
     )).strip()
@@ -673,7 +673,7 @@ def execute_paasta_cluster_boost_on_remote_master(
         output = result[cluster][1]
         if not code == 0:
             aggregated_code = 1
-        aggregated_output += "\n{}: \n{}\n".format(cluster, output)
+        aggregated_output += f"\n{cluster}: \n{output}\n"
     return (aggregated_code, aggregated_output)
 
 
@@ -682,7 +682,7 @@ def run_chronos_rerun(master, service, instancename, **kwargs):
     verbose_flags = '-v ' * kwargs['verbose']
     run_all_related_jobs_flag = '--run-all-related-jobs ' if kwargs.get('run_all_related_jobs', False) else ''
     force_disabled_flag = '--force-disabled ' if kwargs.get('force_disabled', False) else ''
-    command = 'ssh -A -n -o StrictHostKeyChecking=no %s \'sudo chronos_rerun %s%s%s"%s %s" "%s"\'' % (
+    command = 'ssh -A -n -o StrictHostKeyChecking=no {} \'sudo chronos_rerun {}{}{}"{} {}" "{}"\''.format(
         master,
         run_all_related_jobs_flag,
         force_disabled_flag,
@@ -1022,7 +1022,7 @@ class PaastaTaskNotFound(Exception):
 def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None, verbose=True):
     api = client.get_paasta_api_client(cluster=cluster)
     if not api:
-        log.error("Could not get API client for cluster {}".format(cluster))
+        log.error(f"Could not get API client for cluster {cluster}")
         raise PaastaTaskNotFound
     if task_id:
         log.warning("Specifying a task_id, so ignoring hostname if specified")

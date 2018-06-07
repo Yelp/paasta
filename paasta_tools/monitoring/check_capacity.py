@@ -69,12 +69,12 @@ def calc_percent_usage(resource_item, value_to_check):
 
 
 def error_message(failures, level, cluster, value_to_check):
-    result = "%s cluster %s %s usage:\n" % (level, cluster, value_to_check)
+    result = f"{level} cluster {cluster} {value_to_check} usage:\n"
     results = []
     for f in failures:
-        attrs = ", ".join(["%s: %s" % (e['attr'], e['value']) for e in f['attrs']])
+        attrs = ", ".join(["{}: {}".format(e['attr'], e['value']) for e in f['attrs']])
         results.append(
-            "    %s is at %.2f percent %s, maximum %.2f percent" % (
+            "    {} is at {:.2f} percent {}, maximum {:.2f} percent".format(
                 attrs, f['current'], value_to_check,
                 f['maximum'],
             ),
@@ -94,7 +94,7 @@ def get_check_from_overrides(overrides, default_check, groupings):
     elif len(checks) == 1:
         return checks[0]
     else:
-        group_string = ', '.join(["%s: %s" % (k, v) for k, v in groupings.items()])
+        group_string = ', '.join([f"{k}: {v}" for k, v in groupings.items()])
         paasta_print("UNKNOWN Multiple overrides specified for %s" % group_string)
         sys.exit(3)
 
@@ -164,7 +164,7 @@ def run_capacity_check():
         return_value.append(1)
 
     if max(return_value) == 0:
-        paasta_print("OK cluster %s is below critical capacity in %s" % (cluster, value_to_check))
+        paasta_print(f"OK cluster {cluster} is below critical capacity in {value_to_check}")
 
     sys.exit(max(return_value))
 

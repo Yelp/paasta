@@ -371,12 +371,12 @@ class InstanceConfig(object):
             hard = val.get('hard')
             if soft is None:
                 raise InvalidInstanceConfig(
-                    'soft limit missing in ulimit configuration for {}.'.format(key),
+                    f'soft limit missing in ulimit configuration for {key}.',
                 )
             combined_val = '%i' % soft
             if hard is not None:
                 combined_val += ':%i' % hard
-            yield {"key": "ulimit", "value": "{}={}".format(key, combined_val)}
+            yield {"key": "ulimit", "value": f"{key}={combined_val}"}
 
     def get_cap_add(self) -> Iterable[DockerParameter]:
         """Get the --cap-add options to be passed to docker
@@ -387,7 +387,7 @@ class InstanceConfig(object):
 
         :returns: A generator of cap_add options to be passed as --cap-add flags"""
         for value in self.config_dict.get('cap_add', []):
-            yield {"key": "cap-add", "value": "{}".format(value)}
+            yield {"key": "cap-add", "value": f"{value}"}
 
     def format_docker_parameters(self, with_labels: bool=True) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
@@ -544,7 +544,7 @@ class InstanceConfig(object):
         docker_image = self.get_docker_image()
         if not docker_image:
             raise NoDockerImageError('Docker url not available because there is no docker_image')
-        docker_url = '%s/%s' % (registry_uri, docker_image)
+        docker_url = f'{registry_uri}/{docker_image}'
         return docker_url
 
     def get_desired_state(self) -> str:
@@ -753,7 +753,7 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
             return instance_type
     else:
         raise NoConfigurationForServiceError(
-            "Error: %s doesn't look like it has been configured to run on the %s cluster." % (
+            "Error: {} doesn't look like it has been configured to run on the {} cluster.".format(
                 compose_job_id(service, instance), cluster,
             ),
         )
@@ -1133,7 +1133,7 @@ def format_log_line(
 
 def get_log_name_for_service(service: str, prefix: str=None) -> str:
     if prefix:
-        return 'stream_paasta_%s_%s' % (prefix, service)
+        return f'stream_paasta_{prefix}_{service}'
     return 'stream_paasta_%s' % service
 
 
@@ -1162,9 +1162,9 @@ class ScribeLogWriter(LogWriter):
         configured the log object. We'll just write things to it.
         """
         if level == 'event':
-            paasta_print("[service %s] %s" % (service, line), file=sys.stdout)
+            paasta_print(f"[service {service}] {line}", file=sys.stdout)
         elif level == 'debug':
-            paasta_print("[service %s] %s" % (service, line), file=sys.stderr)
+            paasta_print(f"[service {service}] {line}", file=sys.stderr)
         else:
             raise NoSuchLogLevel
         log_name = get_log_name_for_service(service)
@@ -1247,7 +1247,7 @@ class FileLogWriter(LogWriter):
         # https://docs.python.org/2/library/io.html#io.FileIO
         # http://article.gmane.org/gmane.linux.kernel/43445
 
-        to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
+        to_write = "{}{}".format(format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
 
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:
@@ -1256,7 +1256,7 @@ class FileLogWriter(LogWriter):
                     f.write(to_write.encode('UTF-8'))  # type: ignore
         except IOError as e:
             paasta_print(
-                "Could not log to %s: %s: %s -- would have logged: %s" % (path, type(e).__name__, str(e), to_write),
+                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), to_write),
                 file=sys.stderr,
             )
 
@@ -1447,7 +1447,7 @@ def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'Sy
         file_stats = frozenset({(fn, os.stat(fn)) for fn in get_readable_files_in_glob(glob="*.json", path=path)})
         return parse_system_paasta_config(file_stats, path)
     except IOError as e:
-        raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+        raise PaastaNotConfiguredError(f"Could not load system paasta config file {e.filename}: {e.strerror}")
 
 
 def optionally_load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
@@ -1483,7 +1483,7 @@ class SystemPaastaConfig(object):
         return False
 
     def __repr__(self) -> str:
-        return "SystemPaastaConfig(%r, %r)" % (self.config_dict, self.directory)
+        return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
 
     def get_zk_hosts(self) -> str:
         """Get the zk_hosts defined in this hosts's cluster config file.
@@ -1943,7 +1943,7 @@ def _run(
         if timeout:
             proctimer.cancel()
     if returncode == -9:
-        output.append("Command '%s' timed out (longer than %ss)" % (command, timeout))
+        output.append(f"Command '{command}' timed out (longer than {timeout}s)")
     return returncode, '\n'.join(output)
 
 
@@ -2004,9 +2004,9 @@ def compose_job_id(
               if extra hash inputs are provided.
 
     """
-    composed = '%s%s%s' % (name, spacer, instance)
+    composed = f'{name}{spacer}{instance}'
     if git_hash and config_hash:
-        composed = '%s%s%s%s%s' % (composed, spacer, git_hash, spacer, config_hash)
+        composed = f'{composed}{spacer}{git_hash}{spacer}{config_hash}'
     elif git_hash or config_hash:
         raise InvalidJobNameError(
             'invalid job id because git_hash (%s) and config_hash (%s) must '
@@ -2044,7 +2044,7 @@ def build_docker_image_name(service: str) -> str:
     docker image name is docker_registry/services-foo.
     """
     docker_registry_url = get_service_docker_registry(service)
-    name = '%s/services-%s' % (docker_registry_url, service)
+    name = f'{docker_registry_url}/services-{service}'
     return name
 
 
@@ -2054,7 +2054,7 @@ def build_docker_tag(service: str, upstream_git_commit: str) -> str:
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
-    tag = '%s:paasta-%s' % (
+    tag = '{}:paasta-{}'.format(
         build_docker_image_name(service),
         upstream_git_commit,
     )
@@ -2076,7 +2076,7 @@ def check_docker_image(service: str, tag: str) -> bool:
     # https://github.com/docker/docker-py/issues/1401
     result = [image for image in images if docker_tag in (image['RepoTags'] or [])]
     if len(result) > 1:
-        raise ValueError('More than one docker image found with tag %s\n%s' % (docker_tag, result))
+        raise ValueError(f'More than one docker image found with tag {docker_tag}\n{result}')
     return len(result) == 1
 
 
@@ -2127,7 +2127,7 @@ def get_soa_cluster_deploy_files(
                     cluster = cluster_re_match.group(2)
                     yield (cluster, yaml_file)
         except IOError as err:
-            print("Error opening %s: %s" % (yaml_file, err))
+            print(f"Error opening {yaml_file}: {err}")
 
 
 def list_clusters(service: str=None, soa_dir: str=DEFAULT_SOA_DIR, instance_type: str=None) -> List[str]:
@@ -2194,8 +2194,8 @@ def get_service_instance_list_no_cache(
 
     instance_list = []
     for srv_instance_type in instance_types:
-        conf_file = "%s-%s" % (srv_instance_type, cluster)
-        log.info("Enumerating all instances for config file: %s/*/%s.yaml" % (soa_dir, conf_file))
+        conf_file = f"{srv_instance_type}-{cluster}"
+        log.info(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
         instances = service_configuration_lib.read_extra_service_information(
             service,
             conf_file,
@@ -2203,7 +2203,7 @@ def get_service_instance_list_no_cache(
         )
         for instance in instances:
             if instance.startswith('_'):
-                log.debug("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
+                log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
             else:
                 instance_list.append((service, instance))
 
@@ -2257,7 +2257,7 @@ def get_services_for_cluster(
         for service_instance in service_instance_list:
             service, instance = service_instance
             if instance.startswith('_'):
-                log.debug("Ignoring %s.%s as instance name begins with '_'." % (service, instance))
+                log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
             else:
                 instance_list.append(service_instance)
     return instance_list
@@ -2383,7 +2383,7 @@ class DeploymentsJsonV1:
         self.config_dict = config_dict
 
     def get_branch_dict(self, service: str, branch: str) -> BranchDictV1:
-        full_branch = '%s:paasta-%s' % (service, branch)
+        full_branch = f'{service}:paasta-{branch}'
         return self.config_dict.get(full_branch, {})
 
     def __eq__(self, other: Any) -> bool:
@@ -2395,7 +2395,7 @@ class DeploymentsJsonV2:
         self.config_dict = config_dict
 
     def get_branch_dict(self, service: str, branch: str, deploy_group: str) -> BranchDictV2:
-        full_branch = '%s:%s' % (service, branch)
+        full_branch = f'{service}:{branch}'
         branch_dict: BranchDictV2 = {
             'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
             'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
@@ -2448,12 +2448,12 @@ def format_timestamp(dt: datetime.datetime=None) -> str:
 
 def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return 'paasta-%s-%s-%s' % (identifier, timestamp, desired_state)
+    return f'paasta-{identifier}-{timestamp}-{desired_state}'
 
 
 def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return 'paasta-%s.%s-%s-%s' % (cluster, instance, timestamp, desired_state)
+    return f'paasta-{cluster}.{instance}-{timestamp}-{desired_state}'
 
 
 def format_tag(tag: str) -> str:
@@ -2705,7 +2705,7 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
 
     if not sequence:
         paasta_print(
-            'PaaSTA needs to pick a {choosing} but none were found.'.format(choosing=choosing),
+            f'PaaSTA needs to pick a {choosing} but none were found.',
             file=sys.stderr,
         )
         sys.exit(1)

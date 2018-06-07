@@ -260,7 +260,7 @@ def build_executor_stack(
         principal=taskproc_config.get('principal'),
         secret=taskproc_config.get('secret'),
         mesos_address=mesos_address,
-        framework_name="paasta-remote %s %s %s" % (
+        framework_name="paasta-remote {} {} {}".format(
             compose_job_id(service, instance),
             datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
             run_id,
@@ -393,7 +393,7 @@ def remote_run_start(args):
             )
         else:
             paasta_print(
-                PaastaColors.red("Mesos task config error: {}".format(e)),
+                PaastaColors.red(f"Mesos task config error: {e}"),
             )
         traceback.print_exc()
         emit_counter_metric('paasta.remote_run.start.failed', service, instance)
@@ -401,7 +401,7 @@ def remote_run_start(args):
     except PTypeError as e:
         paasta_print(
             PaastaColors.red(
-                "Mesos task config is failing a type check: {}".format(e),
+                f"Mesos task config is failing a type check: {e}",
             ),
         )
         traceback.print_exc()
@@ -451,7 +451,7 @@ def remote_run_start(args):
         sys.exit(0)
     else:
         paasta_print(
-            PaastaColors.red("Task failed: {}".format(terminal_event.raw)),
+            PaastaColors.red(f"Task failed: {terminal_event.raw}"),
         )
         # This is not necessarily an infrastructure failure. It may just be a
         # application failure.
@@ -470,7 +470,7 @@ def remote_run_stop(args):
     frameworks = [
         f
         for f in get_all_frameworks(active_only=True)
-        if re.search('^paasta-remote %s.%s' % (service, instance), f.name)
+        if re.search(f'^paasta-remote {service}.{instance}', f.name)
     ]
     framework_id = args.framework_id
     if framework_id is None:
@@ -515,7 +515,7 @@ def remote_run_filter_frameworks(service, instance, frameworks=None):
     if frameworks is None:
         frameworks = remote_run_frameworks()
 
-    prefix = "paasta-remote %s.%s" % (service, instance)
+    prefix = f"paasta-remote {service}.{instance}"
     return [f for f in frameworks if f.name.startswith(prefix)]
 
 

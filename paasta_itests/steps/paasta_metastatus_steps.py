@@ -101,7 +101,7 @@ def check_metastatus_return_code_with_flags(context, flags, expected_return_code
 
     # we don't care about the colouring here, so remove any ansi escape sequences
     escaped_output = remove_ansi_escape_sequences(output)
-    paasta_print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
     paasta_print()
 
     assert exit_code == int(expected_return_code)

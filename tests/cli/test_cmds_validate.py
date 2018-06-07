@@ -112,7 +112,7 @@ def test_get_service_path_soa_dir(
 
     service_path = get_service_path(service, soa_dir)
 
-    assert service_path == '%s/%s' % (soa_dir, service)
+    assert service_path == f'{soa_dir}/{service}'
 
 
 def is_schema(schema):
@@ -497,7 +497,7 @@ def test_failing_chronos_job_self_dependent(
     chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = ["%s%s%s" % (fake_service, chronos_spacer, fake_instance)]
+    mock_chronos_job.get_parents.return_value = [f"{fake_service}{chronos_spacer}{fake_instance}"]
     mock_chronos_job.validate.return_value = (True, [])
 
     mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
@@ -532,7 +532,7 @@ def test_failing_chronos_job_missing_parent(
     chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = ["%s%s%s" % (fake_service, chronos_spacer, 'parent-1')]
+    mock_chronos_job.get_parents.return_value = ["{}{}{}".format(fake_service, chronos_spacer, 'parent-1')]
     mock_chronos_job.validate.return_value = (True, [])
 
     mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)

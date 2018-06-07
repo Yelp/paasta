@@ -230,7 +230,7 @@ class ClusterAutoscaler(object):
             instance_descriptions = ec2_client.describe_instances(InstanceIds=instance_ids, Filters=instance_filters)
         except ClientError as e:
             if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
-                self.log.warn('Cannot find one or more instance from IDs {}'.format(instance_ids))
+                self.log.warn(f'Cannot find one or more instance from IDs {instance_ids}')
                 return None
             else:
                 raise
@@ -263,7 +263,7 @@ class ClusterAutoscaler(object):
             )
         except ClientError as e:
             if e.response['Error']['Code'] == 'InvalidInstanceID.NotFound':
-                self.log.warn('Cannot find one or more instance from IDs {}'.format(instance_ids))
+                self.log.warn(f'Cannot find one or more instance from IDs {instance_ids}')
                 return None
             else:
                 raise
@@ -293,11 +293,11 @@ class ClusterAutoscaler(object):
         config_folder: str,
         dry_run: bool=False,
     ) -> None:
-        file_name = "{}.json".format(resource_id)
+        file_name = f"{resource_id}.json"
         configs_to_delete = [os.path.join(walk[0], file_name)
                              for walk in os.walk(config_folder) if file_name in walk[2]]
         if not configs_to_delete:
-            self.log.info("Resource config for {} not found".format(resource_id))
+            self.log.info(f"Resource config for {resource_id} not found")
             return
         if not dry_run:
             os.remove(configs_to_delete[0])
@@ -371,7 +371,7 @@ class ClusterAutoscaler(object):
             self.log.info("Not draining, waiting %s longer before killing" % timer.left())
             return False
         if is_safe_to_kill(hostname):
-            self.log.info("Slave %s is ready to kill, with %s left on timer" % (hostname, timer.left()))
+            self.log.info("Slave {} is ready to kill, with {} left on timer".format(hostname, timer.left()))
             timer.start()
             return True
         return False
@@ -407,7 +407,7 @@ class ClusterAutoscaler(object):
                 instance_id = slave.instance_id
                 if not instance_id:
                     self.log.warning(
-                        "Didn't find instance ID for slave: {}. Skipping terminating".format(slave.pid),
+                        f"Didn't find instance ID for slave: {slave.pid}. Skipping terminating",
                     )
                     break
                 # Check if no tasks are running or we have reached the maintenance window
@@ -420,7 +420,7 @@ class ClusterAutoscaler(object):
                     self.terminate_instances([instance_id])
                     break
                 else:
-                    self.log.info("Instance {}: NOT ready to kill".format(instance_id))
+                    self.log.info(f"Instance {instance_id}: NOT ready to kill")
                 self.log.debug("Waiting 5 seconds and then checking again")
                 await asyncio.sleep(5)
         except TimeoutError:
@@ -460,10 +460,10 @@ class ClusterAutoscaler(object):
         target_capacity = int(target_capacity)
         delta = target_capacity - current_capacity
         if delta == 0:
-            self.log.info("Already at target capacity: {}".format(target_capacity))
+            self.log.info(f"Already at target capacity: {target_capacity}")
             return
         elif delta > 0:
-            self.log.info("Increasing resource capacity to: {}".format(target_capacity))
+            self.log.info(f"Increasing resource capacity to: {target_capacity}")
             self.set_capacity(target_capacity)
             return
         elif delta < 0:
@@ -533,11 +533,11 @@ class ClusterAutoscaler(object):
         # Set the duration to an hour, this is fairly arbitrary as mesos doesn't actually
         # do anything at the end of the maintenance window.
         duration = 600 * 1000000000  # nanoseconds
-        self.log.info("Draining {}".format(slave_to_kill.pid))
+        self.log.info(f"Draining {slave_to_kill.pid}")
         should_drain = self.should_drain(slave_to_kill)
         if should_drain:
             try:
-                drain_host_string = "{}|{}".format(slave_to_kill.hostname, slave_to_kill.ip)
+                drain_host_string = f"{slave_to_kill.hostname}|{slave_to_kill.ip}"
                 drain(
                     hostnames=[drain_host_string],
                     start=start,
@@ -555,7 +555,7 @@ class ClusterAutoscaler(object):
             self.set_capacity(self.capacity + capacity_diff)
         except FailSetResourceCapacity:
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
-            self.log.info("Undraining {}".format(slave_to_kill.pid))
+            self.log.info(f"Undraining {slave_to_kill.pid}")
             if should_drain:
                 undrain(
                     hostnames=[drain_host_string],
@@ -578,10 +578,10 @@ class ClusterAutoscaler(object):
                     unreserve_resources=self.enable_maintenance_reservation,
                 )
         except ClientError as e:
-            self.log.error("Failure when terminating: {}: {}".format(slave_to_kill.pid, e))
+            self.log.error(f"Failure when terminating: {slave_to_kill.pid}: {e}")
             self.log.error("Setting resource capacity back to {}".format(self.capacity - capacity_diff))
             self.set_capacity(self.capacity - capacity_diff)
-            self.log.info("Undraining {}".format(slave_to_kill.pid))
+            self.log.info(f"Undraining {slave_to_kill.pid}")
             if should_drain:
                 undrain(
                     hostnames=[drain_host_string],
@@ -590,7 +590,7 @@ class ClusterAutoscaler(object):
 
     def filter_aws_slaves(self, slaves_list: Iterable[Dict[str, SlaveTaskCount]]) -> List['PaastaAwsSlave']:
         ips = self.get_instance_ips(self.instances, region=self.resource['region'])
-        self.log.debug("IPs in AWS resources: {}".format(ips))
+        self.log.debug(f"IPs in AWS resources: {ips}")
         slaves = [
             slave for slave in slaves_list
             if slave_pid_to_ip(slave['task_counts'].slave['pid']) in ips
@@ -797,7 +797,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             sfrs = ec2_client.describe_spot_fleet_requests(SpotFleetRequestIds=[spotfleet_request_id])
         except ClientError as e:
             if e.response['Error']['Code'] == 'InvalidSpotFleetRequestId.NotFound':
-                self.log.warn('Cannot find SFR {}'.format(spotfleet_request_id))
+                self.log.warn(f'Cannot find SFR {spotfleet_request_id}')
                 return None
             else:
                 raise
@@ -936,7 +936,7 @@ class SpotAutoscaler(ClusterAutoscaler):
                 ExcessCapacityTerminationPolicy='noTermination',
             )
         except ClientError as e:
-            self.log.error("Error modifying spot fleet request: {}".format(e))
+            self.log.error(f"Error modifying spot fleet request: {e}")
             raise FailSetResourceCapacity
         self.capacity = capacity
         return ret
@@ -981,7 +981,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         try:
             return asgs['AutoScalingGroups'][0]
         except IndexError:
-            self.log.warning("No ASG found in this account with name: {}".format(asg_name))
+            self.log.warning(f"No ASG found in this account with name: {asg_name}")
             return None
 
     def metrics_provider(self, mesos_state: MesosState) -> Tuple[int, int]:
@@ -1064,7 +1064,7 @@ class AsgAutoscaler(ClusterAutoscaler):
                 DesiredCapacity=capacity,
             )
         except ClientError as e:
-            self.log.error("Error modifying ASG: {}".format(e))
+            self.log.error(f"Error modifying ASG: {e}")
             raise FailSetResourceCapacity
         self.capacity = capacity
         return ret
@@ -1273,10 +1273,10 @@ async def autoscale_cluster_resource(scaler: ClusterAutoscaler, mesos_state: Mes
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider(mesos_state)
-        log.info("Target capacity: {}, Capacity current: {}".format(target, current))
+        log.info(f"Target capacity: {target}, Capacity current: {current}")
         await scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
-        log.error('%s: %s' % (scaler.resource['id'], e))
+        log.error('{}: {}'.format(scaler.resource['id'], e))
 
 
 def get_instances_from_ip(ip: str, instance_descriptions: List[Dict]) -> List[Dict]:

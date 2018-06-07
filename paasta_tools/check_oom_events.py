@@ -107,7 +107,7 @@ def compose_sensu_status(instance, oom_events, is_check_enabled):
     """
     if not is_check_enabled:
         return (
-            Status.OK, 'This check is disabled for %s.%s.' % (
+            Status.OK, 'This check is disabled for {}.{}.'.format(
                 instance.service,
                 instance.instance,
             ),

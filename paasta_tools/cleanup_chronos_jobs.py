@@ -84,7 +84,7 @@ def cleanup_tasks(client, jobs):
 
 
 def format_list_output(title, job_names):
-    return '%s\n  %s' % (title, '\n  '.join(job_names))
+    return '{}\n  {}'.format(title, '\n  '.join(job_names))
 
 
 def deployed_job_names(client):

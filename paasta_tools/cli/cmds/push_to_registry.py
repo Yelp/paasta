@@ -87,7 +87,7 @@ def build_command(upstream_job_name, upstream_git_commit):
     # service so we could validate it, but the Docker image will have the full
     # name with 'services-' so add it back.
     tag = build_docker_tag(upstream_job_name, upstream_git_commit)
-    cmd = 'docker push %s' % (
+    cmd = 'docker push {}'.format(
         tag,
     )
     return cmd
@@ -171,7 +171,7 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
     repository, tag = build_docker_image_name(service, sha).split(':')
 
     creds = read_docker_registy_creds(registry_uri)
-    uri = '%s/v2/%s/manifests/paasta-%s' % (registry_uri, repository, sha)
+    uri = f'{registry_uri}/v2/{repository}/manifests/paasta-{sha}'
 
     with requests.Session() as s:
         try:

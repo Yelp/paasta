@@ -584,7 +584,7 @@ class TestSetupMarathonJob:
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
-            assert 'draining %s old tasks with app_id %s' % (expected_drain_task_count, 'fake_app_to_kill_1') \
+            assert 'draining {} old tasks with app_id {}'.format(expected_drain_task_count, 'fake_app_to_kill_1') \
                 in second_logged_line
 
             assert mock_create_marathon_app.call_count == 0
@@ -672,7 +672,7 @@ class TestSetupMarathonJob:
             assert mock_kill_old_ids.call_count == 1
 
             third_logged_line = mock_log.mock_calls[2][2]["line"]
-            assert '%s bounce on %s finish' % (fake_bounce_method, fake_serviceinstance) in third_logged_line
+            assert f'{fake_bounce_method} bounce on {fake_serviceinstance} finish' in third_logged_line
             assert 'Now running %s' % fake_marathon_jobid in third_logged_line
 
     def test_do_bounce_when_nothing_to_do(self):
@@ -1694,7 +1694,7 @@ class TestSetupMarathonJob:
             assert ret[0] == 0
 
             logged_line = mock_log.mock_calls[0][2]["line"]
-            assert logged_line.startswith("Failed to get lock to create marathon app for %s.%s" % (
+            assert logged_line.startswith("Failed to get lock to create marathon app for {}.{}".format(
                 fake_name,
                 fake_instance,
             ))

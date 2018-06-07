@@ -91,7 +91,7 @@ class Gauge(GaugeProtocol):
         self.name = name
 
     def set(self, value: Union[int, float]) -> None:
-        log.debug("gauge {} set to {}".format(self.name, value))
+        log.debug(f"gauge {self.name} set to {value}")
 
 
 @register_metrics_interface(None)

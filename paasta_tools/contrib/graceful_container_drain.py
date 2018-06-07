@@ -61,7 +61,7 @@ def cmd(command):
         if timeout:
             proctimer.cancel()
     if returncode == -9:
-        output.append("Command '%s' timed out (longer than %ss)" % (command, timeout))
+        output.append(f"Command '{command}' timed out (longer than {timeout}s)")
     return returncode, '\n'.join(output)
 
 
@@ -146,7 +146,7 @@ def main():
         environment = docker_env_to_dict(docker_inspect_data[0]['Config']['Env'])
         if 'CHRONOS_JOB_NAME' in environment:
             paasta_print(
-                "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME']),
+                "# WARNING! {} is a chronos job ({}), skipping".format(container_id, environment['CHRONOS_JOB_NAME']),
             )
             paasta_print()
             continue
@@ -155,17 +155,17 @@ def main():
             continue
         service = environment['PAASTA_SERVICE']
         instance = environment['PAASTA_INSTANCE']
-        paasta_print("# %s.%s" % (service, instance))
+        paasta_print(f"# {service}.{instance}")
         marathon_port = int(environment['MARATHON_PORT'])
         proxy_port = get_proxy_port(service, instance)
-        paasta_print("# %s,%s,%s,%s,%s" % (container_id, service, instance, proxy_port, marathon_port))
-        paasta_print("sudo hadown -P %s -e $((`date +'%%s'`+%s)) %s.%s" % (
+        paasta_print(f"# {container_id},{service},{instance},{proxy_port},{marathon_port}")
+        paasta_print("sudo hadown -P {} -e $((`date +'%s'`+{})) {}.{}".format(
             marathon_port, hadown_expire_in_seconds, service, instance,
         ))
         paasta_print("sleep %s" % smartstack_grace_sleep)
         t += smartstack_grace_sleep
         paasta_print("sudo docker kill %s" % container_id)
-        paasta_print("sudo haup -P %s %s.%s" % (marathon_port, service, instance))
+        paasta_print(f"sudo haup -P {marathon_port} {service}.{instance}")
         last_killed_t = get_last_killed(drained_apps, service, instance)
         drained_apps.append((t, service, instance))
         # print "t:%s last_killed_t:%s" % (t, last_killed_t)

@@ -76,6 +76,6 @@ def paasta_emergency_start(args):
     paasta_print("%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:]))
     paasta_print("Output: %s" % PaastaColors.grey(output))
     paasta_print("Run this command to see the status:")
-    paasta_print("paasta status --service %s --clusters %s" % (service, args.cluster))
+    paasta_print(f"paasta status --service {service} --clusters {args.cluster}")
 
     return return_code

@@ -46,7 +46,7 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
             self.bouncing.add(service_instance_key)
             super(DedupedPriorityQueue, self).put(priority, service_instance, *args, **kwargs)
         else:
-            self.log.debug("{} already present in {}, dropping extra message".format(service_instance_key, self.name))
+            self.log.debug(f"{service_instance_key} already present in {self.name}, dropping extra message")
 
     def get(self, *args, **kwargs):
         service_instance = super(DedupedPriorityQueue, self).get(*args, **kwargs)
@@ -88,15 +88,15 @@ class Inbox(PaastaThread):
         time.sleep(0.1)
 
     def process_service_instance(self, service_instance):
-        service_instance_key = "{}.{}".format(service_instance.service, service_instance.instance)
+        service_instance_key = f"{service_instance.service}.{service_instance.instance}"
         if self.should_add_to_bounce(service_instance, service_instance_key):
-            self.log.info("Enqueuing {} to be bounced in the future".format(service_instance))
+            self.log.info(f"Enqueuing {service_instance} to be bounced in the future")
             self.to_bounce[service_instance_key] = service_instance
 
     def should_add_to_bounce(self, service_instance, service_instance_key):
         if service_instance_key in self.to_bounce:
             if service_instance.bounce_by > self.to_bounce[service_instance_key].bounce_by:
-                self.log.debug("{} already in bounce queue with higher priority".format(service_instance))
+                self.log.debug(f"{service_instance} already in bounce queue with higher priority")
                 return False
         return True
 
@@ -256,7 +256,7 @@ class DeployDaemon(PaastaThread):
             DEFAULT_SOA_DIR,
         )
         for service_instance in service_instances:
-            self.log.info("Prioritising {} to be bounced immediately".format(service_instance))
+            self.log.info(f"Prioritising {service_instance} to be bounced immediately")
             service, instance = service_instance.split('.')
             self.inbox_q.put(ServiceInstance(
                 service=service,
@@ -280,7 +280,7 @@ class DeployDaemon(PaastaThread):
             for watcher in self.watcher_threads_enabled
         ]
 
-        self.log.info("Starting the following watchers {}".format(self.watcher_threads))
+        self.log.info(f"Starting the following watchers {self.watcher_threads}")
         for watcher in self.watcher_threads:
             watcher.start()
         self.log.info("Waiting for all watchers to start")

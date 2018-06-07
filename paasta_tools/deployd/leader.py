@@ -30,7 +30,7 @@ class PaastaLeaderElection(Election):
             return
 
     def connection_listener(self, state):
-        self.log.warning("Zookeeper connection transitioned to: {}".format(state))
+        self.log.warning(f"Zookeeper connection transitioned to: {state}")
         if state == KazooState.SUSPENDED:
             self.log.warning("Zookeeper connection suspended, waiting to see if it recovers.")
             if not self.waiting_for_reconnect:

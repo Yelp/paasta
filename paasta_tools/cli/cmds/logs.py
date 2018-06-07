@@ -172,13 +172,13 @@ def build_component_descriptions(components):
     based on its help attribute"""
     output = []
     for k, v in components.items():
-        output.append("     %s: %s" % (v['color'](k), v['help']))
+        output.append("     {}: {}".format(v['color'](k), v['help']))
     return '\n'.join(output)
 
 
 def prefix(input_string, component):
     """Returns a colored string with the right colored prefix with a given component"""
-    return "%s: %s" % (LOG_COMPONENTS[component]['color'](component), input_string)
+    return "{}: {}".format(LOG_COMPONENTS[component]['color'](component), input_string)
 
 
 # The reason this returns true if start_time or end_time are None is because
@@ -624,7 +624,7 @@ class ScribeLogReader(LogReader):
                 kw['clusters'] = [cluster]
             else:
                 kw['stream_name'] = stream_info.stream_name_fn(service)
-            log.debug("Running the equivalent of 'scribereader -e %s %s'" % (scribe_env, kw['stream_name']))
+            log.debug("Running the equivalent of 'scribereader -e {} {}'".format(scribe_env, kw['stream_name']))
             process = Process(target=self.scribe_tail, kwargs=kw)
             spawned_processes.append(process)
             process.start()
@@ -804,7 +804,7 @@ class ScribeLogReader(LogReader):
                             aggregated_logs.append(line)
             except StreamTailerSetupError as e:
                 if 'No data in stream' in str(e):
-                    log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
+                    log.warning(f"Scribe stream {stream_name} is empty on {scribe_env}")
                     log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
                     log.warning("output within this stream.")
                 else:
@@ -850,7 +850,7 @@ class ScribeLogReader(LogReader):
         # this method
         @contextmanager
         def fake_context():
-            log.debug("Running the equivalent of 'scribereader -e %s %s'" % (scribe_env, stream_name))
+            log.debug(f"Running the equivalent of 'scribereader -e {scribe_env} {stream_name}'")
             yield scribereader.get_stream_tailer(stream_name, host, port, True, line_count)
 
         return fake_context()
@@ -867,7 +867,7 @@ class ScribeLogReader(LogReader):
         This code is designed to run in a thread as spawned by tail_paasta_logs().
         """
         try:
-            log.debug("Going to tail %s scribe stream in %s" % (stream_name, scribe_env))
+            log.debug(f"Going to tail {stream_name} scribe stream in {scribe_env}")
             host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
             host = host_and_port['host']
             port = host_and_port['port']
@@ -883,7 +883,7 @@ class ScribeLogReader(LogReader):
             pass
         except StreamTailerSetupError as e:
             if 'No data in stream' in str(e):
-                log.warning("Scribe stream %s is empty on %s" % (stream_name, scribe_env))
+                log.warning(f"Scribe stream {stream_name} is empty on {scribe_env}")
                 log.warning("Don't Panic! This may or may not be a problem depending on if you expect there to be")
                 log.warning("output within this stream.")
                 # Enter a wait so the process isn't considered dead.
@@ -1105,7 +1105,7 @@ def paasta_logs(args):
 
     levels = [DEFAULT_LOGLEVEL, 'debug']
 
-    log.debug("Going to get logs for %s on clusters %s" % (service, clusters))
+    log.debug(f"Going to get logs for {service} on clusters {clusters}")
 
     log_reader = get_log_reader()
 

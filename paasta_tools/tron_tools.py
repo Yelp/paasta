@@ -76,7 +76,7 @@ def get_tron_client():
 
 
 def compose_instance(job, action):
-    return '%s%s%s' % (job, SPACER, action)
+    return f'{job}{SPACER}{action}'
 
 
 def decompose_instance(instance):

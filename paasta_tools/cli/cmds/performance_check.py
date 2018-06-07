@@ -70,8 +70,8 @@ def submit_performance_check_job(service, soa_dir):
     )
     r.raise_for_status()
     paasta_print("Posted a submission to the PaaSTA performance-check service.")
-    paasta_print("Endpoint: {}".format(endpoint))
-    paasta_print("Parameters: {}".format(performance_check_config))
+    paasta_print(f"Endpoint: {endpoint}")
+    paasta_print(f"Parameters: {performance_check_config}")
 
 
 @timeout()

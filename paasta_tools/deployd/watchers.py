@@ -54,13 +54,13 @@ class AutoscalerWatcher(PaastaWatcher):
         if path.split('/')[-1] == 'instances':
             self.watch_node(path, enqueue=enqueue_children)
             return
-        self.log.info("Adding folder watch on {}".format(path))
+        self.log.info(f"Adding folder watch on {path}")
         watcher = ChildrenWatch(self.zk, path, func=self.process_folder_event, send_event=True)
         self.watchers[path] = watcher
         children = watcher._client.get_children(watcher._path)
         if children:
             for child in children:
-                self.watch_folder("{}/{}".format(path, child), enqueue_children=enqueue_children)
+                self.watch_folder(f"{path}/{child}", enqueue_children=enqueue_children)
 
     def _enqueue_service_instance(self, path):
         service, instance = path.split('/')[-3:-1]
@@ -79,20 +79,20 @@ class AutoscalerWatcher(PaastaWatcher):
         self.inbox_q.put(service_instance)
 
     def watch_node(self, path, enqueue=False):
-        self.log.info("Adding node watch on {}".format(path))
+        self.log.info(f"Adding node watch on {path}")
         DataWatch(self.zk, path, func=self.process_node_event, send_event=True)
         if enqueue:
             self._enqueue_service_instance(path)
 
     def process_node_event(self, data, stat, event):
-        self.log.debug("Node change: {}".format(event))
+        self.log.debug(f"Node change: {event}")
         if event and (event.type == EventType.CREATED or event.type == EventType.CHANGED):
             self._enqueue_service_instance(event.path)
 
     def process_folder_event(self, children, event):
-        self.log.debug("Folder change: {}".format(event))
+        self.log.debug(f"Folder change: {event}")
         if event and (event.type == EventType.CHILD):
-            fq_children = ["{}/{}".format(event.path, child) for child in children]
+            fq_children = [f"{event.path}/{child}" for child in children]
             for child in fq_children:
                 if child not in self.watchers:
                     self.watch_folder(child, enqueue_children=True)
@@ -166,7 +166,7 @@ class MaintenanceWatcher(PaastaWatcher):
         try:
             draining_hosts = get_draining_hosts()
         except RequestException as e:
-            self.log.error("Unable to get list of draining hosts from mesos: {}".format(e))
+            self.log.error(f"Unable to get list of draining hosts from mesos: {e}")
             draining_hosts = list(self.draining)
         new_draining_hosts = [host for host in draining_hosts if host not in self.draining]
         for host in new_draining_hosts:
@@ -182,7 +182,7 @@ class MaintenanceWatcher(PaastaWatcher):
             new_draining_hosts = self.get_new_draining_hosts()
             service_instances: List[ServiceInstance] = []
             if new_draining_hosts:
-                self.log.info("Found new draining hosts: {}".format(new_draining_hosts))
+                self.log.info(f"Found new draining hosts: {new_draining_hosts}")
                 service_instances = self.get_at_risk_service_instances(new_draining_hosts)
             for service_instance in service_instances:
                 self.inbox_q.put(service_instance)
@@ -198,7 +198,7 @@ class MaintenanceWatcher(PaastaWatcher):
             for task in app.tasks:
                 if task.host in draining_hosts:
                     at_risk_tasks.append(task)
-        self.log.info("At risk tasks: {}".format(at_risk_tasks))
+        self.log.info(f"At risk tasks: {at_risk_tasks}")
         service_instances: List[ServiceInstance] = []
         for task in at_risk_tasks:
             app_id = task.app_id.strip('/')
@@ -312,7 +312,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             except OSError:
                 return
             if any(['marathon-' in file_name for file_name in file_names]):
-                self.log.info("New folder with marathon files: {}".format(event.name))
+                self.log.info(f"New folder with marathon files: {event.name}")
                 self.bounce_service(event.name)
 
     def process_default(self, event):
@@ -320,11 +320,11 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         self.watch_new_folder(event)
         service_name = self.get_service_name_from_event(event)
         if service_name:
-            self.log.info("Change of {} in {}".format(event.name, event.path))
+            self.log.info(f"Change of {event.name} in {event.path}")
             self.bounce_service(service_name)
 
     def bounce_service(self, service_name):
-        self.log.info("Checking if any instances for {} need bouncing".format(service_name))
+        self.log.info(f"Checking if any instances for {service_name} need bouncing")
         instances = list_all_instances_for_service(
             service=service_name,
             clusters=[self.filewatcher.cluster],
@@ -339,7 +339,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             self.filewatcher.cluster,
         )
         for service, instance in service_instances:
-            self.log.info("{}.{} has a new marathon app ID, and so needs bouncing".format(service, instance))
+            self.log.info(f"{service}.{instance} has a new marathon app ID, and so needs bouncing")
         service_instances_to_queue = [
             # https://github.com/python/mypy/issues/2852
             ServiceInstance(  # type: ignore

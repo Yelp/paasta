@@ -83,7 +83,7 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
     cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
     exit_code, output = _run(cmd)
     paasta_print(context.unconfigured_job_names)
-    paasta_print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
 
     assert exit_code == int(expected_return_code)
     assert "Successfully Removed Tasks (if any were running) for:" in output

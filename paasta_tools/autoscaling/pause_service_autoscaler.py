@@ -23,7 +23,7 @@ def get_service_autoscale_pause_time(cluster):
     else:
         local_tz = get_localzone()
         paused_readable = local_tz.localize(datetime.fromtimestamp(pause_time)).strftime('%F %H:%M:%S %Z')
-        paasta_print('Service autoscaler is paused until {}'.format(paused_readable))
+        paasta_print(f'Service autoscaler is paused until {paused_readable}')
 
     return 0
 
@@ -39,7 +39,7 @@ def update_service_autoscale_pause_time(cluster, mins):
         paasta_print('Could not connect to zookeeper server')
         return 2
 
-    paasta_print('Service autoscaler is paused for {}'.format(mins))
+    paasta_print(f'Service autoscaler is paused for {mins}')
     return 0
 
 

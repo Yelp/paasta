@@ -146,7 +146,7 @@ def main():
         print('{code}')
         return 1
     else:
-        print("OK - There are no outdated tasks in {}".format(cluster))
+        print(f"OK - There are no outdated tasks in {cluster}")
         return 0
 
 

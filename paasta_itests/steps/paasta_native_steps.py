@@ -159,7 +159,7 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
         json.dump(
             {
                 'v1': {
-                    '%s:paasta-%s.%s' % (service, context.cluster, instance): {
+                    f'{service}:paasta-{context.cluster}.{instance}': {
                         'docker_image': 'busybox',
                         'desired_state': 'start',
                         'force_bounce': None,
@@ -345,4 +345,4 @@ def service_should_show_up_in_pnsrh_n_times(context, expected_num):
         )
 
     matching_results = [res for res in results if res == (context.service, context.instance, mock.ANY)]
-    assert len(matching_results) == expected_num, ("matching results %r, all results %r" % (matching_results, results))
+    assert len(matching_results) == expected_num, (f"matching results {matching_results!r}, all results {results!r}")

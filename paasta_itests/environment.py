@@ -149,7 +149,7 @@ def _clean_up_paasta_native_frameworks(context):
                 try:
                     mesos_tools.terminate_framework(framework.id)
                 except requests.exceptions.HTTPError as e:
-                    paasta_print("Got exception when terminating framework %s: %s" % (framework.id, e))
+                    paasta_print(f"Got exception when terminating framework {framework.id}: {e}")
 
 
 def _clean_up_maintenance(context):

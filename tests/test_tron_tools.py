@@ -401,7 +401,7 @@ class TestTronTools:
             'docker_parameters': mock.ANY,
             'constraints': [['pool', 'LIKE', 'special_pool']],
         }
-        expected_docker = '%s/%s' % ('docker-registry.com:400', branch_dict['docker_image'])
+        expected_docker = '{}/{}'.format('docker-registry.com:400', branch_dict['docker_image'])
         assert result['docker_image'] == expected_docker
         assert result['env']['SHELL'] == '/bin/bash'
         assert isinstance(result['docker_parameters'], list)

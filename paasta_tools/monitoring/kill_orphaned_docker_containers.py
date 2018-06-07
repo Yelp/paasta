@@ -44,9 +44,9 @@ async def main():
             orphaned_containers.append((container["Names"][0].strip("/"), mesos_task_id))
 
     if orphaned_containers:
-        paasta_print("CRIT: Docker containers are orphaned: %s%s" % (
+        paasta_print("CRIT: Docker containers are orphaned: {}{}".format(
             ", ".join(
-                "%s (%s)" % (container_name, mesos_task_id)
+                f"{container_name} ({mesos_task_id})"
                 for container_name, mesos_task_id in orphaned_containers
             ), " and will be killed" if args.force else "",
         ))
