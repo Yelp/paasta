@@ -341,7 +341,6 @@ class TestTronTools:
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
-            'executor': 'ssh',
         }
 
     def test_format_tron_action_dict_paasta(self):
