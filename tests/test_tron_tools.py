@@ -95,7 +95,7 @@ class TestTronActionConfig:
             config_dict=action_dict,
             branch_dict={},
         )
-        assert action_config.get_executor() == 'ssh'
+        assert action_config.get_executor() is None
 
     def test_get_executor_paasta(self):
         action_dict = {
@@ -341,7 +341,6 @@ class TestTronTools:
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
-            'executor': 'ssh',
         }
 
     def test_format_tron_action_dict_paasta(self):
