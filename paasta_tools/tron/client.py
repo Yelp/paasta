@@ -92,7 +92,7 @@ class TronClient:
 
         if skip_if_unchanged:
             if yaml.load(new_config) == yaml.load(current_config['config']):
-                log.info('No change in config, skipping update.')
+                log.debug('No change in config, skipping update.')
                 return
 
         return self._post(
