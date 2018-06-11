@@ -7,8 +7,8 @@ arrow==0.12.1
 async-timeout==3.0.0
 binaryornot==0.4.4
 boto==2.48.0
-boto3==1.3.0
-botocore==1.4.93
+boto3==1.4.6
+botocore==1.6.0
 bravado==9.2.2
 bravado-core==4.13.1
 certifi==2017.11.5
