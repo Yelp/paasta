@@ -129,7 +129,7 @@ def bounce_lock_zookeeper(name):
     :param name: The lock name to acquire"""
     zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
-    lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, name))
+    lock = zk.Lock(f'{ZK_LOCK_PATH}/{name}')
     try:
         lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
         yield
@@ -213,7 +213,7 @@ def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
         )
         return task in registered_tasks
     except (ConnectionError, RequestException) as e:
-        log.warning("Failed to connect to smartstack on %s, assuming task %s is unhealthy: %s" % (task.host, task, e))
+        log.warning(f"Failed to connect to smartstack on {task.host}, assuming task {task} is unhealthy: {e}")
         return False
 
 

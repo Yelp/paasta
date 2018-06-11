@@ -32,7 +32,7 @@ def get_files_for_tasks(task_list, file_list, max_workers):
             fobj = task.file(fname)
         except exceptions.SlaveDoesNotExist:
             if task["id"] not in missing_slave:
-                paasta_print("%s:%s" % (task["id"], fname))
+                paasta_print("{}:{}".format(task["id"], fname))
                 paasta_print("Slave no longer exists.")
 
             missing_slave.add(task["id"])
@@ -52,7 +52,7 @@ def get_files_for_tasks(task_list, file_list, max_workers):
 
     if no_files_found:
         raise exceptions.FileNotFoundForTaskException(
-            "None of the tasks in %s contain the files in list %s" % (
+            "None of the tasks in {} contain the files in list {}".format(
                 ",".join([task["id"] for task in task_list]),
                 ",".join(file_list),
             ),

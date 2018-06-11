@@ -18,7 +18,7 @@ def main():
     output = []
     for ip, containers in ip_to_containers.items():
         if len(containers) > 1:
-            output.append('{} shared by the following containers:'.format(ip))
+            output.append(f'{ip} shared by the following containers:')
             for container in containers:
                 output.append('    Image: {}'.format(container['Image']))
                 output.append('        ID: {}'.format(container['Id']))

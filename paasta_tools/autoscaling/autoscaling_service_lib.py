@@ -230,7 +230,7 @@ def deserialize_historical_load(historical_load_bytes):
 
 def get_json_body_from_service(host, port, endpoint, timeout=2):
     return requests.get(
-        'http://%s:%s/%s' % (host, port, endpoint),
+        f'http://{host}:{port}/{endpoint}',
         headers={'User-Agent': get_user_agent()}, timeout=timeout,
     ).json()
 
@@ -257,7 +257,7 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
                   "is at full utilization." % (service, task.host, task.ports[0]))
         return 1.0
     except Exception as e:
-        log.error("Caught exception when querying %s on %s:%s : %s" % (service, task.host, task.ports[0], str(e)))
+        log.error("Caught exception when querying {} on {}:{} : {}".format(service, task.host, task.ports[0], str(e)))
 
 
 def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
@@ -291,7 +291,7 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
             utilization.append(job.value)
 
     if not utilization:
-        raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
+        raise MetricsProviderNoDataError("Couldn't get any data from http endpoint {} for {}.{}".format(
             endpoint, marathon_service_config.service, marathon_service_config.instance,
         ))
     return mean(utilization)
@@ -403,7 +403,7 @@ def mesos_cpu_metrics_provider(
     if not mesos_cpu_data:
         raise MetricsProviderNoDataError("Couldn't get any cpu data from Mesos")
 
-    cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
+    cpu_data_csv = ','.join(f'{cpu_seconds}:{task_id}' for task_id, cpu_seconds in mesos_cpu_data.items())
     log_utilization_data[str(current_time)] = cpu_data_csv
 
     if not noop:
@@ -729,7 +729,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
 
 def filter_autoscaling_tasks(marathon_apps, all_mesos_tasks, config):
-    job_id_prefix = "%s%s" % (format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
+    job_id_prefix = "{}{}".format(format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
 
     # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
     # are healthy. We assume tasks with no healthcheck results but a defined

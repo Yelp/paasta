@@ -54,7 +54,7 @@ class SecretProvider(BaseSecretProvider):
             secret_name = get_secret_name_from_ref(v)
             secret_path = os.path.join(
                 self.secret_dir,
-                "{}.json".format(secret_name),
+                f"{secret_name}.json",
             )
             secret = get_plaintext(
                 client=self.client,
@@ -118,7 +118,7 @@ class SecretProvider(BaseSecretProvider):
         )
         secret_path = os.path.join(
             self.secret_dir,
-            "{}.json".format(secret_name),
+            f"{secret_name}.json",
         )
         return get_plaintext(
             client=client,

@@ -108,7 +108,7 @@ def test_clone_job_dependent_jobs(
     expected_job_config = {
         'name': 'tmp-{} {}'.format(timestamp_chronos_name, fake_chronos_job_config['name']),
         'parents': [
-            'tmp-{}{}{}'.format(timestamp_chronos_name, SPACER, parent)
+            f'tmp-{timestamp_chronos_name}{SPACER}{parent}'
             for parent in fake_chronos_job_config['parents']
         ],
     }
@@ -166,7 +166,7 @@ def test_chronos_rerun_main_with_independent_job(
         return dict(schedule='R/2015-03-25T19:36:35Z/PT5M', **generic_config_dict)
 
     def gen_dependent_job(service, instance):
-        return dict(parents='{}.{}'.format(service, instance), **generic_config_dict)
+        return dict(parents=f'{service}.{instance}', **generic_config_dict)
 
     mock_read_services_configuration.return_value = [service]
     mock_read_chronos_jobs_for_service.return_value = {
@@ -177,7 +177,7 @@ def test_chronos_rerun_main_with_independent_job(
 
     mock_load_v2_deployments_json.return_value.get_branch_dict.side_effect = lambda service, *args, **kwargs: {
         'desired_state': 'start',
-        'docker_image': 'paasta-{}-{}'.format(service, cluster),
+        'docker_image': f'paasta-{service}-{cluster}',
     }
 
     if is_dependent_job:
@@ -190,7 +190,7 @@ def test_chronos_rerun_main_with_independent_job(
     testargs = ['chronos_rerun']
     if run_all_related_jobs:
         testargs.append('--run-all-related-jobs')
-    testargs.extend(['{} {}'.format(service, instance), execution_date.isoformat()])
+    testargs.extend([f'{service} {instance}', execution_date.isoformat()])
 
     with mock.patch.object(sys, 'argv', testargs):
         chronos_rerun.main()

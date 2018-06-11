@@ -63,7 +63,7 @@ class MesosSlave(object):
                     return response
             except aiohttp.ClientConnectionError:
                 raise exceptions.SlaveDoesNotExist(
-                    "Unable to connect to the slave at {}".format(self.host),
+                    f"Unable to connect to the slave at {self.host}",
                 )
 
     @async_ttl_cache(ttl=5)

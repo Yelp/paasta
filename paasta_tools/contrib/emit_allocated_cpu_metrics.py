@@ -29,7 +29,7 @@ def emit_metrics_for_type(instance_type):
             'instance_name': service_instance_config.instance,
         }
 
-        log.info("Emitting paasta.service.* with dimensions {}".format(dimensions))
+        log.info(f"Emitting paasta.service.* with dimensions {dimensions}")
         gauge = yelp_meteorite.create_gauge('paasta.service.cpus', dimensions)
         gauge.set(service_instance_config.get_cpus())
         gauge = yelp_meteorite.create_gauge('paasta.service.mem', dimensions)

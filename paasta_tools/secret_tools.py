@@ -43,7 +43,7 @@ def get_hmac_for_secret(
     secret_path = os.path.join(
         soa_dir,
         service,
-        "secrets", "{}.json".format(secret_name),
+        "secrets", f"{secret_name}.json",
     )
     try:
         with open(secret_path, 'r') as json_secret_file:
@@ -55,10 +55,10 @@ def get_hmac_for_secret(
                       " file".format(secret_environment))
                 return None
     except IOError as e:
-        print("Failed to open json secret at {}".format(secret_path))
+        print(f"Failed to open json secret at {secret_path}")
         return None
     except json.decoder.JSONDecodeError as e:
-        print("Failed to deserialise json secret at {}".format(secret_path))
+        print(f"Failed to deserialise json secret at {secret_path}")
         return None
 
 

@@ -55,6 +55,6 @@ def test_paasta_docker_inspect(
     mock_get_container_name.assert_called_with(mock_task)
     expected = [
         "ssh", "-o", "LogLevel=QUIET", "-tA", 'host1',
-        "sudo docker inspect {}".format(mock_get_container_name.return_value),
+        f"sudo docker inspect {mock_get_container_name.return_value}",
     ]
     mock_subprocess.call.assert_called_with(expected)

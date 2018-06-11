@@ -100,7 +100,7 @@ def main():
     for ip_addr, task_id in service_ips_and_ids:
         ip_addrs.append(ip_addr)
         update_haproxy_mapping(ip_addr, task_id, prev_ip_to_task_id, args.map_file)
-        new_lines.append('{} {}'.format(ip_addr, task_id))
+        new_lines.append(f'{ip_addr} {task_id}')
 
     remove_stopped_container_entries(prev_ip_to_task_id.keys(), ip_addrs, args.map_file)
 

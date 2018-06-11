@@ -122,7 +122,7 @@ class PaastaServiceConfigLoader():
                 pass
 
     def _framework_config_filename(self, cluster: str, instance_type_class: Type[_InstanceConfig_T]):
-        return "%s-%s" % (instance_type_class.config_filename_prefix, cluster)
+        return f"{instance_type_class.config_filename_prefix}-{cluster}"
 
     def _refresh_framework_config(self, cluster: str, instance_type_class: Type[_InstanceConfig_T]):
         conf_name = self._framework_config_filename(cluster, instance_type_class)

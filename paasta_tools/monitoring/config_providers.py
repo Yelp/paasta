@@ -87,6 +87,6 @@ def extract_monitoring_info(framework, config, **kwargs) -> MonitoringInfo:
     }.get(framework)
 
     if extractor is None:
-        raise Exception("Can not extract from {}".format(framework))
+        raise Exception(f"Can not extract from {framework}")
 
     return extractor(config, **kwargs)

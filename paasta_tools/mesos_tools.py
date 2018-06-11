@@ -134,7 +134,7 @@ def find_mesos_leader(master):
     if master is None:
         raise ValueError("Mesos master is required to find leader")
 
-    url = "http://%s:%s/redirect" % (master, MESOS_MASTER_PORT)
+    url = f"http://{master}:{MESOS_MASTER_PORT}/redirect"
     response = requests.get(url)
     return urlparse(response.url).hostname
 
@@ -259,7 +259,7 @@ def get_first_status_timestamp(task: Task):
     try:
         start_time_string = task['statuses'][0]['timestamp']
         start_time = datetime.datetime.fromtimestamp(float(start_time_string))
-        return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
+        return "{} ({})".format(start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
     except (IndexError, SlaveDoesNotExist):
         return "Unknown"
 
@@ -376,7 +376,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
             return output
         for fobj in fobjs:
-            output.append(PaastaColors.blue("      %s tail for %s" % (fobj.path, get_short_task_id(task['id']))))
+            output.append(PaastaColors.blue("      {} tail for {}".format(fobj.path, get_short_task_id(task['id']))))
             # read nlines, starting from EOF
             # mesos.cli is smart and can efficiently read a file backwards
             reversed_file = reversed(fobj)
@@ -536,12 +536,12 @@ def get_local_slave_state(hostname=None):
     :param hostname: The host from which to fetch slave state. If not specified, defaults to the local machine."""
     if hostname is None:
         hostname = socket.getfqdn()
-    stats_uri = 'http://%s:%s/state' % (hostname, MESOS_SLAVE_PORT)
+    stats_uri = f'http://{hostname}:{MESOS_SLAVE_PORT}/state'
     try:
         headers = {'User-Agent': get_user_agent()}
         response = requests.get(stats_uri, timeout=10, headers=headers)
         if response.status_code == 404:
-            fallback_stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
+            fallback_stats_uri = f'http://{hostname}:{MESOS_SLAVE_PORT}/state.json'
             response = requests.get(fallback_stats_uri, timeout=10, headers=headers)
     except requests.ConnectionError as e:
         raise MesosSlaveConnectionError(
@@ -679,7 +679,7 @@ def slave_passes_blacklist(slave, blacklist: DeployBlacklist) -> bool:
             if attributes.get(location_type) == location:
                 return False
     except ValueError as e:
-        log.error("Slave %s had errors processing the following blacklist: %s" % (slave, blacklist))
+        log.error(f"Slave {slave} had errors processing the following blacklist: {blacklist}")
         log.error("I will assume the slave does not pass\nError was: %s" % e)
         return False
     return True
@@ -700,7 +700,7 @@ def slave_passes_whitelist(slave, whitelist: DeployWhitelist) -> bool:
         if attributes.get(location_type) in locations:
             return True
     except ValueError as e:
-        log.error("Slave %s had errors processing the following whitelist: %s" % (slave, whitelist))
+        log.error(f"Slave {slave} had errors processing the following whitelist: {whitelist}")
         log.error("I will assume the slave does not pass\nError was: %s" % e)
         return False
     return False
@@ -768,7 +768,7 @@ async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None
             else:
                 slaves[task_slave['id']]['count'] += 1
                 task_framework = await task.framework()
-                log.debug("Task framework: {}".format(task_framework.name))
+                log.debug(f"Task framework: {task_framework.name}")
                 if task_framework.name == CHRONOS_FRAMEWORK_NAME:
                     slaves[task_slave['id']]['chronos_count'] += 1
         except SlaveDoesNotExist:
@@ -846,9 +846,9 @@ async def get_task(task_id, app_id=''):
     tasks = await get_running_tasks_from_frameworks(app_id)
     tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
     if len(tasks) < 1:
-        raise TaskNotFound("Couldn't find task for given id: {}".format(task_id))
+        raise TaskNotFound(f"Couldn't find task for given id: {task_id}")
     if len(tasks) > 1:
-        raise TooManyTasks("Found more than one task with id: {}, this should not happen!".format(task_id))
+        raise TooManyTasks(f"Found more than one task with id: {task_id}, this should not happen!")
     return tasks[0]
 
 

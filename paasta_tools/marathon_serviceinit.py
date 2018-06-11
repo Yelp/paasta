@@ -103,7 +103,7 @@ def status_desired_state(
 ) -> str:
     status = get_bouncing_status(service, instance, client, job_config)
     desired_state = desired_state_human(job_config.get_desired_state(), job_config.get_instances())
-    return "Desired State:      %s and %s" % (status, desired_state)
+    return f"Desired State:      {status} and {desired_state}"
 
 
 def status_marathon_job_human(
@@ -127,12 +127,12 @@ def status_marathon_job_human(
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
-        return "Marathon:   %s - up with %s instances. Status: %s" % (
+        return "Marathon:   {} - up with {} instances. Status: {}".format(
             status, instance_count, deploy_status,
         )
     else:
         status = PaastaColors.yellow("Warning")
-        return "Marathon:   %s - %s (app %s) is not configured in Marathon yet (waiting for bounce)" % (
+        return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
             status, name, desired_app_id,
         )
 
@@ -143,7 +143,7 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
     if status == marathon_tools.MarathonDeployStatus.Waiting:
         deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
     elif status == marathon_tools.MarathonDeployStatus.Delayed:
-        deploy_status = "%s (tasks are crashing, next won't launch for another %s seconds)" % (
+        deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
                         PaastaColors.red(status_string), backoff_seconds,
         )
     elif status == marathon_tools.MarathonDeployStatus.Deploying:
@@ -258,7 +258,7 @@ def status_marathon_app(
         f"{app.tasks_staged} staged",
         f"out of {app.instances}",
     ]))
-    output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
+    output.append("    App created: {} ({})".format(str(create_datetime), humanize.naturaltime(create_datetime)))
 
     deploy_status = marathon_tools.get_marathon_app_deploy_status(marathon_client, app)
     app_queue = marathon_tools.get_app_queue(marathon_client, app.id)
@@ -272,7 +272,7 @@ def status_marathon_app(
 
     if unused_offers_summary is not None and len(unused_offers_summary) > 0:
         output.append("    Possibly stalled for:")
-        output.append("      ".join(["%s: %s times" % (k, n) for k, n in unused_offers_summary.items()]))
+        output.append("      ".join([f"{k}: {n} times" for k, n in unused_offers_summary.items()]))
 
     if verbose > 0:
         output.append("    Tasks:")
@@ -280,7 +280,7 @@ def status_marathon_app(
         for task in app.tasks:
             local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
             if task.host is not None:
-                hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
+                hostname = "{}:{}".format(task.host.split(".")[0], task.ports[0])
             else:
                 hostname = "Unknown"
             if not task.health_check_results:
@@ -293,7 +293,7 @@ def status_marathon_app(
             rows.append((
                 get_short_task_id(task.id),
                 hostname,
-                '%s (%s)' % (
+                '{} ({})'.format(
                     local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
                     humanize.naturaltime(local_deployed_datetime),
                 ),
@@ -322,7 +322,7 @@ def haproxy_backend_report(normal_instance_count, up_backends):
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold('UP')
-    return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
+    return f"{status} - in haproxy with {count} total backends {up_string} in this namespace."
 
 
 def format_haproxy_backend_row(backend, is_correct_instance):
@@ -334,14 +334,14 @@ def format_haproxy_backend_row(backend, is_correct_instance):
     backend_name = backend['svname']
     backend_hostname = backend_name.split("_")[-1]
     backend_port = backend_name.split("_")[0].split(":")[-1]
-    pretty_backend_name = "%s:%s" % (backend_hostname, backend_port)
+    pretty_backend_name = f"{backend_hostname}:{backend_port}"
     if backend['status'] == "UP":
         status = PaastaColors.default(backend['status'])
     elif backend['status'] == 'DOWN' or backend['status'] == 'MAINT':
         status = PaastaColors.red(backend['status'])
     else:
         status = PaastaColors.yellow(backend['status'])
-    lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
+    lastcheck = "{}/{} in {}ms".format(backend['check_status'], backend['check_code'], backend['check_duration'])
     lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
 
     row = (
@@ -447,7 +447,7 @@ def pretty_print_smartstack_backends_for_locations(
         )
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
         running_count = sum(1 for backend, task in matched_tasks if backend and backend_is_up(backend))
-        rows.append("    %s - %s" % (location, haproxy_backend_report(expected_count_per_location, running_count)))
+        rows.append("    {} - {}".format(location, haproxy_backend_report(expected_count_per_location, running_count)))
 
         # If verbose mode is specified, show status of individual backends
         if verbose:
@@ -471,7 +471,7 @@ def status_mesos_tasks(
     job_id = marathon_tools.format_job_id(service, instance)
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
-    filter_string = "%s%s" % (job_id, marathon_tools.MESOS_TASK_SPACER)
+    filter_string = f"{job_id}{marathon_tools.MESOS_TASK_SPACER}"
 
     try:
         count = len(select_tasks_by_id(a_sync.block(get_cached_list_of_running_tasks_from_frameworks), filter_string))
@@ -485,7 +485,7 @@ def status_mesos_tasks(
             status = PaastaColors.yellow("Warning")
             count_str = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
         running_string = PaastaColors.bold('TASK_RUNNING')
-        output = "Mesos:      %s - %s tasks in the %s state." % (status, count_str, running_string)
+        output = f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
     except ReadTimeout:
         return "Error: talking to Mesos timed out. It may be overloaded."
 

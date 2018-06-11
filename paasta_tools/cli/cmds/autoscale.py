@@ -66,12 +66,12 @@ def paasta_autoscale(args):
         log.debug("Getting the current autoscaler count...")
         res, http = api.autoscaler.get_autoscaler_count(service=service, instance=args.instance).result()
     else:
-        log.debug("Setting desired instances to {}.".format(args.set))
+        log.debug(f"Setting desired instances to {args.set}.")
         body = {'desired_instances': int(args.set)}
         res, http = api.autoscaler.update_autoscaler_count(
             service=service, instance=args.instance, json_body=body,
         ).result()
 
-    log.debug("Res: {} Http: {}".format(res, http))
+    log.debug(f"Res: {res} Http: {http}")
     print(res["desired_instances"])
     return 0

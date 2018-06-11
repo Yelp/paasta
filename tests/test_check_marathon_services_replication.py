@@ -495,7 +495,7 @@ def _make_fake_task(app_id, **kwargs):
 def test_filter_healthy_marathon_instances_for_short_app_id_correctly_counts_alive_tasks():
     fakes = []
     for i in range(0, 4):
-        fake_task = _make_fake_task('/service.instance.foo%s.bar%s' % (i, i))
+        fake_task = _make_fake_task(f'/service.instance.foo{i}.bar{i}')
         mock_result = mock.Mock(alive=i % 2 == 0)
         fake_task.health_check_results = [mock_result]
         fakes.append(fake_task)
@@ -511,7 +511,7 @@ def test_filter_healthy_marathon_instances_for_short_app_id_considers_new_tasks_
     fakes = []
     for i in range(0, 4):
         fake_task = _make_fake_task(
-            '/service.instance.foo%s.bar%s' % (i, i),
+            f'/service.instance.foo{i}.bar{i}',
             # when i == 0, produces a task that has just started (not healthy yet)
             # otherwise produces a task that was started over a minute ago (healthy)
             started_at=datetime.now() - one_minute * i,

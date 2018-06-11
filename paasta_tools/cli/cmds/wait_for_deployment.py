@@ -125,7 +125,7 @@ def get_latest_marked_sha(git_url, deploy_group):
     last_ref = ''
     for ref in refs:
         if (
-            ref.startswith('refs/tags/paasta-{}-'.format(deploy_group)) and
+            ref.startswith(f'refs/tags/paasta-{deploy_group}-') and
             ref.endswith('-deploy') and
             ref > last_ref
         ):
@@ -204,7 +204,7 @@ def paasta_wait_for_deployment(args):
             args.deploy_group, service,
         )
     except (GitShaError, DeployGroupError, NoSuchService) as e:
-        paasta_print(PaastaColors.red('{}'.format(e)))
+        paasta_print(PaastaColors.red(f'{e}'))
         return 1
 
     try:

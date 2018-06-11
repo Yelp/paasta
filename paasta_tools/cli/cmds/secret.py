@@ -153,7 +153,7 @@ def paasta_secret(args):
             secret_name=args.secret_name,
             plaintext=get_plaintext_input(args),
         )
-        secret_path = os.path.join(secret_provider.secret_dir, "{}.json".format(args.secret_name))
+        secret_path = os.path.join(secret_provider.secret_dir, f"{args.secret_name}.json")
         print_paasta_helper(secret_path, args.secret_name)
     elif args.action == "decrypt":
         print(decrypt_secret(

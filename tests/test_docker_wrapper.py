@@ -62,7 +62,7 @@ class TestParseEnvArgs(object):
         assert env == {'foo': '', 'bar': ''}
 
     def test_file_equals(self, mock_env_file):
-        env = docker_wrapper.parse_env_args(['docker', '--env-file={}'.format(mock_env_file)])
+        env = docker_wrapper.parse_env_args(['docker', f'--env-file={mock_env_file}'])
         assert env == {
             'fileKeyA': 'fileValueA',
             'fileKeyB': 'fileValueB',

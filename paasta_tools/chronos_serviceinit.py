@@ -49,7 +49,7 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
         log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
         _log(
             service=service,
-            line="%s: Starting manual run of %s in Chronos" % (log_reason, name),
+            line=f"{log_reason}: Starting manual run of {name} in Chronos",
             component="deploy",
             level="event",
             cluster=cluster,
@@ -66,7 +66,7 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergenc
         name = PaastaColors.cyan(job["name"])
         _log(
             service=service,
-            line="%s: Killing all tasks for job %s" % (log_reason, name),
+            line=f"{log_reason}: Killing all tasks for job {name}",
             component="deploy",
             level="event",
             cluster=cluster,
@@ -118,7 +118,7 @@ def _prettify_time(time):
         paasta_print("unable to parse datetime %s" % time)
         raise
     dt_localtime = datetime_from_utc_to_local(dt)
-    pretty_dt = "%s, %s" % (
+    pretty_dt = "{}, {}".format(
         dt_localtime.strftime("%Y-%m-%dT%H:%M"),
         humanize.naturaltime(dt_localtime),
     )
@@ -158,7 +158,7 @@ def _format_schedule(job):
     schedule_time_zone = job.get("scheduleTimeZone", "null")
     if schedule_time_zone == "null":  # This is what Chronos returns.
         schedule_time_zone = "UTC"
-    formatted_schedule = "%s (%s) Epsilon: %s" % (schedule, schedule_time_zone, epsilon)
+    formatted_schedule = f"{schedule} ({schedule_time_zone}) Epsilon: {epsilon}"
     return formatted_schedule
 
 
@@ -283,7 +283,7 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
             get_short_task_id=get_short_task_id,
             tail_lines=tail_lines,
         )
-        mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
+        mesos_status = f"{mesos_status}\n{mesos_status_verbose}"
     return (
         "Job:     %(job_name)s\n"
         "  Status:   %(disabled_state)s (%(chronos_state)s)"

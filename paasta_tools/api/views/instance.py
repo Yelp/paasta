@@ -186,7 +186,7 @@ def instance_status(request):
         elif instance_type == 'adhoc':
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         else:
-            error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)
+            error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
             raise ApiFailure(error_message, 404)
     except Exception:
         error_message = traceback.format_exc()
@@ -207,7 +207,7 @@ def instance_task(request):
     try:
         task = a_sync.block(get_task, task_id, app_id=mstatus['app_id'])
     except TaskNotFound:
-        raise ApiFailure("Task with id {} not found".format(task_id), 404)
+        raise ApiFailure(f"Task with id {task_id} not found", 404)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)

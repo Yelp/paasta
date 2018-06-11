@@ -50,7 +50,7 @@ class TestSetupChronosJob:
         'schedule_time_zone': 'Zulu',
     }
     fake_branch_dict = {
-        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+        'docker_image': f'paasta-{fake_service}-{fake_cluster}',
         'git_sha': 'fake_sha',
         'force_bounce': None,
         'desired_state': 'start',

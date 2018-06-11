@@ -34,7 +34,7 @@ from paasta_tools.utils import load_system_paasta_config
 
 
 def read_key(key):
-    with open("/nail/etc/{}".format(key)) as fd:
+    with open(f"/nail/etc/{key}") as fd:
         return fd.read().strip()
 
 
@@ -95,7 +95,7 @@ def do_replication_check(service: str, monitoring_config: MonitoringInfo, servic
         warn_range, crit_range,
     )
     return {
-        'name': "replication_{}".format(service),
+        'name': f"replication_{service}",
         'status': status_code,
         'output': message,
         'team': monitoring_config['team'],
@@ -155,7 +155,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
 
     def get_service_replication(self, all_services, synapse_host, synapse_port, synapse_haproxy_url_format):
         # Get the replication data once for performance
-        synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
+        synapse_host_port = f"{synapse_host}:{synapse_port}"
         self.log.debug(
             "Gathering replication information from {}".
             format(synapse_host_port),
@@ -210,7 +210,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             )
 
             if do_monitoring:
-                self.log.debug("Checking {}".format(service))
+                self.log.debug(f"Checking {service}")
                 replication = service_replication.get('%s.main' % service, 0)
                 event = do_replication_check(
                     service, monitoring_config,
@@ -223,9 +223,9 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
                 ))
                 report_event(event)
             else:
-                self.log.debug("Not checking {}".format(service))
+                self.log.debug(f"Not checking {service}")
 
-        self.ok("Finished checking services: {}".format(checked_services))
+        self.ok(f"Finished checking services: {checked_services}")
 
 
 if __name__ == "__main__":

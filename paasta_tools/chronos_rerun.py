@@ -100,7 +100,7 @@ def get_tmp_naming_scheme_prefix(timestamp=None):
     timestamp = timestamp.replace(':', '')
     timestamp = timestamp.replace('.', '')
 
-    return '%s-%s' % (
+    return '{}-{}'.format(
         chronos_tools.TMP_JOB_IDENTIFIER,
         timestamp,
     )
@@ -118,7 +118,7 @@ def set_tmp_naming_scheme(chronos_job, timestamp=None):
     """
     current_name = chronos_job['name']
 
-    chronos_job['name'] = '%s%s%s' % (
+    chronos_job['name'] = '{}{}{}'.format(
         get_tmp_naming_scheme_prefix(timestamp),
         chronos_tools.SPACER,
         current_name,
@@ -194,7 +194,7 @@ def main():
 
     related_jobs = chronos_tools.get_related_jobs_configs(cluster, service, instance, soa_dir=args.soa_dir)
     if not related_jobs:
-        error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
+        error_msg = "No deployment found for {} in cluster {}. Has Jenkins run for it?".format(
             args.service_instance, cluster,
         )
         paasta_print(error_msg)
@@ -220,14 +220,14 @@ def main():
                 },
             )
         except (NoDeploymentsAvailable, NoDockerImageError) as e:
-            error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
+            error_msg = "No deployment found for {} in cluster {}. Has Jenkins run for it?".format(
                 chronos_tools.compose_job_id(srv, inst), cluster,
             )
             paasta_print(error_msg)
             raise e
         except NoConfigurationForServiceError as e:
             error_msg = (
-                "Could not read chronos configuration file for %s in cluster %s\nError was: %s" % (
+                "Could not read chronos configuration file for {} in cluster {}\nError was: {}".format(
                     chronos_tools.compose_job_id(srv, inst), cluster, str(e),
                 )
             )

@@ -16,7 +16,7 @@ class PaastaDeployWorker(PaastaThread):
     def __init__(self, worker_number, inbox_q, bounce_q, config, metrics_provider):
         super(PaastaDeployWorker, self).__init__()
         self.daemon = True
-        self.name = "Worker{}".format(worker_number)
+        self.name = f"Worker{worker_number}"
         self.inbox_q = inbox_q
         self.bounce_q = bounce_q
         self.metrics = metrics_provider
@@ -61,7 +61,7 @@ class PaastaDeployWorker(PaastaThread):
         )
 
     def run(self):
-        self.log.info("{} starting up".format(self.name))
+        self.log.info(f"{self.name} starting up")
         while True:
             service_instance = self.bounce_q.get()
             try:
@@ -96,7 +96,7 @@ class PaastaDeployWorker(PaastaThread):
 
     def process_service_instance(self, service_instance):
         bounce_timers = self.setup_timers(service_instance)
-        self.log.info("{} processing {}.{}".format(self.name, service_instance.service, service_instance.instance))
+        self.log.info(f"{self.name} processing {service_instance.service}.{service_instance.instance}")
 
         bounce_timers.setup_marathon.start()
         return_code, bounce_again_in_seconds = deploy_marathon_service(

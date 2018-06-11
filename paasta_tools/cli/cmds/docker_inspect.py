@@ -45,5 +45,5 @@ def paasta_docker_inspect(args):
         sys.exit(1)
     container = get_container_name(task)
     slave = task.slave['hostname']
-    command = "sudo docker inspect {}".format(container)
+    command = f"sudo docker inspect {container}"
     subprocess.call(["ssh", "-o", "LogLevel=QUIET", "-tA", slave, command])

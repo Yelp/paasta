@@ -211,7 +211,7 @@ def simulate_healthcheck_on_service(
             if time.time() < graceperiod_end_time:
                 color = PaastaColors.grey
                 msg = '(disregarded due to grace period)'
-                extra_msg = ' (via: {}. Output: {})'.format(healthcheck_link, healthcheck_output)
+                extra_msg = f' (via: {healthcheck_link}. Output: {healthcheck_output})'
             else:
                 # If we've exceeded the grace period, we start incrementing attempts
                 after_grace_period_attempts += 1
@@ -219,10 +219,10 @@ def simulate_healthcheck_on_service(
                 msg = '(Attempt {} of {})'.format(
                     after_grace_period_attempts, max_failures,
                 )
-                extra_msg = ' (via: {}. Output: {})'.format(healthcheck_link, healthcheck_output)
+                extra_msg = f' (via: {healthcheck_link}. Output: {healthcheck_output})'
 
             paasta_print('{}{}'.format(
-                color('Healthcheck failed! {}'.format(msg)),
+                color(f'Healthcheck failed! {msg}'),
                 extra_msg,
             ))
 
@@ -397,7 +397,7 @@ def add_subparser(subparsers):
 
 
 def get_container_name():
-    return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
+    return 'paasta_local_run_{}_{}'.format(get_username(), randint(1, 999999))
 
 
 def get_docker_run_cmd(
@@ -407,10 +407,10 @@ def get_docker_run_cmd(
     cmd = ['paasta_docker_wrapper', 'run']
     for k, v in env.items():
         cmd.append('--env')
-        cmd.append('%s=%s' % (k, v))
+        cmd.append(f'{k}={v}')
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
-        cmd.append('--%s=%s' % (i['key'], i['value']))
+        cmd.append('--{}={}'.format(i['key'], i['value']))
     if net == 'bridge' and container_port is not None:
         cmd.append('--publish=%d:%d' % (chosen_port, container_port))
     elif net == 'host':
@@ -530,7 +530,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env['CHRONOS_RESOURCE_MEM'] = str(instance_config.get_mem())
         env['CHRONOS_JOB_OWNER'] = 'simulated-owner'
         env['CHRONOS_JOB_RUN_TIME'] = str(int(time.time()))
-        env['CHRONOS_JOB_NAME'] = "%s %s" % (instance_config.get_service(), instance_config.get_instance())
+        env['CHRONOS_JOB_NAME'] = "{} {}".format(instance_config.get_service(), instance_config.get_instance())
         env['CHRONOS_JOB_RUN_ATTEMPT'] = str(0)
         env['mesos_task_id'] = 'ct:simulated-task-id'
     return env
@@ -875,7 +875,7 @@ def configure_and_run_docker_container(
 
     for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
         if os.path.exists(volume['hostPath']):
-            volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
+            volumes.append('{}:{}:{}'.format(volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
         else:
             paasta_print(
                 PaastaColors.yellow(
@@ -975,7 +975,7 @@ def paasta_local_run(args):
     docker_client = get_docker_client()
 
     if args.action == 'build':
-        default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
+        default_tag = 'paasta-local-run-{}-{}'.format(service, get_username())
         tag = os.environ.get('DOCKER_TAG', default_tag)
         os.environ['DOCKER_TAG'] = tag
         pull_image = False

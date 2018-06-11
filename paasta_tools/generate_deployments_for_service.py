@@ -188,8 +188,8 @@ def get_deploy_group_mappings(
         (deploy_ref_name, _) = get_latest_deployment_tag(remote_refs, deploy_group)
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
-            control_branch_alias = '%s:paasta-%s' % (service, control_branch)
-            control_branch_alias_v2 = '%s:%s' % (service, control_branch)
+            control_branch_alias = f'{service}:paasta-{control_branch}'
+            control_branch_alias_v2 = f'{service}:{control_branch}'
             docker_image = build_docker_image_name(service, commit_sha)
             desired_state, force_bounce = get_desired_state(
                 branch=control_branch,
@@ -215,7 +215,7 @@ def get_deploy_group_mappings(
 
 
 def build_docker_image_name(service: str, sha: str) -> str:
-    return 'services-%s:paasta-%s' % (service, sha)
+    return f'services-{service}:paasta-{sha}'
 
 
 def get_service_from_docker_image(image_name: str) -> str:

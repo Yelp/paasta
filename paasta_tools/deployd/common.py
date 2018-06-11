@@ -99,7 +99,7 @@ class PaastaQueue(Queue):
         return logging.getLogger(name)
 
     def put(self, item: Any, *args: Any, **kwargs: Any) -> None:
-        self.log.debug("Adding {} to {} queue".format(item, self.name))
+        self.log.debug(f"Adding {item} to {self.name} queue")
         super(PaastaQueue, self).put(item, *args, **kwargs)
 
 
@@ -117,7 +117,7 @@ class PaastaPriorityQueue(PriorityQueue):
 
     # ignored because https://github.com/python/mypy/issues/1237
     def put(self, priority: float, item: Any, *args: Any, **kwargs: Any) -> None:  # type: ignore
-        self.log.debug("Adding {} to {} queue with priority {}".format(item, self.name, priority))
+        self.log.debug(f"Adding {item} to {self.name} queue with priority {priority}")
         # this counter is to preserve the FIFO nature of the queue, it increments on every put
         # and the python PriorityQueue sorts based on the first item in the tuple (priority)
         # and then the second item in the tuple (counter). This way all items with the same
@@ -185,7 +185,7 @@ def get_service_instances_needing_update(
             config_app = config.format_marathon_app_dict()
             app_id = '/{}'.format(config_app['id'])
         except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoSlavesAvailableError) as e:
-            print("DEBUG: Skipping %s.%s because: '%s'" % (service, instance, str(e)))
+            print("DEBUG: Skipping {}.{} because: '{}'".format(service, instance, str(e)))
             continue
         if app_id not in marathon_app_ids:
             service_instances.append((service, instance))

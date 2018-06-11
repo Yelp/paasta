@@ -47,5 +47,5 @@ def paasta_docker_stop(args):
         sys.exit(1)
     container = get_container_name(task)
     slave = task.slave['hostname']
-    command = "sudo docker stop {}".format(container)
+    command = f"sudo docker stop {container}"
     subprocess.call(["ssh", "-o", "LogLevel=QUIET", "-tA", slave, command])

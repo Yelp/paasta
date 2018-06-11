@@ -64,7 +64,7 @@ def test_do_replication_check():
     mock_default_data['team'] = 'test_team'
 
     mock_specific_data: MonitoringInfo = {
-        key: "test_{}".format(key) for key in mock_keys
+        key: f"test_{key}" for key in mock_keys
     }
     mock_specific_data['extra'] = {
         'replication': {

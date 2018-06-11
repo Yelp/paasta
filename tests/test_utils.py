@@ -518,7 +518,7 @@ def test_decompose_job_id_with_hashes():
 def test_build_docker_image_name():
     registry_url = "fake_registry"
     upstream_job_name = "a_really_neat_service"
-    expected = "%s/services-%s" % (registry_url, upstream_job_name)
+    expected = f"{registry_url}/services-{upstream_job_name}"
     with mock.patch(
         'paasta_tools.utils.get_service_docker_registry', autospec=True,
         return_value=registry_url,
@@ -532,7 +532,7 @@ def test_build_docker_tag(mock_build_docker_image_name):
     upstream_job_name = 'foo'
     upstream_git_commit = 'bar'
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
-    expected = 'fake-registry/services-foo:paasta-%s' % (
+    expected = 'fake-registry/services-foo:paasta-{}'.format(
         upstream_git_commit,
     )
     actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
@@ -645,7 +645,7 @@ def test_list_clusters_ignores_bogus_clusters():
     ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
-        'os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service),
+        'os.path.join', autospec=True, return_value=f'{fake_soa_dir}/{fake_service}',
     ), mock.patch(
         'glob.glob', autospec=True, return_value=fake_cluster_configs,
     ), mock.patch(
@@ -794,13 +794,13 @@ def test_get_services_for_cluster_ignores_underscore():
 
 
 def test_color_text():
-    expected = "%shi%s" % (utils.PaastaColors.RED, utils.PaastaColors.DEFAULT)
+    expected = f"{utils.PaastaColors.RED}hi{utils.PaastaColors.DEFAULT}"
     actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "hi")
     assert actual == expected
 
 
 def test_color_text_nested():
-    expected = "%sred%sblue%sred%s" % (
+    expected = "{}red{}blue{}red{}".format(
         utils.PaastaColors.RED,
         utils.PaastaColors.BLUE,
         utils.PaastaColors.DEFAULT + utils.PaastaColors.RED,
@@ -1537,7 +1537,7 @@ class TestInstanceConfig:
             'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
             return_value=fake_image,
         ):
-            expected_url = "%s/%s" % (fake_registry, fake_image)
+            expected_url = f"{fake_registry}/{fake_image}"
             assert fake_conf.get_docker_url() == expected_url
 
     @pytest.mark.parametrize(
@@ -1842,7 +1842,7 @@ class TestFileLogWriter:
             fake_fll.assert_called_once_with("level", "cluster", "service", "instance", "component", "line")
 
             mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
-            fake_file.write.assert_called_once_with("{}\n".format(fake_line).encode('UTF-8'))
+            fake_file.write.assert_called_once_with(f"{fake_line}\n".encode('UTF-8'))
 
     def test_write_raises_IOError(self):
         fake_file = mock.Mock()

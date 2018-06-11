@@ -39,7 +39,7 @@ def get_autoscaler_count(request):
             load_deployments=False,
         )
     except Exception:
-        error_message = 'Unable to load service config for %s.%s' % (service, instance)
+        error_message = f'Unable to load service config for {service}.{instance}'
         raise ApiFailure(error_message, 404)
 
     response_body = {'desired_instances': service_config.get_instances()}
@@ -66,12 +66,12 @@ def update_autoscaler_count(request):
             load_deployments=False,
         )
     except Exception:
-        error_message = 'Unable to load service config for %s.%s' % (service, instance)
+        error_message = f'Unable to load service config for {service}.{instance}'
         raise ApiFailure(error_message, 404)
 
     max_instances = service_config.get_max_instances()
     if max_instances is None:
-        error_message = 'Autoscaling is not enabled for %s.%s' % (service, instance)
+        error_message = f'Autoscaling is not enabled for {service}.{instance}'
         raise ApiFailure(error_message, 404)
 
     min_instances = service_config.get_min_instances()

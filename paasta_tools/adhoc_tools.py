@@ -43,7 +43,7 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
 
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, adhoc_conf_file),
+            f"{instance} not found in config file {soa_dir}/{service}/{adhoc_conf_file}.yaml.",
         )
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
@@ -95,7 +95,7 @@ class AdhocJobConfig(LongRunningServiceConfig):
         )
 
     def __repr__(self) -> str:
-        return "AdhocJobConfig(%r, %r, %r, %r, %r, %r)" % (
+        return "AdhocJobConfig({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.service,
             self.cluster,
             self.instance,

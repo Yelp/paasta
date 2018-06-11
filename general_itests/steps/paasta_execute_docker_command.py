@@ -48,10 +48,10 @@ def create_docker_container(context, task_id, image_name):
 
 @when('we paasta_execute_docker_command a command with exit code {code} in container with task id {task_id}')
 def run_command_in_container(context, code, task_id):
-    cmd = '../paasta_tools/paasta_execute_docker_command.py -i %s -c "exit %s"' % (task_id, code)
+    cmd = f'../paasta_tools/paasta_execute_docker_command.py -i {task_id} -c "exit {code}"'
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
-    paasta_print('Got exitcode %s with output:\n%s' % (exit_code, output))
+    paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
     context.return_code = exit_code
 
 

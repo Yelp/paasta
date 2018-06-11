@@ -47,7 +47,7 @@ class TronClient:
             kwargs['data'] = data
             response = requests.post(**kwargs)
         else:
-            raise ValueError('Unrecognized method: {}'.format(method))
+            raise ValueError(f'Unrecognized method: {method}')
 
         return self._get_response_or_error(response)
 

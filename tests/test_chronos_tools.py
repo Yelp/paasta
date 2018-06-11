@@ -58,7 +58,7 @@ class TestChronosTools:
     }
     fake_branch_dict = {
         'desired_state': 'start',
-        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+        'docker_image': f'paasta-{fake_service}-{fake_cluster}',
         'force_bounce': None,
         "git_sha": "deadbeef",
     }
@@ -108,7 +108,7 @@ class TestChronosTools:
     fake_dependent_job_name = 'test_dependent'
     fake_dependent_job_config_dict = copy.deepcopy(fake_config_dict)
     fake_dependent_job_config_dict.pop("schedule")
-    fake_dependent_job_config_dict["parents"] = ["{}.{}".format(fake_service, fake_job_name)]
+    fake_dependent_job_config_dict["parents"] = [f"{fake_service}.{fake_job_name}"]
     fake_dependent_chronos_job_config = chronos_tools.ChronosJobConfig(
         service=fake_service,
         cluster=fake_cluster,
@@ -1252,7 +1252,7 @@ class TestChronosTools:
 
         fake_csv = [
             "node,fake_service_instance,fresh,alive",
-            "node,%s,fresh,%s" % (chronos_tools.compose_job_id(fake_service, fake_instance), expected_status),
+            "node,{},fresh,{}".format(chronos_tools.compose_job_id(fake_service, fake_instance), expected_status),
             "node,other_fake_service_instance,fresh,alive",
         ]
         fake_client.scheduler_graph = mock.Mock(return_value="\n".join(fake_csv))
@@ -1462,7 +1462,7 @@ class TestChronosTools:
             load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
-            assert actual["parents"] == ["{} {}".format(self.fake_service, self.fake_job_name)]
+            assert actual["parents"] == [f"{self.fake_service} {self.fake_job_name}"]
             assert "schedule" not in actual
 
     def test_create_complete_config_considers_disabled(self, system_paasta_config):
@@ -1490,7 +1490,7 @@ class TestChronosTools:
                 config_dict=self.fake_config_dict,
                 branch_dict={
                     'desired_state': 'stop',
-                    'docker_image': 'paasta-%s-%s' % (self.fake_service, self.fake_cluster),
+                    'docker_image': f'paasta-{self.fake_service}-{self.fake_cluster}',
                     'force_bounce': None,
                     'git_sha': 'deadbeef',
                 },

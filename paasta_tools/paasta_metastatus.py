@@ -96,7 +96,7 @@ def _run_marathon_checks(marathon_clients):
         marathon_results = metastatus_lib.get_marathon_status(marathon_clients)
         return marathon_results
     except (MarathonError, ValueError) as e:
-        paasta_print(PaastaColors.red("CRITICAL: Unable to contact Marathon cluster: {}".format(e)))
+        paasta_print(PaastaColors.red(f"CRITICAL: Unable to contact Marathon cluster: {e}"))
         sys.exit(2)
 
 
@@ -210,7 +210,7 @@ def main(argv: Optional[List[str]]=None) -> None:
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
-    paasta_print("Master paasta_tools version: {}".format(__version__))
+    paasta_print(f"Master paasta_tools version: {__version__}")
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     if args.verbose > 1:
         print_with_indent('Resources Grouped by %s' % ", ".join(args.groupings), 2)

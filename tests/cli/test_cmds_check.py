@@ -171,7 +171,7 @@ def test_check_yaml_check_pass(mock_is_file_in_dir, capfd):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    expected_output = "%s\n%s\n%s\n" % (
+    expected_output = "{}\n{}\n{}\n".format(
         PaastaCheckMessages.MARATHON_YAML_FOUND,
         PaastaCheckMessages.CHRONOS_YAML_FOUND,
         PaastaCheckMessages.ADHOC_YAML_FOUND,
@@ -204,7 +204,7 @@ def test_check_sensu_check_pass(mock_get_team, mock_is_file_in_dir, capfd):
     mock_is_file_in_dir.return_value = "/fake/path"
     team = 'team-service-infra'
     mock_get_team.return_value = team
-    expected_output = "%s\n%s\n" % (
+    expected_output = "{}\n{}\n".format(
         PaastaCheckMessages.SENSU_MONITORING_FOUND,
         PaastaCheckMessages.sensu_team_found(team),
     )
@@ -226,7 +226,7 @@ def test_check_sensu_team_missing(mock_get_team, mock_is_file_in_dir, capfd):
 
     mock_is_file_in_dir.return_value = "/fake/path"
     mock_get_team.return_value = None
-    expected_output = "%s\n%s\n" % (
+    expected_output = "{}\n{}\n".format(
         PaastaCheckMessages.SENSU_MONITORING_FOUND,
         PaastaCheckMessages.SENSU_TEAM_MISSING,
     )

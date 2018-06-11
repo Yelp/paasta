@@ -55,7 +55,7 @@ def get_any_mesos_master(cluster, system_paasta_config):
         sys.exit(1)
     mesos_master, output = find_connectable_master(masters)
     if not mesos_master:
-        paasta_print('ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output))
+        paasta_print(f'ERROR: could not find connectable master in cluster {cluster}\nOutput: {output}')
         sys.exit(1)
     return mesos_master
 
@@ -113,6 +113,6 @@ def paasta_sysdig(args):
 
 
 def format_mesos_command(slave, app_id, mesos_url, marathon_url):
-    sysdig_mesos = '{},{}'.format(mesos_url, marathon_url)
-    command = 'sudo csysdig -m {} marathon.app.id="/{}" -v mesos_tasks'.format(sysdig_mesos, app_id)
+    sysdig_mesos = f'{mesos_url},{marathon_url}'
+    command = f'sudo csysdig -m {sysdig_mesos} marathon.app.id="/{app_id}" -v mesos_tasks'
     return slave + ":" + command

@@ -100,7 +100,7 @@ class ServiceGroup(collections.namedtuple(
         # log-prefix is limited to 29 characters total
         # space at the end is necessary to separate it from the rest of the line
         # no restrictions on any particular characters afaict
-        return 'paasta.{}'.format(self.service)[:28] + ' '
+        return f'paasta.{self.service}'[:28] + ' '
 
 
 def _default_rules(conf, log_prefix):
@@ -216,7 +216,7 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
             backends = _synapse_backends(synapse_service_dir, namespace)
         except (OSError, IOError, ValueError):
             # Don't fatal if something goes wrong loading the synapse files
-            log.exception('Unable to load backend {}'.format(namespace))
+            log.exception(f'Unable to load backend {namespace}')
             backends = ()
 
         for backend in backends:
@@ -419,7 +419,7 @@ def _ensure_dns_chain():
                 iptables.Rule(
                     protocol='udp',
                     src='0.0.0.0/0.0.0.0',
-                    dst='{}/255.255.255.255'.format(dns_server),
+                    dst=f'{dns_server}/255.255.255.255',
                     target='ACCEPT',
                     matches=(
                         ('udp', (('dport', ('53',)),)),
@@ -430,7 +430,7 @@ def _ensure_dns_chain():
                 iptables.Rule(
                     protocol='tcp',
                     src='0.0.0.0/0.0.0.0',
-                    dst='{}/255.255.255.255'.format(dns_server),
+                    dst=f'{dns_server}/255.255.255.255',
                     target='ACCEPT',
                     matches=(
                         ('tcp', (('dport', ('53',)),)),

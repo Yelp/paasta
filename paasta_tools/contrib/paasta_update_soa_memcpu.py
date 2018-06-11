@@ -137,7 +137,7 @@ def get_reviewers_in_group(group_name):
                 'rbt',
                 'api-get',
                 '--server', 'https://reviewboard.yelpcorp.com',
-                'groups/{}/users/'.format(group_name),
+                f'groups/{group_name}/users/',
             ),
         ).decode('UTF-8'),
     )
@@ -164,16 +164,16 @@ def review(filename, description, provisioned_state, manual_rb):
     if manual_rb:
         subprocess.check_call((
             'review-branch',
-            '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
-            '--description="{}"'.format(description),
+            f'--summary=automatically updating {filename} for {provisioned_state}provisioned cpu',
+            f'--description="{description}"',
             '--reviewers', reviewers_arg,
             '--server', 'https://reviewboard.yelpcorp.com',
         ))
     else:
         subprocess.check_call((
             'review-branch',
-            '--summary=automatically updating {} for {}provisioned cpu'.format(filename, provisioned_state),
-            '--description="{}"'.format(description),
+            f'--summary=automatically updating {filename} for {provisioned_state}provisioned cpu',
+            f'--description="{description}"',
             '-p',
             '--reviewers', reviewers_arg,
             '--server', 'https://reviewboard.yelpcorp.com',
@@ -223,7 +223,7 @@ def create_jira_ticket(serv, creds, description):
 
 def _get_dashboard_qs_param(param, value):
     # Some dashboards may ask for query string params like param=value, but not this provider.
-    return 'variables%5B%5D={}%3D{}:{}'.format(param, param, value)
+    return f'variables%5B%5D={param}%3D{param}:{value}'
 
 
 def main(argv=None):
