@@ -346,9 +346,7 @@ def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
         raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
 
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    job_configs = []
-    for job in config.get('jobs', []):
-        job_configs.append(TronJobConfig(job, soa_dir))
+    job_configs = [TronJobConfig(job, soa_dir) for job in config.get('jobs') or []]
     return job_configs, extra_config
 
 
