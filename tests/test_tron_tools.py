@@ -479,6 +479,16 @@ class TestTronTools:
         mock_read_file.assert_has_calls([mock.call('/other/services/tron/dev/foo.yaml')])
         mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
 
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
+    def test_load_tron_service_config_jobs_none(self, mock_read_file, mock_read_service_info):
+        mock_read_file.return_value = {'jobs': None}
+        mock_read_service_info.return_value = None
+        soa_dir = '/other/services'
+
+        jc = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        assert jc == []
+
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)
