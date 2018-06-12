@@ -486,7 +486,7 @@ class TestTronTools:
         mock_read_service_info.return_value = None
         soa_dir = '/other/services'
 
-        jc = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        jc, _ = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
         assert jc == []
 
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
