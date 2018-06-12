@@ -114,7 +114,7 @@ def marathon_job_status(mstatus, client, job_config, verbose):
     mstatus['app_id'] = app_id
     if verbose is True:
         mstatus['slaves'] = list(
-            {task.slave['hostname'] for task in a_sync.block(get_running_tasks_from_frameworks, app_id)},
+            {a_sync.block(task.slave)['hostname'] for task in a_sync.block(get_running_tasks_from_frameworks, app_id)},
         )
     mstatus['expected_instance_count'] = job_config.get_instances()
 
@@ -254,7 +254,7 @@ def instance_delay(request):
 
 
 def add_executor_info(task):
-    task._Task__items['executor'] = task.executor.copy()
+    task._Task__items['executor'] = a_sync.block(task.executor).copy()
     task._Task__items['executor'].pop('tasks', None)
     task._Task__items['executor'].pop('completed_tasks', None)
     task._Task__items['executor'].pop('queued_tasks', None)
@@ -262,5 +262,5 @@ def add_executor_info(task):
 
 
 def add_slave_info(task):
-    task._Task__items['slave'] = task.slave._MesosSlave__items.copy()
+    task._Task__items['slave'] = a_sync.block(task.slave)._MesosSlave__items.copy()
     return task

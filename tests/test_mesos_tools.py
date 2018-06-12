@@ -607,7 +607,8 @@ def test_slave_pid_to_ip():
     assert ret == '10.40.31.172'
 
 
-def test_get_mesos_task_count_by_slave():
+@mark.asyncio
+async def test_get_mesos_task_count_by_slave():
     with asynctest.patch('paasta_tools.mesos_tools.get_all_running_tasks', autospec=True) as mock_get_all_running_tasks:
         mock_chronos = mock.Mock()
         mock_chronos.name = 'chronos'
@@ -631,14 +632,14 @@ def test_get_mesos_task_count_by_slave():
         mock_slave_2 = {'id': 'slave2', 'attributes': {'pool': 'default'}, 'hostname': 'host2'}
         mock_slave_3 = {'id': 'slave3', 'attributes': {'pool': 'another'}, 'hostname': 'host3'}
         mock_mesos_state = {'slaves': [mock_slave_1, mock_slave_2, mock_slave_3]}
-        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
+        ret = await mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         assert mock_get_all_running_tasks.called
         expected = [
             {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
             {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
-        ret = mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
+        ret = await mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         assert mock_get_all_running_tasks.called
         expected = [
             {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
@@ -658,7 +659,7 @@ def test_get_mesos_task_count_by_slave():
             {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
             {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
         ]
-        ret = mesos_tools.get_mesos_task_count_by_slave(
+        ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state,
             slaves_list=mock_slaves_list,
         )
@@ -682,7 +683,7 @@ def test_get_mesos_task_count_by_slave():
             {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
             {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
         ]
-        ret = mesos_tools.get_mesos_task_count_by_slave(
+        ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state,
             slaves_list=mock_slaves_list,
         )
