@@ -289,7 +289,11 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
                 'value': param['value'],
             } for param in action_config.format_docker_parameters()
         ]
-        result['constraints'] = action_config.get_calculated_constraints()
+        constraint_labels = ['attribute', 'operator', 'value']
+        result['constraints'] = [
+            dict(zip(constraint_labels, constraint))
+            for constraint in action_config.get_calculated_constraints()
+        ]
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}

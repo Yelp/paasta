@@ -398,7 +398,13 @@ class TestTronTools:
                 'mode': 'RW',
             }],
             'docker_parameters': mock.ANY,
-            'constraints': [['pool', 'LIKE', 'special_pool']],
+            'constraints': [
+                {
+                    'attribute': 'pool',
+                    'operator': 'LIKE',
+                    'value': 'special_pool',
+                },
+            ],
         }
         expected_docker = '{}/{}'.format('docker-registry.com:400', branch_dict['docker_image'])
         assert result['docker_image'] == expected_docker
