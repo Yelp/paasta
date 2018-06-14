@@ -746,7 +746,6 @@ def get_mesos_network_for_net(net):
     return docker_mesos_net_mapping.get(net, net)
 
 
-@a_sync.to_blocking
 async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
@@ -801,7 +800,7 @@ def get_count_running_tasks_on_slave(hostname):
     :param hostname: hostname of the slave
     :returns: integer count of mesos tasks"""
     mesos_state = a_sync.block(get_mesos_master().state_summary)
-    task_counts = get_mesos_task_count_by_slave(mesos_state)
+    task_counts = a_sync.block(get_mesos_task_count_by_slave, mesos_state)
     counts = [slave['task_counts'].count for slave in task_counts if slave['task_counts'].slave['hostname'] == hostname]
     if counts:
         return counts[0]

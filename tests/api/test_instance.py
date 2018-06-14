@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asynctest
 import marathon
 import mock
 from pyramid import testing
@@ -147,9 +148,18 @@ def test_marathon_job_status_verbose(
     mock_get_running_tasks_from_frameworks,
 ):
     mock_tasks = [
-        mock.Mock(slave={'hostname': 'host1'}),
-        mock.Mock(slave={'hostname': 'host1'}),
-        mock.Mock(slave={'hostname': 'host2'}),
+        mock.Mock(slave=asynctest.CoroutineMock(
+            return_value={'hostname': 'host1'},
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        )),
+        mock.Mock(slave=asynctest.CoroutineMock(
+            return_value={'hostname': 'host1'},
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        )),
+        mock.Mock(slave=asynctest.CoroutineMock(
+            return_value={'hostname': 'host2'},
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        )),
     ]
     mock_get_running_tasks_from_frameworks.return_value = mock_tasks
     mock_is_app_id_running.return_value = True
@@ -284,7 +294,10 @@ def test_add_executor_info():
     }
     mock_task = mock.Mock(
         _Task__items={'a': 'thing'},
-        executor=mock_executor,
+        executor=asynctest.CoroutineMock(
+            return_value=mock_executor,
+            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+        ),
     )
     ret = instance.add_executor_info(mock_task)
     expected = {
@@ -301,7 +314,10 @@ def test_add_executor_info():
 
 
 def test_add_slave_info():
-    mock_slave = mock.Mock(_MesosSlave__items={'some': 'thing'})
+    mock_slave = asynctest.CoroutineMock(
+        return_value=mock.Mock(_MesosSlave__items={'some': 'thing'}),
+        func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+    )
     mock_task = mock.Mock(
         _Task__items={'a': 'thing'},
         slave=mock_slave,

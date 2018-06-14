@@ -47,6 +47,7 @@ setup(
         'dulwich >= 0.17.3',
         'ephemeral-port-reserve >= 1.0.1',
         'gevent == 1.1.1',
+        'gunicorn >= 19.8.1',
         'humanize >= 0.5.1',
         'inotify >= 0.2.8',
         'isodate >= 0.5.0',

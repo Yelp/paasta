@@ -1192,7 +1192,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             autospec=True,
         ) as mock_filter_aws_slaves, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_master', autospec=True,
-        ) as mock_get_mesos_master, mock.patch(
+        ) as mock_get_mesos_master, asynctest.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True,
         ) as mock_get_mesos_task_count_by_slave, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.downscale_aws_resource',
@@ -1254,7 +1254,7 @@ class TestClusterAutoscaler(unittest.TestCase):
             )
 
     def test_downscale_aws_resource(self):
-        with mock.patch(
+        with asynctest.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.get_mesos_task_count_by_slave', autospec=True,
         ) as mock_get_mesos_task_count_by_slave, mock.patch(
             'paasta_tools.autoscaling.ec2_fitness.sort_by_ec2_fitness',

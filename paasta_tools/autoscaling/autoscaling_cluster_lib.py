@@ -468,7 +468,7 @@ class ClusterAutoscaler(object):
             return
         elif delta < 0:
             mesos_state = get_mesos_master().state_summary()
-            slaves_list = get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
+            slaves_list = await get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
             filtered_slaves = self.filter_aws_slaves(slaves_list)
             killable_capacity = round(sum([slave.instance_weight for slave in filtered_slaves]), 2)
             amount_to_decrease = round(delta * -1, 2)
