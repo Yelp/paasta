@@ -65,7 +65,7 @@ setup(
         'python-dateutil >= 2.4.0',
         'python-iptables',
         'retry',
-        'requests == 2.18.4',
+        'requests',
         'requests-cache >= 0.4.10,<= 0.5.0',
         'ruamel.yaml',
         'sensu-plugin',
