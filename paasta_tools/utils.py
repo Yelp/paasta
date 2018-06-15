@@ -1815,6 +1815,10 @@ class SystemPaastaConfig(object):
         """
         return self.config_dict.get("use_mesos_healthchecks", False)
 
+    def get_hacheck_sidecar_image_url(self) -> str:
+        """Get the docker image URL for the hacheck sidecar container"""
+        return self.config_dict.get('hacheck_sidecar_image_url', 'docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar')
+
     def get_taskproc(self) -> Dict:
         return self.config_dict.get('taskproc', {})
 
