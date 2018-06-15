@@ -31,6 +31,7 @@ from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter  # noqa
 
 from paasta_tools import chronos_tools
+from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
@@ -497,7 +498,7 @@ def filter_slaves(slaves, filters):
 
 def get_resource_utilization_by_grouping(
     grouping_func: Callable[..., _KeyFuncRetT],
-    mesos_state: Dict,
+    mesos_state: MesosState,
     filters: List[Callable]=[],
     sort_func=None,
 ) -> Dict[_KeyFuncRetT, ResourceUtilizationDict]:

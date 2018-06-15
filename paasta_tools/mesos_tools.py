@@ -23,7 +23,9 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Collection
+from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Union
@@ -40,6 +42,7 @@ from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
+from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -746,7 +749,11 @@ def get_mesos_network_for_net(net):
     return docker_mesos_net_mapping.get(net, net)
 
 
-async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
+async def get_mesos_task_count_by_slave(
+    mesos_state: MesosState,
+    slaves_list: Sequence[Dict]=None,
+    pool: Optional[str]=None,
+) -> List[Dict]:
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
     :param mesos_state: mesos state dict
@@ -776,22 +783,22 @@ async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None
     if slaves_list:
         for slave in slaves_list:
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
-        slaves = slaves_list
+        slaves_with_counts = list(slaves_list)
     elif pool:
-        slaves = [
+        slaves_with_counts = [
             {'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
             if slave_counts['slave']['attributes'].get('pool', 'default') == pool
         ]
     else:
-        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
-    for slave in slaves:
+        slaves_with_counts = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
+    for slave in slaves_with_counts:
         log.debug("Slave: {}, running {} tasks, "
                   "including {} chronos tasks".format(
                       slave['task_counts'].slave['hostname'],
                       slave['task_counts'].count,
                       slave['task_counts'].chronos_count,
                   ))
-    return slaves
+    return slaves_with_counts
 
 
 def get_count_running_tasks_on_slave(hostname):

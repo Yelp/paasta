@@ -27,7 +27,6 @@ from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
-from typing import NewType
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -39,6 +38,7 @@ from requests.exceptions import HTTPError
 
 from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.autoscaling import ec2_fitness
+from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_tools import get_mesos_master
@@ -88,8 +88,6 @@ ResourcePoolSetting = TypedDict(
         'drain_timeout': int,
     },
 )
-
-MesosState = NewType('MesosState', Dict)
 
 CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
 DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
@@ -467,7 +465,7 @@ class ClusterAutoscaler(object):
             self.set_capacity(target_capacity)
             return
         elif delta < 0:
-            mesos_state = get_mesos_master().state_summary()
+            mesos_state = await get_mesos_master().state_summary()
             slaves_list = await get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
             filtered_slaves = self.filter_aws_slaves(slaves_list)
             killable_capacity = round(sum([slave.instance_weight for slave in filtered_slaves]), 2)
