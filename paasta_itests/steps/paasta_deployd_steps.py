@@ -152,7 +152,7 @@ def create_secret_json_file(context, secret_name, service, signature):
     if not os.path.exists(os.path.join(context.soa_dir, service, "secrets")):
         os.makedirs(os.path.join(context.soa_dir, service, "secrets"))
 
-    with open(os.path.join(context.soa_dir, service, "secrets", "{}.json".format(secret_name)), "w") as secret_file:
+    with open(os.path.join(context.soa_dir, service, "secrets", f"{secret_name}.json"), "w") as secret_file:
         json.dump(secret, secret_file)
 
 

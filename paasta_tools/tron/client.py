@@ -14,6 +14,7 @@ import logging
 from urllib.parse import urljoin
 
 import requests
+import yaml
 
 from paasta_tools.utils import get_user_agent
 
@@ -46,7 +47,7 @@ class TronClient:
             kwargs['data'] = data
             response = requests.post(**kwargs)
         else:
-            raise ValueError('Unrecognized method: {}'.format(method))
+            raise ValueError(f'Unrecognized method: {method}')
 
         return self._get_response_or_error(response)
 
@@ -88,9 +89,11 @@ class TronClient:
                 'no_header': 1,
             },
         )
-        if skip_if_unchanged and new_config == current_config['config']:
-            log.info('No change in config, skipping update.')
-            return
+
+        if skip_if_unchanged:
+            if yaml.load(new_config) == yaml.load(current_config['config']):
+                log.debug('No change in config, skipping update.')
+                return
 
         return self._post(
             '/api/config',

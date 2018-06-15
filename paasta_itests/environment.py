@@ -16,6 +16,7 @@ import os
 import shutil
 import time
 
+import a_sync
 import mock
 import requests
 from itest_utils import cleanup_file
@@ -142,13 +143,13 @@ def _clean_up_paasta_native_frameworks(context):
     # context.etc_paasta signals that we actually have configured the mesos-cli.json; without this, we don't know where
     # to connect to clean up paasta native frameworks.
     if hasattr(context, 'etc_paasta'):
-        for framework in mesos_tools.get_mesos_master().frameworks(active_only=True):
+        for framework in a_sync.block(mesos_tools.get_mesos_master().frameworks, active_only=True):
             if framework.name.startswith('paasta_native ') or framework.name == getattr(context, 'framework_name', ''):
                 paasta_print("cleaning up framework %s" % framework.name)
                 try:
                     mesos_tools.terminate_framework(framework.id)
                 except requests.exceptions.HTTPError as e:
-                    paasta_print("Got exception when terminating framework %s: %s" % (framework.id, e))
+                    paasta_print(f"Got exception when terminating framework {framework.id}: {e}")
 
 
 def _clean_up_maintenance(context):

@@ -117,7 +117,7 @@ def test_main_two_workers(signal_mock, fork_mock, udpserver_mock, logging_mock):
 
 
 def fake_syslog_data(hostname, **kwargs):
-    prefix = '<4>Jun  6 07:52:38 {} kernel: [2736265.340132] my-prefix IN=docker0 '.format(hostname)
+    prefix = f'<4>Jun  6 07:52:38 {hostname} kernel: [2736265.340132] my-prefix IN=docker0 '
     fields_str = ' '.join(map('='.join, kwargs.items()))
     return (prefix + fields_str + ' \n').encode()
 

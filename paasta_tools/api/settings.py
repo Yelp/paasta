@@ -14,8 +14,10 @@
 """
 Settings of the paasta-api server.
 """
+import os
+
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
-soa_dir = DEFAULT_SOA_DIR
+soa_dir = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
 cluster = None
 marathon_clients = None

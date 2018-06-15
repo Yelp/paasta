@@ -138,7 +138,7 @@ def format_log_line(
 
 def get_log_name_for_service(service: str, prefix: str=None) -> str:
     if prefix:
-        return 'stream_paasta_%s_%s' % (prefix, service)
+        return f'stream_paasta_{prefix}_{service}'
     return 'stream_paasta_%s' % service
 
 
@@ -167,9 +167,9 @@ class ScribeLogWriter(LogWriter):
         configured the log object. We'll just write things to it.
         """
         if level == 'event':
-            paasta_print("[service %s] %s" % (service, line), file=sys.stdout)
+            paasta_print(f"[service {service}] {line}", file=sys.stdout)
         elif level == 'debug':
-            paasta_print("[service %s] %s" % (service, line), file=sys.stderr)
+            paasta_print(f"[service {service}] {line}", file=sys.stderr)
         else:
             raise NoSuchLogLevel
         log_name = get_log_name_for_service(service)
@@ -249,7 +249,10 @@ class FileLogWriter(LogWriter):
         # https://docs.python.org/2/library/io.html#io.FileIO
         # http://article.gmane.org/gmane.linux.kernel/43445
 
-        to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
+        to_write = "{}{}".format(
+            format_log_line(level, cluster, service, instance, component, line),
+            self.line_delimeter,
+        )
 
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:
@@ -258,7 +261,7 @@ class FileLogWriter(LogWriter):
                     f.write(to_write.encode('UTF-8'))  # type: ignore
         except IOError as e:
             paasta_print(
-                "Could not log to %s: %s: %s -- would have logged: %s" % (path, type(e).__name__, str(e), to_write),
+                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), to_write),
                 file=sys.stderr,
             )
 

@@ -51,7 +51,10 @@ class MesosTaskParameters(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "%s(\n    %s)" % (type(self).__name__, ',\n    '.join(["%s=%r" % kv for kv in self.__dict__.items()]))
+        return "{}(\n    {})".format(
+            type(self).__name__,
+            ',\n    '.join(["%s=%r" % kv for kv in self.__dict__.items()]),
+        )
 
     def __setattr__(self, name, value):
         raise MesosTaskParametersIsImmutableError()
@@ -146,7 +149,7 @@ class ZKTaskStore(TaskStore):
         # Plus, it just felt dirty to modify instance attributes of a running connection, especially given that
         # KazooClient.set_hosts() doesn't allow you to change the chroot. Must be for a good reason.
 
-        chroot = 'task_store/%s/%s/%s' % (service_name, instance_name, framework_id)
+        chroot = f'task_store/{service_name}/{instance_name}/{framework_id}'
 
         temp_zk_client = KazooClient(hosts=self.zk_hosts)
         temp_zk_client.start()
@@ -154,7 +157,7 @@ class ZKTaskStore(TaskStore):
         temp_zk_client.stop()
         temp_zk_client.close()
 
-        self.zk_client = KazooClient(hosts='%s/%s' % (self.zk_hosts, chroot))
+        self.zk_client = KazooClient(hosts=f'{self.zk_hosts}/{chroot}')
         self.zk_client.start()
         self.zk_client.ensure_path('/')
 
@@ -179,7 +182,7 @@ class ZKTaskStore(TaskStore):
                 instance=self.instance_name,
                 level='debug',
                 component='deploy',
-                line='Warning: found non-json-decodable value in zookeeper for task %s: %s' % (task_id, data),
+                line=f'Warning: found non-json-decodable value in zookeeper for task {task_id}: {data}',
             )
             return None, None
 

@@ -39,7 +39,7 @@ def _get_chronos_connection_string():
 
 
 def _get_zookeeper_connection_string(chroot):
-    return 'zk://%s/%s' % (get_service_connection_string('zookeeper'), chroot)
+    return 'zk://{}/{}'.format(get_service_connection_string('zookeeper'), chroot)
 
 
 def setup_system_paasta_config():
@@ -110,7 +110,7 @@ def setup_chronos_config():
 
 
 def get_paasta_api_url():
-    return "http://%s/%s" % (get_service_connection_string('api'), 'swagger.json')
+    return "http://{}/{}".format(get_service_connection_string('api'), 'swagger.json')
 
 
 def setup_paasta_api_client():
@@ -372,7 +372,7 @@ def write_soa_dir_deployments(context, service, disabled, csv_instances, image):
     with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
             'v1': {
-                '%s:paasta-%s' % (service, utils.get_paasta_branch(context.cluster, instance)): {
+                '{}:paasta-{}'.format(service, utils.get_paasta_branch(context.cluster, instance)): {
                     'docker_image': image,
                     'desired_state': desired_state,
                 }
@@ -408,7 +408,7 @@ def write_soa_dir_deployments_default_image(context, service, disabled, csv_inst
 ))
 def modify_configs(context, field, framework, service, instance, value):
     soa_dir = context.soa_dir
-    with open(os.path.join(soa_dir, service, "%s-%s.yaml" % (framework, context.cluster)), 'r+') as f:
+    with open(os.path.join(soa_dir, service, f"{framework}-{context.cluster}.yaml"), 'r+') as f:
         data = yaml.safe_load(f.read())
         data[instance][field] = value
         f.seek(0)

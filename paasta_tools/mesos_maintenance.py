@@ -20,6 +20,7 @@ from collections import namedtuple
 from socket import getfqdn
 from socket import gethostbyname
 
+import a_sync
 from dateutil import parser
 from pytimeparse import timeparse
 from requests import Request
@@ -521,7 +522,7 @@ def reserve(slave_id, resources):
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
     """
-    log.info("Dynamically reserving resources on %s: %s" % (slave_id, resources))
+    log.info(f"Dynamically reserving resources on {slave_id}: {resources}")
     payload = _make_operator_reservation_request_payload(
         slave_id=slave_id,
         payload=build_reservation_payload(resources),
@@ -542,7 +543,7 @@ def unreserve(slave_id, resources):
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
     """
-    log.info("Dynamically unreserving resources on %s: %s" % (slave_id, resources))
+    log.info(f"Dynamically unreserving resources on {slave_id}: {resources}")
     payload = _make_operator_reservation_request_payload(
         slave_id=slave_id,
         payload=build_reservation_payload(resources),
@@ -571,7 +572,7 @@ def reserve_all_resources(hostnames):
     """Dynamically reserve all available resources on the specified hosts
     :param hostnames: list of hostnames to reserve resources on
     """
-    mesos_state = get_mesos_master().state_summary()
+    mesos_state = a_sync.block(get_mesos_master().state_summary)
     components = hostnames_to_components(hostnames)
     hosts = components_to_hosts(components)
     known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
@@ -588,14 +589,14 @@ def reserve_all_resources(hostnames):
         try:
             reserve(slave_id=slave_id, resources=resources)
         except HTTPError:
-            raise HTTPError("Failed reserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
+            raise HTTPError(f"Failed reserving all of the resources on {hostname} ({slave_id}). Aborting.")
 
 
 def unreserve_all_resources(hostnames):
     """Dynamically unreserve all available resources on the specified hosts
     :param hostnames: list of hostnames to unreserve resources on
     """
-    mesos_state = get_mesos_master().state_summary()
+    mesos_state = a_sync.block(get_mesos_master().state_summary)
     components = hostnames_to_components(hostnames)
     hosts = components_to_hosts(components)
     known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
@@ -611,7 +612,7 @@ def unreserve_all_resources(hostnames):
             try:
                 unreserve(slave_id=slave_id, resources=resources)
             except HTTPError:
-                raise HTTPError("Failed unreserving all of the resources on %s (%s). Aborting." % (hostname, slave_id))
+                raise HTTPError(f"Failed unreserving all of the resources on {hostname} ({slave_id}). Aborting.")
 
 
 def drain(hostnames, start, duration, reserve_resources=True):
@@ -717,9 +718,9 @@ def friendly_status():
     status = raw_status().json()['get_maintenance_status']['status']
     ret = ""
     for machine in status.get('draining_machines', []):
-        ret += "%s (%s): Draining\n" % (machine['id']['hostname'], machine['id']['ip'])
+        ret += "{} ({}): Draining\n".format(machine['id']['hostname'], machine['id']['ip'])
     for machine in status.get('down_machines', []):
-        ret += "%s (%s): Down\n" % (machine['hostname'], machine['ip'])
+        ret += "{} ({}): Down\n".format(machine['hostname'], machine['ip'])
     return ret
 
 
@@ -761,7 +762,7 @@ def get_hosts_past_maintenance_start(grace=0):
         for window in schedules['windows']:
             if window['unavailability']['start']['nanoseconds'] < current_time:
                 ret += [host['hostname'] for host in window['machine_ids']]
-    log.debug("Hosts past maintenance start: {}".format(ret))
+    log.debug(f"Hosts past maintenance start: {ret}")
     return ret
 
 
@@ -779,5 +780,5 @@ def get_hosts_past_maintenance_end(grace=0):
             end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
             if end < current_time:
                 ret += [host['hostname'] for host in window['machine_ids']]
-    log.debug("Hosts past maintenance end: {}".format(ret))
+    log.debug(f"Hosts past maintenance end: {ret}")
     return ret

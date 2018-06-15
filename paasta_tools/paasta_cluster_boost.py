@@ -110,7 +110,7 @@ def paasta_cluster_boost():
     regions = get_regions(pool)
 
     if len(regions) == 0:
-        paasta_print('ERROR: no slaves found in pool {}'.format(pool))
+        paasta_print(f'ERROR: no slaves found in pool {pool}')
         return False
 
     for region in regions:
@@ -122,7 +122,7 @@ def paasta_cluster_boost():
                 duration_minutes=args.duration,
                 override=args.override,
             ):
-                paasta_print('ERROR: Failed to set the boost for pool {}, region {}.'.format(pool, region))
+                paasta_print(f'ERROR: Failed to set the boost for pool {pool}, region {region}.')
                 return False
 
         elif action == 'status':

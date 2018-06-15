@@ -269,7 +269,7 @@ def append_cpuset_args(argv, env_args):
         ))
         return argv
 
-    logging.info('Binding container to NUMA node {}'.format(pinned_numa_node))
+    logging.info(f'Binding container to NUMA node {pinned_numa_node}')
     argv = add_argument(
         argv, ('--cpuset-cpus=' + ','.join(
             str(c) for c in cpumap[pinned_numa_node]
@@ -284,9 +284,9 @@ def add_firewall(argv, service, instance):
     try:
         mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)
     except Exception as e:
-        output = 'Unable to add mac address: {}'.format(e)
+        output = f'Unable to add mac address: {e}'
     else:
-        argv = add_argument(argv, '--mac-address={}'.format(mac_address))
+        argv = add_argument(argv, f'--mac-address={mac_address}')
         try:
 
             with firewall_flock():
@@ -298,7 +298,7 @@ def add_firewall(argv, service, instance):
                     mac_address,
                 )
         except Exception as e:
-            output = 'Unable to add firewall rules: {}'.format(e)
+            output = f'Unable to add firewall rules: {e}'
 
     if output:
         print(output, file=sys.stderr)
@@ -319,7 +319,7 @@ def main(argv=None):
 
     if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
-        argv = add_argument(argv, '--hostname={}'.format(hostname))
+        argv = add_argument(argv, f'--hostname={hostname}')
 
     paasta_firewall = env_args.get('PAASTA_FIREWALL')
     service = env_args.get('PAASTA_SERVICE')
@@ -328,6 +328,6 @@ def main(argv=None):
         try:
             argv = add_firewall(argv, service, instance)
         except Exception as e:
-            print('Unhandled exception in add_firewall: {}'.format(e), file=sys.stderr)
+            print(f'Unhandled exception in add_firewall: {e}', file=sys.stderr)
 
     os.execlp('docker', 'docker', *argv[1:])

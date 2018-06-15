@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import logging
 import struct
 import time
@@ -21,6 +22,7 @@ from datetime import datetime
 from math import ceil
 from math import floor
 
+import a_sync
 import gevent
 import requests
 from gevent import monkey
@@ -228,7 +230,7 @@ def deserialize_historical_load(historical_load_bytes):
 
 def get_json_body_from_service(host, port, endpoint, timeout=2):
     return requests.get(
-        'http://%s:%s/%s' % (host, port, endpoint),
+        f'http://{host}:{port}/{endpoint}',
         headers={'User-Agent': get_user_agent()}, timeout=timeout,
     ).json()
 
@@ -255,7 +257,7 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
                   "is at full utilization." % (service, task.host, task.ports[0]))
         return 1.0
     except Exception as e:
-        log.error("Caught exception when querying %s on %s:%s : %s" % (service, task.host, task.ports[0], str(e)))
+        log.error("Caught exception when querying {} on {}:{} : {}".format(service, task.host, task.ports[0], str(e)))
 
 
 def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, endpoint, json_mapper):
@@ -289,7 +291,7 @@ def get_http_utilization_for_all_tasks(marathon_service_config, marathon_tasks, 
             utilization.append(job.value)
 
     if not utilization:
-        raise MetricsProviderNoDataError("Couldn't get any data from http endpoint %s for %s.%s" % (
+        raise MetricsProviderNoDataError("Couldn't get any data from http endpoint {} for {}.{}".format(
             endpoint, marathon_service_config.service, marathon_service_config.instance,
         ))
     return mean(utilization)
@@ -372,16 +374,23 @@ def mesos_cpu_metrics_provider(
             last_time = 0.0
             last_cpu_data = []
 
-    monkey.patch_socket()
-    jobs = [gevent.spawn(task.stats_callable) for task in mesos_tasks]
-    gevent.joinall(jobs, timeout=60)
-    mesos_tasks = dict(zip([task['id'] for task in mesos_tasks], [job.value for job in jobs]))
+    futures = [asyncio.ensure_future(task.stats()) for task in mesos_tasks]
+    if futures:
+        a_sync.block(asyncio.wait, futures, timeout=60)
+
+    def results_or_None(fut):
+        if fut.exception():
+            return None
+        else:
+            return fut.result()
+
+    mesos_tasks_stats = dict(zip([task['id'] for task in mesos_tasks], [results_or_None(fut) for fut in futures]))
 
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
     mesos_cpu_data = {}
-    for task_id, stats in mesos_tasks.items():
+    for task_id, stats in mesos_tasks_stats.items():
         if stats is not None:
             try:
                 utime = float(stats['cpus_user_time_secs'])
@@ -394,7 +403,7 @@ def mesos_cpu_metrics_provider(
     if not mesos_cpu_data:
         raise MetricsProviderNoDataError("Couldn't get any cpu data from Mesos")
 
-    cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
+    cpu_data_csv = ','.join(f'{cpu_seconds}:{task_id}' for task_id, cpu_seconds in mesos_cpu_data.items())
     log_utilization_data[str(current_time)] = cpu_data_csv
 
     if not noop:
@@ -453,7 +462,7 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
 
 def get_autoscaling_info(apps_with_clients, service_config):
     if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-        all_mesos_tasks = get_cached_list_of_running_tasks_from_frameworks()
+        all_mesos_tasks = a_sync.block(get_cached_list_of_running_tasks_from_frameworks)
         autoscaling_params = service_config.get_autoscaling_params()
         autoscaling_params.update({'noop': True})
         system_paasta_config = load_system_paasta_config()
@@ -697,7 +706,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
             marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
             apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
-            all_mesos_tasks = get_all_running_tasks()
+            all_mesos_tasks = a_sync.block(get_all_running_tasks)
             if configs:
                 with ZookeeperPool():
                     for config in configs:
@@ -720,7 +729,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
 
 def filter_autoscaling_tasks(marathon_apps, all_mesos_tasks, config):
-    job_id_prefix = "%s%s" % (format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
+    job_id_prefix = "{}{}".format(format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
 
     # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
     # are healthy. We assume tasks with no healthcheck results but a defined

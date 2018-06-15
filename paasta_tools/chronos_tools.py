@@ -170,7 +170,7 @@ def get_chronos_client(config, cached=False):
 
 def compose_job_id(service, instance):
     """In chronos, a job is just service{SPACER}instance """
-    return "%s%s%s" % (service, SPACER, instance)
+    return f"{service}{SPACER}{instance}"
 
 
 def decompose_job_id(job_id):
@@ -216,11 +216,11 @@ def load_chronos_job_config(
 
     if instance.startswith('_'):
         raise InvalidJobNameError(
-            "Unable to load chronos job config for %s.%s as instance name starts with '_'" % (service, instance),
+            f"Unable to load chronos job config for {service}.{instance} as instance name starts with '_'",
         )
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
-        raise NoConfigurationForServiceError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
+        raise NoConfigurationForServiceError(f'No job named "{instance}" in config file chronos-{cluster}.yaml')
     branch_dict = None
     general_config = deep_merge_dictionaries(overrides=service_chronos_jobs[instance], defaults=general_config)
 
@@ -262,7 +262,7 @@ class ChronosJobConfig(InstanceConfig):
         )
 
     def __repr__(self):
-        return "ChronosJobConfig(%r, %r, %r, %r, %r, %r)" % (
+        return "ChronosJobConfig({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.service,
             self.cluster,
             self.instance,
@@ -1011,7 +1011,7 @@ def get_jobs_for_service_instance(service, instance, include_disabled=True, incl
 
 def compose_check_name_for_service_instance(check_name, service, instance):
     """Compose a sensu check name for a given job"""
-    return '%s.%s%s%s' % (check_name, service, INTERNAL_SPACER, instance)
+    return f'{check_name}.{service}{INTERNAL_SPACER}{instance}'
 
 
 def get_temporary_jobs_for_service_instance(client, service, instance):

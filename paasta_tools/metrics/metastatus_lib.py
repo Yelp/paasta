@@ -25,6 +25,7 @@ from typing import List
 from typing import Tuple
 from typing import TypeVar
 
+import a_sync
 from humanize import naturalsize
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter  # noqa
@@ -117,7 +118,7 @@ def healthcheck_result_for_resource_utilization(resource_utilization, threshold)
         utilization = percent_used(resource_utilization.total, resource_utilization.total - resource_utilization.free)
     except ZeroDivisionError:
         utilization = 0
-    message = "%s: %.2f/%.2f(%.2f%%) used. Threshold (%.2f%%)" % (
+    message = "{}: {:.2f}/{:.2f}({:.2f}%) used. Threshold ({:.2f}%)".format(
         resource_utilization.metric,
         float(resource_utilization.total - resource_utilization.free),
         resource_utilization.total,
@@ -328,7 +329,7 @@ def assert_slave_health(metrics):
 
 
 def assert_quorum_size():
-    masters, quorum = get_num_masters(), get_mesos_quorum()
+    masters, quorum = get_num_masters(), a_sync.block(get_mesos_quorum)
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
             message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
@@ -647,7 +648,7 @@ def assert_chronos_queued_jobs(client):
     except ZeroDivisionError:
         perc_used = 0
     return HealthCheckResult(
-        message="Jobs Queued: %s (%s%%)" % (all_jobs_queued, perc_used),
+        message=f"Jobs Queued: {all_jobs_queued} ({perc_used}%)",
         healthy=True,
     )
 
@@ -675,7 +676,7 @@ def generate_summary_for_check(name, ok):
     a formatted message.
     """
     status = PaastaColors.green("OK") if ok is True else PaastaColors.red("CRITICAL")
-    summary = "%s Status: %s" % (name, status)
+    summary = f"{name} Status: {status}"
     return summary
 
 
@@ -727,13 +728,13 @@ def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_ut
     else:
         utilization_perc = utilization / float(healthcheck_utilization_pair[1].total) * 100
     if healthcheck_utilization_pair[1].metric not in ['cpus', 'gpus']:
-        return color_func('%s/%s (%.2f%%)' % (
+        return color_func('{}/{} ({:.2f}%)'.format(
             naturalsize(utilization * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True),
             utilization_perc,
         ))
     else:
-        return color_func('%.2f/%.0f (%.2f%%)' % (
+        return color_func('{:.2f}/{:.0f} ({:.2f}%)'.format(
             utilization,
             healthcheck_utilization_pair[1].total,
             utilization_perc,

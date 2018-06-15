@@ -229,38 +229,38 @@ class HacheckDrainMethod(DrainMethod):
             conn_timeout=HACHECK_CONN_TIMEOUT,
             read_timeout=HACHECK_READ_TIMEOUT,
         ) as session:
-            response = await session.get(
+            async with session.get(
                 self.spool_url(task),
                 headers={'User-Agent': get_user_agent()},
-            )
-            if response.status == 200:
-                return {
-                    'state': 'up',
-                }
+            ) as response:
+                if response.status == 200:
+                    return {
+                        'state': 'up',
+                    }
 
-            regex = ''.join([
-                "^",
-                r"Service (?P<service>.+)",
-                r" in (?P<state>.+) state",
-                r"(?: since (?P<since>[0-9.]+))?",
-                r"(?: until (?P<until>[0-9.]+))?",
-                r"(?:: (?P<reason>.*))?",
-                "$",
-            ])
+                regex = ''.join([
+                    "^",
+                    r"Service (?P<service>.+)",
+                    r" in (?P<state>.+) state",
+                    r"(?: since (?P<since>[0-9.]+))?",
+                    r"(?: until (?P<until>[0-9.]+))?",
+                    r"(?:: (?P<reason>.*))?",
+                    "$",
+                ])
 
-            response_text = await response.text()
-            match = re.match(regex, response_text)
-            groupdict = match.groupdict()
-            info: SpoolInfo = {}
-            info['service'] = groupdict['service']
-            info['state'] = groupdict['state']
-            if 'since' in groupdict:
-                info['since'] = float(groupdict['since'] or 0)
-            if 'until' in groupdict:
-                info['until'] = float(groupdict['until'] or 0)
-            if 'reason' in groupdict:
-                info['reason'] = groupdict['reason']
-            return info
+                response_text = await response.text()
+                match = re.match(regex, response_text)
+                groupdict = match.groupdict()
+                info: SpoolInfo = {}
+                info['service'] = groupdict['service']
+                info['state'] = groupdict['state']
+                if 'since' in groupdict:
+                    info['since'] = float(groupdict['since'] or 0)
+                if 'until' in groupdict:
+                    info['until'] = float(groupdict['until'] or 0)
+                if 'reason' in groupdict:
+                    info['reason'] = groupdict['reason']
+                return info
 
     async def drain(self, task: DrainTask) -> None:
         return await self.post_spool(task, 'down')
@@ -354,13 +354,13 @@ class HTTPDrainMethod(DrainMethod):
         method = url_spec.get('method', 'GET').upper()
 
         async with aiohttp.ClientSession() as session:
-            response = await session.request(
+            async with session.request(
                 method=method,
                 url=url,
                 headers={'User-Agent': get_user_agent()},
                 timeout=15,
-            )
-            self.check_response_code(response.status, url_spec['success_codes'])
+            ) as response:
+                self.check_response_code(response.status, url_spec['success_codes'])
 
     async def drain(self, task: DrainTask) -> None:
         return await self.issue_request(self.drain_url_spec, task)

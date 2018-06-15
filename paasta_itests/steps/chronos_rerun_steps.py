@@ -41,7 +41,7 @@ def rerun_job_is_disabled(context, service_instance, disabled):
     is_disabled = (disabled == 'disabled')
     all_jobs = context.chronos_client.list()
     matching_jobs = [job for job in all_jobs if
-                     re.match("%s-.* %s" % (chronos_tools.TMP_JOB_IDENTIFIER, service_instance), job['name'])]
+                     re.match(f"{chronos_tools.TMP_JOB_IDENTIFIER}-.* {service_instance}", job['name'])]
     assert matching_jobs[0]['disabled'] == is_disabled
 
 
@@ -49,7 +49,7 @@ def rerun_job_is_disabled(context, service_instance, disabled):
 def temporary_job_exists(context, service, instance):
     all_jobs = context.chronos_client.list()
     matching_jobs = [job for job in all_jobs if
-                     re.match("%s-.* %s %s" % (chronos_tools.TMP_JOB_IDENTIFIER, service, instance), job['name'])]
+                     re.match(f"{chronos_tools.TMP_JOB_IDENTIFIER}-.* {service} {instance}", job['name'])]
     assert len(matching_jobs) == 1
     return matching_jobs[0]
 
@@ -65,5 +65,5 @@ def temporary_job_exists_and_dependency_check(context, service, instance, parent
     tmp_prefix, _, _ = matching_job['name'].split(SPACER)
 
     job_parents = set(matching_job.get('parents', []))
-    expected_job_parents = {'{}{}{}'.format(tmp_prefix, SPACER, parent) for parent in parents}
+    expected_job_parents = {f'{tmp_prefix}{SPACER}{parent}' for parent in parents}
     assert job_parents == expected_job_parents

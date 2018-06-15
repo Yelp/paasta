@@ -58,12 +58,12 @@ class Rule(_RuleBase):
         assert tuple(sorted(self.matches)) == self.matches, 'matches should be sorted'
         for match_name, params in self.matches:
             for param_name, param_value in params:
-                assert '_' not in param_name, 'use dashes instead of underscores in {}'.format(param_name)
-                assert isinstance(param_value, tuple), 'value of {} should be tuple'.format(param_name)
+                assert '_' not in param_name, f'use dashes instead of underscores in {param_name}'
+                assert isinstance(param_value, tuple), f'value of {param_name} should be tuple'
         assert tuple(sorted(self.target_parameters)) == self.target_parameters, 'target_parameters should be sorted'
         for param_name, param_value in self.target_parameters:
-            assert '_' not in param_name, 'use dashes instead of underscores in {}'.format(param_name)
-            assert isinstance(param_value, tuple), 'value of {} should be tuple'.format(param_name)
+            assert '_' not in param_name, f'use dashes instead of underscores in {param_name}'
+            assert isinstance(param_value, tuple), f'value of {param_name} should be tuple'
 
     @classmethod
     def from_iptc(cls, rule):
@@ -179,7 +179,7 @@ def reorder_chain(chain_name):
         for new_index, (old_index, rule) in enumerate(sorted_rules_with_indices):
             if new_index == old_index:
                 continue
-            log.debug('reordering chain {} rule {} to #{}'.format(chain_name, rule, new_index))
+            log.debug(f'reordering chain {chain_name} rule {rule} to #{new_index}')
             chain.replace_rule(rule.to_iptc(), new_index)
 
 
@@ -190,13 +190,13 @@ def ensure_rule(chain, rule):
 
 
 def insert_rule(chain_name, rule):
-    log.debug('adding rule to {}: {}'.format(chain_name, rule))
+    log.debug(f'adding rule to {chain_name}: {rule}')
     chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
     chain.insert_rule(rule.to_iptc())
 
 
 def delete_rules(chain_name, rules):
-    log.debug('deleting rules from {}: {}'.format(chain_name, rules))
+    log.debug(f'deleting rules from {chain_name}: {rules}')
     table = iptc.Table(iptc.Table.FILTER)
     with iptables_txn(table):
         chain = iptc.Chain(table, chain_name)
@@ -206,12 +206,12 @@ def delete_rules(chain_name, rules):
 
 
 def create_chain(chain_name):
-    log.debug('creating chain: {}'.format(chain_name))
+    log.debug(f'creating chain: {chain_name}')
     iptc.Table(iptc.Table.FILTER).create_chain(chain_name)
 
 
 def delete_chain(chain_name):
-    log.debug('deleting chain: {}'.format(chain_name))
+    log.debug(f'deleting chain: {chain_name}')
     chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
     chain.flush()
     chain.delete()

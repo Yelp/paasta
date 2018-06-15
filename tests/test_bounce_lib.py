@@ -62,7 +62,7 @@ class TestBounceLib:
                 timeout=bounce_lib.ZK_LOCK_CONNECT_TIMEOUT_S,
             )
             fake_zk.start.assert_called_once_with()
-            fake_zk.Lock.assert_called_once_with('%s/%s' % (bounce_lib.ZK_LOCK_PATH, lock_name))
+            fake_zk.Lock.assert_called_once_with(f'{bounce_lib.ZK_LOCK_PATH}/{lock_name}')
             fake_lock.acquire.assert_called_once_with(timeout=1)
             fake_lock.release.assert_called_once_with()
             fake_zk.stop.assert_called_once_with()

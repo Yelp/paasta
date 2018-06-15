@@ -23,10 +23,10 @@
     -   id: reorder-python-imports
         args: [--py3-plus]
 -   repo: https://github.com/asottile/pyupgrade
-    sha: v1.2.0
+    sha: v1.3.0
     hooks:
     -   id: pyupgrade
-        args: [--py3-plus]
+        args: [--py36-plus]
 -   repo: https://github.com/asottile/add-trailing-comma
     sha: v0.6.4
     hooks:

@@ -82,7 +82,13 @@ class TestHacheckDrainMethod(object):
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
 
-        with mock_ClientSession(get=asynctest.CoroutineMock(return_value=fake_response)):
+        with mock_ClientSession(
+            get=asynctest.Mock(
+                return_value=asynctest.MagicMock(
+                    __aenter__=asynctest.CoroutineMock(return_value=fake_response),
+                ),
+            ),
+        ):
             actual = await self.drain_method.get_spool(fake_task)
 
         expected = {
@@ -110,7 +116,13 @@ class TestHacheckDrainMethod(object):
             ),
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock_ClientSession(get=asynctest.CoroutineMock(return_value=fake_response)):
+        with mock_ClientSession(
+            get=mock.Mock(
+                return_value=asynctest.MagicMock(
+                    __aenter__=asynctest.CoroutineMock(return_value=fake_response),
+                ),
+            ),
+        ):
             assert await self.drain_method.is_draining(fake_task) is True
 
     @pytest.mark.asyncio
@@ -122,7 +134,13 @@ class TestHacheckDrainMethod(object):
             ),
         )
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        with mock_ClientSession(get=asynctest.CoroutineMock(return_value=fake_response)):
+        with mock_ClientSession(
+            get=mock.Mock(
+                return_value=asynctest.MagicMock(
+                    __aenter__=asynctest.CoroutineMock(return_value=fake_response),
+                ),
+            ),
+        ):
             assert await self.drain_method.is_draining(fake_task) is False
 
 
@@ -172,7 +190,11 @@ class TestHTTPDrainMethod(object):
         }
 
         fake_resp = mock.Mock(status=1234)
-        mock_request = asynctest.CoroutineMock(return_value=fake_resp)
+        mock_request = mock.Mock(
+            return_value=asynctest.MagicMock(
+                __aenter__=asynctest.CoroutineMock(return_value=fake_resp),
+            ),
+        )
         with mock_ClientSession(request=mock_request):
             await drain_method.issue_request(
                 url_spec=url_spec,

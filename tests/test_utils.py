@@ -420,7 +420,7 @@ def test_decompose_job_id_with_hashes():
 def test_build_docker_image_name():
     registry_url = "fake_registry"
     upstream_job_name = "a_really_neat_service"
-    expected = "%s/services-%s" % (registry_url, upstream_job_name)
+    expected = f"{registry_url}/services-{upstream_job_name}"
     with mock.patch(
         'paasta_tools.utils.get_service_docker_registry', autospec=True,
         return_value=registry_url,
@@ -434,7 +434,7 @@ def test_build_docker_tag(mock_build_docker_image_name):
     upstream_job_name = 'foo'
     upstream_git_commit = 'bar'
     mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
-    expected = 'fake-registry/services-foo:paasta-%s' % (
+    expected = 'fake-registry/services-foo:paasta-{}'.format(
         upstream_git_commit,
     )
     actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
@@ -541,7 +541,7 @@ def test_list_clusters_ignores_bogus_clusters():
     ]
     expected = ['cluster1', 'cluster2']
     with mock.patch(
-        'os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service),
+        'os.path.join', autospec=True, return_value=f'{fake_soa_dir}/{fake_service}',
     ), mock.patch(
         'glob.glob', autospec=True, return_value=fake_cluster_configs,
     ), mock.patch(
@@ -1394,7 +1394,7 @@ class TestInstanceConfig:
             'paasta_tools.utils.InstanceConfig.get_docker_image', autospec=True,
             return_value=fake_image,
         ):
-            expected_url = "%s/%s" % (fake_registry, fake_image)
+            expected_url = f"{fake_registry}/{fake_image}"
             assert fake_conf.get_docker_url() == expected_url
 
     @pytest.mark.parametrize(

@@ -320,7 +320,7 @@ def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
     return_value='fsmonste',
 )
 def test_get_container_name(mock_get_username, mock_randint):
-    expected = 'paasta_local_run_%s_%s' % (
+    expected = 'paasta_local_run_{}_{}'.format(
         mock_get_username.return_value, mock_randint.return_value,
     )
     actual = get_container_name()

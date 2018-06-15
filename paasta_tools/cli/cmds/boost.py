@@ -102,7 +102,7 @@ def paasta_boost(args):
     for cluster in clusters:
         if cluster not in all_clusters:
             paasta_print(
-                "Error: {} doesn't look like a valid cluster. ".format(cluster) +
+                f"Error: {cluster} doesn't look like a valid cluster. " +
                 "Here is a list of valid paasta clusters:\n" + "\n".join(all_clusters),
             )
             return 1

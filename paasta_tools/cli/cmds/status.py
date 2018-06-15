@@ -135,7 +135,7 @@ def get_planned_deployments(service, soa_dir):
         soa_dir=soa_dir,
     ):
         for instance in get_deploy_info(cluster_deploy_file):
-            yield '%s.%s' % (cluster, instance)
+            yield f'{cluster}.{instance}'
 
 
 def list_deployed_clusters(pipeline, actual_deployments):
@@ -196,7 +196,7 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
         marathon_status.desired_state,
         marathon_status.expected_instance_count,
     )
-    paasta_print("State:      %s - Desired state: %s" % (bouncing_status, desired_state))
+    paasta_print(f"State:      {bouncing_status} - Desired state: {desired_state}")
 
     status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
     if status != MarathonDeployStatus.NotRunning:

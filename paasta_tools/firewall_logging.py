@@ -85,7 +85,7 @@ def lookup_service_instance_by_ip(ip_lookup):
     for service, instance, mac, ip in services_running_here():
         if ip == ip_lookup:
             return (service, instance)
-    log.info('Unable to find container for ip {}'.format(ip_lookup))
+    log.info(f'Unable to find container for ip {ip_lookup}')
     return (None, None)
 
 

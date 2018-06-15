@@ -9,6 +9,7 @@ dist/
 !*.pyi
 .*.sw?
 .idea
+.vscode
 paasta_tools.egg-info/
 docs/man/
 tags

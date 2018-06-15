@@ -78,7 +78,7 @@ _service_name = 'a_service'
             [_service_name, 'instance1', 'cluster2', _user_supplied_execution_date, None, None],
             _service_name,
             _list_clusters, _actual_deployments, _planned_deployments, False,
-            'service "{}" has not been deployed to "cluster2" yet'.format(_service_name), False,
+            f'service "{_service_name}" has not been deployed to "cluster2" yet', False,
         ],
         [
             [_service_name, 'instanceX', 'cluster1', _user_supplied_execution_date, None, None],

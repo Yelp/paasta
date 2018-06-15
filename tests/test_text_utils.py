@@ -19,13 +19,13 @@ def test_remove_ansi_escape_sequences():
 
 
 def test_color_text():
-    expected = "%shi%s" % (text_utils.PaastaColors.RED, text_utils.PaastaColors.DEFAULT)
+    expected = f"{text_utils.PaastaColors.RED}hi{text_utils.PaastaColors.DEFAULT}"
     actual = text_utils.PaastaColors.color_text(text_utils.PaastaColors.RED, "hi")
     assert actual == expected
 
 
 def test_color_text_nested():
-    expected = "%sred%sblue%sred%s" % (
+    expected = "{}red{}blue{}red{}".format(
         text_utils.PaastaColors.RED,
         text_utils.PaastaColors.BLUE,
         text_utils.PaastaColors.DEFAULT + text_utils.PaastaColors.RED,

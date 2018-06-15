@@ -15,13 +15,12 @@
 # limitations under the License.
 from urllib.parse import urljoin
 
-import requests
-import requests.exceptions
+import aiohttp
 
 from . import exceptions
-from . import log
 from . import mesos_file
 from . import util
+from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.utils import get_user_agent
 
 
@@ -48,31 +47,34 @@ class MesosSlave(object):
             self["pid"].split(":")[-1],
         )
 
-    @log.duration
-    def fetch(self, url, **kwargs):
+    async def fetch(self, url, **kwargs) -> aiohttp.ClientResponse:
         headers = {'User-Agent': get_user_agent()}
-        try:
-            return requests.get(
-                urljoin(self.host, url),
-                timeout=self.config["response_timeout"],
-                headers=headers,
-                **kwargs,
-            )
-        except requests.exceptions.ConnectionError:
-            raise exceptions.SlaveDoesNotExist(
-                "Unable to connect to the slave at {}".format(self.host),
-            )
+        async with aiohttp.ClientSession(
+            conn_timeout=self.config["response_timeout"],
+            read_timeout=self.config["response_timeout"],
+        ) as session:
+            try:
+                async with session.get(
+                    urljoin(self.host, url),
+                    headers=headers,
+                    **kwargs,
+                ) as response:
+                    await response.text()
+                    return response
+            except aiohttp.ClientConnectionError:
+                raise exceptions.SlaveDoesNotExist(
+                    f"Unable to connect to the slave at {self.host}",
+                )
 
-    @util.CachedProperty(ttl=5)
-    def state(self):
-        return self.fetch("/slave(1)/state.json").json()
+    @async_ttl_cache(ttl=5)
+    async def state(self):
+        return await (await self.fetch("/slave(1)/state.json")).json()
 
-    @property
-    def frameworks(self):
-        return util.merge(self.state, "frameworks", "completed_frameworks")
+    async def frameworks(self):
+        return util.merge(await self.state(), "frameworks", "completed_frameworks")
 
-    def task_executor(self, task_id):
-        for fw in self.frameworks:
+    async def task_executor(self, task_id):
+        for fw in await self.frameworks():
             for exc in util.merge(fw, "executors", "completed_executors"):
                 if task_id in list(map(
                         lambda x: x["id"],
@@ -83,7 +85,7 @@ class MesosSlave(object):
                     return exc
         raise exceptions.MissingExecutor("No executor has a task by that id")
 
-    def file_list(self, path):
+    async def file_list(self, path):
         # The sandbox does not exist on the slave.
         if path == "":
             return []
@@ -91,22 +93,22 @@ class MesosSlave(object):
         resp = self.fetch("/files/browse.json", params={"path": path})
         if resp.status_code == 404:
             return []
-        return resp.json()
+        return await resp.json()
 
     def file(self, task, path):
         return mesos_file.File(self, task, path)
 
-    @util.CachedProperty(ttl=1)
-    def stats(self):
-        return self.fetch("/monitor/statistics.json").json()
+    @async_ttl_cache(ttl=1)
+    async def stats(self):
+        return await (await self.fetch("/monitor/statistics.json")).json()
 
     def executor_stats(self, _id):
         return list(filter(lambda x: x["executor_id"]))
 
-    def task_stats(self, _id):
+    async def task_stats(self, _id):
         stats = list(filter(
             lambda x: x["executor_id"] == _id,
-            self.stats,
+            await self.stats(),
         ))
 
         # Tasks that are not yet in a RUNNING state have no stats.

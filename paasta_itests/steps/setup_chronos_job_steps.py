@@ -35,7 +35,7 @@ def job_exists(context, service, instance):
 
 @when('we run setup_chronos_job for service_instance "{service_instance}"')
 def run_setup_chronos_job(context, service_instance):
-    cmd = "../paasta_tools/setup_chronos_job.py %s -d %s" % (service_instance, context.soa_dir)
+    cmd = f"../paasta_tools/setup_chronos_job.py {service_instance} -d {context.soa_dir}"
     exit_code, output = _run(cmd)
     context.exit_code, context.output = exit_code, output
 
@@ -57,7 +57,7 @@ def old_jobs_leftover(context, job_count, job_name):
     for i in range(job_count):
         job_definition = copy.deepcopy(context.jobs[job_name])
         # modify the name by replacing the last character in the config hash
-        modified_name = "%s%s" % (job_definition['name'][:-1], i)
+        modified_name = "{}{}".format(job_definition['name'][:-1], i)
         job_definition['name'] = modified_name
         job_definition['disabled'] = True
         context.chronos_client.add(job_definition)

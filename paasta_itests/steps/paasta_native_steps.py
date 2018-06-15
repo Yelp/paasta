@@ -5,6 +5,7 @@ import time
 from typing import List
 from typing import Tuple
 
+import a_sync
 import mock
 import yaml
 from behave import given
@@ -158,7 +159,7 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
         json.dump(
             {
                 'v1': {
-                    '%s:paasta-%s.%s' % (service, context.cluster, instance): {
+                    f'{service}:paasta-{context.cluster}.{instance}': {
                         'docker_image': 'busybox',
                         'desired_state': 'start',
                         'force_bounce': None,
@@ -195,13 +196,13 @@ def run_native_mesos_scheduler_main(context):
 @then('there should be a framework registered with name {name}')
 def should_be_framework_with_id(context, name):
     clear_mesos_tools_cache()
-    assert name in [f.name for f in mesos_tools.get_all_frameworks(active_only=True)]
+    assert name in [f.name for f in a_sync.block(mesos_tools.get_all_frameworks, active_only=True)]
 
 
 @then('there should not be a framework registered with name {name}')
 def should_not_be_framework_with_name(context, name):
     clear_mesos_tools_cache()
-    assert name not in [f.name for f in mesos_tools.get_all_frameworks(active_only=True)]
+    assert name not in [f.name for f in a_sync.block(mesos_tools.get_all_frameworks, active_only=True)]
 
 
 @when('we terminate that framework')
@@ -344,4 +345,4 @@ def service_should_show_up_in_pnsrh_n_times(context, expected_num):
         )
 
     matching_results = [res for res in results if res == (context.service, context.instance, mock.ANY)]
-    assert len(matching_results) == expected_num, ("matching results %r, all results %r" % (matching_results, results))
+    assert len(matching_results) == expected_num, (f"matching results {matching_results!r}, all results {results!r}")

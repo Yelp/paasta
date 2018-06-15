@@ -376,7 +376,7 @@ def get_instances_from_zookeeper(service: str, instance: str) -> int:
 
 
 def compose_autoscaling_zookeeper_root(service: str, instance: str) -> str:
-    return '%s/%s/%s' % (AUTOSCALING_ZK_ROOT, service, instance)
+    return f'{AUTOSCALING_ZK_ROOT}/{service}/{instance}'
 
 
 def set_instances_for_marathon_service(

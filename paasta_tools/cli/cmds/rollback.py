@@ -131,10 +131,10 @@ def list_previous_commits(service, deploy_groups, any_given_deploy_groups, git_s
     if len(git_shas) >= 2:
         sha, (timestamp, deploy_group) = git_shas[1]
         deploy_groups_arg_line = '-l %s ' % ','.join(deploy_groups) if any_given_deploy_groups else ''
-        paasta_print("\nFor example, to use the second to last commit from %s used on %s, run:" % (
+        paasta_print("\nFor example, to use the second to last commit from {} used on {}, run:".format(
             format_timestamp(timestamp), PaastaColors.bold(deploy_group),
         ))
-        paasta_print(PaastaColors.bold("    paasta rollback -s %s %s-k %s" % (service, deploy_groups_arg_line, sha)))
+        paasta_print(PaastaColors.bold(f"    paasta rollback -s {service} {deploy_groups_arg_line}-k {sha}"))
 
 
 def paasta_rollback(args):

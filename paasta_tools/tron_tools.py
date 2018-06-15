@@ -76,7 +76,7 @@ def get_tron_client():
 
 
 def compose_instance(job, action):
-    return '%s%s%s' % (job, SPACER, action)
+    return f'{job}{SPACER}{action}'
 
 
 def decompose_instance(instance):
@@ -114,7 +114,7 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get('command')
 
     def get_executor(self):
-        executor = self.config_dict.get('executor', 'ssh')
+        executor = self.config_dict.get('executor', None)
         return 'mesos' if executor == 'paasta' else executor
 
     def get_node(self):
@@ -289,7 +289,11 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
                 'value': param['value'],
             } for param in action_config.format_docker_parameters()
         ]
-        result['constraints'] = action_config.get_calculated_constraints()
+        constraint_labels = ['attribute', 'operator', 'value']
+        result['constraints'] = [
+            dict(zip(constraint_labels, constraint))
+            for constraint in action_config.get_calculated_constraints()
+        ]
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
@@ -346,9 +350,7 @@ def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
         raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
 
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    job_configs = []
-    for job in config.get('jobs', []):
-        job_configs.append(TronJobConfig(job, soa_dir))
+    job_configs = [TronJobConfig(job, soa_dir) for job in config.get('jobs') or []]
     return job_configs, extra_config
 
 

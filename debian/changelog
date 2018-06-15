@@ -1,3 +1,64 @@
+paasta-tools (0.74.6) xenial; urgency=medium
+
+  * 0.74.6 tagged with 'make release'
+    Commit: Merge branch "more_fix_async"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 14 Jun 2018 14:37:38 -0700
+
+paasta-tools (0.74.5) xenial; urgency=medium
+
+  * 0.74.5 tagged with 'make release'
+    Commit: Merge pull request #1860 from Yelp/tron-tools-fix-nil-jobs
+    [tron] Fix fetching tron configs when jobs is None
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 12 Jun 2018 08:14:53 -0700
+
+paasta-tools (0.74.4) xenial; urgency=medium
+
+  * 0.74.4 tagged with 'make release'
+    Commit: Merge pull request #1858 from Yelp/fix-boto  Bump boto
+    packages
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 11 Jun 2018 07:36:15 -0700
+
+paasta-tools (0.74.3) xenial; urgency=medium
+
+  * 0.74.3 tagged with 'make release'
+    Commit: Merge pull request #1857 from Yelp/fix-trusty  Bump boto
+    requirements to fix trusty build
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 11 Jun 2018 05:58:51 -0700
+
+paasta-tools (0.74.2) xenial; urgency=medium
+
+  * 0.74.2 tagged with 'make release'
+    Commit: Merge pull request #1853 from Yelp/spark_sensitive_env
+    Added safer passing of credentials to spark
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 08 Jun 2018 04:58:43 -0700
+
+paasta-tools (0.74.1) xenial; urgency=medium
+
+  * 0.74.1 tagged with 'make release'
+    Commit: Merge branch "fix_async"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 06 Jun 2018 11:20:35 -0700
+
+paasta-tools (0.74.0) xenial; urgency=medium
+
+  * 0.74.0 tagged with 'make release'
+    Commit: Merge branch "status_parallelize_mesos_stats"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 05 Jun 2018 10:08:25 -0700
+
+paasta-tools (0.73.3) xenial; urgency=medium
+
+  * 0.73.3 tagged with 'make release'
+    Commit: Merge pull request #1849 from Yelp/autoscaler-configure-max-
+    delta  Split out MAX_CLUSTER_DELTA for cluster autoscaler
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 04 Jun 2018 08:07:54 -0700
+
 paasta-tools (0.73.2) xenial; urgency=medium
 
   * 0.73.2 tagged with 'make release'

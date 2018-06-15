@@ -42,7 +42,7 @@ log.addHandler(logging.NullHandler())
 
 
 def get_zk_boost_path(region: str, pool: str) -> str:
-    return '/paasta_cluster_autoscaler/{}/{}/boost'.format(region, pool)
+    return f'/paasta_cluster_autoscaler/{region}/{pool}/boost'
 
 
 def get_boosted_load(region: str, pool: str, current_load: float) -> float:
@@ -72,7 +72,7 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
             if boost_values.expected_load == 0:
                 expected_load = current_load * boost_values.boost_factor
 
-                log.debug('Activating boost, storing expected load: {} in ZooKeeper'.format(expected_load))
+                log.debug(f'Activating boost, storing expected load: {expected_load} in ZooKeeper')
 
                 zk.ensure_path(zk_boost_path + '/expected_load')
                 zk.set(zk_boost_path + '/expected_load', str(expected_load).encode('utf-8'))
@@ -85,7 +85,7 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
 
     except Exception as e:
         # Fail gracefully in the face of ANY error
-        log.error('get_boost failed with: {}'.format(e))
+        log.error(f'get_boost failed with: {e}')
         return current_load
 
 
@@ -141,7 +141,7 @@ def set_boost_factor(
     override=False,
 ) -> bool:
     if factor < MIN_BOOST_FACTOR:
-        log.error('Cannot set a boost factor smaller than {}'.format(MIN_BOOST_FACTOR))
+        log.error(f'Cannot set a boost factor smaller than {MIN_BOOST_FACTOR}')
         return False
 
     if factor > MAX_BOOST_FACTOR:

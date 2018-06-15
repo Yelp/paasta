@@ -153,7 +153,7 @@ def step_impl_then(context):
             'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
         },
     })
-    assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
+    assert expected_deployments == deployments, f"actual: {deployments}\nexpected:{expected_deployments}"
 
 
 @then('that deployments.json has a desired_state of "{expected_state}"')
@@ -161,7 +161,7 @@ def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     latest = sorted(deployments.config_dict.items(), key=lambda kv: kv[1]['force_bounce'] or '', reverse=True)[0][1]
     desired_state = latest['desired_state']
-    assert desired_state == expected_state, "actual: %s\nexpected: %s" % (desired_state, expected_state)
+    assert desired_state == expected_state, f"actual: {desired_state}\nexpected: {expected_state}"
 
 
 @then('the repository should be correctly tagged')

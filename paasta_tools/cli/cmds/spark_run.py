@@ -34,7 +34,7 @@ DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
-
+SENSITIVE_ENV = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
 
 deprecated_opts = {
     'j': 'spark.jars',
@@ -52,7 +52,7 @@ class DeprecatedAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         paasta_print(
             PaastaColors.red(
-                "Use of %s is deprecated. Please use %s=value in --spark-args." % (
+                "Use of {} is deprecated. Please use {}=value in --spark-args.".format(
                     option_string,
                     deprecated_opts[option_string.strip('-')],
                 ),
@@ -115,7 +115,7 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         '-w', '--work-dir',
-        default='%s:%s' % (os.getcwd(), DEFAULT_SPARK_WORK_DIR),
+        default='{}:{}'.format(os.getcwd(), DEFAULT_SPARK_WORK_DIR),
         help="The read-write volume to mount in format local_abs_dir:container_abs_dir",
     )
 
@@ -260,6 +260,8 @@ def get_docker_run_cmd(
     cmd.append('--rm')
     cmd.append('--net=host')
 
+    sensitive_env = {}
+
     if 'spark-submit' not in docker_cmd and 'jupyter' not in docker_cmd:
         cmd.append('--interactive=true')
         if sys.stdout.isatty():
@@ -269,11 +271,16 @@ def get_docker_run_cmd(
     cmd.append('--name=%s' % container_name)
     for k, v in env.items():
         cmd.append('--env')
-        cmd.append('%s=%s' % (k, v))
+        if k in SENSITIVE_ENV:
+            sensitive_env[k] = v
+            cmd.append(k)
+        else:
+            cmd.append(f'{k}={v}')
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     cmd.append('%s' % docker_img)
     cmd.extend(('sh', '-c', docker_cmd))
+    cmd.append(sensitive_env)
 
     return cmd
 
@@ -377,9 +384,9 @@ def get_spark_conf_str(
         'spark.app.name': container_name,
         'spark.ui.port': spark_ui_port,
         'spark.executorEnv.PAASTA_SERVICE': args.service,
-        'spark.executorEnv.PAASTA_INSTANCE': '%s_%s' % (args.instance, get_username()),
+        'spark.executorEnv.PAASTA_INSTANCE': '{}_{}'.format(args.instance, get_username()),
         'spark.executorEnv.PAASTA_CLUSTER': args.cluster,
-        'spark.mesos.executor.docker.parameters': 'label=paasta_service=%s,label=paasta_instance=%s_%s' % (
+        'spark.mesos.executor.docker.parameters': 'label=paasta_service={},label=paasta_instance={}_{}'.format(
             args.service, args.instance, get_username(),
         ),
         'spark.mesos.executor.docker.volumes': ','.join(volumes),
@@ -422,7 +429,7 @@ def get_spark_conf_str(
             if fields[0] in non_user_args:
                 paasta_print(
                     PaastaColors.red(
-                        "Spark option %s is set by PaaSTA with %s." % (
+                        "Spark option {} is set by PaaSTA with {}.".format(
                             fields[0],
                             non_user_args[fields[0]],
                         ),
@@ -436,7 +443,7 @@ def get_spark_conf_str(
     if int(user_args['spark.cores.max']) < int(user_args['spark.executor.cores']):
         paasta_print(
             PaastaColors.red(
-                "Total number of cores %s is less than per-executor cores %s." % (
+                "Total number of cores {} is less than per-executor cores {}.".format(
                     user_args['spark.cores.max'],
                     user_args['spark.executor.cores'],
                 ),
@@ -449,7 +456,7 @@ def get_spark_conf_str(
     if exec_mem[-1] != 'g' or not exec_mem[:-1].isdigit() or int(exec_mem[:-1]) > 32:
         paasta_print(
             PaastaColors.red(
-                "Executor memory %s not in format dg (d<=32)." % (
+                "Executor memory {} not in format dg (d<=32).".format(
                     user_args['spark.executor.memory'],
                 ),
             ),
@@ -459,7 +466,7 @@ def get_spark_conf_str(
 
     spark_conf = list()
     for opt, val in dict(non_user_args, **user_args).items():
-        spark_conf.append('--conf %s=%s' % (opt, val))
+        spark_conf.append(f'--conf {opt}={val}')
     return ' '.join(spark_conf)
 
 
@@ -484,7 +491,7 @@ def run_docker_container(
         paasta_print(json.dumps(docker_run_cmd))
         return 0
 
-    os.execlp('paasta_docker_wrapper', *docker_run_cmd)
+    os.execlpe('paasta_docker_wrapper', *docker_run_cmd)
     return 0
 
 
@@ -497,7 +504,7 @@ def configure_and_run_docker_container(
     volumes = list()
     for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
         if os.path.exists(volume['hostPath']):
-            volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
+            volumes.append('{}:{}:{}'.format(volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
         else:
             paasta_print(
                 PaastaColors.yellow(
@@ -506,7 +513,7 @@ def configure_and_run_docker_container(
             )
 
     spark_ui_port = pick_random_port(args.service)
-    container_name = 'paasta_spark_run_%s_%s' % (get_username(), spark_ui_port)
+    container_name = 'paasta_spark_run_{}_{}'.format(get_username(), spark_ui_port)
 
     spark_conf_str = get_spark_conf_str(
         args=args,
@@ -558,7 +565,7 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
         if args.not_cull_connected is False:
             cull_opts += '--MappingKernelManager.cull_connected=True '
 
-        return 'jupyter notebook -y --ip=%s --notebook-dir=%s %s' % (
+        return 'jupyter notebook -y --ip={} --notebook-dir={} {}'.format(
             socket.getfqdn(), args.work_dir.split(':')[1], cull_opts,
         )
     # Spark options are passed as options to pyspark and spark-shell.
@@ -587,7 +594,7 @@ def build_and_push_docker_image(args):
         )
         return None
 
-    default_tag = '%s-%s' % (DEFAULT_SPARK_DOCKER_IMAGE_PREFIX, get_username())
+    default_tag = '{}-{}'.format(DEFAULT_SPARK_DOCKER_IMAGE_PREFIX, get_username())
     docker_tag = os.environ.get('DOCKER_TAG', default_tag)
     os.environ['DOCKER_TAG'] = docker_tag
 
@@ -599,8 +606,8 @@ def build_and_push_docker_image(args):
     if cook_return is not 0:
         return None
 
-    docker_url = '%s/%s' % (DEFAULT_SPARK_DOCKER_REGISTRY, docker_tag)
-    command = 'docker tag %s %s' % (docker_tag, docker_url)
+    docker_url = f'{DEFAULT_SPARK_DOCKER_REGISTRY}/{docker_tag}'
+    command = f'docker tag {docker_tag} {docker_url}'
     paasta_print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
     if retcode is not 0:

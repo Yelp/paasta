@@ -62,6 +62,6 @@ def test_paasta_docker_exec(
     mock_get_container_name.assert_called_with(mock_task)
     expected = [
         "ssh", "-o", "LogLevel=QUIET", "-tA", 'host1',
-        "sudo docker exec -ti {} ''/bin/bash''".format(mock_get_container_name.return_value),
+        f"sudo docker exec -ti {mock_get_container_name.return_value} ''/bin/bash''",
     ]
     mock_subprocess.call.assert_called_with(expected)

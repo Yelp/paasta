@@ -40,12 +40,12 @@ def delete_apps(context, job_id, cluster_name):
         context.soa_dir, service,
         cluster_name,
     ))
-    os.rmdir("{}/{}".format(context.soa_dir, service))
+    os.rmdir(f"{context.soa_dir}/{service}")
 
 
 @then('we run cleanup_marathon_apps{flags} which exits with return code "{expected_return_code}"')
 def run_cleanup_marathon_job(context, flags, expected_return_code):
-    cmd = '../paasta_tools/cleanup_marathon_jobs.py --soa-dir %s %s' % (context.soa_dir, flags)
+    cmd = f'../paasta_tools/cleanup_marathon_jobs.py --soa-dir {context.soa_dir} {flags}'
     paasta_print('Running cmd %s' % (cmd))
     exit_code, output = _run(cmd)
     paasta_print(output)

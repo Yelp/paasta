@@ -71,7 +71,7 @@ def invalid_chronos_instance(cluster, instance, output):
 
 
 def valid_chronos_instance(cluster, instance):
-    return success('chronos-%s.yaml has a valid instance: %s.' % (cluster, instance))
+    return success(f'chronos-{cluster}.yaml has a valid instance: {instance}.')
 
 
 def get_schema(file_type):
@@ -95,7 +95,7 @@ def validate_schema(file_path, file_type):
     """
     schema = get_schema(file_type)
     if (schema is None):
-        paasta_print('%s: %s' % (SCHEMA_NOT_FOUND, file_path))
+        paasta_print(f'{SCHEMA_NOT_FOUND}: {file_path}')
         return
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
@@ -109,17 +109,17 @@ def validate_schema(file_path, file_type):
         else:
             config_file_object = config_file
     except Exception:
-        paasta_print('%s: %s' % (FAILED_READING_FILE, file_path))
+        paasta_print(f'{FAILED_READING_FILE}: {file_path}')
         raise
     try:
         validator.validate(config_file_object)
     except ValidationError:
-        paasta_print('%s: %s' % (SCHEMA_INVALID, file_path))
+        paasta_print(f'{SCHEMA_INVALID}: {file_path}')
 
         errors = validator.iter_errors(config_file_object)
         paasta_print('  Validation Message: %s' % exceptions.best_match(errors).message)
     else:
-        paasta_print('%s: %s' % (SCHEMA_VALID, basename))
+        paasta_print(f'{SCHEMA_VALID}: {basename}')
         return True
 
 
@@ -225,7 +225,7 @@ def validate_chronos(service_path):
         return False
     for cluster in list_clusters(service, soa_dir, instance_type):
         services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
-        valid_services = {"%s%s%s" % (name, chronos_spacer, instance) for name, instance in services_in_cluster}
+        valid_services = {f"{name}{chronos_spacer}{instance}" for name, instance in services_in_cluster}
         for instance in list_all_instances_for_service(
                 service=service, clusters=[cluster], instance_type=instance_type,
                 soa_dir=soa_dir,
@@ -237,7 +237,7 @@ def validate_chronos(service_path):
             for parent in parents:
                 if not check_parent_format(parent):
                     continue
-                if "%s%s%s" % (service, chronos_spacer, instance) == parent:
+                if f"{service}{chronos_spacer}{instance}" == parent:
                     checks_passed = False
                     check_msgs.append("Job %s cannot depend on itself" % parent)
                 elif parent not in valid_services:

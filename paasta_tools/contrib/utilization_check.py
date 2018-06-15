@@ -5,6 +5,9 @@ a utilization report for those hosts.
 import functools
 import json
 import sys
+from typing import Sequence
+
+from a_sync import block
 
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
@@ -16,10 +19,10 @@ from paasta_tools.text_utils import paasta_print
 from paasta_tools.text_utils import PaastaColors
 
 
-def main(hostnames):
+def main(hostnames: Sequence[str]) -> None:
     master = get_mesos_master()
     try:
-        mesos_state = master.state
+        mesos_state = block(master.state)
     except MasterNotAvailableException as e:
         paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)

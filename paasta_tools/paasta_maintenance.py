@@ -175,10 +175,10 @@ def are_local_tasks_in_danger():
             synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
         )
         for service, instance, port in local_services:
-            log.info("Inspecting %s.%s on %s" % (service, instance, port))
+            log.info(f"Inspecting {service}.{instance} on {port}")
             if is_healthy_in_haproxy(port, local_backends) and \
                synapse_replication_is_low(service, instance, system_paasta_config, local_backends=local_backends):
-                log.warning("%s.%s on port %s is healthy but the service is in danger!" % (
+                log.warning("{}.{} on port {} is healthy but the service is in danger!".format(
                     service, instance, port,
                 ))
                 return True

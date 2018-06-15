@@ -18,11 +18,10 @@ Responds to paasta service and instance requests.
 import argparse
 import logging
 import os
+import sys
 
 import requests_cache
 import service_configuration_lib
-from gevent import monkey
-from gevent.wsgi import WSGIServer
 from pyramid.config import Configurator
 from wsgicors import CORS
 
@@ -30,7 +29,6 @@ import paasta_tools.api
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import ZookeeperPool
 
 
 log = logging.getLogger(__name__)
@@ -86,7 +84,23 @@ def make_app(global_config=None):
     return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")
 
 
+_app = None
+
+
+def application(env, start_response):
+    """For uwsgi or gunicorn."""
+    global _app
+    if not _app:
+        _app = make_app()
+    return _app(env, start_response)
+
+
 def setup_paasta_api():
+    if os.environ.get("PAASTA_API_DEBUG"):
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
     # pyinotify is a better solution than turning off file caching completely
     service_configuration_lib.disable_yaml_cache()
 
@@ -110,27 +124,21 @@ def setup_paasta_api():
 
 
 def main(argv=None):
-    monkey.patch_all()
     args = parse_paasta_api_args()
+
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARNING)
+        os.environ["PAASTA_API_DEBUG"] = "1"
 
     if args.soa_dir:
-        settings.soa_dir = args.soa_dir
+        os.environ["PAASTA_API_SOA_DIR"] = args.soa_dir
 
-    server = WSGIServer(('', int(args.port)), make_app())
-    log.info("paasta-api started on port %d with soa_dir %s" % (args.port, settings.soa_dir))
-
-    try:
-        # We create the Zookeeper pool here to prevent the context manager
-        # tearing down the client after each request. This can cause an exception
-        # if the API is dealing with two or more requests at the same time!
-        with ZookeeperPool():
-            server.serve_forever()
-    except KeyboardInterrupt:
-        exit(0)
+    os.execlp(
+        os.path.join(sys.exec_prefix, "bin", "gunicorn"),
+        "gunicorn",
+        "-w", "4",
+        "--bind", f":{args.port}",
+        "paasta_tools.api.api:application",
+    )
 
 
 if __name__ == '__main__':

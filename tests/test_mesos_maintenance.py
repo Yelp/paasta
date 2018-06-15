@@ -1037,7 +1037,7 @@ def test_hostnames_to_components_pipe():
     hostname = 'fake-host'
     ip = '127.0.0.1'
     expected = [Hostname(host=hostname, ip=ip)]
-    actual = hostnames_to_components(["%s|%s" % (hostname, ip)])
+    actual = hostnames_to_components([f"{hostname}|{ip}"])
     assert actual == expected
 
 

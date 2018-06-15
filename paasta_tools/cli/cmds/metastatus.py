@@ -136,7 +136,7 @@ def get_cluster_dashboards(cluster):
         for label, urls in dashboards.items():
             if isinstance(urls, list):
                 urls = "\n    %s" % '\n    '.join(urls)
-            output.append('  %s:%s%s' % (label, SPACER * (spacing - len(label)), PaastaColors.cyan(urls)))
+            output.append('  {}:{}{}'.format(label, SPACER * (spacing - len(label)), PaastaColors.cyan(urls)))
     return '\n'.join(output)
 
 

@@ -14,6 +14,7 @@
 from datetime import datetime
 from datetime import timedelta
 
+import asynctest
 import mock
 from kazoo.exceptions import NoNodeError
 from pytest import raises
@@ -173,7 +174,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         branch_dict=None,
     )
     fake_mesos_task = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
@@ -227,17 +228,17 @@ def test_mesos_cpu_metrics_provider():
     fake_system_paasta_config = mock.MagicMock()
     fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = False
     fake_mesos_task = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
-        stats_callable=lambda: None,
+        stats=asynctest.CoroutineMock(side_effect=Exception),
     )
     fake_mesos_task_3 = mock.MagicMock(
-        stats_callable=lambda: {},
+        stats=asynctest.CoroutineMock(return_value={}),
     )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
     fake_mesos_task_2.__getitem__.return_value = 'fake-service.fake-instance2'
@@ -335,21 +336,21 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_big_cpu_limit():
     fake_system_paasta_config = mock.MagicMock()
     fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = True
     fake_mesos_task = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 2.1,
             'cpus_system_time_secs': 0,
             'cpus_user_time_secs': 480,
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 2.1,
             'cpus_system_time_secs': 0,
             'cpus_user_time_secs': 9600,
         }),
     )
     fake_mesos_task_3 = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 2.1,
             'cpus_system_time_secs': 0,
             # Bogus value
@@ -426,21 +427,21 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
     fake_system_paasta_config = mock.MagicMock()
     fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = True
     fake_mesos_task = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 103.4,
             'cpus_user_time_secs': 500,
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 0,
             'cpus_user_time_secs': 48,
         }),
     )
     fake_mesos_task_3 = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 0,
             # bogus
@@ -517,21 +518,21 @@ def test_mesos_cpu_metrics_provider_filter_no_bogus_values_10_percent_cpu_limit(
     fake_system_paasta_config = mock.MagicMock()
     fake_system_paasta_config.get_filter_bogus_mesos_cputime_enabled.return_value = True
     fake_mesos_task = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 103.4,
             'cpus_user_time_secs': 500,
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 0,
             'cpus_user_time_secs': 48,
         }),
     )
     fake_mesos_task_3 = mock.MagicMock(
-        stats_callable=mock.MagicMock(return_value={
+        stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 0,
             # bogus

@@ -351,7 +351,7 @@ def test_format_parents_verbose():
         expected_time = humanize.naturaltime(datetime_from_utc_to_local(fake_last_datetime_dt))
         actual = chronos_serviceinit._format_parents_verbose(example_job)
         assert "testservice testinstance" in actual
-        assert "  Last Run: %s (2007-04-01T17:52, %s)" % (PaastaColors.green("OK"), expected_time) in actual
+        assert "  Last Run: {} (2007-04-01T17:52, {})".format(PaastaColors.green("OK"), expected_time) in actual
 
 
 def test_format_schedule_dependent_job():

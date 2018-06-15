@@ -182,7 +182,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
             )
             time.sleep(5 * attempt)
         else:
-            logline = "Marked %s for deployment in deploy group %s" % (commit, deploy_group)
+            logline = f"Marked {commit} for deployment in deploy group {deploy_group}"
             _log(
                 service=service,
                 line=logline,
@@ -200,7 +200,7 @@ def report_waiting_aborted(service, deploy_group):
     ))
     paasta_print("If you wish to see the status, run:")
     paasta_print()
-    paasta_print("    paasta status -s %s -l %s -v" % (service, deploy_group))
+    paasta_print(f"    paasta status -s {service} -l {deploy_group} -v")
     paasta_print()
 
 
@@ -270,7 +270,7 @@ class SlackDeployNotifier(object):
                 self.post(channels=self.channels, message=message)
                 build_url = os.environ.get('BUILD_URL')
                 if build_url is not None:
-                    message = "Please see the jenkins output: {}/console".format(build_url)
+                    message = f"Please see the jenkins output: {build_url}/console"
                     self.post(channels=self.channels, message=message)
                 else:
                     message = "(Run by {} on {})".format(getpass.getuser(), socket.getfqdn())
@@ -386,7 +386,7 @@ def paasta_mark_for_deployment(args):
                 soa_dir=args.soa_dir,
                 timeout=args.timeout,
             )
-            line = "Deployment of {} for {} complete".format(commit, deploy_group)
+            line = f"Deployment of {commit} for {deploy_group} complete"
             _log(
                 service=service,
                 component='deploy',
@@ -402,7 +402,7 @@ def paasta_mark_for_deployment(args):
                     paasta_print("automatically.")
                 else:
                     paasta_print("Auto-Rollback requested. Marking the previous sha")
-                    paasta_print("(%s) for %s as desired." % (deploy_group, old_git_sha))
+                    paasta_print(f"({deploy_group}) for {old_git_sha} as desired.")
                     mark_for_deployment(
                         git_url=args.git_url,
                         deploy_group=deploy_group,
@@ -422,7 +422,7 @@ def paasta_mark_for_deployment(args):
         paasta_print("If you wish to roll back, you can run:")
         paasta_print()
         paasta_print(
-            PaastaColors.bold("    paasta rollback --service %s --deploy-group %s --commit %s " % (
+            PaastaColors.bold("    paasta rollback --service {} --deploy-group {} --commit {} ".format(
                 service, deploy_group, old_git_sha,
             )),
         )
@@ -660,7 +660,7 @@ def _run_cluster_worker(cluster_data, green_light):
     )
     cluster_data.instances_queue = instances_out
     if cluster_data.instances_queue.empty():
-        paasta_print("Deploy to {} complete!".format(cluster_data.cluster))
+        paasta_print(f"Deploy to {cluster_data.cluster} complete!")
 
 
 def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):

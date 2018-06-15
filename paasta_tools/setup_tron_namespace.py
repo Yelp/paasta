@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument(
         '-a',
         '--all',
-        dest='all_namepsaces',
+        dest='all_namespaces',
         action='store_true',
         help='Update all available Tron namespaces.',
     )
@@ -91,26 +91,29 @@ def main():
 
     updated = []
     failed = []
+    skipped = []
 
     for service in services:
         try:
             new_config = tron_tools.create_complete_config(
-                service=args.service,
+                service=service,
                 soa_dir=args.soa_dir,
             )
-            client.update_namespace(args.service, new_config)
-            updated.append(service)
+            if client.update_namespace(service, new_config):
+                updated.append(service)
+                log.debug(f'Updated {service}')
+            else:
+                skipped.append(service)
+                log.debug(f'Skipped {service}')
         except Exception as e:
-            log.error('Update for {namespace} failed: {error}'.format(
-                namespace=args.service, error=str(e),
-            ))
+            log.error(f'Update for {service} failed: {str(e)}')
+            log.debug(f'Exception while updating {service}', exc_info=1)
             failed.append(service)
 
+    skipped_report = skipped if args.verbose else len(skipped)
     log.info(
-        'Updated following namespaces: {updated}, failed: {failed}'.format(
-            updated=updated,
-            failed=failed,
-        ),
+        f'Updated following namespaces: {updated}, '
+        f'failed: {failed}, skipped: {skipped_report}',
     )
 
     sys.exit(1 if failed else 0)

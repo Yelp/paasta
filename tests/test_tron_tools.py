@@ -95,7 +95,7 @@ class TestTronActionConfig:
             config_dict=action_dict,
             branch_dict={},
         )
-        assert action_config.get_executor() == 'ssh'
+        assert action_config.get_executor() is None
 
     def test_get_executor_paasta(self):
         action_dict = {
@@ -341,7 +341,6 @@ class TestTronTools:
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
-            'executor': 'ssh',
         }
 
     def test_format_tron_action_dict_paasta(self):
@@ -399,9 +398,15 @@ class TestTronTools:
                 'mode': 'RW',
             }],
             'docker_parameters': mock.ANY,
-            'constraints': [['pool', 'LIKE', 'special_pool']],
+            'constraints': [
+                {
+                    'attribute': 'pool',
+                    'operator': 'LIKE',
+                    'value': 'special_pool',
+                },
+            ],
         }
-        expected_docker = '%s/%s' % ('docker-registry.com:400', branch_dict['docker_image'])
+        expected_docker = '{}/{}'.format('docker-registry.com:400', branch_dict['docker_image'])
         assert result['docker_image'] == expected_docker
         assert result['env']['SHELL'] == '/bin/bash'
         assert isinstance(result['docker_parameters'], list)
@@ -479,6 +484,16 @@ class TestTronTools:
         assert mock_read_service_info.call_count == 1
         mock_read_file.assert_has_calls([mock.call('/other/services/tron/dev/foo.yaml')])
         mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
+
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
+    def test_load_tron_service_config_jobs_none(self, mock_read_file, mock_read_service_info):
+        mock_read_file.return_value = {'jobs': None}
+        mock_read_service_info.return_value = None
+        soa_dir = '/other/services'
+
+        jc, _ = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        assert jc == []
 
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)

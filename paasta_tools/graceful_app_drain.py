@@ -78,7 +78,7 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
             old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
             old_app_draining_tasks=old_app_draining_tasks,
             old_app_at_risk_tasks=old_app_at_risk_tasks,
-            serviceinstance="{}.{}".format(service, instance),
+            serviceinstance=f"{service}.{instance}",
             bounce_method='down',
             service=service,
             cluster=cluster,
@@ -91,7 +91,7 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
         paasta_print("Sleeping for 10 seconds to give the tasks time to drain")
         time.sleep(10)
 
-    paasta_print("Sucessfully killed {}".format(full_appid))
+    paasta_print(f"Sucessfully killed {full_appid}")
 
 
 def main():
@@ -114,7 +114,7 @@ def main():
             exit_code = 0
 
     if exit_code:
-        paasta_print("Couldn't find an app named {}".format(full_appid))
+        paasta_print(f"Couldn't find an app named {full_appid}")
     return exit_code
 
 

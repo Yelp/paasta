@@ -81,6 +81,6 @@ def paasta_emergency_restart(args):
     paasta_print("Output: %s" % output)
     paasta_print("%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-7:]))
     paasta_print("Run this to see the status:")
-    paasta_print("paasta status --service %s --clusters %s" % (service, args.cluster))
+    paasta_print(f"paasta status --service {service} --clusters {args.cluster}")
 
     return return_code

@@ -61,7 +61,7 @@ def add_subparser(subparsers):
 
 
 def format_tag(branch, force_bounce, desired_state):
-    return 'refs/tags/paasta-%s-%s-%s' % (branch, force_bounce, desired_state)
+    return f'refs/tags/paasta-{branch}-{force_bounce}-{desired_state}'
 
 
 def make_mutate_refs_func(service_config, force_bounce, desired_state):
@@ -86,7 +86,7 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
 def log_event(service_config, desired_state):
     user = utils.get_username()
     host = socket.getfqdn()
-    line = "Issued request to change state of %s (an instance of %s) to '%s' by %s@%s" % (
+    line = "Issued request to change state of {} (an instance of {}) to '{}' by {}@{}".format(
         service_config.get_instance(), service_config.get_service(),
         desired_state, user, host,
     )

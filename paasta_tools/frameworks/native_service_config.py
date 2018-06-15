@@ -347,8 +347,8 @@ def load_paasta_native_job_config(
 
 
 def read_service_config(service, instance, instance_type, cluster, soa_dir=DEFAULT_SOA_DIR):
-    conf_file = '%s-%s' % (instance_type, cluster)
-    full_path = '%s/%s/%s.yaml' % (soa_dir, service, conf_file)
+    conf_file = f'{instance_type}-{cluster}'
+    full_path = f'{soa_dir}/{service}/{conf_file}.yaml'
     paasta_print("Reading paasta-remote configuration file: %s" % full_path)
 
     config = service_configuration_lib.read_extra_service_information(
@@ -359,7 +359,7 @@ def read_service_config(service, instance, instance_type, cluster, soa_dir=DEFAU
 
     if instance not in config:
         raise UnknownNativeServiceError(
-            'No job named "%s" in config file %s: \n%s' % (
+            'No job named "{}" in config file {}: \n{}'.format(
                 instance, full_path, open(full_path).read(),
             ),
         )

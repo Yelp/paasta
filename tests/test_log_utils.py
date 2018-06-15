@@ -152,7 +152,7 @@ class TestFileLogWriter:
             fake_fll.assert_called_once_with("level", "cluster", "service", "instance", "component", "line")
 
             mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
-            fake_file.write.assert_called_once_with("{}\n".format(fake_line).encode('UTF-8'))
+            fake_file.write.assert_called_once_with(f"{fake_line}\n".encode('UTF-8'))
 
     def test_write_raises_IOError(self):
         fake_file = mock.Mock()

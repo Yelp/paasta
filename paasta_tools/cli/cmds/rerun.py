@@ -155,7 +155,7 @@ def paasta_rerun(args):
             paasta_print("  Warning: \"%s\" does not look like a valid cluster." % cluster)
             continue
         if cluster not in deployed_clusters:
-            paasta_print("  Warning: service \"%s\" has not been deployed to \"%s\" yet." % (service, cluster))
+            paasta_print(f"  Warning: service \"{service}\" has not been deployed to \"{cluster}\" yet.")
             continue
         if not deployed_cluster_instance[cluster].get(args.instance, False):
             paasta_print(("  Warning: instance \"%s\" is either invalid "
@@ -182,7 +182,7 @@ def paasta_rerun(args):
 
         if not args.rerun_type and len(related_job_configs) > 1:
             instance_names = sorted([
-                '- {}{}{}'.format(srv, chronos_tools.INTERNAL_SPACER, inst)
+                f'- {srv}{chronos_tools.INTERNAL_SPACER}{inst}'
                 for srv, inst in related_job_configs
                 if srv != service or inst != args.instance
             ])

@@ -64,13 +64,13 @@ def delete_deployment_if_too_old(client, deployment, max_date, dry_run):
     age = now() - started_at
     if started_at < max_date:
         if dry_run is True:
-            log.warning("Would delete %s for %s as it is %s old" % (deployment.id, deployment.affected_apps[0], age))
+            log.warning(f"Would delete {deployment.id} for {deployment.affected_apps[0]} as it is {age} old")
         else:
-            log.warning("Deleting %s for %s as it is %s old" % (deployment.id, deployment.affected_apps[0], age))
+            log.warning(f"Deleting {deployment.id} for {deployment.affected_apps[0]} as it is {age} old")
             client.delete_deployment(deployment_id=deployment.id, force=False)
     else:
         if dry_run is True:
-            log.warning("NOT deleting %s for %s as it is %s old" % (deployment.id, deployment.affected_apps[0], age))
+            log.warning(f"NOT deleting {deployment.id} for {deployment.affected_apps[0]} as it is {age} old")
 
 
 def main():

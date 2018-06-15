@@ -195,7 +195,7 @@ def drain_tasks_and_find_tasks_to_kill(
             if task.state != 'TASK_RUNNING' or await drain_method.is_safe_to_kill(task):
                 tasks_to_kill.add((task, client))
                 log_bounce_action(
-                    line='%s bounce killing not_running or drained task %s %s' % (
+                    line='{} bounce killing not_running or drained task {} {}'.format(
                         bounce_method, task.id, task.state,
                     ),
                 )
@@ -263,8 +263,8 @@ def do_bounce(
     ]):
         log_bounce_action(
             line=' '.join([
-                '%s bounce in progress on %s.' % (bounce_method, serviceinstance),
-                'New marathon app %s %s.' % (marathon_jobid, ('exists' if new_app_running else 'not created yet')),
+                f'{bounce_method} bounce in progress on {serviceinstance}.',
+                'New marathon app {} {}.'.format(marathon_jobid, ('exists' if new_app_running else 'not created yet')),
                 '%d new tasks to bring up.' % (config['instances'] - len(happy_new_tasks)),
                 '%d old tasks receiving traffic and happy.' % len(bounce_lib.flatten_tasks(old_app_live_happy_tasks)),
                 '%d old tasks unhappy.' % len(bounce_lib.flatten_tasks(old_app_live_unhappy_tasks)),
@@ -297,7 +297,7 @@ def do_bounce(
 
     if actions['create_app'] and not new_app_running:
         log_bounce_action(
-            line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
+            line=f'{bounce_method} bounce creating new app with app_id {marathon_jobid}',
         )
         with requests_cache.disabled():
             try:
@@ -580,7 +580,7 @@ def deploy_service(
         else:
             other_apps_with_clients.append((a, c))
 
-    serviceinstance = "%s.%s" % (service, instance)
+    serviceinstance = f"{service}.{instance}"
 
     if new_apps_with_clients_list:
         new_app, new_client = new_apps_with_clients_list[0]
@@ -728,11 +728,11 @@ def deploy_service(
             enable_maintenance_reservation=system_paasta_config.get_maintenance_resource_reservation_enabled(),
         )
     except bounce_lib.LockHeldException:
-        logline = 'Failed to get lock to create marathon app for %s.%s' % (service, instance)
+        logline = f'Failed to get lock to create marathon app for {service}.{instance}'
         log_deploy_error(logline, level='debug')
         return (0, "Couldn't get marathon lock, skipping until next time", None)
     except Exception:
-        logline = 'Exception raised during deploy of service %s:\n%s' % (service, traceback.format_exc())
+        logline = 'Exception raised during deploy of service {}:\n{}'.format(service, traceback.format_exc())
         log_deploy_error(logline, level='debug')
         raise
     if num_at_risk_tasks:

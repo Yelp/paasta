@@ -135,7 +135,7 @@ class MarathonClients(object):
         self.previous = previous
 
     def __repr__(self) -> str:
-        return 'MarathonClients(current=%r, previous=%r' % (self.current, self.previous)
+        return f'MarathonClients(current={self.current!r}, previous={self.previous!r}'
 
     def get_current_client_for_service(self, job_config: 'MarathonServiceConfig') -> MarathonClient:
         service_instance = compose_job_id(job_config.service, job_config.instance)
@@ -365,11 +365,11 @@ def load_marathon_service_config_no_cache(
 
     if instance.startswith('_'):
         raise InvalidJobNameError(
-            "Unable to load marathon job config for %s.%s as instance name starts with '_'" % (service, instance),
+            f"Unable to load marathon job config for {service}.{instance} as instance name starts with '_'",
         )
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file),
+            f"{instance} not found in config file {soa_dir}/{service}/{marathon_conf_file}.yaml.",
         )
 
     general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
@@ -456,7 +456,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         )
 
     def __repr__(self) -> str:
-        return "MarathonServiceConfig(%r, %r, %r, %r, %r, %r)" % (
+        return "MarathonServiceConfig({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.service,
             self.cluster,
             self.instance,
@@ -1396,7 +1396,7 @@ def get_matching_apps_with_clients(
 
 def does_app_id_match(service: str, instance: str, app_id: str) -> bool:
     jobid = format_job_id(service, instance)
-    expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
+    expected_prefix = f"/{jobid}{MESOS_TASK_SPACER}"
     return app_id.startswith(expected_prefix)
 
 

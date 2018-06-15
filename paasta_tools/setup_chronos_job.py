@@ -233,7 +233,7 @@ def main():
             soa_dir=soa_dir,
         )
     except (NoDeploymentsAvailable, NoDockerImageError):
-        error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
+        error_msg = "No deployment found for {} in cluster {}. Has Jenkins run for it?".format(
             args.service_instance, cluster,
         )
         send_event(
@@ -247,7 +247,7 @@ def main():
         sys.exit(0)
     except NoConfigurationForServiceError as e:
         error_msg = (
-            "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
+            f"Could not read chronos configuration file for {args.service_instance} in cluster {cluster}\n" +
             "Error was: %s" % str(e)
         )
         send_event(
@@ -261,7 +261,7 @@ def main():
         sys.exit(0)
     except NoSlavesAvailableError as e:
         error_msg = (
-            "There are no PaaSTA slaves that can run %s in cluster %s\n" % (args.service_instance, cluster) +
+            f"There are no PaaSTA slaves that can run {args.service_instance} in cluster {cluster}\n" +
             "Double check the cluster and the configured constratints/pool/whitelist.\n"
             "Error was: %s" % str(e)
         )
@@ -275,7 +275,7 @@ def main():
         log.error(error_msg)
         sys.exit(0)
     except chronos_tools.InvalidParentError:
-        log.warn("Skipping %s.%s: Parent job could not be found" % (service, instance))
+        log.warn(f"Skipping {service}.{instance}: Parent job could not be found")
         sys.exit(0)
 
     modified_config = config_with_historical_stats(

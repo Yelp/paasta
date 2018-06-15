@@ -251,7 +251,7 @@ def deployments_check(service, soa_dir):
         in_framework_not_deploy = set(framework_deploy_groups[it]) - set(pipeline_deploy_groups)
         in_deploy_not_frameworks -= set(framework_deploy_groups[it])
         if len(in_framework_not_deploy) > 0:
-            paasta_print("%s There are some instance(s) you have asked to run in %s that" % (x_mark(), it))
+            paasta_print("{} There are some instance(s) you have asked to run in {} that".format(x_mark(), it))
             paasta_print("  do not have a corresponding entry in deploy.yaml:")
             paasta_print("  %s" % PaastaColors.bold(", ".join(in_framework_not_deploy)))
             paasta_print("  You should probably configure these to use a 'deploy_group' or")

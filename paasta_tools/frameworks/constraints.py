@@ -65,12 +65,12 @@ def check_offer_constraints(offer, constraints, state):
                 paasta_print("Attribute not found for a constraint: %s" % attr)
                 return False
             elif not(CONS_OPS[op](val, offer_attr.text.value, offer_attr.name, state)):
-                paasta_print("Constraint not satisfied: [%s %s %s] for %s with %s" % (
+                paasta_print("Constraint not satisfied: [{} {} {}] for {} with {}".format(
                     attr, op, val, offer_attr.text.value, state,
                 ))
                 return False
         except Exception as err:
-            paasta_print("Error while mathing constraint: [%s %s %s] %s" % (
+            paasta_print("Error while mathing constraint: [{} {} {}] {}".format(
                 attr, op, val, str(err),
             ))
             raise err
