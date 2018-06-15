@@ -32,23 +32,27 @@ def test_list_instances(
     assert response['instances'] == fake_instances
 
 
-@mock.patch('paasta_tools.api.views.service.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.api.views.service.get_service_instance_list', autospec=True)
 @mock.patch('paasta_tools.api.views.service.get_services_for_cluster', autospec=True)
 def test_list_services_for_cluster(
     mock_get_services_for_cluster,
-    mock_list_all_instances_for_service,
+    mock_get_service_instance_list,
 ):
-    fake_service = ['fake_service']
-    mock_get_services_for_cluster.return_value = fake_service
+    fake_services = ['fake_service']
+    mock_get_services_for_cluster.return_value = fake_services
 
-    fake_instances = ['fake_instance_a', 'fake_instance_b', 'fake_instance_c']
-    mock_list_all_instances_for_service.return_value = fake_instances
+    fake_instances = [
+        ('fake_service', 'fake_instance_a'),
+        ('fake_service', 'fake_instance_b'),
+        ('fake_service', 'fake_instance_c'),
+    ]
+    mock_get_service_instance_list.return_value = fake_instances
 
     request = testing.DummyRequest()
 
     response = list_services_for_cluster(request)
     assert response['services'] == [
-        {'service': 'fake_service', 'instance': 'fake_instance_a'},
-        {'service': 'fake_service', 'instance': 'fake_instance_b'},
-        {'service': 'fake_service', 'instance': 'fake_instance_c'},
+        ('fake_service', 'fake_instance_a'),
+        ('fake_service', 'fake_instance_b'),
+        ('fake_service', 'fake_instance_c'),
     ]
