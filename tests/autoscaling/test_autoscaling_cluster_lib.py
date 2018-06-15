@@ -1205,7 +1205,10 @@ class TestClusterAutoscaler(unittest.TestCase):
             mock_set_capacity.return_value = True
             mock_master = mock.Mock()
             mock_mesos_state = mock.Mock()
-            mock_master.state_summary.return_value = mock_mesos_state
+            mock_master.state_summary = asynctest.CoroutineMock(
+                return_value=mock_mesos_state,
+                func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
+            )
             mock_get_mesos_master.return_value = mock_master
             mock_downscale_aws_resource.side_effect = just_sleep
 

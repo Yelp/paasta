@@ -94,8 +94,7 @@ class MesosSlaveConnectionError(Exception):
     pass
 
 
-@a_sync.to_blocking
-async def get_mesos_leader() -> str:
+def get_mesos_leader() -> str:
     """Get the current mesos-master leader's hostname.
     Attempts to determine this by using mesos.cli to query ZooKeeper.
 
