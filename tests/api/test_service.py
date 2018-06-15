@@ -15,6 +15,7 @@ import mock
 from pyramid import testing
 
 from paasta_tools.api.views.service import list_instances
+from paasta_tools.api.views.service import list_services_for_cluster
 
 
 @mock.patch('paasta_tools.api.views.service.list_all_instances_for_service', autospec=True)
@@ -29,3 +30,25 @@ def test_list_instances(
 
     response = list_instances(request)
     assert response['instances'] == fake_instances
+
+
+@mock.patch('paasta_tools.api.views.service.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.api.views.service.get_services_for_cluster', autospec=True)
+def test_list_services_for_cluster(
+    mock_get_services_for_cluster,
+    mock_list_all_instances_for_service,
+):
+    fake_service = ['fake_service']
+    mock_get_services_for_cluster.return_value = fake_service
+
+    fake_instances = ['fake_instance_a', 'fake_instance_b', 'fake_instance_c']
+    mock_list_all_instances_for_service.return_value = fake_instances
+
+    request = testing.DummyRequest()
+
+    response = list_services_for_cluster(request)
+    assert response['services'] == [
+        {'service': 'fake_service', 'instance': 'fake_instance_a'},
+        {'service': 'fake_service', 'instance': 'fake_instance_b'},
+        {'service': 'fake_service', 'instance': 'fake_instance_c'},
+    ]

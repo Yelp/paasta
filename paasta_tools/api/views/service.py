@@ -18,6 +18,7 @@ PaaSTA service list (instances) etc.
 from pyramid.view import view_config
 
 from paasta_tools.api import settings
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 
 
@@ -26,3 +27,14 @@ def list_instances(request):
     service = request.swagger_data.get('service')
     instances = list_all_instances_for_service(service, clusters=[settings.cluster])
     return {'instances': list(instances)}
+
+
+@view_config(route_name='service.cluster', request_method='GET', renderer='json')
+def list_services_for_cluster(request):
+    result = []
+    services_for_cluster = get_services_for_cluster(cluster=[settings.cluster])
+    for service_name in services_for_cluster:
+        all_service_instances = list_all_instances_for_service(service=service_name, clusters=[settings.cluster])
+        for service_instance in all_service_instances:
+            result.append({'service': service_name, 'instance': service_instance})
+    return {'services': result}
