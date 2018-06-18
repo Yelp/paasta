@@ -465,13 +465,11 @@ def get_kubernetes_services_running_here_for_nerve(
     return nerve_list
 
 
-def get_kubernetes_client(client_type='deployments'):
-    kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
-    kube_clients = {
-        'deployments': kube_client.AppsV1Api,
-        'core': kube_client.CoreV1Api,
-    }
-    return kube_clients[client_type]()
+class KubeClient():
+    def __init__(self):
+        kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
+        self.deployments = kube_client.AppsV1Api()
+        self.core = kube_client.CoreV1Api()
 
 
 def ensure_paasta_namespace(kube_client):
@@ -485,15 +483,15 @@ def ensure_paasta_namespace(kube_client):
             },
         },
     }
-    namespaces = kube_client.list_namespace()
+    namespaces = kube_client.core.list_namespace()
     namespace_names = [item.metadata.name for item in namespaces.items]
     if 'paasta' not in namespace_names:
         log.warning("Creating paasta namespace as it does not exist")
-        kube_client.create_namespace(body=paasta_namespace)
+        kube_client.core.create_namespace(body=paasta_namespace)
 
 
 def list_all_deployments(kube_client):
-    deployments = kube_client.list_namespaced_deployment(namespace='paasta')
+    deployments = kube_client.deployments.list_namespaced_deployment(namespace='paasta')
     return [
         KubeDeployment(
             service=item.metadata.labels['service'],
@@ -506,14 +504,14 @@ def list_all_deployments(kube_client):
 
 
 def create_deployment(kube_client, formatted_deployment_dict):
-    return kube_client.create_namespaced_deployment(
+    return kube_client.deployments.create_namespaced_deployment(
         namespace='paasta',
         body=formatted_deployment_dict,
     )
 
 
 def update_deployment(kube_client, formatted_deployment_dict):
-    return kube_client.patch_namespaced_deployment(
+    return kube_client.deployments.patch_namespaced_deployment(
         name=formatted_deployment_dict['metadata']['name'],
         namespace='paasta',
         body=formatted_deployment_dict,
