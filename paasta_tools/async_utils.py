@@ -1,22 +1,24 @@
 import asyncio
 import functools
 import time
+from typing import AsyncIterable
 from typing import Awaitable
 from typing import Callable
 from typing import Dict  # noqa: imported for typing
+from typing import List
 from typing import TypeVar
 
 
-_AsyncCacheRetT = TypeVar('_AsyncCacheRetT')
+T = TypeVar('T')
 
 
 def async_ttl_cache(
     ttl: int=300,
 ) -> Callable[
-    [Callable[..., Awaitable[_AsyncCacheRetT]]],  # wrapped
-    Callable[..., Awaitable[_AsyncCacheRetT]],  # inner
+    [Callable[..., Awaitable[T]]],  # wrapped
+    Callable[..., Awaitable[T]],  # inner
 ]:
-    _cache: Dict = {}  # Should be Dict[Any, _AsyncCacheRetT] but that doesn't work.
+    _cache: Dict = {}  # Should be Dict[Any, T] but that doesn't work.
 
     def outer(wrapped):
         @functools.wraps(wrapped)
@@ -33,5 +35,25 @@ def async_ttl_cache(
             value = await future
             _cache[key] = (future, time.time())
             return value
+        return inner
+    return outer
+
+
+async def aiter_to_list(
+    aiter: AsyncIterable[T],
+) -> List[T]:
+    return [x async for x in aiter]
+
+
+def async_timeout(
+    seconds: int=10,
+) -> Callable[
+    [Callable[..., Awaitable[T]]],  # wrapped
+    Callable[..., Awaitable[T]],  # inner
+]:
+    def outer(wrapped):
+        @functools.wraps(wrapped)
+        async def inner(*args, **kwargs):
+            return await asyncio.wait_for(wrapped(*args, **kwargs), timeout=seconds)
         return inner
     return outer

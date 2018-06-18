@@ -38,6 +38,8 @@ from kazoo.client import KazooClient
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools.async_utils import aiter_to_list
+from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
@@ -50,7 +52,6 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
 CHRONOS_FRAMEWORK_NAME = 'chronos'
@@ -356,8 +357,8 @@ async def format_non_running_mesos_task_row(task: Task, get_short_task_id: Calla
     )
 
 
-@timeout()
-def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
+@async_timeout()
+async def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     """Returns the formatted "tail" of stdout/stderr, for a given a task.
 
     :param get_short_task_id: A function which given a
@@ -368,7 +369,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     output = []
     mesos_cli_config = get_mesos_config()
     try:
-        fobjs = list(cluster.get_files_for_tasks(
+        fobjs = await aiter_to_list(cluster.get_files_for_tasks(
             task_list=[task],
             file_list=['stdout', 'stderr'],
             max_workers=mesos_cli_config["max_workers"],
@@ -380,14 +381,15 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
         for fobj in fobjs:
             output.append(PaastaColors.blue("      {} tail for {}".format(fobj.path, get_short_task_id(task['id']))))
             # read nlines, starting from EOF
-            # mesos.cli is smart and can efficiently read a file backwards
-            reversed_file = reversed(fobj)
             tail = []
-            for _ in range(nlines):
-                line = next(reversed_file, None)
-                if line is None:
-                    break
-                tail.append(line)
+            lines_seen = 0
+            if nlines > 0:
+                async for line in fobj._readlines_reverse():
+                    tail.append(line)
+                    lines_seen += 1
+                    if lines_seen >= nlines:
+                        break
+
             # reverse the tail, so that EOF is at the bottom again
             if tail:
                 output.extend(tail[::-1])
@@ -462,7 +464,7 @@ async def format_task_list(
     else:
         stdstreams = []
         for task in tasks:
-            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id, nlines=tail_lines))
+            stdstreams.append(await format_stdstreams_tail_for_task(task, get_short_task_id, nlines=tail_lines))
         output.append(tasks_table[0])  # header
         output.extend(zip_tasks_verbose_output(tasks_table[1:], stdstreams))
 
