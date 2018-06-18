@@ -12,10 +12,9 @@
 # limitations under the License.
 """
 """
-# A set of config attributes that don't get included in the hash of the config.
-# These should be things that PaaSTA/Kubernetes knows how to change without requiring a bounce.
 import copy
 import logging
+from collections import namedtuple
 from typing import Any
 from typing import Dict
 from typing import List
@@ -23,6 +22,8 @@ from typing import Optional
 from typing import Tuple
 
 import service_configuration_lib
+from kubernetes import client as kube_client
+from kubernetes import config as kube_config
 
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -44,7 +45,8 @@ from paasta_tools.utils import time_cache
 
 log = logging.getLogger(__name__)
 
-CONFIG_HASH_BLACKLIST = {'instances', 'backoff_seconds', 'min_instances', 'max_instances'}
+CONFIG_HASH_BLACKLIST = {'replicas'}
+KubeDeployment = namedtuple('KubeDeployment', ['service', 'instance', 'git_sha', 'config_sha', 'replicas'])
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -461,3 +463,58 @@ def get_kubernetes_services_running_here_for_nerve(
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list
+
+
+def get_kubernetes_client(client_type='deployments'):
+    kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
+    kube_clients = {
+        'deployments': kube_client.AppsV1Api,
+        'core': kube_client.CoreV1Api,
+    }
+    return kube_clients[client_type]()
+
+
+def ensure_paasta_namespace(kube_client):
+    paasta_namespace = {
+        "kind": "Namespace",
+        "apiVersion": "v1",
+        "metadata": {
+            "name": "paasta",
+            "labels": {
+                "name": "paasta",
+            },
+        },
+    }
+    namespaces = kube_client.list_namespace()
+    namespace_names = [item.metadata.name for item in namespaces.items]
+    if 'paasta' not in namespace_names:
+        log.warning("Creating paasta namespace as it does not exist")
+        kube_client.create_namespace(body=paasta_namespace)
+
+
+def list_all_deployments(kube_client):
+    deployments = kube_client.list_namespaced_deployment(namespace='paasta')
+    return [
+        KubeDeployment(
+            service=item.metadata.labels['service'],
+            instance=item.metadata.labels['instance'],
+            git_sha=item.metadata.labels['git_sha'],
+            config_sha=item.metadata.labels['config_sha'],
+            replicas=item.spec.replicas,
+        ) for item in deployments.items
+    ]
+
+
+def create_deployment(kube_client, formatted_deployment_dict):
+    return kube_client.create_namespaced_deployment(
+        namespace='paasta',
+        body=formatted_deployment_dict,
+    )
+
+
+def update_deployment(kube_client, formatted_deployment_dict):
+    return kube_client.patch_namespaced_deployment(
+        name=formatted_deployment_dict['metadata']['name'],
+        namespace='paasta',
+        body=formatted_deployment_dict,
+    )
