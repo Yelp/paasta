@@ -13,7 +13,7 @@ T = TypeVar('T')
 
 
 def async_ttl_cache(
-    ttl: int=300,
+    ttl: float=300,
 ) -> Callable[
     [Callable[..., Awaitable[T]]],  # wrapped
     Callable[..., Awaitable[T]],  # inner
