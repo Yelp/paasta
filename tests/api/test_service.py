@@ -32,21 +32,16 @@ def test_list_instances(
     assert response['instances'] == fake_instances
 
 
-@mock.patch('paasta_tools.api.views.service.get_service_instance_list', autospec=True)
 @mock.patch('paasta_tools.api.views.service.get_services_for_cluster', autospec=True)
 def test_list_services_for_cluster(
     mock_get_services_for_cluster,
-    mock_get_service_instance_list,
 ):
-    fake_services = ['fake_service']
-    mock_get_services_for_cluster.return_value = fake_services
-
-    fake_instances = [
+    fake_services_and_instances = [
         ('fake_service', 'fake_instance_a'),
         ('fake_service', 'fake_instance_b'),
         ('fake_service', 'fake_instance_c'),
     ]
-    mock_get_service_instance_list.return_value = fake_instances
+    mock_get_services_for_cluster.return_value = fake_services_and_instances
 
     request = testing.DummyRequest()
 

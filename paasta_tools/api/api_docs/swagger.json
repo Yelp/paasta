@@ -152,7 +152,7 @@
         ]
       }
     },
-    "/services/cluster": {
+    "/services": {
       "get": {
         "responses": {
           "200": {
@@ -163,7 +163,7 @@
                 "services": {
                   "type": "array",
                   "items": {
-                    "type": "object"
+                    "type": "array"
                   }
                 }
               }

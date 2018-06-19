@@ -75,6 +75,7 @@ def make_app(global_config=None):
     config.add_route('service.instance.tasks', '/v1/services/{service}/{instance}/tasks')
     config.add_route('service.instance.tasks.task', '/v1/services/{service}/{instance}/tasks/{task_id}')
     config.add_route('service.list', '/v1/services/{service}')
+    config.add_route('services', '/v1/services')
     config.add_route('service.autoscaler.get', '/v1/services/{service}/{instance}/autoscaler', request_method="GET")
     config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")
     config.add_route('service_autoscaler.pause.post', '/v1/service_autoscaler/pause', request_method="POST")
