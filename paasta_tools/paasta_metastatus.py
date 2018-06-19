@@ -16,7 +16,6 @@ import argparse
 import itertools
 import logging
 import sys
-from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -34,6 +33,7 @@ from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
+from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
 from paasta_tools.utils import format_table
@@ -107,7 +107,7 @@ def all_marathon_clients(marathon_clients):
 def utilization_table_by_grouping_from_mesos_state(
     groupings: Sequence[str],
     threshold: float,
-    mesos_state: Dict,
+    mesos_state: MesosState,
 ) -> Tuple[
     List[List[str]],
     bool,

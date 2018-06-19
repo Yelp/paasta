@@ -27,11 +27,11 @@ from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
-from typing import NewType
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import a_sync
 import boto3
 from botocore.exceptions import ClientError
 from mypy_extensions import TypedDict
@@ -39,6 +39,7 @@ from requests.exceptions import HTTPError
 
 from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.autoscaling import ec2_fitness
+from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
 from paasta_tools.mesos_tools import get_mesos_master
@@ -88,8 +89,6 @@ ResourcePoolSetting = TypedDict(
         'drain_timeout': int,
     },
 )
-
-MesosState = NewType('MesosState', Dict)
 
 CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
 DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
@@ -354,7 +353,7 @@ class ClusterAutoscaler(object):
             ) % MISSING_SLAVE_PANIC_THRESHOLD
             raise ClusterAutoscalingError(error_message)
 
-    def can_kill(
+    async def can_kill(
         self,
         hostname: str,
         should_drain: bool,
@@ -370,7 +369,7 @@ class ClusterAutoscaler(object):
         if not should_drain:
             self.log.info("Not draining, waiting %s longer before killing" % timer.left())
             return False
-        if is_safe_to_kill(hostname):
+        if await a_sync.run(is_safe_to_kill, hostname):
             self.log.info("Slave {} is ready to kill, with {} left on timer".format(hostname, timer.left()))
             timer.start()
             return True
@@ -411,7 +410,7 @@ class ClusterAutoscaler(object):
                     )
                     break
                 # Check if no tasks are running or we have reached the maintenance window
-                if self.can_kill(slave.hostname, should_drain, dry_run, timer):
+                if await self.can_kill(slave.hostname, should_drain, dry_run, timer):
                     self.log.info("TERMINATING: {} (Hostname = {}, IP = {})".format(
                         instance_id,
                         slave.hostname,
@@ -467,7 +466,7 @@ class ClusterAutoscaler(object):
             self.set_capacity(target_capacity)
             return
         elif delta < 0:
-            mesos_state = get_mesos_master().state_summary()
+            mesos_state = await get_mesos_master().state_summary()
             slaves_list = await get_mesos_task_count_by_slave(mesos_state, pool=self.resource['pool'])
             filtered_slaves = self.filter_aws_slaves(slaves_list)
             killable_capacity = round(sum([slave.instance_weight for slave in filtered_slaves]), 2)
@@ -538,7 +537,7 @@ class ClusterAutoscaler(object):
         if should_drain:
             try:
                 drain_host_string = f"{slave_to_kill.hostname}|{slave_to_kill.ip}"
-                drain(
+                await a_sync.to_async(drain)(
                     hostnames=[drain_host_string],
                     start=start,
                     duration=duration,
@@ -557,7 +556,7 @@ class ClusterAutoscaler(object):
             self.log.error("Couldn't update resource capacity, stopping autoscaler")
             self.log.info(f"Undraining {slave_to_kill.pid}")
             if should_drain:
-                undrain(
+                await a_sync.to_async(undrain)(
                     hostnames=[drain_host_string],
                     unreserve_resources=self.enable_maintenance_reservation,
                 )
@@ -573,7 +572,7 @@ class ClusterAutoscaler(object):
                 should_drain=should_drain,
             )
             if should_drain:
-                undrain(
+                await a_sync.to_async(undrain)(
                     hostnames=[drain_host_string],
                     unreserve_resources=self.enable_maintenance_reservation,
                 )
@@ -583,7 +582,7 @@ class ClusterAutoscaler(object):
             self.set_capacity(self.capacity - capacity_diff)
             self.log.info(f"Undraining {slave_to_kill.pid}")
             if should_drain:
-                undrain(
+                await a_sync.to_async(undrain)(
                     hostnames=[drain_host_string],
                     unreserve_resources=self.enable_maintenance_reservation,
                 )

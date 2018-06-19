@@ -23,7 +23,9 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Collection
+from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Union
@@ -36,10 +38,13 @@ from kazoo.client import KazooClient
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools.async_utils import aiter_to_list
+from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
+from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -47,7 +52,6 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
 CHRONOS_FRAMEWORK_NAME = 'chronos'
@@ -91,8 +95,7 @@ class MesosSlaveConnectionError(Exception):
     pass
 
 
-@a_sync.to_blocking
-async def get_mesos_leader() -> str:
+def get_mesos_leader() -> str:
     """Get the current mesos-master leader's hostname.
     Attempts to determine this by using mesos.cli to query ZooKeeper.
 
@@ -354,8 +357,8 @@ async def format_non_running_mesos_task_row(task: Task, get_short_task_id: Calla
     )
 
 
-@timeout()
-def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
+@async_timeout()
+async def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     """Returns the formatted "tail" of stdout/stderr, for a given a task.
 
     :param get_short_task_id: A function which given a
@@ -366,7 +369,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     output = []
     mesos_cli_config = get_mesos_config()
     try:
-        fobjs = list(cluster.get_files_for_tasks(
+        fobjs = await aiter_to_list(cluster.get_files_for_tasks(
             task_list=[task],
             file_list=['stdout', 'stderr'],
             max_workers=mesos_cli_config["max_workers"],
@@ -378,14 +381,15 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
         for fobj in fobjs:
             output.append(PaastaColors.blue("      {} tail for {}".format(fobj.path, get_short_task_id(task['id']))))
             # read nlines, starting from EOF
-            # mesos.cli is smart and can efficiently read a file backwards
-            reversed_file = reversed(fobj)
             tail = []
-            for _ in range(nlines):
-                line = next(reversed_file, None)
-                if line is None:
-                    break
-                tail.append(line)
+            lines_seen = 0
+            if nlines > 0:
+                async for line in fobj._readlines_reverse():
+                    tail.append(line)
+                    lines_seen += 1
+                    if lines_seen >= nlines:
+                        break
+
             # reverse the tail, so that EOF is at the bottom again
             if tail:
                 output.extend(tail[::-1])
@@ -460,7 +464,7 @@ async def format_task_list(
     else:
         stdstreams = []
         for task in tasks:
-            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id, nlines=tail_lines))
+            stdstreams.append(await format_stdstreams_tail_for_task(task, get_short_task_id, nlines=tail_lines))
         output.append(tasks_table[0])  # header
         output.extend(zip_tasks_verbose_output(tasks_table[1:], stdstreams))
 
@@ -746,7 +750,11 @@ def get_mesos_network_for_net(net):
     return docker_mesos_net_mapping.get(net, net)
 
 
-async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None):
+async def get_mesos_task_count_by_slave(
+    mesos_state: MesosState,
+    slaves_list: Sequence[Dict]=None,
+    pool: Optional[str]=None,
+) -> List[Dict]:
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
     :param mesos_state: mesos state dict
@@ -776,22 +784,22 @@ async def get_mesos_task_count_by_slave(mesos_state, slaves_list=None, pool=None
     if slaves_list:
         for slave in slaves_list:
             slave['task_counts'] = SlaveTaskCount(**slaves[slave['task_counts'].slave['id']])
-        slaves = slaves_list
+        slaves_with_counts = list(slaves_list)
     elif pool:
-        slaves = [
+        slaves_with_counts = [
             {'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()
             if slave_counts['slave']['attributes'].get('pool', 'default') == pool
         ]
     else:
-        slaves = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
-    for slave in slaves:
+        slaves_with_counts = [{'task_counts': SlaveTaskCount(**slave_counts)} for slave_counts in slaves.values()]
+    for slave in slaves_with_counts:
         log.debug("Slave: {}, running {} tasks, "
                   "including {} chronos tasks".format(
                       slave['task_counts'].slave['hostname'],
                       slave['task_counts'].count,
                       slave['task_counts'].chronos_count,
                   ))
-    return slaves
+    return slaves_with_counts
 
 
 def get_count_running_tasks_on_slave(hostname):

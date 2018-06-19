@@ -16,7 +16,7 @@
 import os
 
 from . import exceptions
-from . import util
+from paasta_tools.async_utils import async_ttl_cache
 
 
 class File(object):
@@ -31,7 +31,7 @@ class File(object):
         if self.task is None:
             self._host_path = self.path
         else:
-            self._host_path = os.path.join(self.task.directory, self.path)
+            self._host_path = None  # Defer until later (_fetch) so we don't make HTTP requests in __init__.
 
         self._offset = 0
 
@@ -41,10 +41,6 @@ class File(object):
             "offset": -1,
             "length": self.chunk_size,
         }
-
-    def __iter__(self):
-        for line in self._readlines():
-            yield line
 
     def __eq__(self, y):
         return self.key() == y.key()
@@ -65,22 +61,19 @@ class File(object):
     def _where(self):
         return self.task["id"] if self.task is not None else self.host.key()
 
-    def __reversed__(self):
-        for i, line in enumerate(self._readlines_reverse()):
-            # Don't include the terminator when reading in reverse.
-            if i == 0 and line == "":
-                continue
-            yield line
+    async def _fetch(self):
+        # fill in path if it wasn't set in __init__
+        if self._params["path"] is None:
+            self._params["path"] = os.path.join(await self.task.directory(), self.path)
 
-    def _fetch(self):
-        resp = self.host.fetch("/files/read.json", params=self._params)
-        if resp.status_code == 404:
+        resp = await self.host.fetch("/files/read.json", params=self._params)
+        if resp.status == 404:
             raise exceptions.FileDoesNotExist("No such file or directory.")
-        return resp.json()
+        return await resp.json()
 
-    def exists(self):
+    async def exists(self):
         try:
-            self.size
+            await self.size()
             return True
         except exceptions.FileDoesNotExist:
             return False
@@ -91,17 +84,17 @@ class File(object):
     # look at the size to determine where to seek. Instead of requiring
     # multiple requests to the slave, the size is cached for a very short
     # period of time.
-    @util.CachedProperty(ttl=0.5)
-    def size(self):
-        return self._fetch()["offset"]
+    @async_ttl_cache(ttl=0.5)
+    async def size(self):
+        return (await self._fetch())["offset"]
 
-    def seek(self, offset, whence=os.SEEK_SET):
+    async def seek(self, offset, whence=os.SEEK_SET):
         if whence == os.SEEK_SET:
             self._offset = 0 + offset
         elif whence == os.SEEK_CUR:
             self._offset += offset
         elif whence == os.SEEK_END:
-            self._offset = self.size + offset
+            self._offset = await self.size() + offset
 
     def tell(self):
         return self._offset
@@ -111,23 +104,20 @@ class File(object):
             return size - (self.tell() - start)
         return self.chunk_size
 
-    def _get_chunk(self, loc, size=None):
+    async def _get_chunk(self, loc, size=None):
         if size is None:
             size = self.chunk_size
 
-        self.seek(loc, os.SEEK_SET)
+        await self.seek(loc, os.SEEK_SET)
         self._params["offset"] = loc
         self._params["length"] = size
 
-        data = self._fetch()["data"]
-        self.seek(len(data), os.SEEK_CUR)
+        data = (await self._fetch())["data"]
+        await self.seek(len(data), os.SEEK_CUR)
         return data
 
-    def _read(self, size=None):
+    async def _read(self, size=None):
         start = self.tell()
-
-        def fn():
-            return self._get_chunk(self.tell(), size=self._length(start, size))
 
         def pre(x):
             return x == ""
@@ -135,11 +125,13 @@ class File(object):
         def post(x):
             return size and (self.tell() - start) >= size
 
-        for blob in util.iter_until(fn, pre, post):
+        blob = None
+        while blob != "" and not (size and (self.tell() - start) >= size):
+            blob = await self._get_chunk(self.tell(), size=self._length(start, size))
             yield blob
 
-    def _read_reverse(self, size=None):
-        fsize = self.size
+    async def _read_reverse(self, size=None):
+        fsize = await self.size()
         if not size:
             size = fsize
 
@@ -150,20 +142,13 @@ class File(object):
                 yield current
 
         for pos in next_block():
-            yield self._get_chunk(pos)
+            yield await self._get_chunk(pos)
 
-        yield self._get_chunk(fsize - size, size % self.chunk_size)
+        yield await self._get_chunk(fsize - size, size % self.chunk_size)
 
-    def read(self, size=None):
-        return ''.join(self._read(size))
-
-    def readline(self, size=None):
-        for line in self._readlines(size):
-            return line
-
-    def _readlines(self, size=None):
+    async def _readlines(self, size=None):
         last = ""
-        for blob in self._read(size):
+        async for blob in self._read(size):
 
             # This is not streaming and assumes small chunk sizes
             blob_lines = (last + blob).split("\n")
@@ -172,9 +157,9 @@ class File(object):
 
             last = blob_lines[-1]
 
-    def _readlines_reverse(self, size=None):
+    async def _readlines_reverse(self, size=None):
         buf = ""
-        for blob in self._read_reverse(size):
+        async for blob in self._read_reverse(size):
 
             blob_lines = (blob + buf).split("\n")
             for line in reversed(blob_lines[1:]):
@@ -182,6 +167,3 @@ class File(object):
 
             buf = blob_lines[0]
         yield buf
-
-    def readlines(self, size=None):
-        return list(self._readlines(size))

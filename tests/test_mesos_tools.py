@@ -518,6 +518,7 @@ def test_zip_tasks_verbose_output(test_case):
     assert result == expected
 
 
+@mark.asyncio
 @mark.parametrize(
     'test_case', [
         # task_id, file1, file2, nlines, raise_what
@@ -542,7 +543,7 @@ def test_zip_tasks_verbose_output(test_case):
         ['a_task', None, None, 10, utils.TimeoutError],
     ],
 )
-def test_format_stdstreams_tail_for_task(
+async def test_format_stdstreams_tail_for_task(
     test_case,
 ):
     def gen_mesos_cli_fobj(file_path, file_lines):
@@ -550,28 +551,25 @@ def test_format_stdstreams_tail_for_task(
         returns a list of mesos.cli.mesos_file.File
         `File` is an iterator-like object.
         """
-        fake_iter = mock.MagicMock()
-        fake_iter.return_value = reversed(file_lines)
+        async def _readlines_reverse():
+            for line in reversed(file_lines):
+                yield line
         fobj = mock.create_autospec(mesos.mesos_file.File)
         fobj.path = file_path
-        fobj.__reversed__ = fake_iter
+        fobj._readlines_reverse = _readlines_reverse
         return fobj
 
     def get_short_task_id(task_id):
         return task_id
 
     def gen_mock_cluster_files(file1, file2, raise_what):
-        def retfunc(*args, **kwargs):
+        async def mock_cluster_files(*args, **kwargs):
             # If we're asked to raise a particular exception we do so.
             # .message is set to the exception class name.
             if raise_what:
                 raise raise_what(raise_what)
-            return [
-                gen_mesos_cli_fobj(file1[0], file1[1]),
-                gen_mesos_cli_fobj(file2[0], file2[1]),
-            ]
-        mock_cluster_files = mock.MagicMock()
-        mock_cluster_files.side_effect = retfunc
+            yield gen_mesos_cli_fobj(file1[0], file1[1])
+            yield gen_mesos_cli_fobj(file2[0], file2[1])
         return mock_cluster_files
 
     def gen_output(task_id, file1, file2, nlines, raise_what):
@@ -598,7 +596,7 @@ def test_format_stdstreams_tail_for_task(
     expected = gen_output(task_id, file1, file2, nlines, raise_what)
     with asynctest.patch('paasta_tools.mesos_tools.get_mesos_config', autospec=True):
         with asynctest.patch('paasta_tools.mesos_tools.cluster.get_files_for_tasks', mock_cluster_files, autospec=None):
-            result = mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
+            result = await mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
             assert result == expected
 
 

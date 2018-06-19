@@ -19,12 +19,14 @@ import json
 import logging
 import os
 import re
+from typing import List
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 
 import aiohttp
 from kazoo.handlers.threading import KazooTimeoutError
 from kazoo.retry import KazooRetry
+from mypy_extensions import TypedDict
 from retry import retry
 
 from . import exceptions
@@ -50,6 +52,14 @@ more examples."""
 MULTIPLE_SLAVES = "There are multiple slaves with that id. Please choose one: "
 
 logger = logging.getLogger(__name__)
+
+
+MesosState = TypedDict(
+    'MesosState',
+    {
+        'slaves': List,
+    },
+)
 
 
 class MesosMaster(object):
@@ -197,10 +207,10 @@ class MesosMaster(object):
             return cfg
 
     @async_ttl_cache(ttl=15)
-    async def state(self):
+    async def state(self) -> MesosState:
         return await (await self.fetch("/master/state.json", cached=True)).json()
 
-    async def state_summary(self):
+    async def state_summary(self) -> MesosState:
         return await (await self.fetch("/master/state-summary")).json()
 
     @async_ttl_cache(ttl=0)
