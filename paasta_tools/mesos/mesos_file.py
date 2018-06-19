@@ -146,13 +146,6 @@ class File(object):
 
         yield await self._get_chunk(fsize - size, size % self.chunk_size)
 
-    # def read(self, size=None):
-    #     return ''.join(self._read(size))
-
-    # def readline(self, size=None):
-    #     for line in self._readlines(size):
-    #         return line
-
     async def _readlines(self, size=None):
         last = ""
         async for blob in self._read(size):
@@ -174,6 +167,3 @@ class File(object):
 
             buf = blob_lines[0]
         yield buf
-
-    # def readlines(self, size=None):
-    #     return list(self._readlines(size))
