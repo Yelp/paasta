@@ -32,11 +32,25 @@ def test_modify_command_for_date(mock_parse_time_variables):
     actual = chronos_rerun.modify_command_for_date(
         fake_chronos_job_config,
         datetime.datetime.now(),
+        False,
     )
 
     assert actual == {
         'command': '2016-03-17',
     }
+
+
+def test_modify_command_for_date_no_command():
+    fake_chronos_job_config = {
+        'command': None,
+        'name': "service instance",
+    }
+    actual = chronos_rerun.modify_command_for_date(
+        fake_chronos_job_config,
+        datetime.datetime.now(),
+        True,
+    )
+    assert actual == fake_chronos_job_config
 
 
 def test_remove_parents():
@@ -96,7 +110,7 @@ def test_clone_job_dependent_jobs(
     timestamp = '2017-06-12T11:59:45.583867'
     timestamp_chronos_name = '2017-06-12T115945583867'
 
-    mock_modify_command_for_date.side_effect = lambda job, date: job
+    mock_modify_command_for_date.side_effect = lambda job, date, verbose: job
     mock_get_job_type.return_value = chronos_tools.JobType.Dependent
 
     cloned_job = chronos_rerun.clone_job(

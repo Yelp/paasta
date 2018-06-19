@@ -63,7 +63,7 @@ def parse_args():
     return args
 
 
-def modify_command_for_date(chronos_job, date):
+def modify_command_for_date(chronos_job, date, verbose):
     """
     Given a chronos job config, return a cloned job config where the command
     has been modified to reflect what it would have run as on
@@ -76,7 +76,12 @@ def modify_command_for_date(chronos_job, date):
         interpolate in the context of the date provided.
     """
     current_command = chronos_job['command']
-    chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date)
+    if current_command is not None:
+        chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date)
+    else:
+        if verbose:
+            job_name = ".".join(chronos_tools.decompose_job_id(chronos_job['name']))
+            paasta_print(f'command in job {job_name} is empty - skipping formatting and depending on command in image')
     return chronos_job
 
 
@@ -140,7 +145,7 @@ def remove_parents(chronos_job):
     return chronos_job
 
 
-def clone_job(chronos_job, date, timestamp=None, force_disabled=False):
+def clone_job(chronos_job, date, timestamp=None, force_disabled=False, verbose=False):
     """
     Given a chronos job, create a 'rerun' clone that respects the parents relations.
     If the job has his own schedule it will be executed once and only once, and as soon as possible.
@@ -177,7 +182,7 @@ def clone_job(chronos_job, date, timestamp=None, force_disabled=False):
         clone['disabled'] = False
 
     # modify the command to run commands for a given date
-    clone = modify_command_for_date(clone, date)
+    clone = modify_command_for_date(clone, date, verbose)
     return clone
 
 
@@ -262,6 +267,7 @@ def main():
             date=datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"),
             timestamp=timestamp,
             force_disabled=args.force_disabled,
+            verbose=args.verbose,
         )
 
         if not args.run_all_related_jobs and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent:
