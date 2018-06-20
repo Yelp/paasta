@@ -21,6 +21,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
+import requests
 import service_configuration_lib
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
@@ -47,6 +48,7 @@ log = logging.getLogger(__name__)
 
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KubeDeployment = namedtuple('KubeDeployment', ['service', 'instance', 'git_sha', 'config_sha', 'replicas'])
+KubeService = namedtuple('KubeService', ['name', 'instance', 'port', 'pod_ip'])
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -461,10 +463,32 @@ def read_all_registrations_for_service_instance(
     return kubernetes_service_config.get_registrations()
 
 
+def get_kubernetes_services_running_here() -> List[KubeService]:
+    services = []
+    pods = requests.get('http://127.0.0.1:10255/pods').json()
+    for pod in pods['items']:
+        if pod['status']['phase'] != 'Running' or pod['metadata']['namespace'] != 'paasta':
+            continue
+        try:
+            services.append(KubeService(
+                name=pod['metadata']['labels']['service'],
+                instance=pod['metadata']['labels']['instance'],
+                port=8888,
+                pod_ip=pod['status']['podIP'],
+            ))
+        except KeyError as e:
+            log.warning(f"Found running paasta pod but missing {e} key so not registering with nerve")
+    return services
+
+
 def get_kubernetes_services_running_here_for_nerve(
     cluster: str,
     soa_dir: str,
 ) -> List[Tuple[str, ServiceNamespaceConfig]]:
+    system_paasta_config = load_system_paasta_config()
+    if not system_paasta_config.get_register_k8s_pods():
+        return []
+    cluster = system_paasta_config.get_cluster()
     if not cluster:
         try:
             cluster = load_system_paasta_config().get_cluster()
@@ -475,12 +499,12 @@ def get_kubernetes_services_running_here_for_nerve(
         except (PaastaNotConfiguredError):
             return []
     # TODO!
-    kubernetes_services = []
+    kubernetes_services = get_kubernetes_services_running_here()
     nerve_list = []
-    for name, instance, port in kubernetes_services:
+    for kubernetes_service in kubernetes_services:
         try:
             registrations = read_all_registrations_for_service_instance(
-                name, instance, cluster, soa_dir,
+                kubernetes_service.name, kubernetes_service.instance, cluster, soa_dir,
             )
             for registration in registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
@@ -489,7 +513,9 @@ def get_kubernetes_services_running_here_for_nerve(
                 )
                 if not nerve_dict.is_in_smartstack():
                     continue
-                nerve_dict['port'] = port
+                nerve_dict['port'] = kubernetes_service.port
+                nerve_dict['service_ip'] = kubernetes_service.pod_ip
+                nerve_dict['hacheck_ip'] = kubernetes_service.pod_ip
                 nerve_list.append((registration, nerve_dict))
         except (KeyError, NoConfigurationForServiceError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up

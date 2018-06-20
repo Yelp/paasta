@@ -1824,6 +1824,9 @@ class SystemPaastaConfig(object):
         are UP on the local synapse haproxy"""
         return self.config_dict.get('enable_nerve_readiness_check', True)
 
+    def get_register_k8s_pods(self) -> bool:
+        return self.config_dict.get('register_k8s_pods', True)
+
     def get_nerve_readiness_check_script(self) -> str:
         """Script to check service is up in smartstack"""
         return self.config_dict.get('nerve_readiness_check_script', '/check_smartstack_up.sh')
