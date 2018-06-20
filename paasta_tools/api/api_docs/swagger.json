@@ -152,6 +152,31 @@
         ]
       }
     },
+    "/services": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Services and their instances on the current cluster",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "services": {
+                  "type": "array",
+                  "items": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List service names and service instance names on the current cluster",
+        "operationId": "list_services_for_cluster",
+        "tags": [
+          "service"
+        ]
+      }
+    },
     "/services/{service}": {
       "get": {
         "responses": {
