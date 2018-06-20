@@ -198,6 +198,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_bounce_method(self) -> str:
         """Get the bounce method specified in the service's kubernetes configuration."""
+        # map existing bounce methods to k8s equivalents.
         kube_deploy_stategy_map = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
         return kube_deploy_stategy_map[self.config_dict.get('bounce_method', 'crossover')]
 
@@ -205,6 +206,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         strategy_dict = {}
         strategy_dict['type'] = self.get_bounce_method()
         if self.get_bounce_method() == 'RollingUpdate':
+            # this translates bounce_margin to k8s speak maxUnavailable
+            # for now we keep max_surge 100% but we could customise later
             strategy_dict['rollingUpdate'] = {
                 "maxSurge": '100%',
                 "maxUnavailable": "{}%".format(int((1 - self.get_bounce_margin_factor()) * 100)),
@@ -212,11 +215,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return strategy_dict
 
     def get_sanitised_volume_name(self, volume_name) -> str:
+        """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip('/')
         sanitised = volume_name.replace('/', 'slash-')
         return sanitised.replace('_', '--')
 
-    def get_sidecar_containers(self) -> List:
+    def get_sidecar_containers(self, system_paasta_config) -> List:
         registrations = " ".join(self.get_registrations())
         hacheck_sidecar = {
             "image": system_paasta_config.get_hacheck_sidecar_image_url(),
@@ -232,6 +236,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 },
             },
             "name": "hacheck",
+            "env": self.get_kubernetes_environment(),
             "ports": [
                 {
                     "containerPort": 6666,
@@ -244,12 +249,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 },
             ],
         }
+        # s_m_j currently asserts that services are healthy in smartstack before
+        # continuing a bounce. this readinees check lets us acheive the same thing
+        if system_paasta_config.get_enable_nerve_readiness_check():
+            hacheck_sidecar['readinessProbe'] = {
+                'exec': {
+                    'initialDelaySeconds': 10,
+                    'periodSeconds': 10,
+                    'command': [
+                        system_paasta_config.get_nerve_readiness_check_script(),
+                    ] + self.get_registrations(),
+                },
+            }
         return [hacheck_sidecar]
 
     def get_container_env(self) -> List:
-        return [{'name': name, 'value': value} for name, value in self.get_env().items()]
+        user_env = [{'name': name, 'value': value} for name, value in self.get_env().items()]
+        return user_env + self.get_kubernetes_environment()
 
-    def get_kubernetes_containers(self, volumes) -> List:
+    def get_kubernetes_environment(self) -> List:
+        kubernetes_env = [{
+            'name': 'PAASTA_POD_IP',
+            'valueFrom': {
+                'fieldRef': {
+                    'fieldPath': 'status.podIP',
+                },
+            },
+        }]
+        return kubernetes_env
+
+    def get_kubernetes_containers(self, volumes, system_paasta_config) -> List:
         service_container = {
             "image": self.get_docker_url(),
             "cmd": self.get_cmd(),
@@ -287,7 +316,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ],
             "volumeMounts": self.get_volume_mounts(volumes=volumes),
         }
-        containers = [service_container] + self.get_sidecar_containers()
+        containers = [service_container] + self.get_sidecar_containers(system_paasta_config=system_paasta_config)
         return containers
 
     def get_pod_volumes(self, volumes) -> List:
@@ -359,7 +388,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         },
                     },
                     "spec": {
-                        "containers": self.get_kubernetes_containers(volumes=docker_volumes),
+                        "containers": self.get_kubernetes_containers(
+                            volumes=docker_volumes,
+                            system_paasta_config=system_paasta_config,
+                        ),
                         "restartPolicy": "Always",
                         "volumes": self.get_pod_volumes(docker_volumes) + [{
                             "emptyDir": {},

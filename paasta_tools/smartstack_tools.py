@@ -306,6 +306,31 @@ def get_registered_marathon_tasks(
     return healthy_tasks
 
 
+def are_services_up_on_ip_port(
+    synapse_host,
+    synapse_port,
+    synapse_haproxy_url_format,
+    services,
+    host_ip,
+    host_port,
+):
+    backends = get_multiple_backends(
+        services, synapse_host=synapse_host, synapse_port=synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
+    )
+    backends_by_ip_port: DefaultDict[Tuple[str, int], List[HaproxyBackend]] = collections.defaultdict(list)
+
+    for backend in backends:
+        ip, port, _ = ip_port_hostname_from_svname(backend['svname'])
+        backends_by_ip_port[ip, port].append(backend)
+
+    backends_on_ip = backends_by_ip_port[host_ip, host_port]
+    are_services_up = all([backend_is_up(be) for be in backends_on_ip])
+    services_on_ip = [be['pxname'] for be in backends_on_ip]
+    all_services_present = all([service in services_on_ip for service in services])
+    return all_services_present and are_services_up
+
+
 def match_backends_and_tasks(backends, tasks):
     """Returns tuples of matching (backend, task) pairs, as matched by IP and port. Each backend will be listed exactly
     once, and each task will be listed once per port. If a backend does not match with a task, (backend, None) will
