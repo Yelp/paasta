@@ -215,6 +215,14 @@ class SlackDeployNotifier(object):
         self.old_commit = self.lookup_production_deploy_group_sha() or old_commit
         self.git_url = git_url
         self.authors = self.get_authors_to_be_notified()
+        self.url = self.get_url()
+
+    def get_url(self):
+        if os.environ.get("JENKINS_URL", None) is not None:
+            build_url = os.environ["JENKINS_URL"]
+            return f"{build_url}consoleFull"
+        else:
+            return ""
 
     def lookup_production_deploy_group_sha(self):
         prod_deploy_group = self.deploy_info.get('production_deploy_group', None)
@@ -255,7 +263,8 @@ class SlackDeployNotifier(object):
                 mes = (
                     f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*.\n"
                     "Will start deploying soon!\n"
-                    f"{self.authors}"
+                    f"{self.authors}\n"
+                    f"{self.url}"
                 )
                 self.post(channels=self.channels, message=mes)
                 mes = (
@@ -280,7 +289,8 @@ class SlackDeployNotifier(object):
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
-                f"{self.authors}"
+                f"{self.authors}\n"
+                f"{self.url}"
             )
             self.post(channels=self.channels, message=message)
             mes = (
@@ -294,7 +304,8 @@ class SlackDeployNotifier(object):
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
-                f"Auto-rolling back to {self.old_commit}"
+                f"Auto-rolling back to {self.old_commit}\n"
+                f"{self.url}"
             )
             self.post(channels=self.channels, message=message)
 
@@ -302,7 +313,8 @@ class SlackDeployNotifier(object):
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*.\n"
-                "PaaSTA will keep trying to deploy this code until it is healthy."
+                "PaaSTA will keep trying to deploy this code until it is healthy.\n"
+                f"{self.url}"
             )
             self.post(channels=self.channels, message=message)
             mes = (
