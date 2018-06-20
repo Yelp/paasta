@@ -42,6 +42,10 @@ install: pip install coveralls tox tox-pip-extensions
 script: if [[ -n "$MAKE_TARGET" ]]; then make "$MAKE_TARGET"; else tox -i https://pypi.python.org/simple; fi
 after_success:
   - coveralls
+before_deploy:
+  - sudo find . -name '*.pyc' -delete
+  - sudo find . -name '__pycache__' -delete
+  - sudo rm -rf paasta_tools.egg-info
 deploy:
   - provider: pypi
     user: yelplabs
