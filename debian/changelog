@@ -1,3 +1,11 @@
+paasta-tools (0.74.8) xenial; urgency=medium
+
+  * 0.74.8 tagged with 'make release'
+    Commit: Merge pull request #1867 from Yelp/fix-deploy-maybe  Maybe
+    fix pypi upload
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 20 Jun 2018 09:11:59 -0700
+
 paasta-tools (0.74.7) xenial; urgency=medium
 
   * 0.74.7 tagged with 'make release'
