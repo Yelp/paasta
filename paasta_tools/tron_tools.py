@@ -266,8 +266,13 @@ def format_volumes(paasta_volume_list):
     ]
 
 
-def format_master_config(master_config, default_volumes):
-    master_config['default_volumes'] = format_volumes(default_volumes)
+def format_master_config(master_config, default_volumes, dockercfg_location):
+    mesos_options = master_config.get('mesos_options', {})
+    mesos_options.update({
+        'default_volumes': format_volumes(default_volumes),
+        'dockercfg_location': dockercfg_location,
+    })
+    master_config['mesos_options'] = mesos_options
     return master_config
 
 
@@ -379,6 +384,7 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
         other_config = format_master_config(
             other_config,
             system_paasta_config.get_volumes(),
+            system_paasta_config.get_dockercfg_location(),
         )
 
     other_config['jobs'] = [

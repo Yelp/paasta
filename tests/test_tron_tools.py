@@ -321,26 +321,34 @@ class TestTronTools:
         master_config = {
             'some_key': 101,
             'another': 'hello',
-            'default_volumes': [{
-                'container_path': '/nail/tmp',
-                'host_path': '/nail/tmp',
-                'mode': 'RW',
-            }],
+            'mesos_options': {
+                'default_volumes': [{
+                    'container_path': '/nail/tmp',
+                    'host_path': '/nail/tmp',
+                    'mode': 'RW',
+                }],
+                'other_mesos': True,
+            },
         }
         paasta_volumes = [{
             'containerPath': '/nail/other',
             'hostPath': '/other/home',
             'mode': 'RW',
         }]
-        result = tron_tools.format_master_config(master_config, paasta_volumes)
+        dockercfg = 'file://somewhere'
+        result = tron_tools.format_master_config(master_config, paasta_volumes, dockercfg)
         assert result == {
             'some_key': 101,
             'another': 'hello',
-            'default_volumes': [{
-                'container_path': '/nail/other',
-                'host_path': '/other/home',
-                'mode': 'RW',
-            }],
+            'mesos_options': {
+                'default_volumes': [{
+                    'container_path': '/nail/other',
+                    'host_path': '/other/home',
+                    'mode': 'RW',
+                }],
+                'dockercfg_location': dockercfg,
+                'other_mesos': True,
+            },
         }
 
     def test_format_tron_action_dict_default_executor(self):
@@ -560,6 +568,7 @@ class TestTronTools:
             mock_format_master_config.assert_called_once_with(
                 other_config,
                 mock_system_config.return_value.get_volumes.return_value,
+                mock_system_config.return_value.get_dockercfg_location.return_value,
             )
         else:
             assert mock_format_master_config.call_count == 0
