@@ -1714,7 +1714,7 @@ def test_decrypt_secret_environment_variables():
         assert ret == mock_secret_provider.decrypt_environment.return_value
 
         mock_secret_provider.decrypt_environment.side_effect = KeyError
-        with raises(KeyError):
+        with raises(SystemExit):
             decrypt_secret_environment_variables(
                 secret_provider_name='vault',
                 environment=mock_environment,
