@@ -128,7 +128,7 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         '-C', '--cmd',
-        help="Run Spark with the spark-shell, pyspark, spark-submit or jupyter command.",
+        help="Run the spark-shell, pyspark, spark-submit, jupyter, or history-server command.",
         default='pyspark',
     )
 
@@ -262,7 +262,8 @@ def get_docker_run_cmd(
 
     sensitive_env = {}
 
-    if 'spark-submit' not in docker_cmd and 'jupyter' not in docker_cmd:
+    non_interactive_cmd = ['spark-submit', 'jupyter', 'history-server']
+    if not any(c in docker_cmd for c in non_interactive_cmd):
         cmd.append('--interactive=true')
         if sys.stdout.isatty():
             cmd.append('--tty=true')
@@ -288,6 +289,7 @@ def get_docker_run_cmd(
 def get_spark_env(
     args,
     spark_conf,
+    spark_ui_port,
 ):
     spark_env = {}
 
@@ -304,6 +306,20 @@ def get_spark_env(
         dirs = args.work_dir.split(':')
         spark_env['JUPYTER_RUNTIME_DIR'] = dirs[1] + '/.jupyter'
         spark_env['JUPYTER_DATA_DIR'] = dirs[1] + '/.jupyter'
+    elif args.cmd == 'history-server':
+        dirs = args.work_dir.split(':')
+        spark_env['SPARK_LOG_DIR'] = dirs[1]
+        if not args.spark_args or not args.spark_args.startswith('spark.history.fs.logDirectory'):
+            paasta_print(
+                "history-server requires spark.history.fs.logDirectory in spark-args",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        spark_env['SPARK_HISTORY_OPTS'] = '-D%s -Dspark.history.ui.port=%d' % (
+            args.spark_args,
+            spark_ui_port,
+        )
+        spark_env['SPARK_NO_DAEMONIZE'] = 'true'
 
     return spark_env
 
@@ -539,10 +555,14 @@ def configure_and_run_docker_container(
         get_spark_env(
             args,
             spark_conf_str,
+            spark_ui_port,
         ),
     )
 
-    paasta_print('\nSpark Monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
+    if 'history-server' in docker_cmd:
+        paasta_print('\nSpark history server URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
+    elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'jupyter']):
+        paasta_print('\nSpark monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
 
     return run_docker_container(
         container_name=container_name,
@@ -568,6 +588,8 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
         return 'jupyter notebook -y --ip={} --notebook-dir={} {}'.format(
             socket.getfqdn(), args.work_dir.split(':')[1], cull_opts,
         )
+    elif original_docker_cmd == 'history-server':
+        return 'start-history-server.sh'
     # Spark options are passed as options to pyspark and spark-shell.
     # For jupyter, environment variable SPARK_OPTS is set instead.
     else:
