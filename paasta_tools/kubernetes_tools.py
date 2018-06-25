@@ -485,20 +485,19 @@ def get_kubernetes_services_running_here_for_nerve(
     cluster: str,
     soa_dir: str,
 ) -> List[Tuple[str, ServiceNamespaceConfig]]:
-    system_paasta_config = load_system_paasta_config()
-    if not system_paasta_config.get_register_k8s_pods():
-        return []
-    cluster = system_paasta_config.get_cluster()
-    if not cluster:
-        try:
-            cluster = load_system_paasta_config().get_cluster()
+    try:
+        system_paasta_config = load_system_paasta_config()
+        if not cluster:
+            cluster = system_paasta_config.get_cluster()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
         # there must be no kubernetes services running here, so we catch
         # these custom exceptions and return [].
-        except (PaastaNotConfiguredError):
+        if not system_paasta_config.get_register_k8s_pods():
             return []
-    # TODO!
+    except PaastaNotConfiguredError:
+        log.warning("No PaaSTA config so skipping registering k8s pods in nerve")
+        return []
     kubernetes_services = get_kubernetes_services_running_here()
     nerve_list = []
     for kubernetes_service in kubernetes_services:

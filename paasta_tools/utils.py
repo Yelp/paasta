@@ -1825,7 +1825,16 @@ class SystemPaastaConfig(object):
         return self.config_dict.get('enable_nerve_readiness_check', True)
 
     def get_register_k8s_pods(self) -> bool:
-        return self.config_dict.get('register_k8s_pods', True)
+        """Enable registration of k8s services in nerve"""
+        return self.config_dict.get('register_k8s_pods', False)
+
+    def get_register_marathon_services(self) -> bool:
+        """Enable registration of marathon services in nerve"""
+        return self.config_dict.get('register_marathon_services', True)
+
+    def get_register_native_services(self) -> bool:
+        """Enable registration of native paasta services in nerve"""
+        return self.config_dict.get('register_native_services', False)
 
     def get_nerve_readiness_check_script(self) -> str:
         """Script to check service is up in smartstack"""

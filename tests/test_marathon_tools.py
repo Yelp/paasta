@@ -734,7 +734,7 @@ class TestMarathonTools:
             autospec=True,
             return_value=[],
         ):
-            load_system_paasta_config_patch.return_value.get_cluster \
+            load_system_paasta_config_patch.return_value \
                 = mock.Mock(side_effect=marathon_tools.PaastaNotConfiguredError)
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
@@ -750,7 +750,7 @@ class TestMarathonTools:
             autospec=True,
             return_value=[],
         ):
-            load_system_paasta_config_patch.return_value.get_cluster \
+            load_system_paasta_config_patch.return_value \
                 = mock.Mock(side_effect=marathon_tools.PaastaNotConfiguredError)
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
