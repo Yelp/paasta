@@ -565,9 +565,14 @@ def decrypt_secret_environment_variables(
             cluster_names=[cluster_name],
             secret_provider_kwargs=secret_provider_kwargs,
         )
-        secret_environment = secret_provider.decrypt_environment(
-            secret_env_vars,
-        )
+        try:
+            secret_environment = secret_provider.decrypt_environment(
+                secret_env_vars,
+            )
+        except Exception as e:
+            paasta_print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
+            paasta_print("If you don't need the secrets for local-run, you can add --skip-secrets")
+            sys.exit(1)
     return secret_environment
 
 

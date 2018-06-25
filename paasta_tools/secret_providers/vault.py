@@ -10,10 +10,15 @@ try:
     from vault_tools.gpg import TempGpgKeyring
     from vault_tools.paasta_secret import encrypt_secret
 except ImportError:
-    get_plaintext = None
-    get_vault_client = None
+    def get_plaintext(*args: Any, **kwargs: Any) -> bytes:
+        return b"No plain text available without vault_tools"
+
+    def get_vault_client(*args: Any, **kwargs: Any) -> None:
+        return None
     TempGpgKeyring = None
-    encrypt_secret = None
+
+    def encrypt_secret(*args: Any, **kwargs: Any) -> None:
+        return None
 
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.utils import paasta_print
