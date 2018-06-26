@@ -594,11 +594,11 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
     # For jupyter, environment variable SPARK_OPTS is set instead.
     else:
         for base_cmd in ('pyspark', 'spark-shell', 'spark-submit'):
-            if original_docker_cmd.startswith(base_cmd):
-                return '{base_cmd} {spark_conf_str}{remainder}'.format(
-                    base_cmd=base_cmd,
-                    spark_conf_str=spark_conf_str,
-                    remainder=original_docker_cmd[len(base_cmd):],
+            if base_cmd in original_docker_cmd:
+                return original_docker_cmd.replace(
+                    base_cmd,
+                    base_cmd + ' ' + spark_conf_str,
+                    1,
                 )
         return original_docker_cmd
 
