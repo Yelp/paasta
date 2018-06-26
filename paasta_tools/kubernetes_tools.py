@@ -47,6 +47,7 @@ from paasta_tools.utils import time_cache
 log = logging.getLogger(__name__)
 
 CONFIG_HASH_BLACKLIST = {'replicas'}
+KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KubeDeployment = namedtuple('KubeDeployment', ['service', 'instance', 'git_sha', 'config_sha', 'replicas'])
 KubeService = namedtuple('KubeService', ['name', 'instance', 'port', 'pod_ip'])
 
@@ -201,8 +202,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_bounce_method(self) -> str:
         """Get the bounce method specified in the service's kubernetes configuration."""
         # map existing bounce methods to k8s equivalents.
-        kube_deploy_stategy_map = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
-        return kube_deploy_stategy_map[self.config_dict.get('bounce_method', 'crossover')]
+        return KUBE_DEPLOY_STATEGY_MAP[self.config_dict.get('bounce_method', 'crossover')]
 
     def get_deployment_strategy_config(self) -> Dict:
         strategy_dict = {}
@@ -242,12 +242,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "ports": [
                 {
                     "containerPort": 6666,
-                },
-            ],
-            "volumeMounts": [
-                {
-                    "mountPath": "/var/spool/hacheck",
-                    "name": self.get_sanitised_volume_name("/var/spool/hacheck"),
                 },
             ],
         }
@@ -395,10 +389,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             system_paasta_config=system_paasta_config,
                         ),
                         "restartPolicy": "Always",
-                        "volumes": self.get_pod_volumes(docker_volumes) + [{
-                            "emptyDir": {},
-                            "name": self.get_sanitised_volume_name('/var/spool/hacheck'),
-                        }],
+                        "volumes": self.get_pod_volumes(docker_volumes),
                     },
                 },
             },
