@@ -3,9 +3,10 @@ import argparse
 import sys
 
 from a_sync import block
+
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_scaler
-from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
+from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import load_system_paasta_config
 
 
