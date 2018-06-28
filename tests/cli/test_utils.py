@@ -518,14 +518,14 @@ def test_list_teams():
         'team_data': {
             'red_jaguars': {
                 'pagerduty_api_key': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-                'pages_irc_channel': 'red_jaguars_pages',
-                'notifications_irc_channel': 'red_jaguars_notifications',
+                'pages_slack_channel': 'red_jaguars_pages',
+                'notifications_slack_channel': 'red_jaguars_notifications',
                 'notification_email': 'red_jaguars+alert@yelp.com',
                 'project': 'REDJAGS',
             },
             'blue_barracudas': {
                 'pagerduty_api_key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-                'pages_irc_channel': 'blue_barracudas_pages',
+                'pages_slack_channel': 'blue_barracudas_pages',
             },
         },
     }

@@ -93,6 +93,10 @@ def get_irc_channels(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('irc_channels', overrides, service, soa_dir)
 
 
+def get_slack_channels(overrides, service, soa_dir=DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('slack_channels', overrides, service, soa_dir)
+
+
 def get_dependencies(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('dependencies', overrides, service, soa_dir)
 
@@ -191,6 +195,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
         'tip': get_tip(overrides, service, soa_dir),
         'notification_email': get_notification_email(overrides, service, soa_dir),
         'irc_channels': get_irc_channels(overrides, service, soa_dir),
+        'slack_channels': get_slack_channels(overrides, service, soa_dir),
         'ticket': get_ticket(overrides, service, soa_dir),
         'project': get_project(overrides, service, soa_dir),
         'page': get_page(overrides, service, soa_dir),

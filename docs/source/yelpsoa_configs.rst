@@ -726,6 +726,8 @@ Here is a list of options that PaaSTA will pass through:
 
  * ``irc_channels``: Array of irc_channels to post notifications to.
 
+ * ``slack_channels``: Array of slack_channels to post notifications to.
+
  * ``ticket``: Boolean to indicate if an alert should make a JIRA ticket.
    Defaults to **false**.
 

@@ -55,7 +55,7 @@ pymesos==0.2.13
 pyramid==1.8.4
 pyramid-swagger==2.4.1
 pyrsistent==0.13.0
-pysensu-yelp==0.3.4
+pysensu-yelp==0.4.0
 PyStaticConfiguration==0.10.3
 python-crontab==2.1.1
 python-dateutil==2.5.3
