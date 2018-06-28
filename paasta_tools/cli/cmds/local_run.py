@@ -19,7 +19,7 @@ import socket
 import sys
 import time
 import uuid
-from os import execlp
+from os import execlpe
 from random import randint
 from urllib.parse import urlparse
 
@@ -405,9 +405,9 @@ def get_docker_run_cmd(
     docker_hash, command, net, docker_params, detach,
 ):
     cmd = ['paasta_docker_wrapper', 'run']
-    for k, v in env.items():
+    for k in env.keys():
         cmd.append('--env')
-        cmd.append(f'{k}={v}')
+        cmd.append(f'{k}')
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
         cmd.append('--{}={}'.format(i['key'], i['value']))
@@ -681,18 +681,20 @@ def run_docker_container(
     else:
         paasta_print('Running docker command:\n%s' % PaastaColors.grey(joined_docker_run_cmd))
 
+    merged_env = {**os.environ, **environment}
+
     if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        execlp('paasta_docker_wrapper', *docker_run_cmd)
-        # For testing, when execlp is patched out and doesn't replace us, we
+        execlpe('paasta_docker_wrapper', *docker_run_cmd, merged_env)
+        # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
 
     container_started = False
     container_id = None
     try:
-        (returncode, output) = _run(docker_run_cmd)
+        (returncode, output) = _run(docker_run_cmd, env=merged_env)
         if returncode != 0:
             paasta_print(
                 'Failure trying to start your container!'

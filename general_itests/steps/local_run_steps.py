@@ -47,7 +47,7 @@ def non_interactive_local_run(context, var, val):
                         "--cluster test-cluster "
                         "--instance main "
                         "--build "
-                        '''--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' ''' % (var, val))
+                        '''--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' ''' % (var, var))
         context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=90)
 
 
