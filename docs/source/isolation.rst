@@ -44,19 +44,6 @@ details of that compute resource comes from the agent nodes, which regularly
 tell the Master agent the resources it has available for running tasks. Using
 the correct parlance, Mesos agents make 'offers' to the master.
 
-At Yelp, the resource that a given agent has available is determined by a
-couple of things: if the node also runs 'classic' services, then the resources
-given to the agent are decided by a script which takes a rough guess at how
-much resource is used *without* Mesos running, and subtracts it from the total
-available resource. That gives a *very* approximate guess at the resources
-available for the Mesos Agent to run tasks.
-
-If, however, the agent node is a dedicated PaaSTA box (defined by having the
-puppet role ``paasta``), then all the resources available on the box are given
-to the Agent to run tasks. This means that the cpus offered is set to the
-total number of processors on the host, and the memory offered is equal to the
-total memory available on the host.
-
 Once a master node receives offers from an agent, it forwards it to
 a framework. Resource offers are split between frameworks according to
 the master's configuration - there may be particular priority given
