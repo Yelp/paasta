@@ -24,7 +24,7 @@ def check_registration(threshold_percentage):
                 pool_settings=None,
                 config_folder=None,
                 dry_run=True,
-		utilization_error=0.0,
+                utilization_error=0.0,
                 max_increase=0.0,
                 max_decrease=0.0,
             )
