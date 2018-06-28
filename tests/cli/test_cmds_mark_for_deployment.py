@@ -209,6 +209,7 @@ def test_slack_deploy_notifier(mock_get_authors, mock_client):
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count >= 0, fake_psc.post.call_args
     assert sdn.get_authors_to_be_notified() == "Pinging authors: <@fakeuser1>, <@fakeuser2>"
+    assert "Jenkins" or "Run by" in sdn.get_url_message()
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
