@@ -655,7 +655,9 @@ class TestAsgAutoscaler(unittest.TestCase):
         ) as mock_is_aws_launching_asg_instances, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.emit_metrics',
             autospec=True,
-        ) as mock_emit_metrics:
+        ) as mock_emit_metrics, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.log', autospec=True,
+        ):
             mock_get_asg_delta.return_value = 1, 2
             self.autoscaler.pool_settings = {}
             mock_is_aws_launching_asg_instances.return_value = False
@@ -697,16 +699,20 @@ class TestAsgAutoscaler(unittest.TestCase):
             mock_get_asg_delta.assert_called_with(self.autoscaler)
 
             # ASG scaling up with too many unregistered instances
+            self.autoscaler.log.reset_mock()
             self.autoscaler.instances = [mock.Mock() for _ in range(10)]
-            with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
-                self.autoscaler.metrics_provider(mock_mesos_state)
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            assert ret == (1, 2)
+            assert self.autoscaler.log.warn.call_count == 1
 
             # ASG scaling down with many unregistered instances
             mock_emit_metrics.reset_mock()
+            self.autoscaler.log.reset_mock()
             self.autoscaler.utilization_error = -0.1
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_emit_metrics.assert_called_once_with(self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves))
             assert ret == (1, 2)
+            assert self.autoscaler.log.warn.call_count == 1
 
     def test_is_aws_launching_asg_instances(self):
         self.autoscaler.asg = {'DesiredCapacity': 3, 'Instances': [mock.Mock(), mock.Mock()]}
@@ -972,7 +978,9 @@ class TestSpotAutoscaler(unittest.TestCase):
         ) as mock_is_aws_launching_sfr_instances, mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.emit_metrics',
             autospec=True,
-        ) as mock_emit_metrics:
+        ) as mock_emit_metrics, mock.patch(
+            'paasta_tools.autoscaling.autoscaling_cluster_lib.ClusterAutoscaler.log', autospec=True,
+        ):
             mock_get_spot_fleet_delta.return_value = 1, 2
             self.autoscaler.pool_settings = {}
             mock_is_aws_launching_sfr_instances.return_value = False
@@ -1012,18 +1020,23 @@ class TestSpotAutoscaler(unittest.TestCase):
             assert ret == (1, 2)
 
             # SFR scaling up with too many unregistered instances
+            self.autoscaler.log.reset_mock()
             mock_emit_metrics.reset_mock()
             self.autoscaler.instances = [mock.Mock() for _ in range(10)]
-            with raises(autoscaling_cluster_lib.ClusterAutoscalingError):
-                self.autoscaler.metrics_provider(mock_mesos_state)
+            ret = self.autoscaler.metrics_provider(mock_mesos_state)
+            assert ret == (1, 2)
+            assert self.autoscaler.log.warn.call_count == 1
 
             # SFR scaling down with many unregistered instances
+            self.autoscaler.log.reset_mock()
+            mock_emit_metrics.reset_mock()
             self.autoscaler.utilization_error = -0.1
             ret = self.autoscaler.metrics_provider(mock_mesos_state)
             mock_emit_metrics.assert_called_once_with(
                 self.autoscaler, 1, 2, mesos_slave_count=len(mock_slaves),
             )
             assert ret == (1, 2)
+            assert self.autoscaler.log.warn.call_count == 1
 
             self.autoscaler.instances = [mock.Mock(), mock.Mock()]
             self.autoscaler.utilization_error = 0.3

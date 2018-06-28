@@ -329,29 +329,26 @@ class ClusterAutoscaler(object):
             expected_instances,
         ))
         if float(current_instances) / expected_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
-            error_message = (
+            warning_message = (
                 "We currently have %d instances active in mesos out of a desired %d.\n"
             ) % (
                 current_instances, expected_instances,
             )
-            if self.sfr and self.sfr['SpotFleetRequestState'] == 'cancelled_running':
-                log.warn(
-                    error_message + "But this is an sfr in cancelled_running state, so continuing anyways",
-                )
-                return None
-            if self.utilization_error < 0:
-                log.warn(
-                    error_message + "Continuing because we are scaling down and we don't need any "
-                    "of the unregistered instances.",
-                )
-                return None
 
-            error_message += (
-                "Refusing to scale because we either need to wait for the requests to be "
-                "filled, or the new instances are not healthy for some reason.\n"
-                "(refusing to go past %.2f%% missing instances)"
-            ) % MISSING_SLAVE_PANIC_THRESHOLD
-            raise ClusterAutoscalingError(error_message)
+            if self.sfr and self.sfr['SpotFleetRequestState'] == 'cancelled_running':
+                warning_message += "But this is an sfr in cancelled_running state, so continuing anyways"
+            elif self.utilization_error < 0:
+                warning_message += (
+                    "Continuing because we are scaling down and we don't need any "
+                    "of the unregistered instances."
+                )
+            else:
+                warning_message += (
+                    "This may be a sign that new instances are not healthy for some reason. "
+                    "Continuing to scale."
+                )
+
+            self.log.warn(warning_message)
 
     async def can_kill(
         self,
