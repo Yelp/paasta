@@ -695,8 +695,8 @@ def test_get_docker_run_cmd_with_env_vars():
         memory, chosen_port, container_port, container_name, volumes, env,
         interactive, docker_hash, command, net, docker_params, detach,
     )
-    assert actual[actual.index('foo=bar') - 1] == '--env'
-    assert actual[actual.index('baz=qux') - 1] == '--env'
+    assert actual[actual.index('foo') - 1] == '--env'
+    assert actual[actual.index('baz') - 1] == '--env'
 
 
 def test_get_docker_run_cmd_interactive_false():
@@ -868,7 +868,7 @@ def test_get_container_id_name_not_found():
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -880,7 +880,7 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
@@ -910,12 +910,12 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     mock_pick_random_port.assert_called_once_with('fake_service')
     assert mock_get_docker_run_cmd.call_count == 1
     assert mock_get_healthcheck_for_instance.call_count == 1
-    assert mock_execlp.call_count == 1
+    assert mock_execlpe.call_count == 1
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -927,7 +927,7 @@ def test_run_docker_container_interactive(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
@@ -956,7 +956,7 @@ def test_run_docker_container_interactive(
     mock_pick_random_port.assert_called_once_with('fake_service')
     assert mock_get_docker_run_cmd.call_count == 1
     assert mock_get_healthcheck_for_instance.call_count == 1
-    assert mock_execlp.call_count == 1
+    assert mock_execlpe.call_count == 1
     assert mock_run.call_count == 0
     assert mock_get_container_id.call_count == 0
     assert mock_docker_client.attach.call_count == 0
@@ -967,7 +967,7 @@ def test_run_docker_container_interactive(
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -981,7 +981,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
@@ -1018,7 +1018,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(42, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -1030,7 +1030,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
@@ -1068,7 +1068,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
 @mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -1080,7 +1080,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
     mock_simulate_healthcheck,
@@ -1123,7 +1123,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
 @mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -1135,7 +1135,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
     mock_simulate_healthcheck,
@@ -1171,7 +1171,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
 @mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=False)
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
 @mock.patch(
@@ -1183,7 +1183,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
     mock_simulate_healthcheck,
@@ -1224,7 +1224,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlpe', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.check_if_port_free', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
@@ -1238,7 +1238,7 @@ def test_run_docker_container_with_user_specified_port(
     mock_get_container_id,
     mock_check_if_port_free,
     mock_run,
-    mock_execlp,
+    mock_execlpe,
     mock_pick_random_port,
 ):
     mock_pick_random_port.return_value = 666  # we dont want it running on this port
@@ -1265,7 +1265,7 @@ def test_run_docker_container_with_user_specified_port(
     mock_service_manifest.get_mem.assert_called_once_with()
     assert mock_check_if_port_free.call_count == 1
     assert mock_pick_random_port.called is False  # Don't pick a random port, use the user chosen one
-    assert mock_execlp.call_count == 1
+    assert mock_execlpe.call_count == 1
 
 
 @mock.patch('time.sleep', autospec=True)
