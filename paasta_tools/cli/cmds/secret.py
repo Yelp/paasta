@@ -46,7 +46,9 @@ def add_subparser(subparsers):
         help="The name of the secret to create/update, "
              "this is the name you will reference in your "
              "services marathon/chronos yaml files and should "
-             "be unique per service.",
+             "be unique per service. Please prefix with "
+             "PAASTA_SECRET_ if you are going to use the "
+             "yelp_servlib client library.",
     )
     secret_parser.add_argument(
         '-s', '--service',
@@ -90,12 +92,13 @@ def print_paasta_helper(secret_path, secret_name):
           "main:\n"
           "  cpus: 1\n"
           "  env:\n"
-          "    MY_SECRET_VAR: SECRET({})\n\n"
+          "    PAASTA_SECRET_MY_SECRET_VAR: SECRET({})\n\n"
           "Once you have referenced the secret you must commit the newly\n"
           "created/updated json file and your changes to your yaml config. When\n"
           "you push to master PaaSTA will bounce your service and the new\n"
           "secrets plaintext will be in the environment variable you have\n"
-          "specified.".format(secret_path, secret_name))
+          "specified. The PAASTA_SECRET_ prefix is optional but necessary\n"
+          "for the yelp_servlib client library".format(secret_path, secret_name))
 
 
 def get_plaintext_input(args):
