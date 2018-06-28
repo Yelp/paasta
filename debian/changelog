@@ -1,3 +1,11 @@
+paasta-tools (0.74.9) xenial; urgency=medium
+
+  * 0.74.9 tagged with 'make release'
+    Commit: Merge pull request #1873 from Yelp/PAASTA-14535  Relax the
+    format of spark-run pyspark, spark-submit, and spark-shell …
+
+ -- Huadong Liu <hliu@yelp.com>  Thu, 28 Jun 2018 07:05:56 -0700
+
 paasta-tools (0.74.8) xenial; urgency=medium
 
   * 0.74.8 tagged with 'make release'
