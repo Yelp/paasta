@@ -18,6 +18,9 @@ def check_registration(threshold_percentage):
                 pool_settings=None,
                 config_folder=None,
                 dry_run=True,
+		utilization_error=0.0,
+                max_increase=0.0,
+                max_decrease=0.0,
             )
         except KeyError:
             print("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
