@@ -1733,7 +1733,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                         'hostname': 'host123',
                     },
                     count=0,
-                    chronos_count=0,
+                    batch_count=0,
                 ),
             }
             mock_slave_2 = {
@@ -1744,7 +1744,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                         'hostname': 'host456',
                     },
                     count=0,
-                    chronos_count=0,
+                    batch_count=0,
                 ),
             }
             mock_slave_3 = {
@@ -1755,7 +1755,7 @@ class TestClusterAutoscaler(unittest.TestCase):
                         'hostname': 'host789',
                     },
                     count=0,
-                    chronos_count=0,
+                    batch_count=0,
                 ),
             }
 
@@ -1914,7 +1914,7 @@ class TestPaastaAwsSlave(unittest.TestCase):
                         'hostname': 'host123',
                     },
                     count=0,
-                    chronos_count=0,
+                    batch_count=0,
                 ),
             }
             mock_instance_type_weights = {'c4.blah': 2, 'm4.whatever': 5}

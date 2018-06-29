@@ -54,10 +54,10 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
 
-CHRONOS_FRAMEWORK_NAME = 'chronos'
+MARATHON_FRAMEWORK_NAME_PREFIX = 'marathon'
 
 ZookeeperHostPath = namedtuple('ZookeeperHostPath', ['host', 'path'])
-SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'chronos_count', 'slave'])
+SlaveTaskCount = namedtuple('SlaveTaskCount', ['count', 'batch_count', 'slave'])
 
 
 DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
@@ -764,7 +764,7 @@ async def get_mesos_task_count_by_slave(
     """
     all_mesos_tasks = await get_all_running_tasks()  # empty string = all app ids
     slaves = {
-        slave['id']: {'count': 0, 'slave': slave, 'chronos_count': 0} for slave in mesos_state.get('slaves', [])
+        slave['id']: {'count': 0, 'slave': slave, 'batch_count': 0} for slave in mesos_state.get('slaves', [])
     }
     for task in all_mesos_tasks:
         try:
@@ -776,8 +776,9 @@ async def get_mesos_task_count_by_slave(
                 slaves[task_slave['id']]['count'] += 1
                 task_framework = await task.framework()
                 log.debug(f"Task framework: {task_framework.name}")
-                if task_framework.name == CHRONOS_FRAMEWORK_NAME:
-                    slaves[task_slave['id']]['chronos_count'] += 1
+                # Marathon is only framework that runs service. Others are batch.
+                if not task_framework.name.startswith(MARATHON_FRAMEWORK_NAME_PREFIX):
+                    slaves[task_slave['id']]['batch_count'] += 1
         except SlaveDoesNotExist:
             log.debug("Tried to get mesos slaves for task {}, but none existed.".format(task['id']))
             continue
@@ -797,7 +798,7 @@ async def get_mesos_task_count_by_slave(
                   "including {} chronos tasks".format(
                       slave['task_counts'].slave['hostname'],
                       slave['task_counts'].count,
-                      slave['task_counts'].chronos_count,
+                      slave['task_counts'].batch_count,
                   ))
     return slaves_with_counts
 

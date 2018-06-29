@@ -8,17 +8,17 @@ from paasta_tools.mesos_tools import SlaveTaskCount
 
 
 def test_sort_by_total_tasks():
-    mock_slave_1 = Mock(task_counts=SlaveTaskCount(count=3, slave=Mock(), chronos_count=0))
-    mock_slave_2 = Mock(task_counts=SlaveTaskCount(count=2, slave=Mock(), chronos_count=1))
-    mock_slave_3 = Mock(task_counts=SlaveTaskCount(count=5, slave=Mock(), chronos_count=0))
+    mock_slave_1 = Mock(task_counts=SlaveTaskCount(count=3, slave=Mock(), batch_count=0))
+    mock_slave_2 = Mock(task_counts=SlaveTaskCount(count=2, slave=Mock(), batch_count=1))
+    mock_slave_3 = Mock(task_counts=SlaveTaskCount(count=5, slave=Mock(), batch_count=0))
     ret = ec2_fitness.sort_by_total_tasks([mock_slave_1, mock_slave_2, mock_slave_3])
     assert ret == [mock_slave_3, mock_slave_1, mock_slave_2]
 
 
 def test_sort_by_running_batch_count():
-    mock_slave_1 = Mock(task_counts=SlaveTaskCount(count=3, slave=Mock(), chronos_count=1))
-    mock_slave_2 = Mock(task_counts=SlaveTaskCount(count=2, slave=Mock(), chronos_count=2))
-    mock_slave_3 = Mock(task_counts=SlaveTaskCount(count=5, slave=Mock(), chronos_count=3))
+    mock_slave_1 = Mock(task_counts=SlaveTaskCount(count=3, slave=Mock(), batch_count=1))
+    mock_slave_2 = Mock(task_counts=SlaveTaskCount(count=2, slave=Mock(), batch_count=2))
+    mock_slave_3 = Mock(task_counts=SlaveTaskCount(count=5, slave=Mock(), batch_count=3))
     ret = ec2_fitness.sort_by_running_batch_count([mock_slave_1, mock_slave_2, mock_slave_3])
     assert ret == [mock_slave_3, mock_slave_2, mock_slave_1]
 
@@ -28,7 +28,7 @@ def test_sort_by_health_system_instance_health_system_status_failed():
     mock_slave_1.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_1.instance_status = {
         'Events': [
@@ -50,7 +50,7 @@ def test_sort_by_health_system_instance_health_system_status_failed():
     mock_slave_2.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     ),
     mock_slave_2.instance_status = {
         'Events': [
@@ -77,7 +77,7 @@ def test_sort_by_upcoming_events():
     mock_slave_1.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_1.instance_status = {
         'Events': [],
@@ -92,7 +92,7 @@ def test_sort_by_upcoming_events():
     mock_slave_2. task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_2.instance_status = {
         'Events': [
@@ -141,7 +141,7 @@ def test_sort_by_fitness():
     mock_slave_1.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_1.instance_status = {
         'Events': [],
@@ -152,7 +152,7 @@ def test_sort_by_fitness():
     mock_slave_2.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_2.instance_status = {
         'Events': [
@@ -170,7 +170,7 @@ def test_sort_by_fitness():
     mock_slave_3.task_counts = SlaveTaskCount(
         count=2,
         slave=Mock(),
-        chronos_count=3,
+        batch_count=3,
     )
     mock_slave_3.instance_status = {
         'Events': [],
@@ -181,7 +181,7 @@ def test_sort_by_fitness():
     mock_slave_4.task_counts = SlaveTaskCount(
         count=3,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_4.instance_status = {
         'Events': [],
@@ -192,7 +192,7 @@ def test_sort_by_fitness():
     mock_slave_5.task_counts = SlaveTaskCount(
         count=1,
         slave=Mock(),
-        chronos_count=1,
+        batch_count=1,
     )
     mock_slave_5.instance_status = {
         'Events': [],
