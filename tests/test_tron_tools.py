@@ -231,6 +231,7 @@ class TestTronJobConfig:
             'deploy_group': 'prod',
             'max_runtime': '2h',
             'actions': [action_dict],
+            'expected_runtime': '1h',
         }
         soa_dir = '/other_dir'
         job_config = tron_tools.TronJobConfig(job_dict, soa_dir=soa_dir)
@@ -248,6 +249,7 @@ class TestTronJobConfig:
             'schedule': 'daily 12:10:00',
             'max_runtime': '2h',
             'actions': [mock_format_action.return_value],
+            'expected_runtime': '1h',
         }
 
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
@@ -322,6 +324,7 @@ class TestTronTools:
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
+            'expected_runtime': '30m',
         }
         branch_dict = {
             'docker_image': 'my_service:paasta-123abcde',
@@ -341,6 +344,7 @@ class TestTronTools:
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
+            'expected_runtime': '30m',
         }
 
     def test_format_tron_action_dict_paasta(self):
