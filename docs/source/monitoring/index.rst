@@ -6,7 +6,6 @@ Scripts:
 .. toctree::
    :maxdepth: 2
 
-   check_classic_service_replication
    ../../generated/paasta_tools.monitoring.check_synapse_replication
 
 Libraries:
