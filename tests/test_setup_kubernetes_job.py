@@ -28,7 +28,7 @@ def test_main():
     ) as mock_ensure_paasta_namespace, mock.patch(
         'paasta_tools.setup_kubernetes_job.setup_kube_deployments', autospec=True,
     ) as mock_setup_kube_deployments:
-        mock_setup_kube_deployments.return_value = 0
+        mock_setup_kube_deployments.return_value = True
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 0
@@ -39,7 +39,7 @@ def test_main():
             soa_dir=mock_parse_args.return_value.soa_dir,
         )
 
-        mock_setup_kube_deployments.return_value = 2
+        mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 1
@@ -57,7 +57,7 @@ def test_setup_kube_deployment():
             kube_client=mock_client,
             service_instances=mock_service_instances,
             soa_dir='/nail/blah',
-        ) == 0
+        ) is True
 
         mock_reconcile_kubernetes_deployment.return_value = (0, 0)
         mock_service_instances = ['kurupt.fm', 'kurupt.garage']
@@ -65,7 +65,7 @@ def test_setup_kube_deployment():
             kube_client=mock_client,
             service_instances=mock_service_instances,
             soa_dir='/nail/blah',
-        ) == 0
+        ) is True
         mock_reconcile_kubernetes_deployment.assert_has_calls([
             mock.call(
                 kube_client=mock_client,
@@ -88,7 +88,7 @@ def test_setup_kube_deployment():
             kube_client=mock_client,
             service_instances=mock_service_instances,
             soa_dir='/nail/blah',
-        ) == 2
+        ) is False
 
 
 def test_reconcile_kubernetes_deployment():

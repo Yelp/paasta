@@ -23,6 +23,9 @@ Command line options:
 import argparse
 import logging
 import sys
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
@@ -75,16 +78,20 @@ def main() -> None:
     kube_client = KubeClient()
 
     ensure_paasta_namespace(kube_client)
-    num_failed_deployments = setup_kube_deployments(
+    setup_kube_succeeded = setup_kube_deployments(
         kube_client=kube_client,
         service_instances=args.service_instance_list,
         soa_dir=soa_dir,
     )
-    sys.exit(1 if num_failed_deployments else 0)
+    sys.exit(0 if setup_kube_succeeded else 1)
 
 
-def setup_kube_deployments(kube_client, service_instances, soa_dir=DEFAULT_SOA_DIR):
-    num_failed_deployments = 0
+def setup_kube_deployments(
+    kube_client: KubeClient,
+    service_instances: List[str],
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> bool:
+    suceeded = True
     if service_instances:
         deployments = list_all_deployments(kube_client)
     for service_instance in service_instances:
@@ -92,7 +99,7 @@ def setup_kube_deployments(kube_client, service_instances, soa_dir=DEFAULT_SOA_D
             service, instance, _, __ = decompose_job_id(service_instance)
         except InvalidJobNameError:
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
-            num_failed_deployments = num_failed_deployments + 1
+            suceeded = False
         else:
             if reconcile_kubernetes_deployment(
                 kube_client=kube_client,
@@ -101,11 +108,17 @@ def setup_kube_deployments(kube_client, service_instances, soa_dir=DEFAULT_SOA_D
                 kube_deployments=deployments,
                 soa_dir=soa_dir,
             )[0]:
-                num_failed_deployments = num_failed_deployments + 1
-    return num_failed_deployments
+                suceeded = False
+    return suceeded
 
 
-def reconcile_kubernetes_deployment(kube_client, service, instance, kube_deployments, soa_dir):
+def reconcile_kubernetes_deployment(
+    kube_client: KubeClient,
+    service: str,
+    instance: str,
+    kube_deployments: List[KubeDeployment],
+    soa_dir: str,
+) -> Tuple[int, Optional[int]]:
     try:
         service_instance_config = load_kubernetes_service_config_no_cache(
             service,

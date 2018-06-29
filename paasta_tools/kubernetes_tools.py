@@ -34,6 +34,7 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import InvalidJobNameError
@@ -41,6 +42,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
 
 
@@ -204,8 +206,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # map existing bounce methods to k8s equivalents.
         return KUBE_DEPLOY_STATEGY_MAP[self.config_dict.get('bounce_method', 'crossover')]
 
-    def get_deployment_strategy_config(self) -> Dict:
-        strategy_dict = {}
+    def get_deployment_strategy_config(self) -> Dict[str, Any]:
+        strategy_dict: Dict[str, Any] = {}
         strategy_dict['type'] = self.get_bounce_method()
         if self.get_bounce_method() == 'RollingUpdate':
             # this translates bounce_margin to k8s speak maxUnavailable
@@ -216,13 +218,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             }
         return strategy_dict
 
-    def get_sanitised_volume_name(self, volume_name) -> str:
+    def get_sanitised_volume_name(self, volume_name: str) -> str:
         """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip('/')
         sanitised = volume_name.replace('/', 'slash-')
         return sanitised.replace('_', '--')
 
-    def get_sidecar_containers(self, system_paasta_config) -> List:
+    def get_sidecar_containers(self, system_paasta_config: SystemPaastaConfig) -> List[Dict[str, Any]]:
         registrations = " ".join(self.get_registrations())
         hacheck_sidecar = {
             "image": system_paasta_config.get_hacheck_sidecar_image_url(),
@@ -259,11 +261,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             }
         return [hacheck_sidecar]
 
-    def get_container_env(self) -> List:
+    def get_container_env(self) -> List[Dict[str, str]]:
         user_env = [{'name': name, 'value': value} for name, value in self.get_env().items()]
         return user_env + self.get_kubernetes_environment()
 
-    def get_kubernetes_environment(self) -> List:
+    def get_kubernetes_environment(self) -> List[Dict[str, Any]]:
         kubernetes_env = [{
             'name': 'PAASTA_POD_IP',
             'valueFrom': {
@@ -274,7 +276,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         }]
         return kubernetes_env
 
-    def get_kubernetes_containers(self, volumes, system_paasta_config) -> List:
+    def get_kubernetes_containers(
+        self,
+        volumes: List[DockerVolume],
+        system_paasta_config: SystemPaastaConfig,
+    ) -> List[Dict[str, Any]]:
         service_container = {
             "image": self.get_docker_url(),
             "cmd": self.get_cmd(),
@@ -315,7 +321,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         containers = [service_container] + self.get_sidecar_containers(system_paasta_config=system_paasta_config)
         return containers
 
-    def get_pod_volumes(self, volumes) -> List:
+    def get_pod_volumes(self, volumes: List[DockerVolume]) -> List[Dict[str, Any]]:
         pod_volumes = []
         for volume in volumes:
             pod_volumes.append({
@@ -326,7 +332,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             })
         return pod_volumes
 
-    def get_volume_mounts(self, volumes) -> List:
+    def get_volume_mounts(self, volumes: List[DockerVolume]) -> List[Dict[str, Any]]:
         volume_mounts = []
         for volume in volumes:
             volume_mounts.append({
@@ -342,7 +348,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_instance_name(self) -> str:
         return self.get_instance().replace('_', '--')
 
-    def format_kubernetes_app_dict(self) -> Dict:
+    def format_kubernetes_app_dict(self) -> Dict[str, Any]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
         system_paasta_config = load_system_paasta_config()
@@ -354,7 +360,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
         code_sha = get_code_sha_from_dockerurl(docker_url)
-        complete_config = {
+        complete_config: Dict[str, Any] = {
             "apiVersion": "apps/v1",
             "kind": "Deployment",
             "metadata": {
@@ -514,13 +520,13 @@ def get_kubernetes_services_running_here_for_nerve(
 
 
 class KubeClient():
-    def __init__(self):
+    def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
 
 
-def ensure_paasta_namespace(kube_client):
+def ensure_paasta_namespace(kube_client: KubeClient) -> None:
     paasta_namespace = {
         "kind": "Namespace",
         "apiVersion": "v1",
@@ -538,7 +544,7 @@ def ensure_paasta_namespace(kube_client):
         kube_client.core.create_namespace(body=paasta_namespace)
 
 
-def list_all_deployments(kube_client):
+def list_all_deployments(kube_client: KubeClient) -> List[KubeDeployment]:
     deployments = kube_client.deployments.list_namespaced_deployment(namespace='paasta')
     return [
         KubeDeployment(
@@ -551,14 +557,14 @@ def list_all_deployments(kube_client):
     ]
 
 
-def create_deployment(kube_client, formatted_deployment_dict):
+def create_deployment(kube_client: KubeClient, formatted_deployment_dict: Dict[str, Any]) -> None:
     return kube_client.deployments.create_namespaced_deployment(
         namespace='paasta',
         body=formatted_deployment_dict,
     )
 
 
-def update_deployment(kube_client, formatted_deployment_dict):
+def update_deployment(kube_client: KubeClient, formatted_deployment_dict: Dict[str, Any]) -> None:
     return kube_client.deployments.patch_namespaced_deployment(
         name=formatted_deployment_dict['metadata']['name'],
         namespace='paasta',
