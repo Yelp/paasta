@@ -33,6 +33,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
+from paasta_tools.tron_tools import list_tron_clusters
+from paasta_tools.tron_tools import load_tron_service_config
+from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -72,6 +75,18 @@ def invalid_chronos_instance(cluster, instance, output):
 
 def valid_chronos_instance(cluster, instance):
     return success(f'chronos-{cluster}.yaml has a valid instance: {instance}.')
+
+
+def invalid_tron_job(cluster, job, output, filename):
+    return failure(
+        '%s has an invalid job: %s.\n  %s\n  '
+        'More info:' % (filename, job, output),
+        "http://tron.readthedocs.io/en/latest/jobs.html",
+    )
+
+
+def valid_tron_job(cluster, job, filename=None):
+    return success(f'{filename} has a valid job: {job}.')
 
 
 def get_schema(file_type):
@@ -137,7 +152,7 @@ def validate_all_schemas(service_path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
-        for file_type in ['chronos', 'marathon', 'adhoc']:
+        for file_type in ['chronos', 'marathon', 'adhoc', 'tron']:
             if basename.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False
@@ -209,6 +224,60 @@ def path_to_soa_dir_service(service_path):
     return soa_dir, service
 
 
+def validate_tron(service_path):
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    if soa_dir.endswith('/tron'):
+        # Makes it possible to validate files in tron/ rather than service directories
+        # TODO: Clean up after migration to services is complete
+        cluster = service
+        soa_dir = soa_dir[:-5]
+        filenames = [filename for filename in os.listdir(service_path) if filename.endswith('.yaml')]
+        for filename in filenames:
+            namespace = os.path.splitext(filename)[0]
+            file_path = os.path.join(service_path, filename)
+            if not validate_schema(file_path, 'tron'):
+                returncode = False
+            if not validate_tron_namespace(namespace, cluster, soa_dir, tron_dir=True):
+                returncode = False
+    else:
+        # Normal service directory
+        for cluster in list_tron_clusters(service, soa_dir):
+            if not validate_tron_namespace(service, cluster, soa_dir):
+                returncode = False
+
+    return returncode
+
+
+def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
+    returncode = True
+    job_configs, other_config = load_tron_service_config(service, cluster, soa_dir)
+
+    if tron_dir:
+        display_name = f'{cluster}/{service}.yaml'
+    else:
+        display_name = f'tron-{cluster}.yaml'
+
+    if service != MASTER_NAMESPACE and other_config:
+        returncode = False
+        other_keys = list(other_config.keys())
+        paasta_print(failure(
+            f"{display_name}: Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}",
+            "http://tron.readthedocs.io/en/latest/jobs.html",
+        ))
+
+    for job_config in job_configs:
+        check_msgs = job_config.validate()
+        if check_msgs:
+            returncode = False
+            paasta_print(invalid_tron_job(cluster, job_config.get_name(), "\n  ".join(check_msgs), display_name))
+        else:
+            if not tron_dir:
+                paasta_print(valid_tron_job(cluster, job_config.get_name(), display_name))
+    return returncode
+
+
 def validate_chronos(service_path):
     """Check that any chronos configurations are valid"""
     soa_dir, service = path_to_soa_dir_service(service_path)
@@ -269,6 +338,9 @@ def paasta_validate_soa_configs(service_path):
         returncode = False
 
     if not validate_chronos(service_path):
+        returncode = False
+
+    if not validate_tron(service_path):
         returncode = False
 
     return returncode

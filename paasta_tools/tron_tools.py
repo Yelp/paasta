@@ -10,7 +10,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import glob
 import os
+import re
+from typing import List
+from typing import Tuple
 
 import service_configuration_lib
 import yaml
@@ -20,6 +24,7 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper
 
 from paasta_tools.tron.client import TronClient
+from paasta_tools.tron.tron_timeutils import check_timedelta
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
@@ -28,6 +33,8 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
+
+MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
 
 
@@ -129,6 +136,10 @@ class TronActionConfig(InstanceConfig):
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
+    def check_expected_runtime(self) -> Tuple[bool, str]:
+        expected_runtime = self.get_expected_runtime()
+        return check_timedelta(expected_runtime, 'expected_runtime')
+
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
@@ -148,6 +159,24 @@ class TronActionConfig(InstanceConfig):
             constraints.extend(self.get_pool_constraints())
             return constraints
 
+    def validate(self) -> List[str]:
+        # Use InstanceConfig to validate shared config keys like cpus and mem
+        error_msgs = super(TronActionConfig, self).validate()
+
+        param_checks = [
+            self.check_expected_runtime,
+        ]
+        for check in param_checks:
+            check_passed, check_msg = check()
+            if not check_passed:
+                error_msgs.append(check_msg)
+
+        if error_msgs:
+            name = self.get_action_name()
+            return [f'Action {name}: {msg}' for msg in error_msgs]
+        else:
+            return []
+
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
@@ -155,7 +184,6 @@ class TronJobConfig:
     def __init__(self, config_dict, soa_dir=DEFAULT_SOA_DIR):
         self.config_dict = config_dict
         self.soa_dir = soa_dir
-        self._actions = []
 
     def get_name(self):
         return self.config_dict.get('name')
@@ -237,14 +265,11 @@ class TronJobConfig:
         )
 
     def get_actions(self, default_paasta_cluster):
-        if self._actions:
-            return self._actions
-
-        actions = []
-        for action_dict in self.config_dict.get('actions'):
-            actions.append(self._get_action_config(action_dict, default_paasta_cluster))
-        self._actions = actions
-        return self._actions
+        actions = [
+            self._get_action_config(action_dict, default_paasta_cluster)
+            for action_dict in self.config_dict.get('actions')
+        ]
+        return actions
 
     def get_cleanup_action(self, default_paasta_cluster):
         action_dict = self.config_dict.get('cleanup_action')
@@ -254,6 +279,47 @@ class TronJobConfig:
         # TODO: we should keep this trickery outside paasta repo
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
+
+    def check_max_runtime(self) -> Tuple[bool, str]:
+        max_runtime = self.get_max_runtime()
+        return check_timedelta(max_runtime, 'max_runtime')
+
+    def check_expected_runtime(self) -> Tuple[bool, str]:
+        expected_runtime = self.get_expected_runtime()
+        return check_timedelta(expected_runtime, 'expected_runtime')
+
+    def check_actions(self) -> Tuple[bool, List[str]]:
+        actions = self.get_actions('dummy-default')
+        cleanup_action = self.get_cleanup_action('dummy-default')
+        if cleanup_action:
+            actions.append(cleanup_action)
+
+        checks_passed = True
+        msgs: List[str] = []
+        for action in actions:
+            action_msgs = action.validate()
+            if action_msgs:
+                checks_passed = False
+                msgs.extend(action_msgs)
+        return checks_passed, msgs
+
+    def validate(self) -> List[str]:
+        param_checks = [
+            self.check_max_runtime,
+            self.check_expected_runtime,
+        ]
+        error_msgs = []
+        for check in param_checks:
+            check_passed, check_msg = check()
+            if not check_passed:
+                error_msgs.append(check_msg)
+
+        # Returns lists of messages instead of single messages.
+        check_passed, action_msgs = self.check_actions()
+        if not check_passed:
+            error_msgs.extend(action_msgs)
+
+        return error_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -426,3 +492,15 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
     namespaces = list(namespaces1.union(namespaces2))
     return namespaces
+
+
+def list_tron_clusters(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+    """Returns the Tron clusters a service is configured to deploy to."""
+    search_re = r'/tron-([0-9a-z-_]*)\.yaml$'
+    service_dir = os.path.join(soa_dir, service)
+    clusters = []
+    for filename in glob.glob(f'{service_dir}/*.yaml'):
+        cluster_re_match = re.search(search_re, filename)
+        if cluster_re_match is not None:
+            clusters.append(cluster_re_match.group(1))
+    return clusters

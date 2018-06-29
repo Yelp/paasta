@@ -4,6 +4,11 @@ This is a COPY of https://github.com/Yelp/Tron/blob/master/tron/utils/timeutils.
 import datetime
 import re
 import time
+from typing import Any
+from typing import Tuple
+
+
+TIMEDELTA_PATTERN = re.compile(r'^(\d+)\s*([dhms])$')
 
 
 def current_time():
@@ -26,6 +31,21 @@ def delta_total_seconds(td):
     """
     microseconds, seconds, days = td.microseconds, td.seconds, td.days
     return (microseconds + (seconds + days * 24 * 3600) * 10**6) / 10**6
+
+
+def check_timedelta(value: Any, param_name: str) -> Tuple[bool, str]:
+    if value is None:
+        return True, ''
+
+    message = f'The specified {param_name} value {value} is not a valid timedelta string.'
+    if not isinstance(value, str):
+        return False, message
+
+    match = TIMEDELTA_PATTERN.match(value)
+    if not match:
+        return False, message
+    else:
+        return True, ''
 
 
 def macro_timedelta(start_date, years=0, months=0, days=0, hours=0):
