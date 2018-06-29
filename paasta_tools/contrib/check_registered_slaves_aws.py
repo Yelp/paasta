@@ -2,13 +2,21 @@
 import argparse
 import sys
 
+from a_sync import block
+
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_scaler
+from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import load_system_paasta_config
 
 
 def check_registration(threshold_percentage):
-    mesos_state = get_mesos_master().state
+    try:
+        mesos_state = block(get_mesos_master().state)
+    except MasterNotAvailableException as e:
+        print("Could not find Mesos Master: %s" % e.message)
+        sys.exit(1)
+
     autoscaling_resources = load_system_paasta_config().get_cluster_autoscaling_resources()
     for resource in autoscaling_resources.values():
         print("Checking %s" % resource['id'])
@@ -18,6 +26,9 @@ def check_registration(threshold_percentage):
                 pool_settings=None,
                 config_folder=None,
                 dry_run=True,
+                utilization_error=0.0,
+                max_increase=0.0,
+                max_decrease=0.0,
             )
         except KeyError:
             print("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
