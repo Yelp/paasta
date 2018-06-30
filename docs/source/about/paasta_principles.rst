@@ -122,7 +122,7 @@ That is because at Yelp, all services are owned by some team.
 This principle manifests in PaaSTA through the `monitoring.yaml <../yelpsoa_configs.html#monitoring-yaml>`_ file. The
 minimal amount of data required in that file is the ``team``. Additionally
 we encourage services to have at least a ``description`` and ``external_link``
-in `soa-configs <../soa-configs.html>`_.
+in `soa-configs <../soa_configs.html>`_.
 
 This helps emphasize that PaaSTA is built for the long-haul, and designed to
 run services in a production setting. Things are monitored by default, and alerts
@@ -135,7 +135,7 @@ exist for months or years.
 
 The PaaSTA architecture is built with the assumption that the ultimate source
 of truth about a service is its source code repository. In theory, the state of
-a production PaaSTA cluster could be reproduced from just the `soa-configs <../soa-configs.html>`_
+a production PaaSTA cluster could be reproduced from just the `soa-configs <../soa_configs.html>`_
 repo and the source code repo of the services deployed there.
 
 This is different than other Docker-based platforms, where the fundamental
