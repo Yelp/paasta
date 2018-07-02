@@ -633,16 +633,16 @@ async def test_get_mesos_task_count_by_slave():
         ret = await mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool='default')
         assert mock_get_all_running_tasks.called
         expected = [
-            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, batch_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, batch_count=0, slave=mock_slave_2)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
         ret = await mesos_tools.get_mesos_task_count_by_slave(mock_mesos_state, pool=None)
         assert mock_get_all_running_tasks.called
         expected = [
-            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=1, slave=mock_slave_1)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, batch_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, batch_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_3)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
@@ -653,18 +653,18 @@ async def test_get_mesos_task_count_by_slave():
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
         mock_slaves_list = [
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_3)},
         ]
         ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state,
             slaves_list=mock_slaves_list,
         )
         expected = [
-            {'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=3, chronos_count=0, slave=mock_slave_2)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=1, batch_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=3, batch_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_3)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 
@@ -677,9 +677,9 @@ async def test_get_mesos_task_count_by_slave():
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
         mock_slaves_list = [
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_1)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_2)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_3)},
         ]
         ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state,
@@ -687,9 +687,9 @@ async def test_get_mesos_task_count_by_slave():
         )
         # we expect mock_slave_2 to only count 2 tasks, as one of them returned a SlaveDoesNotExist exception
         expected = [
-            {'task_counts': mesos_tools.SlaveTaskCount(count=1, chronos_count=1, slave=mock_slave_1)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=2, chronos_count=0, slave=mock_slave_2)},
-            {'task_counts': mesos_tools.SlaveTaskCount(count=0, chronos_count=0, slave=mock_slave_3)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=1, batch_count=1, slave=mock_slave_1)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=2, batch_count=0, slave=mock_slave_2)},
+            {'task_counts': mesos_tools.SlaveTaskCount(count=0, batch_count=0, slave=mock_slave_3)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(expected)
 

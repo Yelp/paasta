@@ -28,7 +28,7 @@ def sort_by_total_tasks(instances):
 
 
 def sort_by_running_batch_count(instances):
-    return sorted(instances, key=lambda i: i.task_counts.chronos_count, reverse=True)
+    return sorted(instances, key=lambda i: i.task_counts.batch_count, reverse=True)
 
 
 def sort_by_ec2_fitness(instances):
