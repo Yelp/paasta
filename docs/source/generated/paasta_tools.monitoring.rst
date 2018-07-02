@@ -14,7 +14,6 @@ Submodules
    paasta_tools.monitoring.check_mesos_outdated_tasks
    paasta_tools.monitoring.check_mesos_quorum
    paasta_tools.monitoring.check_synapse_replication
-   paasta_tools.monitoring.config_providers
    paasta_tools.monitoring.kill_orphaned_docker_containers
 
 Module contents

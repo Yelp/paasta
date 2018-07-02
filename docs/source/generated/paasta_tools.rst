@@ -50,6 +50,7 @@ Submodules
    paasta_tools.get_mesos_leader
    paasta_tools.graceful_app_drain
    paasta_tools.iptables
+   paasta_tools.kubernetes_tools
    paasta_tools.list_chronos_jobs
    paasta_tools.list_marathon_service_instances
    paasta_tools.list_tron_namespaces
@@ -74,6 +75,7 @@ Submodules
    paasta_tools.remote_git
    paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
+   paasta_tools.setup_kubernetes_job
    paasta_tools.setup_marathon_job
    paasta_tools.setup_tron_namespace
    paasta_tools.slack

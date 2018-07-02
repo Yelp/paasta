@@ -1,3 +1,11 @@
+paasta-tools (0.75.0) xenial; urgency=medium
+
+  * 0.75.0 tagged with 'make release'
+    Commit: Merge pull request #1872 from Yelp/k8s  Add support for
+    kubernetes services
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 02 Jul 2018 04:26:58 -0700
+
 paasta-tools (0.74.9) xenial; urgency=medium
 
   * 0.74.9 tagged with 'make release'
