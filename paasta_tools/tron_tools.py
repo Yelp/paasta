@@ -126,6 +126,9 @@ class TronActionConfig(InstanceConfig):
     def get_requires(self):
         return self.config_dict.get('requires')
 
+    def get_expected_runtime(self):
+        return self.config_dict.get('expected_runtime')
+
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
@@ -192,6 +195,9 @@ class TronJobConfig:
 
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', '')
+
+    def get_expected_runtime(self):
+        return self.config_dict.get('expected_runtime')
 
     def _get_action_config(self, action_dict, default_paasta_cluster):
         action_service = action_dict.setdefault('service', self.get_service())
@@ -269,6 +275,7 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
         'requires': action_config.get_requires(),
         'node': action_config.get_node(),
         'retries': action_config.get_retries(),
+        'expected_runtime': action_config.get_expected_runtime(),
     }
     if executor == 'mesos':
         result['mesos_address'] = cluster_fqdn_format.format(cluster=action_config.get_cluster())
@@ -325,6 +332,7 @@ def format_tron_job_dict(job_config, cluster_fqdn_format, default_paasta_cluster
         'allow_overlap': job_config.get_allow_overlap(),
         'max_runtime': job_config.get_max_runtime(),
         'time_zone': job_config.get_time_zone(),
+        'expected_runtime': job_config.get_expected_runtime(),
     }
     cleanup_config = job_config.get_cleanup_action(default_paasta_cluster)
     if cleanup_config:
