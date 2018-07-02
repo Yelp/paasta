@@ -255,11 +255,12 @@ def test_get_replication_for_instance(
     system_paasta_config,
 ):
     mock_mesos_slaves = [
-        {'hostname': 'host1', 'attributes': {'region': 'fake_region1'}},
-        {'hostname': 'host2', 'attributes': {'region': 'fake_region1'}},
+        {'hostname': 'host1', 'attributes': {'region': 'fake_region1', 'pool': 'default'}},
+        {'hostname': 'host2', 'attributes': {'region': 'fake_region1', 'pool': 'cool_pool'}},
     ]
     instance_config = mock.Mock(service='fake_service', instance='fake_instance')
     instance_config.get_monitoring_blacklist.return_value = []
+    instance_config.get_pool.return_value = 'cool_pool'
     mock_get_replication_for_all_services.return_value = \
         {'fake_service.fake_instance': 20}
     mock_load_service_namespace_config.return_value.get_discover.return_value = 'region'
@@ -269,6 +270,11 @@ def test_get_replication_for_instance(
     )
     assert checker.get_replication_for_instance(instance_config) == \
         {'fake_region1': {'fake_service.fake_instance': 20}}
+    mock_get_replication_for_all_services.assert_called_once_with(
+        synapse_host='host2',
+        synapse_port=system_paasta_config.get_synapse_port(),
+        synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+    )
 
 
 def test_are_services_up_on_port():

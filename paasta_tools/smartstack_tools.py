@@ -402,10 +402,19 @@ class SmartstackReplicationChecker:
         :returns: a dict {'location_type': {'service.instance': int}}
         """
         replication_info = {}
-        attribute_slave_dict = self._get_allowed_locations_and_hostnames(instance_config)
-        for location, hosts in attribute_slave_dict.items():
-            replication_info[location] = self._get_replication_info(location, hosts[0], instance_config)
+        attribute_slave_dict = self._get_allowed_locations_and_slaves(instance_config)
+        instance_pool = instance_config.get_pool()
+        for location, slaves in attribute_slave_dict.items():
+            slave_to_check = self._get_first_slave_in_pool(slaves, instance_pool)
+            hostname = slave_to_check['hostname']
+            replication_info[location] = self._get_replication_info(location, hostname, instance_config)
         return replication_info
+
+    def _get_first_slave_in_pool(self, slaves, pool):
+        for slave in slaves:
+            if slave['attributes']['pool'] == pool:
+                return slave
+        return slaves[0]
 
     def _get_replication_info(self, location, hostname, instance_config) -> Dict[str, int]:
         """Returns service.instance and the number of instances registered in smartstack
@@ -425,7 +434,7 @@ class SmartstackReplicationChecker:
             )
         return {full_name: self._cache[location][full_name]}
 
-    def _get_allowed_locations_and_hostnames(self, instance_config) -> Dict[str, list]:
+    def _get_allowed_locations_and_slaves(self, instance_config) -> Dict[str, List[dict]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
         where deployment of the instance is allowed.
 
@@ -445,8 +454,7 @@ class SmartstackReplicationChecker:
             namespace=instance_config.instance,
             soa_dir=instance_config.soa_dir,
         ).get_discover()
-        slaves_grouped_by_attribute = mesos_tools.get_mesos_slaves_grouped_by_attribute(
+        return mesos_tools.get_mesos_slaves_grouped_by_attribute(
             slaves=filtered_slaves,
             attribute=discover_location_type,
         )
-        return {attr: [s['hostname'] for s in slaves] for attr, slaves in slaves_grouped_by_attribute.items()}
