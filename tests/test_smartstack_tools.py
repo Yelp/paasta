@@ -269,3 +269,82 @@ def test_get_replication_for_instance(
     )
     assert checker.get_replication_for_instance(instance_config) == \
         {'fake_region1': {'fake_service.fake_instance': 20}}
+
+
+def test_are_services_up_on_port():
+    with mock.patch(
+        'paasta_tools.smartstack_tools.get_multiple_backends', autospec=True,
+    ) as mock_get_multiple_backends, mock.patch(
+        'paasta_tools.smartstack_tools.ip_port_hostname_from_svname', autospec=True,
+    ) as mock_ip_port_hostname_from_svname, mock.patch(
+        'paasta_tools.smartstack_tools.backend_is_up', autospec=True,
+    ) as mock_backend_is_up:
+        assert not smartstack_tools.are_services_up_on_ip_port(
+            synapse_host='1.2.3.4',
+            synapse_port=3212,
+            synapse_haproxy_url_format="thing",
+            services=['service1.instance1', 'service1.instance2'],
+            host_ip='10.1.1.1',
+            host_port=8888,
+        )
+
+        mock_get_multiple_backends.return_value = [
+            {
+                'svname': 'thing1',
+                'pxname': 'service1.instance1',
+            }, {
+                'svname': 'thing2',
+                'pxname': 'service1.instance2',
+            },
+        ]
+        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_backend_is_up.return_value = True
+        assert smartstack_tools.are_services_up_on_ip_port(
+            synapse_host='1.2.3.4',
+            synapse_port=3212,
+            synapse_haproxy_url_format="thing",
+            services=['service1.instance1', 'service1.instance2'],
+            host_ip='10.1.1.1',
+            host_port=8888,
+        )
+
+        mock_get_multiple_backends.return_value = [
+            {
+                'svname': 'thing1',
+                'pxname': 'service1.instance1',
+            }, {
+                'svname': 'thing2',
+                'pxname': 'service1.instance2',
+            },
+        ]
+        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_backend_is_up.side_effect = [True, False]
+        assert not smartstack_tools.are_services_up_on_ip_port(
+            synapse_host='1.2.3.4',
+            synapse_port=3212,
+            synapse_haproxy_url_format="thing",
+            services=['service1.instance1', 'service1.instance2'],
+            host_ip='10.1.1.1',
+            host_port=8888,
+        )
+
+        mock_get_multiple_backends.return_value = [
+            {
+                'svname': 'thing1',
+                'pxname': 'service1.instance1',
+            }, {
+                'svname': 'thing2',
+                'pxname': 'service1.instance2',
+            },
+        ]
+        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_backend_is_up.return_value = True
+        mock_backend_is_up.side_effect = None
+        assert not smartstack_tools.are_services_up_on_ip_port(
+            synapse_host='1.2.3.4',
+            synapse_port=3212,
+            synapse_haproxy_url_format="thing",
+            services=['service1.instance1', 'service1.instance2', 'service1.instance3'],
+            host_ip='10.1.1.1',
+            host_port=8888,
+        )

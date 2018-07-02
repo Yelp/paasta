@@ -94,12 +94,15 @@ def paasta_native_services_running_here(hostname=None, framework_id=None):
 def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname=None):
     if not cluster:
         try:
-            cluster = load_system_paasta_config().get_cluster()
+            system_paasta_config = load_system_paasta_config()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
-        # there must be no paasta_native services running here, so we catch
+        # there must be no native services running here, so we catch
         # these custom exceptions and return [].
         except (PaastaNotConfiguredError):
+            return []
+        cluster = system_paasta_config.get_cluster()
+        if not system_paasta_config.get_register_native_services():
             return []
     # When a cluster is defined in mesos, let's iterate through paasta_native services
     paasta_native_services = paasta_native_services_running_here(hostname=hostname)

@@ -1429,6 +1429,12 @@ SystemPaastaConfigDict = TypedDict(
         'secret_provider': str,
         'slack': Dict[str, str],
         'maintenance_resource_reservation_enabled': bool,
+        'hacheck_sidecar_image_url': str,
+        'enable_nerve_readiness_check': bool,
+        'register_k8s_pods': bool,
+        'register_marathon_services': bool,
+        'register_native_services': bool,
+        'nerve_readiness_check_script': str,
         'tron': Dict,
     },
     total=False,
@@ -1814,6 +1820,31 @@ class SystemPaastaConfig(object):
         :return: a bool, indicating whether paasta should use MESOS healthchecks.
         """
         return self.config_dict.get("use_mesos_healthchecks", False)
+
+    def get_hacheck_sidecar_image_url(self) -> str:
+        """Get the docker image URL for the hacheck sidecar container"""
+        return self.config_dict.get('hacheck_sidecar_image_url', 'docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar')
+
+    def get_enable_nerve_readiness_check(self) -> bool:
+        """Enables a k8s readiness check on the Pod to ensure that all registrations
+        are UP on the local synapse haproxy"""
+        return self.config_dict.get('enable_nerve_readiness_check', True)
+
+    def get_register_k8s_pods(self) -> bool:
+        """Enable registration of k8s services in nerve"""
+        return self.config_dict.get('register_k8s_pods', False)
+
+    def get_register_marathon_services(self) -> bool:
+        """Enable registration of marathon services in nerve"""
+        return self.config_dict.get('register_marathon_services', True)
+
+    def get_register_native_services(self) -> bool:
+        """Enable registration of native paasta services in nerve"""
+        return self.config_dict.get('register_native_services', False)
+
+    def get_nerve_readiness_check_script(self) -> str:
+        """Script to check service is up in smartstack"""
+        return self.config_dict.get('nerve_readiness_check_script', '/check_smartstack_up.sh')
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get('taskproc', {})
