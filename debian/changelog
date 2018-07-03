@@ -1,3 +1,14 @@
+paasta-tools (0.75.2) xenial; urgency=medium
+
+  * 0.75.2 tagged with 'make release'
+    Commit: Fix `docker_wrapper.py` doesn"t see environment variables
+    Since PaaSTA passes environment variable values to a Docker
+    container via `VAR=val docker --env VAR`, fixing `docker_wrapper.py`
+    to read those values not only from the command line arguments but
+    also from the environment.
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 03 Jul 2018 13:42:22 -0700
+
 paasta-tools (0.75.1) xenial; urgency=medium
 
   * 0.75.1 tagged with 'make release'
