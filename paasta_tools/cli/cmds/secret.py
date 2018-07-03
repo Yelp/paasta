@@ -84,21 +84,27 @@ def add_subparser(subparsers):
 
 
 def print_paasta_helper(secret_path, secret_name):
-    print("\nYou have successfully encrypted your new secret and it\n"
-          "has been stored at {}\n"
-          "To use the secret in a service you can add it to your PaaSTA service\n"
-          "as an environment variable.\n"
-          "You do so by referencing it in the env dict in your yaml config:\n\n"
-          "main:\n"
-          "  cpus: 1\n"
-          "  env:\n"
-          "    PAASTA_SECRET_MY_SECRET_VAR: SECRET({})\n\n"
-          "Once you have referenced the secret you must commit the newly\n"
-          "created/updated json file and your changes to your yaml config. When\n"
-          "you push to master PaaSTA will bounce your service and the new\n"
-          "secrets plaintext will be in the environment variable you have\n"
-          "specified. The PAASTA_SECRET_ prefix is optional but necessary\n"
-          "for the yelp_servlib client library".format(secret_path, secret_name))
+    print(
+        "\nYou have successfully encrypted your new secret and it\n"
+        "has been stored at {}\n"
+        "To use the secret in a service you can add it to your PaaSTA service\n"
+        "as an environment variable.\n"
+        "You do so by referencing it in the env dict in your yaml config:\n\n"
+        "main:\n"
+        "  cpus: 1\n"
+        "  env:\n"
+        "    PAASTA_SECRET_{}: SECRET({})\n\n"
+        "Once you have referenced the secret you must commit the newly\n"
+        "created/updated json file and your changes to your yaml config. When\n"
+        "you push to master PaaSTA will bounce your service and the new\n"
+        "secrets plaintext will be in the environment variable you have\n"
+        "specified. The PAASTA_SECRET_ prefix is optional but necessary\n"
+        "for the yelp_servlib client library".format(
+            secret_path,
+            secret_name.upper(),
+            secret_name,
+        ),
+    )
 
 
 def get_plaintext_input(args):
