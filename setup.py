@@ -126,6 +126,7 @@ setup(
             'paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main',
             'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',
             'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
+            'paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main',
             'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
             'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
             'paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main',

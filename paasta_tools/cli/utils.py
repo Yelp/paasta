@@ -34,6 +34,7 @@ from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
@@ -970,7 +971,7 @@ def get_instance_configs_for_service(service, soa_dir, type_filter=None):
         soa_dir=soa_dir,
     ):
         if type_filter is None:
-            type_filter = ['marathon', 'chronos', 'adhoc']
+            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes']
         if 'marathon' in type_filter:
             for _, instance in get_service_instance_list(
                 service=service,
@@ -1007,6 +1008,20 @@ def get_instance_configs_for_service(service, soa_dir, type_filter=None):
                 soa_dir=soa_dir,
             ):
                 yield load_adhoc_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'kubernetes' in type_filter:
+            for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='kubernetes',
+                soa_dir=soa_dir,
+            ):
+                yield load_kubernetes_service_config(
                     service=service,
                     instance=instance,
                     cluster=cluster,

@@ -103,6 +103,10 @@ def adhoc_instance_status(instance_status, service, instance, verbose):
     return cstatus
 
 
+def kubernetes_instance_status(instance_status, service, instance, verbose):
+    return {}
+
+
 def marathon_job_status(mstatus, client, job_config, verbose):
     try:
         app_id = job_config.format_marathon_app_dict()['id']
@@ -185,6 +189,8 @@ def instance_status(request):
             instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'adhoc':
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
+        elif instance_type == 'kubernetes':
+            instance_status['kubernetes'] = kubernetes_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
             raise ApiFailure(error_message, 404)
