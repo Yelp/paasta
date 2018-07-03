@@ -33,7 +33,7 @@ MAX_HOSTNAME_LENGTH = 63
 
 
 def parse_env_args(args):
-    result = {}
+    result = {k: v for k, v in os.environ.items()}
     in_env = False
     in_file = False
     for arg in args:

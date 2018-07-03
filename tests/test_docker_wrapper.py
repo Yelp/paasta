@@ -7,7 +7,24 @@ import pytest
 from paasta_tools import docker_wrapper
 
 
+@contextmanager
+def patch_environ(envs):
+    with mock.patch('paasta_tools.docker_wrapper.os.environ', new=envs, autospec=None) as environ:
+        yield environ
+
+
+class ImmutableDict(dict):
+    def __setitem__(self, key, value):
+        pass
+
+
 class TestParseEnvArgs(object):
+    @pytest.fixture(autouse=True)
+    def mock_empty_os_environ(self):
+        # Patch `os.environ` to contain a not changeable empty set of environment variables.
+        with patch_environ(ImmutableDict()) as environ:
+            yield environ
+
     def test_empty(self):
         env = docker_wrapper.parse_env_args(['docker'])
         assert env == {}
@@ -25,6 +42,19 @@ class TestParseEnvArgs(object):
         assert env == {'key': 'value'}
 
     @pytest.mark.parametrize(
+        'args,envs', [
+            (['docker', '-e', 'key'], {'key': 'value'}),
+            (['docker', '-e=key'], {'key': 'value'}),
+            (['docker', '-te', 'key'], {'key': 'value'}),
+            (['docker', '-et', 'key'], {'key': 'value'}),
+        ],
+    )
+    def test_short_with_envs(self, args, envs):
+        with patch_environ(envs):
+            env = docker_wrapper.parse_env_args(args)
+            assert env == {'key': 'value'}
+
+    @pytest.mark.parametrize(
         'args', [
             ['docker', '--env', 'key=value'],
             ['docker', '--env=key=value'],
@@ -33,6 +63,17 @@ class TestParseEnvArgs(object):
     def test_long(self, args):
         env = docker_wrapper.parse_env_args(args)
         assert env == {'key': 'value'}
+
+    @pytest.mark.parametrize(
+        'args,envs', [
+            (['docker', '--env', 'key'], {'key': 'value'}),
+            (['docker', '--env=key=value'], {'key': 'value'}),
+        ],
+    )
+    def test_long_with_envs(self, args, envs):
+        with patch_environ(envs):
+            env = docker_wrapper.parse_env_args(args)
+            assert env == {'key': 'value'}
 
     @pytest.mark.parametrize(
         'args', [
@@ -276,6 +317,25 @@ class TestMain(object):
             'run',
             '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
             '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
+        )]
+
+    def test_chronos_with_envs(self, mock_execlp):
+        argv = [
+            'docker',
+            'run',
+            '--env=mesos_task_id',
+        ]
+        envs = {
+            'mesos_task_id': 'ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
+        }
+        with patch_environ(envs), mock.patch.object(socket, 'getfqdn', return_value='myhostname'):
+            docker_wrapper.main(argv)
+        assert mock_execlp.mock_calls == [mock.call(
+            'docker',
+            'docker',
+            'run',
+            '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
+            '--env=mesos_task_id',
         )]
 
     def test_env_not_present(self, mock_execlp):
