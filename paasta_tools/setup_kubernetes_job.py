@@ -23,8 +23,8 @@ Command line options:
 import argparse
 import logging
 import sys
-from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 
 from paasta_tools.kubernetes_tools import create_deployment
@@ -88,7 +88,7 @@ def main() -> None:
 
 def setup_kube_deployments(
     kube_client: KubeClient,
-    service_instances: List[str],
+    service_instances: Sequence[str],
     soa_dir: str=DEFAULT_SOA_DIR,
 ) -> bool:
     suceeded = True
@@ -116,7 +116,7 @@ def reconcile_kubernetes_deployment(
     kube_client: KubeClient,
     service: str,
     instance: str,
-    kube_deployments: List[KubeDeployment],
+    kube_deployments: Sequence[KubeDeployment],
     soa_dir: str,
 ) -> Tuple[int, Optional[int]]:
     try:
@@ -137,7 +137,7 @@ def reconcile_kubernetes_deployment(
         return 1, None
 
     try:
-        formatted_deployment_dict = service_instance_config.format_kubernetes_app_dict()
+        formatted_deployment = service_instance_config.format_kubernetes_app()
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
@@ -151,23 +151,23 @@ def reconcile_kubernetes_deployment(
     desired_deployment = KubeDeployment(
         service=service,
         instance=instance,
-        git_sha=formatted_deployment_dict['metadata']['labels']['git_sha'],
-        config_sha=formatted_deployment_dict['metadata']['labels']['config_sha'],
-        replicas=formatted_deployment_dict['spec']['replicas'],
+        git_sha=formatted_deployment.metadata.labels["git_sha"],
+        config_sha=formatted_deployment.metadata.labels["config_sha"],
+        replicas=formatted_deployment.spec.replicas,
     )
 
     if not (service, instance) in [(kd.service, kd.instance) for kd in kube_deployments]:
         log.debug(f"{desired_deployment} does not exist so creating")
         create_deployment(
             kube_client=kube_client,
-            formatted_deployment_dict=formatted_deployment_dict,
+            formatted_deployment=formatted_deployment,
         )
         return 0, None
     elif desired_deployment not in kube_deployments:
         log.debug(f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed")
         update_deployment(
             kube_client=kube_client,
-            formatted_deployment_dict=formatted_deployment_dict,
+            formatted_deployment=formatted_deployment,
         )
         return 0, None
     else:

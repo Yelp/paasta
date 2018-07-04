@@ -14,17 +14,40 @@
 """
 import copy
 import logging
-from collections import namedtuple
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import NamedTuple
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 
 import requests
 import service_configuration_lib
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import V1Container
+from kubernetes.client import V1ContainerPort
+from kubernetes.client import V1Deployment
+from kubernetes.client import V1DeploymentSpec
+from kubernetes.client import V1DeploymentStrategy
+from kubernetes.client import V1EnvVar
+from kubernetes.client import V1EnvVarSource
+from kubernetes.client import V1ExecAction
+from kubernetes.client import V1Handler
+from kubernetes.client import V1HostPathVolumeSource
+from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1LabelSelector
+from kubernetes.client import V1Lifecycle
+from kubernetes.client import V1Namespace
+from kubernetes.client import V1ObjectFieldSelector
+from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1PodSpec
+from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1Probe
+from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1Volume
+from kubernetes.client import V1VolumeMount
 
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -50,8 +73,23 @@ log = logging.getLogger(__name__)
 
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
-KubeDeployment = namedtuple('KubeDeployment', ['service', 'instance', 'git_sha', 'config_sha', 'replicas'])
-KubeService = namedtuple('KubeService', ['name', 'instance', 'port', 'pod_ip'])
+KubeDeployment = NamedTuple(
+    'KubeDeployment', [
+        ('service', str),
+        ('instance', str),
+        ('git_sha', str),
+        ('config_sha', str),
+        ('replicas', int),
+    ],
+)
+KubeService = NamedTuple(
+    'KubeService', [
+        ('name', str),
+        ('instance', str),
+        ('port', int),
+        ('pod_ip', str),
+    ],
+)
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -206,17 +244,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # map existing bounce methods to k8s equivalents.
         return KUBE_DEPLOY_STATEGY_MAP[self.config_dict.get('bounce_method', 'crossover')]
 
-    def get_deployment_strategy_config(self) -> Dict[str, Any]:
-        strategy_dict: Dict[str, Any] = {}
-        strategy_dict['type'] = self.get_bounce_method()
-        if self.get_bounce_method() == 'RollingUpdate':
+    def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
+        strategy_type = self.get_bounce_method()
+        rolling_update: Optional[V1RollingUpdateDeployment]
+        if strategy_type == 'RollingUpdate':
             # this translates bounce_margin to k8s speak maxUnavailable
             # for now we keep max_surge 100% but we could customise later
-            strategy_dict['rollingUpdate'] = {
-                "maxSurge": '100%',
-                "maxUnavailable": "{}%".format(int((1 - self.get_bounce_margin_factor()) * 100)),
-            }
-        return strategy_dict
+            rolling_update = V1RollingUpdateDeployment(
+                max_surge='100%',
+                max_unavailable="{}%".format(int((1 - self.get_bounce_margin_factor()) * 100)),
+            )
+        else:
+            rolling_update = None
+
+        strategy = V1DeploymentStrategy(
+            type=strategy_type,
+            rolling_update=rolling_update,
+        )
+        return strategy
 
     def get_sanitised_volume_name(self, volume_name: str) -> str:
         """I know but we really aren't allowed many characters..."""
@@ -224,122 +269,133 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         sanitised = volume_name.replace('/', 'slash-')
         return sanitised.replace('_', '--')
 
-    def get_sidecar_containers(self, system_paasta_config: SystemPaastaConfig) -> List[Dict[str, Any]]:
+    def get_sidecar_containers(self, system_paasta_config: SystemPaastaConfig) -> List[V1Container]:
         registrations = " ".join(self.get_registrations())
-        hacheck_sidecar = {
-            "image": system_paasta_config.get_hacheck_sidecar_image_url(),
-            "lifecycle": {
-                "preStop": {
-                    "exec": {
-                        "command": [
+        # s_m_j currently asserts that services are healthy in smartstack before
+        # continuing a bounce. this readinees check lets us acheive the same thing
+        readiness_probe: Optional[V1Probe]
+        if system_paasta_config.get_enable_nerve_readiness_check():
+            readiness_probe = V1Probe(
+                _exec=V1ExecAction(
+                    command=[
+                        system_paasta_config.get_nerve_readiness_check_script(),
+                    ] + self.get_registrations(),
+                ),
+                initial_delay_seconds=10,
+                period_seconds=10,
+            )
+        else:
+            readiness_probe = None
+
+        hacheck_sidecar = V1Container(
+            image=system_paasta_config.get_hacheck_sidecar_image_url(),
+            lifecycle=V1Lifecycle(
+                pre_stop=V1Handler(
+                    _exec=V1ExecAction(
+                        command=[
                             "/bin/sh",
                             "-c",
                             f"/usr/bin/hadown {registrations}; sleep 31",
                         ],
-                    },
-                },
-            },
-            "name": "hacheck",
-            "env": self.get_kubernetes_environment(),
-            "ports": [
-                {
-                    "containerPort": 6666,
-                },
+                    ),
+                ),
+            ),
+            name="hacheck",
+            env=self.get_kubernetes_environment(),
+            ports=[
+                V1ContainerPort(
+                    container_port=6666,
+                ),
             ],
-        }
-        # s_m_j currently asserts that services are healthy in smartstack before
-        # continuing a bounce. this readinees check lets us acheive the same thing
-        if system_paasta_config.get_enable_nerve_readiness_check():
-            hacheck_sidecar['readinessProbe'] = {
-                'exec': {
-                    'initialDelaySeconds': 10,
-                    'periodSeconds': 10,
-                    'command': [
-                        system_paasta_config.get_nerve_readiness_check_script(),
-                    ] + self.get_registrations(),
-                },
-            }
+            readiness_probe=readiness_probe,
+        )
         return [hacheck_sidecar]
 
-    def get_container_env(self) -> List[Dict[str, str]]:
-        user_env = [{'name': name, 'value': value} for name, value in self.get_env().items()]
+    def get_container_env(self) -> Sequence[V1EnvVar]:
+        user_env = [V1EnvVar(name=name, value=value) for name, value in self.get_env().items()]
         return user_env + self.get_kubernetes_environment()
 
-    def get_kubernetes_environment(self) -> List[Dict[str, Any]]:
-        kubernetes_env = [{
-            'name': 'PAASTA_POD_IP',
-            'valueFrom': {
-                'fieldRef': {
-                    'fieldPath': 'status.podIP',
-                },
-            },
-        }]
+    def get_kubernetes_environment(self) -> List[V1EnvVar]:
+        kubernetes_env = [
+            V1EnvVar(
+                name='PAASTA_POD_IP',
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(
+                        field_path='status.podIP',
+                    ),
+                ),
+            ),
+        ]
         return kubernetes_env
 
     def get_kubernetes_containers(
         self,
-        volumes: List[DockerVolume],
+        volumes: Sequence[DockerVolume],
         system_paasta_config: SystemPaastaConfig,
-    ) -> List[Dict[str, Any]]:
-        service_container = {
-            "image": self.get_docker_url(),
-            "cmd": self.get_cmd(),
-            "args": self.get_args(),
-            "env": self.get_container_env(),
-            "lifecycle": {
-                "preStop": {
-                    "exec": {
-                        "command": [
+    ) -> Sequence[V1Container]:
+        service_container = V1Container(
+            image=self.get_docker_url(),
+            command=self.get_cmd(),
+            args=self.get_args(),
+            env=self.get_container_env(),
+            lifecycle=V1Lifecycle(
+                pre_stop=V1Handler(
+                    _exec=V1ExecAction(
+                        command=[
                             "/bin/sh",
                             "-c",
                             "sleep 30",
                         ],
-                    },
-                },
-            },
-            "name": "{service}-{instance}".format(
+                    ),
+                ),
+            ),
+            name="{service}-{instance}".format(
                 service=self.get_sanitised_service_name(),
                 instance=self.get_sanitised_instance_name(),
             ),
-            "livenessProbe": {
-                "failureThreshold": 10,
-                "httpGet": {
-                    "path": "/status",
-                    "port": 8888,
-                },
-                "initialDelaySeconds": 15,
-                "periodSeconds": 10,
-                "timeoutSeconds": 5,
-            },
-            "ports": [
-                {
-                    "containerPort": 8888,
-                },
+            liveness_probe=V1Probe(
+                failure_threshold=10,
+                http_get=V1HTTPGetAction(
+                    path="/status",
+                    port=8888,
+                ),
+                initial_delay_seconds=15,
+                period_seconds=10,
+                timeout_seconds=5,
+            ),
+            ports=[
+                V1ContainerPort(
+                    container_port=8888,
+                ),
             ],
-            "volumeMounts": self.get_volume_mounts(volumes=volumes),
-        }
+            volume_mounts=self.get_volume_mounts(volumes=volumes),
+        )
         containers = [service_container] + self.get_sidecar_containers(system_paasta_config=system_paasta_config)
         return containers
 
-    def get_pod_volumes(self, volumes: List[DockerVolume]) -> List[Dict[str, Any]]:
+    def get_pod_volumes(self, volumes: Sequence[DockerVolume]) -> Sequence[V1Volume]:
         pod_volumes = []
         for volume in volumes:
-            pod_volumes.append({
-                "hostPath": {
-                    "path": volume['hostPath'],
-                },
-                "name": self.get_sanitised_volume_name(volume['containerPath']),
-            })
+            pod_volumes.append(
+                V1Volume(
+                    host_path=V1HostPathVolumeSource(
+                        path=volume['hostPath'],
+                    ),
+                    name=self.get_sanitised_volume_name(volume['containerPath']),
+                ),
+            )
         return pod_volumes
 
-    def get_volume_mounts(self, volumes: List[DockerVolume]) -> List[Dict[str, Any]]:
+    def get_volume_mounts(self, volumes: Sequence[DockerVolume]) -> Sequence[V1VolumeMount]:
         volume_mounts = []
         for volume in volumes:
-            volume_mounts.append({
-                "mountPath": volume['containerPath'],
-                "name": self.get_sanitised_volume_name(volume['containerPath']),
-                "readOnly": True if volume.get('mode', 'RO') == 'RO' else False,
-            })
+            volume_mounts.append(
+                V1VolumeMount(
+                    mount_path=volume['containerPath'],
+                    name=self.get_sanitised_volume_name(volume['containerPath']),
+                    read_only=True if volume.get('mode', 'RO') == 'RO' else False,
+                ),
+            )
         return volume_mounts
 
     def get_sanitised_service_name(self) -> str:
@@ -348,7 +404,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_instance_name(self) -> str:
         return self.get_instance().replace('_', '--')
 
-    def format_kubernetes_app_dict(self) -> Dict[str, Any]:
+    def format_kubernetes_app(self) -> V1Deployment:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
         system_paasta_config = load_system_paasta_config()
@@ -360,62 +416,60 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
 
         code_sha = get_code_sha_from_dockerurl(docker_url)
-        complete_config: Dict[str, Any] = {
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {
-                "name": "{service}-{instance}".format(
+        complete_config = V1Deployment(
+            metadata=V1ObjectMeta(
+                name="{service}-{instance}".format(
                     service=self.get_sanitised_service_name(),
                     instance=self.get_sanitised_instance_name(),
                 ),
-                "labels": {
+                labels={
                     "service": self.get_service(),
                     "instance": self.get_instance(),
+                    "git_sha": code_sha,
                 },
-            },
-            "spec": {
-                "replicas": self.get_instances(),
-                "selector": {
-                    "matchLabels": {
+            ),
+            spec=V1DeploymentSpec(
+                replicas=self.get_instances(),
+                selector=V1LabelSelector(
+                    match_labels={
                         "service": self.get_service(),
                         "instance": self.get_instance(),
                     },
-                },
-                "strategy": self.get_deployment_strategy_config(),
-                "template": {
-                    "metadata": {
-                        "labels": {
+                ),
+                strategy=self.get_deployment_strategy_config(),
+                template=V1PodTemplateSpec(
+                    metadata=V1ObjectMeta(
+                        labels={
                             "service": self.get_service(),
                             "instance": self.get_instance(),
+                            "git_sha": code_sha,
                         },
-                    },
-                    "spec": {
-                        "containers": self.get_kubernetes_containers(
+                    ),
+                    spec=V1PodSpec(
+                        containers=self.get_kubernetes_containers(
                             volumes=docker_volumes,
                             system_paasta_config=system_paasta_config,
                         ),
-                        "restartPolicy": "Always",
-                        "volumes": self.get_pod_volumes(docker_volumes),
-                    },
-                },
-            },
-        }
+                        restart_policy="Always",
+                        volumes=self.get_pod_volumes(docker_volumes),
+                    ),
+                ),
+            ),
+        )
 
         config_hash = get_config_hash(
             self.sanitize_for_config_hash(complete_config),
             force_bounce=self.get_force_bounce(),
         )
-        complete_config['metadata']['labels']['config_sha'] = config_hash
-        complete_config['spec']['template']['metadata']['labels']['config_sha'] = config_hash
-        complete_config['metadata']['labels']['git_sha'] = code_sha
-        complete_config['spec']['template']['metadata']['labels']['git_sha'] = code_sha
+        complete_config.metadata.labels['config_sha'] = config_hash
+        complete_config.spec.template.metadata.labels['config_sha'] = config_hash
 
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
     def sanitize_for_config_hash(
         self,
-        config: Dict,
+        config: V1Deployment,
     ) -> Dict[str, Any]:
         """Removes some data from config to make it suitable for
         calculation of config hash.
@@ -423,9 +477,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         :param config: complete_config hash to sanitize
         :returns: sanitized copy of complete_config hash
         """
-        ahash = {key: copy.deepcopy(value) for key, value in config.items() if key not in CONFIG_HASH_BLACKLIST}
+        ahash = {
+            key: copy.deepcopy(value)
+            for key, value in config.to_dict().items()
+            if key not in CONFIG_HASH_BLACKLIST
+        }
         spec = ahash['spec']
-        ahash['spec'] = {key: copy.deepcopy(value) for key, value in spec.items() if key not in CONFIG_HASH_BLACKLIST}
+        ahash['spec'] = {
+            key: copy.deepcopy(value)
+            for key, value in spec.items()
+            if key not in CONFIG_HASH_BLACKLIST
+        }
         return ahash
 
     def get_bounce_margin_factor(self) -> float:
@@ -437,7 +499,7 @@ def read_all_registrations_for_service_instance(
     instance: str,
     cluster: Optional[str]=None,
     soa_dir: str=DEFAULT_SOA_DIR,
-) -> List[str]:
+) -> Sequence[str]:
     """Retreive all registrations as fully specified name.instance pairs
     for a particular service instance.
 
@@ -460,7 +522,7 @@ def read_all_registrations_for_service_instance(
     return kubernetes_service_config.get_registrations()
 
 
-def get_kubernetes_services_running_here() -> List[KubeService]:
+def get_kubernetes_services_running_here() -> Sequence[KubeService]:
     services = []
     pods = requests.get('http://127.0.0.1:10255/pods').json()
     for pod in pods['items']:
@@ -481,7 +543,7 @@ def get_kubernetes_services_running_here() -> List[KubeService]:
 def get_kubernetes_services_running_here_for_nerve(
     cluster: str,
     soa_dir: str,
-) -> List[Tuple[str, ServiceNamespaceConfig]]:
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     try:
         system_paasta_config = load_system_paasta_config()
         if not cluster:
@@ -527,16 +589,14 @@ class KubeClient():
 
 
 def ensure_paasta_namespace(kube_client: KubeClient) -> None:
-    paasta_namespace = {
-        "kind": "Namespace",
-        "apiVersion": "v1",
-        "metadata": {
-            "name": "paasta",
-            "labels": {
+    paasta_namespace = V1Namespace(
+        metadata=V1ObjectMeta(
+            name="paasta",
+            labels={
                 "name": "paasta",
             },
-        },
-    }
+        ),
+    )
     namespaces = kube_client.core.list_namespace()
     namespace_names = [item.metadata.name for item in namespaces.items]
     if 'paasta' not in namespace_names:
@@ -544,7 +604,7 @@ def ensure_paasta_namespace(kube_client: KubeClient) -> None:
         kube_client.core.create_namespace(body=paasta_namespace)
 
 
-def list_all_deployments(kube_client: KubeClient) -> List[KubeDeployment]:
+def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
     deployments = kube_client.deployments.list_namespaced_deployment(namespace='paasta')
     return [
         KubeDeployment(
@@ -557,16 +617,16 @@ def list_all_deployments(kube_client: KubeClient) -> List[KubeDeployment]:
     ]
 
 
-def create_deployment(kube_client: KubeClient, formatted_deployment_dict: Dict[str, Any]) -> None:
+def create_deployment(kube_client: KubeClient, formatted_deployment: V1Deployment) -> None:
     return kube_client.deployments.create_namespaced_deployment(
         namespace='paasta',
-        body=formatted_deployment_dict,
+        body=formatted_deployment,
     )
 
 
-def update_deployment(kube_client: KubeClient, formatted_deployment_dict: Dict[str, Any]) -> None:
+def update_deployment(kube_client: KubeClient, formatted_deployment: V1Deployment) -> None:
     return kube_client.deployments.patch_namespaced_deployment(
-        name=formatted_deployment_dict['metadata']['name'],
+        name=formatted_deployment.metadata.name,
         namespace='paasta',
-        body=formatted_deployment_dict,
+        body=formatted_deployment,
     )
