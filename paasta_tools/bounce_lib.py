@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 import fcntl
 import logging
@@ -28,6 +29,7 @@ from typing import Sequence
 from typing import Set
 from typing import TypeVar
 
+import a_sync
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
@@ -233,28 +235,36 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
     happy = []
     now = datetime.datetime.utcnow()
 
-    for task in tasks:
+    async def process_task(task):
         if task.started_at is None:
             # Can't be healthy if it hasn't started
-            continue
+            return
 
         if min_task_uptime is not None:
             if (now - task.started_at).total_seconds() < min_task_uptime:
-                continue
+                return
 
         # if there are healthchecks defined for the app but none have executed yet, then task is unhappy
         if len(app.health_checks) > 0 and len(task.health_check_results) == 0:
-            continue
+            return
 
         # if there are health check results, check if at least one healthcheck is passing
         if not marathon_tools.is_task_healthy(task, require_all=False, default_healthy=True):
-            continue
+            return
 
         if check_haproxy:
-            if not is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
-                continue
+            if not await a_sync.to_async(is_task_in_smartstack)(task, service, nerve_ns, system_paasta_config):
+                return
 
         happy.append(task)
+
+    if tasks:
+        a_sync.block(
+            asyncio.wait,
+            [asyncio.ensure_future(process_task(task)) for task in tasks],
+            timeout=30,
+        )
+
     return happy
 
 
