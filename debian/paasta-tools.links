@@ -40,6 +40,7 @@ opt/venvs/paasta-tools/bin/paasta_firewall_logging usr/bin/paasta_firewall_loggi
 opt/venvs/paasta-tools/bin/paasta_firewall_update usr/bin/paasta_firewall_update
 opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/list_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/paasta_list_chronos_jobs
+opt/venvs/paasta-tools/bin/paasta_list_kubernetes_service_instances.py usr/bin/paasta_list_kubernetes_service_instances
 opt/venvs/paasta-tools/bin/paasta_list_tron_namespaces usr/bin/paasta_list_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_maintenance.py usr/bin/paasta_maintenance
 opt/venvs/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus
