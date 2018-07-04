@@ -1,7 +1,27 @@
 import unittest
+from typing import Sequence
 
 import mock
 import pytest
+from kubernetes.client import V1Container
+from kubernetes.client import V1ContainerPort
+from kubernetes.client import V1Deployment
+from kubernetes.client import V1DeploymentSpec
+from kubernetes.client import V1DeploymentStrategy
+from kubernetes.client import V1EnvVar
+from kubernetes.client import V1ExecAction
+from kubernetes.client import V1Handler
+from kubernetes.client import V1HostPathVolumeSource
+from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1LabelSelector
+from kubernetes.client import V1Lifecycle
+from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1PodSpec
+from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1Probe
+from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1Volume
+from kubernetes.client import V1VolumeMount
 
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
@@ -10,12 +30,14 @@ from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_f
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubeService
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import read_all_registrations_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
+from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
@@ -106,9 +128,9 @@ def test_load_kubernetes_service_config():
 
 class TestKubernetesDeploymentConfig(unittest.TestCase):
     def setUp(self):
-        mock_config_dict = {
-            'bounce_method': 'crossover',
-        }
+        mock_config_dict = KubernetesDeploymentConfigDict(
+            bounce_method='crossover',
+        )
         self.deployment = KubernetesDeploymentConfig(
             service='kurupt',
             instance='fm',
@@ -132,17 +154,17 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_method', autospec=True,
             return_value='RollingUpdate',
         ) as mock_get_bounce_method:
-            assert self.deployment.get_deployment_strategy_config() == {
-                'type': 'RollingUpdate',
-                'rollingUpdate': {
-                    'maxSurge': '100%',
-                    'maxUnavailable': '0%',
-                },
-            }
+            assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
+                type='RollingUpdate',
+                rolling_update=V1RollingUpdateDeployment(
+                    max_surge='100%',
+                    max_unavailable='0%',
+                ),
+            )
             mock_get_bounce_method.return_value = 'Recreate'
-            assert self.deployment.get_deployment_strategy_config() == {
-                'type': 'Recreate',
-            }
+            assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
+                type='Recreate',
+            )
 
     def test_get_sanitised_volume_name(self):
         self.deployment.get_sanitised_volume_name('/var/tmp') == 'slash-varslash-tmp'
@@ -165,19 +187,27 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 get_hacheck_sidecar_image_url=mock.Mock(return_value='some-docker-image'),
             )
             ret = self.deployment.get_sidecar_containers(mock_system_config)
-            expected = [{
-                'env': {},
-                'image': 'some-docker-image',
-                'lifecycle': {'preStop': {'exec': {'command': [
-                    '/bin/sh',
-                    '-c',
-                    '/usr/bin/hadown '
-                    'universal.credit; sleep '
-                    '31',
-                ]}}},
-                'name': 'hacheck',
-                'ports': [{'containerPort': 6666}],
-            }]
+            expected = [
+                V1Container(
+                    env={},
+                    image='some-docker-image',
+                    lifecycle=V1Lifecycle(
+                        pre_stop=V1Handler(
+                            _exec=V1ExecAction(
+                                command=[
+                                    '/bin/sh',
+                                    '-c',
+                                    '/usr/bin/hadown '
+                                    'universal.credit; sleep '
+                                    '31',
+                                ],
+                            ),
+                        ),
+                    ),
+                    name='hacheck',
+                    ports=[V1ContainerPort(container_port=6666)],
+                ),
+            ]
             assert ret == expected
 
             mock_system_config = mock.Mock(
@@ -186,24 +216,34 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 get_hacheck_sidecar_image_url=mock.Mock(return_value='some-docker-image'),
             )
             ret = self.deployment.get_sidecar_containers(mock_system_config)
-            expected = [{
-                'env': {},
-                'image': 'some-docker-image',
-                'lifecycle': {'preStop': {'exec': {'command': [
-                    '/bin/sh',
-                    '-c',
-                    '/usr/bin/hadown '
-                    'universal.credit; sleep '
-                    '31',
-                ]}}},
-                'name': 'hacheck',
-                'ports': [{'containerPort': 6666}],
-                'readinessProbe': {'exec': {
-                    'command': ['/nail/blah.sh', 'universal.credit'],
-                    'initialDelaySeconds': 10,
-                    'periodSeconds': 10,
-                }},
-            }]
+            expected = [
+                V1Container(
+                    env={},
+                    image='some-docker-image',
+                    lifecycle=V1Lifecycle(
+                        pre_stop=V1Handler(
+                            _exec=V1ExecAction(
+                                command=[
+                                    '/bin/sh',
+                                    '-c',
+                                    '/usr/bin/hadown '
+                                    'universal.credit; sleep '
+                                    '31',
+                                ],
+                            ),
+                        ),
+                    ),
+                    name='hacheck',
+                    ports=[V1ContainerPort(container_port=6666)],
+                    readiness_probe=V1Probe(
+                        _exec=V1ExecAction(
+                            command=['/nail/blah.sh', 'universal.credit'],
+                        ),
+                        initial_delay_seconds=10,
+                        period_seconds=10,
+                    ),
+                ),
+            ]
             assert ret == expected
 
     def test_get_container_env(self):
@@ -215,21 +255,23 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             },
         ), mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment', autospec=True,
-            return_value=[{
-                'name': 'manager',
-                'value': 'chabuddy',
-            }],
+            return_value=[
+                V1EnvVar(
+                    name='manager',
+                    value='chabuddy',
+                ),
+            ],
         ):
             expected = [
-                {'name': 'mc', 'value': 'grindah'},
-                {'name': 'dj', 'value': 'beats'},
-                {'name': 'manager', 'value': 'chabuddy'},
+                V1EnvVar(name='mc', value='grindah'),
+                V1EnvVar(name='dj', value='beats'),
+                V1EnvVar(name='manager', value='chabuddy'),
             ]
             assert expected == self.deployment.get_container_env()
 
     def test_get_kubernetes_environment(self):
         ret = self.deployment.get_kubernetes_environment()
-        assert 'PAASTA_POD_IP' in [env['name'] for env in ret]
+        assert 'PAASTA_POD_IP' in [env.name for env in ret]
 
     def test_get_kubernetes_containers(self):
         with mock.patch(
@@ -253,29 +295,38 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             return_value=['mock_sidecar'],
         ):
             mock_system_config = mock.Mock()
-            mock_volumes = []
+            mock_volumes: Sequence[DockerVolume] = []
             expected = [
-                {
-                    'args': mock_get_args.return_value,
-                    'cmd': mock_get_cmd.return_value,
-                    'env': mock_get_container_env.return_value,
-                    'image': mock_get_docker_url.return_value,
-                    'lifecycle': {'preStop': {'exec': {'command': [
-                        '/bin/sh',
-                        '-c',
-                        'sleep 30',
-                    ]}}},
-                    'livenessProbe': {
-                        'failureThreshold': 10,
-                        'httpGet': {'path': '/status', 'port': 8888},
-                        'initialDelaySeconds': 15,
-                        'periodSeconds': 10,
-                        'timeoutSeconds': 5,
-                    },
-                    'name': 'kurupt-fm',
-                    'ports': [{'containerPort': 8888}],
-                    'volumeMounts': mock_get_volume_mounts.return_value,
-                }, 'mock_sidecar',
+                V1Container(
+                    args=mock_get_args.return_value,
+                    command=mock_get_cmd.return_value,
+                    env=mock_get_container_env.return_value,
+                    image=mock_get_docker_url.return_value,
+                    lifecycle=V1Lifecycle(
+                        pre_stop=V1Handler(
+                            _exec=V1ExecAction(
+                                command=[
+                                    '/bin/sh',
+                                    '-c',
+                                    'sleep 30',
+                                ],
+                            ),
+                        ),
+                    ),
+                    liveness_probe=V1Probe(
+                        failure_threshold=10,
+                        http_get=V1HTTPGetAction(
+                            path='/status',
+                            port=8888,
+                        ),
+                        initial_delay_seconds=15,
+                        period_seconds=10,
+                        timeout_seconds=5,
+                    ),
+                    name='kurupt-fm',
+                    ports=[V1ContainerPort(container_port=8888)],
+                    volume_mounts=mock_get_volume_mounts.return_value,
+                ), 'mock_sidecar',
             ]
             assert self.deployment.get_kubernetes_containers(mock_volumes, mock_system_config) == expected
 
@@ -289,18 +340,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 {'hostPath': '/nail/thing', 'containerPath': '/nail/bar'},
             ]
             expected_volumes = [
-                {
-                    'hostPath': {
-                        'path': '/nail/blah',
-                    },
-                    'name': 'some-volume',
-                },
-                {
-                    'hostPath': {
-                        'path': '/nail/thing',
-                    },
-                    'name': 'some-volume',
-                },
+                V1Volume(
+                    host_path=V1HostPathVolumeSource(
+                        path='/nail/blah',
+                    ),
+                    name='some-volume',
+                ),
+                V1Volume(
+                    host_path=V1HostPathVolumeSource(
+                        path='/nail/thing',
+                    ),
+                    name='some-volume',
+                ),
             ]
             assert self.deployment.get_pod_volumes(mock_volumes) == expected_volumes
 
@@ -314,16 +365,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 {'hostPath': '/nail/thing', 'containerPath': '/nail/bar', 'mode': 'RW'},
             ]
             expected_volumes = [
-                {
-                    'mountPath': '/nail/foo',
-                    'name': 'some-volume',
-                    'readOnly': True,
-                },
-                {
-                    'mountPath': '/nail/bar',
-                    'name': 'some-volume',
-                    'readOnly': False,
-                },
+                V1VolumeMount(
+                    mount_path='/nail/foo',
+                    name='some-volume',
+                    read_only=True,
+                ),
+                V1VolumeMount(
+                    mount_path='/nail/bar',
+                    name='some-volume',
+                    read_only=False,
+                ),
             ]
             assert self.deployment.get_volume_mounts(mock_volumes) == expected_volumes
 
@@ -378,7 +429,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ) as mock_get_force_bounce, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.sanitize_for_config_hash', autospec=True,
         ) as mock_sanitize_for_config_hash:
-            ret = self.deployment.format_kubernetes_app_dict()
+            ret = self.deployment.format_kubernetes_app()
             assert mock_load_system_config.called
             assert mock_get_docker_url.called
             assert mock_get_volumes.called
@@ -387,56 +438,65 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 mock_sanitize_for_config_hash.return_value,
                 force_bounce=mock_get_force_bounce.return_value,
             )
-            expected = {
-                'apiVersion': 'apps/v1',
-                'kind': 'Deployment',
-                'metadata': {
-                    'labels': {
+            expected = V1Deployment(
+                metadata=V1ObjectMeta(
+                    labels={
                         'config_sha': mock_get_config_hash.return_value,
                         'git_sha': mock_get_code_sha_from_dockerurl.return_value,
                         'instance': mock_get_instance.return_value,
                         'service': mock_get_service.return_value,
                     },
-                    'name': 'kurupt-fm',
-                },
-                'spec': {
-                    'replicas': mock_get_instances.return_value,
-                    'selector': {'matchLabels': {
-                        'instance': mock_get_instance.return_value,
-                        'service': mock_get_service.return_value,
-                    }},
-                    'strategy': mock_get_deployment_strategy_config.return_value,
-
-                    'template': {
-                        'metadata': {'labels': {
-                            'config_sha': mock_get_config_hash.return_value,
-                            'git_sha': mock_get_code_sha_from_dockerurl.return_value,
+                    name='kurupt-fm',
+                ),
+                spec=V1DeploymentSpec(
+                    replicas=mock_get_instances.return_value,
+                    selector=V1LabelSelector(
+                        match_labels={
                             'instance': mock_get_instance.return_value,
                             'service': mock_get_service.return_value,
-                        }},
-                        'spec': {
-                            'containers': mock_get_kubernetes_containers.return_value,
-                            'restartPolicy': 'Always',
-                            'volumes': [],
                         },
-                    },
-                },
-            }
+                    ),
+                    strategy=mock_get_deployment_strategy_config.return_value,
+
+                    template=V1PodTemplateSpec(
+                        metadata=V1ObjectMeta(
+                            labels={
+                                'config_sha': mock_get_config_hash.return_value,
+                                'git_sha': mock_get_code_sha_from_dockerurl.return_value,
+                                'instance': mock_get_instance.return_value,
+                                'service': mock_get_service.return_value,
+                            },
+                        ),
+                        spec=V1PodSpec(
+                            containers=mock_get_kubernetes_containers.return_value,
+                            restart_policy='Always',
+                            volumes=[],
+                        ),
+                    ),
+                ),
+            )
             assert ret == expected
 
     def test_sanitize_config_hash(self):
-        mock_config = {
-            'freq': '108.9', 'replicas': 2, 'spec': {
-                'replicas': 2,
-                'mc': 'grindah',
-            },
-        }
+        mock_config = V1Deployment(
+            metadata=V1ObjectMeta(
+                name='qwe',
+                labels={
+                    'mc': 'grindah',
+                },
+            ),
+            spec=V1DeploymentSpec(
+                replicas=2,
+                selector=V1LabelSelector(
+                    match_labels={
+                        'freq': '108.9',
+                    },
+                ),
+                template=V1PodTemplateSpec(),
+            ),
+        )
         ret = self.deployment.sanitize_for_config_hash(mock_config)
-        assert ret == {
-            'freq': '108.9', 'spec': {
-                'mc': 'grindah',
-            },
-        }
+        assert 'replicas' not in ret['spec'].keys()
 
     def test_get_bounce_margin_factor(self):
         assert isinstance(self.deployment.get_bounce_margin_factor(), float)
@@ -664,25 +724,25 @@ def test_list_all_deployments():
 
 def test_create_deployment():
     mock_client = mock.Mock()
-    create_deployment(mock_client, {'some': 'data'})
+    create_deployment(mock_client, V1Deployment(api_version='some'))
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace='paasta',
-        body={'some': 'data'},
+        body=V1Deployment(api_version='some'),
     )
 
 
 def test_update_deployment():
     mock_client = mock.Mock()
-    update_deployment(mock_client, {'metadata': {'name': 'kurupt'}})
+    update_deployment(mock_client, V1Deployment(metadata=V1ObjectMeta(name='kurupt')))
     mock_client.deployments.patch_namespaced_deployment.assert_called_with(
         namespace='paasta',
         name='kurupt',
-        body={'metadata': {'name': 'kurupt'}},
+        body=V1Deployment(metadata=V1ObjectMeta(name='kurupt')),
     )
 
     mock_client = mock.Mock()
-    create_deployment(mock_client, {'some': 'data'})
+    create_deployment(mock_client, V1Deployment(api_version='some'))
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace='paasta',
-        body={'some': 'data'},
+        body=V1Deployment(api_version='some'),
     )

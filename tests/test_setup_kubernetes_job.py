@@ -1,4 +1,11 @@
+from typing import Sequence
+
 import mock
+from kubernetes.client import V1Deployment
+from kubernetes.client import V1DeploymentSpec
+from kubernetes.client import V1LabelSelector
+from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1PodTemplateSpec
 from pytest import raises
 
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -52,7 +59,7 @@ def test_setup_kube_deployment():
         'paasta_tools.setup_kubernetes_job.list_all_deployments', autospec=True,
     ) as mock_list_all_deployments:
         mock_client = mock.Mock()
-        mock_service_instances = []
+        mock_service_instances: Sequence[str] = []
         assert setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
@@ -102,7 +109,7 @@ def test_reconcile_kubernetes_deployment():
         'paasta_tools.setup_kubernetes_job.update_deployment', autospec=True,
     ) as mock_update_deployment:
         mock_kube_client = mock.Mock()
-        mock_deployments = []
+        mock_deployments: Sequence[KubeDeployment] = []
 
         # no deployments so should create
         ret = reconcile_kubernetes_deployment(
@@ -113,10 +120,10 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        mock_deploy_dict = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app_dict()
+        mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
         mock_create_deployment.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment_dict=mock_deploy_dict,
+            formatted_deployment=mock_deploy,
         )
 
         # different instance so should create
@@ -137,23 +144,25 @@ def test_reconcile_kubernetes_deployment():
         assert ret == (0, None)
         mock_create_deployment.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment_dict=mock_deploy_dict,
+            formatted_deployment=mock_deploy,
         )
 
         # instance correc so do nothing
         mock_create_deployment.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app_dict=mock.Mock(
-            return_value={
-                'metadata': {
-                    'labels': {
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
+            return_value=V1Deployment(
+                metadata=V1ObjectMeta(
+                    labels={
                         'git_sha': 'a12345',
                         'config_sha': 'b12345',
                     },
-                },
-                'spec': {
-                    'replicas': 3,
-                },
-            },
+                ),
+                spec=V1DeploymentSpec(
+                    selector=V1LabelSelector(),
+                    template=V1PodTemplateSpec(),
+                    replicas=3,
+                ),
+            ),
         ))
         mock_deployments = [KubeDeployment(
             service='kurupt',
@@ -175,18 +184,20 @@ def test_reconcile_kubernetes_deployment():
 
         # changed gitsha so update
         mock_create_deployment.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app_dict=mock.Mock(
-            return_value={
-                'metadata': {
-                    'labels': {
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
+            return_value=V1Deployment(
+                metadata=V1ObjectMeta(
+                    labels={
                         'git_sha': 'new_image',
                         'config_sha': 'b12345',
                     },
-                },
-                'spec': {
-                    'replicas': 3,
-                },
-            },
+                ),
+                spec=V1DeploymentSpec(
+                    selector=V1LabelSelector(),
+                    template=V1PodTemplateSpec(),
+                    replicas=3,
+                ),
+            ),
         ))
         mock_deployments = [KubeDeployment(
             service='kurupt',
@@ -204,27 +215,29 @@ def test_reconcile_kubernetes_deployment():
         )
         assert ret == (0, None)
         assert not mock_create_deployment.called
-        mock_deploy_dict = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app_dict()
+        mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
         mock_update_deployment.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment_dict=mock_deploy_dict,
+            formatted_deployment=mock_deploy,
         )
 
         # changed configsha so update
         mock_create_deployment.reset_mock()
         mock_update_deployment.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app_dict=mock.Mock(
-            return_value={
-                'metadata': {
-                    'labels': {
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
+            return_value=V1Deployment(
+                metadata=V1ObjectMeta(
+                    labels={
                         'git_sha': 'a12345',
                         'config_sha': 'newconfig',
                     },
-                },
-                'spec': {
-                    'replicas': 3,
-                },
-            },
+                ),
+                spec=V1DeploymentSpec(
+                    selector=V1LabelSelector(),
+                    template=V1PodTemplateSpec(),
+                    replicas=3,
+                ),
+            ),
         ))
         mock_deployments = [KubeDeployment(
             service='kurupt',
@@ -242,27 +255,29 @@ def test_reconcile_kubernetes_deployment():
         )
         assert ret == (0, None)
         assert not mock_create_deployment.called
-        mock_deploy_dict = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app_dict()
+        mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
         mock_update_deployment.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment_dict=mock_deploy_dict,
+            formatted_deployment=mock_deploy,
         )
 
         # changed number of replicas so update
         mock_create_deployment.reset_mock()
         mock_update_deployment.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app_dict=mock.Mock(
-            return_value={
-                'metadata': {
-                    'labels': {
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
+            return_value=V1Deployment(
+                metadata=V1ObjectMeta(
+                    labels={
                         'git_sha': 'a12345',
                         'config_sha': 'b12345',
                     },
-                },
-                'spec': {
-                    'replicas': 2,
-                },
-            },
+                ),
+                spec=V1DeploymentSpec(
+                    selector=V1LabelSelector(),
+                    template=V1PodTemplateSpec(),
+                    replicas=2,
+                ),
+            ),
         ))
         mock_deployments = [KubeDeployment(
             service='kurupt',
@@ -280,10 +295,10 @@ def test_reconcile_kubernetes_deployment():
         )
         assert ret == (0, None)
         assert not mock_create_deployment.called
-        mock_deploy_dict = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app_dict()
+        mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
         mock_update_deployment.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment_dict=mock_deploy_dict,
+            formatted_deployment=mock_deploy,
         )
 
         # error cases...
@@ -314,7 +329,7 @@ def test_reconcile_kubernetes_deployment():
 
         mock_load_kubernetes_service_config_no_cache.side_effect = None
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
-            format_kubernetes_app_dict=mock.Mock(side_effect=NoDockerImageError),
+            format_kubernetes_app=mock.Mock(side_effect=NoDockerImageError),
         )
         ret = reconcile_kubernetes_deployment(
             kube_client=mock_kube_client,
