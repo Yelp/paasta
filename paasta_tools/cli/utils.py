@@ -808,6 +808,8 @@ def get_instance_config(
         instance_config_load_function = load_chronos_job_config
     elif instance_type == 'adhoc':
         instance_config_load_function = load_adhoc_job_config
+    elif instance_type == 'kubernetes':
+        instance_config_load_function = load_kubernetes_service_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
