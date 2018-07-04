@@ -1,3 +1,11 @@
+paasta-tools (0.75.3) xenial; urgency=medium
+
+  * 0.75.3 tagged with 'make release'
+    Commit: Merge pull request #1886 from Yelp/some-more-k8s  Add
+    kubernetes as an instance type
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 04 Jul 2018 06:47:49 -0700
+
 paasta-tools (0.75.2) xenial; urgency=medium
 
   * 0.75.2 tagged with 'make release'

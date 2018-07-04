@@ -11,6 +11,7 @@ Subpackages
     paasta_tools.cli
     paasta_tools.deployd
     paasta_tools.frameworks
+    paasta_tools.kubernetes
     paasta_tools.mesos
     paasta_tools.metrics
     paasta_tools.monitoring
@@ -52,6 +53,7 @@ Submodules
    paasta_tools.iptables
    paasta_tools.kubernetes_tools
    paasta_tools.list_chronos_jobs
+   paasta_tools.list_kubernetes_service_instances
    paasta_tools.list_marathon_service_instances
    paasta_tools.list_tron_namespaces
    paasta_tools.long_running_service_tools
