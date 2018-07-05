@@ -594,6 +594,25 @@ def test_get_instance_Config_chronos(
 
 
 @mock.patch('paasta_tools.cli.utils.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.cli.utils.load_kubernetes_service_config', autospec=True)
+def test_get_instance_config_kubernetes(
+    mock_load_kubernetes_service_config,
+    mock_validate_service_instance,
+):
+    mock_validate_service_instance.return_value = 'kubernetes'
+    mock_load_kubernetes_service_config.return_value = 'fake_service_config'
+    actual = utils.get_instance_config(
+        service='fake_service',
+        instance='fake_instance',
+        cluster='fake_cluster',
+        soa_dir='fake_soa_dir',
+    )
+    assert mock_validate_service_instance.call_count == 1
+    assert mock_load_kubernetes_service_config.call_count == 1
+    assert actual == 'fake_service_config'
+
+
+@mock.patch('paasta_tools.cli.utils.validate_service_instance', autospec=True)
 def test_get_instance_config_unknown(
     mock_validate_service_instance,
 ):
