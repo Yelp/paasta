@@ -285,6 +285,7 @@ def test_are_services_up_on_port():
     ) as mock_ip_port_hostname_from_svname, mock.patch(
         'paasta_tools.smartstack_tools.backend_is_up', autospec=True,
     ) as mock_backend_is_up:
+        # none present
         assert not smartstack_tools.are_services_up_on_ip_port(
             synapse_host='1.2.3.4',
             synapse_port=3212,
@@ -301,10 +302,14 @@ def test_are_services_up_on_port():
             }, {
                 'svname': 'thing2',
                 'pxname': 'service1.instance2',
+            }, {
+                'svname': 'thing3',
+                'pxname': 'service1.instance2',
             },
         ]
         mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
         mock_backend_is_up.return_value = True
+        # all backends present and up
         assert smartstack_tools.are_services_up_on_ip_port(
             synapse_host='1.2.3.4',
             synapse_port=3212,
@@ -321,10 +326,14 @@ def test_are_services_up_on_port():
             }, {
                 'svname': 'thing2',
                 'pxname': 'service1.instance2',
+            }, {
+                'svname': 'thing3',
+                'pxname': 'service1.instance2',
             },
         ]
         mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
-        mock_backend_is_up.side_effect = [True, False]
+        mock_backend_is_up.side_effect = [True, False, False]
+        # all present bu both of service1.instance2 are DOWN
         assert not smartstack_tools.are_services_up_on_ip_port(
             synapse_host='1.2.3.4',
             synapse_port=3212,
@@ -341,11 +350,39 @@ def test_are_services_up_on_port():
             }, {
                 'svname': 'thing2',
                 'pxname': 'service1.instance2',
+            }, {
+                'svname': 'thing3',
+                'pxname': 'service1.instance2',
+            },
+        ]
+        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_backend_is_up.side_effect = [True, True, False]
+        # all present but 1 of service1.instance2 is UP
+        assert smartstack_tools.are_services_up_on_ip_port(
+            synapse_host='1.2.3.4',
+            synapse_port=3212,
+            synapse_haproxy_url_format="thing",
+            services=['service1.instance1', 'service1.instance2'],
+            host_ip='10.1.1.1',
+            host_port=8888,
+        )
+
+        mock_get_multiple_backends.return_value = [
+            {
+                'svname': 'thing1',
+                'pxname': 'service1.instance1',
+            }, {
+                'svname': 'thing2',
+                'pxname': 'service1.instance2',
+            }, {
+                'svname': 'thing3',
+                'pxname': 'service1.instance2',
             },
         ]
         mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
         mock_backend_is_up.return_value = True
         mock_backend_is_up.side_effect = None
+        # all up and present but service1.instance3 not presetn
         assert not smartstack_tools.are_services_up_on_ip_port(
             synapse_host='1.2.3.4',
             synapse_port=3212,
