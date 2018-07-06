@@ -57,7 +57,7 @@ canary:
   #monitoring:
   #  page: false
   #  ticket: true
-  #  irc_channels: ['mychannel']
+  #  slack_channels: ['mychannel']
 
 
 # Some service authors want a *different* canary that is not in the main smartstack pool

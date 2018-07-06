@@ -170,6 +170,16 @@ class TestMonitoring_Tools:
                 self.soa_dir,
             )
 
+    def test_get_slack_channels(self):
+        with mock.patch(
+            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
+        ) as get_monitoring_config_value_patch:
+            monitoring_tools.get_slack_channels(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with(
+                'slack_channels', self.overrides, self.service,
+                self.soa_dir,
+            )
+
     def test_get_dependencies(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
@@ -310,6 +320,7 @@ class TestMonitoring_Tools:
         fake_tip = 'fake_tip'
         fake_notification_email = 'fake@notify'
         fake_irc = '#fake'
+        fake_slack = '#fake_slack'
         fake_soa_dir = '/fake/soa/dir'
         self.fake_cluster = 'fake_cluster'
         fake_sensu_host = 'fake_sensu_host'
@@ -320,6 +331,7 @@ class TestMonitoring_Tools:
             'tip': fake_tip,
             'notification_email': fake_notification_email,
             'irc_channels': fake_irc,
+            'slack_channels': fake_slack,
             'project': None,
             'ticket': False,
             'page': True,
@@ -346,6 +358,10 @@ class TestMonitoring_Tools:
             return_value=fake_irc,
             autospec=True,
         ) as get_irc_patch, mock.patch(
+            "paasta_tools.monitoring_tools.get_slack_channels",
+            return_value=fake_slack,
+            autospec=True,
+        ) as get_slack_patch, mock.patch(
             "paasta_tools.monitoring_tools.get_ticket",
             return_value=False,
             autospec=True,
@@ -391,6 +407,11 @@ class TestMonitoring_Tools:
                 fake_soa_dir,
             )
             get_irc_patch.assert_called_once_with(
+                fake_monitoring_overrides,
+                fake_service,
+                fake_soa_dir,
+            )
+            get_slack_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
                 fake_soa_dir,

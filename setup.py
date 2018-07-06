@@ -60,7 +60,7 @@ setup(
         'pyramid >= 1.8',
         'pymesos >= 0.2.0',
         'pyramid-swagger >= 2.3.0',
-        'pysensu-yelp >= 0.3.4',
+        'pysensu-yelp >= 0.4.0',
         'pytimeparse >= 1.1.0',
         'pytz >= 2014.10',
         'python-crontab>=2.1.1',
