@@ -325,10 +325,15 @@ def are_services_up_on_ip_port(
         backends_by_ip_port[ip, port].append(backend)
 
     backends_on_ip = backends_by_ip_port[host_ip, host_port]
-    are_services_up = all([backend_is_up(be) for be in backends_on_ip])
-    services_on_ip = [be['pxname'] for be in backends_on_ip]
-    all_services_present = all([service in services_on_ip for service in services])
-    return all_services_present and are_services_up
+    # any backend being up is okay because a previous backend
+    # may have had the same IP and synapse only removes them completely
+    # after some time
+    services_with_atleast_one_backend_up = {service: False for service in services}
+    for service in services:
+        for be in backends_on_ip:
+            if be['pxname'] == service and backend_is_up(be):
+                services_with_atleast_one_backend_up[service] = True
+    return all(services_with_atleast_one_backend_up.values())
 
 
 def match_backends_and_tasks(backends, tasks):
