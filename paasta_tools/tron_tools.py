@@ -13,6 +13,7 @@
 import glob
 import os
 import re
+import subprocess
 from typing import List
 from typing import Tuple
 
@@ -24,7 +25,6 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper
 
 from paasta_tools.tron.client import TronClient
-from paasta_tools.tron.tron_timeutils import check_timedelta
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
@@ -32,6 +32,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import paasta_print
 
 
 MASTER_NAMESPACE = 'MASTER'
@@ -136,10 +137,6 @@ class TronActionConfig(InstanceConfig):
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
-    def check_expected_runtime(self) -> Tuple[bool, str]:
-        expected_runtime = self.get_expected_runtime()
-        return check_timedelta(expected_runtime, 'expected_runtime')
-
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
@@ -163,17 +160,9 @@ class TronActionConfig(InstanceConfig):
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs = super(TronActionConfig, self).validate()
 
-        param_checks = [
-            self.check_expected_runtime,
-        ]
-        for check in param_checks:
-            check_passed, check_msg = check()
-            if not check_passed:
-                error_msgs.append(check_msg)
-
         if error_msgs:
-            name = self.get_action_name()
-            return [f'Action {name}: {msg}' for msg in error_msgs]
+            name = self.get_instance()
+            return [f'{name}: {msg}' for msg in error_msgs]
         else:
             return []
 
@@ -280,17 +269,9 @@ class TronJobConfig:
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
 
-    def check_max_runtime(self) -> Tuple[bool, str]:
-        max_runtime = self.get_max_runtime()
-        return check_timedelta(max_runtime, 'max_runtime')
-
-    def check_expected_runtime(self) -> Tuple[bool, str]:
-        expected_runtime = self.get_expected_runtime()
-        return check_timedelta(expected_runtime, 'expected_runtime')
-
     def check_actions(self) -> Tuple[bool, List[str]]:
-        actions = self.get_actions('dummy-default')
-        cleanup_action = self.get_cleanup_action('dummy-default')
+        actions = self.get_actions(None)
+        cleanup_action = self.get_cleanup_action(None)
         if cleanup_action:
             actions.append(cleanup_action)
 
@@ -304,22 +285,8 @@ class TronJobConfig:
         return checks_passed, msgs
 
     def validate(self) -> List[str]:
-        param_checks = [
-            self.check_max_runtime,
-            self.check_expected_runtime,
-        ]
-        error_msgs = []
-        for check in param_checks:
-            check_passed, check_msg = check()
-            if not check_passed:
-                error_msgs.append(check_msg)
-
-        # Returns lists of messages instead of single messages.
-        check_passed, action_msgs = self.check_actions()
-        if not check_passed:
-            error_msgs.extend(action_msgs)
-
-        return error_msgs
+        _, action_msgs = self.check_actions()
+        return action_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -451,6 +418,47 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
         Dumper=Dumper,
         default_flow_style=False,
     )
+
+
+def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+    job_configs, other_config = load_tron_service_config(service, cluster, soa_dir)
+
+    if service != MASTER_NAMESPACE and other_config:
+        other_keys = list(other_config.keys())
+        return [
+            f'Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}',
+        ]
+
+    # PaaSTA-specific validation
+    for job_config in job_configs:
+        check_msgs = job_config.validate()
+        if check_msgs:
+            return check_msgs
+
+    # Use Tronfig on generated config from PaaSTA to validate the rest
+    other_config['jobs'] = [
+        format_tron_job_dict(
+            job_config=job_config,
+            cluster_fqdn_format='{cluster}',
+            default_paasta_cluster=None,
+        ) for job_config in job_configs
+    ]
+    complete_config = yaml.dump(other_config)
+
+    proc = subprocess.run(
+        ['tronfig', '-', '-V', '-n', service],
+        input=complete_config,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding='utf-8',
+    )
+    if proc.returncode != 0:
+        process_errors = proc.stderr.strip()
+        if process_errors:  # Error running tronfig
+            paasta_print(proc.stderr)
+        return [proc.stdout.strip()]
+
+    return []
 
 
 def _get_tron_namespaces_from_service_dir(cluster, soa_dir):

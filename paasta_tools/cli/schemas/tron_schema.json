@@ -9,7 +9,7 @@
     },
     "time_delta": {
         "type": "string",
-        "pattern": "^\\d+\\s*[dhms]$"
+        "pattern": "^\\d+\\s*[a-z]+$"
     },
     "action": {
       "type": "object",

@@ -34,8 +34,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.tron_tools import list_tron_clusters
-from paasta_tools.tron_tools import load_tron_service_config
-from paasta_tools.tron_tools import MASTER_NAMESPACE
+from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -77,16 +76,16 @@ def valid_chronos_instance(cluster, instance):
     return success(f'chronos-{cluster}.yaml has a valid instance: {instance}.')
 
 
-def invalid_tron_job(cluster, job, output, filename):
+def invalid_tron_namespace(cluster, output, filename):
     return failure(
-        '%s has an invalid job: %s.\n  %s\n  '
-        'More info:' % (filename, job, output),
+        '%s is invalid:\n  %s\n  '
+        'More info:' % (filename, output),
         "http://tron.readthedocs.io/en/latest/jobs.html",
     )
 
 
-def valid_tron_job(cluster, job, filename=None):
-    return success(f'{filename} has a valid job: {job}.')
+def valid_tron_namespace(cluster, filename):
+    return success(f'{filename} is valid.')
 
 
 def get_schema(file_type):
@@ -251,30 +250,19 @@ def validate_tron(service_path):
 
 
 def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
-    returncode = True
-    job_configs, other_config = load_tron_service_config(service, cluster, soa_dir)
-
     if tron_dir:
         display_name = f'{cluster}/{service}.yaml'
     else:
         display_name = f'tron-{cluster}.yaml'
 
-    if service != MASTER_NAMESPACE and other_config:
-        returncode = False
-        other_keys = list(other_config.keys())
-        paasta_print(failure(
-            f"{display_name}: Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}",
-            "http://tron.readthedocs.io/en/latest/jobs.html",
-        ))
+    messages = validate_complete_config(service, cluster, soa_dir)
+    returncode = len(messages) == 0
 
-    for job_config in job_configs:
-        check_msgs = job_config.validate()
-        if check_msgs:
-            returncode = False
-            paasta_print(invalid_tron_job(cluster, job_config.get_name(), "\n  ".join(check_msgs), display_name))
-        else:
-            if not tron_dir:
-                paasta_print(valid_tron_job(cluster, job_config.get_name(), display_name))
+    if messages:
+        paasta_print(invalid_tron_namespace(cluster, "\n  ".join(messages), display_name))
+    else:
+        paasta_print(valid_tron_namespace(cluster, display_name))
+
     return returncode
 
 
