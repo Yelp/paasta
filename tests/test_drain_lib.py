@@ -57,25 +57,43 @@ def mock_ClientSession(**fake_session_kwargs):
 
 
 class TestHacheckDrainMethod(object):
-    drain_method = drain_lib.HacheckDrainMethod("srv", "inst", "ns", hacheck_port=12345)
+    drain_method = drain_lib.HacheckDrainMethod(
+        service="srv",
+        instance="inst",
+        registrations=["ns_one", "ns_two"],
+        hacheck_port=12345,
+    )
 
-    def test_spool_url(self):
+    async def _async_id(self, x):
+        return x
+
+    def test_spool_urls(self):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        actual = self.drain_method.spool_url(fake_task)
+        actual = self.drain_method.spool_urls(fake_task)
         # Nerve hits /{mode}/{service}.{namespace}/{port}/status
-        expected = 'http://fake_host:12345/spool/srv.ns/54321/status'
+        expected = [
+            f'http://fake_host:12345/spool/srv.{ns}/54321/status'
+            for ns in self.drain_method.registrations
+        ]
         assert actual == expected
 
-    def test_spool_url_handles_tasks_with_no_ports(self):
+    @pytest.mark.asyncio
+    async def test_for_each_registration_with_no_ports(self):
         fake_task = mock.Mock(host="fake_host", ports=[])
-        actual = self.drain_method.spool_url(fake_task)
+        actual = await self.drain_method.for_each_registration(
+            task=fake_task,
+            func=self._async_id,
+        )
         assert actual is None
 
     @pytest.mark.asyncio
-    async def test_get_spool_handles_no_ports(self):
-        fake_task = mock.Mock(host="fake_host", ports=[])
-        actual = await self.drain_method.get_spool(fake_task)
-        assert actual is None
+    async def test_for_each_registration(self):
+        fake_task = mock.Mock(host="fake_host", ports=[54321])
+        actual = await self.drain_method.for_each_registration(
+            task=fake_task,
+            func=self._async_id,
+        )
+        assert actual == self.drain_method.spool_urls(fake_task)
 
     @pytest.mark.asyncio
     async def test_is_draining_yes(self):
