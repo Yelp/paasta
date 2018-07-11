@@ -2,6 +2,7 @@ import mock
 import pytest
 
 from paasta_tools import tron_tools
+from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -318,6 +319,40 @@ class TestTronTools:
         with pytest.raises(InvalidInstanceConfig):
             tron_tools.decompose_instance('job_a')
 
+    def test_format_master_config(self):
+        master_config = {
+            'some_key': 101,
+            'another': 'hello',
+            'mesos_options': {
+                'default_volumes': [{
+                    'container_path': '/nail/tmp',
+                    'host_path': '/nail/tmp',
+                    'mode': 'RW',
+                }],
+                'other_mesos': True,
+            },
+        }
+        paasta_volumes = [{
+            'containerPath': '/nail/other',
+            'hostPath': '/other/home',
+            'mode': 'RW',
+        }]
+        dockercfg = 'file://somewhere'
+        result = tron_tools.format_master_config(master_config, paasta_volumes, dockercfg)
+        assert result == {
+            'some_key': 101,
+            'another': 'hello',
+            'mesos_options': {
+                'default_volumes': [{
+                    'container_path': '/nail/other',
+                    'host_path': '/other/home',
+                    'mode': 'RW',
+                }],
+                'dockercfg_location': dockercfg,
+                'other_mesos': True,
+            },
+        }
+
     def test_format_tron_action_dict_default_executor(self):
         action_dict = {
             'name': 'do_something',
@@ -503,24 +538,28 @@ class TestTronTools:
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.format_tron_job_dict', autospec=True)
+    @mock.patch('paasta_tools.tron_tools.format_master_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.yaml.dump', autospec=True)
+    @pytest.mark.parametrize('service', [MASTER_NAMESPACE, 'my_app'])
     def test_create_complete_config(
         self,
         mock_yaml_dump,
+        mock_format_master_config,
         mock_format_job,
         mock_tron_service_config,
         mock_tron_system_config,
         mock_system_config,
+        service,
     ):
         job_config = tron_tools.TronJobConfig({})
         other_config = {
             'my_config_value': [1, 2],
         }
+        mock_format_master_config.return_value = other_config
         mock_tron_service_config.return_value = (
             [job_config],
             other_config,
         )
-        service = 'my_app'
         soa_dir = '/testing/services'
 
         assert tron_tools.create_complete_config(service, soa_dir) == mock_yaml_dump.return_value
@@ -529,6 +568,14 @@ class TestTronTools:
             mock_tron_system_config.return_value.get_cluster_name.return_value,
             soa_dir,
         )
+        if service == MASTER_NAMESPACE:
+            mock_format_master_config.assert_called_once_with(
+                other_config,
+                mock_system_config.return_value.get_volumes.return_value,
+                mock_system_config.return_value.get_dockercfg_location.return_value,
+            )
+        else:
+            assert mock_format_master_config.call_count == 0
         mock_format_job.assert_called_once_with(
             job_config,
             mock_system_config.return_value.get_cluster_fqdn_format.return_value,

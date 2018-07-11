@@ -29,6 +29,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
 SPACER = '.'
+MASTER_NAMESPACE = 'MASTER'
 
 
 class TronNotConfigured(Exception):
@@ -261,6 +262,26 @@ class TronJobConfig:
         return False
 
 
+def format_volumes(paasta_volume_list):
+    return [
+        {
+            'container_path': v['containerPath'],
+            'host_path': v['hostPath'],
+            'mode': v['mode'],
+        } for v in paasta_volume_list
+    ]
+
+
+def format_master_config(master_config, default_volumes, dockercfg_location):
+    mesos_options = master_config.get('mesos_options', {})
+    mesos_options.update({
+        'default_volumes': format_volumes(default_volumes),
+        'dockercfg_location': dockercfg_location,
+    })
+    master_config['mesos_options'] = mesos_options
+    return master_config
+
+
 def format_tron_action_dict(action_config, cluster_fqdn_format):
     """Generate a dict of tronfig for an action, from the TronActionConfig.
 
@@ -283,13 +304,7 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
         result['mem'] = action_config.get_mem()
         result['docker_image'] = action_config.get_docker_url()
         result['env'] = action_config.get_env()
-        result['extra_volumes'] = [
-            {
-                'container_path': v['containerPath'],
-                'host_path': v['hostPath'],
-                'mode': v['mode'],
-            } for v in action_config.get_extra_volumes()
-        ]
+        result['extra_volumes'] = format_volumes(action_config.get_extra_volumes())
         result['docker_parameters'] = [
             {
                 'key': param['key'],
@@ -372,6 +387,14 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
         tron_cluster=tron_config.get_cluster_name(),
         soa_dir=soa_dir,
     )
+
+    if service == MASTER_NAMESPACE:
+        other_config = format_master_config(
+            other_config,
+            system_paasta_config.get_volumes(),
+            system_paasta_config.get_dockercfg_location(),
+        )
+
     other_config['jobs'] = [
         format_tron_job_dict(
             job_config=job_config,
