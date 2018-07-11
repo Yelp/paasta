@@ -443,7 +443,7 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SO
             default_paasta_cluster=None,
         ) for job_config in job_configs
     ]
-    complete_config = yaml.dump(other_config)
+    complete_config = yaml.dump(other_config, Dumper=Dumper)
 
     proc = subprocess.run(
         ['tronfig', '-', '-V', '-n', service],

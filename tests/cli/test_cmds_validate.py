@@ -14,6 +14,7 @@
 import os
 
 import mock
+import pytest
 from mock import patch
 
 import paasta_tools.chronos_tools
@@ -29,15 +30,18 @@ from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import valid_chronos_instance
 from paasta_tools.cli.cmds.validate import validate_chronos
 from paasta_tools.cli.cmds.validate import validate_schema
+from paasta_tools.cli.cmds.validate import validate_tron
 
 
 @patch('paasta_tools.cli.cmds.validate.validate_all_schemas', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.validate_chronos', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.validate_tron', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.get_service_path', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.check_service_path', autospec=True)
 def test_paasta_validate_calls_everything(
     mock_check_service_path,
     mock_get_service_path,
+    mock_validate_tron,
     mock_validate_chronos,
     mock_validate_all_schemas,
 ):
@@ -47,6 +51,7 @@ def test_paasta_validate_calls_everything(
     mock_get_service_path.return_value = 'unused_path'
     mock_validate_all_schemas.return_value = True
     mock_validate_chronos.return_value = True
+    mock_validate_tron.return_value = True
 
     args = mock.MagicMock()
     args.service = None
@@ -56,6 +61,7 @@ def test_paasta_validate_calls_everything(
 
     assert mock_validate_all_schemas.called
     assert mock_validate_chronos.called
+    assert mock_validate_tron.called
 
 
 def test_get_service_path_unknown(capfd):
@@ -128,6 +134,11 @@ def test_get_schema_marathon_found():
 
 def test_get_schema_chronos_found():
     schema = get_schema('chronos')
+    is_schema(schema)
+
+
+def test_get_schema_tron_found():
+    schema = get_schema('tron')
     is_schema(schema)
 
 
@@ -591,6 +602,181 @@ def test_validate_chronos_tmp_job(mock_path_to_soa_dir_service, capfd):
         " with the identifier used for temporary jobs"
     ) in \
         capfd.readouterr()[0]
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_tron_validate_schema_good(
+    mock_get_file_contents, capfd,
+):
+    tron_content = """
+jobs:
+    - name: test_job
+      node: batch_box
+      service: my_service
+      deploy_group: prod
+      allow_overlap: false
+      monitoring:
+        team: my_team
+      schedule:
+        type: cron
+        value: "0 7 * * 5"
+      actions:
+        - name: first
+          command: echo hello world
+        - name: second
+          command: sleep 10
+          expected_runtime: 15 sec
+          executor: paasta
+          cluster: paasta-cluster-1
+          cpus: 0.5
+          mem: 100
+          pool: custom
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert validate_schema('unused_service_path.yaml', 'tron')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_tron_validate_schema_job_extra_properties_bad(
+    mock_get_file_contents, capfd,
+):
+    tron_content = """
+jobs:
+    - name: test_job
+      node: batch_box
+      schedule: "daily 04:00:00"
+      unexpected: 100
+      actions:
+        - name: first
+          command: echo hello world
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert not validate_schema('unused_service_path.yaml', 'tron')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_tron_validate_schema_actions_extra_properties_bad(
+    mock_get_file_contents, capfd,
+):
+    tron_content = """
+jobs:
+    - name: test_job
+      node: batch_box
+      schedule: "daily 04:00:00"
+      actions:
+        - name: first
+          command: echo hello world
+          something_else: true
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert not validate_schema('unused_service_path.yaml', 'tron')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_tron_validate_schema_cleanup_action_extra_properties_bad(
+    mock_get_file_contents, capfd,
+):
+    tron_content = """
+jobs:
+    - name: test_job
+      node: batch_box
+      schedule: "daily 04:00:00"
+      actions:
+        - name: first
+          command: echo hello world
+      cleanup_action:
+        command: rm output
+        other_key: value
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert not validate_schema('unused_service_path.yaml', 'tron')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.validate_schema', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.validate_complete_config', autospec=True)
+@patch('os.listdir', autospec=True)
+@pytest.mark.parametrize(
+    'schema_valid,config_msgs,expected_return', [
+        (False, [], False),
+        (True, ['something wrong'], False),
+        (True, [], True),
+    ],
+)
+def test_validate_tron_with_tron_dir(
+    mock_ls,
+    mock_validate_tron_config,
+    mock_validate_schema,
+    capfd,
+    schema_valid,
+    config_msgs,
+    expected_return,
+):
+    mock_ls.return_value = ['foo.yaml']
+    mock_validate_schema.return_value = schema_valid
+    mock_validate_tron_config.return_value = config_msgs
+
+    assert validate_tron('soa/tron/dev') == expected_return
+    mock_ls.assert_called_once_with('soa/tron/dev')
+    mock_validate_schema.assert_called_once_with('soa/tron/dev/foo.yaml', 'tron')
+    mock_validate_tron_config.assert_called_once_with(
+        'foo', 'dev', 'soa',
+    )
+
+    output, _ = capfd.readouterr()
+    for error in config_msgs:
+        assert error in output
+
+
+@patch('paasta_tools.cli.cmds.validate.list_tron_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.validate_complete_config', autospec=True)
+def test_validate_tron_with_service_invalid(
+    mock_validate_tron_config,
+    mock_list_clusters,
+    capfd,
+):
+    mock_list_clusters.return_value = ['dev', 'stage', 'prod']
+    mock_validate_tron_config.side_effect = [[], ['some error'], []]
+
+    assert not validate_tron('soa/my_service')
+    mock_list_clusters.assert_called_once_with('my_service', 'soa')
+    expected_calls = [
+        mock.call('my_service', cluster, 'soa')
+        for cluster in mock_list_clusters.return_value
+    ]
+    assert mock_validate_tron_config.call_args_list == expected_calls
+
+    output, _ = capfd.readouterr()
+    assert 'some error' in output
+
+
+@patch('paasta_tools.cli.cmds.validate.list_tron_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.validate_complete_config', autospec=True)
+def test_validate_tron_with_service_valid(
+    mock_validate_tron_config,
+    mock_list_clusters,
+    capfd,
+):
+    mock_list_clusters.return_value = ['dev', 'prod']
+    mock_validate_tron_config.side_effect = [[], []]
+
+    assert validate_tron('soa/my_service')
+    mock_list_clusters.assert_called_once_with('my_service', 'soa')
+    expected_calls = [
+        mock.call('my_service', cluster, 'soa')
+        for cluster in mock_list_clusters.return_value
+    ]
+    assert mock_validate_tron_config.call_args_list == expected_calls
+
+    output, _ = capfd.readouterr()
+    assert 'tron-dev.yaml is valid' in output
 
 
 def test_check_service_path_none(capfd):
