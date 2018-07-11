@@ -175,20 +175,19 @@ class HacheckDrainMethod(DrainMethod):
         self.expiration = float(expiration) or float(delay) * 10
 
     def spool_urls(self, task: DrainTask) -> List[str]:
-        if task.ports == []:
-            return None
-        else:
-            return [
-                'http://%(task_host)s:%(hacheck_port)d/spool/%(service)s.%(nerve_ns)s/%(task_port)d/status' % {
-                    'task_host': task.host,
-                    'task_port': task.ports[0],
-                    'hacheck_port': self.hacheck_port,
-                    'service': self.service,
-                    'nerve_ns': nerve_ns,
-                } for nerve_ns in self.registrations
-            ]
+        return [
+            'http://%(task_host)s:%(hacheck_port)d/spool/%(service)s.%(nerve_ns)s/%(task_port)d/status' % {
+                'task_host': task.host,
+                'task_port': task.ports[0],
+                'hacheck_port': self.hacheck_port,
+                'service': self.service,
+                'nerve_ns': nerve_ns,
+            } for nerve_ns in self.registrations
+        ]
 
     async def for_each_registration(self, task: DrainTask, func: Callable[..., T]) -> asyncio.Future:
+        if task.ports == []:
+            return None
         futures = [
             func(url)
             for url in self.spool_urls(task)
