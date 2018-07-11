@@ -1,3 +1,11 @@
+paasta-tools (0.76.0) xenial; urgency=medium
+
+  * 0.76.0 tagged with 'make release'
+    Commit: Merge pull request #1868 from Yelp/tron-add-default-volumes
+    Configure default volumes and dockercfg location for Tron
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 11 Jul 2018 10:24:41 -0700
+
 paasta-tools (0.75.4) xenial; urgency=medium
 
   * 0.75.4 tagged with 'make release'
