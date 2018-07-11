@@ -72,35 +72,6 @@ class TestHacheckDrainMethod(object):
         assert actual is None
 
     @pytest.mark.asyncio
-    async def test_get_spool(self):
-        fake_response = mock.Mock(
-            status=503,
-            text=asynctest.CoroutineMock(
-                return_value="Service service in down state since 1435694078.778886 "
-                             "until 1435694178.780000: Drained by Paasta",
-            ),
-        )
-        fake_task = mock.Mock(host="fake_host", ports=[54321])
-
-        with mock_ClientSession(
-            get=asynctest.Mock(
-                return_value=asynctest.MagicMock(
-                    __aenter__=asynctest.CoroutineMock(return_value=fake_response),
-                ),
-            ),
-        ):
-            actual = await self.drain_method.get_spool(fake_task)
-
-        expected = {
-            'service': 'service',
-            'state': 'down',
-            'reason': 'Drained by Paasta',
-            'since': 1435694078.778886,
-            'until': 1435694178.780000,
-        }
-        assert actual == expected
-
-    @pytest.mark.asyncio
     async def test_get_spool_handles_no_ports(self):
         fake_task = mock.Mock(host="fake_host", ports=[])
         actual = await self.drain_method.get_spool(fake_task)

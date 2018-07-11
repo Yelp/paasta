@@ -6,6 +6,7 @@ Feature: HacheckDrainManager can talk to hacheck correctly
       And a HacheckDrainMethod object with delay 10
      When we down a task
      Then the task should be downed
+      And every registration should be down
      # Going down - up - down helps with interactive runs of this scenario: the up step cleans up any previous downs.
      When we up a task
      Then the task should not be downed

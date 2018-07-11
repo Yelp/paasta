@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import re
 import time
 from typing import Any
 from typing import Callable
@@ -26,11 +25,11 @@ from typing import TypeVar
 import aiohttp
 from mypy_extensions import TypedDict
 
+from paasta_tools.hacheck import get_spool
+from paasta_tools.hacheck import post_spool
 from paasta_tools.utils import get_user_agent
 
 _drain_methods: Dict[str, Type["DrainMethod"]] = {}
-HACHECK_CONN_TIMEOUT = 30
-HACHECK_READ_TIMEOUT = 10
 
 
 _RegisterDrainMethod_T = TypeVar('_RegisterDrainMethod_T', bound=Type["DrainMethod"])
@@ -155,19 +154,6 @@ class CrashySafeToKillDrainMethod(NoopDrainMethod):
         raise Exception("Intentionally crashing for testing purposes")
 
 
-SpoolInfo = TypedDict(
-    'SpoolInfo',
-    {
-        'service': str,
-        'state': str,
-        'since': float,
-        'until': float,
-        'reason': str,
-    },
-    total=False,
-)
-
-
 @register_drain_method('hacheck')
 class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
@@ -202,68 +188,7 @@ class HacheckDrainMethod(DrainMethod):
                 } for nerve_ns in self.registrations
             ]
 
-    async def post_spool(self, url: str, status: str) -> None:
-        data: Dict[str, str] = {'status': status}
-        if status == 'down':
-            data.update({
-                'expiration': str(time.time() + self.expiration),
-                'reason': 'Drained by Paasta',
-            })
-        async with aiohttp.ClientSession(
-            conn_timeout=HACHECK_CONN_TIMEOUT,
-            read_timeout=HACHECK_READ_TIMEOUT,
-        ) as session:
-            async with session.post(
-                url,
-                data=data,
-                headers={'User-Agent': get_user_agent()},
-            ) as resp:
-                resp.raise_for_status()
-
-    async def get_spool(self, spool_url: str) -> SpoolInfo:
-        """Query hacheck for the state of a task, and parse the result into a dictionary."""
-        if spool_url is None:
-            return None
-
-        # TODO: aiohttp says not to create a session per request. Fix this.
-        async with aiohttp.ClientSession(
-            conn_timeout=HACHECK_CONN_TIMEOUT,
-            read_timeout=HACHECK_READ_TIMEOUT,
-        ) as session:
-            async with session.get(
-                spool_url,
-                headers={'User-Agent': get_user_agent()},
-            ) as response:
-                if response.status == 200:
-                    return {
-                        'state': 'up',
-                    }
-
-                regex = ''.join([
-                    "^",
-                    r"Service (?P<service>.+)",
-                    r" in (?P<state>.+) state",
-                    r"(?: since (?P<since>[0-9.]+))?",
-                    r"(?: until (?P<until>[0-9.]+))?",
-                    r"(?:: (?P<reason>.*))?",
-                    "$",
-                ])
-
-                response_text = await response.text()
-                match = re.match(regex, response_text)
-                groupdict = match.groupdict()
-                info: SpoolInfo = {}
-                info['service'] = groupdict['service']
-                info['state'] = groupdict['state']
-                if 'since' in groupdict:
-                    info['since'] = float(groupdict['since'] or 0)
-                if 'until' in groupdict:
-                    info['until'] = float(groupdict['until'] or 0)
-                if 'reason' in groupdict:
-                    info['reason'] = groupdict['reason']
-                return info
-
-    async def for_each_registration(self, task: DrainTask, func: Callable[..., T]) -> asyncio.Future[T]:
+    async def for_each_registration(self, task: DrainTask, func: Callable[..., T]) -> asyncio.Future:
         futures = [
             func(url)
             for url in self.spool_urls(task)
@@ -277,10 +202,24 @@ class HacheckDrainMethod(DrainMethod):
         )
 
     async def up(self, url: str) -> None:
-        self.post_spool(url, 'up')
+        await post_spool(
+            url=url,
+            status='up',
+            data={
+                'status': 'up',
+            },
+        )
 
     async def down(self, url: str) -> None:
-        self.post_spool(url, 'down')
+        await post_spool(
+            url=url,
+            status='down',
+            data={
+                'status': 'down',
+                'expiration': str(time.time() + self.expiration),
+                'reason': 'Drained by Paasta',
+            },
+        )
 
     async def stop_draining(self, task: DrainTask) -> None:
         await self.for_each_registration(
@@ -289,21 +228,21 @@ class HacheckDrainMethod(DrainMethod):
         )
 
     async def is_draining(self, task: DrainTask) -> bool:
-        results = [f.result() for f in await self.for_each_registration(
+        results = await self.for_each_registration(
             task,
-            self.get_spool,
-        )]
+            get_spool,
+        )
         return not all([
             res is None or res["state"] == "up"
             for res in results
         ])
 
     async def is_safe_to_kill(self, task: DrainTask) -> bool:
-        results = [f.result() for f in await self.for_each_registration(
+        results = await self.for_each_registration(
             task,
-            lambda url: self.get_spool(url),
-        )]
-        if not all([
+            lambda url: get_spool(url),
+        )
+        if all([
            res is None or res["state"] == "up"
            for res in results
         ]):

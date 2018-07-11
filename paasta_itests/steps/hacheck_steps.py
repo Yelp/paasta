@@ -39,7 +39,7 @@ def a_HacheckDrainMethod_object_with_delay(context, delay):
     context.drain_method = drain_lib.HacheckDrainMethod(
         service="service",
         instance="instance",
-        nerve_ns="namespace",
+        registrations=["one", "two"],
         delay=delay,
         hacheck_port=context.hacheck_port,
     )
@@ -76,3 +76,12 @@ def should_be_safe_to_kill(context, wait_time):
 def should_not_be_safe_to_kill(context, wait_time):
     with mock.patch('time.time', return_value=(context.down_time + float(wait_time))):
         assert not context.event_loop.run_until_complete(context.drain_method.is_safe_to_kill(context.fake_task))
+
+
+@then('every registration should be {status}')
+def every_registration_should_be_down(context, status):
+    res = context.event_loop.run_until_complete(context.drain_method.for_each_registration(
+        context.fake_task,
+        drain_lib.get_spool,
+    ))
+    assert [r['state'] == status for r in res]
