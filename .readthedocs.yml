@@ -1,7 +1,0 @@
-formats:
-    - none
-requirements_file: requirements-dev.txt
-build:
-    image: latest
-python:
-    version: 3.6

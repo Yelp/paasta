@@ -31,7 +31,7 @@ are currently not available, so one must build them and install them manually::
   git clone git@github.com:Yelp/paasta.git
   # Assuming you are on Ubuntu Trusty
   make itest_trusty
-  sudo dpkg -i dist/paasta_tools*.deb
+  sudo dpkg -i dist/paasta-tools*.deb
 
 This package must be installed anywhere the PaaSTA CLI and on the Mesos/Marathon
 masters. If you are using SmartStack for service discovery, then the package must
