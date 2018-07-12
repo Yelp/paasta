@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import shlex
 import subprocess
 import sys
 
@@ -30,6 +31,10 @@ def add_subparser(subparsers):
         command='docker_exec',
         function=paasta_docker_exec,
         subparsers=subparsers,
+    )
+    new_parser.add_argument(
+        '--user',
+        help='User to exec into the container as (e.g. root)',
     )
     new_parser.add_argument(
         'exec_command',
@@ -52,5 +57,8 @@ def paasta_docker_exec(args):
         sys.exit(1)
     container = get_container_name(task)
     slave = task.slave['hostname']
-    command = f"sudo docker exec -ti {container} ''{args.exec_command}''"
+
+    user_args = ('--user', args.user) if args.user else ()
+    command = ('sudo', 'docker', 'exec', '-ti', *user_args, container, *shlex.split(args.exec_command))
+    command = ' '.join(shlex.quote(arg) for arg in command)
     subprocess.call(["ssh", "-o", "LogLevel=QUIET", "-tA", slave, command])
