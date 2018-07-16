@@ -5,6 +5,111 @@ Preparation: paasta_tools and yelpsoa-configs
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
+``Common Settings``
+-------------------
+
+All configuration files that define something to launch on a PaaSTA Cluster can
+specify the following options:
+
+  * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
+    are "shares" and represent a minimal amount of a CPU to share with a task
+    relative to the other tasks on a host.  A task can burst to use any
+    available free CPU, but is guaranteed to get the CPU shares specified.  For
+    a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
+
+  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
+    memory is constrained to the specified limit, and tasks will reach
+    out-of-memory (OOM) conditions if they attempt to exceed these limits, and
+    then be killed.  There is currently not way to detect if this condition is
+    met, other than a ``TASK_FAILED`` message. For more a more detailed read on
+    how this works, see the docs on `isolation <isolation.html>`_
+
+  * ``env``: A dictionary of environment variables that will be made available
+    to the container. PaaSTA additionally will inject the following variables:
+
+    * ``PAASTA_SERVICE``: The service name
+    * ``PAASTA_INSTANCE``: The instance name
+    * ``PAASTA_CLUSTER``: The cluster name
+    * ``PAASTA_DOCKER_IMAGE``: The docker image name
+    * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
+    * ``PAASTA_MONITORING_TEAM``: The team that is configured to get alerts.
+
+  * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
+    inside the container. Can be used to expose filesystem resources available
+    on the host into the running container. Common use cases might be to share
+    secrets that exist on the host, or mapping read-write volumes for shared
+    data location. For example::
+
+      extra_volumes:
+        - {containerPath: /etc/secrets, hostPath: /etc/secrets, mode: RO}
+        - {containerPath: /tmp, hostPath: /tmp, mode: RW}
+
+    Note: The format of these dictionaries must match the specification for the
+    `Mesos Docker containers schema
+    <https://mesosphere.github.io/marathon/docs/native-docker.html>`_, no
+    error-checking is performed.
+
+    Note: In the case of a conflict between the ``extra_volumes`` and the
+    system-configured volumes, ``extra_volumes`` will take precedence.
+
+    **WARNING**: This option should be used sparingly. Any specified bind-mount
+    must exist on the filesystem beforehand, or the container will not run.
+    Additionally it is possible for a service to be defined with a read-write
+    volume on a sensitive part of the filesystem, as root. PaaSTA does not
+    validate that the bind mounts are "safe".
+
+
+``Placement Options (Constraints)``
+-----------------------------------
+
+Constraint options control how Mesos schedules a task, whether it is scheduled by
+Marathon, Chronos, Tron, or ``paasta remote-run``.
+
+  * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
+
+      ``deploy_blacklist: [["region", "uswest1-prod"]]``
+
+   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
+
+  * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
+
+      ``deploy_whitelist: ["region", ["uswest1-prod", "uswest2-prod"]]``
+
+    would indicate that PaaSTA can **only** deploy in ``uswest1-prod`` or ``uswest2-prod``.  If this list
+    is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
+    a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
+    of whitelisting may be specified.
+
+  * ``constraints``: Overrides the default placement constraints for services.
+    Should be defined as an array of arrays (E.g ``[["habitat", "GROUP_BY"]]``
+    or ``[["habitat", "GROUP_BY"], ["hostname", "UNIQUE"]]``). Defaults to
+    ``[["<discover_location_type>, "GROUP_BY"], ["pool", "LIKE", <pool>],
+    [<deploy_blacklist_type>, "UNLIKE", <deploy_blacklist_value>], ...]``
+    where ``<discover_location_type>`` is defined by the ``discover`` attribute
+    in ``smartstack.yaml``, ``<pool>`` is defined by the ``pool`` attribute in
+    ``marathon.yaml``, and ``deploy_blacklist_type`` and
+    ``deploy_blacklist_value`` are defined in the ``deploy_blacklist`` attribute
+    in marathon.yaml. For more details and other constraint types, see the
+    official `Marathon constraint documentation
+    <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
+
+  * ``extra_constraints``: Adds to the default placement constraints for
+    services. This acts the same as ``constraints``, but adds to the default
+    constraints instead of replacing them. See ``constraints`` for details on
+    format and the default constraints.
+
+  * ``pool``: Changes the "pool" constrained automatically added to all PaaSTA
+    Marathon apps. The default pool is ``default``, which equates to::
+
+       ["pool", "LIKE", "default"]
+
+    This constraint is automatically appended to the list of constraints for
+    a service unless overridden with the ``constraints`` input.
+
+    Warning: In order for an service to be launched in a particular pool, there
+    *must* exist some Mesos slaves that already exist with that particular
+    pool attribute set.
+
 ``marathon-[clustername].yaml``
 -------------------------------
 
@@ -24,18 +129,9 @@ lowercase. (non alphanumeric lowercase characters are ignored)
 Top level keys are instance names, e.g. ``main`` and ``canary``. Each
 instance MAY have:
 
-  * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
-    are "shares" and represent a minimal amount of a CPU to share with a task
-    relative to the other tasks on a host.  A task can burst to use any
-    available free CPU, but is guaranteed to get the CPU shares specified.  For
-    a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
+  * Anything in the `Common Settings`_.
 
-  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
-    memory is constrained to the specified limit, and tasks will reach
-    out-of-memory (OOM) conditions if they attempt to exceed these limits, and
-    then be killed.  There is currently not way to detect if this condition is
-    met, other than a ``TASK_FAILED`` message. For more a more detailed read on
-    how this works, see the docs on `isolation <isolation.html>`_
+  * Anything in the `Placement Options (Constraints)`_.
 
   * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
     may or may not be enforced, but services should set their ``disk`` setting
@@ -127,36 +223,6 @@ instance MAY have:
     drain_method. Valid parameters are any of the kwargs defined for the
     specified bounce_method in `drain_lib <generated/paasta_tools.drain_lib.html>`_.
 
-  * ``constraints``: Overrides the default placement constraints for services.
-    Should be defined as an array of arrays (E.g ``[["habitat", "GROUP_BY"]]``
-    or ``[["habitat", "GROUP_BY"], ["hostname", "UNIQUE"]]``). Defaults to
-    ``[["<discover_location_type>, "GROUP_BY"], ["pool", "LIKE", <pool>],
-    [<deploy_blacklist_type>, "UNLIKE", <deploy_blacklist_value>], ...]``
-    where ``<discover_location_type>`` is defined by the ``discover`` attribute
-    in ``smartstack.yaml``, ``<pool>`` is defined by the ``pool`` attribute in
-    ``marathon.yaml``, and ``deploy_blacklist_type`` and
-    ``deploy_blacklist_value`` are defined in the ``deploy_blacklist`` attribute
-    in marathon.yaml. For more details and other constraint types, see the
-    official `Marathon constraint documentation
-    <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
-
-  * ``extra_constraints``: Adds to the default placement constraints for
-    services. This acts the same as ``constraints``, but adds to the default
-    constraints instead of replacing them. See ``constraints`` for details on
-    format and the default constraints.
-
-  * ``pool``: Changes the "pool" constrained automatically added to all PaaSTA
-    Marathon apps. The default pool is ``default``, which equates to::
-
-       ["pool", "LIKE", "default"]
-
-    This constraint is automatically appended to the list of constraints for
-    a service unless overridden with the ``constraints`` input.
-
-    Warning: In order for an service to be launched in a particular pool, there
-    *must* exist some Mesos slaves that already exist with that particular
-    pool attribute set.
-
   * ``cmd``: The command that is executed. Can be used as an alternative to
     args for containers without an `entrypoint
     <https://docs.docker.com/reference/builder/#entrypoint>`_. This value is
@@ -168,44 +234,6 @@ instance MAY have:
     Parsing the Marathon config file will fail if both args and cmd are
     specified [#note]_.
 
-  .. _env:
-
-  * ``env``: A dictionary of environment variables that will be made available
-    to the container. PaaSTA additionally will inject the following variables:
-
-    * ``PAASTA_SERVICE``: The service name
-    * ``PAASTA_INSTANCE``: The instance name
-    * ``PAASTA_CLUSTER``: The cluster name
-    * ``PAASTA_DOCKER_IMAGE``: The docker image name
-    * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
-
-    Additionally, when scheduled under Marathon, there are ``MARATHON_`` prefixed variables available.
-    See the `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_ for more information about these variables.
-
-  * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
-    inside the container. Can be used to expose filesystem resources available
-    on the host into the running container. Common use cases might be to share
-    secrets that exist on the host, or mapping read-write volumes for shared
-    data location. For example::
-
-      extra_volumes:
-        - {containerPath: /etc/secrets, hostPath: /etc/secrets, mode: RO}
-        - {containerPath: /tmp, hostPath: /tmp, mode: RW}
-
-    Note: The format of these dictionaries must match the specification for the
-    `Mesos Docker containers schema
-    <https://mesosphere.github.io/marathon/docs/native-docker.html>`_, no
-    error-checking is performed.
-
-    Note: In the case of a conflict between the ``extra_volumes`` and the
-    system-configured volumes, ``extra_volumes`` will take precedence.
-
-    **WARNING**: This option should be used sparingly. Any specified bind-mount
-    must exist on the filesystem beforehand, or the container will not run.
-    Additionally it is possible for a service to be defined with a read-write
-    volume on a sensitive part of the filesystem, as root. PaaSTA does not
-    validate that the bind mounts are "safe".
-
   * ``monitoring``: A dictionary of values that configure overrides for
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
@@ -215,21 +243,6 @@ instance MAY have:
     * ``metrics_provider``: Which method PaaSTA will use to determine a service's utilization.
 
     * ``decision_policy``: Which method PaaSTA will use to determine when to autoscale a service.
-
-  * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
-
-      ``deploy_blacklist: [["region", "uswest1-prod"]]``
-
-   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
-
-  * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
-
-      ``deploy_whitelist: ["region", ["uswest1-prod", "uswest2-prod"]]``
-
-    would indicate that PaaSTA can **only** deploy in ``uswest1-prod`` or ``uswest2-prod``.  If this list
-    is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
-    a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
-    of whitelisting may be specified.
 
   * ``monitoring_blacklist``: A list of lists indicating a set of locations to
     *not* monitor for Smartstack replication. For example:
@@ -332,6 +345,10 @@ Each job configuration MUST specify the following options:
 
 Each job configuration MAY specify the following options:
 
+  * Anything in the `Common Settings`_.
+
+  * Anything in the `Placement Options (Constraints)`_.
+
   * ``schedule``: When the job should run. This can be in either ISO8601 notation,
     or in cron notation.  For more details about ISO8601 formats, see the
     `wikipedia page <https://en.wikipedia.org/wiki/ISO_8601>`_; for more details on the Cron format,
@@ -400,46 +417,12 @@ Each job configuration MAY specify the following options:
 
   * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
 
-  * ``cpus``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``mem``: See the `marathon-[clustername].yaml`_ section for details
-
   * ``bounce_method``: Controls what happens to the old version(s) of a job
     when a new version is deployed. Currently the only option is ``graceful``,
     which disable the old versions but allows them to finish their current run.
     If unspecified, defaults to ``graceful``.
 
   * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``env``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``extra_volumes``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``constraints``: Array of rules to ensure jobs run on slaves with specific
-    Mesos attributes. See the `official documentation
-    <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
-    information.
-
-  * ``extra_constraints``: Adds to the default placement constraints for
-    services. This acts the same as ``constraints``, but adds to the default
-    constraints instead of replacing them. See ``constraints`` for details on
-    format and the default constraints.
-
-    *Note*: While this parameter is the same as ``extra_constraints`` in ``marathon-$cluster.yaml``,
-    the Marathon constrain language isn't exactly like the Marathon constraint language.
-    Be sure to read the constraint documentation for Chronos referenced in the ``constraints``
-    section.
-
-  * ``pool``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``deploy_whitelist``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
-
-      ``deploy_blacklist: [["region", "uswest1-prod"]]``
-
-   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
-
 
   * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
 
@@ -456,6 +439,84 @@ Each job configuration MAY specify the following options:
           schedule: R/2014-10-10T18:32:00Z/PT60M
           schedule_time_zone: America/Los_Angeles
 
+``tron-[tron-clustername].yaml``
+------------------------------
+
+This file stores configuration for periodically scheduled jobs for execution on
+`Tron <https://github.com/yelp/tron>`_.
+
+The documentation here is for the PaaSTA-specific options. For all other
+settings, please see the
+`canonical docs <https://tron.readthedocs.io/en/latest/jobs.html>`_.
+
+.. warning:: The PaaSTA-Tron Integration is currently in an ALPHA state. Do not use it unless directed to.
+
+Example Job
+^^^^^^^^^^^
+
+::
+
+  jobs:
+      - name: convert_logs
+        node: node1
+        schedule:
+          start_time: 04:00:00
+        actions:
+          - name: verify_logs_present
+            command: "ls /var/log/app/log_%(shortdate-1)s.txt"
+            executor: ssh
+          - name: convert_logs
+            requires: [verify_logs_present]
+            command: "convert_logs /var/log/app/log_%(shortdate-1)s.txt /var/log/app_converted/log_%(shortdate-1)s.txt"
+            executor: paasta
+            service: test_service
+            deploy_group: prod
+            cpus: .5
+            mem: 100
+
+
+PaaSTA-Specific Options
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Each Tron **job** configuration MAY specify the following options:
+
+  * ``deploy_group``: A string identifying what deploy group this instance belongs
+    to. The ``step`` parameter in ``deploy.yaml`` references this value
+    to determine the order in which to build & deploy deploy groups.
+    See the deploy group doc_ for more information.
+
+  * ``service``: Configures PaaSTA to use the docker image from an alternative service.
+    This setting picks the default service for the whole job, but ``service`` may
+    also be set on a per-action basis. Tron jobs may be composed of multiple actions
+    that use commands from multiple different services.
+
+Each Tron **action** of a job MAY specify the following:
+
+  * Anything in the `Common Settings`_.
+
+  * Anything in the `Placement Options (Constraints)`_.
+
+  * ``service``: Uses a docker image from different service. When ``service`` is set
+    for an action, that setting takes precedence over what is set for the job.
+
+  * ``cluster``: Configures Tron to execute the action in a particular PaaSTA cluster.
+    If unset, it defaults to the global default cluster Tron is configured to use.
+
+  * ``executor``: Configures Tron to execute the command in a particular way.
+    Set to ``paasta`` to configure Tron to launch the job on he PaaSTA cluster.
+    Defaults to ``ssh``, which is the classic Tron execution method. When ``executor``
+    is NOT ``paasta`` (and is using ``ssh``), all of these paasta-specific options
+    listed here in this documentation will have no effect. It is OK to have a job
+    composed of mixed ``paasta`` and ``ssh`` actions.
+
+  * ``deploy_group``: Same setting as the ``Job``, but on a per-action basis. Defaults
+    to the setting for the entire job.
+
+  * ``command``: The command to run. If the action is configured with ``executor: paasta``,
+    then the command should be something available in the docker container (it should NOT
+    start with ``paasta local-run``). For best results, prefix the command with
+    ``exec dumb-init`` (See the
+    `dumb-init docs <https://github.com/Yelp/dumb-init#dumb-init>`_ for more information)
 
 ``adhoc-[clustername].yaml``
 -------------------------------
@@ -463,17 +524,13 @@ Each job configuration MAY specify the following options:
 The yaml where adhoc instances are defined. Top-level keys are instance names.
 Each instance MAY have:
 
-  * ``mem``
+  * Anything in the `Common Settings`_.
 
   * ``net``
 
   * ``cmd``
 
   * ``args``
-
-  * ``env``
-
-  * ``extra_volumes``
 
   * ``deploy_group``
 
