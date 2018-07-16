@@ -26,6 +26,7 @@ import requests
 import service_configuration_lib
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1Deployment
@@ -53,6 +54,7 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -67,6 +69,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
+from paasta_tools.utils import VolumeWithMode
 
 
 log = logging.getLogger(__name__)
@@ -269,6 +272,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         sanitised = volume_name.replace('/', 'slash-')
         return sanitised.replace('_', '--')
 
+    def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
+        return self.get_sanitised_volume_name(
+            'host--{name}'.format(name=docker_volume['hostPath']),
+        )
+
+    def get_aws_ebs_volume_name(self, aws_ebs_volume: AwsEbsVolume) -> str:
+        return self.get_sanitised_volume_name(
+            'aws-ebs--{name}{partition}'.format(
+                name=aws_ebs_volume['volume_id'],
+                partition=aws_ebs_volume.get('partition', ''),
+            ),
+        )
+
+    def read_only_mode(self, d: VolumeWithMode) -> bool:
+        return d.get('mode', 'RO') == 'RO'
+
     def get_sidecar_containers(self, system_paasta_config: SystemPaastaConfig) -> List[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
@@ -330,8 +349,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_kubernetes_containers(
         self,
-        volumes: Sequence[DockerVolume],
+        docker_volumes: Sequence[DockerVolume],
         system_paasta_config: SystemPaastaConfig,
+        aws_ebs_volumes: Sequence[AwsEbsVolume],
     ) -> Sequence[V1Container]:
         service_container = V1Container(
             image=self.get_docker_url(),
@@ -368,35 +388,72 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     container_port=8888,
                 ),
             ],
-            volume_mounts=self.get_volume_mounts(volumes=volumes),
+            volume_mounts=self.get_volume_mounts(
+                docker_volumes=docker_volumes,
+                aws_ebs_volumes=aws_ebs_volumes,
+            ),
         )
         containers = [service_container] + self.get_sidecar_containers(system_paasta_config=system_paasta_config)
         return containers
 
-    def get_pod_volumes(self, volumes: Sequence[DockerVolume]) -> Sequence[V1Volume]:
+    def get_pod_volumes(
+        self,
+        docker_volumes: Sequence[DockerVolume],
+        aws_ebs_volumes: Sequence[AwsEbsVolume],
+    ) -> Sequence[V1Volume]:
         pod_volumes = []
-        for volume in volumes:
+        unique_docker_volumes = {
+            self.get_docker_volume_name(docker_volume): docker_volume
+            for docker_volume in docker_volumes
+        }
+        for name, docker_volume in unique_docker_volumes.items():
             pod_volumes.append(
                 V1Volume(
                     host_path=V1HostPathVolumeSource(
-                        path=volume['hostPath'],
+                        path=docker_volume['hostPath'],
                     ),
-                    name=self.get_sanitised_volume_name(volume['containerPath']),
+                    name=name,
+                ),
+            )
+        unique_aws_ebs_volumes = {
+            self.get_aws_ebs_volume_name(aws_ebs_volume): aws_ebs_volume
+            for aws_ebs_volume in aws_ebs_volumes
+        }
+        for name, aws_ebs_volume in unique_aws_ebs_volumes.items():
+            pod_volumes.append(
+                V1Volume(
+                    aws_elastic_block_store=V1AWSElasticBlockStoreVolumeSource(
+                        volume_id=aws_ebs_volume['volume_id'],
+                        fs_type=aws_ebs_volume.get('fs_type'),
+                        partition=aws_ebs_volume.get('partition'),
+                        # k8s wants RW volume even if it's later mounted RO
+                        read_only=False,
+                    ),
+                    name=name,
                 ),
             )
         return pod_volumes
 
-    def get_volume_mounts(self, volumes: Sequence[DockerVolume]) -> Sequence[V1VolumeMount]:
-        volume_mounts = []
-        for volume in volumes:
-            volume_mounts.append(
-                V1VolumeMount(
-                    mount_path=volume['containerPath'],
-                    name=self.get_sanitised_volume_name(volume['containerPath']),
-                    read_only=True if volume.get('mode', 'RO') == 'RO' else False,
-                ),
+    def get_volume_mounts(
+        self,
+        docker_volumes: Sequence[DockerVolume],
+        aws_ebs_volumes: Sequence[AwsEbsVolume],
+    ) -> Sequence[V1VolumeMount]:
+        return [
+            V1VolumeMount(
+                mount_path=docker_volume['containerPath'],
+                name=self.get_docker_volume_name(docker_volume),
+                read_only=self.read_only_mode(docker_volume),
             )
-        return volume_mounts
+            for docker_volume in docker_volumes
+        ] + [
+            V1VolumeMount(
+                mount_path=aws_ebs_volume['container_path'],
+                name=self.get_aws_ebs_volume_name(aws_ebs_volume),
+                read_only=self.read_only_mode(aws_ebs_volume),
+            )
+            for aws_ebs_volume in aws_ebs_volumes
+        ]
 
     def get_sanitised_service_name(self) -> str:
         return self.get_service().replace('_', '--')
@@ -414,6 +471,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         #     namespace=self.get_nerve_namespace(),
         # )
         docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
+        aws_ebs_volumes = self.get_aws_ebs_volumes()
 
         code_sha = get_code_sha_from_dockerurl(docker_url)
         complete_config = V1Deployment(
@@ -447,11 +505,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                     spec=V1PodSpec(
                         containers=self.get_kubernetes_containers(
-                            volumes=docker_volumes,
+                            docker_volumes=docker_volumes,
+                            aws_ebs_volumes=aws_ebs_volumes,
                             system_paasta_config=system_paasta_config,
                         ),
                         restart_policy="Always",
-                        volumes=self.get_pod_volumes(docker_volumes),
+                        volumes=self.get_pod_volumes(
+                            docker_volumes=docker_volumes,
+                            aws_ebs_volumes=aws_ebs_volumes,
+                        ),
                     ),
                 ),
             ),
