@@ -1,3 +1,11 @@
+paasta-tools (0.77.0) xenial; urgency=medium
+
+  * 0.77.0 tagged with 'make release'
+    Commit: Merge pull request #1893 from Yelp/validate-tron-configs
+    Starting point for validation of Tron configs
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 16 Jul 2018 15:08:22 -0700
+
 paasta-tools (0.76.0) xenial; urgency=medium
 
   * 0.76.0 tagged with 'make release'
