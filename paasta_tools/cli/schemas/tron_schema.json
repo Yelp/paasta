@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "tron on paasta yaml (docs todo)",
+  "type": "object",
+  "definitions": {
+    "name": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][\\w\\-]{0,254}$"
+    },
+    "time_delta": {
+        "type": "string",
+        "pattern": "^\\d+\\s*[a-z]+$"
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "name": {"$ref": "#definitions/name"},
+        "command": {"type": "string"},
+        "node": {"$ref": "#definitions/name"},
+        "requires": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "exclusiveMinimum": false
+        },
+        "executor": {"enum": ["ssh", "paasta"]},
+        "cpus": {
+          "type": "number",
+          "minumum": 0,
+          "exclusiveMinimum": true
+        },
+        "mem": {
+          "type": "number",
+          "minumum": 32,
+          "exclusiveMinimum": true
+        },
+        "constraints": {
+          "type": "array",
+          "items": {"type": "array"},
+          "uniqueItems": true
+        },
+        "service": {"type": "string"},
+        "deploy_group": {"type": "string"},
+        "pool": {"type": "string"},
+        "env": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "extra_volumes": {
+          "type": "array",
+          "items": {"type": "object"},
+          "uniqueItems": true
+        },
+        "cluster": {"type": "string"},
+        "expected_runtime": {"$ref": "#definitions/time_delta"}
+      }
+    }
+  },
+  "required": ["jobs"],
+  "properties": {
+    "jobs": {
+      "type": ["null", "array"],
+      "items": {
+        "type": "object",
+        "required": ["name", "node", "schedule", "actions"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"$ref": "#definitions/name"},
+          "node": {"$ref": "#definitions/name"},
+          "schedule": {
+            "type": ["string", "object"]
+          },
+          "actions": {
+            "type": "array",
+            "items": {"$ref": "#definitions/action"}
+          },
+          "monitoring": {
+            "type": "object",
+            "properties": {
+                "team": {"type": "string"},
+                "runbook": {"type": "string"},
+                "page": {"type": "boolean"},
+                "tip": {"type": "string"},
+                "notification_email": {"type": "string"},
+                "realert_every": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "exclusiveMinimum": false
+                },
+                "dependencies": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "irc_channels": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "slack_channels": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "ticket": {"type": "boolean"},
+                "project": {"type": "string"},
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                },
+                "component": {
+                    "type": ["string", "array"]
+                },
+                "description": {"type": "string"},
+                "alert_after": {"type": "string"}
+              },
+              "additionalProperties": false
+          },
+          "queueing": {"type": "boolean"},
+          "allow_overlap": {"type": "boolean"},
+          "run_limit": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "all_nodes": {"type": "boolean"},
+          "cleanup_action": {"$ref": "#definitions/action"},
+          "enabled": {"type": "boolean"},
+          "max_runtime": {"$ref": "#definitions/time_delta"},
+          "expected_runtime": {"$ref": "#definitions/time_delta"},
+          "time_zone": {"type": "string"},
+          "service": {"type": "string"},
+          "deploy_group": {"type": "string"}
+        }
+      }
+    }
+  }
+}

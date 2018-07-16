@@ -10,7 +10,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import glob
 import os
+import re
+import subprocess
+from typing import List
+from typing import Tuple
 
 import service_configuration_lib
 import yaml
@@ -27,7 +32,10 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import paasta_print
 
+
+MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
 MASTER_NAMESPACE = 'MASTER'
 
@@ -149,6 +157,16 @@ class TronActionConfig(InstanceConfig):
             constraints.extend(self.get_pool_constraints())
             return constraints
 
+    def validate(self) -> List[str]:
+        # Use InstanceConfig to validate shared config keys like cpus and mem
+        error_msgs = super(TronActionConfig, self).validate()
+
+        if error_msgs:
+            name = self.get_instance()
+            return [f'{name}: {msg}' for msg in error_msgs]
+        else:
+            return []
+
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
@@ -156,7 +174,6 @@ class TronJobConfig:
     def __init__(self, config_dict, soa_dir=DEFAULT_SOA_DIR):
         self.config_dict = config_dict
         self.soa_dir = soa_dir
-        self._actions = []
 
     def get_name(self):
         return self.config_dict.get('name')
@@ -238,14 +255,11 @@ class TronJobConfig:
         )
 
     def get_actions(self, default_paasta_cluster):
-        if self._actions:
-            return self._actions
-
-        actions = []
-        for action_dict in self.config_dict.get('actions'):
-            actions.append(self._get_action_config(action_dict, default_paasta_cluster))
-        self._actions = actions
-        return self._actions
+        actions = [
+            self._get_action_config(action_dict, default_paasta_cluster)
+            for action_dict in self.config_dict.get('actions')
+        ]
+        return actions
 
     def get_cleanup_action(self, default_paasta_cluster):
         action_dict = self.config_dict.get('cleanup_action')
@@ -255,6 +269,25 @@ class TronJobConfig:
         # TODO: we should keep this trickery outside paasta repo
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
+
+    def check_actions(self) -> Tuple[bool, List[str]]:
+        actions = self.get_actions(None)
+        cleanup_action = self.get_cleanup_action(None)
+        if cleanup_action:
+            actions.append(cleanup_action)
+
+        checks_passed = True
+        msgs: List[str] = []
+        for action in actions:
+            action_msgs = action.validate()
+            if action_msgs:
+                checks_passed = False
+                msgs.extend(action_msgs)
+        return checks_passed, msgs
+
+    def validate(self) -> List[str]:
+        _, action_msgs = self.check_actions()
+        return action_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -410,6 +443,47 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
     )
 
 
+def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+    job_configs, other_config = load_tron_service_config(service, cluster, soa_dir)
+
+    if service != MASTER_NAMESPACE and other_config:
+        other_keys = list(other_config.keys())
+        return [
+            f'Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}',
+        ]
+
+    # PaaSTA-specific validation
+    for job_config in job_configs:
+        check_msgs = job_config.validate()
+        if check_msgs:
+            return check_msgs
+
+    # Use Tronfig on generated config from PaaSTA to validate the rest
+    other_config['jobs'] = [
+        format_tron_job_dict(
+            job_config=job_config,
+            cluster_fqdn_format='{cluster}',
+            default_paasta_cluster=None,
+        ) for job_config in job_configs
+    ]
+    complete_config = yaml.dump(other_config, Dumper=Dumper)
+
+    proc = subprocess.run(
+        ['tronfig', '-', '-V', '-n', service],
+        input=complete_config,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding='utf-8',
+    )
+    if proc.returncode != 0:
+        process_errors = proc.stderr.strip()
+        if process_errors:  # Error running tronfig
+            paasta_print(proc.stderr)
+        return [proc.stdout.strip()]
+
+    return []
+
+
 def _get_tron_namespaces_from_service_dir(cluster, soa_dir):
     tron_config_file = f'tron-{cluster}.yaml'
     config_dirs = [_dir[0] for _dir in os.walk(os.path.abspath(soa_dir)) if tron_config_file in _dir[2]]
@@ -449,3 +523,15 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
     namespaces = list(namespaces1.union(namespaces2))
     return namespaces
+
+
+def list_tron_clusters(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+    """Returns the Tron clusters a service is configured to deploy to."""
+    search_re = r'/tron-([0-9a-z-_]*)\.yaml$'
+    service_dir = os.path.join(soa_dir, service)
+    clusters = []
+    for filename in glob.glob(f'{service_dir}/*.yaml'):
+        cluster_re_match = re.search(search_re, filename)
+        if cluster_re_match is not None:
+            clusters.append(cluster_re_match.group(1))
+    return clusters
