@@ -1,124 +1,187 @@
 # Change Log
 
-## [0.72.0](https://github.com/Yelp/paasta/tree/0.72.0) (2018-05-17)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.71.0...0.72.0)
+## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
+
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.77.0...HEAD)
 
 **Merged pull requests:**
 
-- Don't load deployments if a docker\_image is provided in remote-run [\#1837](https://github.com/Yelp/paasta/pull/1837) ([solarkennedy](https://github.com/solarkennedy))
-- Don't get header so that config diff is accurate [\#1833](https://github.com/Yelp/paasta/pull/1833) ([qui](https://github.com/qui))
-- Ping Slack with authors [\#1832](https://github.com/Yelp/paasta/pull/1832) ([solarkennedy](https://github.com/solarkennedy))
-- Encode newlines before sending them to stdin [\#1831](https://github.com/Yelp/paasta/pull/1831) ([solarkennedy](https://github.com/solarkennedy))
-- Allow specifying a custom image for remote-run [\#1830](https://github.com/Yelp/paasta/pull/1830) ([solarkennedy](https://github.com/solarkennedy))
-- Added a get\_authors remote git command for better slack notifications [\#1829](https://github.com/Yelp/paasta/pull/1829) ([solarkennedy](https://github.com/solarkennedy))
+- Tron docs [\#1897](https://github.com/Yelp/paasta/pull/1897) ([solarkennedy](https://github.com/solarkennedy))
 
-## [v0.71.0](https://github.com/Yelp/paasta/tree/v0.71.0) (2018-05-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.11...v0.71.0)
+## [v0.77.0](https://github.com/Yelp/paasta/tree/v0.77.0) (2018-07-16)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.76.0...v0.77.0)
 
 **Merged pull requests:**
 
-- default to using the system paasta config for the remote-run cluster [\#1826](https://github.com/Yelp/paasta/pull/1826) ([Rob-Johnson](https://github.com/Rob-Johnson))
-- Deploy scripts for Tron configs [\#1812](https://github.com/Yelp/paasta/pull/1812) ([qui](https://github.com/qui))
+- Update getting\_started.rst [\#1899](https://github.com/Yelp/paasta/pull/1899) ([vasanth3045](https://github.com/vasanth3045))
+- Add --user flag to `paasta docker\_exec` [\#1898](https://github.com/Yelp/paasta/pull/1898) ([chriskuehl](https://github.com/chriskuehl))
+- Upgrade docutils to try to fix doc building [\#1896](https://github.com/Yelp/paasta/pull/1896) ([solarkennedy](https://github.com/solarkennedy))
+- Starting point for validation of Tron configs [\#1893](https://github.com/Yelp/paasta/pull/1893) ([qui](https://github.com/qui))
+- k8s AWS EBS static persistent volumes [\#1891](https://github.com/Yelp/paasta/pull/1891) ([vkhromov](https://github.com/vkhromov))
 
-## [v0.70.11](https://github.com/Yelp/paasta/tree/v0.70.11) (2018-05-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.10...v0.70.11)
-
-**Merged pull requests:**
-
-- don't set utilization\_error to -1 for cancelled\_running SFR unless we… [\#1828](https://github.com/Yelp/paasta/pull/1828) ([stug](https://github.com/stug))
-- Catch NoSlavesAvailableError in deployd [\#1827](https://github.com/Yelp/paasta/pull/1827) ([mattmb](https://github.com/mattmb))
-- First pass at native mark-for-deployment slack notifications [\#1821](https://github.com/Yelp/paasta/pull/1821) ([solarkennedy](https://github.com/solarkennedy))
-
-## [v0.70.10](https://github.com/Yelp/paasta/tree/v0.70.10) (2018-05-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.9...v0.70.10)
+## [v0.76.0](https://github.com/Yelp/paasta/tree/v0.76.0) (2018-07-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.75.4...v0.76.0)
 
 **Merged pull requests:**
 
-- Update task-processing to 0.0.8 [\#1825](https://github.com/Yelp/paasta/pull/1825) ([vkhromov](https://github.com/vkhromov))
+- Add detect-secrets pre-commit hook [\#1894](https://github.com/Yelp/paasta/pull/1894) ([KevinHock](https://github.com/KevinHock))
+- Support slack\_channels in sensu notifications [\#1879](https://github.com/Yelp/paasta/pull/1879) ([solarkennedy](https://github.com/solarkennedy))
+- Configure default volumes and dockercfg location for Tron [\#1868](https://github.com/Yelp/paasta/pull/1868) ([qui](https://github.com/qui))
 
-## [v0.70.9](https://github.com/Yelp/paasta/tree/v0.70.9) (2018-05-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.8...v0.70.9)
-
-**Merged pull requests:**
-
-- Fix help text for `paasta remote-run` [\#1823](https://github.com/Yelp/paasta/pull/1823) ([ealter](https://github.com/ealter))
-- Build packages for bionic [\#1822](https://github.com/Yelp/paasta/pull/1822) ([EvanKrall](https://github.com/EvanKrall))
-- Add a flag to disable reservation on maint calls [\#1820](https://github.com/Yelp/paasta/pull/1820) ([mattmb](https://github.com/mattmb))
-- Added spark\_args option to accommodate arbitrary Spark configuration [\#1819](https://github.com/Yelp/paasta/pull/1819) ([huadongliu](https://github.com/huadongliu))
-- Use soa\_dir in paasta info. Fixes \#1813 [\#1817](https://github.com/Yelp/paasta/pull/1817) ([solarkennedy](https://github.com/solarkennedy))
-- Added a slack class to make it easy to post notifications to slack. [\#1816](https://github.com/Yelp/paasta/pull/1816) ([solarkennedy](https://github.com/solarkennedy))
-
-## [v0.70.8](https://github.com/Yelp/paasta/tree/v0.70.8) (2018-05-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.7...v0.70.8)
+## [v0.75.4](https://github.com/Yelp/paasta/tree/v0.75.4) (2018-07-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.75.3...v0.75.4)
 
 **Merged pull requests:**
 
-- Update Jenkinsfile to point at internal mirror instead of directly at Github [\#1818](https://github.com/Yelp/paasta/pull/1818) ([EvanKrall](https://github.com/EvanKrall))
-- don't abort downscaling an SFR/ASG if there are unregistered instance… [\#1805](https://github.com/Yelp/paasta/pull/1805) ([stug](https://github.com/stug))
+- Minor fix to k8s nerve readiness check [\#1892](https://github.com/Yelp/paasta/pull/1892) ([mattmb](https://github.com/mattmb))
+- K8s types instead of JSONs [\#1890](https://github.com/Yelp/paasta/pull/1890) ([vkhromov](https://github.com/vkhromov))
+- Fix paasta restart for k8s [\#1889](https://github.com/Yelp/paasta/pull/1889) ([mattmb](https://github.com/mattmb))
 
-## [v0.70.7](https://github.com/Yelp/paasta/tree/v0.70.7) (2018-05-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.6...v0.70.7)
+## [v0.75.3](https://github.com/Yelp/paasta/tree/v0.75.3) (2018-07-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.75.2...v0.75.3)
+
+**Merged pull requests:**
+
+- Make travis fail if we break example cluster [\#1887](https://github.com/Yelp/paasta/pull/1887) ([mattmb](https://github.com/mattmb))
+- Add kubernetes as an instance type [\#1886](https://github.com/Yelp/paasta/pull/1886) ([mattmb](https://github.com/mattmb))
+
+## [v0.75.2](https://github.com/Yelp/paasta/tree/v0.75.2) (2018-07-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.75.1...v0.75.2)
+
+**Merged pull requests:**
+
+- Fix `docker\_wrapper.py` doesn't see environment variables [\#1885](https://github.com/Yelp/paasta/pull/1885) ([vkhromov](https://github.com/vkhromov))
+- \[secret.py\] Nudge people to use the same prefixed env var name as secret name [\#1884](https://github.com/Yelp/paasta/pull/1884) ([KevinHock](https://github.com/KevinHock))
+- Count all non marathon tasks as batch tasks [\#1882](https://github.com/Yelp/paasta/pull/1882) ([huadongliu](https://github.com/huadongliu))
+- choose a host in the same pool that the service runs in to query for … [\#1881](https://github.com/Yelp/paasta/pull/1881) ([stug](https://github.com/stug))
+- Deploy expected\_runtime field for tronfig [\#1880](https://github.com/Yelp/paasta/pull/1880) ([qui](https://github.com/qui))
+
+## [v0.75.1](https://github.com/Yelp/paasta/tree/v0.75.1) (2018-07-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.75.0...v0.75.1)
+
+## [v0.75.0](https://github.com/Yelp/paasta/tree/v0.75.0) (2018-07-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.9...v0.75.0)
+
+**Merged pull requests:**
+
+- Fix broken link to soa\_configs.html [\#1883](https://github.com/Yelp/paasta/pull/1883) ([jackchi](https://github.com/jackchi))
+- Edit paasta add secret instructions [\#1878](https://github.com/Yelp/paasta/pull/1878) ([KevinHock](https://github.com/KevinHock))
+- Removed classic service replication monitoring [\#1877](https://github.com/Yelp/paasta/pull/1877) ([solarkennedy](https://github.com/solarkennedy))
+- Don't abort scaling if there are many orphaned instances, but do warn… [\#1876](https://github.com/Yelp/paasta/pull/1876) ([stug](https://github.com/stug))
+- Don't pass environment variable values to Docker via command line args [\#1875](https://github.com/Yelp/paasta/pull/1875) ([vkhromov](https://github.com/vkhromov))
+- Fix check registered slaves aws [\#1874](https://github.com/Yelp/paasta/pull/1874) ([davent](https://github.com/davent))
+- Add support for kubernetes services [\#1872](https://github.com/Yelp/paasta/pull/1872) ([mattmb](https://github.com/mattmb))
+- Print out the jenkins url when available to more slack notifications [\#1870](https://github.com/Yelp/paasta/pull/1870) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.74.9](https://github.com/Yelp/paasta/tree/v0.74.9) (2018-06-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.8...v0.74.9)
+
+**Merged pull requests:**
+
+- Relax the format of spark-run pyspark, spark-submit, and spark-shell … [\#1873](https://github.com/Yelp/paasta/pull/1873) ([huadongliu](https://github.com/huadongliu))
+- Added spark-run command to start a spark history server [\#1871](https://github.com/Yelp/paasta/pull/1871) ([huadongliu](https://github.com/huadongliu))
+- Print a friendlier error to local-run users when secret decryption fails [\#1869](https://github.com/Yelp/paasta/pull/1869) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.74.8](https://github.com/Yelp/paasta/tree/v0.74.8) (2018-06-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.7...v0.74.8)
+
+**Merged pull requests:**
+
+- Maybe fix pypi upload [\#1867](https://github.com/Yelp/paasta/pull/1867) ([mattmb](https://github.com/mattmb))
+- ensure cmd is not None before interpolating [\#1866](https://github.com/Yelp/paasta/pull/1866) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- \[API\] Added a viewer for get\_services\_for\_cluster [\#1865](https://github.com/Yelp/paasta/pull/1865) ([transcedentalia](https://github.com/transcedentalia))
+
+## [v0.74.7](https://github.com/Yelp/paasta/tree/v0.74.7) (2018-06-19)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.6...v0.74.7)
+
+**Merged pull requests:**
+
+- Even more async fixes. [\#1864](https://github.com/Yelp/paasta/pull/1864) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.74.6](https://github.com/Yelp/paasta/tree/v0.74.6) (2018-06-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.5...v0.74.6)
+
+**Merged pull requests:**
+
+- Fix more async problems [\#1863](https://github.com/Yelp/paasta/pull/1863) ([EvanKrall](https://github.com/EvanKrall))
+- Fix example cluster build [\#1862](https://github.com/Yelp/paasta/pull/1862) ([mattmb](https://github.com/mattmb))
+- Update constraint format for Tron [\#1861](https://github.com/Yelp/paasta/pull/1861) ([qui](https://github.com/qui))
+- APOLLO-652: Make get\_containers\_and\_ips.py compatible with tron/batch [\#1859](https://github.com/Yelp/paasta/pull/1859) ([ronin13](https://github.com/ronin13))
+
+## [v0.74.5](https://github.com/Yelp/paasta/tree/v0.74.5) (2018-06-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.4...v0.74.5)
+
+**Merged pull requests:**
+
+- \[tron\] Fix fetching tron configs when jobs is None [\#1860](https://github.com/Yelp/paasta/pull/1860) ([keymone](https://github.com/keymone))
+- pyupgrade learns how to f-string [\#1855](https://github.com/Yelp/paasta/pull/1855) ([asottile](https://github.com/asottile))
+
+## [v0.74.4](https://github.com/Yelp/paasta/tree/v0.74.4) (2018-06-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.3...v0.74.4)
+
+**Merged pull requests:**
+
+- Bump boto packages [\#1858](https://github.com/Yelp/paasta/pull/1858) ([keymone](https://github.com/keymone))
+
+## [v0.74.3](https://github.com/Yelp/paasta/tree/v0.74.3) (2018-06-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.2...v0.74.3)
+
+**Merged pull requests:**
+
+- Bump boto requirements to fix trusty build [\#1857](https://github.com/Yelp/paasta/pull/1857) ([keymone](https://github.com/keymone))
+
+## [v0.74.2](https://github.com/Yelp/paasta/tree/v0.74.2) (2018-06-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.1...v0.74.2)
 
 **Closed issues:**
 
-- paasta info does not show runbook for target soa\_dir [\#1813](https://github.com/Yelp/paasta/issues/1813)
-
-## [v0.70.6](https://github.com/Yelp/paasta/tree/v0.70.6) (2018-05-02)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.5...v0.70.6)
+- Spark-run leaks AWS credentials into process title [\#1851](https://github.com/Yelp/paasta/issues/1851)
 
 **Merged pull requests:**
 
-- Bump hacheck timeouts to avoid mass-timeouts when draining many tasks at once. [\#1815](https://github.com/Yelp/paasta/pull/1815) ([EvanKrall](https://github.com/EvanKrall))
-- Do not use --it for spark-submit and jupyter [\#1814](https://github.com/Yelp/paasta/pull/1814) ([huadongliu](https://github.com/huadongliu))
-- Initial Jenkinsfile implementation [\#1811](https://github.com/Yelp/paasta/pull/1811) ([EvanKrall](https://github.com/EvanKrall))
+- \[tron tools\] correctly skip deployment of unchanged tron namespaces [\#1856](https://github.com/Yelp/paasta/pull/1856) ([keymone](https://github.com/keymone))
+- Added safer passing of credentials to spark [\#1853](https://github.com/Yelp/paasta/pull/1853) ([Qmando](https://github.com/Qmando))
 
-## [v0.70.5](https://github.com/Yelp/paasta/tree/v0.70.5) (2018-04-26)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.4...v0.70.5)
-
-**Merged pull requests:**
-
-- Print tracebacks when catching drain method exceptions [\#1810](https://github.com/Yelp/paasta/pull/1810) ([EvanKrall](https://github.com/EvanKrall))
-- Make spark-run jupyter kernel culling configurable [\#1809](https://github.com/Yelp/paasta/pull/1809) ([huadongliu](https://github.com/huadongliu))
-- Make paasta logs print out scribereader commands in verbose mode [\#1808](https://github.com/Yelp/paasta/pull/1808) ([solarkennedy](https://github.com/solarkennedy))
-
-## [v0.70.4](https://github.com/Yelp/paasta/tree/v0.70.4) (2018-04-24)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.3...v0.70.4)
+## [v0.74.1](https://github.com/Yelp/paasta/tree/v0.74.1) (2018-06-06)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.74.0...v0.74.1)
 
 **Merged pull requests:**
 
-- TASKPROC-194: increase the default staging timeout for remote-run [\#1806](https://github.com/Yelp/paasta/pull/1806) ([Rob-Johnson](https://github.com/Rob-Johnson))
-- Make chronos bounce secret aware [\#1803](https://github.com/Yelp/paasta/pull/1803) ([mattmb](https://github.com/mattmb))
-- Added Docker labels to spark-run executors [\#1802](https://github.com/Yelp/paasta/pull/1802) ([huadongliu](https://github.com/huadongliu))
-- Upgrade tox-pip-extensions [\#1801](https://github.com/Yelp/paasta/pull/1801) ([mattmb](https://github.com/mattmb))
+- Fix some places that I forgot to update for the async change [\#1852](https://github.com/Yelp/paasta/pull/1852) ([EvanKrall](https://github.com/EvanKrall))
+- reduce cluster autoscaler aggressiveness in scaling down last instanc… [\#1850](https://github.com/Yelp/paasta/pull/1850) ([stug](https://github.com/stug))
 
-## [v0.70.3](https://github.com/Yelp/paasta/tree/v0.70.3) (2018-04-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.2...v0.70.3)
+## [v0.74.0](https://github.com/Yelp/paasta/tree/v0.74.0) (2018-06-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.73.3...v0.74.0)
 
-**Merged pull requests:**
-
-- Move healthcheck\_port docs into the smartstack.yaml section [\#1800](https://github.com/Yelp/paasta/pull/1800) ([solarkennedy](https://github.com/solarkennedy))
-- Add script to monitor for containers sharing an IP [\#1799](https://github.com/Yelp/paasta/pull/1799) ([qui](https://github.com/qui))
-
-## [v0.70.2](https://github.com/Yelp/paasta/tree/v0.70.2) (2018-04-13)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.1...v0.70.2)
+## [v0.73.3](https://github.com/Yelp/paasta/tree/v0.73.3) (2018-06-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.73.1...v0.73.3)
 
 **Merged pull requests:**
 
-- Added timeout for spark-run Jupyter kernels [\#1798](https://github.com/Yelp/paasta/pull/1798) ([huadongliu](https://github.com/huadongliu))
-- add options for fetching aws credentials in spark-run [\#1797](https://github.com/Yelp/paasta/pull/1797) ([stug](https://github.com/stug))
-- Make sure spark-run executor\_cores is less than max\_cores [\#1796](https://github.com/Yelp/paasta/pull/1796) ([huadongliu](https://github.com/huadongliu))
-- Fix autoscaler watcher missing new service [\#1795](https://github.com/Yelp/paasta/pull/1795) ([mattmb](https://github.com/mattmb))
-- Bump task-processing to 0.0.7 [\#1794](https://github.com/Yelp/paasta/pull/1794) ([vkhromov](https://github.com/vkhromov))
-- make cluster autoscaler resilient to scaling down when not all instan… [\#1792](https://github.com/Yelp/paasta/pull/1792) ([stug](https://github.com/stug))
-- Use rbt to expand the right-sizer review group. [\#1791](https://github.com/Yelp/paasta/pull/1791) ([thebostik](https://github.com/thebostik))
-- Make bigger warnings on unsafe bounce methods [\#1790](https://github.com/Yelp/paasta/pull/1790) ([solarkennedy](https://github.com/solarkennedy))
+- Split out MAX\_CLUSTER\_DELTA for cluster autoscaler [\#1849](https://github.com/Yelp/paasta/pull/1849) ([mattmb](https://github.com/mattmb))
+- check-ast is no longer useful now that paasta is py3+ [\#1848](https://github.com/Yelp/paasta/pull/1848) ([asottile](https://github.com/asottile))
+- Add a custom key for "sfn\_autoscaling" to marathon\_schema. [\#1847](https://github.com/Yelp/paasta/pull/1847) ([sagar8192](https://github.com/sagar8192))
+- \[tron tools\] update multiple namespaces in setup\_tron\_namespace [\#1846](https://github.com/Yelp/paasta/pull/1846) ([keymone](https://github.com/keymone))
+- Upgrade pre-commit hooks [\#1845](https://github.com/Yelp/paasta/pull/1845) ([asottile](https://github.com/asottile))
+- Remove a few unused requirements [\#1844](https://github.com/Yelp/paasta/pull/1844) ([asottile](https://github.com/asottile))
+- \[tron tools\] error on namespace conflict [\#1843](https://github.com/Yelp/paasta/pull/1843) ([keymone](https://github.com/keymone))
+- Cleanup cleanup action name [\#1842](https://github.com/Yelp/paasta/pull/1842) ([keymone](https://github.com/keymone))
+- Parallelize mesos task fetching in paasta status -v [\#1841](https://github.com/Yelp/paasta/pull/1841) ([EvanKrall](https://github.com/EvanKrall))
 
-## [v0.70.1](https://github.com/Yelp/paasta/tree/v0.70.1) (2018-04-10)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.70.0...v0.70.1)
+## [v0.73.1](https://github.com/Yelp/paasta/tree/v0.73.1) (2018-05-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.73.0...v0.73.1)
 
 **Merged pull requests:**
 
-- Fix internal build [\#1793](https://github.com/Yelp/paasta/pull/1793) ([EvanKrall](https://github.com/EvanKrall))
+- Don't send slack noifications if the old and new commits are the same [\#1840](https://github.com/Yelp/paasta/pull/1840) ([solarkennedy](https://github.com/solarkennedy))
+- Make SpotAutoscaler cleanup cancelled\_running SFR with no instances [\#1839](https://github.com/Yelp/paasta/pull/1839) ([stug](https://github.com/stug))
+
+## [v0.73.0](https://github.com/Yelp/paasta/tree/v0.73.0) (2018-05-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.72.0...v0.73.0)
+
+**Merged pull requests:**
+
+- read tron config files from service directories [\#1836](https://github.com/Yelp/paasta/pull/1836) ([chlgit](https://github.com/chlgit))
 
 
 
