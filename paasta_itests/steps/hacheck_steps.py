@@ -29,9 +29,16 @@ def a_working_hacheck_container(context):
     context.hacheck_port = int(context.hacheck_port)
 
 
+@given('a working httpdrain container')
+def a_working_httpdrain_container(context):
+    connection_string = get_service_connection_string('httpdrain')
+    context.hacheck_host, context.hacheck_port = connection_string.split(':')
+    context.hacheck_port = int(context.hacheck_port)
+
+
 @given('a fake task to drain')
 def a_fake_task_to_drain(context):
-    context.fake_task = mock.Mock(id='fake_task_for_itest', host=context.hacheck_host, ports=[5])
+    context.fake_task = mock.Mock(id='fake_task_for_itest', host=context.hacheck_host, ports=[context.hacheck_port])
 
 
 @given('a HacheckDrainMethod object with delay {delay}')
@@ -42,6 +49,35 @@ def a_HacheckDrainMethod_object_with_delay(context, delay):
         registrations=["one", "two"],
         delay=delay,
         hacheck_port=context.hacheck_port,
+    )
+
+
+@given('a HTTPDrainMethod object')
+def a_HttpDrainMethod_object(context):
+    context.drain_method = drain_lib.HTTPDrainMethod(
+        service="service",
+        instance="instance",
+        registrations=["one", "two"],
+        drain={
+            'url_format': "http://{host}:{port}/drain?nerve_ns={nerve_ns}",
+            'method': 'GET',
+            'success_codes': 200,
+        },
+        stop_draining={
+            'url_format': "http://{host}:{port}/drain/stop?nerve_ns={nerve_ns}",
+            'method': 'GET',
+            'success_codes': 200,
+        },
+        is_draining={
+            'url_format': "http://{host}:{port}/drain/status?nerve_ns={nerve_ns}",
+            'method': 'GET',
+            'success_codes': 200,
+        },
+        is_safe_to_kill={
+            'url_format': "http://{host}:{port}/drain/safe_to_kill?nerve_ns={nerve_ns}",
+            'method': 'GET',
+            'success_codes': 200,
+        },
     )
 
 
@@ -66,10 +102,16 @@ def the_task_should_not_be_downed(context):
     assert not context.event_loop.run_until_complete(context.drain_method.is_draining(context.fake_task))
 
 
-@then('the task should be safe to kill after {wait_time} seconds')
-def should_be_safe_to_kill(context, wait_time):
+@then('the hacheck task should be safe to kill after {wait_time} seconds')
+def hacheck_should_be_safe_to_kill(context, wait_time):
     with mock.patch('time.time', return_value=(context.down_time + float(wait_time))):
         assert context.event_loop.run_until_complete(context.drain_method.is_safe_to_kill(context.fake_task))
+
+
+@then('the task should be safe to kill after {wait_time} seconds')
+def should_be_safe_to_kill(context, wait_time):
+    time.sleep(int(wait_time))
+    assert context.event_loop.run_until_complete(context.drain_method.is_safe_to_kill(context.fake_task))
 
 
 @then('the task should not be safe to kill after {wait_time} seconds')
@@ -78,7 +120,7 @@ def should_not_be_safe_to_kill(context, wait_time):
         assert not context.event_loop.run_until_complete(context.drain_method.is_safe_to_kill(context.fake_task))
 
 
-@then('every registration should be {status}')
+@then('every registration should be {status} in hacheck')
 def every_registration_should_be_down(context, status):
     res = context.event_loop.run_until_complete(context.drain_method.for_each_registration(
         context.fake_task,

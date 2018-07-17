@@ -289,14 +289,16 @@ class HTTPDrainMethod(DrainMethod):
         self.is_draining_url_spec = is_draining
         self.is_safe_to_kill_url_spec = is_safe_to_kill
 
-    def get_format_params(self, task: DrainTask) -> Dict[str, Any]:
-        return {
-            'host': task.host,
-            'port': task.ports[0],
-            'service': self.service,
-            'instance': self.instance,
-            'nerve_ns': self.nerve_ns,
-        }
+    def get_format_params(self, task: DrainTask) -> List[Dict[str, Any]]:
+        return [
+            {
+                'host': task.host,
+                'port': task.ports[0],
+                'service': self.service,
+                'instance': self.instance,
+                'nerve_ns': nerve_ns,
+            } for nerve_ns in self.registrations
+        ]
 
     def format_url(self, url_format: str, format_params: Dict[str, Any]) -> str:
         return url_format.format(**format_params)
@@ -320,16 +322,20 @@ class HTTPDrainMethod(DrainMethod):
     async def issue_request(self, url_spec: UrlSpec, task: DrainTask) -> None:
         """Issue a request to the URL specified by url_spec regarding the task given."""
         format_params = self.get_format_params(task)
-        url = self.format_url(url_spec['url_format'], format_params)
+        urls = [self.format_url(url_spec['url_format'], param) for param in format_params]
         method = url_spec.get('method', 'GET').upper()
 
         async with aiohttp.ClientSession() as session:
-            async with session.request(
-                method=method,
-                url=url,
-                headers={'User-Agent': get_user_agent()},
-                timeout=15,
-            ) as response:
+            reqs = [
+                session.request(
+                    method=method,
+                    url=url,
+                    headers={'User-Agent': get_user_agent()},
+                    timeout=15,
+                ) for url in urls
+            ]
+            res = await asyncio.gather(*reqs)
+            for response in res:
                 self.check_response_code(response.status, url_spec['success_codes'])
 
     async def drain(self, task: DrainTask) -> None:
