@@ -36,6 +36,11 @@ class GaugeProtocol(Protocol):
         raise NotImplementedError()
 
 
+class CounterProtocol(Protocol):
+    def count(self) -> None:
+        raise NotImplementedError()
+
+
 class BaseMetrics(ABC):
     def __init__(self, base_name: str) -> None:
         self.base_name = base_name
@@ -46,6 +51,10 @@ class BaseMetrics(ABC):
 
     @abstractmethod
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
         raise NotImplementedError()
 
 
@@ -74,6 +83,9 @@ class MeteoriteMetrics(BaseMetrics):
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
         return yelp_meteorite.create_gauge(self.base_name + '.' + name, kwargs)
 
+    def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
+        return yelp_meteorite.create_counter(self.base_name + '.' + name, kwargs)
+
 
 class Timer(TimerProtocol):
     def __init__(self, name: str) -> None:
@@ -94,6 +106,16 @@ class Gauge(GaugeProtocol):
         log.debug(f"gauge {self.name} set to {value}")
 
 
+class Counter(GaugeProtocol):
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.counter = 0
+
+    def count(self) -> None:
+        self.counter += 1
+        log.debug(f"counter {self.name} incremented to {self.counter}")
+
+
 @register_metrics_interface(None)
 class NoMetrics(BaseMetrics):
     def __init__(self, base_name: str) -> None:
@@ -104,3 +126,6 @@ class NoMetrics(BaseMetrics):
 
     def create_gauge(self, name: str, **kwargs: Any) -> Gauge:
         return Gauge(self.base_name + '.' + name)
+
+    def create_counter(self, name: str, **kwargs: Any) -> Counter:
+        return Counter(self.base_name + '.' + name)
