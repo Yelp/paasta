@@ -63,7 +63,6 @@ async def test_get_spool():
 
 
 @pytest.mark.asyncio
-async def test_get_spool_handles_no_ports(self):
-    fake_task = mock.Mock(host="fake_host", ports=[])
-    actual = await hacheck.get_spool(fake_task)
+async def test_get_spool_handles_no_ports():
+    actual = await hacheck.get_spool(None)
     assert actual is None
