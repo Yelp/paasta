@@ -136,30 +136,30 @@ class TestHacheckDrainMethod(object):
 class TestHTTPDrainMethod(object):
     def test_get_format_params(self):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
-        assert drain_method.get_format_params(fake_task) == {
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
+        assert drain_method.get_format_params(fake_task) == [{
             'host': 'fake_host',
             'port': 54321,
             'service': 'fake_service',
             'instance': 'fake_instance',
             'nerve_ns': 'fake_nerve_ns',
-        }
+        }]
 
     def test_format_url(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
         url_format = "foo_{host}"
         format_params = {"host": "fake_host"}
         assert drain_method.format_url(url_format, format_params) == "foo_fake_host"
 
     def test_parse_success_codes(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
         assert drain_method.parse_success_codes('200') == {200}
         assert drain_method.parse_success_codes('200-203') == {200, 201, 202, 203}
         assert drain_method.parse_success_codes('200-202,302,305-306') == {200, 201, 202, 302, 305, 305, 306}
         assert drain_method.parse_success_codes(200) == {200}
 
     def test_check_response_code(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
 
         # Happy case
         drain_method.check_response_code(200, '200-299')
@@ -170,7 +170,7 @@ class TestHTTPDrainMethod(object):
 
     @pytest.mark.asyncio
     async def test_issue_request(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
         fake_task = mock.Mock(host='fake_host', ports=[54321])
         url_spec = {
             'url_format': 'http://localhost:654321/fake/{host}',
@@ -180,9 +180,7 @@ class TestHTTPDrainMethod(object):
 
         fake_resp = mock.Mock(status=1234)
         mock_request = mock.Mock(
-            return_value=asynctest.MagicMock(
-                __aenter__=asynctest.CoroutineMock(return_value=fake_resp),
-            ),
+            return_value=asynctest.CoroutineMock(return_value=fake_resp)(),
         )
         with mock_ClientSession(request=mock_request):
             await drain_method.issue_request(
