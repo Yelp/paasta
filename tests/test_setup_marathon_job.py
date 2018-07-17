@@ -45,14 +45,17 @@ from paasta_tools.utils import paasta_print
 class TestSetupMarathonJob:
 
     fake_cluster = 'fake_test_cluster'
+    service = 'servicename'
+    instance = 'instancename'
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service='servicename',
+        service=service,
         cluster='clustername',
-        instance='instancename',
+        instance=instance,
         config_dict={
             'instances': 3,
             'cpus': 1,
             'mem': 100,
+            'registrations': [f'{service}.{instance}'],
             'nerve_ns': 'aaaaugh',
             'bounce_method': 'brutal',
         },
@@ -919,6 +922,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=fake_nerve_ns,
+                registrations=[fake_nerve_ns],
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
@@ -994,6 +998,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=fake_nerve_ns,
+                registrations=[fake_nerve_ns],
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
@@ -1066,6 +1071,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=fake_nerve_ns,
+                registrations=[fake_nerve_ns],
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
@@ -1136,6 +1142,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=fake_nerve_ns,
+                registrations=[fake_nerve_ns],
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
@@ -1216,6 +1223,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method_name,
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=fake_nerve_ns,
+                registrations=[fake_nerve_ns],
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
@@ -1357,6 +1365,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method,
                 drain_method_params=fake_drain_method_params,
                 nerve_ns=self.fake_marathon_service_config.get_nerve_namespace(),
+                registrations=self.fake_marathon_service_config.get_registrations(),
                 bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(
                     read_namespace_conf_patch.return_value,
                 ),
@@ -1390,7 +1399,7 @@ class TestSetupMarathonJob:
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_cluster = 'fake_cluster'
-        fake_nerve_ns = 'fake_nerve_ns'
+        fake_nerve_ns = 'foo'
 
         fake_msc = marathon_tools.MarathonServiceConfig(
             service=fake_service,
@@ -1400,7 +1409,8 @@ class TestSetupMarathonJob:
                 'instances': 3,
                 'cpus': 1,
                 'mem': 100,
-                'nerve_ns': 'fake_nerve_ns',
+                'nerve_ns': fake_nerve_ns,
+                'registrations': [f'{fake_service}.{fake_nerve_ns}'],
                 'bounce_method': 'brutal',
             },
             branch_dict=None,
@@ -1471,6 +1481,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method,
                 drain_method_params={},
                 nerve_ns=fake_instance,
+                registrations=[fake_instance],
                 bounce_health_params={},
                 soa_dir='fake_soa_dir',
                 job_config=fake_job_config,
@@ -1517,6 +1528,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method,
                 drain_method_params={},
                 nerve_ns=fake_instance,
+                registrations=[fake_instance],
                 bounce_health_params={},
                 soa_dir='fake_soa_dir',
                 job_config=fake_job_config,
@@ -1605,6 +1617,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method_name,
                 drain_method_params={},
                 nerve_ns=fake_instance,
+                registrations=[fake_instance],
                 bounce_health_params={},
                 soa_dir='fake_soa_dir',
                 job_config=fake_job_config,
@@ -1687,6 +1700,7 @@ class TestSetupMarathonJob:
                 drain_method_name=fake_drain_method,
                 drain_method_params={},
                 nerve_ns=fake_instance,
+                registrations=[fake_instance],
                 bounce_health_params={},
                 soa_dir='fake_soa_dir',
                 job_config=fake_job_config,
@@ -1737,6 +1751,7 @@ class TestSetupMarathonJob:
                     drain_method_name=fake_drain_method,
                     drain_method_params={},
                     nerve_ns=fake_instance,
+                    registrations=[fake_instance],
                     bounce_health_params={},
                     soa_dir='fake_soa_dir',
                     job_config=fake_job_config,
