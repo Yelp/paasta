@@ -194,7 +194,7 @@ def message_for_status(status, chronos_job_config):
         return ('Last run of job %s%s%s Unknown' %
                 (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
     elif status == pysensu_yelp.Status.OK:
-        return ('Last run of job %s%s%s Succeded' %
+        return ('Last run of job %s%s%s Succeeded' %
                 (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
     elif status is None:
         return None

@@ -300,7 +300,7 @@ def test_message_for_status_success(mock_chronos_job_config):
     assert check_chronos_jobs.message_for_status(
         pysensu_yelp.Status.OK,
         mock_chronos_job_config,
-    ) == 'Last run of job myservice%smyinstance Succeded' % utils.SPACER
+    ) == 'Last run of job myservice%smyinstance Succeeded' % utils.SPACER
 
 
 def test_message_for_status_unknown(mock_chronos_job_config):
@@ -322,7 +322,7 @@ def test_sensu_message_status_ok(mock_job_is_stuck, mock_chronos_job_config):
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         mock_chronos_job_config, fake_job, 0,
     )
-    assert output == "Last run of job myservice.myinstance Succeded"
+    assert output == "Last run of job myservice.myinstance Succeeded"
     assert status == pysensu_yelp.Status.OK
 
 
@@ -338,7 +338,7 @@ def test_sensu_message_rerun_status_ok(mock_job_is_stuck, mock_chronos_job_confi
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         mock_chronos_job_config, fake_job, 0,
     )
-    assert output == "Last run of job myservice.myinstance Succeded"
+    assert output == "Last run of job myservice.myinstance Succeeded"
     assert status == pysensu_yelp.Status.OK
 
 
