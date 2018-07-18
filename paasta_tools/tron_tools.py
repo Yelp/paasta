@@ -138,11 +138,6 @@ class TronActionConfig(InstanceConfig):
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
-    def get_docker_url(self):
-        if self.branch_dict:
-            return super(TronActionConfig, self).get_docker_url()
-        return ''
-
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
@@ -341,7 +336,6 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
         result['mesos_address'] = cluster_fqdn_format.format(cluster=action_config.get_cluster())
         result['cpus'] = action_config.get_cpus()
         result['mem'] = action_config.get_mem()
-        result['docker_image'] = action_config.get_docker_url()
         result['env'] = action_config.get_env()
         result['extra_volumes'] = format_volumes(action_config.get_extra_volumes())
         result['docker_parameters'] = [
@@ -355,6 +349,12 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
         ]
+
+        # If deployments were not loaded
+        if not action_config.get_docker_image():
+            result['docker_image'] = ''
+        else:
+            result['docker_image'] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}

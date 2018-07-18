@@ -112,20 +112,6 @@ class TestTronActionConfig:
         )
         assert action_config.get_executor() == 'mesos'
 
-    def test_get_docker_url_no_branch_dict(self):
-        # Shouldn't raise an exception
-        action_dict = {
-            'name': 'do_something',
-            'command': 'echo something',
-        }
-        action_config = tron_tools.TronActionConfig(
-            service='my_service',
-            instance=tron_tools.compose_instance('my_job', 'do_something'),
-            config_dict=action_dict,
-            branch_dict=None,
-        )
-        assert action_config.get_docker_url() == ''
-
 
 class TestTronJobConfig:
 
@@ -531,6 +517,61 @@ class TestTronTools:
         }
         expected_docker = '{}/{}'.format('docker-registry.com:400', branch_dict['docker_image'])
         assert result['docker_image'] == expected_docker
+        assert result['env']['SHELL'] == '/bin/bash'
+        assert isinstance(result['docker_parameters'], list)
+
+    def test_format_tron_action_dict_paasta_no_branch_dict(self):
+        action_dict = {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'cluster': 'paasta-dev',
+            'service': 'my_service',
+            'deploy_group': 'prod',
+            'executor': 'paasta',
+            'cpus': 2,
+            'mem': 1200,
+            'pool': 'special_pool',
+            'env': {'SHELL': '/bin/bash'},
+            'extra_volumes': [
+                {'containerPath': '/nail/tmp', 'hostPath': '/nail/tmp', 'mode': 'RW'},
+            ],
+        }
+        action_config = tron_tools.TronActionConfig(
+            service='my_service',
+            instance=tron_tools.compose_instance('my_job', 'do_something'),
+            config_dict=action_dict,
+            branch_dict=None,
+        )
+
+        result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+
+        assert result == {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'mesos_address': 'paasta-dev.com',
+            'docker_image': '',
+            'executor': 'mesos',
+            'cpus': 2,
+            'mem': 1200,
+            'env': mock.ANY,
+            'extra_volumes': [{
+                'container_path': '/nail/tmp',
+                'host_path': '/nail/tmp',
+                'mode': 'RW',
+            }],
+            'docker_parameters': mock.ANY,
+            'constraints': [
+                {
+                    'attribute': 'pool',
+                    'operator': 'LIKE',
+                    'value': 'special_pool',
+                },
+            ],
+        }
         assert result['env']['SHELL'] == '/bin/bash'
         assert isinstance(result['docker_parameters'], list)
 
