@@ -176,13 +176,12 @@ class HacheckDrainMethod(DrainMethod):
 
     def spool_urls(self, task: DrainTask) -> List[str]:
         return [
-            'http://%(task_host)s:%(hacheck_port)d/spool/%(service)s.%(nerve_ns)s/%(task_port)d/status' % {
+            'http://%(task_host)s:%(hacheck_port)d/spool/%(registration)s/%(task_port)d/status' % {
                 'task_host': task.host,
                 'task_port': task.ports[0],
                 'hacheck_port': self.hacheck_port,
-                'service': self.service,
-                'nerve_ns': nerve_ns,
-            } for nerve_ns in self.registrations
+                'registration': registration,
+            } for registration in self.registrations
         ]
 
     async def for_each_registration(self, task: DrainTask, func: Callable[..., T]) -> asyncio.Future:

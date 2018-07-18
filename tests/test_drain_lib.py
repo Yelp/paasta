@@ -72,7 +72,7 @@ class TestHacheckDrainMethod(object):
         actual = self.drain_method.spool_urls(fake_task)
         # Nerve hits /{mode}/{service}.{namespace}/{port}/status
         expected = [
-            f'http://fake_host:12345/spool/srv.{ns}/54321/status'
+            f'http://fake_host:12345/spool/{ns}/54321/status'
             for ns in self.drain_method.registrations
         ]
         assert actual == expected
