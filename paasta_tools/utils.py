@@ -2756,6 +2756,9 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
         )
         sys.exit(1)
 
+    if len(sequence) == 1:
+        return sequence[0]
+
     global_actions = [str('quit')]
     choices = [(str(item), str(item)) for item in sequence]
 
