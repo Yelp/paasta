@@ -316,6 +316,65 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 3
 
+    def test_validate_monitoring(self):
+        job_dict = {
+            'name': 'my_job',
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': [
+                {
+                    'name': 'first',
+                    'command': 'echo first',
+                },
+            ],
+        }
+        job_config = tron_tools.TronJobConfig(job_dict)
+        errors = job_config.validate()
+        assert len(errors) == 0
+
+    def test_validate_monitoring_without_team(self):
+        job_dict = {
+            'name': 'my_job',
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'monitoring': {
+                'page': True,
+            },
+            'actions': [
+                {
+                    'name': 'first',
+                    'command': 'echo first',
+                },
+            ],
+        }
+        job_config = tron_tools.TronJobConfig(job_dict)
+        errors = job_config.validate()
+        assert errors == ['Team name is required for monitoring']
+
+    def test_validate_monitoring_with_invalid_team(self):
+        job_dict = {
+            'name': 'my_job',
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'monitoring': {
+                'team': 'invalid_team',
+                'page': True,
+            },
+            'actions': [
+                {
+                    'name': 'first',
+                    'command': 'echo first',
+                },
+            ],
+        }
+        job_config = tron_tools.TronJobConfig(job_dict)
+        errors = job_config.validate()
+        assert errors == ['Invalid team name: invalid_team']
+
 
 class TestTronTools:
 

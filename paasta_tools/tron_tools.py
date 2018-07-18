@@ -34,6 +34,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 
+from paasta_tools.cli.utils import list_teams
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
@@ -270,6 +271,20 @@ class TronJobConfig:
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
 
+    def check_monitoring(self) -> Tuple[bool, List[str]]:
+        msgs: List[str] = []
+        monitoring = self.get_monitoring()
+        checks_passed = True
+        if monitoring is not None:
+            team_name = monitoring.get('team', None)
+            if team_name is None:
+                checks_passed = False
+                msgs.append('Team name is required for monitoring')
+            elif team_name not in list_teams():
+                checks_passed = False
+                msgs.append(f'Invalid team name: {team_name}')
+        return checks_passed, msgs
+
     def check_actions(self) -> Tuple[bool, List[str]]:
         actions = self.get_actions(None)
         cleanup_action = self.get_cleanup_action(None)
@@ -286,8 +301,9 @@ class TronJobConfig:
         return checks_passed, msgs
 
     def validate(self) -> List[str]:
+        _, monitoring_msgs = self.check_monitoring()
         _, action_msgs = self.check_actions()
-        return action_msgs
+        return monitoring_msgs + action_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
