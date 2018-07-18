@@ -75,7 +75,6 @@ func isSafeToKill(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
-	fmt.Printf("got here")
 	i, err := strconv.ParseInt(string(dat), 10, 64)
 	tm := time.Unix(i, 0)
 	duration := time.Since(tm)
