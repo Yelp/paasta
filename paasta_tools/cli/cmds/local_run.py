@@ -402,10 +402,13 @@ def get_container_name():
 
 def get_docker_run_cmd(
     memory, chosen_port, container_port, container_name, volumes, env, interactive,
-    docker_hash, command, net, docker_params, detach,
+    docker_hash, command, net, docker_params, detach, secret_env={},
 ):
     cmd = ['paasta_docker_wrapper', 'run']
-    for k in env.keys():
+    for k, v in env.items():
+        cmd.append('--env')
+        cmd.append(f'{k}={v}')
+    for k in secret_env.keys():
         cmd.append('--env')
         cmd.append(f'{k}')
     cmd.append('--memory=%dm' % memory)
@@ -617,6 +620,7 @@ def run_docker_container(
             sys.exit(1)
     else:
         chosen_port = pick_random_port(service)
+    secret_environment = {}
     environment = instance_config.get_env_dictionary()
     if not skip_secrets:
         secret_environment = decrypt_secret_environment_variables(
@@ -627,7 +631,9 @@ def run_docker_container(
             cluster_name=instance_config.cluster,
             secret_provider_kwargs=secret_provider_kwargs,
         )
-        environment.update(secret_environment)
+        for k in secret_environment.keys():
+            del environment[k]
+
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config,
         port0=chosen_port,
@@ -662,6 +668,7 @@ def run_docker_container(
         container_name=container_name,
         volumes=volumes,
         env=environment,
+        secret_env=secret_environment,
         interactive=interactive,
         detach=simulate_healthcheck,
         docker_hash=docker_hash,
@@ -681,7 +688,7 @@ def run_docker_container(
     else:
         paasta_print('Running docker command:\n%s' % PaastaColors.grey(joined_docker_run_cmd))
 
-    merged_env = {**os.environ, **environment}
+    merged_env = {**os.environ, **secret_environment}
 
     if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker

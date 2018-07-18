@@ -695,8 +695,8 @@ def test_get_docker_run_cmd_with_env_vars():
         memory, chosen_port, container_port, container_name, volumes, env,
         interactive, docker_hash, command, net, docker_params, detach,
     )
-    assert actual[actual.index('foo') - 1] == '--env'
-    assert actual[actual.index('baz') - 1] == '--env'
+    assert actual[actual.index('foo=bar') - 1] == '--env'
+    assert actual[actual.index('baz=qux') - 1] == '--env'
 
 
 def test_get_docker_run_cmd_interactive_false():
