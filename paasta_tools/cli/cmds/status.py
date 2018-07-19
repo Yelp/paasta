@@ -108,7 +108,7 @@ def add_instance_filter_arguments(status_parser, verb='inspect'):
     ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
         '-r', '--registration',
-        help='Only {verb} instances with this registration.',
+        help=f'Only {verb} instances with this registration.',
     )
 
 
