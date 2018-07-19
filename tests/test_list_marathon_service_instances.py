@@ -25,13 +25,18 @@ def test_get_desired_marathon_configs():
         'paasta_tools.list_marathon_service_instances.load_marathon_service_config', autospec=True,
     ) as mock_load_marathon_service_config, mock.patch(
         'paasta_tools.list_marathon_service_instances.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.list_marathon_service_instances._log', autospec=True,
     ):
         mock_app_dict = {'id': '/service.instance.git.configs'}
         mock_app = mock.MagicMock(
             format_marathon_app_dict=mock.MagicMock(return_value=mock_app_dict),
         )
-        mock_get_services_for_cluster.return_value = [('service', 'instance')]
-        mock_load_marathon_service_config.return_value = mock_app
+        mock_app_2 = mock.MagicMock(
+            format_marathon_app_dict=mock.MagicMock(side_effect=[Exception]),
+        )
+        mock_get_services_for_cluster.return_value = [('service', 'instance'), ('service', 'broken_instance')]
+        mock_load_marathon_service_config.side_effect = [mock_app, mock_app_2]
         assert list_marathon_service_instances.get_desired_marathon_configs(
             '/fake/soa/dir',
         ) == (

@@ -314,6 +314,19 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
         assert ret == [('universe', 'c138')]
 
+        mock_configs = [
+            mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=Exception)),
+            mock.Mock(format_marathon_app_dict=mock.Mock(return_value={
+                'id': 'universe.c138.c2.g2',
+                'instances': 2,
+            })),
+        ]
+        mock_load_marathon_service_config.side_effect = mock_configs
+        mock_client = mock.Mock(servers=["foo"])
+        fake_clients = MarathonClients(current=[mock_client], previous=[mock_client])
+        ret = get_service_instances_needing_update(fake_clients, mock_service_instances, 'westeros-prod')
+        assert ret == [('universe', 'c138')]
+
 
 def test_get_marathon_clients_from_config():
     with mock.patch(

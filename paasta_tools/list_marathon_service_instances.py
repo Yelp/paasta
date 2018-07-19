@@ -35,15 +35,12 @@ from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import long_job_id_to_short_job_id
-from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import use_requests_cache
 
@@ -93,7 +90,9 @@ def get_desired_marathon_configs(soa_dir):
             formatted_config = job_config.format_marathon_app_dict()
             formatted_marathon_configs[formatted_config['id'].lstrip('/')] = formatted_config
             job_configs[formatted_config['id'].lstrip('/')] = job_config
-        except NoSlavesAvailableError as errormsg:
+        # Not ideal but we rely on a lot of user input to create the app dict
+        # and we really can't afford to bail if just one app definition is malformed
+        except Exception as errormsg:
             _log(
                 service=service,
                 line=str(errormsg),
@@ -102,8 +101,6 @@ def get_desired_marathon_configs(soa_dir):
                 cluster=cluster,
                 instance=instance,
             )
-        except (NoDeploymentsAvailable, NoDockerImageError):
-            pass
     return formatted_marathon_configs, job_configs
 
 

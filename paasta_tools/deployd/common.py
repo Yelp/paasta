@@ -17,7 +17,6 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
-from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -184,8 +183,10 @@ def get_service_instances_needing_update(
             )
             config_app = config.format_marathon_app_dict()
             app_id = '/{}'.format(config_app['id'])
-        except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoSlavesAvailableError) as e:
-            print("DEBUG: Skipping {}.{} because: '{}'".format(service, instance, str(e)))
+        # Not ideal but we rely on a lot of user input to create the app dict
+        # and we really can't afford to bail if just one app definition is malformed
+        except Exception as e:
+            print("ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e)))
             continue
         if app_id not in marathon_app_ids:
             service_instances.append((service, instance))
