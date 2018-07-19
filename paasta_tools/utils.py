@@ -2757,7 +2757,10 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
         sys.exit(1)
 
     global_actions = [str('quit')]
-    choices = [(str(item), str(item)) for item in sequence]
+    choices = [(item, item) for item in sequence]
+
+    if len(choices) == 1:
+        return choices[0][0]
 
     chooser = choice.Menu(choices=choices, global_actions=global_actions)
     chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
