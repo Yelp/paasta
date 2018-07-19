@@ -323,7 +323,10 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-i', '--instance',
-        help=("Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"),
+        help=(
+            "Simulate a docker run for a particular instance of the service, like 'main' or 'canary'"
+            "NOTE: if you don't specify an instance, PaaSTA will run in interactive mode"
+        ),
         required=False,
         default=None,
     ).completer = lazy_choices_completer(list_instances)
