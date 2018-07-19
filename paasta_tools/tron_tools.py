@@ -171,8 +171,9 @@ class TronActionConfig(InstanceConfig):
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
-    def __init__(self, config_dict, soa_dir=DEFAULT_SOA_DIR):
+    def __init__(self, config_dict, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
         self.config_dict = config_dict
+        self.load_deployments = load_deployments
         self.soa_dir = soa_dir
 
     def get_name(self):
@@ -220,7 +221,7 @@ class TronJobConfig:
     def _get_action_config(self, action_dict, default_paasta_cluster):
         action_service = action_dict.setdefault('service', self.get_service())
         action_deploy_group = action_dict.setdefault('deploy_group', self.get_deploy_group())
-        if action_service and action_deploy_group:
+        if action_service and action_deploy_group and self.load_deployments:
             try:
                 deployments_json = load_v2_deployments_json(action_service, soa_dir=self.soa_dir)
                 branch_dict = {
@@ -232,7 +233,7 @@ class TronJobConfig:
                 }
             except NoDeploymentsAvailable:
                 raise InvalidTronConfig(
-                    'No deployment found for action {action} in job {job}, looking for {deploy_group}'
+                    'No deployment found for action {action} in job {job}, looking for {deploy_group} '
                     'in service {service}'.format(
                         action=action_dict.get('name'),
                         job=self.get_name(),
@@ -241,7 +242,7 @@ class TronJobConfig:
                     ),
                 )
         else:
-            branch_dict = {}
+            branch_dict = None
 
         if 'cluster' not in action_dict:
             action_dict['cluster'] = default_paasta_cluster
@@ -335,7 +336,6 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
         result['mesos_address'] = cluster_fqdn_format.format(cluster=action_config.get_cluster())
         result['cpus'] = action_config.get_cpus()
         result['mem'] = action_config.get_mem()
-        result['docker_image'] = action_config.get_docker_url()
         result['env'] = action_config.get_env()
         result['extra_volumes'] = format_volumes(action_config.get_extra_volumes())
         result['docker_parameters'] = [
@@ -349,6 +349,12 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
         ]
+
+        # If deployments were not loaded
+        if not action_config.get_docker_image():
+            result['docker_image'] = ''
+        else:
+            result['docker_image'] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
@@ -392,7 +398,7 @@ def format_tron_job_dict(job_config, cluster_fqdn_format, default_paasta_cluster
     return {key: val for key, val in result.items() if val is not None}
 
 
-def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
+def load_tron_service_config(service, tron_cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
 
     config = service_configuration_lib.read_extra_service_information(service, 'tron-' + tron_cluster, soa_dir)
@@ -406,7 +412,13 @@ def load_tron_service_config(service, tron_cluster, soa_dir=DEFAULT_SOA_DIR):
         raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
 
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    job_configs = [TronJobConfig(job, soa_dir) for job in config.get('jobs') or []]
+    job_configs = [
+        TronJobConfig(
+            config_dict=job,
+            load_deployments=load_deployments,
+            soa_dir=soa_dir,
+        ) for job in config.get('jobs') or []
+    ]
     return job_configs, extra_config
 
 
@@ -418,6 +430,7 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
     job_configs, other_config = load_tron_service_config(
         service=service,
         tron_cluster=tron_config.get_cluster_name(),
+        load_deployments=True,
         soa_dir=soa_dir,
     )
 
@@ -444,7 +457,12 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
 
 
 def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
-    job_configs, other_config = load_tron_service_config(service, cluster, soa_dir)
+    job_configs, other_config = load_tron_service_config(
+        service=service,
+        tron_cluster=cluster,
+        load_deployments=False,
+        soa_dir=soa_dir,
+    )
 
     if service != MASTER_NAMESPACE and other_config:
         other_keys = list(other_config.keys())

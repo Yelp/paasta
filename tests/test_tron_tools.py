@@ -213,6 +213,50 @@ class TestTronJobConfig:
         with pytest.raises(tron_tools.InvalidTronConfig):
             job_config._get_action_config(action_dict, 'some-cluster')
 
+    @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
+    def test_get_action_config_load_deployments_false(
+        self,
+        mock_load_deployments,
+    ):
+        action_dict = {
+            'name': 'normal',
+            'command': 'echo first',
+        }
+        job_dict = {
+            'name': 'my_job',
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'service': 'my_service',
+            'deploy_group': 'prod',
+            'max_runtime': '2h',
+            'actions': [action_dict],
+        }
+        soa_dir = '/other_dir'
+        default_cluster = 'paasta-dev'
+        job_config = tron_tools.TronJobConfig(
+            job_dict,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        mock_load_deployments.side_effect = NoDeploymentsAvailable
+
+        action_config = job_config._get_action_config(action_dict, default_cluster)
+
+        assert mock_load_deployments.call_count == 0
+        assert action_config == tron_tools.TronActionConfig(
+            service='my_service',
+            instance=tron_tools.compose_instance('my_job', 'normal'),
+            config_dict={
+                'name': 'normal',
+                'command': 'echo first',
+                'cluster': default_cluster,
+                'service': 'my_service',
+                'deploy_group': 'prod',
+            },
+            branch_dict=None,
+            soa_dir=soa_dir,
+        )
+
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.format_tron_action_dict', autospec=True)
     def test_format_tron_job_dict(
@@ -476,6 +520,61 @@ class TestTronTools:
         assert result['env']['SHELL'] == '/bin/bash'
         assert isinstance(result['docker_parameters'], list)
 
+    def test_format_tron_action_dict_paasta_no_branch_dict(self):
+        action_dict = {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'cluster': 'paasta-dev',
+            'service': 'my_service',
+            'deploy_group': 'prod',
+            'executor': 'paasta',
+            'cpus': 2,
+            'mem': 1200,
+            'pool': 'special_pool',
+            'env': {'SHELL': '/bin/bash'},
+            'extra_volumes': [
+                {'containerPath': '/nail/tmp', 'hostPath': '/nail/tmp', 'mode': 'RW'},
+            ],
+        }
+        action_config = tron_tools.TronActionConfig(
+            service='my_service',
+            instance=tron_tools.compose_instance('my_job', 'do_something'),
+            config_dict=action_dict,
+            branch_dict=None,
+        )
+
+        result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+
+        assert result == {
+            'name': 'do_something',
+            'command': 'echo something',
+            'requires': ['required_action'],
+            'retries': 2,
+            'mesos_address': 'paasta-dev.com',
+            'docker_image': '',
+            'executor': 'mesos',
+            'cpus': 2,
+            'mem': 1200,
+            'env': mock.ANY,
+            'extra_volumes': [{
+                'container_path': '/nail/tmp',
+                'host_path': '/nail/tmp',
+                'mode': 'RW',
+            }],
+            'docker_parameters': mock.ANY,
+            'constraints': [
+                {
+                    'attribute': 'pool',
+                    'operator': 'LIKE',
+                    'value': 'special_pool',
+                },
+            ],
+        }
+        assert result['env']['SHELL'] == '/bin/bash'
+        assert isinstance(result['docker_parameters'], list)
+
     @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
     @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
     @mock.patch('paasta_tools.tron_tools.TronJobConfig', autospec=True)
@@ -491,15 +590,20 @@ class TestTronTools:
         mock_read_file.return_value = {}
         soa_dir = '/other/services'
 
-        job_configs, extra_config = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        job_configs, extra_config = tron_tools.load_tron_service_config(
+            'foo',
+            'dev',
+            load_deployments=True,
+            soa_dir=soa_dir,
+        )
         assert extra_config == {
             'value_a': 20,
             'other_value': 'string',
         }
         assert job_configs == [mock_job_config.return_value for i in range(2)]
         assert mock_job_config.call_args_list == [
-            mock.call(job_1, soa_dir),
-            mock.call(job_2, soa_dir),
+            mock.call(config_dict=job_1, load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_2, load_deployments=True, soa_dir=soa_dir),
         ]
         assert mock_read_service_info.call_count == 1
         assert mock_read_file.call_count == 0
@@ -520,15 +624,20 @@ class TestTronTools:
         mock_read_file.return_value = config_dict
         soa_dir = '/other/services'
 
-        job_configs, extra_config = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        job_configs, extra_config = tron_tools.load_tron_service_config(
+            'foo',
+            'dev',
+            load_deployments=True,
+            soa_dir=soa_dir,
+        )
         assert extra_config == {
             'value_a': 20,
             'other_value': 'string',
         }
         assert job_configs == [mock_job_config.return_value for i in range(2)]
         assert mock_job_config.call_args_list == [
-            mock.call(job_1, soa_dir),
-            mock.call(job_2, soa_dir),
+            mock.call(config_dict=job_1, load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_2, load_deployments=True, soa_dir=soa_dir),
         ]
         assert mock_read_service_info.call_count == 1
         assert mock_read_file.call_count == 1
@@ -592,6 +701,7 @@ class TestTronTools:
         mock_tron_service_config.assert_called_once_with(
             service,
             mock_tron_system_config.return_value.get_cluster_name.return_value,
+            True,
             soa_dir,
         )
         if service == MASTER_NAMESPACE:
