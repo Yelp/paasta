@@ -342,6 +342,7 @@ class TestTronJobConfig:
             'actions': [
                 {
                     'name': 'first',
+                    'node': 'good_pool',
                     'command': 'echo first',
                     'cpus': 'bad string',
                 },
@@ -356,8 +357,42 @@ class TestTronJobConfig:
                 'cpus': 'also bad',
             },
         }
+        master_config = {
+            'nodes': [{'hostname': 'batch_server'}],
+            'node_pools': [{'name': 'good_pool', 'nodes': ['batch1_server', 'batch2_server']}],
+        }
         job_config = tron_tools.TronJobConfig(job_dict)
-        errors = job_config.validate()
+        errors = job_config.validate(master_config)
+        assert len(errors) == 3
+
+    def test_validate_nodes(self):
+        job_dict = {
+            'name': 'my_job',
+            'node': 'bad_batch_server',
+            'schedule': 'daily 12:10:00',
+            'actions': [
+                {
+                    'name': 'first',
+                    'node': 'good_pool',
+                    'command': 'echo first',
+                },
+                {
+                    'name': 'second',
+                    'node': 'wrong_pool',
+                    'command': 'echo second',
+                },
+            ],
+            'cleanup_action': {
+                'node': 'bad_batch_server',
+                'command': 'rm *',
+            },
+        }
+        master_config = {
+            'nodes': [{'hostname': 'batch_server'}],
+            'node_pools': [{'name': 'good_pool', 'nodes': ['batch1_server', 'batch2_server']}],
+        }
+        job_config = tron_tools.TronJobConfig(job_dict)
+        errors = job_config.validate(master_config)
         assert len(errors) == 3
 
 
@@ -745,7 +780,7 @@ class TestTronTools:
             'a-cluster',
         )
 
-        assert mock_load_config.call_count == 1
+        assert mock_load_config.call_count == 2
         assert mock_format_job.call_count == 0
         assert mock_run.call_count == 0
         assert result == ['some error']
@@ -774,7 +809,7 @@ class TestTronTools:
             'a-cluster',
         )
 
-        assert mock_load_config.call_count == 1
+        assert mock_load_config.call_count == 2
         assert mock_format_job.call_count == 1
         assert mock_run.call_count == 1
         assert result == ['tronfig error']
@@ -803,7 +838,7 @@ class TestTronTools:
             'a-cluster',
         )
 
-        assert mock_load_config.call_count == 1
+        assert mock_load_config.call_count == 2
         assert mock_format_job.call_count == 1
         assert mock_run.call_count == 1
         assert not result

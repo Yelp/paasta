@@ -157,9 +157,14 @@ class TronActionConfig(InstanceConfig):
             constraints.extend(self.get_pool_constraints())
             return constraints
 
-    def validate(self) -> List[str]:
+    def validate(self, master_config) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs = super(TronActionConfig, self).validate()
+        action_node = self.get_node()
+        if action_node:
+            check_passed, check_msg = check_valid_node(self.get_node(), master_config)
+            if not check_passed:
+                error_msgs.append(check_msg)
 
         if error_msgs:
             name = self.get_instance()
@@ -271,7 +276,7 @@ class TronJobConfig:
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
 
-    def check_actions(self) -> Tuple[bool, List[str]]:
+    def check_actions(self, master_config) -> Tuple[bool, List[str]]:
         actions = self.get_actions(None)
         cleanup_action = self.get_cleanup_action(None)
         if cleanup_action:
@@ -280,20 +285,38 @@ class TronJobConfig:
         checks_passed = True
         msgs: List[str] = []
         for action in actions:
-            action_msgs = action.validate()
+            action_msgs = action.validate(master_config)
             if action_msgs:
                 checks_passed = False
                 msgs.extend(action_msgs)
         return checks_passed, msgs
 
-    def validate(self) -> List[str]:
-        _, action_msgs = self.check_actions()
-        return action_msgs
+    def validate(self, master_config) -> List[str]:
+        _, error_msgs = self.check_actions(master_config)
+        check_passed, check_msg = check_valid_node(self.get_node(), master_config)
+        if not check_passed:
+            error_msgs.append(check_msg + ' for job ' + self.get_name())
+        return error_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
             return self.config_dict == other.config_dict
         return False
+
+
+def check_valid_node(node, master_config) -> Tuple[bool, str]:
+    node_names = [
+        node.get('hostname')
+        if not node.get('name')
+        else node.get('name')
+        for node in master_config.get('nodes')
+    ]
+    nodepools = [nodepool['name'] for nodepool in master_config.get('node_pools')]
+    all_nodes_nodepools = node_names + nodepools
+
+    if node not in all_nodes_nodepools:
+        return False, f'Unknown node {node}'
+    return True, ''
 
 
 def format_volumes(paasta_volume_list):
@@ -470,9 +493,19 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SO
             f'Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}',
         ]
 
+    if service == MASTER_NAMESPACE:
+        master_config = other_config
+    else:
+        _, master_config = load_tron_service_config(
+            service=MASTER_NAMESPACE,
+            tron_cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+
     # PaaSTA-specific validation
     for job_config in job_configs:
-        check_msgs = job_config.validate()
+        check_msgs = job_config.validate(master_config)
         if check_msgs:
             return check_msgs
 
