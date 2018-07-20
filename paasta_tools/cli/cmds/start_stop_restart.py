@@ -57,6 +57,12 @@ def add_subparser(subparsers):
             help="define a different soa config directory",
         )
         status_parser.set_defaults(command=cmd_func)
+        status_parser.add_argument(
+            '--ask',
+            dest='ask',
+            action='store_true',
+            help="always ask for confirmation before taking action",
+        )
 
 
 def format_tag(branch, force_bounce, desired_state):
@@ -149,8 +155,11 @@ def paasta_start_or_stop(args, desired_state):
         return 1
 
     affected_services = {s for service_list in pargs.values() for s in service_list.keys()}
-    if len(affected_services) > 1:
-        paasta_print(PaastaColors.red("Warning: trying to start/stop/restart multiple services:"))
+    if len(affected_services) > 1 or args.ask:
+        if len(affected_services) > 1:
+            paasta_print(PaastaColors.red("Warning: trying to start/stop/restart multiple services:"))
+        else:
+            paasta_print("Trying to start/stop/restart the following service(s):")
 
         for cluster, services_instances in pargs.items():
             paasta_print("Cluster %s:" % cluster)
