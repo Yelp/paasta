@@ -132,6 +132,9 @@ class TronActionConfig(InstanceConfig):
     def get_retries(self):
         return self.config_dict.get('retries')
 
+    def get_retries_delay(self):
+        return self.config_dict.get('retries_delay')
+
     def get_requires(self):
         return self.config_dict.get('requires')
 
@@ -330,6 +333,7 @@ def format_tron_action_dict(action_config, cluster_fqdn_format):
         'requires': action_config.get_requires(),
         'node': action_config.get_node(),
         'retries': action_config.get_retries(),
+        'retries_delay': action_config.get_retries_delay(),
         'expected_runtime': action_config.get_expected_runtime(),
     }
     if executor == 'mesos':
