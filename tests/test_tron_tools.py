@@ -316,7 +316,8 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 3
 
-    def test_validate_monitoring(self):
+    @mock.patch('paasta_tools.tron_tools.list_teams', autospec=True)
+    def test_validate_monitoring(self, mock_teams):
         job_dict = {
             'name': 'my_job',
             'node': 'batch_server',
@@ -332,11 +333,13 @@ class TestTronJobConfig:
                 },
             ],
         }
+        mock_teams.return_value = ['noop']
         job_config = tron_tools.TronJobConfig(job_dict)
         errors = job_config.validate()
         assert len(errors) == 0
 
-    def test_validate_monitoring_without_team(self):
+    @mock.patch('paasta_tools.tron_tools.list_teams', autospec=True)
+    def test_validate_monitoring_without_team(self, mock_teams):
         job_dict = {
             'name': 'my_job',
             'node': 'batch_server',
@@ -355,7 +358,8 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert errors == ['Team name is required for monitoring']
 
-    def test_validate_monitoring_with_invalid_team(self):
+    @mock.patch('paasta_tools.tron_tools.list_teams', autospec=True)
+    def test_validate_monitoring_with_invalid_team(self, mock_teams):
         job_dict = {
             'name': 'my_job',
             'node': 'batch_server',
@@ -371,9 +375,10 @@ class TestTronJobConfig:
                 },
             ],
         }
+        mock_teams.return_value = ['valid_team', 'weird_name']
         job_config = tron_tools.TronJobConfig(job_dict)
         errors = job_config.validate()
-        assert errors == ['Invalid team name: invalid_team']
+        assert errors == ["Invalid team name: invalid_team. Do you mean one of these: ['valid_team']"]
 
 
 class TestTronTools:

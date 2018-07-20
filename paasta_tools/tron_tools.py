@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import difflib
 import glob
 import os
 import re
@@ -271,19 +272,17 @@ class TronJobConfig:
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
 
-    def check_monitoring(self) -> Tuple[bool, List[str]]:
-        msgs: List[str] = []
+    def check_monitoring(self) -> Tuple[bool, str]:
         monitoring = self.get_monitoring()
-        checks_passed = True
+        valid_teams = list_teams()
         if monitoring is not None:
             team_name = monitoring.get('team', None)
             if team_name is None:
-                checks_passed = False
-                msgs.append('Team name is required for monitoring')
-            elif team_name not in list_teams():
-                checks_passed = False
-                msgs.append(f'Invalid team name: {team_name}')
-        return checks_passed, msgs
+                return False, 'Team name is required for monitoring'
+            elif team_name not in valid_teams:
+                suggest_teams = difflib.get_close_matches(word=team_name, possibilities=valid_teams)
+                return False, f'Invalid team name: {team_name}. Do you mean one of these: {suggest_teams}'
+        return True, ''
 
     def check_actions(self) -> Tuple[bool, List[str]]:
         actions = self.get_actions(None)
@@ -301,9 +300,11 @@ class TronJobConfig:
         return checks_passed, msgs
 
     def validate(self) -> List[str]:
-        _, monitoring_msgs = self.check_monitoring()
-        _, action_msgs = self.check_actions()
-        return monitoring_msgs + action_msgs
+        _, error_msgs = self.check_actions()
+        check_passed, check_msg = self.check_monitoring()
+        if not check_passed:
+            error_msgs.append(check_msg)
+        return error_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
