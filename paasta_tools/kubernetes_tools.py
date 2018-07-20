@@ -46,6 +46,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -347,6 +348,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
         return kubernetes_env
 
+    def get_resource_requirements(self) -> V1ResourceRequirements:
+        return V1ResourceRequirements(
+            limits={
+                'cpu': self.get_cpus() * self.get_cpu_burst_pct() / 100,
+                'memory': f'{self.get_mem()}Mi',
+            },
+            requests={
+                'cpu': self.get_cpus(),
+                'memory': f'{self.get_mem()}Mi',
+            },
+        )
+
     def get_kubernetes_containers(
         self,
         docker_volumes: Sequence[DockerVolume],
@@ -358,6 +371,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             command=self.get_cmd(),
             args=self.get_args(),
             env=self.get_container_env(),
+            resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
                 pre_stop=V1Handler(
                     _exec=V1ExecAction(

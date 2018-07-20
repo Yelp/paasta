@@ -20,6 +20,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -275,6 +276,28 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ret = self.deployment.get_kubernetes_environment()
         assert 'PAASTA_POD_IP' in [env.name for env in ret]
 
+    def test_get_resource_requirements(self):
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpus', autospec=True,
+            return_value=0.3,
+        ), mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_pct', autospec=True,
+            return_value=200,
+        ), mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem', autospec=True,
+            return_value=2048,
+        ):
+            assert self.deployment.get_resource_requirements() == V1ResourceRequirements(
+                limits={
+                    'cpu': 0.6,
+                    'memory': '2048Mi',
+                },
+                requests={
+                    'cpu': 0.3,
+                    'memory': '2048Mi',
+                },
+            )
+
     def test_get_kubernetes_containers(self):
         with mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url', autospec=True,
@@ -283,6 +306,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ) as mock_get_cmd, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_args', autospec=True,
         ) as mock_get_args, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_resource_requirements', autospec=True,
+        ) as mock_get_resource_requirements, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_container_env', autospec=True,
         ) as mock_get_container_env, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_service_name', autospec=True,
@@ -304,6 +329,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     args=mock_get_args.return_value,
                     command=mock_get_cmd.return_value,
                     env=mock_get_container_env.return_value,
+                    resources=mock_get_resource_requirements.return_value,
                     image=mock_get_docker_url.return_value,
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
