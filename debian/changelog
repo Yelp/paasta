@@ -1,3 +1,11 @@
+paasta-tools (0.77.1) xenial; urgency=medium
+
+  * 0.77.1 tagged with 'make release'
+    Commit: Merge pull request #1912 from Yelp/tron-retries-delay  Add
+    support for tron retries_delay attribute
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 23 Jul 2018 05:39:59 -0700
+
 paasta-tools (0.77.0) xenial; urgency=medium
 
   * 0.77.0 tagged with 'make release'
