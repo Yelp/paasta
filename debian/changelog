@@ -1,3 +1,10 @@
+paasta-tools (0.77.2) xenial; urgency=medium
+
+  * 0.77.2 tagged with 'make release'
+    Commit: Released 0.77.1 via make release
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 23 Jul 2018 05:44:12 -0700
+
 paasta-tools (0.77.1) xenial; urgency=medium
 
   * 0.77.1 tagged with 'make release'
