@@ -16,8 +16,13 @@ Settings of the paasta-api server.
 """
 import os
 
+from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
-soa_dir = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
-cluster = None
-marathon_clients = None
+soa_dir: str = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
+
+# The following `type: ignore` mypy hints are there because variables below de
+# juro have `Optional[T]` type, but de facto are always initialized to a value
+# of the corresponding type after the applicaton is started.
+cluster: str = None  # type: ignore
+marathon_clients: MarathonClients = None  # type: ignore

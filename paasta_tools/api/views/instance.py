@@ -16,6 +16,10 @@
 PaaSTA service instance status/start/stop etc.
 """
 import traceback
+from typing import Any
+from typing import Dict
+from typing import Mapping
+from typing import MutableMapping
 
 import a_sync
 import marathon
@@ -38,8 +42,13 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
 
 
-def chronos_instance_status(instance_status, service, instance, verbose):
-    cstatus = {}
+def chronos_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    cstatus: Dict[str, Any] = {}
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     job_config = chronos_tools.load_chronos_job_config(
@@ -98,16 +107,31 @@ def chronos_instance_status(instance_status, service, instance, verbose):
     return cstatus
 
 
-def adhoc_instance_status(instance_status, service, instance, verbose):
-    cstatus = {}
+def adhoc_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    cstatus: Dict[str, Any] = {}
     return cstatus
 
 
-def kubernetes_instance_status(instance_status, service, instance, verbose):
+def kubernetes_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
     return {}
 
 
-def marathon_job_status(mstatus, client, job_config, verbose):
+def marathon_job_status(
+    mstatus: MutableMapping[str, Any],
+    client,
+    job_config,
+    verbose: bool,
+) -> None:
     try:
         app_id = job_config.format_marathon_app_dict()['id']
     except NoDockerImageError:
@@ -141,8 +165,13 @@ def marathon_job_status(mstatus, client, job_config, verbose):
             mstatus['backoff_seconds'] = backoff_seconds
 
 
-def marathon_instance_status(instance_status, service, instance, verbose):
-    mstatus = {}
+def marathon_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    mstatus: Dict[str, Any] = {}
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, settings.cluster, soa_dir=settings.soa_dir,
     )
@@ -163,7 +192,7 @@ def instance_status(request):
     instance = request.swagger_data.get('instance')
     verbose = request.matchdict.get('verbose', False)
 
-    instance_status = {}
+    instance_status: Dict[str, Any] = {}
     instance_status['service'] = service
     instance_status['instance'] = instance
 

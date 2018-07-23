@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections import namedtuple
+from typing import Dict
+from typing import Set
 
 from mock import ANY
 from mock import call
@@ -113,7 +115,7 @@ def test_report_status_for_cluster_displays_deployed_service(
     actual_deployments = {
         'fake_cluster.fake_instance': 'sha',
     }
-    instance_whitelist = []
+    instance_whitelist: Set[str] = set()
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
         sentinel.return_value,
@@ -155,7 +157,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
     actual_deployments = {
         'cluster.instance': 'this_is_a_sha',
     }
-    instance_whitelist = []
+    instance_whitelist: Set[str] = set()
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
         sentinel.return_value,
@@ -196,7 +198,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         'fake_cluster.fake_instance_a': '533976a9',
         'fake_cluster.fake_instance_b': '533976a9',
     }
-    instance_whitelist = []
+    instance_whitelist: Set[str] = set()
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
         sentinel.return_value,
@@ -241,7 +243,7 @@ def test_print_cluster_status_missing_deploys_in_red(
     actual_deployments = {
         'a_cluster.a_instance': '533976a981679d586bed1cfb534fdba4b4e2c815',
     }
-    instance_whitelist = []
+    instance_whitelist: Set[str] = set()
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
         sentinel.return_value,
@@ -289,7 +291,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
     }
-    instance_whitelist = []
+    instance_whitelist: Set[str] = set()
 
     fake_output = "Marathon: 5 instances"
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
@@ -329,7 +331,7 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
         'fake_cluster.fake_instance_a': 'sha',
         'fake_cluster.fake_instance_b': 'sha',
     }
-    instance_whitelist = ['fake_instance_a']
+    instance_whitelist = {'fake_instance_a'}
 
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
         sentinel.return_value,
@@ -359,8 +361,8 @@ def test_report_status_calls_report_invalid_whitelist_values(
 ):
     service = 'fake_service'
     planned_deployments = ['cluster.instance1', 'cluster.instance2']
-    actual_deployments = {}
-    instance_whitelist = []
+    actual_deployments: Dict[str, str] = {}
+    instance_whitelist: Set[str] = set()
 
     status.report_status_for_cluster(
         service=service,
@@ -399,7 +401,7 @@ def test_status_pending_pipeline_build_message(
     mock_instance_config = make_fake_instance_conf('cluster', service, 'instancename')
     mock_get_instance_configs_for_service.return_value = [mock_instance_config]
 
-    actual_deployments = {}
+    actual_deployments: Dict[str, str] = {}
     mock_get_actual_deployments.return_value = actual_deployments
     expected_output = missing_deployments_message(service)
 
@@ -520,7 +522,7 @@ def test_status_calls_sergeants(
 
 
 def test_report_invalid_whitelist_values_no_whitelists():
-    whitelist = []
+    whitelist: Set[str] = set()
     items = ['cluster1', 'cluster2', 'cluster3']
     item_type = 'thingy'
     actual = report_invalid_whitelist_values(whitelist, items, item_type)
@@ -528,7 +530,7 @@ def test_report_invalid_whitelist_values_no_whitelists():
 
 
 def test_report_invalid_whitelist_values_with_whitelists():
-    whitelist = ['bogus1', 'cluster1']
+    whitelist = {'bogus1', 'cluster1'}
     items = ['cluster1', 'cluster2', 'cluster3']
     item_type = 'thingy'
     actual = report_invalid_whitelist_values(whitelist, items, item_type)
