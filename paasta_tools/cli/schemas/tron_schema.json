@@ -28,6 +28,7 @@
           "minimum": 0,
           "exclusiveMinimum": false
         },
+        "retries_delay":  {"$ref": "#definitions/time_delta"},
         "executor": {"enum": ["ssh", "paasta"]},
         "cpus": {
           "type": "number",
