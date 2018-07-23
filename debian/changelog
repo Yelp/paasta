@@ -1,3 +1,11 @@
+paasta-tools (0.77.1) xenial; urgency=medium
+
+  * 0.77.1 tagged with 'make release'
+    Commit: Merge pull request #1905 from Yelp/resilient-to-bad-
+    marathon-input  Catch exceptions on format_marathon_app_dict
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 23 Jul 2018 05:29:21 -0700
+
 paasta-tools (0.77.0) xenial; urgency=medium
 
   * 0.77.0 tagged with 'make release'
