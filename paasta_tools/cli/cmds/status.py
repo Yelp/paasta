@@ -215,11 +215,19 @@ def paasta_status_on_api_endpoint(
     paasta_print('instance: %s' % PaastaColors.blue(instance))
     paasta_print('Git sha:    %s (desired)' % status.git_sha)
 
-    marathon_status = status.marathon
-    if marathon_status is None:
+    if status.marathon is not None:
+        return print_marathon_status(service, instance, status.marathon)
+    else:
         paasta_print("Not implemented: Looks like %s is not a Marathon instance" % instance)
         return 0
-    elif marathon_status.error_message:
+
+
+def print_marathon_status(
+    service: str,
+    instance: str,
+    marathon_status,
+) -> int:
+    if marathon_status.error_message:
         paasta_print(marathon_status.error_message)
         return 1
 
