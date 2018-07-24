@@ -911,6 +911,13 @@ def test_sort_dcts(dcts, expected):
 
 class TestInstanceConfig:
 
+    def test_repr(self):
+        actual = repr(utils.InstanceConfig(
+            service='fakeservice', instance='fakeinstance', cluster='fakecluster', config_dict={}, branch_dict={},
+        ))
+        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {}, '/nail/etc/services')"
+        assert actual == expect
+
     def test_get_monitoring(self):
         fake_info = {'fake_key': 'fake_value'}
         assert utils.InstanceConfig(

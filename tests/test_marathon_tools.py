@@ -1705,15 +1705,6 @@ class TestMarathonTools:
 
 class TestMarathonServiceConfig(object):
 
-    def test_repr(self):
-        actual = repr(marathon_tools.MarathonServiceConfig(
-            'foo', 'bar', '',
-            {'bounce_method': 'baz'}, {'docker_image': 'gum'},
-        ))
-        expect = """MarathonServiceConfig('foo', 'bar', '', {'bounce_method': 'baz'}, """ \
-            """{'docker_image': 'gum'}, '/nail/etc/services')"""
-        assert actual == expect
-
     def test_get_healthcheck_mode_default(self):
         namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         marathon_config = marathon_tools.MarathonServiceConfig(
