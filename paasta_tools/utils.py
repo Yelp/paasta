@@ -274,7 +274,6 @@ class InstanceConfig(object):
         self.service = service
         self.soa_dir = soa_dir
         self._job_id = compose_job_id(service, instance)
-        self.init_sanity_check()
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
@@ -291,11 +290,6 @@ class InstanceConfig(object):
             self.branch_dict,
             self.soa_dir,
         )
-
-    def init_sanity_check(self) -> None:
-        for attribute in [self.cluster, self.instance, self.service, self.soa_dir]:
-            if attribute is None:
-                raise TypeError(f"A {self.__class__.__name__} cannot be initialized with None: {repr(self)}")
 
     def __get_interpolation_facts(self) -> Dict[str, str]:
         return {
