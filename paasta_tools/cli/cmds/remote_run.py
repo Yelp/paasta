@@ -118,6 +118,12 @@ def add_common_args_to_parser(parser):
         default=False,
     )
     parser.add_argument(
+        '--aws-region',
+        choices=['us-east-1', 'us-west-1', 'us-west-2'],
+        help='aws region of the dynamodb state table',
+        default=None,
+    )
+    parser.add_argument(
         '-i', '--instance',
         help=(
             "Simulate a docker run for a particular instance of the "
