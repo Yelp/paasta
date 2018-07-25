@@ -120,11 +120,12 @@ class TestTronActionConfig:
 class TestTronJobConfig:
 
     @pytest.mark.parametrize(
-        'action_service,action_deploy,action_cluster', [
-            (None, None, None),
-            (None, 'special_deploy', None),
-            ('other_service', None, None),
-            (None, None, 'other-cluster'),
+        'action_service,action_deploy,action_cluster, job_cluster', [
+            (None, None, None, None),
+            (None, 'special_deploy', None, None),
+            ('other_service', None, None, None),
+            (None, None, 'action-cluster', 'job-cluster'),
+            (None, None, None, 'job-cluster'),
         ],
     )
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
@@ -134,6 +135,7 @@ class TestTronJobConfig:
         action_service,
         action_deploy,
         action_cluster,
+        job_cluster,
     ):
         """Check resulting action config with various overrides from the action."""
         action_dict = {
@@ -152,7 +154,7 @@ class TestTronJobConfig:
         default_cluster = 'paasta-dev'
         expected_service = action_service or job_service
         expected_deploy = action_deploy or job_deploy
-        expected_cluster = action_cluster or default_cluster
+        expected_cluster = action_cluster or job_cluster or default_cluster
 
         job_dict = {
             'name': 'my_job',
@@ -162,8 +164,10 @@ class TestTronJobConfig:
             'deploy_group': job_deploy,
             'max_runtime': '2h',
             'actions': [action_dict],
-            'cluster': default_cluster,
         }
+        if job_cluster is not None:
+            job_dict['cluster'] = job_cluster
+
         soa_dir = '/other_dir'
         job_config = tron_tools.TronJobConfig(job_dict, soa_dir=soa_dir)
 
@@ -180,10 +184,19 @@ class TestTronJobConfig:
             'force_bounce': None,
         }
 
+        expected_input_action_config = {
+            'name': 'normal',
+            'command': 'echo first',
+            'service': expected_service,
+            'deploy_group': expected_deploy,
+        }
+        if action_cluster:
+            expected_input_action_config['cluster'] = action_cluster
+
         assert action_config == tron_tools.TronActionConfig(
             service=expected_service,
             instance=tron_tools.compose_instance('my_job', 'normal'),
-            config_dict=action_dict,
+            config_dict=expected_input_action_config,
             branch_dict=expected_branch_dict,
             soa_dir=soa_dir,
             cluster=expected_cluster,

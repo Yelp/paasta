@@ -80,6 +80,7 @@
             "type": "array",
             "items": {"$ref": "#definitions/action"}
           },
+          "cluster": {"type": "string"},
           "monitoring": {
             "type": "object",
             "properties": {

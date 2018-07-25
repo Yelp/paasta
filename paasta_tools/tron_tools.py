@@ -218,6 +218,9 @@ class TronJobConfig:
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', '')
 
+    def get_cluster(self):
+        return self.config_dict.get('cluster')
+
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
@@ -247,7 +250,7 @@ class TronJobConfig:
         else:
             branch_dict = None
 
-        cluster = action_dict.get('cluster') or default_paasta_cluster
+        cluster = action_dict.get('cluster') or self.get_cluster() or default_paasta_cluster
 
         return TronActionConfig(
             service=action_service,
