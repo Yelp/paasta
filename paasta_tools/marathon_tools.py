@@ -621,6 +621,35 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         routing_constraints: List[Constraint] = [[discover_level, "GROUP_BY", str(len(value_dict.keys()))]]
         return routing_constraints
 
+    def get_container(
+        self,
+        docker_url: str,
+        default_containerizer: str,
+        docker_volumes: List[DockerVolume],
+    ) -> Dict[str, Any]:
+        net = get_mesos_network_for_net(self.get_net())
+        if self.get_containerizer(default_containerizer) == 'mesos':
+            return {
+                'docker': {
+                    'image': docker_url,
+                },
+                'type': 'MESOS',
+                'volumes': docker_volumes,
+            }
+        elif self.get_containerizer(default_containerizer) == 'docker':
+            return {
+                'docker': {
+                    'image': docker_url,
+                    'network': net,
+                    "parameters": self.format_docker_parameters(),
+                },
+                'type': 'DOCKER',
+                'volumes': docker_volumes,
+            }
+
+    def get_containerizer(self, default_containerizer: str) -> str:
+        return self.config_dict.get('containerizer', default_containerizer)
+
     def format_marathon_app_dict(self) -> FormattedMarathonAppDict:
         """Create the configuration that will be passed to the Marathon REST API.
 
@@ -655,19 +684,14 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             namespace=self.get_nerve_namespace(),
         )
         docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
-
         net = get_mesos_network_for_net(self.get_net())
 
         complete_config: FormattedMarathonAppDict = {
-            'container': {
-                'docker': {
-                    'image': docker_url,
-                    'network': net,
-                    "parameters": self.format_docker_parameters(),
-                },
-                'type': 'DOCKER',
-                'volumes': docker_volumes,
-            },
+            'container': self.get_container(
+                docker_url=docker_url,
+                default_containerizer=system_paasta_config.get_default_containerizer(),
+                docker_volumes=docker_volumes,
+            ),
             'uris': [system_paasta_config.get_dockercfg_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': self.get_backoff_factor(),
@@ -689,14 +713,27 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'args': self.get_args(),
         }
 
+        containerizer = self.get_containerizer(
+            default_containerizer=system_paasta_config.get_default_containerizer(),
+        )
         if net == 'BRIDGE':
-            complete_config['container']['docker']['portMappings'] = [
-                {
-                    'containerPort': self.get_container_port(),
-                    'hostPort': self.get_host_port(),
-                    'protocol': 'tcp',
-                },
-            ]
+            if containerizer == 'docker':
+                complete_config['container']['docker']['portMappings'] = [
+                    {
+                        'containerPort': self.get_container_port(),
+                        'hostPort': self.get_host_port(),
+                        'protocol': 'tcp',
+                    },
+                ]
+            elif containerizer == 'mesos':
+                complete_config['container']['portMappings'] = [
+                    {
+                        'containerPort': self.get_container_port(),
+                        'hostPort': self.get_host_port(),
+                        'protocol': 'tcp',
+                    },
+                ]
+                complete_config['networks'] = [{"mode": "container/bridge"}]
         else:
             complete_config['port_definitions'] = [
                 {

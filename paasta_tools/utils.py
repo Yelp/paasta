@@ -1888,6 +1888,9 @@ class SystemPaastaConfig(object):
     def get_tron_config(self) -> dict:
         return self.config_dict.get('tron', {})
 
+    def get_default_containerizer(self) -> str:
+        return self.config_dict.get('default_containerizer', 'docker')
+
 
 def _run(
     command: Union[str, List[str]],
