@@ -25,10 +25,14 @@ import sys
 from shlex import quote
 from socket import gaierror
 from socket import gethostbyname_ex
+from typing import Any
+from typing import Callable
+from typing import Optional
 
 import ephemeral_port_reserve
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
+from mypy_extensions import NamedArg
 
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
@@ -36,10 +40,12 @@ from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
@@ -779,9 +785,9 @@ def get_jenkins_build_output_url():
 
 
 def get_instance_config(
-    service, instance, cluster, soa_dir=DEFAULT_SOA_DIR,
-    load_deployments=False, instance_type=None,
-):
+    service: str, instance: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool=False, instance_type: Optional[str]=None,
+) -> Any:
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
     if instance_type is None:
@@ -792,6 +798,12 @@ def get_instance_config(
             soa_dir=soa_dir,
         )
 
+    instance_config_load_function: Callable[
+        [
+            NamedArg(str, "service"), NamedArg(str, "instance"), NamedArg(str, "cluster"),
+            NamedArg(bool, "load_deployments"), NamedArg(str, "soa_dir"),
+        ], InstanceConfig
+    ]
     if instance_type == 'marathon':
         instance_config_load_function = load_marathon_service_config
     elif instance_type == 'chronos':
@@ -800,6 +812,8 @@ def get_instance_config(
         instance_config_load_function = load_adhoc_job_config
     elif instance_type == 'kubernetes':
         instance_config_load_function = load_kubernetes_service_config
+    elif instance_type == 'tron':
+        instance_config_load_function = load_tron_instance_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"

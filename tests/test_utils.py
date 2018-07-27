@@ -704,7 +704,8 @@ def test_get_service_instance_list():
         read_extra_info_patch.assert_any_call(fake_name, 'chronos-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'paasta_native-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'kubernetes-16floz', soa_dir=fake_dir)
-        assert read_extra_info_patch.call_count == 5
+        read_extra_info_patch.assert_any_call(fake_name, 'tron-16floz', soa_dir=fake_dir)
+        assert read_extra_info_patch.call_count == 6
         assert sorted(expected) == sorted(actual)
 
 
@@ -730,6 +731,40 @@ def test_get_service_instance_list_ignores_underscore():
         return_value=fake_job_config,
     ):
         actual = utils.get_service_instance_list(service=fake_name, cluster=fake_cluster, soa_dir=fake_dir)
+        assert sorted(expected) == sorted(actual)
+
+
+def test_get_tron_instance_list_from_yaml_finds_actions_properly():
+    fake_tron_job_config = {
+        "ssh_option": "foo",
+        "jobs": [
+            {
+                "name": "job1",
+                "actions": [
+                    {"name": "actionA"},
+                    {"name": "actionB"},
+                ],
+            },
+            {
+                "name": "job2",
+                "actions": [
+                    {"name": "actionC"},
+                    {"name": "actionD"},
+                ],
+            },
+        ],
+    }
+    expected = [
+        ("fake_service", "job1.actionA"),
+        ("fake_service", "job1.actionB"),
+        ("fake_service", "job2.actionC"),
+        ("fake_service", "job2.actionD"),
+    ]
+    with mock.patch(
+        'paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
+        return_value=fake_tron_job_config,
+    ):
+        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', conf_file='fake', soa_dir='fake_dir')
         assert sorted(expected) == sorted(actual)
 
 
@@ -1230,6 +1265,22 @@ class TestInstanceConfig:
             'PAASTA_DOCKER_IMAGE': '',
         }
 
+    def test_get_env_handles_non_strings_and_returns_strings(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_service',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={"deploy_group": None},
+            branch_dict=None,
+        )
+        assert fake_conf.get_env() == {
+            'PAASTA_SERVICE': 'fake_service',
+            'PAASTA_INSTANCE': 'fake_instance',
+            'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DEPLOY_GROUP': 'None',
+            'PAASTA_DOCKER_IMAGE': '',
+        }
+
     def test_get_env_with_config(self):
         fake_conf = utils.InstanceConfig(
             service='',
@@ -1722,6 +1773,7 @@ def test_validate_service_instance_invalid():
     mock_paasta_native_services = [('service1', 'main2'), ('service2', 'main2')]
     mock_adhoc_services = [('service1', 'interactive'), ('service2', 'interactive')]
     mock_k8s_services = [('service1', 'k8s'), ('service2', 'k8s')]
+    mock_tron_services = [('service1', 'job.action')]
     my_service = 'bad_service'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
@@ -1732,15 +1784,15 @@ def test_validate_service_instance_invalid():
         side_effect=[
             mock_marathon_services, mock_chronos_services,
             mock_paasta_native_services, mock_adhoc_services,
-            mock_k8s_services,
+            mock_k8s_services, mock_tron_services,
         ],
     ):
         with raises(utils.NoConfigurationForServiceError):
             utils.validate_service_instance(
-                my_service,
-                my_instance,
-                fake_cluster,
-                fake_soa_dir,
+                service=my_service,
+                instance=my_instance,
+                cluster=fake_cluster,
+                soa_dir=fake_soa_dir,
             )
 
 
@@ -2134,3 +2186,21 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
             mock.call(f.fileno(), utils.fcntl.LOCK_EX),
             mock.call(f.fileno(), utils.fcntl.LOCK_UN),
         ]
+
+
+def test_suggest_possibilities_none():
+    expected = ""
+    actual = utils.suggest_possibilities(word='FOO', possibilities=[])
+    assert actual == expected
+
+
+def test_suggest_possibilities_many():
+    expected = "FOOO, FOOBAR"
+    actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOO", "FOOBAR"])
+    assert expected in actual
+
+
+def test_suggest_possibilities_one():
+    expected = "FOOBAR?"
+    actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOBAR", "BAZ"])
+    assert expected in actual

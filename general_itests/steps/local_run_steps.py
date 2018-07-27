@@ -110,3 +110,17 @@ def local_run_on_chronos_job_with_cmd(context):
             "--build "
         )
         context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
+
+
+@when('we run paasta local-run on a tron action')
+def local_run_on_tron_action(context):
+    with Path("fake_simple_service"):
+        local_run_cmd = (
+            "paasta local-run "
+            "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
+            "--service fake_simple_service "
+            "--cluster test-cluster "
+            "--instance sample_tron_job.action1 "
+            "--build "
+        )
+        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)

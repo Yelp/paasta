@@ -24,3 +24,9 @@ Feature: paasta local-run can be used
        And a simple service to test
       When we run paasta local-run on an interactive job
       Then we should see the expected return code
+
+  Scenario: Running paasta local-run against a tron action
+     Given Docker is available
+       And a simple service to test
+      When we run paasta local-run on a tron action
+      Then we should see the expected return code

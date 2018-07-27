@@ -673,8 +673,8 @@ class TestTronTools:
         soa_dir = '/other/services'
 
         job_configs, extra_config = tron_tools.load_tron_service_config(
-            'foo',
-            'dev',
+            service='foo',
+            tron_cluster='dev',
             load_deployments=True,
             soa_dir=soa_dir,
         )
@@ -684,8 +684,8 @@ class TestTronTools:
         }
         assert job_configs == [mock_job_config.return_value for i in range(2)]
         assert mock_job_config.call_args_list == [
-            mock.call(config_dict=job_1, load_deployments=True, soa_dir=soa_dir),
-            mock.call(config_dict=job_2, load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_1, service='foo', load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_2, service='foo', load_deployments=True, soa_dir=soa_dir),
         ]
         assert mock_read_service_info.call_count == 1
         assert mock_read_file.call_count == 0
@@ -718,8 +718,8 @@ class TestTronTools:
         }
         assert job_configs == [mock_job_config.return_value for i in range(2)]
         assert mock_job_config.call_args_list == [
-            mock.call(config_dict=job_1, load_deployments=True, soa_dir=soa_dir),
-            mock.call(config_dict=job_2, load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_1, load_deployments=True, service='foo', soa_dir=soa_dir),
+            mock.call(config_dict=job_2, load_deployments=True, service='foo', soa_dir=soa_dir),
         ]
         assert mock_read_service_info.call_count == 1
         assert mock_read_file.call_count == 1
@@ -977,3 +977,58 @@ class TestTronTools:
         ]
         result = tron_tools.list_tron_clusters('foo')
         assert sorted(result) == ['dev-cluster2', 'prod']
+
+
+@mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
+def test_load_tron_yaml_picks_service_dir_first(mock_read_extra_service_configuration):
+    config = "test"
+    mock_read_extra_service_configuration.return_value = config
+    assert config == tron_tools.load_tron_yaml(service="foo", tron_cluster="bar", soa_dir="test")
+    mock_read_extra_service_configuration.assert_called_once_with(
+        service_name='foo', extra_info="tron-bar", soa_dir="test",
+    )
+
+
+@mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
+@mock.patch('service_configuration_lib._read_yaml_file', autospec=True)
+@mock.patch('os.path.abspath', autospec=True)
+def test_load_tron_yaml_picks_service_falls_back_to_tron_dir(
+    mock_abspath,
+    mock_read_yaml_file,
+    mock_read_extra_service_configuration,
+):
+    config = "test"
+    mock_read_extra_service_configuration.return_value = None
+    mock_read_yaml_file.return_value = config
+    mock_abspath.return_value = 'test-abspath'
+    assert config == tron_tools.load_tron_yaml(service="foo", tron_cluster="bar", soa_dir="test")
+    mock_read_extra_service_configuration.assert_called_once_with(
+        service_name='foo', extra_info="tron-bar", soa_dir="test",
+    )
+    mock_read_yaml_file.assert_called_once_with("test-abspath/tron/bar/foo.yaml")
+
+
+@mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
+def test_load_tron_service_config_interprets_correctly(mock_load_tron_yaml):
+    mock_load_tron_yaml.return_value = {
+        'extra': 'data',
+        'jobs': [{
+            'job1': {
+                'actions': [{'action1': {}}],
+            },
+        }],
+    }
+    actual1, actual2 = tron_tools.load_tron_service_config(
+        service='service', tron_cluster='test-cluster', load_deployments=False, soa_dir='fake',
+    )
+    expected1 = [
+        tron_tools.TronJobConfig(
+            service='service',
+            config_dict={'job1': {'actions': [{'action1': {}}]}},
+            load_deployments=False,
+            soa_dir='fake',
+        ),
+    ]
+    expected2 = {'extra': 'data'}
+    assert actual1 == expected1
+    assert actual2 == expected2
