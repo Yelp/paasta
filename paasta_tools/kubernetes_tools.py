@@ -223,16 +223,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             soa_dir=soa_dir,
         )
 
-    def __repr__(self) -> str:
-        return "KubernetesDeploymentConfig({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.service,
-            self.cluster,
-            self.instance,
-            self.config_dict,
-            self.branch_dict,
-            self.soa_dir,
-        )
-
     def copy(self) -> "KubernetesDeploymentConfig":
         return self.__class__(
             service=self.service,

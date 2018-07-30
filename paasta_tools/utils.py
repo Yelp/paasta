@@ -280,6 +280,17 @@ class InstanceConfig(object):
             if key in self.config_dict:
                 self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
 
+    def __repr__(self) -> str:
+        return "{!s}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
+            self.__class__.__name__,
+            self.service,
+            self.instance,
+            self.cluster,
+            self.config_dict,
+            self.branch_dict,
+            self.soa_dir,
+        )
+
     def __get_interpolation_facts(self) -> Dict[str, str]:
         return {
             'cluster': self.cluster,
@@ -1002,6 +1013,8 @@ def get_service_docker_registry(
     soa_dir: str=DEFAULT_SOA_DIR,
     system_config: Optional['SystemPaastaConfig']=None,
 ) -> str:
+    if service is None:
+        raise NotImplementedError('"None" is not a valid service')
     service_configuration = service_configuration_lib.read_service_configuration(service, soa_dir)
     try:
         return service_configuration['docker_registry']

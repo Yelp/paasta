@@ -53,6 +53,7 @@ class TestTronActionConfig:
         action_config = tron_tools.TronActionConfig(
             service='my_service',
             instance=tron_tools.compose_instance('cool_job', 'print'),
+            cluster="fake-cluster",
             config_dict=action_dict,
             branch_dict={},
         )
@@ -66,6 +67,7 @@ class TestTronActionConfig:
         action_config = tron_tools.TronActionConfig(
             service='my_service',
             instance=tron_tools.compose_instance('my_job', 'sleep'),
+            cluster="fake-cluster",
             config_dict=action_dict,
             branch_dict={},
         )
@@ -75,15 +77,15 @@ class TestTronActionConfig:
         action_dict = {
             'name': 'do_something',
             'command': 'echo something',
-            'cluster': 'dev-oregon',
         }
         action_config = tron_tools.TronActionConfig(
             service='my_service',
             instance=tron_tools.compose_instance('my_job', 'do_something'),
+            cluster="fake-cluster",
             config_dict=action_dict,
             branch_dict={},
         )
-        assert action_config.get_cluster() == 'dev-oregon'
+        assert action_config.get_cluster() == 'fake-cluster'
 
     def test_get_executor_default(self):
         action_dict = {
@@ -93,6 +95,7 @@ class TestTronActionConfig:
         action_config = tron_tools.TronActionConfig(
             service='my_service',
             instance=tron_tools.compose_instance('my_job', 'do_something'),
+            cluster="fake-cluster",
             config_dict=action_dict,
             branch_dict={},
         )
@@ -107,6 +110,7 @@ class TestTronActionConfig:
         action_config = tron_tools.TronActionConfig(
             service='my_service',
             instance=tron_tools.compose_instance('my_job', 'do_something'),
+            cluster="fake-cluster",
             config_dict=action_dict,
             branch_dict={},
         )
@@ -116,11 +120,12 @@ class TestTronActionConfig:
 class TestTronJobConfig:
 
     @pytest.mark.parametrize(
-        'action_service,action_deploy,action_cluster', [
-            (None, None, None),
-            (None, 'special_deploy', None),
-            ('other_service', None, None),
-            (None, None, 'other-cluster'),
+        'action_service,action_deploy,action_cluster, job_cluster', [
+            (None, None, None, None),
+            (None, 'special_deploy', None, None),
+            ('other_service', None, None, None),
+            (None, None, 'action-cluster', 'job-cluster'),
+            (None, None, None, 'job-cluster'),
         ],
     )
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
@@ -130,6 +135,7 @@ class TestTronJobConfig:
         action_service,
         action_deploy,
         action_cluster,
+        job_cluster,
     ):
         """Check resulting action config with various overrides from the action."""
         action_dict = {
@@ -148,7 +154,7 @@ class TestTronJobConfig:
         default_cluster = 'paasta-dev'
         expected_service = action_service or job_service
         expected_deploy = action_deploy or job_deploy
-        expected_cluster = action_cluster or default_cluster
+        expected_cluster = action_cluster or job_cluster or default_cluster
 
         job_dict = {
             'name': 'my_job',
@@ -159,10 +165,13 @@ class TestTronJobConfig:
             'max_runtime': '2h',
             'actions': [action_dict],
         }
+        if job_cluster is not None:
+            job_dict['cluster'] = job_cluster
+
         soa_dir = '/other_dir'
         job_config = tron_tools.TronJobConfig(job_dict, soa_dir=soa_dir)
 
-        action_config = job_config._get_action_config(action_dict, default_cluster)
+        action_config = job_config._get_action_config(action_dict=action_dict, default_paasta_cluster=default_cluster)
 
         mock_load_deployments.assert_called_once_with(expected_service, soa_dir)
         mock_deployments_json = mock_load_deployments.return_value
@@ -175,18 +184,22 @@ class TestTronJobConfig:
             'force_bounce': None,
         }
 
+        expected_input_action_config = {
+            'name': 'normal',
+            'command': 'echo first',
+            'service': expected_service,
+            'deploy_group': expected_deploy,
+        }
+        if action_cluster:
+            expected_input_action_config['cluster'] = action_cluster
+
         assert action_config == tron_tools.TronActionConfig(
             service=expected_service,
             instance=tron_tools.compose_instance('my_job', 'normal'),
-            config_dict={
-                'name': 'normal',
-                'command': 'echo first',
-                'cluster': expected_cluster,
-                'service': expected_service,
-                'deploy_group': expected_deploy,
-            },
+            config_dict=expected_input_action_config,
             branch_dict=expected_branch_dict,
             soa_dir=soa_dir,
+            cluster=expected_cluster,
         )
 
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
@@ -245,11 +258,11 @@ class TestTronJobConfig:
         assert mock_load_deployments.call_count == 0
         assert action_config == tron_tools.TronActionConfig(
             service='my_service',
+            cluster=default_cluster,
             instance=tron_tools.compose_instance('my_job', 'normal'),
             config_dict={
                 'name': 'normal',
                 'command': 'echo first',
-                'cluster': default_cluster,
                 'service': 'my_service',
                 'deploy_group': 'prod',
             },
@@ -339,6 +352,8 @@ class TestTronJobConfig:
             'name': 'my_job',
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
+            'cluster': 'testcluster',
+            'service': 'testservice',
             'actions': [
                 {
                     'name': 'first',
@@ -506,6 +521,7 @@ class TestTronTools:
             instance=tron_tools.compose_instance('my_job', 'do_something'),
             config_dict=action_dict,
             branch_dict=branch_dict,
+            cluster="test-cluster",
         )
         result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
         assert result == {
@@ -523,7 +539,6 @@ class TestTronTools:
             'requires': ['required_action'],
             'retries': 2,
             'retries_delay': '5m',
-            'cluster': 'paasta-dev',
             'service': 'my_service',
             'deploy_group': 'prod',
             'executor': 'paasta',
@@ -546,6 +561,7 @@ class TestTronTools:
             instance=tron_tools.compose_instance('my_job', 'do_something'),
             config_dict=action_dict,
             branch_dict=branch_dict,
+            cluster="test-cluster",
         )
 
         with mock.patch.object(
@@ -561,7 +577,7 @@ class TestTronTools:
             'requires': ['required_action'],
             'retries': 2,
             'retries_delay': '5m',
-            'mesos_address': 'paasta-dev.com',
+            'mesos_address': 'test-cluster.com',
             'docker_image': mock.ANY,
             'executor': 'mesos',
             'cpus': 2,
@@ -592,7 +608,6 @@ class TestTronTools:
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
-            'cluster': 'paasta-dev',
             'service': 'my_service',
             'deploy_group': 'prod',
             'executor': 'paasta',
@@ -609,6 +624,7 @@ class TestTronTools:
             instance=tron_tools.compose_instance('my_job', 'do_something'),
             config_dict=action_dict,
             branch_dict=None,
+            cluster="paasta-dev",
         )
 
         result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')

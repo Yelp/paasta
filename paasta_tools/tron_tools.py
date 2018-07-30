@@ -101,9 +101,9 @@ def decompose_instance(instance):
 class TronActionConfig(InstanceConfig):
     config_filename_prefix = 'tron'
 
-    def __init__(self, service, instance, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
+    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
         super(TronActionConfig, self).__init__(
-            cluster=config_dict.get('cluster'),
+            cluster=cluster,
             instance=instance,
             service=service,
             config_dict=config_dict,
@@ -220,6 +220,9 @@ class TronJobConfig:
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', '')
 
+    def get_cluster(self):
+        return self.config_dict.get('cluster')
+
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
@@ -249,12 +252,12 @@ class TronJobConfig:
         else:
             branch_dict = None
 
-        if 'cluster' not in action_dict:
-            action_dict['cluster'] = default_paasta_cluster
+        cluster = action_dict.get('cluster') or self.get_cluster() or default_paasta_cluster
 
         return TronActionConfig(
             service=action_service,
             instance=compose_instance(self.get_name(), action_dict.get('name')),
+            cluster=cluster,
             config_dict=action_dict,
             branch_dict=branch_dict,
             soa_dir=self.soa_dir,
@@ -289,8 +292,9 @@ class TronJobConfig:
         return True, ''
 
     def check_actions(self) -> Tuple[bool, List[str]]:
-        actions = self.get_actions(None)
-        cleanup_action = self.get_cleanup_action(None)
+        cluster = "fake-cluster-for-validation"
+        actions = self.get_actions(default_paasta_cluster=cluster)
+        cleanup_action = self.get_cleanup_action(default_paasta_cluster=cluster)
         if cleanup_action:
             actions.append(cleanup_action)
 
