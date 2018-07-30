@@ -14,6 +14,7 @@
 import asyncio
 import time
 from typing import Any
+from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -184,7 +185,11 @@ class HacheckDrainMethod(DrainMethod):
             } for registration in self.registrations
         ]
 
-    async def for_each_registration(self, task: DrainTask, func: Callable[..., T]) -> asyncio.Future:
+    async def for_each_registration(
+        self,
+        task: DrainTask,
+        func: Callable[..., Awaitable[T]]
+    ) -> 'asyncio.Future[T]':
         if task.ports == []:
             return None
         futures = [
