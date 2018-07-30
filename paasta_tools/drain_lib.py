@@ -245,10 +245,7 @@ class HacheckDrainMethod(DrainMethod):
             task,
             lambda url: get_spool(url),
         )
-        if all([
-           res is None or res["state"] == "up"
-           for res in results
-        ]):
+        if all([res is None or res["state"] == "up" for res in results]):
             return False
         else:
             return all([
