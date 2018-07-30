@@ -150,9 +150,17 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         assert self.deployment.copy() is not self.deployment
 
     def test_get_bounce_method(self):
-        assert self.deployment.get_bounce_method() == 'RollingUpdate'
-        self.deployment.config_dict['bounce_method'] = 'downthenup'
-        assert self.deployment.get_bounce_method() == 'Recreate'
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes', autospec=True,
+        ) as mock_get_aws_ebs_volumes:
+            mock_get_aws_ebs_volumes.return_value = []
+            assert self.deployment.get_bounce_method() == 'RollingUpdate'
+            self.deployment.config_dict['bounce_method'] = 'downthenup'
+            assert self.deployment.get_bounce_method() == 'Recreate'
+            self.deployment.config_dict['bounce_method'] = 'crossover'
+            # if ebs we must downthenup for now as we need to free up the EBS for the new instance
+            mock_get_aws_ebs_volumes.return_value = ['some-ebs']
+            assert self.deployment.get_bounce_method() == 'Recreate'
 
     def test_get_deployment_strategy(self):
         with mock.patch(

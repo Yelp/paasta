@@ -238,6 +238,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_bounce_method(self) -> str:
         """Get the bounce method specified in the service's kubernetes configuration."""
         # map existing bounce methods to k8s equivalents.
+        # but if there's an EBS volume we must downthenup to free up the volume.
+        # in the future we may support stateful sets to dynamically create the volumes
+        if self.get_aws_ebs_volumes():
+            return 'Recreate'
         return KUBE_DEPLOY_STATEGY_MAP[self.config_dict.get('bounce_method', 'crossover')]
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
