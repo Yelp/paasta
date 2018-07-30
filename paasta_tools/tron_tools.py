@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import difflib
 import glob
 import os
 import re
@@ -34,6 +35,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 
+from paasta_tools.cli.utils import list_teams
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
@@ -274,6 +276,18 @@ class TronJobConfig:
         action_dict['name'] = 'cleanup'
         return self._get_action_config(action_dict, default_paasta_cluster)
 
+    def check_monitoring(self) -> Tuple[bool, str]:
+        monitoring = self.get_monitoring()
+        valid_teams = list_teams()
+        if monitoring is not None:
+            team_name = monitoring.get('team', None)
+            if team_name is None:
+                return False, 'Team name is required for monitoring'
+            elif team_name not in valid_teams:
+                suggest_teams = difflib.get_close_matches(word=team_name, possibilities=valid_teams)
+                return False, f'Invalid team name: {team_name}. Do you mean one of these: {suggest_teams}'
+        return True, ''
+
     def check_actions(self) -> Tuple[bool, List[str]]:
         actions = self.get_actions(None)
         cleanup_action = self.get_cleanup_action(None)
@@ -290,8 +304,11 @@ class TronJobConfig:
         return checks_passed, msgs
 
     def validate(self) -> List[str]:
-        _, action_msgs = self.check_actions()
-        return action_msgs
+        _, error_msgs = self.check_actions()
+        check_passed, check_msg = self.check_monitoring()
+        if not check_passed:
+            error_msgs.append(check_msg)
+        return error_msgs
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
