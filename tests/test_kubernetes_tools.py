@@ -134,6 +134,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
     def setUp(self):
         mock_config_dict = KubernetesDeploymentConfigDict(
             bounce_method='crossover',
+            instances=3,
         )
         self.deployment = KubernetesDeploymentConfig(
             service='kurupt',
@@ -528,6 +529,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             return_value='my_instance',
         ):
             assert self.deployment.get_sanitised_instance_name() == 'my--instance'
+
+    def test_get_instances(self):
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes', autospec=True,
+        ) as mock_get_aws_ebs_volumes:
+            mock_get_aws_ebs_volumes.return_value = []
+            assert self.deployment.get_instances() == 3
+
+            mock_get_aws_ebs_volumes.return_value = ['some-ebs-vol']
+            assert self.deployment.get_instances() == 1
 
     def test_format_kubernetes_app_dict(self):
         with mock.patch(

@@ -500,6 +500,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_instance_name(self) -> str:
         return self.get_instance().replace('_', '--')
 
+    def get_instances(self) -> int:
+        """ For now if we have an EBS instance it means we can only have 1 instance
+        since we can't attach to multiple instances. In the future we might support
+        statefulsets which are clever enough to manage EBS for you"""
+        return 1 if self.get_aws_ebs_volumes() else super().get_instances()
+
     def format_kubernetes_app(self) -> V1Deployment:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
