@@ -29,6 +29,7 @@ from typing import Tuple
 
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import list_all_deployments
@@ -40,7 +41,6 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
 
 log = logging.getLogger(__name__)
@@ -138,14 +138,8 @@ def reconcile_kubernetes_deployment(
 
     try:
         formatted_deployment = service_instance_config.format_kubernetes_app()
-    except NoDockerImageError:
-        error_msg = (
-            "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
-        ).format(
-            service,
-            instance,
-        )
-        log.error(error_msg)
+    except InvalidKubernetesConfig as e:
+        log.error(str(e))
         return (1, None)
 
     desired_deployment = KubeDeployment(

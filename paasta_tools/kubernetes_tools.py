@@ -199,7 +199,8 @@ def load_kubernetes_service_config(
 
 
 class InvalidKubernetesConfig(Exception):
-    pass
+    def __init__(self, exception: Exception, service: str, instance: str) -> None:
+        super().__init__(f"Couldn't generate config for kubernetes service: {service}.{instance}: {exception}")
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -240,9 +241,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # map existing bounce methods to k8s equivalents.
         # but if there's an EBS volume we must downthenup to free up the volume.
         # in the future we may support stateful sets to dynamically create the volumes
-        if self.get_aws_ebs_volumes():
-            return 'Recreate'
-        return KUBE_DEPLOY_STATEGY_MAP[self.config_dict.get('bounce_method', 'crossover')]
+        bounce_method = self.config_dict.get('bounce_method', 'crossover')
+        if self.get_aws_ebs_volumes() and not bounce_method == 'downthenup':
+            raise Exception("If service instance defines an EBS volume it must use a downthenup bounce_method")
+        return KUBE_DEPLOY_STATEGY_MAP[bounce_method]
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         strategy_type = self.get_bounce_method()
@@ -504,80 +506,85 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_instance_name(self) -> str:
         return self.get_instance().replace('_', '--')
 
-    def get_instances(self) -> int:
+    def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance
         since we can't attach to multiple instances. In the future we might support
         statefulsets which are clever enough to manage EBS for you"""
-        return 1 if self.get_aws_ebs_volumes() else super().get_instances()
+        instances = super().get_desired_instances()
+        if self.get_aws_ebs_volumes() and instances not in [1, 0]:
+            raise Exception("Number of instances must be 1 or 0 if an EBS volume is defined.")
+        return instances
 
     def format_kubernetes_app(self) -> V1Deployment:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
-        system_paasta_config = load_system_paasta_config()
-        docker_url = self.get_docker_url()
-        service_namespace_config = load_service_namespace_config(
-            service=self.service,
-            namespace=self.get_nerve_namespace(),
-        )
-        docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
-        aws_ebs_volumes = self.get_aws_ebs_volumes()
+        try:
+            system_paasta_config = load_system_paasta_config()
+            docker_url = self.get_docker_url()
+            service_namespace_config = load_service_namespace_config(
+                service=self.service,
+                namespace=self.get_nerve_namespace(),
+            )
+            docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
+            aws_ebs_volumes = self.get_aws_ebs_volumes()
 
-        code_sha = get_code_sha_from_dockerurl(docker_url)
-        complete_config = V1Deployment(
-            api_version='apps/v1',
-            kind='Deployment',
-            metadata=V1ObjectMeta(
-                name="{service}-{instance}".format(
-                    service=self.get_sanitised_service_name(),
-                    instance=self.get_sanitised_instance_name(),
-                ),
-                labels={
-                    "service": self.get_service(),
-                    "instance": self.get_instance(),
-                    "git_sha": code_sha,
-                },
-            ),
-            spec=V1DeploymentSpec(
-                replicas=self.get_desired_instances(),
-                selector=V1LabelSelector(
-                    match_labels={
+            code_sha = get_code_sha_from_dockerurl(docker_url)
+            complete_config = V1Deployment(
+                api_version='apps/v1',
+                kind='Deployment',
+                metadata=V1ObjectMeta(
+                    name="{service}-{instance}".format(
+                        service=self.get_sanitised_service_name(),
+                        instance=self.get_sanitised_instance_name(),
+                    ),
+                    labels={
                         "service": self.get_service(),
                         "instance": self.get_instance(),
+                        "git_sha": code_sha,
                     },
                 ),
-                strategy=self.get_deployment_strategy_config(),
-                template=V1PodTemplateSpec(
-                    metadata=V1ObjectMeta(
-                        labels={
+                spec=V1DeploymentSpec(
+                    replicas=self.get_desired_instances(),
+                    selector=V1LabelSelector(
+                        match_labels={
                             "service": self.get_service(),
                             "instance": self.get_instance(),
-                            "git_sha": code_sha,
                         },
                     ),
-                    spec=V1PodSpec(
-                        containers=self.get_kubernetes_containers(
-                            docker_volumes=docker_volumes,
-                            aws_ebs_volumes=aws_ebs_volumes,
-                            system_paasta_config=system_paasta_config,
-                            service_namespace_config=service_namespace_config,
+                    strategy=self.get_deployment_strategy_config(),
+                    template=V1PodTemplateSpec(
+                        metadata=V1ObjectMeta(
+                            labels={
+                                "service": self.get_service(),
+                                "instance": self.get_instance(),
+                                "git_sha": code_sha,
+                            },
                         ),
-                        restart_policy="Always",
-                        volumes=self.get_pod_volumes(
-                            docker_volumes=docker_volumes,
-                            aws_ebs_volumes=aws_ebs_volumes,
+                        spec=V1PodSpec(
+                            containers=self.get_kubernetes_containers(
+                                docker_volumes=docker_volumes,
+                                aws_ebs_volumes=aws_ebs_volumes,
+                                system_paasta_config=system_paasta_config,
+                                service_namespace_config=service_namespace_config,
+                            ),
+                            restart_policy="Always",
+                            volumes=self.get_pod_volumes(
+                                docker_volumes=docker_volumes,
+                                aws_ebs_volumes=aws_ebs_volumes,
+                            ),
                         ),
                     ),
                 ),
-            ),
-        )
+            )
 
-        config_hash = get_config_hash(
-            self.sanitize_for_config_hash(complete_config),
-            force_bounce=self.get_force_bounce(),
-        )
-        complete_config.metadata.labels['config_sha'] = config_hash
-        complete_config.spec.template.metadata.labels['config_sha'] = config_hash
-
+            config_hash = get_config_hash(
+                self.sanitize_for_config_hash(complete_config),
+                force_bounce=self.get_force_bounce(),
+            )
+            complete_config.metadata.labels['config_sha'] = config_hash
+            complete_config.spec.template.metadata.labels['config_sha'] = config_hash
+        except Exception as e:
+            raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
