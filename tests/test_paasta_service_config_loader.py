@@ -37,46 +37,49 @@ def create_test_service():
 
 
 def deployment_json():
-    return DeploymentsJsonV2({
-        'deployments': {
-            'cluster.non_canary': {
-                'docker_image': 'some_image',
-                'git_sha': 'some_sha',
+    return DeploymentsJsonV2(
+        service='test-service',
+        config_dict={
+            'deployments': {
+                'cluster.non_canary': {
+                    'docker_image': 'some_image',
+                    'git_sha': 'some_sha',
+                },
+                'cluster.canary': {
+                    'docker_image': 'some_image',
+                    'git_sha': 'some_sha',
+                },
             },
-            'cluster.canary': {
-                'docker_image': 'some_image',
-                'git_sha': 'some_sha',
+            'controls': {
+                'example_happyhour:%s.sample_batch' % TEST_CLUSTER_NAME: {
+                    'desired_state': 'start',
+                    'force_bounce': None,
+                },
+                'example_happyhour:%s.interactive' % TEST_CLUSTER_NAME: {
+                    'desired_state': 'start',
+                    'force_bounce': None,
+                },
+                f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.main': {
+                    'desired_state': 'start', 'force_bounce': None,
+                },
+                f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.canary': {
+                    'desired_state': 'start', 'force_bounce': None,
+                },
+                f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.example_chronos_job': {
+                    'desired_state': 'start', 'force_bounce': None,
+                },
+                f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.example_child_job': {
+                    'desired_state': 'start', 'force_bounce': None,
+                },
+                f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.sample_batch': {
+                    'desired_state': 'start', 'force_bounce': None,
+                },
+                f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.interactive': {
+                    'desired_state': 'start', 'force_bounce': None,
+                },
             },
         },
-        'controls': {
-            'example_happyhour:%s.sample_batch' % TEST_CLUSTER_NAME: {
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            'example_happyhour:%s.interactive' % TEST_CLUSTER_NAME: {
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.main': {
-                'desired_state': 'start', 'force_bounce': None,
-            },
-            f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.canary': {
-                'desired_state': 'start', 'force_bounce': None,
-            },
-            f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.example_chronos_job': {
-                'desired_state': 'start', 'force_bounce': None,
-            },
-            f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.example_child_job': {
-                'desired_state': 'start', 'force_bounce': None,
-            },
-            f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.sample_batch': {
-                'desired_state': 'start', 'force_bounce': None,
-            },
-            f'{TEST_SERVICE_NAME}:{TEST_CLUSTER_NAME}.interactive': {
-                'desired_state': 'start', 'force_bounce': None,
-            },
-        },
-    })
+    )
 
 
 def marathon_cluster_config():

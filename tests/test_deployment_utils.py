@@ -21,14 +21,17 @@ from paasta_tools.utils import DeploymentsJsonV2
 def test_get_currently_deployed_sha(
     mock_load_v2_deployments_json,
 ):
-    mock_load_v2_deployments_json.return_value = DeploymentsJsonV2({
-        "controls": {},
-        "deployments": {
-            "everything": {
-                "git_sha": "abc",
-                "docker_image": "foo",
+    mock_load_v2_deployments_json.return_value = DeploymentsJsonV2(
+        service='fake-service',
+        config_dict={
+            "controls": {},
+            "deployments": {
+                "everything": {
+                    "git_sha": "abc",
+                    "docker_image": "foo",
+                },
             },
         },
-    })
+    )
     actual = deployment_utils.get_currently_deployed_sha(service='service', deploy_group='everything')
     assert actual == "abc"

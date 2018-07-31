@@ -50,15 +50,18 @@ def test_get_default_interactive_config_reads_from_tty():
     ) as mock_load_deployments_json:
         mock_prompt_pick_one.return_value = 'fake_deploygroup'
         mock_load_adhoc_job_config.side_effect = NoConfigurationForServiceError
-        mock_load_deployments_json.return_value = DeploymentsJsonV2({
-            'deployments': {
-                'fake_deploygroup': {
-                    'docker_image': mock.sentinel.docker_image,
-                    'git_sha': mock.sentinel.git_sha,
+        mock_load_deployments_json.return_value = DeploymentsJsonV2(
+            service='fake-service',
+            config_dict={
+                'deployments': {
+                    'fake_deploygroup': {
+                        'docker_image': mock.sentinel.docker_image,
+                        'git_sha': mock.sentinel.git_sha,
+                    },
                 },
+                'controls': {},
             },
-            'controls': {},
-        })
+        )
         result = adhoc_tools.get_default_interactive_config(
             'fake_serivce',
             'fake_cluster',

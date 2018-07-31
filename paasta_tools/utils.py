@@ -2382,16 +2382,18 @@ def load_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'Deploy
         with open(deployment_file) as f:
             return DeploymentsJsonV1(json.load(f)['v1'])
     else:
-        raise NoDeploymentsAvailable
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
 
 
 def load_v2_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJsonV2':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
-            return DeploymentsJsonV2(json.load(f)['v2'])
+            return DeploymentsJsonV2(service=service, config_dict=json.load(f)['v2'])
     else:
-        raise NoDeploymentsAvailable
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
 
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
@@ -2450,8 +2452,9 @@ class DeploymentsJsonV1:
 
 
 class DeploymentsJsonV2:
-    def __init__(self, config_dict: DeploymentsJsonV2Dict) -> None:
+    def __init__(self, service: str, config_dict: DeploymentsJsonV2Dict) -> None:
         self.config_dict = config_dict
+        self.service = service
 
     def get_branch_dict(self, service: str, branch: str, deploy_group: str) -> BranchDictV2:
         full_branch = f'{service}:{branch}'
@@ -2470,25 +2473,29 @@ class DeploymentsJsonV2:
         try:
             return self.config_dict['deployments'][deploy_group]['docker_image']
         except KeyError:
-            raise NoDeploymentsAvailable
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
 
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
             return self.config_dict['deployments'][deploy_group]['git_sha']
         except KeyError:
-            raise NoDeploymentsAvailable
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
             return self.config_dict['controls'][control_branch].get('desired_state', 'start')
         except KeyError:
-            raise NoDeploymentsAvailable
+            e = f"{self.service} not configured for {control_branch}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
 
     def get_force_bounce_for_branch(self, control_branch: str) -> str:
         try:
             return self.config_dict['controls'][control_branch].get('force_bounce', None)
         except KeyError:
-            raise NoDeploymentsAvailable
+            e = f"{self.service} not configured for {control_branch}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
 
 
 def get_paasta_branch(cluster: str, instance: str) -> str:

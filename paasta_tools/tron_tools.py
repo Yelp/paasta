@@ -231,7 +231,7 @@ class TronJobConfig:
         action_deploy_group = action_dict.setdefault('deploy_group', self.get_deploy_group())
         if action_service and action_deploy_group and self.load_deployments:
             try:
-                deployments_json = load_v2_deployments_json(action_service, soa_dir=self.soa_dir)
+                deployments_json = load_v2_deployments_json(service=action_service, soa_dir=self.soa_dir)
                 branch_dict = {
                     'docker_image': deployments_json.get_docker_image_for_deploy_group(action_deploy_group),
                     'git_sha': deployments_json.get_git_sha_for_deploy_group(action_deploy_group),
