@@ -788,7 +788,7 @@ def test_create_deployment():
 def test_update_deployment():
     mock_client = mock.Mock()
     update_deployment(mock_client, V1Deployment(metadata=V1ObjectMeta(name='kurupt')))
-    mock_client.deployments.patch_namespaced_deployment.assert_called_with(
+    mock_client.deployments.replace_namespaced_deployment.assert_called_with(
         namespace='paasta',
         name='kurupt',
         body=V1Deployment(metadata=V1ObjectMeta(name='kurupt')),
