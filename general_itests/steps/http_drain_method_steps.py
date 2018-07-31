@@ -36,7 +36,7 @@ def make_http_drain_method(context):
     context.http_drain_method = drain_lib.HTTPDrainMethod(
         service='fake_service',
         instance='fake_instance',
-        nerve_ns='fake_nerve_ns',
+        registrations=['fake_nerve_ns'],
         drain={
             "url_format": "http://localhost:%d/drain" % context.fake_http_server.server.server_port,
             "success_codes": "200",
