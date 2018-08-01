@@ -493,6 +493,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 force_bounce=mock_get_force_bounce.return_value,
             )
             expected = V1Deployment(
+                api_version='apps/v1',
+                kind='Deployment',
                 metadata=V1ObjectMeta(
                     labels={
                         'config_sha': mock_get_config_hash.return_value,

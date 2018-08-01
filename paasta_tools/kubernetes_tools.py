@@ -479,6 +479,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         code_sha = get_code_sha_from_dockerurl(docker_url)
         complete_config = V1Deployment(
+            api_version='apps/v1',
+            kind='Deployment',
             metadata=V1ObjectMeta(
                 name="{service}-{instance}".format(
                     service=self.get_sanitised_service_name(),
