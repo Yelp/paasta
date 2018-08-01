@@ -691,7 +691,7 @@ def create_deployment(kube_client: KubeClient, formatted_deployment: V1Deploymen
 
 
 def update_deployment(kube_client: KubeClient, formatted_deployment: V1Deployment) -> None:
-    return kube_client.deployments.patch_namespaced_deployment(
+    return kube_client.deployments.replace_namespaced_deployment(
         name=formatted_deployment.metadata.name,
         namespace='paasta',
         body=formatted_deployment,
