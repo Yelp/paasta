@@ -242,6 +242,7 @@ def build_executor_stack(
     run_id,
     system_paasta_config,
     framework_staging_timeout,
+    region,
 ):
 
     cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
@@ -283,7 +284,8 @@ def build_executor_stack(
     else:
         raise ValueError("Required aws credentials")
 
-    region = taskproc_config.get('aws_region')
+    if not region:
+        region = taskproc_config.get('aws_region')
 
     endpoint = taskproc_config.get('dynamodb_endpoint')
     session = Session(
@@ -435,6 +437,7 @@ def remote_run_start(args):
             run_id=run_id,
             system_paasta_config=system_paasta_config,
             framework_staging_timeout=args.staging_timeout,
+            region=args.aws_region,
         )
         runner = Sync(executor_stack)
 
