@@ -494,3 +494,32 @@ class TestMonitoring_Tools:
             abspath_patch.assert_called_once_with(fake_soa_dir)
             join_patch.assert_called_once_with(fake_path, fake_name, 'monitoring.yaml')
             read_monitoring_patch.assert_called_once_with(fake_fname)
+
+
+def test_list_teams():
+    fake_team_data = {
+        'team_data': {
+            'red_jaguars': {
+                'pagerduty_api_key': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                'pages_slack_channel': 'red_jaguars_pages',
+                'notifications_slack_channel': 'red_jaguars_notifications',
+                'notification_email': 'red_jaguars+alert@yelp.com',
+                'project': 'REDJAGS',
+            },
+            'blue_barracudas': {
+                'pagerduty_api_key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                'pages_slack_channel': 'blue_barracudas_pages',
+            },
+        },
+    }
+    expected = {
+        'red_jaguars',
+        'blue_barracudas',
+    }
+    with mock.patch(
+        'paasta_tools.monitoring_tools._load_sensu_team_data',
+        autospec=True,
+        return_value=fake_team_data,
+    ):
+        actual = monitoring_tools.list_teams()
+    assert actual == expected

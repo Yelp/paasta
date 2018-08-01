@@ -36,7 +36,6 @@ from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -384,15 +383,6 @@ def list_instances(**kwargs):
             for instance in list_all_instances_for_service(service):
                 all_instances.add(instance)
     return sorted(all_instances)
-
-
-def list_teams(**kwargs):
-    """Loads team data from the system. Returns a set of team names (or empty
-    set).
-    """
-    team_data = _load_sensu_team_data()
-    teams = set(team_data.get('team_data', {}).keys())
-    return teams
 
 
 def calculate_remote_masters(cluster, system_paasta_config):

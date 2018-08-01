@@ -226,3 +226,12 @@ def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR):
     monitoring_file = os.path.join(rootdir, service, "monitoring.yaml")
     monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
     return monitor_conf
+
+
+def list_teams(**kwargs):
+    """Loads team data from the system. Returns a set of team names (or empty
+    set).
+    """
+    team_data = _load_sensu_team_data()
+    teams = set(team_data.get('team_data', {}).keys())
+    return teams
