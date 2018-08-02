@@ -35,7 +35,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 
-from paasta_tools.cli.utils import list_teams
+from paasta_tools.monitoring_tools import list_teams
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
