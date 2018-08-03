@@ -1,3 +1,10 @@
+paasta-tools (0.78.0) xenial; urgency=medium
+
+  * 0.78.0 tagged with 'make release'
+    Commit: Released 0.77.2 via make release
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 03 Aug 2018 03:26:21 -0700
+
 paasta-tools (0.77.2) xenial; urgency=medium
 
   * 0.77.2 tagged with 'make release'
