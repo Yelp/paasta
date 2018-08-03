@@ -51,6 +51,7 @@ from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 
+from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
@@ -350,11 +351,48 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             },
         )
 
+    def get_liveness_probe(
+        self,
+        service_namespace_config: ServiceNamespaceConfig,
+    ) -> V1Probe:
+        mode = self.get_healthcheck_mode(service_namespace_config)
+
+        initial_delay_seconds = self.get_healthcheck_grace_period_seconds()
+        period_seconds = self.get_healthcheck_interval_seconds()
+        timeout_seconds = self.get_healthcheck_timeout_seconds()
+        failure_threshold = self.get_healthcheck_max_consecutive_failures()
+        probe = V1Probe(
+            failure_threshold=failure_threshold,
+            initial_delay_seconds=initial_delay_seconds,
+            period_seconds=period_seconds,
+            timeout_seconds=timeout_seconds,
+        )
+
+        if mode == 'http' or mode == 'https':
+            path = self.get_healthcheck_uri(service_namespace_config)
+            probe.http_get = V1HTTPGetAction(
+                path=path,
+                port=8888,
+                scheme=mode.upper(),
+            )
+        elif mode == 'tcp':
+            # probe.tcp_socket = self.get_healthcheck_tcp_socket()
+            raise InvalidHealthcheckMode(
+                "Unsupported mode: %s. Not implemented yet" % mode,
+            )
+        else:
+            raise InvalidHealthcheckMode(
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp" % mode,
+            )
+
+        return probe
+
     def get_kubernetes_containers(
         self,
         docker_volumes: Sequence[DockerVolume],
         system_paasta_config: SystemPaastaConfig,
         aws_ebs_volumes: Sequence[AwsEbsVolume],
+        service_namespace_config: ServiceNamespaceConfig,
     ) -> Sequence[V1Container]:
         service_container = V1Container(
             image=self.get_docker_url(),
@@ -377,16 +415,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 service=self.get_sanitised_service_name(),
                 instance=self.get_sanitised_instance_name(),
             ),
-            liveness_probe=V1Probe(
-                failure_threshold=10,
-                http_get=V1HTTPGetAction(
-                    path="/status",
-                    port=8888,
-                ),
-                initial_delay_seconds=15,
-                period_seconds=10,
-                timeout_seconds=5,
-            ),
+            liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[
                 V1ContainerPort(
                     container_port=8888,
@@ -470,10 +499,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         system_paasta_config = load_system_paasta_config()
         docker_url = self.get_docker_url()
-        # service_namespace_config = load_service_namespace_config(
-        #     service=self.service,
-        #     namespace=self.get_nerve_namespace(),
-        # )
+        service_namespace_config = load_service_namespace_config(
+            service=self.service,
+            namespace=self.get_nerve_namespace(),
+        )
         docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
         aws_ebs_volumes = self.get_aws_ebs_volumes()
 
@@ -514,6 +543,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             docker_volumes=docker_volumes,
                             aws_ebs_volumes=aws_ebs_volumes,
                             system_paasta_config=system_paasta_config,
+                            service_namespace_config=service_namespace_config,
                         ),
                         restart_policy="Always",
                         volumes=self.get_pod_volumes(
