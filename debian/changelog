@@ -1,3 +1,12 @@
+paasta-tools (0.77.3) xenial; urgency=medium
+
+  * 0.77.3 tagged with 'make release'
+    Commit: Merge pull request #1895 from Yelp/u/robj/PAASTA-14479
+    Gracefully drain all smartstack namespaces instead of just the first
+    one
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 03 Aug 2018 03:33:49 -0700
+
 paasta-tools (0.77.2) xenial; urgency=medium
 
   * 0.77.2 tagged with 'make release'

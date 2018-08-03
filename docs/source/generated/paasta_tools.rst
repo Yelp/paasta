@@ -11,7 +11,6 @@ Subpackages
     paasta_tools.cli
     paasta_tools.deployd
     paasta_tools.frameworks
-    paasta_tools.kubernetes
     paasta_tools.mesos
     paasta_tools.metrics
     paasta_tools.monitoring
@@ -50,6 +49,7 @@ Submodules
    paasta_tools.generate_services_yaml
    paasta_tools.get_mesos_leader
    paasta_tools.graceful_app_drain
+   paasta_tools.hacheck
    paasta_tools.iptables
    paasta_tools.kubernetes_tools
    paasta_tools.list_chronos_jobs
