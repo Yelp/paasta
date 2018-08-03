@@ -120,6 +120,7 @@ services:
       ZOOKEEPER_PORT: 'zk://zookeeper:2181'
       CHRONOS_PORT: 'http://chronos:8081'
       API_PORT: 'http://paasta_api:5054'
+      HTTPDRAIN_PORT: 'http://httpdrain:3000'
     volumes:
       - ../:/work:rw
       - nail-etc:/nail/etc
@@ -151,3 +152,8 @@ services:
     build: ../yelp_package/dockerfiles/itest/hacheck/
     ports:
       - 6666
+
+  httpdrain:
+    build: ../yelp_package/dockerfiles/itest/httpdrain/
+    ports:
+      - 3000

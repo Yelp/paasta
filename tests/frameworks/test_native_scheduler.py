@@ -449,8 +449,8 @@ class TestNativeServiceConfig(object):
                 offers=[offer],
             )
 
-        expected = "http://super_big_slave:6666/spool/service_name.instance_name/31337/status"
-        actual = scheduler.drain_method.spool_url(
+        expected = ["http://super_big_slave:6666/spool/service_name.instance_name/31337/status"]
+        actual = scheduler.drain_method.spool_urls(
             scheduler.make_drain_task(list(scheduler.task_store.get_all_tasks().keys())[0]),
         )
         assert actual == expected

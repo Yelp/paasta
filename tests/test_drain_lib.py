@@ -57,54 +57,43 @@ def mock_ClientSession(**fake_session_kwargs):
 
 
 class TestHacheckDrainMethod(object):
-    drain_method = drain_lib.HacheckDrainMethod("srv", "inst", "ns", hacheck_port=12345)
+    drain_method = drain_lib.HacheckDrainMethod(
+        service="srv",
+        instance="inst",
+        registrations=["ns_one", "ns_two"],
+        hacheck_port=12345,
+    )
 
-    def test_spool_url(self):
+    async def _async_id(self, x):
+        return x
+
+    def test_spool_urls(self):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        actual = self.drain_method.spool_url(fake_task)
+        actual = self.drain_method.spool_urls(fake_task)
         # Nerve hits /{mode}/{service}.{namespace}/{port}/status
-        expected = 'http://fake_host:12345/spool/srv.ns/54321/status'
+        expected = [
+            f'http://fake_host:12345/spool/{ns}/54321/status'
+            for ns in self.drain_method.registrations
+        ]
         assert actual == expected
 
-    def test_spool_url_handles_tasks_with_no_ports(self):
-        fake_task = mock.Mock(host="fake_host", ports=[])
-        actual = self.drain_method.spool_url(fake_task)
-        assert actual is None
-
     @pytest.mark.asyncio
-    async def test_get_spool(self):
-        fake_response = mock.Mock(
-            status=503,
-            text=asynctest.CoroutineMock(
-                return_value="Service service in down state since 1435694078.778886 "
-                             "until 1435694178.780000: Drained by Paasta",
-            ),
+    async def test_for_each_registration_with_no_ports(self):
+        fake_task = mock.Mock(host="fake_host", ports=[])
+        actual = await self.drain_method.for_each_registration(
+            task=fake_task,
+            func=self._async_id,
         )
-        fake_task = mock.Mock(host="fake_host", ports=[54321])
-
-        with mock_ClientSession(
-            get=asynctest.Mock(
-                return_value=asynctest.MagicMock(
-                    __aenter__=asynctest.CoroutineMock(return_value=fake_response),
-                ),
-            ),
-        ):
-            actual = await self.drain_method.get_spool(fake_task)
-
-        expected = {
-            'service': 'service',
-            'state': 'down',
-            'reason': 'Drained by Paasta',
-            'since': 1435694078.778886,
-            'until': 1435694178.780000,
-        }
-        assert actual == expected
+        assert actual is None
 
     @pytest.mark.asyncio
-    async def test_get_spool_handles_no_ports(self):
-        fake_task = mock.Mock(host="fake_host", ports=[])
-        actual = await self.drain_method.get_spool(fake_task)
-        assert actual is None
+    async def test_for_each_registration(self):
+        fake_task = mock.Mock(host="fake_host", ports=[54321])
+        actual = await self.drain_method.for_each_registration(
+            task=fake_task,
+            func=self._async_id,
+        )
+        assert actual == self.drain_method.spool_urls(fake_task)
 
     @pytest.mark.asyncio
     async def test_is_draining_yes(self):
@@ -147,30 +136,30 @@ class TestHacheckDrainMethod(object):
 class TestHTTPDrainMethod(object):
     def test_get_format_params(self):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
-        assert drain_method.get_format_params(fake_task) == {
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
+        assert drain_method.get_format_params(fake_task) == [{
             'host': 'fake_host',
             'port': 54321,
             'service': 'fake_service',
             'instance': 'fake_instance',
             'nerve_ns': 'fake_nerve_ns',
-        }
+        }]
 
     def test_format_url(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
         url_format = "foo_{host}"
         format_params = {"host": "fake_host"}
         assert drain_method.format_url(url_format, format_params) == "foo_fake_host"
 
     def test_parse_success_codes(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
         assert drain_method.parse_success_codes('200') == {200}
         assert drain_method.parse_success_codes('200-203') == {200, 201, 202, 203}
         assert drain_method.parse_success_codes('200-202,302,305-306') == {200, 201, 202, 302, 305, 305, 306}
         assert drain_method.parse_success_codes(200) == {200}
 
     def test_check_response_code(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
 
         # Happy case
         drain_method.check_response_code(200, '200-299')
@@ -181,7 +170,7 @@ class TestHTTPDrainMethod(object):
 
     @pytest.mark.asyncio
     async def test_issue_request(self):
-        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})
         fake_task = mock.Mock(host='fake_host', ports=[54321])
         url_spec = {
             'url_format': 'http://localhost:654321/fake/{host}',
@@ -191,9 +180,7 @@ class TestHTTPDrainMethod(object):
 
         fake_resp = mock.Mock(status=1234)
         mock_request = mock.Mock(
-            return_value=asynctest.MagicMock(
-                __aenter__=asynctest.CoroutineMock(return_value=fake_resp),
-            ),
+            return_value=asynctest.CoroutineMock(return_value=fake_resp)(),
         )
         with mock_ClientSession(request=mock_request):
             await drain_method.issue_request(

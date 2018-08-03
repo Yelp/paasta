@@ -542,7 +542,7 @@ class NativeScheduler(Scheduler):
             name=self.service_config.get_drain_method(self.service_config.service_namespace_config),
             service=self.service_name,
             instance=self.instance_name,
-            nerve_ns=self.service_config.get_nerve_namespace(),
+            registrations=self.service_config.get_registrations(),
             **self.service_config.get_drain_method_params(self.service_config.service_namespace_config),
         )
 

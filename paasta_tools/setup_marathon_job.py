@@ -531,6 +531,7 @@ def deploy_service(
     drain_method_name: str,
     drain_method_params: Dict[str, Any],
     nerve_ns: str,
+    registrations: List[str],
     bounce_health_params: Dict[str, Any],
     soa_dir: str,
     job_config: marathon_tools.MarathonServiceConfig,
@@ -600,7 +601,7 @@ def deploy_service(
             drain_method_name,
             service=service,
             instance=instance,
-            nerve_ns=nerve_ns,
+            registrations=registrations,
             drain_method_params=drain_method_params,
         )
     except KeyError:
@@ -791,6 +792,7 @@ def setup_service(
         drain_method_name=job_config.get_drain_method(service_namespace_config),
         drain_method_params=job_config.get_drain_method_params(service_namespace_config),
         nerve_ns=job_config.get_nerve_namespace(),
+        registrations=job_config.get_registrations(),
         bounce_health_params=job_config.get_bounce_health_params(service_namespace_config),
         soa_dir=soa_dir,
         job_config=job_config,
