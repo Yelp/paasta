@@ -314,7 +314,7 @@ class TestBounceLib:
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks',
-            side_effect=[([t] if i >= 2 else []) for i, t in enumerate(tasks)], autospec=True,
+            side_effect=[tasks[2:]], autospec=True,
         ) as get_registered_marathon_tasks_patch:
             actual = bounce_lib.get_happy_tasks(
                 fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
@@ -323,14 +323,30 @@ class TestBounceLib:
             expected = tasks[2:]
             assert actual == expected
 
-            for task in tasks:
-                get_registered_marathon_tasks_patch.assert_any_call(
-                    'fake_host1',
-                    123456,
-                    utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-                    'service.namespace',
-                    [task],
-                )
+            get_registered_marathon_tasks_patch.assert_called_once_with(
+                'fake_host1',
+                123456,
+                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+                'service.namespace',
+                tasks,
+            )
+
+    def test_filter_tasks_in_smartstack_only_calls_n_hosts(self):
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)], host=f'fake_host{i}') for i in range(5)]
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_registered_marathon_tasks',
+            side_effect=[tasks], autospec=True,
+        ) as get_registered_marathon_tasks_patch:
+            actual = bounce_lib.filter_tasks_in_smartstack(
+                tasks,
+                service='service',
+                nerve_ns='nerve_ns',
+                system_paasta_config=self.fake_system_paasta_config(),
+                max_hosts_to_query=3,
+            )
+            assert actual == tasks
+
+            assert get_registered_marathon_tasks_patch.call_count == 3
 
     def test_flatten_tasks(self):
         """Simple check of flatten_tasks."""

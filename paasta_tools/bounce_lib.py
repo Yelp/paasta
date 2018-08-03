@@ -12,25 +12,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 import fcntl
 import logging
 import math
 import os
+import random
 import time
 from contextlib import contextmanager
 from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
+from typing import List
 from typing import Mapping
 from typing import Sequence
 from typing import Set
 from typing import TypeVar
 
+import a_sync
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
+from marathon.models import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import DefaultArg
 from mypy_extensions import TypedDict
@@ -42,6 +47,7 @@ from paasta_tools.long_running_service_tools import BounceMethodConfigDict
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import timeout
 
 
@@ -217,6 +223,44 @@ def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
         return False
 
 
+def filter_tasks_in_smartstack(
+    tasks: Collection[MarathonTask],
+    service: str,
+    nerve_ns: str,
+    system_paasta_config: SystemPaastaConfig,
+    max_hosts_to_query: int = 20,
+) -> List[MarathonTask]:
+    all_hosts = list({t.host for t in tasks})
+    random.shuffle(all_hosts)
+    # We select a random 20 hosts here. This should be enough most of the time: for services discovered at the habitat
+    # level, in clusters with 2 habitats, there's about a 2 * (1/2) ** 20 ~= 2-per-million chance of not picking at
+    # least one host in each habitat. For clusters with 3 habitats, the odds are about 3 * (2/3) ** 20 ~= 1-in-1000.
+    # The only real effect would be that the bounce would decide to kill fewer old tasks, causing us to take another
+    # round. If this becomes a problem, we can try to select tasks more intelligently.
+    selected_hosts = all_hosts[:max_hosts_to_query]
+    all_registered_tasks: Set[MarathonTask] = set()
+
+    async def get_registered_tasks_on_host(host):
+        all_registered_tasks.update(
+            set(await a_sync.to_async(get_registered_marathon_tasks)(
+                synapse_host=host,
+                synapse_port=system_paasta_config.get_synapse_port(),
+                synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+                service=compose_job_id(service, nerve_ns),
+                marathon_tasks=tasks,
+            )),
+        )
+
+    if selected_hosts:
+        a_sync.block(
+            asyncio.wait,
+            [asyncio.ensure_future(get_registered_tasks_on_host(host)) for host in selected_hosts],
+            timeout=30,
+        )
+
+    return [t for t in tasks if t in all_registered_tasks]
+
+
 def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
@@ -250,12 +294,12 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
         if not marathon_tools.is_task_healthy(task, require_all=False, default_healthy=True):
             continue
 
-        if check_haproxy:
-            if not is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
-                continue
-
         happy.append(task)
-    return happy
+
+    if check_haproxy:
+        return filter_tasks_in_smartstack(happy, service, nerve_ns, system_paasta_config)
+    else:
+        return happy
 
 
 _Flatten_Tasks_T = TypeVar('_Flatten_Tasks_T')
