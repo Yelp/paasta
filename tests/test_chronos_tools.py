@@ -25,6 +25,7 @@ from paasta_tools.chronos_tools import get_config_for_bounce_hash
 from paasta_tools.chronos_tools import get_related_jobs_configs
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import sort_dicts
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -2021,6 +2022,20 @@ class TestChronosTools:
         )
         assert jobs == expected_jobs
         assert configs == expected_configs
+
+    @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
+    @mock.patch('paasta_tools.chronos_tools.load_v2_deployments_json', autospec=True)
+    def test__get_related_jobs_and_configs_only_independent_jobs_skips_non_deployed_services(
+        self, mock_load_v2_deployments_json, mock_read_chronos_jobs_for_service, mock_read_services_configuration,
+    ):
+        mock_load_v2_deployments_json.return_value.get_branch_dict.side_effect = NoDeploymentsAvailable
+        mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
+        mock_read_services_configuration.return_value = [self.fake_service]
+        jobs, configs = _get_related_jobs_and_configs(cluster=self.fake_cluster, ttl=-1)  # ttl=-1 to disable cache
+
+        assert jobs == {}
+        assert configs == {}
 
     @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)
