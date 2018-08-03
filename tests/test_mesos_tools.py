@@ -582,7 +582,6 @@ async def test_format_stdstreams_tail_for_task(
             for f in files:
                 output.append(PaastaColors.blue("      {} tail for {}".format(f[0], task_id)))
                 output.extend(f[1][-nlines:])
-                output.append(PaastaColors.blue("      %s EOF" % f[0]))
         else:
             if raise_what == utils.TimeoutError:
                 raise_what = 'timeout'

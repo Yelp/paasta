@@ -393,7 +393,6 @@ async def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             # reverse the tail, so that EOF is at the bottom again
             if tail:
                 output.extend(tail[::-1])
-            output.append(PaastaColors.blue("      %s EOF" % fobj.path))
     except (
         mesos_exceptions.MasterNotAvailableException,
         mesos_exceptions.SlaveDoesNotExist,
