@@ -176,7 +176,7 @@ def compose_job_id(service, instance):
 
 def decompose_job_id(job_id):
     """ A custom implementation of utils.decompose_job_id, accounting for the
-    possiblity of TMP_JOB_IDENTIFIER being prepended to the job name """
+    possibility of TMP_JOB_IDENTIFIER being prepended to the job name """
     decomposed = job_id.split(SPACER)
     if len(decomposed) == 3:
         if not decomposed[0].startswith(TMP_JOB_IDENTIFIER):
@@ -939,7 +939,7 @@ def parse_time_variables(input_string, parse_time=None):
     # We build up a tron context object that has the right
     # methods to parse tron-style time syntax
     job_context = tron_command_context.JobRunContext(tron_command_context.CommandContext())
-    # The tron context object needs the run_time attibute set so it knows
+    # The tron context object needs the run_time attribute set so it knows
     # how to interpret the date strings
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement

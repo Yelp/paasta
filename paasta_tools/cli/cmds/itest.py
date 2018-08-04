@@ -31,7 +31,7 @@ def add_subparser(subparsers):
         help="Runs 'make itest' as part of the PaaSTA contract.",
         description=(
             "'paasta itest' runs 'make itest' in the root of a service directory. "
-            "It is designed to be used in conjection with the 'Jenkins' workflow: "
+            "It is designed to be used in conjunction with the 'Jenkins' workflow: "
             "http://paasta.readthedocs.io/en/latest/about/contract.html#jenkins-pipeline-recommended"
         ),
     )

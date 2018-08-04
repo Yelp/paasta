@@ -91,7 +91,7 @@ def setup_kube_deployments(
     service_instances: Sequence[str],
     soa_dir: str=DEFAULT_SOA_DIR,
 ) -> bool:
-    suceeded = True
+    succeeded = True
     if service_instances:
         deployments = list_all_deployments(kube_client)
     for service_instance in service_instances:
@@ -99,7 +99,7 @@ def setup_kube_deployments(
             service, instance, _, __ = decompose_job_id(service_instance)
         except InvalidJobNameError:
             log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
-            suceeded = False
+            succeeded = False
         else:
             if reconcile_kubernetes_deployment(
                 kube_client=kube_client,
@@ -108,8 +108,8 @@ def setup_kube_deployments(
                 kube_deployments=deployments,
                 soa_dir=soa_dir,
             )[0]:
-                suceeded = False
-    return suceeded
+                succeeded = False
+    return succeeded
 
 
 def reconcile_kubernetes_deployment(

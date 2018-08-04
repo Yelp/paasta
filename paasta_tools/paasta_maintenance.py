@@ -68,7 +68,7 @@ def parse_args():
             'undrain',
             'up',
         ],
-        help="Action to perform on the specifed hosts",
+        help="Action to perform on the specified hosts",
     )
     parser.add_argument(
         'hostname',

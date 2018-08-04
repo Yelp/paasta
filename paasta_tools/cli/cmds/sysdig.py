@@ -34,7 +34,7 @@ from paasta_tools.utils import paasta_print
 def add_subparser(subparsers):
     new_parser = get_subparser(
         description="'paasta sysdig' works by SSH'ing to remote PaaSTA masters and "
-                    "running sysdig with the neccessary filters",
+                    "running sysdig with the necessary filters",
         help_text="Run sysdig on a remote host and filter to a service and instance",
         command='sysdig',
         function=paasta_sysdig,

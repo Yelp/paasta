@@ -278,7 +278,7 @@ def sensu_check(service, service_path, soa_dir):
     and that the team name is declared.
 
     :param service: name of service currently being examined
-    :param service_path: path to loction of monitoring.yaml file"""
+    :param service_path: path to location of monitoring.yaml file"""
     if is_file_in_dir('monitoring.yaml', service_path):
         paasta_print(PaastaCheckMessages.SENSU_MONITORING_FOUND)
         team = get_team(service=service, overrides={}, soa_dir=soa_dir)
@@ -306,7 +306,7 @@ def smartstack_check(service, service_path, soa_dir):
     ports are declared.  Print appropriate message depending on outcome.
 
     :param service: name of service currently being examined
-    :param service_path: path to loction of smartstack.yaml file"""
+    :param service_path: path to location of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
         paasta_print(PaastaCheckMessages.SMARTSTACK_YAML_FOUND)
         instances = get_all_namespaces_for_service(service=service, soa_dir=soa_dir)

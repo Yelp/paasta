@@ -83,7 +83,7 @@ def get_argparser():
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help", dest='command')
     subparsers.required = True
 
-    # Adding a separate help subparser allows us to respont to "help" without --help
+    # Adding a separate help subparser allows us to respond to "help" without --help
     help_parser = subparsers.add_parser('help', add_help=False)
     help_parser.set_defaults(command=None)
 
@@ -107,7 +107,7 @@ def parse_args(argv):
 
 def main(argv=None):
     """Perform a paasta call. Read args from sys.argv and pass parsed args onto
-    appropriate command in paata_cli/cmds directory.
+    appropriate command in paasta_cli/cmds directory.
 
     Ensure we kill any child pids before we quit
     """

@@ -231,7 +231,7 @@ def test_load_system_paasta_config_file_dne():
 
 
 def test_load_system_paasta_config_duplicate_keys_errors():
-    fake_file_a = {'cluster': 'this value will be overriden', 'sensu_host': 'fake_data'}
+    fake_file_a = {'cluster': 'this value will be overridden', 'sensu_host': 'fake_data'}
     fake_file_b = {'cluster': 'overriding value'}
     file_mock = mock.mock_open()
     with mock.patch(

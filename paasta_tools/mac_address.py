@@ -14,7 +14,7 @@ def reserve_unique_mac_address(lock_directory):
     """ Pick and reserve a unique mac address for a container
     returns (mac_address, lockfile)
     where the mac address is a string in the form of 00:00:00:00:00:00
-    and lockfile is a file object that holds an exclusve lock
+    and lockfile is a file object that holds an exclusive lock
     """
     for x in range(100):
         random_hex = '{:08x}'.format(random.getrandbits(32))

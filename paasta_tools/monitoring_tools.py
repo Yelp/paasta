@@ -150,7 +150,7 @@ def get_sensu_team_data(team):
     Returns an empty dictionary if there is nothing to return.
 
     Not all teams specify all the different types of configuration settings.
-    for example, a team may not specify a `nofitication_email`. It is up
+    for example, a team may not specify a `notification_email`. It is up
     to the caller of this function to handle that case.
     """
     global_team_data = _load_sensu_team_data()['team_data']

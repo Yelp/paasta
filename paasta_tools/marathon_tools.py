@@ -836,7 +836,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         return self.config_dict.get('host_port', 0)
 
     def get_marathon_shard(self) -> Optional[int]:
-        """Returns the configued shard of Marathon to use.
+        """Returns the configured shard of Marathon to use.
         Defaults to None, which means MarathonClients will decide which shard to put this app on."""
         return self.config_dict.get('marathon_shard', None)
 
@@ -975,7 +975,7 @@ def read_all_registrations_for_service_instance(
     cluster: Optional[str]=None,
     soa_dir: str=DEFAULT_SOA_DIR,
 ) -> List[str]:
-    """Retreive all registrations as fully specified name.instance pairs
+    """Retrieve all registrations as fully specified name.instance pairs
     for a particular service instance.
 
     For example, the 'main' paasta instance of the 'test' service may register
@@ -999,7 +999,7 @@ def read_registration_for_service_instance(
     cluster: Optional[str]=None,
     soa_dir: str=DEFAULT_SOA_DIR,
 ) -> str:
-    """Retreive a service instance's primary registration for a particular
+    """Retrieve a service instance's primary registration for a particular
     service instance.
 
     This is the service and namespace that clients ought talk to, as well as
@@ -1304,7 +1304,7 @@ def get_app_queue_last_unused_offers(app_queue_item: Optional[MarathonQueueItem]
     """Returns the unused offers for an app
 
     :param app_queue_item: app_queue_item returned by get_app_queue
-    :returns: A list of offers recieved from mesos, including the reasons they were rejected
+    :returns: A list of offers received from mesos, including the reasons they were rejected
     """
     if app_queue_item is None:
         return []

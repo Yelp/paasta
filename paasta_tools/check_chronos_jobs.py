@@ -84,7 +84,7 @@ def check_chronos_job_name(service, instance):
 
 
 def send_event(chronos_job_config, status_code, output):
-    """Compose monitoring overrides and send the evernt to sensu.
+    """Compose monitoring overrides and send the event to sensu.
 
     :param chronos_job_config: an instance of ChronosJobConfig
     :param status_code: Sensu status code

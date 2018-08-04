@@ -63,7 +63,7 @@ def paasta_execute_docker_command_result(context, code):
 @then('the docker container has at most {num} exec instances')
 def check_container_exec_instances(context, num):
     """Modern docker versions remove ExecIDs after they finished, but older
-    docker versions leave ExecIDs behind. This test is for assering that
+    docker versions leave ExecIDs behind. This test is for asserting that
     the ExecIDs are cleaned up one way or another"""
     container_info = context.docker_client.inspect_container(context.running_container_id)
     if container_info['ExecIDs'] is None:

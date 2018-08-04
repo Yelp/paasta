@@ -28,8 +28,8 @@ def add_subparser(subparsers):
         description=(
             "'paasta boost' is used to temporary provision more capacity in a given cluster "
             "It operates by ssh'ing to a Mesos master of a remote cluster, and "
-            "interracting with the boost in the local zookeeper cluster. If you set or clear "
-            "a boost, you may want to run the cluster autoscaler manually afterwards."
+            "interacting with the boost in the local zookeeper cluster. If you set or clear "
+            "a boost, you may want to run the cluster autoscaler manually afterward."
         ),
         epilog=(
             "The boost command may time out during heavy load. When that happens "

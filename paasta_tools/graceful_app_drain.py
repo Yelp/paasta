@@ -91,7 +91,7 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
         paasta_print("Sleeping for 10 seconds to give the tasks time to drain")
         time.sleep(10)
 
-    paasta_print(f"Sucessfully killed {full_appid}")
+    paasta_print(f"Successfully killed {full_appid}")
 
 
 def main():

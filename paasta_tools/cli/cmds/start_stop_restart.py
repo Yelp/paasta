@@ -121,7 +121,7 @@ def print_marathon_message(desired_state):
     elif desired_state == "stop":
         paasta_print(
             "This service will be gracefully stopped soon. It will be started back up again on the next deploy.\n"
-            "To stop this service permanantly. Set this in the soa-configs definition:\n"
+            "To stop this service permanently. Set this in the soa-configs definition:\n"
             "\n"
             "    instances: 0\n",
         )

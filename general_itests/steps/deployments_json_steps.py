@@ -77,7 +77,7 @@ def step_paasta_mark_for_deployments_when(context):
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(
-        'paasta_tools.utils.format_timestamp', autosepc=True,
+        'paasta_tools.utils.format_timestamp', autospec=True,
         return_value=context.force_bounce_timestamp,
     ), mock.patch(
         'paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True,
@@ -167,7 +167,7 @@ def step_impl_then_desired_state(context, expected_state):
 @then('the repository should be correctly tagged')
 def step_impl_then_correctly_tagged(context):
     with mock.patch(
-        'paasta_tools.utils.format_timestamp', autosepc=True,
+        'paasta_tools.utils.format_timestamp', autospec=True,
         return_value=context.force_bounce_timestamp,
     ):
         expected_tag = get_paasta_tag_from_deploy_group(identifier='test_cluster.test_instance', desired_state='deploy')

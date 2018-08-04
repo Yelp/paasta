@@ -1063,7 +1063,7 @@ def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
         )
         assert mock_set_instances_for_marathon_service.called
 
-        # test inusfficient data scale down
+        # test insufficient data scale down
         mock_set_instances_for_marathon_service.reset_mock()
         mock_is_task_data_insufficient.return_value = True
         mock_get_instances.return_value = 10

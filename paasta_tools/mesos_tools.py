@@ -196,7 +196,7 @@ async def get_cached_list_of_all_current_tasks():
     """Returns a cached list of all mesos tasks.
 
     This function is used by 'paasta status' and 'paasta_serviceinit status'
-    to avoid re-quering mesos master and re-parsing json to get mesos.Task objects.
+    to avoid re-querying mesos master and re-parsing json to get mesos.Task objects.
 
 
     The async_ttl_cache decorator caches the list for 600 seconds.
@@ -210,7 +210,7 @@ async def get_cached_list_of_all_current_tasks():
 
 @async_ttl_cache(ttl=600)
 async def get_cached_list_of_running_tasks_from_frameworks():
-    """Retruns a cached list of all running mesos tasks.
+    """Returns a cached list of all running mesos tasks.
     See the docstring for get_cached_list_of_all_current_tasks().
 
     :return tasks: a list of mesos.Task
@@ -220,7 +220,7 @@ async def get_cached_list_of_running_tasks_from_frameworks():
 
 @async_ttl_cache(ttl=600)
 async def get_cached_list_of_not_running_tasks_from_frameworks():
-    """Retruns a cached list of mesos tasks that are NOT running.
+    """Returns a cached list of mesos tasks that are NOT running.
     See the docstring for get_cached_list_of_all_current_tasks().
 
     :return tasks: a list of mesos.Task"""
@@ -228,7 +228,7 @@ async def get_cached_list_of_not_running_tasks_from_frameworks():
 
 
 def select_tasks_by_id(tasks: Collection[Task], job_id: str='') -> List[Task]:
-    """Retruns a list of the tasks with a given job_id.
+    """Returns a list of the tasks with a given job_id.
 
     :param tasks: a list of mesos.Task.
     :param job_id: the job id.
@@ -695,7 +695,7 @@ def slave_passes_whitelist(slave, whitelist: DeployWhitelist) -> bool:
     :param whitelist: A 2 item list like ["location_type", ["location1", 'location2']]
     :returns: boolean, True if the slave gets past the whitelist
     """
-    # No whitelist, so disable whitelisting behaviour.
+    # No whitelist, so disable whitelisting behavior.
     if whitelist is None or len(whitelist) == 0:
         return True
     try:
@@ -804,7 +804,7 @@ async def get_mesos_task_count_by_slave(
 
 
 def get_count_running_tasks_on_slave(hostname):
-    """Return the number of tasks running on a paticular slave
+    """Return the number of tasks running on a particular slave
     or 0 if the slave is not found.
     :param hostname: hostname of the slave
     :returns: integer count of mesos tasks"""
