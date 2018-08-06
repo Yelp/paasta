@@ -191,6 +191,9 @@ instance MAY have:
     `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
     instances of this service should be launched using. Defaults to ``'bridge'``.
 
+  * ``container_port``: Specify the port to expose when in ``bridge`` mode.
+    Defaults to ``8888``.
+
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
 
   * ``bounce_method_params``: A dictionary of parameters for the specified bounce_method.

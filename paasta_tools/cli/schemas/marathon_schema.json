@@ -213,6 +213,9 @@
                 "net": {
                     "type": "string"
                 },
+                "container_port": {
+                    "type": "number"
+                },
                 "deploy_blacklist": {
                     "type": "array"
                 },
