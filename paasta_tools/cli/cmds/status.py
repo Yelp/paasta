@@ -31,6 +31,7 @@ from typing import Tuple
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
+from paasta_tools import kubernetes_tools
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
@@ -46,6 +47,7 @@ from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
@@ -217,6 +219,8 @@ def paasta_status_on_api_endpoint(
 
     if status.marathon is not None:
         return print_marathon_status(service, instance, status.marathon)
+    elif status.kubernetes is not None:
+        return print_kubernetes_status(service, instance, status.kubernetes)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon instance" % instance)
         return 0
@@ -259,6 +263,88 @@ def print_marathon_status(
             app_count=marathon_status.app_count,
             running_instances=marathon_status.running_instance_count,
             normal_instance_count=marathon_status.expected_instance_count,
+        ),
+    )
+    return 0
+
+
+def kubernetes_app_deploy_status_human(status, backoff_seconds=None):
+    status_string = kubernetes_tools.KubernetesDeployStatus.tostring(status)
+
+    if status == kubernetes_tools.KubernetesDeployStatus.Waiting:
+        deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
+    elif status == kubernetes_tools.KubernetesDeployStatus.Deploying:
+        deploy_status = PaastaColors.yellow(status_string)
+    elif status == kubernetes_tools.KubernetesDeployStatus.Running:
+        deploy_status = PaastaColors.bold(status_string)
+    else:
+        deploy_status = status_string
+
+    return deploy_status
+
+
+def status_kubernetes_job_human(
+    service: str,
+    instance: str,
+    deploy_status: str,
+    desired_app_id: str,
+    app_count: int,
+    running_instances: int,
+    normal_instance_count: int,
+) -> str:
+    name = PaastaColors.cyan(compose_job_id(service, instance))
+
+    if app_count >= 0:
+        if running_instances >= normal_instance_count:
+            status = PaastaColors.green("Healthy")
+            instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
+        elif running_instances == 0:
+            status = PaastaColors.yellow("Critical")
+            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
+        else:
+            status = PaastaColors.yellow("Warning")
+            instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
+        return "Kubernetes:   {} - up with {} instances. Status: {}".format(
+            status, instance_count, deploy_status,
+        )
+    else:
+        status = PaastaColors.yellow("Warning")
+        return "Kubernetes:   {} - {} (app {}) is not configured in Kubernetes yet (waiting for bounce)".format(
+            status, name, desired_app_id,
+        )
+
+
+def print_kubernetes_status(
+    service: str,
+    instance: str,
+    kubernetes_status,
+) -> int:
+    if kubernetes_status.error_message:
+        paasta_print(kubernetes_status.error_message)
+        return 1
+
+    bouncing_status = bouncing_status_human(
+        kubernetes_status.app_count,
+        kubernetes_status.bounce_method,
+    )
+    desired_state = desired_state_human(
+        kubernetes_status.desired_state,
+        kubernetes_status.expected_instance_count,
+    )
+    paasta_print(f"State:      {bouncing_status} - Desired state: {desired_state}")
+
+    status = KubernetesDeployStatus.fromstring(kubernetes_status.deploy_status)
+    deploy_status = kubernetes_app_deploy_status_human(status)
+
+    paasta_print(
+        status_kubernetes_job_human(
+            service=service,
+            instance=instance,
+            deploy_status=deploy_status,
+            desired_app_id=kubernetes_status.app_id,
+            app_count=kubernetes_status.app_count,
+            running_instances=kubernetes_status.running_instance_count,
+            normal_instance_count=kubernetes_status.expected_instance_count,
         ),
     )
     return 0

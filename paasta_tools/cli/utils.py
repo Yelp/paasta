@@ -25,7 +25,6 @@ import sys
 from shlex import quote
 from socket import gaierror
 from socket import gethostbyname_ex
-from typing import Any
 from typing import Callable
 from typing import Iterable
 from typing import Optional

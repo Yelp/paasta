@@ -15,7 +15,9 @@
 Settings of the paasta-api server.
 """
 import os
+from typing import Optional
 
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
@@ -26,3 +28,4 @@ soa_dir: str = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
 # of the corresponding type after the applicaton is started.
 cluster: str = None  # type: ignore
 marathon_clients: MarathonClients = None  # type: ignore
+kubernetes_client: Optional[KubeClient] = None
