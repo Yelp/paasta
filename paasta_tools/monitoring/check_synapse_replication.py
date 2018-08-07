@@ -117,7 +117,7 @@ def parse_synapse_check_options(system_paasta_config):
         "service instances is outside this range",
     )
     parser.add_argument(
-        '-c', '--critcal', dest='crit', type=str,
+        '-c', '--critical', dest='crit', type=str,
         metavar='RANGE',
         help="Generate critical state if number of "
         "service instances is outside this range",

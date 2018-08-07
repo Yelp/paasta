@@ -798,7 +798,7 @@ def compose(
 class PaastaColors:
 
     """Collection of static variables and methods to assist in coloring text."""
-    # ANSI colour codes
+    # ANSI color codes
     BLUE = '\033[34m'
     BOLD = '\033[1m'
     CYAN = '\033[36m'
@@ -814,7 +814,7 @@ class PaastaColors:
         """Return bolded text.
 
         :param text: a string
-        :return: text colour coded with ANSI bold
+        :return: text color coded with ANSI bold
         """
         return PaastaColors.color_text(PaastaColors.BOLD, text)
 
@@ -823,7 +823,7 @@ class PaastaColors:
         """Return text that can be printed blue.
 
         :param text: a string
-        :return: text colour coded with ANSI blue
+        :return: text color coded with ANSI blue
         """
         return PaastaColors.color_text(PaastaColors.BLUE, text)
 
@@ -832,7 +832,7 @@ class PaastaColors:
         """Return text that can be printed green.
 
         :param text: a string
-        :return: text colour coded with ANSI green"""
+        :return: text color coded with ANSI green"""
         return PaastaColors.color_text(PaastaColors.GREEN, text)
 
     @staticmethod
@@ -840,7 +840,7 @@ class PaastaColors:
         """Return text that can be printed red.
 
         :param text: a string
-        :return: text colour coded with ANSI red"""
+        :return: text color coded with ANSI red"""
         return PaastaColors.color_text(PaastaColors.RED, text)
 
     @staticmethod
@@ -848,16 +848,16 @@ class PaastaColors:
         """Return text that can be printed magenta.
 
         :param text: a string
-        :return: text colour coded with ANSI magenta"""
+        :return: text color coded with ANSI magenta"""
         return PaastaColors.color_text(PaastaColors.MAGENTA, text)
 
     @staticmethod
     def color_text(color: str, text: str) -> str:
         """Return text that can be printed color.
 
-        :param color: ANSI colour code
+        :param color: ANSI color code
         :param text: a string
-        :return: a string with ANSI colour encoding"""
+        :return: a string with ANSI color encoding"""
         # any time text returns to default, we want to insert our color.
         replaced = text.replace(PaastaColors.DEFAULT, PaastaColors.DEFAULT + color)
         # then wrap the beginning and end in our color/default.
@@ -868,7 +868,7 @@ class PaastaColors:
         """Return text that can be printed cyan.
 
         :param text: a string
-        :return: text colour coded with ANSI cyan"""
+        :return: text color coded with ANSI cyan"""
         return PaastaColors.color_text(PaastaColors.CYAN, text)
 
     @staticmethod
@@ -876,7 +876,7 @@ class PaastaColors:
         """Return text that can be printed yellow.
 
         :param text: a string
-        :return: text colour coded with ANSI yellow"""
+        :return: text color coded with ANSI yellow"""
         return PaastaColors.color_text(PaastaColors.YELLOW, text)
 
     @staticmethod
@@ -1640,7 +1640,7 @@ class SystemPaastaConfig(object):
 
     def get_deployd_startup_oracle_enabled(self) -> bool:
         """This controls whether deployd will add all services that need a bounce on
-        startup. Generally this is desirable behaviour. If you are performing a bounce
+        startup. Generally this is desirable behavior. If you are performing a bounce
         of *all* services you will want to disable this.
 
         :returns: A boolean
@@ -2857,7 +2857,7 @@ class _Timeout(object):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         # Try and put the result of the function into the q
-        # if an exception occurrs then we put the exc_info instead
+        # if an exception occurs then we put the exc_info instead
         # so that it can be raised in the main thread.
         try:
             self.control.put((True, self.function(*args, **kwargs)))

@@ -16,7 +16,7 @@
 Creates a deployments.json file in the specified SOA configuration directory.
 This file contains a dictionary of k/v pairs representing a map between remote
 deploy groups of a service's Git repository and the current SHA at the tip of that deploy group.
-This is done by specifing a 'deploy_group' key in a service instance's configuration,
+This is done by specifying a 'deploy_group' key in a service instance's configuration,
 or if there is no 'docker_image' key in the configuration, a deploy group name
 is assumed to be paasta-{cluster}-{instance}, where cluster is the cluster
 the configuration is for and instance is the instance name.

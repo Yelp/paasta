@@ -32,7 +32,7 @@ class PaastaSlackClient(SlackClient):
     def post(self, channels, message):
         if self.token is not None:
             for channel in channels:
-                log.info(f"Slack noification [{channel}]: {message}")
+                log.info(f"Slack notification [{channel}]: {message}")
                 response = self.sc.api_call(
                     "chat.postMessage",
                     channel=channel,

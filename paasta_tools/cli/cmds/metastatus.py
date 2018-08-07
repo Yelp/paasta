@@ -26,7 +26,7 @@ def add_subparser(subparsers):
         'metastatus',
         help="Display the status for an entire PaaSTA cluster",
         description=(
-            "'paasta metastatus' is used to get the vital statistics about a PaaaSTA "
+            "'paasta metastatus' is used to get the vital statistics about a PaaSTA "
             "cluster as a whole. This tool is helpful when answering the question: 'Is "
             "it just my service or the whole cluster that is broken?'\n\n"
             "metastatus operates by ssh'ing to a Mesos master of a remote cluster, and "

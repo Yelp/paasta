@@ -89,7 +89,7 @@ def perform_http_healthcheck(url, timeout):
 
 
 def perform_tcp_healthcheck(url, timeout):
-    """Returns true if successfully connests to host and port, false otherwise
+    """Returns true if successfully connects to host and port, false otherwise
 
     :param url: the healthcheck url (in the form tcp://host:port)
     :param timeout: timeout in seconds
@@ -179,7 +179,7 @@ def simulate_healthcheck_on_service(
         paasta_print('\nStarting health check via %s (waiting %s seconds before '
                      'considering failures due to grace period):' % (healthcheck_link, grace_period))
 
-        # silenty start performing health checks until grace period ends or first check succeeds
+        # silently start performing health checks until grace period ends or first check succeeds
         graceperiod_end_time = time.time() + grace_period
         after_grace_period_attempts = 0
         while True:

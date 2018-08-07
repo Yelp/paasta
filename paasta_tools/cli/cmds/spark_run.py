@@ -356,7 +356,7 @@ def load_aws_credentials_from_yaml(yaml_file_path):
             paasta_print(
                 PaastaColors.red(
                     'Encountered %s when trying to parse AWS credentials yaml %s. '
-                    'Supressing further output to avoid leaking credentials.' % (
+                    'Suppressing further output to avoid leaking credentials.' % (
                         type(e),
                         yaml_file_path,
                     ),

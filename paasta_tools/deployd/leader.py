@@ -53,6 +53,6 @@ class PaastaLeaderElection(Election):
             self.log.warning("Waiting for zookeeper connection to recover")
             time.sleep(5)
             attempts += 1
-        self.log.error("Connection did not revocer, abdicating!")
+        self.log.error("Connection did not recover, abdicating!")
         self.control.put("ABORT")
         self.client.stop()

@@ -70,7 +70,7 @@ def check_offer_constraints(offer, constraints, state):
                 ))
                 return False
         except Exception as err:
-            paasta_print("Error while mathing constraint: [{} {} {}] {}".format(
+            paasta_print("Error while matching constraint: [{} {} {}] {}".format(
                 attr, op, val, str(err),
             ))
             raise err

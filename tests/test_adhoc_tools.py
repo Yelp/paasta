@@ -30,7 +30,7 @@ def test_get_default_interactive_config():
             branch_dict={'deploy_group': 'fake_deploy_group'},
         )
         result = adhoc_tools.get_default_interactive_config(
-            'fake_serivce',
+            'fake_service',
             'fake_cluster',
             '/fake/soa/dir',
             load_deployments=False,
@@ -63,7 +63,7 @@ def test_get_default_interactive_config_reads_from_tty():
             },
         )
         result = adhoc_tools.get_default_interactive_config(
-            'fake_serivce',
+            'fake_service',
             'fake_cluster',
             '/fake/soa/dir',
             load_deployments=True,

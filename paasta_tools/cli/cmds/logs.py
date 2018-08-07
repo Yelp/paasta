@@ -120,14 +120,14 @@ def add_subparser(subparsers):
 
     status_parser.add_argument(
         '-a', '--from', '--after', dest='time_from',
-        help='The time to start gettings logs from. This can be an ISO-8601 timestamp or a human readable duration '
-             'parseable by pytimeparse such as "5m", "1d3h" etc. For example: --from "3m" would start retrieving logs '
+        help='The time to start getting logs from. This can be an ISO-8601 timestamp or a human readable duration '
+             'parsable by pytimeparse such as "5m", "1d3h" etc. For example: --from "3m" would start retrieving logs '
              'from 3 minutes ago',
     )
     status_parser.add_argument(
         '-t', '--to', dest='time_to',
         help='The time to get logs up to. This can be an ISO-8601 timestamp or a human readable duration'
-             'parseable by pytimeparse such as "5m", "1d3h" etc. Defaults to right now',
+             'parsable by pytimeparse such as "5m", "1d3h" etc. Defaults to right now',
     )
     status_parser.add_argument(
         '-l', '-n', '--lines', dest='line_count',
@@ -545,7 +545,7 @@ class ScribeLogReader(LogReader):
         :param clusters: The set of clusters
         :param components: The set of components
         :param callback: The callback function. Gets called with (component_name, stream_info, scribe_env, cluster)
-                         The cluster field will only be set if the componenet is set to per_cluster
+                         The cluster field will only be set if the component is set to per_cluster
         """
         scribe_envs: Set[str] = set()
         for cluster in clusters:
@@ -585,7 +585,7 @@ class ScribeLogReader(LogReader):
         this function directly with something like "while True: tail_paasta_logs()"
         may be very sad.
 
-        NOTE: We try pretty hard to supress KeyboardInterrupts to prevent big
+        NOTE: We try pretty hard to suppress KeyboardInterrupts to prevent big
         useless stack traces, but it turns out to be non-trivial and we fail ~10%
         of the time. We decided we could live with it and we're shipping this to
         see how it fares in real world testing.
@@ -842,7 +842,7 @@ class ScribeLogReader(LogReader):
         host = host_and_port['host']
         port = host_and_port['port']
 
-        # The reason we need a fake context here is because scribereader is a bit incosistent in its
+        # The reason we need a fake context here is because scribereader is a bit inconsistent in its
         # returns. get_stream_reader returns a context that needs to be acquired for cleanup code but
         # get_stream_tailer simply returns an object that can be iterated over. We'd still like to have
         # the cleanup code for get_stream_reader to be executed by this function's caller and this is
@@ -1153,7 +1153,7 @@ def paasta_logs(args):
             line_offset=args.line_offset,
             levels=levels,
             components=components,
-            cluters=clusters,
+            clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
         )

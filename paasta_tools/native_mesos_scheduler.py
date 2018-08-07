@@ -127,7 +127,7 @@ def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname
 
 
 def read_all_registrations_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retreive all registrations as fully specified name.instance pairs
+    """Retrieve all registrations as fully specified name.instance pairs
     for a particular service instance.
 
     For example, the 'main' paasta instance of the 'test' service may register

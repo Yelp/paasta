@@ -125,7 +125,7 @@ def run_capacity_check():
     try:
         resource_use = client.resources.resources(groupings=attributes).result()
     except HTTPError as e:
-        paasta_print("UNKNOWN recieved exception from paasta api:\n\t%s" % e)
+        paasta_print("UNKNOWN received exception from paasta api:\n\t%s" % e)
         sys.exit(3)
 
     default_check = {

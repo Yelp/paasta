@@ -142,7 +142,7 @@ def paasta_push_to_registry(args):
     return returncode
 
 
-def read_docker_registy_creds(registry_uri):
+def read_docker_registry_creds(registry_uri):
     dockercfg_path = os.path.expanduser('~/.dockercfg')
     try:
         with open(dockercfg_path) as f:
@@ -170,7 +170,7 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
     registry_uri = get_service_docker_registry(service, soa_dir)
     repository, tag = build_docker_image_name(service, sha).split(':')
 
-    creds = read_docker_registy_creds(registry_uri)
+    creds = read_docker_registry_creds(registry_uri)
     uri = f'{registry_uri}/v2/{repository}/manifests/paasta-{sha}'
 
     with requests.Session() as s:

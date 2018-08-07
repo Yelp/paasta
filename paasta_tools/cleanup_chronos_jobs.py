@@ -119,7 +119,7 @@ def filter_tmp_jobs(job_names):
 def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
     """
     Given a list of temporary jobs, find those ready to be removed. Their
-    suitablity for removal is defined by two things:
+    suitability for removal is defined by two things:
 
         - the job has completed (irrespective of whether it was a success or
           failure)
