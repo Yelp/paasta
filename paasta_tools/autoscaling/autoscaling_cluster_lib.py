@@ -96,6 +96,9 @@ DEFAULT_DRAIN_TIMEOUT = 600  # seconds
 
 AWS_SPOT_MODIFY_TIMEOUT = 30
 MISSING_SLAVE_PANIC_THRESHOLD = .3
+# Age threshold in seconds that should be met before an asg or sfr should
+# exceed before being checked for slave registration.
+CHECK_REGISTERED_SLAVE_THRESHOLD = 3600
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -236,6 +239,9 @@ class ClusterAutoscaler(object):
         instance_reservations = [reservation['Instances'] for reservation in instance_descriptions['Reservations']]
         instances = [instance for reservation in instance_reservations for instance in reservation]
         return instances
+
+    def is_new_autoscaling_resource(self):
+        raise NotImplementedError()
 
     def describe_instance_status(
         self,
@@ -800,6 +806,19 @@ class SpotAutoscaler(ClusterAutoscaler):
         ret = sfrs['SpotFleetRequestConfigs'][0]
         return ret
 
+    def is_new_autoscaling_resource(self):
+        """
+        Determines if the spot fleet request was created recently as defined by
+        CHECK_REGISTERED_SLAVE_THRESHOLD.
+        """
+        if not self.sfr:
+            self.log.warn('Cannot find SFR {}'.format(self.resource['id']))
+            return True
+
+        sfr_creation = datetime.strptime(self.sfr['CreateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
+        now = datetime.utcnow()
+        return (now - sfr_creation).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
+
     def get_spot_fleet_instances(
         self,
         spotfleet_request_id: str,
@@ -970,6 +989,19 @@ class AsgAutoscaler(ClusterAutoscaler):
     @property
     def exists(self) -> bool:
         return True if self.asg else False
+
+    def is_new_autoscaling_resource(self):
+        """
+        Determines if an autoscaling group was created recently as defined by
+        CHECK_REGISTERED_SLAVE_THRESHOLD.
+        """
+        if not self.asg:
+            self.log.warning("ASG {} not found, removing config file".format(self.resource['id']))
+            return True
+
+        asg_creation = datetime.strptime(self.asg['CreatedTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
+        now = datetime.utcnow()
+        return (now - asg_creation).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
 
     def get_asg(self, asg_name: str, region: Optional[str]=None) -> Optional[Dict[str, Any]]:
         asg_client = boto3.client('autoscaling', region_name=region)

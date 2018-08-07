@@ -4,6 +4,7 @@ import sys
 
 from a_sync import block
 
+from paasta_tools.autoscaling.autoscaling_cluster_lib import CHECK_REGISTERED_SLAVE_THRESHOLD
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_scaler
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
@@ -35,6 +36,13 @@ def check_registration(threshold_percentage):
             continue
         if len(scaler.instances) == 0:
             print("No instances for this resource")
+            continue
+        elif scaler.is_new_autoscaling_resource():
+            # See OPS-13784
+            print(
+                f"Autoscaling resource was created within last {CHECK_REGISTERED_SLAVE_THRESHOLD}"
+                " seconds and would probably fail this check",
+            )
             continue
         else:
             slaves = scaler.get_aws_slaves(mesos_state)

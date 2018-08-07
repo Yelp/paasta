@@ -15,6 +15,8 @@ import asyncio
 import contextlib
 import unittest
 import warnings
+from datetime import datetime
+from datetime import timedelta
 from math import ceil
 from math import floor
 
@@ -535,6 +537,24 @@ class TestAsgAutoscaler(unittest.TestCase):
         self.autoscaler.asg = mock.Mock()
         assert not self.autoscaler.is_resource_cancelled()
 
+    def test_is_new_autoscaling_resource_when_asg_is_above_threshold(self):
+        asg = {
+            'Instances': [mock.Mock()],
+            'CreatedTime': (datetime.utcnow() - timedelta(
+                seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
+            )).isoformat() + "Z",
+        }
+        autoscaler = self.create_autoscaler(asg=asg)
+        assert not autoscaler.is_new_autoscaling_resource()
+
+    def test_is_new_autoscaling_resource_when_asg_is_below_threshold(self):
+        asg = {
+            'Instances': [mock.Mock()],
+            'CreatedTime': datetime.utcnow().isoformat() + "Z",
+        }
+        autoscaler = self.create_autoscaler(asg=asg)
+        assert autoscaler.is_new_autoscaling_resource()
+
     def test_get_asg(self):
         with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
             mock_asg = mock.Mock()
@@ -854,6 +874,28 @@ class TestSpotAutoscaler(unittest.TestCase):
             ret = self.autoscaler.get_sfr('sfr-blah', region='westeros-1')
             assert ret is None
 
+    def test_is_new_autoscaling_resource_when_sfr_is_above_threshold(self):
+        sfr = {
+            'SpotFleetRequestConfig': {'FulfilledCapacity': 2},
+            'SpotFleetRequestState': 'active',
+            'Instances': [mock.Mock()],
+            'CreateTime': (datetime.utcnow() - timedelta(
+                seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
+            )).isoformat() + "Z",
+        }
+        autoscaler = self.create_autoscaler(sfr=sfr)
+        assert not autoscaler.is_new_autoscaling_resource()
+
+    def test_is_new_autoscaling_resource_when_sfr_is_below_threshold(self):
+        sfr = {
+            'SpotFleetRequestConfig': {'FulfilledCapacity': 2},
+            'SpotFleetRequestState': 'active',
+            'Instances': [mock.Mock()],
+            'CreateTime': datetime.utcnow().isoformat() + "Z",
+        }
+        autoscaler = self.create_autoscaler(sfr=sfr)
+        assert autoscaler.is_new_autoscaling_resource()
+
     def test_set_spot_fleet_request_capacity(self):
         with mock.patch(
             'boto3.client', autospec=True,
@@ -1165,6 +1207,9 @@ class TestClusterAutoscaler(unittest.TestCase):
             self.autoscaler.mesos_error_gauge.set.assert_called_once_with(0.3)
             self.autoscaler.aws_instances_gauge.set.assert_called_once_with(0)
             self.autoscaler.mesos_slaves_gauge.set.assert_called_once_with(5)
+
+    def test_is_new_autoscaling_resource(self):
+        self.assertRaises(NotImplementedError, self.autoscaler.is_new_autoscaling_resource)
 
     def test_describe_instance(self):
         with mock.patch('boto3.client', autospec=True) as mock_ec2_client:
