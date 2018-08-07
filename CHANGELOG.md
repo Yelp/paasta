@@ -1,11 +1,47 @@
 # Change Log
 
-## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
-
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.77.0...HEAD)
+## [0.78.0](https://github.com/Yelp/paasta/tree/0.78.0) (2018-08-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.78.0...0.78.0)
 
 **Merged pull requests:**
 
+- Removed EOF message from paasta status output. [\#1926](https://github.com/Yelp/paasta/pull/1926) ([solarkennedy](https://github.com/solarkennedy))
+- Added docs and schema for the container\_port setting [\#1925](https://github.com/Yelp/paasta/pull/1925) ([solarkennedy](https://github.com/solarkennedy))
+- Parallelize fetching haproxy state in get\_happy\_tasks, and limit the number of hosts to query. [\#1924](https://github.com/Yelp/paasta/pull/1924) ([EvanKrall](https://github.com/EvanKrall))
+- Allow chronos rerun to skip services that have not been deployed [\#1915](https://github.com/Yelp/paasta/pull/1915) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.78.0](https://github.com/Yelp/paasta/tree/v0.78.0) (2018-08-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.77.2...v0.78.0)
+
+**Merged pull requests:**
+
+- Move list\_teams to monitoring\_tools [\#1922](https://github.com/Yelp/paasta/pull/1922) ([solarkennedy](https://github.com/solarkennedy))
+- Added more descriptive errors to NoDeploymentsAvailable errors [\#1921](https://github.com/Yelp/paasta/pull/1921) ([solarkennedy](https://github.com/solarkennedy))
+- Set k8s deployment spec version [\#1919](https://github.com/Yelp/paasta/pull/1919) ([mattmb](https://github.com/mattmb))
+- For k8s deployments PUT not PATCH [\#1918](https://github.com/Yelp/paasta/pull/1918) ([mattmb](https://github.com/mattmb))
+- fix the location of list\_kubernetes\_service\_instances [\#1916](https://github.com/Yelp/paasta/pull/1916) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Added a remote\_run option to override dynamodb aws\_region config [\#1914](https://github.com/Yelp/paasta/pull/1914) ([huadongliu](https://github.com/huadongliu))
+- Unified \_\_repr\_\_ across paasta instance objects and send cluster into all TronActionConfigs [\#1913](https://github.com/Yelp/paasta/pull/1913) ([solarkennedy](https://github.com/solarkennedy))
+- RFC: smartstack errors meteorite emitter [\#1908](https://github.com/Yelp/paasta/pull/1908) ([solarkennedy](https://github.com/solarkennedy))
+- validate valid team name [\#1904](https://github.com/Yelp/paasta/pull/1904) ([chlgit](https://github.com/chlgit))
+- Gracefully drain all smartstack namespaces instead of just the first one [\#1895](https://github.com/Yelp/paasta/pull/1895) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.77.2](https://github.com/Yelp/paasta/tree/v0.77.2) (2018-07-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.77.1...v0.77.2)
+
+## [v0.77.1](https://github.com/Yelp/paasta/tree/v0.77.1) (2018-07-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.77.0...v0.77.1)
+
+**Merged pull requests:**
+
+- Add support for tron retries\_delay attribute [\#1912](https://github.com/Yelp/paasta/pull/1912) ([keymone](https://github.com/keymone))
+- Add f to string that should be f string [\#1909](https://github.com/Yelp/paasta/pull/1909) ([matthewbentley](https://github.com/matthewbentley))
+- Add better documentation for local-run [\#1907](https://github.com/Yelp/paasta/pull/1907) ([MasterObvious](https://github.com/MasterObvious))
+- Add cpu + mem constraints to k8s [\#1906](https://github.com/Yelp/paasta/pull/1906) ([mattmb](https://github.com/mattmb))
+- Catch exceptions on format\_marathon\_app\_dict [\#1905](https://github.com/Yelp/paasta/pull/1905) ([mattmb](https://github.com/mattmb))
+- Local run: Don't ask me to pick a deploy group when there's only one [\#1902](https://github.com/Yelp/paasta/pull/1902) ([mjksmith](https://github.com/mjksmith))
+- Don't load deployments for Tron validation [\#1901](https://github.com/Yelp/paasta/pull/1901) ([qui](https://github.com/qui))
+- Add a metric for leader elections [\#1900](https://github.com/Yelp/paasta/pull/1900) ([mattmb](https://github.com/mattmb))
 - Tron docs [\#1897](https://github.com/Yelp/paasta/pull/1897) ([solarkennedy](https://github.com/solarkennedy))
 
 ## [v0.77.0](https://github.com/Yelp/paasta/tree/v0.77.0) (2018-07-16)
