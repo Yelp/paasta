@@ -17,6 +17,7 @@ import unittest
 import warnings
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from math import ceil
 from math import floor
 
@@ -540,9 +541,9 @@ class TestAsgAutoscaler(unittest.TestCase):
     def test_is_new_autoscaling_resource_when_asg_is_above_threshold(self):
         asg = {
             'Instances': [mock.Mock()],
-            'CreatedTime': (datetime.utcnow() - timedelta(
+            'CreatedTime': datetime.now(timezone.utc) - timedelta(
                 seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
-            )).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            ),
         }
         autoscaler = self.create_autoscaler(asg=asg)
         assert not autoscaler.is_new_autoscaling_resource()
@@ -550,7 +551,7 @@ class TestAsgAutoscaler(unittest.TestCase):
     def test_is_new_autoscaling_resource_when_asg_is_below_threshold(self):
         asg = {
             'Instances': [mock.Mock()],
-            'CreatedTime': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            'CreatedTime': datetime.now(timezone.utc),
         }
         autoscaler = self.create_autoscaler(asg=asg)
         assert autoscaler.is_new_autoscaling_resource()
@@ -879,9 +880,9 @@ class TestSpotAutoscaler(unittest.TestCase):
             'SpotFleetRequestConfig': {'FulfilledCapacity': 2},
             'SpotFleetRequestState': 'active',
             'Instances': [mock.Mock()],
-            'CreateTime': (datetime.utcnow() - timedelta(
+            'CreateTime': datetime.now(timezone.utc) - timedelta(
                 seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
-            )).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            ),
         }
         autoscaler = self.create_autoscaler(sfr=sfr)
         assert not autoscaler.is_new_autoscaling_resource()
@@ -891,7 +892,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             'SpotFleetRequestConfig': {'FulfilledCapacity': 2},
             'SpotFleetRequestState': 'active',
             'Instances': [mock.Mock()],
-            'CreateTime': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            'CreateTime': datetime.now(timezone.utc),
         }
         autoscaler = self.create_autoscaler(sfr=sfr)
         assert autoscaler.is_new_autoscaling_resource()

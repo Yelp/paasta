@@ -21,6 +21,7 @@ from collections import defaultdict
 from collections import namedtuple
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from math import ceil
 from math import floor
 from typing import Any
@@ -815,9 +816,8 @@ class SpotAutoscaler(ClusterAutoscaler):
             self.log.warn('Cannot find SFR {}'.format(self.resource['id']))
             return True
 
-        sfr_creation = datetime.strptime(self.sfr['CreateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
-        now = datetime.utcnow()
-        return (now - sfr_creation).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
+        now = datetime.now(timezone.utc)
+        return (now - self.sfr['CreateTime']).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
 
     def get_spot_fleet_instances(
         self,
@@ -999,9 +999,8 @@ class AsgAutoscaler(ClusterAutoscaler):
             self.log.warning("ASG {} not found, removing config file".format(self.resource['id']))
             return True
 
-        asg_creation = datetime.strptime(self.asg['CreatedTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
-        now = datetime.utcnow()
-        return (now - asg_creation).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
+        now = datetime.now(timezone.utc)
+        return (now - self.asg['CreatedTime']).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
 
     def get_asg(self, asg_name: str, region: Optional[str]=None) -> Optional[Dict[str, Any]]:
         asg_client = boto3.client('autoscaling', region_name=region)
