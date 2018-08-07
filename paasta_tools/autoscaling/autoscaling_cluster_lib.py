@@ -240,7 +240,7 @@ class ClusterAutoscaler(object):
         instances = [instance for reservation in instance_reservations for instance in reservation]
         return instances
 
-    def is_new_autoscaling_resource(self):
+    def is_new_autoscaling_resource(self) -> bool:
         raise NotImplementedError()
 
     def describe_instance_status(
@@ -806,7 +806,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         ret = sfrs['SpotFleetRequestConfigs'][0]
         return ret
 
-    def is_new_autoscaling_resource(self):
+    def is_new_autoscaling_resource(self) -> bool:
         """
         Determines if the spot fleet request was created recently as defined by
         CHECK_REGISTERED_SLAVE_THRESHOLD.
@@ -990,7 +990,7 @@ class AsgAutoscaler(ClusterAutoscaler):
     def exists(self) -> bool:
         return True if self.asg else False
 
-    def is_new_autoscaling_resource(self):
+    def is_new_autoscaling_resource(self) -> bool:
         """
         Determines if an autoscaling group was created recently as defined by
         CHECK_REGISTERED_SLAVE_THRESHOLD.
