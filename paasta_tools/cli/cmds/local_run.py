@@ -777,6 +777,10 @@ def command_function_for_framework(framework):
         interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
         return interpolated_command
 
+    def format_tron_command(cmd: str) -> str:
+        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        return interpolated_command
+
     def format_adhoc_command(cmd):
         return cmd
 
@@ -786,6 +790,8 @@ def command_function_for_framework(framework):
         return format_marathon_command
     elif framework == 'adhoc':
         return format_adhoc_command
+    elif framework == 'tron':
+        return format_tron_command
     else:
         raise ValueError("Invalid Framework")
 
@@ -866,17 +872,27 @@ def configure_and_run_docker_container(
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
-            paasta_print(
-                PaastaColors.red(
-                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                    "Please ensure this service has either run through a jenkins pipeline "
-                    "or paasta mark-for-deployment has been run for %s\n" % (
-                        instance_config.get_deploy_group(), service,
+            if instance_config.get_deploy_group() is None:
+                paasta_print(
+                    PaastaColors.red(
+                        f"Error: {service}.{instance} has no 'deploy_group' set. Please set one so "
+                        "the proper version of the code can be downloaded for use.",
                     ),
-                ),
-                sep='',
-                file=sys.stderr,
-            )
+                    sep='',
+                    file=sys.stderr,
+                )
+            else:
+                paasta_print(
+                    PaastaColors.red(
+                        "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                        "Please ensure this service has either run through a jenkins pipeline "
+                        "or paasta mark-for-deployment has been run for %s\n" % (
+                            instance_config.get_deploy_group(), service,
+                        ),
+                    ),
+                    sep='',
+                    file=sys.stderr,
+                )
             return 1
         docker_hash = docker_url
 

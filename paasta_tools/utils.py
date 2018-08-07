@@ -14,6 +14,7 @@
 import contextlib
 import copy
 import datetime
+import difflib
 import errno
 import fcntl
 import glob
@@ -101,7 +102,7 @@ DEFAULT_CPU_BURST_PCT = 900
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes')
+INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
 
 
 TimeCacheEntry = TypedDict(
@@ -277,7 +278,7 @@ class InstanceConfig(object):
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
-            if key in self.config_dict:
+            if key in self.config_dict and self.config_dict[key] is not None:  # type: ignore
                 self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
 
     def __repr__(self) -> str:
@@ -477,7 +478,7 @@ class InstanceConfig(object):
             env["PAASTA_MONITORING_TEAM"] = team
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
-        return env
+        return {str(k): str(v) for (k, v) in env.items()}
 
     def get_env(self) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
@@ -770,15 +771,16 @@ def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List
 
 @time_cache(ttl=60)
 def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
+    suggestions: List[str] = []
     for instance_type in INSTANCE_TYPES:
-        services = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
-        if (service, instance) in services:
+        sis = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
+        if (service, instance) in sis:
             return instance_type
+        suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in sis]))
     else:
         raise NoConfigurationForServiceError(
-            "Error: {} doesn't look like it has been configured to run on the {} cluster.".format(
-                compose_job_id(service, instance), cluster,
-            ),
+            f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
+            f"to run on the {cluster} cluster.{suggestions}",
         )
 
 
@@ -2228,6 +2230,35 @@ def list_all_instances_for_service(
     return instances
 
 
+def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
+    instance_list = []
+    tron_config_content = service_configuration_lib.read_extra_service_information(
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+    )
+    for job in tron_config_content.get('jobs', []) or []:
+        for action in job['actions']:
+            instance = f"{job['name']}.{action['name']}"
+            instance_list.append((service, instance))
+    return instance_list
+
+
+def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
+    instance_list = []
+    instances = service_configuration_lib.read_extra_service_information(
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+    )
+    for instance in instances:
+        if instance.startswith('_'):
+            log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
+        else:
+            instance_list.append((service, instance))
+    return instance_list
+
+
 def get_service_instance_list_no_cache(
     service: str,
     cluster: Optional[str]=None,
@@ -2251,21 +2282,22 @@ def get_service_instance_list_no_cache(
     else:
         instance_types = INSTANCE_TYPES
 
-    instance_list = []
+    instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
         conf_file = f"{srv_instance_type}-{cluster}"
         log.info(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
-        instances = service_configuration_lib.read_extra_service_information(
-            service,
-            conf_file,
-            soa_dir=soa_dir,
-        )
-        for instance in instances:
-            if instance.startswith('_'):
-                log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
-            else:
-                instance_list.append((service, instance))
-
+        if srv_instance_type == 'tron':
+            instance_list.extend(
+                get_tron_instance_list_from_yaml(
+                    service=service, conf_file=conf_file, soa_dir=soa_dir,
+                ),
+            )
+        else:
+            instance_list.extend(
+                get_instance_list_from_yaml(
+                    service=service, conf_file=conf_file, soa_dir=soa_dir,
+                ),
+            )
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
@@ -2886,3 +2918,13 @@ class _Timeout(object):
                     _, e, tb = cast(Tuple, ret[1])
                     raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)
+
+
+def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestions: int = 3) -> str:
+    suggestions = cast(List[str], difflib.get_close_matches(word=word, possibilities=possibilities, n=max_suggestions))
+    if len(suggestions) == 1:
+        return f"\nDid you mean: {suggestions[0]}?"
+    elif len(suggestions) >= 1:
+        return f"\nDid you mean one of: {', '.join(suggestions)}?"
+    else:
+        return ""
