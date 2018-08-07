@@ -542,7 +542,7 @@ class TestAsgAutoscaler(unittest.TestCase):
             'Instances': [mock.Mock()],
             'CreatedTime': (datetime.utcnow() - timedelta(
                 seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
-            )).isoformat() + "Z",
+            )).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         }
         autoscaler = self.create_autoscaler(asg=asg)
         assert not autoscaler.is_new_autoscaling_resource()
@@ -550,7 +550,7 @@ class TestAsgAutoscaler(unittest.TestCase):
     def test_is_new_autoscaling_resource_when_asg_is_below_threshold(self):
         asg = {
             'Instances': [mock.Mock()],
-            'CreatedTime': datetime.utcnow().isoformat() + "Z",
+            'CreatedTime': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         }
         autoscaler = self.create_autoscaler(asg=asg)
         assert autoscaler.is_new_autoscaling_resource()
@@ -881,7 +881,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             'Instances': [mock.Mock()],
             'CreateTime': (datetime.utcnow() - timedelta(
                 seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
-            )).isoformat() + "Z",
+            )).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         }
         autoscaler = self.create_autoscaler(sfr=sfr)
         assert not autoscaler.is_new_autoscaling_resource()
@@ -891,7 +891,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             'SpotFleetRequestConfig': {'FulfilledCapacity': 2},
             'SpotFleetRequestState': 'active',
             'Instances': [mock.Mock()],
-            'CreateTime': datetime.utcnow().isoformat() + "Z",
+            'CreateTime': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         }
         autoscaler = self.create_autoscaler(sfr=sfr)
         assert autoscaler.is_new_autoscaling_resource()
