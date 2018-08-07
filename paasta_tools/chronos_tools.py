@@ -43,6 +43,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
@@ -1105,16 +1106,18 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
     :param cluster: cluster from which extracting the jobs
     :return: tuple(related jobs mapping, jobs configuration)
     """
-    chronos_configs = {
-        (service, instance): load_chronos_job_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-        )
-        for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir)
-        for instance in read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir)
-    }
+    chronos_configs = {}
+    for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir):
+        for instance in read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir):
+            try:
+                chronos_configs[(service, instance)] = load_chronos_job_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            except NoDeploymentsAvailable:
+                pass
 
     adjacency_list = defaultdict(set)  # List of adjacency used by dfs algorithm
     for instance, config in chronos_configs.items():
