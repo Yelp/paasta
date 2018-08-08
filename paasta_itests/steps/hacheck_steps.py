@@ -104,7 +104,7 @@ def the_task_should_not_be_downed(context):
 
 @then('the hacheck task should be safe to kill after {wait_time} seconds')
 def hacheck_should_be_safe_to_kill(context, wait_time):
-    with mock.patch('time.time', return_value=(context.down_time + float(wait_time))):
+    with mock.patch('time.time', return_value=(context.down_time + float(wait_time)), autospec=True):
         assert context.event_loop.run_until_complete(context.drain_method.is_safe_to_kill(context.fake_task))
 
 
@@ -116,7 +116,7 @@ def should_be_safe_to_kill(context, wait_time):
 
 @then('the task should not be safe to kill after {wait_time} seconds')
 def should_not_be_safe_to_kill(context, wait_time):
-    with mock.patch('time.time', return_value=(context.down_time + float(wait_time))):
+    with mock.patch('time.time', return_value=(context.down_time + float(wait_time)), autospec=True):
         assert not context.event_loop.run_until_complete(context.drain_method.is_safe_to_kill(context.fake_task))
 
 

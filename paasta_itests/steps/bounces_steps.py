@@ -298,7 +298,7 @@ def when_a_task_has_drained(context):
 def should_be_discoverable_on_port(context, host_port):
     all_discovered = {}
     for slave_ip in socket.gethostbyname_ex('mesosslave')[2]:
-        with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value=slave_ip):
+        with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value=slave_ip, autospec=True):
             discovered = marathon_tools.marathon_services_running_here()
             all_discovered[slave_ip] = discovered
             if discovered == [('bounce', 'test1', host_port)]:

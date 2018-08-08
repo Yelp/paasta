@@ -40,7 +40,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
     ), mock.patch(
         'paasta_tools.cli.cmds.logs.print_log', autospec=True,
     ) as context.print_log_patch, mock.patch(
-        'paasta_tools.cli.cmds.logs.scribereader',
+        'paasta_tools.cli.cmds.logs.scribereader', autospec=True,
     ):
         context.determine_scribereader_envs_patch.return_value = ['env1', 'env2']
 
