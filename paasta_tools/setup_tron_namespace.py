@@ -59,6 +59,21 @@ def parse_args():
         action='store_true',
         default=False,
     )
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        default=False,
+    )
+    parser.add_argument(
+        '--tron-cluster',
+        help="Tron cluster to read configs for. Defaults to the configuration in /etc/paasta",
+        default=None,
+    )
+    parser.add_argument(
+        '--default-paasta-cluster',
+        help="The paasta cluster to use when unspecified. Defaults to the configuration in /etc/paasta",
+        default=None,
+    )
     args = parser.parse_args()
     return args
 
@@ -74,7 +89,7 @@ def main():
             sys.exit(1)
 
         try:
-            services = tron_tools.get_tron_namespaces_for_cluster()
+            services = tron_tools.get_tron_namespaces_for_cluster(cluster=args.tron_cluster, soa_dir=args.soa_dir)
         except Exception as e:
             log.error('Failed to list tron namespaces: {error}'.format(
                 error=str(e),
@@ -87,7 +102,12 @@ def main():
         log.warning("No namespaces found")
         sys.exit(0)
 
-    client = tron_tools.get_tron_client()
+    if not args.dry_run:
+        client = tron_tools.get_tron_client()
+    if not args.tron_cluster:
+        args.tron_cluster = tron_tools.load_tron_config().get_tron_cluster()
+    if not args.default_paasta_cluster:
+        args.default_paasta_cluster = tron_tools.load_tron_config().get_default_paasta_cluster()
 
     updated = []
     failed = []
@@ -96,15 +116,22 @@ def main():
     for service in services:
         try:
             new_config = tron_tools.create_complete_config(
+                tron_cluster=args.tron_cluster,
+                default_paasta_cluster=args.default_paasta_cluster,
                 service=service,
                 soa_dir=args.soa_dir,
             )
-            if client.update_namespace(service, new_config):
+            if args.dry_run:
+                log.info(f"Would update {service} to:")
+                log.info(f"{new_config}")
                 updated.append(service)
-                log.debug(f'Updated {service}')
             else:
-                skipped.append(service)
-                log.debug(f'Skipped {service}')
+                if client.update_namespace(service, new_config):
+                    updated.append(service)
+                    log.debug(f'Updated {service}')
+                else:
+                    skipped.append(service)
+                    log.debug(f'Skipped {service}')
         except Exception as e:
             log.error(f'Update for {service} failed: {str(e)}')
             log.debug(f'Exception while updating {service}', exc_info=1)
