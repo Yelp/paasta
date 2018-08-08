@@ -778,13 +778,20 @@ class TestTronTools:
             other_config,
         )
         soa_dir = '/testing/services'
+        tron_cluster = 'fake-cluster'
+        default_paasta_cluster = 'test-paasta-cluster'
 
-        assert tron_tools.create_complete_config(service, soa_dir) == mock_yaml_dump.return_value
+        assert tron_tools.create_complete_config(
+            service=service,
+            tron_cluster=tron_cluster,
+            default_paasta_cluster=default_paasta_cluster,
+            soa_dir=soa_dir,
+        ) == mock_yaml_dump.return_value
         mock_tron_service_config.assert_called_once_with(
-            service,
-            mock_tron_system_config.return_value.get_cluster_name.return_value,
-            True,
-            soa_dir,
+            service=service,
+            tron_cluster=tron_cluster,
+            load_deployments=True,
+            soa_dir=soa_dir,
         )
         if service == MASTER_NAMESPACE:
             mock_format_master_config.assert_called_once_with(
@@ -797,7 +804,7 @@ class TestTronTools:
         mock_format_job.assert_called_once_with(
             job_config,
             mock_system_config.return_value.get_cluster_fqdn_format.return_value,
-            mock_tron_system_config.return_value.get_default_paasta_cluster.return_value,
+            default_paasta_cluster,
         )
         complete_config = other_config.copy()
         complete_config.update({
