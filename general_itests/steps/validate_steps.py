@@ -32,28 +32,22 @@ def run_paasta_validate(context):
     validate_cmd = ("paasta validate "
                     "--yelpsoa-config-root %s "
                     "--service %s " % (context.soa_dir, context.service))
-    context.validate_return_code, context.validate_output = _run(command=validate_cmd)
+    context.return_code, context.output = _run(command=validate_cmd)
 
 
 @then('it should have a return code of "{code:d}"')
 def see_expected_return_code(context, code):
-    paasta_print(context.validate_output)
-    paasta_print(context.validate_return_code)
+    paasta_print(context.output)
+    paasta_print(context.return_code)
     paasta_print()
-    assert context.validate_return_code == code
+    assert context.return_code == code
 
 
 @then('everything should pass')
 def validate_status_all_pass(context):
-    assert not context.validate_output or x_mark() not in context.validate_output
+    assert not context.output or x_mark() not in context.output
 
 
 @then('it should report an error in the output')
 def validate_status_something_fail(context):
-    assert x_mark() in context.validate_output
-
-
-@then('the output should contain \'{output_string}\'')
-def output_contains(context, output_string):
-    paasta_print(output_string)
-    assert output_string in context.validate_output
+    assert x_mark() in context.output

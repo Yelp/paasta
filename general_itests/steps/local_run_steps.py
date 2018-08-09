@@ -19,7 +19,6 @@ from behave import when
 from path import Path
 
 from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
 
 
 @given('a simple service to test')
@@ -48,19 +47,12 @@ def non_interactive_local_run(context, var, val):
                         "--instance main "
                         "--build "
                         '''--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' ''' % (var, var))
-        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=90)
-
-
-@then('we should see the expected return code')
-def see_expected_return_code(context):
-    paasta_print(context.local_run_output)
-    paasta_print(context.local_run_return_code)
-    assert context.local_run_return_code == 42
+        context.return_code, context.output = _run(command=localrun_cmd, timeout=90)
 
 
 @then('we should see the environment variable "{var}" with the value "{val}" in the output')
 def env_var_in_output(context, var, val):
-    assert f"{var}={val}" in context.local_run_output
+    assert f"{var}={val}" in context.output
 
 
 @when('we run paasta local-run in non-interactive mode on a chronos job')
@@ -81,7 +73,7 @@ def local_run_on_chronos_job(context):
             "--build "
             "--cmd '/bin/sh -c \"sleep 2s && exit 42\"'"
         )
-        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
+        context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
 
 
 @when('we run paasta local-run on an interactive job')
@@ -95,7 +87,7 @@ def local_run_on_adhoc_job(context):
             "--instance sample_adhoc_job "
             "--build "
         )
-        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
+        context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
 
 
 @when('we run paasta local-run in non-interactive mode on a chronos job with cmd set to \'echo hello && sleep 5\'')
@@ -109,4 +101,4 @@ def local_run_on_chronos_job_with_cmd(context):
             "--instance chronos_job_with_cmd "
             "--build "
         )
-        context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=90)
+        context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
