@@ -14,6 +14,7 @@
 import contextlib
 import copy
 import datetime
+import difflib
 import errno
 import fcntl
 import glob
@@ -770,15 +771,18 @@ def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List
 
 @time_cache(ttl=60)
 def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
+    suggestions: List[str] = []
     for instance_type in INSTANCE_TYPES:
-        services = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
-        if (service, instance) in services:
+        service_instances = get_services_for_cluster(
+            cluster=cluster, instance_type=instance_type, soa_dir=soa_dir,
+        )
+        if (service, instance) in service_instances:
             return instance_type
+        suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
     else:
         raise NoConfigurationForServiceError(
-            "Error: {} doesn't look like it has been configured to run on the {} cluster.".format(
-                compose_job_id(service, instance), cluster,
-            ),
+            f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
+            f"to run on the {cluster} cluster.{suggestions}",
         )
 
 
@@ -2886,3 +2890,13 @@ class _Timeout(object):
                     _, e, tb = cast(Tuple, ret[1])
                     raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)
+
+
+def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestions: int = 3) -> str:
+    suggestions = cast(List[str], difflib.get_close_matches(word=word, possibilities=possibilities, n=max_suggestions))
+    if len(suggestions) == 1:
+        return f"\nDid you mean: {suggestions[0]}?"
+    elif len(suggestions) >= 1:
+        return f"\nDid you mean one of: {', '.join(suggestions)}?"
+    else:
+        return ""
