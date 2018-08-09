@@ -798,9 +798,9 @@ class TestTronTools:
         else:
             assert mock_format_master_config.call_count == 0
         mock_format_job.assert_called_once_with(
-            job_config=job_config,
-            cluster_fqdn_format=mock_system_config.return_value.get_cluster_fqdn_format.return_value,
-            default_paasta_cluster=cluster,
+            job_config,
+            mock_system_config.return_value.get_cluster_fqdn_format.return_value,
+            default_paasta_cluster,
         )
         complete_config = other_config.copy()
         complete_config.update({
