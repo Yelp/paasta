@@ -455,23 +455,25 @@ def load_tron_instance_config(
     raise NoConfigurationForServiceError(f"No tron configuration found for {service} {instance}")
 
 
-def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
-    tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
+def load_tron_yaml(service: str, tron_cluster: str, soa_dir: str) -> Dict[str, Any]:
     config = service_configuration_lib.read_extra_service_information(
         service_name=service,
-        extra_info=f'tron-{cluster}',
+        extra_info=f'tron-{tron_cluster}',
         soa_dir=soa_dir,
     )
     if not config:
-        config = service_configuration_lib._read_yaml_file(os.path.join(tronfig_folder, f"{service}.yaml"))
+        tron_conf_path = os.path.join(
+            os.path.abspath(soa_dir), 'tron', tron_cluster, service + '.yaml',
+        )
+        config = service_configuration_lib._read_yaml_file(tron_conf_path)
     if not config:
         raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
     return config
 
 
-def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_tron_service_config(service, tron_cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
-    config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
+    config = load_tron_yaml(service=service, tron_cluster=tron_cluster, soa_dir=soa_dir)
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
     job_configs = [
         TronJobConfig(
