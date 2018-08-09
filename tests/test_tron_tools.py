@@ -800,7 +800,7 @@ class TestTronTools:
         mock_format_job.assert_called_once_with(
             job_config,
             mock_system_config.return_value.get_cluster_fqdn_format.return_value,
-            default_paasta_cluster,
+            cluster,
         )
         complete_config = other_config.copy()
         complete_config.update({
