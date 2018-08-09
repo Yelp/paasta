@@ -50,7 +50,7 @@ def list_marathon_apps_has_trivial_app(context):
 
 @then('it should show up in marathon_services_running_here')
 def marathon_services_running_here_works(context):
-    with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave'):
+    with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave', autospec=True):
         discovered = paasta_tools.marathon_tools.marathon_services_running_here()
         assert discovered == [('test_marathon_app', 'instance', mock.ANY)]
 
