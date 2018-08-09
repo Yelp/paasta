@@ -102,7 +102,7 @@ DEFAULT_CPU_BURST_PCT = 900
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes')
+INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
 
 
 TimeCacheEntry = TypedDict(
@@ -2232,6 +2232,35 @@ def list_all_instances_for_service(
     return instances
 
 
+def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
+    instance_list = []
+    tron_config_content = service_configuration_lib.read_extra_service_information(
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+    )
+    for job in tron_config_content.get('jobs', []) or []:
+        for action in job['actions']:
+            instance = f"{job['name']}.{action['name']}"
+            instance_list.append((service, instance))
+    return instance_list
+
+
+def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
+    instance_list = []
+    instances = service_configuration_lib.read_extra_service_information(
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+    )
+    for instance in instances:
+        if instance.startswith('_'):
+            log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
+        else:
+            instance_list.append((service, instance))
+    return instance_list
+
+
 def get_service_instance_list_no_cache(
     service: str,
     cluster: Optional[str]=None,
@@ -2255,21 +2284,22 @@ def get_service_instance_list_no_cache(
     else:
         instance_types = INSTANCE_TYPES
 
-    instance_list = []
+    instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
         conf_file = f"{srv_instance_type}-{cluster}"
         log.info(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
-        instances = service_configuration_lib.read_extra_service_information(
-            service,
-            conf_file,
-            soa_dir=soa_dir,
-        )
-        for instance in instances:
-            if instance.startswith('_'):
-                log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
-            else:
-                instance_list.append((service, instance))
-
+        if srv_instance_type == 'tron':
+            instance_list.extend(
+                get_tron_instance_list_from_yaml(
+                    service=service, conf_file=conf_file, soa_dir=soa_dir,
+                ),
+            )
+        else:
+            instance_list.extend(
+                get_instance_list_from_yaml(
+                    service=service, conf_file=conf_file, soa_dir=soa_dir,
+                ),
+            )
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
