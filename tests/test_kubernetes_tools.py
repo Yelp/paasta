@@ -343,24 +343,29 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         ),
                     ),
                     liveness_probe=V1Probe(
-                        failure_threshold=10,
+                        failure_threshold=30,
                         http_get=V1HTTPGetAction(
                             path='/status',
                             port=8888,
+                            scheme='HTTP',
                         ),
-                        initial_delay_seconds=15,
+                        initial_delay_seconds=60,
                         period_seconds=10,
-                        timeout_seconds=5,
+                        timeout_seconds=10,
                     ),
                     name='kurupt-fm',
                     ports=[V1ContainerPort(container_port=8888)],
                     volume_mounts=mock_get_volume_mounts.return_value,
                 ), 'mock_sidecar',
             ]
+            service_namespace_config = mock.Mock()
+            service_namespace_config.get_mode.return_value = 'http'
+            service_namespace_config.get_healthcheck_uri.return_value = '/status'
             assert self.deployment.get_kubernetes_containers(
                 docker_volumes=mock_docker_volumes,
                 system_paasta_config=mock_system_config,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
+                service_namespace_config=service_namespace_config,
             ) == expected
 
     def test_get_pod_volumes(self):
