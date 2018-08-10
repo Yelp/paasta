@@ -531,7 +531,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
 
         name = mock.PropertyMock(return_value='another.file')
         type(mock_event).name = name
-        mock_event.path = '/nail/blah/test-ervice'
+        mock_event.path = '/nail/blah/test-service'
         assert self.handler.get_service_name_from_event(mock_event) is None
 
     def test_watch_new_folder(self):

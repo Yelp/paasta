@@ -89,7 +89,7 @@ def perform_http_healthcheck(url, timeout):
 
 
 def perform_tcp_healthcheck(url, timeout):
-    """Returns true if successfully connests to host and port, false otherwise
+    """Returns true if successfully connects to host and port, false otherwise
 
     :param url: the healthcheck url (in the form tcp://host:port)
     :param timeout: timeout in seconds
@@ -179,7 +179,7 @@ def simulate_healthcheck_on_service(
         paasta_print('\nStarting health check via %s (waiting %s seconds before '
                      'considering failures due to grace period):' % (healthcheck_link, grace_period))
 
-        # silenty start performing health checks until grace period ends or first check succeeds
+        # silently start performing health checks until grace period ends or first check succeeds
         graceperiod_end_time = time.time() + grace_period
         after_grace_period_attempts = 0
         while True:
@@ -866,17 +866,27 @@ def configure_and_run_docker_container(
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
-            paasta_print(
-                PaastaColors.red(
-                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                    "Please ensure this service has either run through a jenkins pipeline "
-                    "or paasta mark-for-deployment has been run for %s\n" % (
-                        instance_config.get_deploy_group(), service,
+            if instance_config.get_deploy_group() is None:
+                paasta_print(
+                    PaastaColors.red(
+                        f"Error: {service}.{instance} has no 'deploy_group' set. Please set one so "
+                        "the proper image can be used to run for this service.",
                     ),
-                ),
-                sep='',
-                file=sys.stderr,
-            )
+                    sep='',
+                    file=sys.stderr,
+                )
+            else:
+                paasta_print(
+                    PaastaColors.red(
+                        "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                        "Please ensure this service has either run through a jenkins pipeline "
+                        "or paasta mark-for-deployment has been run for %s\n" % (
+                            instance_config.get_deploy_group(), service,
+                        ),
+                    ),
+                    sep='',
+                    file=sys.stderr,
+                )
             return 1
         docker_hash = docker_url
 

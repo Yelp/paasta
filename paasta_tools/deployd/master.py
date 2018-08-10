@@ -205,7 +205,7 @@ class DeployDaemon(PaastaThread):
                 self.log.error("One or more watcher died, committing suicide!")
                 sys.exit(1)
             if self.all_workers_dead():
-                self.log.error("All workers have died, comitting suicide!")
+                self.log.error("All workers have died, committing suicide!")
                 sys.exit(1)
             self.check_and_start_workers()
             time.sleep(0.1)

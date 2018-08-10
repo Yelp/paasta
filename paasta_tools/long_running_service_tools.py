@@ -136,7 +136,7 @@ class LongRunningServiceConfig(InstanceConfig):
                     '{} is invalid'.format(registration, self.service),
                 )
 
-        # Backwards compatbility with nerve_ns
+        # Backwards compatibility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
         if not registrations and 'nerve_ns' in self.config_dict:
             registrations.append(
@@ -283,7 +283,7 @@ def get_healthcheck_for_instance(
 def load_service_namespace_config(service: str, namespace: str, soa_dir: str=DEFAULT_SOA_DIR) -> ServiceNamespaceConfig:
     """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
-    Retrevies the following keys:
+    Retrieves the following keys:
 
     - proxy_port: the proxy port defined for the given namespace
     - healthcheck_mode: the mode for the healthcheck (http or tcp)

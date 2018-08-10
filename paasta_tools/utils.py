@@ -14,6 +14,7 @@
 import contextlib
 import copy
 import datetime
+import difflib
 import errno
 import fcntl
 import glob
@@ -277,7 +278,7 @@ class InstanceConfig(object):
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
-            if key in self.config_dict:
+            if key in self.config_dict and self.config_dict[key] is not None:  # type: ignore
                 self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
 
     def __repr__(self) -> str:
@@ -477,7 +478,7 @@ class InstanceConfig(object):
             env["PAASTA_MONITORING_TEAM"] = team
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
-        return env
+        return {str(k): str(v) for (k, v) in env.items()}
 
     def get_env(self) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
@@ -770,15 +771,18 @@ def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List
 
 @time_cache(ttl=60)
 def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
+    suggestions: List[str] = []
     for instance_type in INSTANCE_TYPES:
-        services = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
-        if (service, instance) in services:
+        service_instances = get_services_for_cluster(
+            cluster=cluster, instance_type=instance_type, soa_dir=soa_dir,
+        )
+        if (service, instance) in service_instances:
             return instance_type
+        suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
     else:
         raise NoConfigurationForServiceError(
-            "Error: {} doesn't look like it has been configured to run on the {} cluster.".format(
-                compose_job_id(service, instance), cluster,
-            ),
+            f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
+            f"to run on the {cluster} cluster.{suggestions}",
         )
 
 
@@ -798,7 +802,7 @@ def compose(
 class PaastaColors:
 
     """Collection of static variables and methods to assist in coloring text."""
-    # ANSI colour codes
+    # ANSI color codes
     BLUE = '\033[34m'
     BOLD = '\033[1m'
     CYAN = '\033[36m'
@@ -814,7 +818,7 @@ class PaastaColors:
         """Return bolded text.
 
         :param text: a string
-        :return: text colour coded with ANSI bold
+        :return: text color coded with ANSI bold
         """
         return PaastaColors.color_text(PaastaColors.BOLD, text)
 
@@ -823,7 +827,7 @@ class PaastaColors:
         """Return text that can be printed blue.
 
         :param text: a string
-        :return: text colour coded with ANSI blue
+        :return: text color coded with ANSI blue
         """
         return PaastaColors.color_text(PaastaColors.BLUE, text)
 
@@ -832,7 +836,7 @@ class PaastaColors:
         """Return text that can be printed green.
 
         :param text: a string
-        :return: text colour coded with ANSI green"""
+        :return: text color coded with ANSI green"""
         return PaastaColors.color_text(PaastaColors.GREEN, text)
 
     @staticmethod
@@ -840,7 +844,7 @@ class PaastaColors:
         """Return text that can be printed red.
 
         :param text: a string
-        :return: text colour coded with ANSI red"""
+        :return: text color coded with ANSI red"""
         return PaastaColors.color_text(PaastaColors.RED, text)
 
     @staticmethod
@@ -848,16 +852,16 @@ class PaastaColors:
         """Return text that can be printed magenta.
 
         :param text: a string
-        :return: text colour coded with ANSI magenta"""
+        :return: text color coded with ANSI magenta"""
         return PaastaColors.color_text(PaastaColors.MAGENTA, text)
 
     @staticmethod
     def color_text(color: str, text: str) -> str:
         """Return text that can be printed color.
 
-        :param color: ANSI colour code
+        :param color: ANSI color code
         :param text: a string
-        :return: a string with ANSI colour encoding"""
+        :return: a string with ANSI color encoding"""
         # any time text returns to default, we want to insert our color.
         replaced = text.replace(PaastaColors.DEFAULT, PaastaColors.DEFAULT + color)
         # then wrap the beginning and end in our color/default.
@@ -868,7 +872,7 @@ class PaastaColors:
         """Return text that can be printed cyan.
 
         :param text: a string
-        :return: text colour coded with ANSI cyan"""
+        :return: text color coded with ANSI cyan"""
         return PaastaColors.color_text(PaastaColors.CYAN, text)
 
     @staticmethod
@@ -876,7 +880,7 @@ class PaastaColors:
         """Return text that can be printed yellow.
 
         :param text: a string
-        :return: text colour coded with ANSI yellow"""
+        :return: text color coded with ANSI yellow"""
         return PaastaColors.color_text(PaastaColors.YELLOW, text)
 
     @staticmethod
@@ -1640,7 +1644,7 @@ class SystemPaastaConfig(object):
 
     def get_deployd_startup_oracle_enabled(self) -> bool:
         """This controls whether deployd will add all services that need a bounce on
-        startup. Generally this is desirable behaviour. If you are performing a bounce
+        startup. Generally this is desirable behavior. If you are performing a bounce
         of *all* services you will want to disable this.
 
         :returns: A boolean
@@ -2857,7 +2861,7 @@ class _Timeout(object):
 
     def run(self, *args: Any, **kwargs: Any) -> None:
         # Try and put the result of the function into the q
-        # if an exception occurrs then we put the exc_info instead
+        # if an exception occurs then we put the exc_info instead
         # so that it can be raised in the main thread.
         try:
             self.control.put((True, self.function(*args, **kwargs)))
@@ -2886,3 +2890,13 @@ class _Timeout(object):
                     _, e, tb = cast(Tuple, ret[1])
                     raise e.with_traceback(tb)
         raise TimeoutError(self.error_message)
+
+
+def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestions: int = 3) -> str:
+    suggestions = cast(List[str], difflib.get_close_matches(word=word, possibilities=possibilities, n=max_suggestions))
+    if len(suggestions) == 1:
+        return f"\nDid you mean: {suggestions[0]}?"
+    elif len(suggestions) >= 1:
+        return f"\nDid you mean one of: {', '.join(suggestions)}?"
+    else:
+        return ""

@@ -382,7 +382,7 @@ def test_are_services_up_on_port():
         mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
         mock_backend_is_up.return_value = True
         mock_backend_is_up.side_effect = None
-        # all up and present but service1.instance3 not presetn
+        # all up and present but service1.instance3 not present
         assert not smartstack_tools.are_services_up_on_ip_port(
             synapse_host='1.2.3.4',
             synapse_port=3212,

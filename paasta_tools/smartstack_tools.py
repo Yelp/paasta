@@ -120,7 +120,7 @@ def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_
 
 
 def load_smartstack_info_for_service(service, namespace, blacklist, system_paasta_config, soa_dir=DEFAULT_SOA_DIR):
-    """Retrives number of available backends for given services
+    """Retrieves number of available backends for given services
 
     :param service_instances: A list of tuples of (service, instance)
     :param namespaces: list of Smartstack namespaces
@@ -369,7 +369,7 @@ def match_backends_and_tasks(backends, tasks):
 
 
 class SmartstackReplicationChecker:
-    """Retrives the number of registered instances in each discoverable location.
+    """Retrieves the number of registered instances in each discoverable location.
 
     Optimized for multiple queries. Gets the list of backends from synapse-haproxy
     only once per location and reuse it in all subsequent calls of

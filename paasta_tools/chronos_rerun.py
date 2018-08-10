@@ -119,7 +119,7 @@ def set_tmp_naming_scheme(chronos_job, timestamp=None):
     :param chronos_job: a chronos job suitable for POSTing to Chronos
     :param timestamp: timestamp to use for the generation of the tmp job name
     :returns: the chronos_job parameter, with the name of the job modified to
-        allow it to be idenitified as a temporary job.
+        allow it to be identified as a temporary job.
     """
     current_name = chronos_job['name']
 
@@ -134,7 +134,7 @@ def set_tmp_naming_scheme(chronos_job, timestamp=None):
 
 def remove_parents(chronos_job):
     """
-    Given a chronos job, return a new job identifcal to the first, but with the
+    Given a chronos job, return a new job identical to the first, but with the
     parents field removed
 
     :param chronos_job: a chronos_job suitable for POSTing to Chronos

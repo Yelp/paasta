@@ -3,7 +3,7 @@ Provides functions to temporary boost cluster capacity.
 Useful during big service bounce or failovers to preemptively increase capacity.
 
 This works by setting a temporary multiplier on the initial cluster's measured load.
-The resulting increased capacity is garanteed until the end of the boost.
+The resulting increased capacity is guaranteed until the end of the boost.
 If usage gets higher the pool will behave normally and scale up
 This applies to any resource (cpu, memory, disk). Usually the limiting one is the cpu.
 Default duration of the boost factor is 40 minutes and default value is 1.5

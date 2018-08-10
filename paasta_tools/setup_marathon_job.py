@@ -854,7 +854,7 @@ def deploy_marathon_service(
     soa_dir: str,
     marathon_apps_with_clients: Optional[Collection[Tuple[MarathonApp, MarathonClient]]],
 ) -> Tuple[int, float]:
-    """deploy the service instance given and proccess return code
+    """deploy the service instance given and process return code
     if there was an error we send a sensu alert.
 
     :param service: The service name to setup

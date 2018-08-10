@@ -364,7 +364,7 @@ def key_func_for_attribute_multi(
     """ Return a closure that given a slave, will return the value of a list of
     attributes, compiled into a hashable tuple
 
-    :param attributes: the attribues to inspect in the slave
+    :param attributes: the attributes to inspect in the slave
     :returns: a closure, which takes a slave and returns the value of those attributes
     """
     def get_attribute(slave, attribute):
@@ -506,7 +506,7 @@ def get_resource_utilization_by_grouping(
     resource utilization for each value of a given attribute.
 
     :grouping_func: a function that given a slave, will return the value of an
-    attribtue to group by.
+    attribute to group by.
     :param mesos_state: the mesos state
     :param filters: filters to apply to the slaves in the calculation, with
     filtering preformed by filter_slaves

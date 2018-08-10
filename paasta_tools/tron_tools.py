@@ -36,10 +36,10 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 
 from paasta_tools.monitoring_tools import list_teams
+from typing import Optional
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
-MASTER_NAMESPACE = 'MASTER'
 
 
 class TronNotConfigured(Exception):
@@ -118,8 +118,8 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
-    def get_deploy_group(self):
-        return self.config_dict.get('deploy_group', '')
+    def get_deploy_group(self) -> Optional[str]:
+        return self.config_dict.get('deploy_group', None)
 
     def get_cmd(self):
         return self.config_dict.get('command')
@@ -217,8 +217,8 @@ class TronJobConfig:
     def get_service(self):
         return self.config_dict.get('service')
 
-    def get_deploy_group(self):
-        return self.config_dict.get('deploy_group', '')
+    def get_deploy_group(self) -> Optional[str]:
+        return self.config_dict.get('deploy_group', None)
 
     def get_cluster(self):
         return self.config_dict.get('cluster')

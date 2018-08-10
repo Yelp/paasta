@@ -45,4 +45,4 @@
         description: This hook ensures all mock.patch invocations specify an autospec
         entry: paasta_tools/contrib/mock_patch_checker.py
         language: script
-        files: ^tests/.*\.py$
+        files: ^tests/.*\.py$|^.*_itests/.*\.py

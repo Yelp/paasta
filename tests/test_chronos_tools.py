@@ -1867,7 +1867,7 @@ class TestChronosTools:
             'name': 'late_job',
             'disabled': True,
             # Only last time counts, so even though this job's error comes
-            # before either early_job result, that result is superceded by this
+            # before either early_job result, that result is superseded by this
             # job's later success.
             'lastError': '2015-04-20T16:10:00.000Z',
             'lastSuccess': '2015-04-20T16:40:00.000Z',

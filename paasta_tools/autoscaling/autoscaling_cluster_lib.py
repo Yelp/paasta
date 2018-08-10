@@ -360,7 +360,7 @@ class ClusterAutoscaler(object):
         if dry_run:
             return True
         if timer.ready():
-            self.log.warning("Timer expired before slave ready to kill, proceding to terminate anyways")
+            self.log.warning("Timer expired before slave ready to kill, proceeding to terminate anyways")
             timer.start()
             raise TimeoutError
         if not should_drain:
@@ -389,7 +389,7 @@ class ClusterAutoscaler(object):
         :param region to connect to ec2
         :param dry_run: Don't drain or make changes to spot fleet if True
         :param should_drain: whether we should drain hosts before waiting to stop them
-        :param timer: a Timer object to keep terminates happening once every n seconds accross co-routines
+        :param timer: a Timer object to keep terminates happening once every n seconds across co-routines
         """
         self.log.info("Starting TERMINATING: {} (Hostname = {}, IP = {})".format(
             slave.instance_id,
@@ -1358,7 +1358,7 @@ def get_mesos_utilization_error(
     Example: If the current capacity is 10 unit (could be CPU, memory, disk, gpu...)
     If the target usage is 0.8 and the current usage is 9 units. We will return 1.125:
     An 12.5% increase in capacity is required => 9/11.25 = 80% usage
-    When the boost feature is enabled, the current_load will be artifically increased
+    When the boost feature is enabled, the current_load will be artificially increased
     and stored into boosted_load. If the boost is disabled, boosted_load = current_load
     """
     try:

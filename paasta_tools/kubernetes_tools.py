@@ -283,7 +283,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sidecar_containers(self, system_paasta_config: SystemPaastaConfig) -> List[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
-        # continuing a bounce. this readinees check lets us acheive the same thing
+        # continuing a bounce. this readiness check lets us achieve the same thing
         readiness_probe: Optional[V1Probe]
         if system_paasta_config.get_enable_nerve_readiness_check():
             readiness_probe = V1Probe(
@@ -598,7 +598,7 @@ def read_all_registrations_for_service_instance(
     cluster: Optional[str]=None,
     soa_dir: str=DEFAULT_SOA_DIR,
 ) -> Sequence[str]:
-    """Retreive all registrations as fully specified name.instance pairs
+    """Retrieve all registrations as fully specified name.instance pairs
     for a particular service instance.
 
     For example, the 'main' paasta instance of the 'test' service may register

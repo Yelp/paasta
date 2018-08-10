@@ -26,10 +26,10 @@ from paasta_tools.oom_logger import main
 @pytest.fixture
 def sys_stdin():
     return [
-        'some ramdom line1\n',
+        'some random line1\n',
         '1500316299 dev37-devc [30533610.306528] apache2 invoked oom-killer: '
         'gfp_mask=0x24000c0, order=0, oom_score_adj=0\n,'
-        'some ramdom line2\n',
+        'some random line2\n',
         '1500316300 dev37-devc [30533610.306529] Task in '
         '/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 '
         'killed as a result of limit of '
@@ -40,10 +40,10 @@ def sys_stdin():
 @pytest.fixture
 def sys_stdin_process_name_with_slashes():
     return [
-        'some ramdom line1\n',
+        'some random line1\n',
         '1500316299 dev37-devc [30533610.306528] /nail/live/yelp invoked oom-killer: '
         'gfp_mask=0x24000c0, order=0, oom_score_adj=0\n,'
-        'some ramdom line2\n',
+        'some random line2\n',
         '1500316300 dev37-devc [30533610.306529] Task in '
         '/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 '
         'killed as a result of limit of '
@@ -54,10 +54,10 @@ def sys_stdin_process_name_with_slashes():
 @pytest.fixture
 def sys_stdin_process_name_with_spaces():
     return [
-        'some ramdom line1\n',
+        'some random line1\n',
         '1500316299 dev37-devc [30533610.306528] python batch/ke invoked oom-killer: '
         'gfp_mask=0x24000c0, order=0, oom_score_adj=0\n,'
-        'some ramdom line2\n',
+        'some random line2\n',
         '1500316300 dev37-devc [30533610.306529] Task in '
         '/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 '
         'killed as a result of limit of '
@@ -68,12 +68,12 @@ def sys_stdin_process_name_with_spaces():
 @pytest.fixture
 def sys_stdin_without_process_name():
     return [
-        'some ramdom line1\n',
+        'some random line1\n',
         '1500216300 dev37-devc [1140036.678311] Task in '
         '/docker/e3a1057fdd485f5dffe48f1584e6f30c2bf6d30107d95518aea32bbb8bb29560 '
         'killed as a result of limit of '
         '/docker/e3a1057fdd485f5dffe48f1584e6f30c2bf6d30107d95518aea32bbb8bb29560\n,'
-        'some ramdom line2\n',
+        'some random line2\n',
         '1500316300 dev37-devc [30533610.306529] Task in '
         '/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 '
         'killed as a result of limit of '

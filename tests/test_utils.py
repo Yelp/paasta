@@ -231,7 +231,7 @@ def test_load_system_paasta_config_file_dne():
 
 
 def test_load_system_paasta_config_duplicate_keys_errors():
-    fake_file_a = {'cluster': 'this value will be overriden', 'sensu_host': 'fake_data'}
+    fake_file_a = {'cluster': 'this value will be overridden', 'sensu_host': 'fake_data'}
     fake_file_b = {'cluster': 'overriding value'}
     file_mock = mock.mock_open()
     with mock.patch(
@@ -1230,6 +1230,22 @@ class TestInstanceConfig:
             'PAASTA_DOCKER_IMAGE': '',
         }
 
+    def test_get_env_handles_non_strings_and_returns_strings(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_service',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={"deploy_group": None},
+            branch_dict=None,
+        )
+        assert fake_conf.get_env() == {
+            'PAASTA_SERVICE': 'fake_service',
+            'PAASTA_INSTANCE': 'fake_instance',
+            'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DEPLOY_GROUP': 'None',
+            'PAASTA_DOCKER_IMAGE': '',
+        }
+
     def test_get_env_with_config(self):
         fake_conf = utils.InstanceConfig(
             service='',
@@ -2134,3 +2150,21 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
             mock.call(f.fileno(), utils.fcntl.LOCK_EX),
             mock.call(f.fileno(), utils.fcntl.LOCK_UN),
         ]
+
+
+def test_suggest_possibilities_none():
+    expected = ""
+    actual = utils.suggest_possibilities(word='FOO', possibilities=[])
+    assert actual == expected
+
+
+def test_suggest_possibilities_many():
+    expected = "FOOO, FOOBAR"
+    actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOO", "FOOBAR"])
+    assert expected in actual
+
+
+def test_suggest_possibilities_one():
+    expected = "FOOBAR?"
+    actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOBAR", "BAZ"])
+    assert expected in actual

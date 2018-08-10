@@ -178,11 +178,11 @@ def config_with_historical_stats(chronos_client, service, instance, job_config):
     there is no job currently deployed to Chronos for the service+instance
     in soa-configs, these values are left empty.
 
-    :param chrons_client: a chronos-python client object
+    :param chronos_client: a chronos-python client object
     :param service: the service for the job
     :param instance: the instance for the job
     :param job_config: the job config to be modified
-    :returns: a modified job config, with the historcal stats set
+    :returns: a modified job config, with the historical stats set
     """
     existing_matching_jobs = chronos_tools.lookup_chronos_jobs(
         client=chronos_client,
@@ -262,7 +262,7 @@ def main():
     except NoSlavesAvailableError as e:
         error_msg = (
             f"There are no PaaSTA slaves that can run {args.service_instance} in cluster {cluster}\n" +
-            "Double check the cluster and the configured constratints/pool/whitelist.\n"
+            "Double check the cluster and the configured constraints/pool/whitelist.\n"
             "Error was: %s" % str(e)
         )
         send_event(

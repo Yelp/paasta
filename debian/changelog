@@ -1,3 +1,10 @@
+paasta-tools (0.78.0) xenial; urgency=medium
+
+  * 0.78.0 tagged with 'make release'
+    Commit: updated changelog for 0.78.0
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 07 Aug 2018 11:48:03 -0700
+
 paasta-tools (0.77.3) xenial; urgency=medium
 
   * 0.77.3 tagged with 'make release'

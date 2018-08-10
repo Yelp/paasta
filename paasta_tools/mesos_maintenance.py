@@ -44,7 +44,7 @@ MAINTENANCE_ROLE = 'maintenance'
 def base_api():
     """Helper function for making all API requests
 
-    :returns: a function that can be callecd to make a request
+    :returns: a function that can be called to make a request
     """
     leader = get_mesos_leader()
 

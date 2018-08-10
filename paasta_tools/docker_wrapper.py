@@ -214,8 +214,8 @@ def is_numa_enabled():
         return False
 
 
-def get_cpu_requierements(env_args):
-    # Ensure we return a float. If no requierements we return 0.0
+def get_cpu_requirements(env_args):
+    # Ensure we return a float. If no requirements we return 0.0
     try:
         return float(env_args.get('MARATHON_APP_RESOURCE_CPUS'))
     except (ValueError, TypeError):
@@ -223,8 +223,8 @@ def get_cpu_requierements(env_args):
         return 0.0
 
 
-def get_mem_requierements(env_args):
-    # Ensure we return a float. If no requierements we return 0.0
+def get_mem_requirements(env_args):
+    # Ensure we return a float. If no requirements we return 0.0
     try:
         return float(env_args.get('MARATHON_APP_RESOURCE_MEM'))
     except (ValueError, TypeError):
@@ -260,12 +260,12 @@ def append_cpuset_args(argv, env_args):
     if not is_numa_enabled():
         logging.error('Could not detect NUMA on the system')
         return argv
-    if len(cpumap[pinned_numa_node]) < get_cpu_requierements(env_args):
+    if len(cpumap[pinned_numa_node]) < get_cpu_requirements(env_args):
         logging.error('The NUMA node has less cores than requested')
         return argv
-    if get_numa_memsize(len(cpumap)) <= get_mem_requierements(env_args):
+    if get_numa_memsize(len(cpumap)) <= get_mem_requirements(env_args):
         logging.error('Requested memory:{} MB does not fit in one NUMA node: {} MB'.format(
-            get_mem_requierements(env_args), get_numa_memsize(len(cpumap)),
+            get_mem_requirements(env_args), get_numa_memsize(len(cpumap)),
         ))
         return argv
 

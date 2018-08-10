@@ -144,7 +144,7 @@ def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
     except LSRemoteException as e:
         paasta_print("Error talking to the git server: {}\n"
                      "It is not possible to verify that {} is marked for deployment in {}, "
-                     "but I assume that it is marked and will conitune waiting.."
+                     "but I assume that it is marked and will continue waiting.."
                      .format(e, git_sha, deploy_group))
         return
     if marked_sha == '':
