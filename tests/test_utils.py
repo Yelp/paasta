@@ -2150,3 +2150,21 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
             mock.call(f.fileno(), utils.fcntl.LOCK_EX),
             mock.call(f.fileno(), utils.fcntl.LOCK_UN),
         ]
+
+
+def test_suggest_possibilities_none():
+    expected = ""
+    actual = utils.suggest_possibilities(word='FOO', possibilities=[])
+    assert actual == expected
+
+
+def test_suggest_possibilities_many():
+    expected = "FOOO, FOOBAR"
+    actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOO", "FOOBAR"])
+    assert expected in actual
+
+
+def test_suggest_possibilities_one():
+    expected = "FOOBAR?"
+    actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOBAR", "BAZ"])
+    assert expected in actual
