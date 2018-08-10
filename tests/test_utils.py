@@ -1230,6 +1230,22 @@ class TestInstanceConfig:
             'PAASTA_DOCKER_IMAGE': '',
         }
 
+    def test_get_env_handles_non_strings_and_returns_strings(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_service',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={"deploy_group": None},
+            branch_dict=None,
+        )
+        assert fake_conf.get_env() == {
+            'PAASTA_SERVICE': 'fake_service',
+            'PAASTA_INSTANCE': 'fake_instance',
+            'PAASTA_CLUSTER': 'fake_cluster',
+            'PAASTA_DEPLOY_GROUP': 'None',
+            'PAASTA_DOCKER_IMAGE': '',
+        }
+
     def test_get_env_with_config(self):
         fake_conf = utils.InstanceConfig(
             service='',

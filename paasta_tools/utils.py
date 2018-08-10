@@ -277,7 +277,7 @@ class InstanceConfig(object):
         config_interpolation_keys = ('deploy_group',)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
-            if key in self.config_dict:
+            if key in self.config_dict and self.config_dict[key] is not None:  # type: ignore
                 self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
 
     def __repr__(self) -> str:
@@ -477,7 +477,7 @@ class InstanceConfig(object):
             env["PAASTA_MONITORING_TEAM"] = team
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
-        return env
+        return {str(k): str(v) for (k, v) in env.items()}
 
     def get_env(self) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
