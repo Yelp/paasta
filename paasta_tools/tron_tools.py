@@ -447,14 +447,13 @@ def load_tron_service_config(service, tron_cluster, load_deployments=True, soa_d
     return job_configs, extra_config
 
 
-def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
+def create_complete_config(service, tron_cluster, default_paasta_cluster, soa_dir=DEFAULT_SOA_DIR):
     """Generate a namespace configuration file for Tron, for a service."""
     system_paasta_config = load_system_paasta_config()
-    tron_config = load_tron_config()
 
     job_configs, other_config = load_tron_service_config(
         service=service,
-        tron_cluster=tron_config.get_cluster_name(),
+        tron_cluster=tron_cluster,
         load_deployments=True,
         soa_dir=soa_dir,
     )
@@ -470,7 +469,7 @@ def create_complete_config(service, soa_dir=DEFAULT_SOA_DIR):
         format_tron_job_dict(
             job_config=job_config,
             cluster_fqdn_format=system_paasta_config.get_cluster_fqdn_format(),
-            default_paasta_cluster=tron_config.get_default_paasta_cluster(),
+            default_paasta_cluster=default_paasta_cluster,
         ) for job_config in job_configs
     ]
 

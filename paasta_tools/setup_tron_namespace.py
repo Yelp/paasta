@@ -59,6 +59,16 @@ def parse_args():
         action='store_true',
         default=False,
     )
+    parser.add_argument(
+        '--tron-cluster',
+        help="Tron cluster to read configs for. Defaults to the configuration in /etc/paasta",
+        default=None,
+    )
+    parser.add_argument(
+        '--default-paasta-cluster',
+        help="The paasta cluster to use when unspecified. Defaults to the configuration in /etc/paasta",
+        default=None,
+    )
     args = parser.parse_args()
     return args
 
@@ -74,7 +84,7 @@ def main():
             sys.exit(1)
 
         try:
-            services = tron_tools.get_tron_namespaces_for_cluster()
+            services = tron_tools.get_tron_namespaces_for_cluster(cluster=args.tron_cluster, soa_dir=args.soa_dir)
         except Exception as e:
             log.error('Failed to list tron namespaces: {error}'.format(
                 error=str(e),
@@ -89,6 +99,11 @@ def main():
 
     client = tron_tools.get_tron_client()
 
+    if not args.tron_cluster:
+        args.tron_cluster = tron_tools.load_tron_config().get_tron_cluster()
+    if not args.default_paasta_cluster:
+        args.default_paasta_cluster = tron_tools.load_tron_config().get_default_paasta_cluster()
+
     updated = []
     failed = []
     skipped = []
@@ -96,6 +111,8 @@ def main():
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
+                tron_cluster=args.tron_cluster,
+                default_paasta_cluster=args.default_paasta_cluster,
                 service=service,
                 soa_dir=args.soa_dir,
             )
