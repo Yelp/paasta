@@ -368,6 +368,54 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 service_namespace_config=service_namespace_config,
             ) == expected
 
+    def test_get_liveness_probe(self):
+        liveness_probe = V1Probe(
+            failure_threshold=30,
+            http_get=V1HTTPGetAction(
+                path='/status',
+                port=8888,
+                scheme='HTTP',
+            ),
+            initial_delay_seconds=60,
+            period_seconds=10,
+            timeout_seconds=10,
+        )
+
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = 'http'
+        service_namespace_config.get_healthcheck_uri.return_value = '/status'
+
+        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+
+    def test_get_liveness_probe_non_smartstack(self):
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = None
+        assert self.deployment.get_liveness_probe(service_namespace_config) is None
+
+    def test_get_liveness_probe_values(self):
+        liveness_probe = V1Probe(
+            failure_threshold=1,
+            http_get=V1HTTPGetAction(
+                path='/status',
+                port=8888,
+                scheme='HTTP',
+            ),
+            initial_delay_seconds=2,
+            period_seconds=3,
+            timeout_seconds=4,
+        )
+
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = 'http'
+        service_namespace_config.get_healthcheck_uri.return_value = '/status'
+
+        self.deployment.config_dict['healthcheck_max_consecutive_failures'] = 1
+        self.deployment.config_dict['healthcheck_grace_period_seconds'] = 2
+        self.deployment.config_dict['healthcheck_interval_seconds'] = 3
+        self.deployment.config_dict['healthcheck_timeout_seconds'] = 4
+
+        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+
     def test_get_pod_volumes(self):
         mock_docker_volumes = [
             {'hostPath': '/nail/blah', 'containerPath': '/nail/foo'},
