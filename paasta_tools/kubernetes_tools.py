@@ -354,8 +354,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_liveness_probe(
         self,
         service_namespace_config: ServiceNamespaceConfig,
-    ) -> V1Probe:
+    ) -> Optional[V1Probe]:
         mode = self.get_healthcheck_mode(service_namespace_config)
+        if mode is None:
+            return None
 
         initial_delay_seconds = self.get_healthcheck_grace_period_seconds()
         period_seconds = self.get_healthcheck_interval_seconds()
