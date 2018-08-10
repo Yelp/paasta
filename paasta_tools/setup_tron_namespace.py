@@ -93,7 +93,7 @@ def main():
     failed = []
     skipped = []
 
-    for service in services:
+    for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
                 service=service,
