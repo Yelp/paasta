@@ -48,6 +48,7 @@ from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 
@@ -378,9 +379,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 scheme=mode.upper(),
             )
         elif mode == 'tcp':
-            # probe.tcp_socket = self.get_healthcheck_tcp_socket()
-            raise InvalidHealthcheckMode(
-                "Unsupported mode: %s. Not implemented yet" % mode,
+            probe.tcp_socket = V1TCPSocketAction(
+                port=8888,
+            )
+        elif mode == 'cmd':
+            probe._exec = V1ExecAction(
+                command=self.get_healthcheck_cmd(),
             )
         else:
             raise InvalidHealthcheckMode(
