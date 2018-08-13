@@ -1,3 +1,11 @@
+paasta-tools (0.78.1) xenial; urgency=medium
+
+  * 0.78.1 tagged with 'make release'
+    Commit: Merge pull request #1940 from Yelp/sorted_deploy  Always
+    deploy tron namespaces in a sorted order
+
+ -- Huadong Liu <hliu@yelp.com>  Fri, 10 Aug 2018 09:06:57 -0700
+
 paasta-tools (0.78.0) xenial; urgency=medium
 
   * 0.78.0 tagged with 'make release'
