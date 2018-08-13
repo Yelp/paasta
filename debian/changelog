@@ -1,3 +1,17 @@
+paasta-tools (0.78.2) xenial; urgency=medium
+
+  * 0.78.2 tagged with 'make release'
+    Commit: Merge pull request #1927 from Yelp/k8s-paasta-healthchecks
+    Use paasta service configs to create k8s healthchecks
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 13 Aug 2018 07:26:45 -0700
+
+paasta-tools (0.78.1-yelp1) trusty; urgency=medium
+
+  * Build for yelp: add scribereader to virtualenv
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 13 Aug 2018 03:23:05 -0700
+
 paasta-tools (0.78.1) xenial; urgency=medium
 
   * 0.78.1 tagged with 'make release'

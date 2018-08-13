@@ -11,6 +11,7 @@ Subpackages
     paasta_tools.cli
     paasta_tools.deployd
     paasta_tools.frameworks
+    paasta_tools.kubernetes
     paasta_tools.mesos
     paasta_tools.metrics
     paasta_tools.monitoring
