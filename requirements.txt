@@ -43,6 +43,7 @@ kazoo==2.4.0
 kubernetes==6.0.0
 marathon==0.9.3
 MarkupSafe==1.0
+mrjob==0.5.12
 msgpack-python==0.4.8
 multidict==4.1.0
 mypy-extensions==0.3.0
