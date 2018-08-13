@@ -23,4 +23,10 @@ Feature: paasta local-run can be used
      Given Docker is available
        And a simple service to test
       When we run paasta local-run on an interactive job
-     Then it should have a return code of "42"
+      Then it should have a return code of "42"
+
+  Scenario: Running paasta local-run against a tron action
+     Given Docker is available
+       And a simple service to test
+      When we run paasta local-run on a tron action
+      Then it should have a return code of "42"
