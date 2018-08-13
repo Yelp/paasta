@@ -22,6 +22,7 @@ from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 
@@ -343,25 +344,107 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         ),
                     ),
                     liveness_probe=V1Probe(
-                        failure_threshold=10,
+                        failure_threshold=30,
                         http_get=V1HTTPGetAction(
                             path='/status',
                             port=8888,
+                            scheme='HTTP',
                         ),
-                        initial_delay_seconds=15,
+                        initial_delay_seconds=60,
                         period_seconds=10,
-                        timeout_seconds=5,
+                        timeout_seconds=10,
                     ),
                     name='kurupt-fm',
                     ports=[V1ContainerPort(container_port=8888)],
                     volume_mounts=mock_get_volume_mounts.return_value,
                 ), 'mock_sidecar',
             ]
+            service_namespace_config = mock.Mock()
+            service_namespace_config.get_mode.return_value = 'http'
+            service_namespace_config.get_healthcheck_uri.return_value = '/status'
             assert self.deployment.get_kubernetes_containers(
                 docker_volumes=mock_docker_volumes,
                 system_paasta_config=mock_system_config,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
+                service_namespace_config=service_namespace_config,
             ) == expected
+
+    def test_get_liveness_probe(self):
+        liveness_probe = V1Probe(
+            failure_threshold=30,
+            http_get=V1HTTPGetAction(
+                path='/status',
+                port=8888,
+                scheme='HTTP',
+            ),
+            initial_delay_seconds=60,
+            period_seconds=10,
+            timeout_seconds=10,
+        )
+
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = 'http'
+        service_namespace_config.get_healthcheck_uri.return_value = '/status'
+
+        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+
+    def test_get_liveness_probe_non_smartstack(self):
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = None
+        assert self.deployment.get_liveness_probe(service_namespace_config) is None
+
+    def test_get_liveness_probe_numbers(self):
+        liveness_probe = V1Probe(
+            failure_threshold=1,
+            http_get=V1HTTPGetAction(
+                path='/status',
+                port=8888,
+                scheme='HTTP',
+            ),
+            initial_delay_seconds=2,
+            period_seconds=3,
+            timeout_seconds=4,
+        )
+
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = 'http'
+        service_namespace_config.get_healthcheck_uri.return_value = '/status'
+
+        self.deployment.config_dict['healthcheck_max_consecutive_failures'] = 1
+        self.deployment.config_dict['healthcheck_grace_period_seconds'] = 2
+        self.deployment.config_dict['healthcheck_interval_seconds'] = 3
+        self.deployment.config_dict['healthcheck_timeout_seconds'] = 4
+
+        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+
+    def test_get_liveness_probe_tcp_socket(self):
+        liveness_probe = V1Probe(
+            failure_threshold=30,
+            tcp_socket=V1TCPSocketAction(
+                port=8888,
+            ),
+            initial_delay_seconds=60,
+            period_seconds=10,
+            timeout_seconds=10,
+        )
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = 'tcp'
+        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+
+    def test_get_liveness_probe_cmd(self):
+        liveness_probe = V1Probe(
+            failure_threshold=30,
+            _exec=V1ExecAction(
+                command='/bin/true',
+            ),
+            initial_delay_seconds=60,
+            period_seconds=10,
+            timeout_seconds=10,
+        )
+        service_namespace_config = mock.Mock()
+        service_namespace_config.get_mode.return_value = 'cmd'
+        self.deployment.config_dict['healthcheck_cmd'] = '/bin/true'
+        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
 
     def test_get_pod_volumes(self):
         mock_docker_volumes = [
