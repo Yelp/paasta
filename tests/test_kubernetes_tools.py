@@ -549,7 +549,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ) as mock_get_service, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance', autospec=True,
         ) as mock_get_instance, mock.patch(
-            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instances', autospec=True,
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_desired_instances', autospec=True,
         ) as mock_get_instances, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_deployment_strategy_config', autospec=True,
         ) as mock_get_deployment_strategy_config, mock.patch(

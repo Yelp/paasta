@@ -528,7 +528,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 },
             ),
             spec=V1DeploymentSpec(
-                replicas=self.get_instances(),
+                replicas=self.get_desired_instances(),
                 selector=V1LabelSelector(
                     match_labels={
                         "service": self.get_service(),
