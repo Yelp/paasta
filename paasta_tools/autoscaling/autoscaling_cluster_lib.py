@@ -97,9 +97,6 @@ DEFAULT_DRAIN_TIMEOUT = 600  # seconds
 
 AWS_SPOT_MODIFY_TIMEOUT = 30
 MISSING_SLAVE_PANIC_THRESHOLD = .3
-# Age threshold in seconds that should be met before an asg or sfr should
-# exceed before being checked for slave registration.
-CHECK_REGISTERED_SLAVE_THRESHOLD = 3600
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -153,7 +150,9 @@ class ClusterAutoscaler(object):
         self.enable_maintenance_reservation = enable_maintenance_reservation
 
         self.log.info('Initialized with utilization error %s' % self.utilization_error)
-        self.setup_metrics()
+        config = load_system_paasta_config()
+        self.slave_newness_threshold = config.get_monitoring_config().get('check_registered_slave_threshold')
+        self.setup_metrics(config)
 
     @property
     def log(self) -> logging.Logger:
@@ -161,10 +160,9 @@ class ClusterAutoscaler(object):
         name = '.'.join([__name__, self.__class__.__name__, resource_id])
         return logging.getLogger(name)
 
-    def setup_metrics(self) -> None:
+    def setup_metrics(self, config: SystemPaastaConfig) -> None:
         if not self.enable_metrics:
             return None
-        config = load_system_paasta_config()
         dims = {
             'paasta_cluster': config.get_cluster(),
             'region': self.resource.get('region', 'unknown'),
@@ -817,7 +815,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             return True
 
         now = datetime.now(timezone.utc)
-        return (now - self.sfr['CreateTime']).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
+        return (now - self.sfr['CreateTime']).total_seconds() < self.slave_newness_threshold
 
     def get_spot_fleet_instances(
         self,
@@ -1000,7 +998,7 @@ class AsgAutoscaler(ClusterAutoscaler):
             return True
 
         now = datetime.now(timezone.utc)
-        return (now - self.asg['CreatedTime']).total_seconds() < CHECK_REGISTERED_SLAVE_THRESHOLD
+        return (now - self.asg['CreatedTime']).total_seconds() < self.slave_newness_threshold
 
     def get_asg(self, asg_name: str, region: Optional[str]=None) -> Optional[Dict[str, Any]]:
         asg_client = boto3.client('autoscaling', region_name=region)

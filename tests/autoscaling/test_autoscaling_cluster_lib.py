@@ -31,6 +31,7 @@ from requests.exceptions import HTTPError
 from paasta_tools.autoscaling import autoscaling_cluster_lib
 from paasta_tools.mesos_tools import SlaveTaskCount
 from paasta_tools.metrics.metastatus_lib import ResourceInfo
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
@@ -498,22 +499,29 @@ class TestAsgAutoscaler(unittest.TestCase):
         self.autoscaler = self.create_autoscaler()
 
     def create_autoscaler(self, utilization_error=0.3, resource=None, asg=None):
+        config = SystemPaastaConfig({'monitoring_config': {'check_registered_slave_threshold': 3600}}, '/etc/paasta')
         with mock.patch(
             'paasta_tools.autoscaling.autoscaling_cluster_lib.AsgAutoscaler.get_asg',
             autospec=True,
             return_value=asg or {},
         ):
-            autoscaler = autoscaling_cluster_lib.AsgAutoscaler(
-                resource=resource or self.mock_resource,
-                pool_settings=self.mock_pool_settings,
-                config_folder=self.mock_config_folder,
-                dry_run=False,
-                utilization_error=utilization_error,
-                max_increase=0.2,
-                max_decrease=0.1,
-            )
-            autoscaler.instances = []
-            return autoscaler
+            with mock.patch(
+                'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config',
+                autospec=True,
+                return_value=config,
+            ):
+                print(config.get_monitoring_config())
+                autoscaler = autoscaling_cluster_lib.AsgAutoscaler(
+                    resource=resource or self.mock_resource,
+                    pool_settings=self.mock_pool_settings,
+                    config_folder=self.mock_config_folder,
+                    dry_run=False,
+                    utilization_error=utilization_error,
+                    max_increase=0.2,
+                    max_decrease=0.1,
+                )
+                autoscaler.instances = []
+                return autoscaler
 
     def create_mock_resource(self, **kwargs):
         mock_resource = self.mock_resource.copy()
@@ -542,7 +550,7 @@ class TestAsgAutoscaler(unittest.TestCase):
         asg = {
             'Instances': [mock.Mock()],
             'CreatedTime': datetime.now(timezone.utc) - timedelta(
-                seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
+                seconds=3600 + 60,
             ),
         }
         autoscaler = self.create_autoscaler(asg=asg)
@@ -764,16 +772,25 @@ class TestSpotAutoscaler(unittest.TestCase):
         ) as mock_get_spot_fleet_instances:
             mock_get_sfr.return_value = sfr or {}
             mock_get_spot_fleet_instances.return_value = []
+            with mock.patch(
+                'paasta_tools.autoscaling.autoscaling_cluster_lib.load_system_paasta_config',
+                autospec=True,
+                return_value=SystemPaastaConfig(
+                    {
+                        'monitoring_config': {'check_registered_slave_threshold': 3600},
+                    }, '/etc/paasta',
+                ),
+            ):
 
-            return autoscaling_cluster_lib.SpotAutoscaler(
-                resource=resource or self.mock_resource,
-                pool_settings=self.mock_pool_settings,
-                config_folder=self.mock_config_folder,
-                dry_run=False,
-                utilization_error=utilization_error,
-                max_increase=0.2,
-                max_decrease=0.1,
-            )
+                return autoscaling_cluster_lib.SpotAutoscaler(
+                    resource=resource or self.mock_resource,
+                    pool_settings=self.mock_pool_settings,
+                    config_folder=self.mock_config_folder,
+                    dry_run=False,
+                    utilization_error=utilization_error,
+                    max_increase=0.2,
+                    max_decrease=0.1,
+                )
 
     def create_mock_resource(self, **kwargs):
         mock_resource = self.mock_resource.copy()
@@ -881,7 +898,7 @@ class TestSpotAutoscaler(unittest.TestCase):
             'SpotFleetRequestState': 'active',
             'Instances': [mock.Mock()],
             'CreateTime': datetime.now(timezone.utc) - timedelta(
-                seconds=autoscaling_cluster_lib.CHECK_REGISTERED_SLAVE_THRESHOLD + 60,
+                seconds=3600 + 60,
             ),
         }
         autoscaler = self.create_autoscaler(sfr=sfr)

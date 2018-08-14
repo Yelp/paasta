@@ -4,7 +4,6 @@ import sys
 
 from a_sync import block
 
-from paasta_tools.autoscaling.autoscaling_cluster_lib import CHECK_REGISTERED_SLAVE_THRESHOLD
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_scaler
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
@@ -18,7 +17,8 @@ def check_registration(threshold_percentage):
         print("Could not find Mesos Master: %s" % e.message)
         sys.exit(1)
 
-    autoscaling_resources = load_system_paasta_config().get_cluster_autoscaling_resources()
+    config = load_system_paasta_config()
+    autoscaling_resources = config.get_cluster_autoscaling_resources()
     for resource in autoscaling_resources.values():
         print("Checking %s" % resource['id'])
         try:
@@ -39,8 +39,9 @@ def check_registration(threshold_percentage):
             continue
         elif scaler.is_new_autoscaling_resource():
             # See OPS-13784
+            threshold = config.get_monitoring_config().get('check_registered_slave_threshold')
             print(
-                f"Autoscaling resource was created within last {CHECK_REGISTERED_SLAVE_THRESHOLD}"
+                f"Autoscaling resource was created within last {threshold}"
                 " seconds and would probably fail this check",
             )
             continue
