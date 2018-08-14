@@ -134,6 +134,9 @@ class TronActionConfig(InstanceConfig):
         executor = self.config_dict.get('executor', None)
         return 'mesos' if executor == 'paasta' else executor
 
+    def get_healthcheck_mode(self, _) -> None:
+        return None
+
     def get_node(self):
         return self.config_dict.get('node')
 
@@ -167,6 +170,9 @@ class TronActionConfig(InstanceConfig):
             )
             constraints.extend(self.get_pool_constraints())
             return constraints
+
+    def get_nerve_namespace(self) -> None:
+        return None
 
     def validate(self) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem

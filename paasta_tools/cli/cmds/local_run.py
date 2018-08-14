@@ -777,6 +777,10 @@ def command_function_for_framework(framework):
         interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
         return interpolated_command
 
+    def format_tron_command(cmd: str) -> str:
+        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        return interpolated_command
+
     def format_adhoc_command(cmd):
         return cmd
 
@@ -786,6 +790,8 @@ def command_function_for_framework(framework):
         return format_marathon_command
     elif framework == 'adhoc':
         return format_adhoc_command
+    elif framework == 'tron':
+        return format_tron_command
     else:
         raise ValueError("Invalid Framework")
 
