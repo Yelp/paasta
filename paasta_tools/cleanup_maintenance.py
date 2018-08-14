@@ -42,6 +42,10 @@ def parse_args():
         '-v', '--verbose', action='store_true',
         dest="verbose", default=False,
     )
+    parser.add_argument(
+        '--disable-reservation-cleanup', action='store_true',
+        dest="disable_reservation_cleanup", default=False,
+    )
     args = parser.parse_args()
     return args
 
@@ -100,8 +104,9 @@ def main():
 
     cleanup_forgotten_draining()
     cleanup_forgotten_down()
-    unreserve_all_resources_on_non_draining_hosts()
-    reserve_all_resources_on_draining_hosts()
+    if not args.disable_reservation_cleanup:
+        unreserve_all_resources_on_non_draining_hosts()
+        reserve_all_resources_on_draining_hosts()
 
 
 if __name__ == "__main__":
