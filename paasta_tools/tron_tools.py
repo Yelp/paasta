@@ -553,13 +553,15 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SO
     ]
     complete_config = yaml.dump(other_config, Dumper=Dumper)
 
+    master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
     proc = subprocess.run(
-        ['tronfig', '-', '-V', '-n', service],
+        ['tronfig', '-', '-V', '-n', service, '-m', master_config_path],
         input=complete_config,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         encoding='utf-8',
     )
+
     if proc.returncode != 0:
         process_errors = proc.stderr.strip()
         if process_errors:  # Error running tronfig
