@@ -30,6 +30,7 @@ from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
+from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -134,6 +135,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
     def setUp(self):
         mock_config_dict = KubernetesDeploymentConfigDict(
             bounce_method='crossover',
+            instances=3,
         )
         self.deployment = KubernetesDeploymentConfig(
             service='kurupt',
@@ -149,9 +151,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         assert self.deployment.copy() is not self.deployment
 
     def test_get_bounce_method(self):
-        assert self.deployment.get_bounce_method() == 'RollingUpdate'
-        self.deployment.config_dict['bounce_method'] = 'downthenup'
-        assert self.deployment.get_bounce_method() == 'Recreate'
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes', autospec=True,
+        ) as mock_get_aws_ebs_volumes:
+            mock_get_aws_ebs_volumes.return_value = []
+            assert self.deployment.get_bounce_method() == 'RollingUpdate'
+            self.deployment.config_dict['bounce_method'] = 'downthenup'
+            assert self.deployment.get_bounce_method() == 'Recreate'
+            self.deployment.config_dict['bounce_method'] = 'crossover'
+            # if ebs we must downthenup for now as we need to free up the EBS for the new instance
+            mock_get_aws_ebs_volumes.return_value = ['some-ebs']
+            with pytest.raises(Exception):
+                self.deployment.get_bounce_method()
 
     def test_get_deployment_strategy(self):
         with mock.patch(
@@ -529,6 +540,17 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ):
             assert self.deployment.get_sanitised_instance_name() == 'my--instance'
 
+    def test_get_desired_instances(self):
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes', autospec=True,
+        ) as mock_get_aws_ebs_volumes:
+            mock_get_aws_ebs_volumes.return_value = []
+            assert self.deployment.get_desired_instances() == 3
+
+            mock_get_aws_ebs_volumes.return_value = ['some-ebs-vol']
+            with pytest.raises(Exception):
+                self.deployment.get_desired_instances()
+
     def test_format_kubernetes_app_dict(self):
         with mock.patch(
             'paasta_tools.kubernetes_tools.load_system_paasta_config', autospec=True,
@@ -615,6 +637,10 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
+
+            mock_get_deployment_strategy_config.side_effect = Exception("Bad bounce method")
+            with pytest.raises(InvalidKubernetesConfig):
+                self.deployment.format_kubernetes_app()
 
     def test_sanitize_config_hash(self):
         mock_config = V1Deployment(

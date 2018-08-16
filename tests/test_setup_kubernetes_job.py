@@ -8,6 +8,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PodTemplateSpec
 from pytest import raises
 
+from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
@@ -15,7 +16,6 @@ from paasta_tools.setup_kubernetes_job import reconcile_kubernetes_deployment
 from paasta_tools.setup_kubernetes_job import setup_kube_deployments
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import NoDockerImageError
 
 
 def test_parse_args():
@@ -329,7 +329,7 @@ def test_reconcile_kubernetes_deployment():
 
         mock_load_kubernetes_service_config_no_cache.side_effect = None
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
-            format_kubernetes_app=mock.Mock(side_effect=NoDockerImageError),
+            format_kubernetes_app=mock.Mock(side_effect=InvalidKubernetesConfig(Exception("Oh no!"), 'kurupt', 'fm')),
         )
         ret = reconcile_kubernetes_deployment(
             kube_client=mock_kube_client,
