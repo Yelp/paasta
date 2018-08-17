@@ -1,3 +1,11 @@
+paasta-tools (0.79.0) xenial; urgency=medium
+
+  * 0.79.0 tagged with 'make release'
+    Commit: Merge pull request #1917 from Yelp/fix-k8s-ebs-bounce  Fix
+    k8s ebs bounce
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 17 Aug 2018 14:23:05 -0700
+
 paasta-tools (0.78.3) xenial; urgency=medium
 
   * 0.78.3 tagged with 'make release'
