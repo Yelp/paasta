@@ -3,7 +3,10 @@ import json
 import os
 import socket
 import sys
+import time
 
+import staticconf
+from boto3.exceptions import Boto3Error
 from botocore.session import Session
 from ruamel.yaml import YAML
 
@@ -27,6 +30,14 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+try:
+    import clusterman_metrics
+    CLUSTERMAN_YAML_FILE_PATH = '/nail/srv/configs/clusterman.yaml'
+    staticconf.YamlConfiguration('/nail/srv/configs/clusterman_metrics.yaml', namespace='clusterman_metrics')
+except ImportError:
+    # our cluster autoscaler is not currently open source, sorry!
+    clusterman_metrics = None
+    CLUSTERMAN_YAML_FILE_PATH = None
 
 AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
 DEFAULT_SERVICE = 'spark'
@@ -162,6 +173,14 @@ def add_subparser(subparsers):
         'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
         'spark.executor.cores=4".',
     )
+
+    if clusterman_metrics:
+        list_parser.add_argument(
+            '--suppress-clusterman-metrics-errors',
+            help='Continue even if sending resource requirements to Clusterman fails. This may result in the job '
+            'failing to acquire resources.',
+            action='store_true',
+        )
 
     list_parser.add_argument(
         '-j', '--jars',
@@ -376,7 +395,7 @@ def load_aws_credentials_from_yaml(yaml_file_path):
         )
 
 
-def get_spark_conf_str(
+def get_spark_config(
     args,
     container_name,
     spark_ui_port,
@@ -486,10 +505,46 @@ def get_spark_conf_str(
         )
         sys.exit(1)
 
-    spark_conf = list()
-    for opt, val in dict(non_user_args, **user_args).items():
-        spark_conf.append(f'--conf {opt}={val}')
-    return ' '.join(spark_conf)
+    return dict(non_user_args, **user_args)
+
+
+def create_spark_config_str(spark_config_dict):
+    spark_config_entries = list()
+    for opt, val in spark_config_dict.items():
+        spark_config_entries.append(f'--conf {opt}={val}')
+    return ' '.join(spark_config_entries)
+
+
+def emit_resource_requirements(spark_config_dict, paasta_cluster):
+    num_executors = int(spark_config_dict['spark.cores.max']) / int(spark_config_dict['spark.executor.cores'])
+    memory_per_executor = spark_memory_to_megabytes(spark_config_dict['spark.executor.memory'])
+
+    desired_resources = {
+        'cpus': int(spark_config_dict['spark.cores.max']),
+        'mem': memory_per_executor * num_executors,
+        'disk': memory_per_executor * num_executors,  # rough guess since spark does not collect this information
+    }
+    dimensions = {'framework_name': spark_config_dict['spark.app.name']}
+
+    paasta_print('Sending resource request metrics to Clusterman')
+    aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
+    metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier='spark')
+
+    with metrics_client.get_writer(clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True) as writer:
+        for resource, desired_quantity in desired_resources.items():
+            metric_key = clusterman_metrics.generate_key_with_dimensions(f'requested_{resource}', dimensions)
+            writer.send((metric_key, int(time.time()), desired_quantity))
+
+
+def get_aws_region_for_paasta_cluster(paasta_cluster):
+    with open(CLUSTERMAN_YAML_FILE_PATH, 'r') as clusterman_yaml_file:
+        clusterman_yaml = YAML().load(clusterman_yaml_file.read())
+        return clusterman_yaml['mesos_clusters'][paasta_cluster]['aws_region']
+
+
+def spark_memory_to_megabytes(spark_memory_string):
+    # expected to be in format "dg" where d is an integer
+    return 1000 * int(spark_memory_string[:-1])
 
 
 def run_docker_container(
@@ -535,9 +590,9 @@ def configure_and_run_docker_container(
             )
 
     spark_ui_port = pick_random_port(args.service)
-    container_name = 'paasta_spark_run_{}_{}'.format(get_username(), spark_ui_port)
+    container_name = 'paasta_spark_run_{}_{}_{}'.format(get_username(), spark_ui_port, int(time.time()))
 
-    spark_conf_str = get_spark_conf_str(
+    spark_config_dict = get_spark_config(
         args=args,
         container_name=container_name,
         spark_ui_port=spark_ui_port,
@@ -545,6 +600,7 @@ def configure_and_run_docker_container(
         system_paasta_config=system_paasta_config,
         volumes=volumes,
     )
+    spark_conf_str = create_spark_config_str(spark_config_dict)
 
     # Spark client specific volumes
     volumes.append('%s:rw' % args.work_dir)
@@ -569,6 +625,18 @@ def configure_and_run_docker_container(
         paasta_print('\nSpark history server URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
     elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'jupyter']):
         paasta_print('\nSpark monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
+
+    if clusterman_metrics:
+        try:
+            emit_resource_requirements(spark_config_dict, args.cluster)
+        except Boto3Error as e:
+            paasta_print(
+                PaastaColors.red(f'Encountered {e} while attempting to send resource requirements to Clusterman.'),
+            )
+            if args.suppress_clusterman_metrics_errors:
+                paasta_print('Continuing anyway since --suppress-clusterman-metrics-errors was passed')
+            else:
+                raise
 
     return run_docker_container(
         container_name=container_name,
