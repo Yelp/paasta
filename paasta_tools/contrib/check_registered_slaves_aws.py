@@ -17,7 +17,8 @@ def check_registration(threshold_percentage):
         print("Could not find Mesos Master: %s" % e.message)
         sys.exit(1)
 
-    autoscaling_resources = load_system_paasta_config().get_cluster_autoscaling_resources()
+    config = load_system_paasta_config()
+    autoscaling_resources = config.get_cluster_autoscaling_resources()
     for resource in autoscaling_resources.values():
         print("Checking %s" % resource['id'])
         try:
@@ -35,6 +36,14 @@ def check_registration(threshold_percentage):
             continue
         if len(scaler.instances) == 0:
             print("No instances for this resource")
+            continue
+        elif scaler.is_new_autoscaling_resource():
+            # See OPS-13784
+            threshold = config.get_monitoring_config().get('check_registered_slave_threshold')
+            print(
+                f"Autoscaling resource was created within last {threshold}"
+                " seconds and would probably fail this check",
+            )
             continue
         else:
             slaves = scaler.get_aws_slaves(mesos_state)
