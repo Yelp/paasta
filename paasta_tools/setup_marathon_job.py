@@ -408,7 +408,7 @@ def do_bounce(
                         'cluster': cluster,
                         'instance': instance,
                         'service': service,
-                    }
+                    },
                 )
         return None
 
