@@ -87,6 +87,13 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
 from paasta_tools.utils import SystemPaastaConfig
+try:
+    import yelp_meteorite
+except ImportError:
+    # Sorry to any non-yelpers but you won't
+    # get metrics emitted as our metrics lib
+    # is currently not open source
+    yelp_meteorite = None
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
@@ -392,6 +399,17 @@ def do_bounce(
                 ),
                 level='event',
             )
+
+            if yelp_meteorite:
+                # Emit deploy.paasta event
+                yelp_meteorite.events.emit_event(
+                    'deploy.paasta',
+                    dimensions={
+                        'cluster': cluster,
+                        'instance': instance,
+                        'service': service,
+                    }
+                )
         return None
 
 
