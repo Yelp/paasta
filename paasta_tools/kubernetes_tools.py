@@ -21,6 +21,7 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import Union
 
 import requests
 import service_configuration_lib
@@ -43,11 +44,15 @@ from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1Namespace
 from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1PersistentVolumeClaim
+from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1StatefulSet
+from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -70,6 +75,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import VolumeWithMode
@@ -276,6 +282,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             'host--{name}'.format(name=docker_volume['hostPath']),
         )
 
+    def get_persistent_volume_name(self, docker_volume: PersistentVolume) -> str:
+        return self.get_sanitised_volume_name(
+            'pv--{name}'.format(name=docker_volume['container_path']),
+        )
+
     def get_aws_ebs_volume_name(self, aws_ebs_volume: AwsEbsVolume) -> str:
         return self.get_sanitised_volume_name(
             'aws-ebs--{name}{partition}'.format(
@@ -436,6 +447,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             volume_mounts=self.get_volume_mounts(
                 docker_volumes=docker_volumes,
                 aws_ebs_volumes=aws_ebs_volumes,
+                persistent_volumes=self.get_persistent_volumes(),
             ),
         )
         containers = [service_container] + self.get_sidecar_containers(system_paasta_config=system_paasta_config)
@@ -483,6 +495,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         docker_volumes: Sequence[DockerVolume],
         aws_ebs_volumes: Sequence[AwsEbsVolume],
+        persistent_volumes: Sequence[PersistentVolume],
     ) -> Sequence[V1VolumeMount]:
         return [
             V1VolumeMount(
@@ -498,6 +511,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 read_only=self.read_only_mode(aws_ebs_volume),
             )
             for aws_ebs_volume in aws_ebs_volumes
+        ] + [
+            V1VolumeMount(
+                mount_path=volume['container_path'],
+                name=self.get_persistent_volume_name(volume),
+                read_only=self.read_only_mode(volume),
+            )
+            for volume in persistent_volumes
         ]
 
     def get_sanitised_service_name(self) -> str:
@@ -515,67 +535,94 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             raise Exception("Number of instances must be 1 or 0 if an EBS volume is defined.")
         return instances
 
-    def format_kubernetes_app(self) -> V1Deployment:
+    def get_volume_claim_templates(self) -> List[V1PersistentVolumeClaim]:
+        return [
+            V1PersistentVolumeClaim(
+                metadata={'name': self.get_persistent_volume_name(volume)},
+                spec=V1PersistentVolumeClaimSpec(
+                    # must be ReadWriteOnce for EBS
+                    access_modes=["ReadWriteOnce"],
+                    storage_class_name=self.get_storage_class_name(),
+                    resources=V1ResourceRequirements(
+                        requests={
+                            'storage': f"{volume['size']}Gi",
+                        },
+                    ),
+                ),
+            ) for volume in self.get_persistent_volumes()
+        ]
+
+    def get_storage_class_name(self) -> str:
+        # TODO: once we support node affinity this method should return the
+        # name of the storage class for a particular AZ. We should also enforce
+        # that a storage class exists with the correct name (like we do for the
+        # paasta namespace object)
+        return "ebs-gp2-us-west-1a"
+
+    def get_kubernetes_metadata(self, code_sha: str) -> V1ObjectMeta:
+        return V1ObjectMeta(
+            name="{service}-{instance}".format(
+                service=self.get_sanitised_service_name(),
+                instance=self.get_sanitised_instance_name(),
+            ),
+            labels={
+                "service": self.get_service(),
+                "instance": self.get_instance(),
+                "git_sha": code_sha,
+            },
+        )
+
+    def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
         try:
             system_paasta_config = load_system_paasta_config()
             docker_url = self.get_docker_url()
-            service_namespace_config = load_service_namespace_config(
-                service=self.service,
-                namespace=self.get_nerve_namespace(),
-            )
-            docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
-            aws_ebs_volumes = self.get_aws_ebs_volumes()
-
             code_sha = get_code_sha_from_dockerurl(docker_url)
-            complete_config = V1Deployment(
-                api_version='apps/v1',
-                kind='Deployment',
-                metadata=V1ObjectMeta(
-                    name="{service}-{instance}".format(
-                        service=self.get_sanitised_service_name(),
-                        instance=self.get_sanitised_instance_name(),
-                    ),
-                    labels={
-                        "service": self.get_service(),
-                        "instance": self.get_instance(),
-                        "git_sha": code_sha,
-                    },
-                ),
-                spec=V1DeploymentSpec(
-                    replicas=self.get_desired_instances(),
-                    selector=V1LabelSelector(
-                        match_labels={
-                            "service": self.get_service(),
-                            "instance": self.get_instance(),
-                        },
-                    ),
-                    strategy=self.get_deployment_strategy_config(),
-                    template=V1PodTemplateSpec(
-                        metadata=V1ObjectMeta(
-                            labels={
+            if self.get_persistent_volumes():
+                complete_config = V1StatefulSet(
+                    api_version='apps/v1',
+                    kind='StatefulSet',
+                    metadata=self.get_kubernetes_metadata(code_sha),
+                    spec=V1StatefulSetSpec(
+                        service_name="{service}-{instance}".format(
+                            service=self.get_sanitised_service_name(),
+                            instance=self.get_sanitised_instance_name(),
+                        ),
+                        volume_claim_templates=self.get_volume_claim_templates(),
+                        replicas=self.get_desired_instances(),
+                        selector=V1LabelSelector(
+                            match_labels={
                                 "service": self.get_service(),
                                 "instance": self.get_instance(),
-                                "git_sha": code_sha,
                             },
                         ),
-                        spec=V1PodSpec(
-                            containers=self.get_kubernetes_containers(
-                                docker_volumes=docker_volumes,
-                                aws_ebs_volumes=aws_ebs_volumes,
-                                system_paasta_config=system_paasta_config,
-                                service_namespace_config=service_namespace_config,
-                            ),
-                            restart_policy="Always",
-                            volumes=self.get_pod_volumes(
-                                docker_volumes=docker_volumes,
-                                aws_ebs_volumes=aws_ebs_volumes,
-                            ),
+                        template=self.get_pod_template_spec(
+                            code_sha=code_sha,
+                            system_paasta_config=system_paasta_config,
                         ),
                     ),
-                ),
-            )
+                )
+            else:
+                complete_config = V1Deployment(
+                    api_version='apps/v1',
+                    kind='Deployment',
+                    metadata=self.get_kubernetes_metadata(code_sha),
+                    spec=V1DeploymentSpec(
+                        replicas=self.get_desired_instances(),
+                        selector=V1LabelSelector(
+                            match_labels={
+                                "service": self.get_service(),
+                                "instance": self.get_instance(),
+                            },
+                        ),
+                        template=self.get_pod_template_spec(
+                            code_sha=code_sha,
+                            system_paasta_config=system_paasta_config,
+                        ),
+                        strategy=self.get_deployment_strategy_config(),
+                    ),
+                )
 
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
@@ -587,6 +634,39 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
+
+    def get_pod_template_spec(
+        self,
+        code_sha: str,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> V1PodTemplateSpec:
+        service_namespace_config = load_service_namespace_config(
+            service=self.service,
+            namespace=self.get_nerve_namespace(),
+        )
+        docker_volumes = self.get_volumes(system_volumes=system_paasta_config.get_volumes())
+        return V1PodTemplateSpec(
+            metadata=V1ObjectMeta(
+                labels={
+                    "service": self.get_service(),
+                    "instance": self.get_instance(),
+                    "git_sha": code_sha,
+                },
+            ),
+            spec=V1PodSpec(
+                containers=self.get_kubernetes_containers(
+                    docker_volumes=docker_volumes,
+                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                    system_paasta_config=system_paasta_config,
+                    service_namespace_config=service_namespace_config,
+                ),
+                restart_policy="Always",
+                volumes=self.get_pod_volumes(
+                    docker_volumes=docker_volumes,
+                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                ),
+            ),
+        )
 
     def sanitize_for_config_hash(
         self,
@@ -727,6 +807,7 @@ def ensure_paasta_namespace(kube_client: KubeClient) -> None:
 
 def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
     deployments = kube_client.deployments.list_namespaced_deployment(namespace='paasta')
+    stateful_sets = kube_client.deployments.list_namespaced_stateful_set(namespace='paasta')
     return [
         KubeDeployment(
             service=item.metadata.labels['service'],
@@ -734,7 +815,7 @@ def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
             git_sha=item.metadata.labels['git_sha'],
             config_sha=item.metadata.labels['config_sha'],
             replicas=item.spec.replicas,
-        ) for item in deployments.items
+        ) for item in deployments.items + stateful_sets.items
     ]
 
 
@@ -750,4 +831,19 @@ def update_deployment(kube_client: KubeClient, formatted_deployment: V1Deploymen
         name=formatted_deployment.metadata.name,
         namespace='paasta',
         body=formatted_deployment,
+    )
+
+
+def create_stateful_set(kube_client: KubeClient, formatted_stateful_set: V1StatefulSet) -> None:
+    return kube_client.deployments.create_namespaced_stateful_set(
+        namespace='paasta',
+        body=formatted_stateful_set,
+    )
+
+
+def update_stateful_set(kube_client: KubeClient, formatted_stateful_set: V1StatefulSet) -> None:
+    return kube_client.deployments.replace_namespaced_stateful_set(
+        name=formatted_stateful_set.metadata.name,
+        namespace='paasta',
+        body=formatted_stateful_set,
     )

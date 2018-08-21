@@ -6,14 +6,17 @@ from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1StatefulSet
 from pytest import raises
 
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
+from paasta_tools.setup_kubernetes_job import create_kubernetes_application
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
 from paasta_tools.setup_kubernetes_job import reconcile_kubernetes_deployment
 from paasta_tools.setup_kubernetes_job import setup_kube_deployments
+from paasta_tools.setup_kubernetes_job import update_kubernetes_application
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
@@ -104,10 +107,10 @@ def test_reconcile_kubernetes_deployment():
     ) as mock_load_kubernetes_service_config_no_cache, mock.patch(
         'paasta_tools.setup_kubernetes_job.load_system_paasta_config', autospec=True,
     ), mock.patch(
-        'paasta_tools.setup_kubernetes_job.create_deployment', autospec=True,
-    ) as mock_create_deployment, mock.patch(
-        'paasta_tools.setup_kubernetes_job.update_deployment', autospec=True,
-    ) as mock_update_deployment:
+        'paasta_tools.setup_kubernetes_job.create_kubernetes_application', autospec=True,
+    ) as mock_create_kubernetes_application, mock.patch(
+        'paasta_tools.setup_kubernetes_job.update_kubernetes_application', autospec=True,
+    ) as mock_update_kubernetes_application:
         mock_kube_client = mock.Mock()
         mock_deployments: Sequence[KubeDeployment] = []
 
@@ -121,9 +124,9 @@ def test_reconcile_kubernetes_deployment():
         )
         assert ret == (0, None)
         mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
-        mock_create_deployment.assert_called_with(
+        mock_create_kubernetes_application.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment=mock_deploy,
+            application=mock_deploy,
         )
 
         # different instance so should create
@@ -142,13 +145,13 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        mock_create_deployment.assert_called_with(
+        mock_create_kubernetes_application.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment=mock_deploy,
+            application=mock_deploy,
         )
 
         # instance correc so do nothing
-        mock_create_deployment.reset_mock()
+        mock_create_kubernetes_application.reset_mock()
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
             return_value=V1Deployment(
                 metadata=V1ObjectMeta(
@@ -179,11 +182,11 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        assert not mock_create_deployment.called
-        assert not mock_update_deployment.called
+        assert not mock_create_kubernetes_application.called
+        assert not mock_update_kubernetes_application.called
 
         # changed gitsha so update
-        mock_create_deployment.reset_mock()
+        mock_create_kubernetes_application.reset_mock()
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
             return_value=V1Deployment(
                 metadata=V1ObjectMeta(
@@ -214,16 +217,16 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        assert not mock_create_deployment.called
+        assert not mock_create_kubernetes_application.called
         mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
-        mock_update_deployment.assert_called_with(
+        mock_update_kubernetes_application.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment=mock_deploy,
+            application=mock_deploy,
         )
 
         # changed configsha so update
-        mock_create_deployment.reset_mock()
-        mock_update_deployment.reset_mock()
+        mock_create_kubernetes_application.reset_mock()
+        mock_update_kubernetes_application.reset_mock()
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
             return_value=V1Deployment(
                 metadata=V1ObjectMeta(
@@ -254,16 +257,16 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        assert not mock_create_deployment.called
+        assert not mock_create_kubernetes_application.called
         mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
-        mock_update_deployment.assert_called_with(
+        mock_update_kubernetes_application.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment=mock_deploy,
+            application=mock_deploy,
         )
 
         # changed number of replicas so update
-        mock_create_deployment.reset_mock()
-        mock_update_deployment.reset_mock()
+        mock_create_kubernetes_application.reset_mock()
+        mock_update_kubernetes_application.reset_mock()
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
             return_value=V1Deployment(
                 metadata=V1ObjectMeta(
@@ -294,16 +297,16 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        assert not mock_create_deployment.called
+        assert not mock_create_kubernetes_application.called
         mock_deploy = mock_load_kubernetes_service_config_no_cache.return_value.format_kubernetes_app()
-        mock_update_deployment.assert_called_with(
+        mock_update_kubernetes_application.assert_called_with(
             kube_client=mock_kube_client,
-            formatted_deployment=mock_deploy,
+            application=mock_deploy,
         )
 
         # error cases...
-        mock_create_deployment.reset_mock()
-        mock_update_deployment.reset_mock()
+        mock_create_kubernetes_application.reset_mock()
+        mock_update_kubernetes_application.reset_mock()
         mock_load_kubernetes_service_config_no_cache.side_effect = NoDeploymentsAvailable
         ret = reconcile_kubernetes_deployment(
             kube_client=mock_kube_client,
@@ -313,8 +316,8 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (0, None)
-        assert not mock_create_deployment.called
-        assert not mock_update_deployment.called
+        assert not mock_create_kubernetes_application.called
+        assert not mock_update_kubernetes_application.called
         mock_load_kubernetes_service_config_no_cache.side_effect = NoConfigurationForServiceError
         ret = reconcile_kubernetes_deployment(
             kube_client=mock_kube_client,
@@ -324,8 +327,8 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (1, None)
-        assert not mock_create_deployment.called
-        assert not mock_update_deployment.called
+        assert not mock_create_kubernetes_application.called
+        assert not mock_update_kubernetes_application.called
 
         mock_load_kubernetes_service_config_no_cache.side_effect = None
         mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
@@ -339,5 +342,63 @@ def test_reconcile_kubernetes_deployment():
             soa_dir='/nail/blah',
         )
         assert ret == (1, None)
+        assert not mock_create_kubernetes_application.called
+        assert not mock_update_kubernetes_application.called
+
+
+def test_create_kubernetes_application():
+    with mock.patch(
+        'paasta_tools.setup_kubernetes_job.create_deployment', autospec=True,
+    ) as mock_create_deployment, mock.patch(
+        'paasta_tools.setup_kubernetes_job.create_stateful_set', autospec=True,
+    ) as mock_create_stateful_set:
+        mock_stateful_set = V1StatefulSet()
+        mock_client = mock.Mock()
+        create_kubernetes_application(mock_client, mock_stateful_set)
         assert not mock_create_deployment.called
+        mock_create_stateful_set.assert_called_with(
+            kube_client=mock_client,
+            formatted_stateful_set=mock_stateful_set,
+        )
+
+        mock_create_stateful_set.reset_mock()
+        mock_deployment = V1Deployment()
+        mock_client = mock.Mock()
+        create_kubernetes_application(mock_client, mock_deployment)
+        assert not mock_create_stateful_set.called
+        mock_create_deployment.assert_called_with(
+            kube_client=mock_client,
+            formatted_deployment=mock_deployment,
+        )
+
+        with raises(Exception):
+            create_kubernetes_application(mock_client, mock.Mock())
+
+
+def test_update_kubernetes_application():
+    with mock.patch(
+        'paasta_tools.setup_kubernetes_job.update_deployment', autospec=True,
+    ) as mock_update_deployment, mock.patch(
+        'paasta_tools.setup_kubernetes_job.update_stateful_set', autospec=True,
+    ) as mock_update_stateful_set:
+        mock_stateful_set = V1StatefulSet()
+        mock_client = mock.Mock()
+        update_kubernetes_application(mock_client, mock_stateful_set)
         assert not mock_update_deployment.called
+        mock_update_stateful_set.assert_called_with(
+            kube_client=mock_client,
+            formatted_stateful_set=mock_stateful_set,
+        )
+
+        mock_update_stateful_set.reset_mock()
+        mock_deployment = V1Deployment()
+        mock_client = mock.Mock()
+        update_kubernetes_application(mock_client, mock_deployment)
+        assert not mock_update_stateful_set.called
+        mock_update_deployment.assert_called_with(
+            kube_client=mock_client,
+            formatted_deployment=mock_deployment,
+        )
+
+        with raises(Exception):
+            update_kubernetes_application(mock_client, mock.Mock())

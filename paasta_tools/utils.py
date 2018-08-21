@@ -182,6 +182,11 @@ class AwsEbsVolume(VolumeWithMode):
     container_path: str
 
 
+class PersistentVolume(VolumeWithMode):
+    size: int
+    container_path: str
+
+
 InstanceConfigDict = TypedDict(
     'InstanceConfigDict',
     {
@@ -201,6 +206,7 @@ InstanceConfigDict = TypedDict(
         'deploy_whitelist': UnsafeDeployWhitelist,
         'monitoring_blacklist': UnsafeDeployBlacklist,
         'pool': str,
+        'persistent_volumes': List[PersistentVolume],
         'role': str,
         'extra_volumes': List[DockerVolume],
         'aws_ebs_volumes': List[AwsEbsVolume],
@@ -715,6 +721,9 @@ class InstanceConfig(object):
         volumes = list(system_volumes) + list(self.get_extra_volumes())
         deduped = {v['containerPath'].rstrip('/') + v['hostPath'].rstrip('/'): v for v in volumes}.values()
         return sort_dicts(deduped)
+
+    def get_persistent_volumes(self) -> List[PersistentVolume]:
+        return self.config_dict.get('persistent_volumes', [])
 
     def get_dependencies_reference(self) -> Optional[str]:
         """Get the reference to an entry in dependencies.yaml
