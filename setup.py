@@ -14,10 +14,18 @@
 # limitations under the License.
 import glob
 
+from pkg_resources import yield_lines
 from setuptools import find_packages
 from setuptools import setup
 
 from paasta_tools import __version__
+
+
+def get_install_requires():
+    with open('requirements-minimal.txt', 'r') as f:
+        minimal_reqs = list(yield_lines(f.read()))
+
+    return minimal_reqs
 
 
 setup(
@@ -29,57 +37,7 @@ setup(
     description='Tools for Yelps SOA infrastructure',
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
-    install_requires=[
-        # Make sure to modify requirements-minimal.txt as well!
-        'a_sync >= 0.5.0',
-        'argcomplete >= 0.8.1',
-        'aiohttp >= 3.2.1',
-        'boto3',
-        'botocore',
-        'bravado >= 8.4.0',
-        'choice == 0.1',
-        'chronos-python >= 1.2.0',
-        'cookiecutter == 1.4.0',
-        'croniter',
-        # Don't update this unless you have confirmed the client works with
-        # the Docker version deployed on PaaSTA servers
-        'docker-py == 1.2.3',
-        'dulwich >= 0.17.3',
-        'ephemeral-port-reserve >= 1.0.1',
-        'gevent == 1.1.1',
-        'gunicorn >= 19.8.1',
-        'humanize >= 0.5.1',
-        'inotify >= 0.2.8',
-        'isodate >= 0.5.0',
-        'jsonschema[format]',
-        'kazoo >= 2.0.0',
-        'kubernetes >= 6.0.0',
-        'marathon >= 0.9.3',
-        'mypy-extensions == 0.3.0',
-        'progressbar2 >= 3.10.0',
-        'pyramid >= 1.8',
-        'pymesos >= 0.2.0',
-        'pyramid-swagger >= 2.3.0',
-        'pysensu-yelp >= 0.4.0',
-        'pytimeparse >= 1.1.0',
-        'pytz >= 2014.10',
-        'python-crontab>=2.1.1',
-        'python-dateutil >= 2.4.0',
-        'python-iptables',
-        'retry',
-        'requests',
-        'requests-cache >= 0.4.10,<= 0.5.0',
-        'ruamel.yaml',
-        'sensu-plugin',
-        'service-configuration-lib >= 0.12.0',
-        'syslogmp',
-        'task-processing',
-        'typing-extensions',
-        'tzlocal',
-        'ujson == 1.35',
-        'wsgicors',
-        'yelp-clog >= 2.7.2',
-    ],
+    install_requires=get_install_requires(),
     scripts=[
         'paasta_tools/am_i_mesos_leader.py',
         'paasta_tools/autoscale_all_services.py',
