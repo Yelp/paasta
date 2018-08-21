@@ -401,13 +401,12 @@ def do_bounce(
             )
 
             if yelp_meteorite:
-                # Emit deploy.paasta event
                 yelp_meteorite.events.emit_event(
                     'deploy.paasta',
                     dimensions={
-                        'cluster': cluster,
-                        'instance': instance,
-                        'service': service,
+                        'paasta_cluster': cluster,
+                        'paasta_instance': instance,
+                        'paasta_service': service,
                     },
                 )
         return None
