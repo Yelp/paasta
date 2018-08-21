@@ -642,7 +642,9 @@ class TestSetupMarathonJob:
             'paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True,
         ) as mock_create_marathon_app, mock.patch(
             'paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True,
-        ) as mock_kill_old_ids:
+        ) as mock_kill_old_ids, mock.patch(
+            'paasta_tools.setup_marathon_job.yelp_meteorite', autospec=True,
+        ) as mock_meteorite:
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
@@ -677,6 +679,7 @@ class TestSetupMarathonJob:
             third_logged_line = mock_log.mock_calls[2][2]["line"]
             assert f'{fake_bounce_method} bounce on {fake_serviceinstance} finish' in third_logged_line
             assert 'Now running %s' % fake_marathon_jobid in third_logged_line
+            assert mock_meteorite.events.emit_event.call_count == 1
 
     def test_do_bounce_when_nothing_to_do(self):
         fake_bounce_func_return: bounce_lib.BounceMethodResult = {
