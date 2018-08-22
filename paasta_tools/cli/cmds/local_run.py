@@ -59,6 +59,10 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 
+def parse_date(date_string):
+    return datetime.datetime.strptime(date_string, "%Y-%m-%d")
+
+
 def perform_http_healthcheck(url, timeout):
     """Returns true if healthcheck on url succeeds, false otherwise
 
@@ -330,6 +334,12 @@ def add_subparser(subparsers):
         required=False,
         default=None,
     ).completer = lazy_choices_completer(list_instances)
+    list_parser.add_argument(
+        '--date',
+        default=datetime.datetime.today().strftime('%Y-%m-%d'),
+        help="Date to use for interpolating date variables in a job. Defaults to use %(default)s.",
+        type=parse_date,
+    )
     list_parser.add_argument(
         '-v', '--verbose',
         help='Show Docker commands output',
@@ -765,7 +775,7 @@ def run_docker_container(
     return returncode
 
 
-def command_function_for_framework(framework):
+def command_function_for_framework(framework, date):
     """
     Given a framework, return a function that appropriately formats
     the command to be run.
@@ -774,11 +784,11 @@ def command_function_for_framework(framework):
         return cmd
 
     def format_chronos_command(cmd):
-        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        interpolated_command = parse_time_variables(cmd, date)
         return interpolated_command
 
     def format_tron_command(cmd: str) -> str:
-        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        interpolated_command = parse_time_variables(cmd, date)
         return interpolated_command
 
     def format_adhoc_command(cmd):
@@ -916,7 +926,7 @@ def configure_and_run_docker_container(
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
-            command_modifier = command_function_for_framework(instance_type)
+            command_modifier = command_function_for_framework(instance_type, args.date)
             command = command_modifier(command_from_config)
         else:
             command = instance_config.get_args()
