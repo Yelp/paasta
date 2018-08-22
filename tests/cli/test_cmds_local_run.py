@@ -1477,7 +1477,7 @@ def test_pull_docker_image_exists_with_failure(mock_run, mock_flock):
 
 
 def test_command_function_for_framework_for_marathon():
-    fn = command_function_for_framework('marathon')
+    fn = command_function_for_framework('marathon', 'fake-date')
     assert fn('foo') == 'foo'
 
 
@@ -1487,14 +1487,14 @@ def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_ti
     fake_date = mock.Mock()
     mock_datetime.datetime.now.return_value = fake_date
     mock_parse_time_variables.return_value = "foo"
-    fn = command_function_for_framework('chronos')
+    fn = command_function_for_framework('chronos', fake_date)
     fn("foo")
     mock_parse_time_variables.assert_called_once_with('foo', fake_date)
 
 
 def test_command_function_for_framework_throws_error():
     with raises(ValueError):
-        assert command_function_for_framework('bogus_string')
+        assert command_function_for_framework('bogus_string', 'fake_date')
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True, return_value='fake_host')
