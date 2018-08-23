@@ -87,6 +87,12 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
+        '--docker-registry',
+        help="Docker registry to push the Spark image built.",
+        default=DEFAULT_SPARK_DOCKER_REGISTRY,
+    )
+
+    list_parser.add_argument(
         '-s', '--service',
         help="The name of the service from which the Spark image is built.",
         default=DEFAULT_SERVICE,
@@ -628,7 +634,7 @@ def build_and_push_docker_image(args):
     if cook_return is not 0:
         return None
 
-    docker_url = f'{DEFAULT_SPARK_DOCKER_REGISTRY}/{docker_tag}'
+    docker_url = f'{args.docker_registry}/{docker_tag}'
     command = f'docker tag {docker_tag} {docker_url}'
     paasta_print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
