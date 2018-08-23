@@ -493,9 +493,6 @@ Each Tron **job** configuration MAY specify the following options:
     also be set on a per-action basis. Tron jobs may be composed of multiple actions
     that use commands from multiple different services.
 
-  * ``cluster``: Configures Tron to execute the job's action in a particular PaaSTA cluster.
-    If unset, it defaults to the global default cluster Tron is configured to use.
-
 Each Tron **action** of a job MAY specify the following:
 
   * Anything in the `Common Settings`_.
@@ -504,10 +501,6 @@ Each Tron **action** of a job MAY specify the following:
 
   * ``service``: Uses a docker image from different service. When ``service`` is set
     for an action, that setting takes precedence over what is set for the job.
-
-  * ``cluster``: Configures Tron to execute the action in a particular PaaSTA cluster.
-    If unset, it defaults to the job's setting for ``cluster``, and it that is unset,
-    it will use the global default.
 
   * ``executor``: Configures Tron to execute the command in a particular way.
     Set to ``paasta`` to configure Tron to launch the job on he PaaSTA cluster.
