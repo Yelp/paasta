@@ -246,19 +246,24 @@ class SlackDeployNotifier(object):
         else:
             return f"(Could not get authors: {authors})"
 
-    def deploy_group_is_set_to_notify(self):
+    def deploy_group_is_set_to_notify(self, notify_type):
         for step in self.deploy_info.get('pipeline', []):
             if step.get('step', '') == self.deploy_group:
-                return step.get('slack_notify', False)
+                # If specific notify_type is turned on, then return True
+                if step.get(notify_type, False):
+                    return True
+                # If the specific notify_type isn't given, it defaults to True.
+                return step.get('slack_notify', False) and step.get(notify_type, True)
         return False
 
     def post(self, **kwargs):
-        if self.deploy_group_is_set_to_notify():
-            self.sc.post(**kwargs)
-        else:
-            log.debug(f"{self.deploy_group} isn't set to notify slack")
+        self.sc.post(**kwargs)
 
     def notify_after_mark(self, ret):
+        if not self.deploy_group_is_set_to_notify('notify_after_mark'):
+            log.debug(f"{self.deploy_group}.notify_after_mark isn't set to notify slack")
+            return
+
         if ret == 0:
             if self.old_commit is not None and self.commit != self.old_commit:
                 mes = (
@@ -284,6 +289,10 @@ class SlackDeployNotifier(object):
                 self.post(channels=self.channels, message=message)
 
     def notify_after_good_deploy(self):
+        if not self.deploy_group_is_set_to_notify('notify_after_good_deploy'):
+            log.debug(f"{self.deploy_group}.notify_after_good_deploy isn't set to notify slack")
+            return
+
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
@@ -299,6 +308,10 @@ class SlackDeployNotifier(object):
             self.post(channels=self.channels, message=mes)
 
     def notify_after_auto_rollback(self):
+        if not self.deploy_group_is_set_to_notify('notify_after_auto_rollback'):
+            log.debug(f"{self.deploy_group}.notify_after_auto_rollback isn't set to notify slack")
+            return
+
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
@@ -308,6 +321,10 @@ class SlackDeployNotifier(object):
             self.post(channels=self.channels, message=message)
 
     def notify_after_abort(self):
+        if not self.deploy_group_is_set_to_notify('notify_after_abort'):
+            log.debug(f"{self.deploy_group}.notify_after_abort isn't set to notify slack")
+            return
+
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*,\n"
