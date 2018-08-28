@@ -17,16 +17,21 @@ from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1PersistentVolumeClaim
+from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1StatefulSet
+from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
@@ -41,6 +46,7 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import read_all_registrations_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
+from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
@@ -504,6 +510,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             mock_aws_ebs_volumes = [
                 {'volume_id': 'vol-ZZZZZZZZZZZZZZZZZ', 'fs_type': 'ext4', 'container_path': '/nail/qux'},
             ]
+            mock_persistent_volumes = [
+                {'container_path': '/blah', 'mode': 'RW'},
+            ]
             expected_volumes = [
                 V1VolumeMount(
                     mount_path='/nail/foo',
@@ -520,10 +529,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     name='some-volume',
                     read_only=True,
                 ),
+                V1VolumeMount(
+                    mount_path='/blah',
+                    name='some-volume',
+                    read_only=False,
+                ),
             ]
             assert self.deployment.get_volume_mounts(
                 docker_volumes=mock_docker_volumes,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
+                persistent_volumes=mock_persistent_volumes,
             ) == expected_volumes
 
     def test_get_sanitised_service_name(self):
@@ -557,10 +572,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ) as mock_load_system_config, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url', autospec=True,
         ) as mock_get_docker_url, mock.patch(
-            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes', autospec=True,
-        ) as mock_get_volumes, mock.patch(
             'paasta_tools.kubernetes_tools.get_code_sha_from_dockerurl', autospec=True,
-        ) as mock_get_code_sha_from_dockerurl, mock.patch(
+        ), mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_service_name', autospec=True,
             return_value='kurupt',
         ), mock.patch(
@@ -575,11 +588,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ) as mock_get_instances, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_deployment_strategy_config', autospec=True,
         ) as mock_get_deployment_strategy_config, mock.patch(
-            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers', autospec=True,
-        ) as mock_get_kubernetes_containers, mock.patch(
-            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes', autospec=True,
-            return_value=[],
-        ) as mock_get_pod_volumes, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name', autospec=True,
         ), mock.patch(
             'paasta_tools.kubernetes_tools.get_config_hash', autospec=True,
@@ -587,12 +595,19 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_force_bounce', autospec=True,
         ) as mock_get_force_bounce, mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.sanitize_for_config_hash', autospec=True,
-        ) as mock_sanitize_for_config_hash:
+        ) as mock_sanitize_for_config_hash, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes', autospec=True,
+        ) as mock_get_persistent_volumes, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volume_claim_templates', autospec=True,
+        ) as mock_get_volumes_claim_templates, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_template_spec', autospec=True,
+        ) as mock_get_pod_template_spec, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_metadata', autospec=True,
+        ) as mock_get_kubernetes_metadata:
+            mock_get_persistent_volumes.return_value = []
             ret = self.deployment.format_kubernetes_app()
             assert mock_load_system_config.called
             assert mock_get_docker_url.called
-            assert mock_get_volumes.called
-            assert mock_get_pod_volumes.called
             mock_get_config_hash.assert_called_with(
                 mock_sanitize_for_config_hash.return_value,
                 force_bounce=mock_get_force_bounce.return_value,
@@ -600,15 +615,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             expected = V1Deployment(
                 api_version='apps/v1',
                 kind='Deployment',
-                metadata=V1ObjectMeta(
-                    labels={
-                        'config_sha': mock_get_config_hash.return_value,
-                        'git_sha': mock_get_code_sha_from_dockerurl.return_value,
-                        'instance': mock_get_instance.return_value,
-                        'service': mock_get_service.return_value,
-                    },
-                    name='kurupt-fm',
-                ),
+                metadata=mock_get_kubernetes_metadata.return_value,
                 spec=V1DeploymentSpec(
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
@@ -618,29 +625,94 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         },
                     ),
                     strategy=mock_get_deployment_strategy_config.return_value,
-
-                    template=V1PodTemplateSpec(
-                        metadata=V1ObjectMeta(
-                            labels={
-                                'config_sha': mock_get_config_hash.return_value,
-                                'git_sha': mock_get_code_sha_from_dockerurl.return_value,
-                                'instance': mock_get_instance.return_value,
-                                'service': mock_get_service.return_value,
-                            },
-                        ),
-                        spec=V1PodSpec(
-                            containers=mock_get_kubernetes_containers.return_value,
-                            restart_policy='Always',
-                            volumes=[],
-                        ),
-                    ),
+                    template=mock_get_pod_template_spec.return_value,
                 ),
             )
             assert ret == expected
+            ret.metadata.labels.__setitem__.assert_called_with('config_sha', mock_get_config_hash.return_value)
+            ret.spec.template.metadata.labels.__setitem__.assert_called_with(
+                'config_sha',
+                mock_get_config_hash.return_value,
+            )
 
             mock_get_deployment_strategy_config.side_effect = Exception("Bad bounce method")
             with pytest.raises(InvalidKubernetesConfig):
                 self.deployment.format_kubernetes_app()
+
+            mock_get_persistent_volumes.return_value = [mock.Mock()]
+            ret = self.deployment.format_kubernetes_app()
+            expected = V1StatefulSet(
+                api_version='apps/v1',
+                kind='StatefulSet',
+                metadata=mock_get_kubernetes_metadata.return_value,
+                spec=V1StatefulSetSpec(
+                    service_name='kurupt-fm',
+                    replicas=mock_get_instances.return_value,
+                    selector=V1LabelSelector(
+                        match_labels={
+                            'instance': mock_get_instance.return_value,
+                            'service': mock_get_service.return_value,
+                        },
+                    ),
+                    template=mock_get_pod_template_spec.return_value,
+                    volume_claim_templates=mock_get_volumes_claim_templates.return_value,
+                ),
+            )
+            assert ret == expected
+            ret.metadata.labels.__setitem__.assert_called_with('config_sha', mock_get_config_hash.return_value)
+            ret.spec.template.metadata.labels.__setitem__.assert_called_with(
+                'config_sha',
+                mock_get_config_hash.return_value,
+            )
+
+    def test_get_pod_template_spec(self):
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes', autospec=True,
+        ) as mock_get_volumes, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service', autospec=True,
+        ) as mock_get_service, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance', autospec=True,
+        ) as mock_get_instance, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers', autospec=True,
+        ) as mock_get_kubernetes_containers, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes', autospec=True,
+            return_value=[],
+        ) as mock_get_pod_volumes:
+            ret = self.deployment.get_pod_template_spec(code_sha='aaaa123', system_paasta_config=mock.Mock())
+            assert mock_get_pod_volumes.called
+            assert mock_get_volumes.called
+            assert ret == V1PodTemplateSpec(
+                metadata=V1ObjectMeta(
+                    labels={
+                        'git_sha': 'aaaa123',
+                        'instance': mock_get_instance.return_value,
+                        'service': mock_get_service.return_value,
+                    },
+                ),
+                spec=V1PodSpec(
+                    containers=mock_get_kubernetes_containers.return_value,
+                    restart_policy='Always',
+                    volumes=[],
+                ),
+            )
+
+    def test_get_kubernetes_metadata(self):
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service', autospec=True,
+            return_value='kurupt',
+        ) as mock_get_service, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance', autospec=True, return_value='fm',
+        ) as mock_get_instance:
+
+            ret = self.deployment.get_kubernetes_metadata('aaa123')
+            assert ret == V1ObjectMeta(
+                labels={
+                    'git_sha': 'aaa123',
+                    'instance': mock_get_instance.return_value,
+                    'service': mock_get_service.return_value,
+                },
+                name='kurupt-fm',
+            )
 
     def test_sanitize_config_hash(self):
         mock_config = V1Deployment(
@@ -665,6 +737,57 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
 
     def test_get_bounce_margin_factor(self):
         assert isinstance(self.deployment.get_bounce_margin_factor(), float)
+
+    def test_get_volume_claim_templates(self):
+        with mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes', autospec=True,
+        ) as mock_get_persistent_volumes, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volume_name', autospec=True,
+        ) as mock_get_persistent_volume_name, mock.patch(
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_storage_class_name', autospec=True,
+        ) as mock_get_storage_class_name:
+            mock_get_persistent_volumes.return_value = [
+                {'size': 20},
+                {'size': 10},
+            ]
+            expected = [
+                V1PersistentVolumeClaim(
+                    metadata={'name': mock_get_persistent_volume_name.return_value},
+                    spec=V1PersistentVolumeClaimSpec(
+                        access_modes=["ReadWriteOnce"],
+                        storage_class_name=mock_get_storage_class_name.return_value,
+                        resources=V1ResourceRequirements(
+                            requests={
+                                'storage': '10Gi',
+                            },
+                        ),
+                    ),
+                ),
+                V1PersistentVolumeClaim(
+                    metadata={'name': mock_get_persistent_volume_name.return_value},
+                    spec=V1PersistentVolumeClaimSpec(
+                        access_modes=["ReadWriteOnce"],
+                        storage_class_name=mock_get_storage_class_name.return_value,
+                        resources=V1ResourceRequirements(
+                            requests={
+                                'storage': '20Gi',
+                            },
+                        ),
+                    ),
+                ),
+            ]
+            ret = self.deployment.get_volume_claim_templates()
+            assert expected[0] in ret
+            assert expected[1] in ret
+            assert len(ret) == 2
+
+    def test_get_storage_class_name(self):
+        assert isinstance(self.deployment.get_storage_class_name(), str)
+
+    def test_get_persistent_volume_name(self):
+        assert self.deployment.get_persistent_volume_name(
+            {'container_path': '/blah/what'},
+        ) == 'pv--slash-blahslash-what'
 
 
 def test_read_all_registrations_for_service_instance():
@@ -862,29 +985,62 @@ def test_ensure_paasta_namespace():
 
 def test_list_all_deployments():
     mock_deployments = mock.Mock(items=[])
-    mock_client = mock.Mock(deployments=mock.Mock(list_namespaced_deployment=mock.Mock(return_value=mock_deployments)))
-    assert list_all_deployments(mock_client) == []
-
-    mock_item = mock.Mock(
-        metadata=mock.Mock(
-            labels={
-                'service': 'kurupt',
-                'instance': 'fm',
-                'git_sha': 'a12345',
-                'config_sha': 'b12345',
-            },
+    mock_stateful_sets = mock.Mock(items=[])
+    mock_client = mock.Mock(
+        deployments=mock.Mock(
+            list_namespaced_deployment=mock.Mock(return_value=mock_deployments),
+            list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         ),
     )
-    type(mock_item).spec = mock.Mock(replicas=3)
-    mock_deployments = mock.Mock(items=[mock_item])
-    mock_client = mock.Mock(deployments=mock.Mock(list_namespaced_deployment=mock.Mock(return_value=mock_deployments)))
-    assert list_all_deployments(mock_client) == [KubeDeployment(
-        service='kurupt',
-        instance='fm',
-        git_sha='a12345',
-        config_sha='b12345',
-        replicas=3,
-    )]
+    assert list_all_deployments(mock_client) == []
+
+    mock_items = [
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    'service': 'kurupt',
+                    'instance': 'fm',
+                    'git_sha': 'a12345',
+                    'config_sha': 'b12345',
+                },
+            ),
+        ),
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    'service': 'kurupt',
+                    'instance': 'am',
+                    'git_sha': 'a12345',
+                    'config_sha': 'b12345',
+                },
+            ),
+        ),
+    ]
+    type(mock_items[0]).spec = mock.Mock(replicas=3)
+    type(mock_items[1]).spec = mock.Mock(replicas=3)
+    mock_deployments = mock.Mock(items=[mock_items[0]])
+    mock_stateful_sets = mock.Mock(items=[mock_items[1]])
+    mock_client = mock.Mock(
+        deployments=mock.Mock(
+            list_namespaced_deployment=mock.Mock(return_value=mock_deployments),
+            list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
+        ),
+    )
+    assert list_all_deployments(mock_client) == [
+        KubeDeployment(
+            service='kurupt',
+            instance='fm',
+            git_sha='a12345',
+            config_sha='b12345',
+            replicas=3,
+        ), KubeDeployment(
+            service='kurupt',
+            instance='am',
+            git_sha='a12345',
+            config_sha='b12345',
+            replicas=3,
+        ),
+    ]
 
 
 def test_create_deployment():
@@ -910,4 +1066,30 @@ def test_update_deployment():
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace='paasta',
         body=V1Deployment(api_version='some'),
+    )
+
+
+def test_create_stateful_set():
+    mock_client = mock.Mock()
+    create_stateful_set(mock_client, V1StatefulSet(api_version='some'))
+    mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
+        namespace='paasta',
+        body=V1StatefulSet(api_version='some'),
+    )
+
+
+def test_update_stateful_set():
+    mock_client = mock.Mock()
+    update_stateful_set(mock_client, V1StatefulSet(metadata=V1ObjectMeta(name='kurupt')))
+    mock_client.deployments.replace_namespaced_stateful_set.assert_called_with(
+        namespace='paasta',
+        name='kurupt',
+        body=V1StatefulSet(metadata=V1ObjectMeta(name='kurupt')),
+    )
+
+    mock_client = mock.Mock()
+    create_stateful_set(mock_client, V1StatefulSet(api_version='some'))
+    mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
+        namespace='paasta',
+        body=V1StatefulSet(api_version='some'),
     )

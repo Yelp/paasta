@@ -26,8 +26,13 @@ import sys
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import Union
+
+from kubernetes.client import V1Deployment
+from kubernetes.client import V1StatefulSet
 
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
@@ -35,6 +40,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import update_deployment
+from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError
@@ -137,7 +143,7 @@ def reconcile_kubernetes_deployment(
         return 1, None
 
     try:
-        formatted_deployment = service_instance_config.format_kubernetes_app()
+        formatted_application = service_instance_config.format_kubernetes_app()
     except InvalidKubernetesConfig as e:
         log.error(str(e))
         return (1, None)
@@ -145,28 +151,60 @@ def reconcile_kubernetes_deployment(
     desired_deployment = KubeDeployment(
         service=service,
         instance=instance,
-        git_sha=formatted_deployment.metadata.labels["git_sha"],
-        config_sha=formatted_deployment.metadata.labels["config_sha"],
-        replicas=formatted_deployment.spec.replicas,
+        git_sha=formatted_application.metadata.labels["git_sha"],
+        config_sha=formatted_application.metadata.labels["config_sha"],
+        replicas=formatted_application.spec.replicas,
     )
 
     if not (service, instance) in [(kd.service, kd.instance) for kd in kube_deployments]:
         log.debug(f"{desired_deployment} does not exist so creating")
-        create_deployment(
+        create_kubernetes_application(
             kube_client=kube_client,
-            formatted_deployment=formatted_deployment,
+            application=formatted_application,
         )
         return 0, None
     elif desired_deployment not in kube_deployments:
         log.debug(f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed")
-        update_deployment(
+        update_kubernetes_application(
             kube_client=kube_client,
-            formatted_deployment=formatted_deployment,
+            application=formatted_application,
         )
         return 0, None
     else:
         log.debug(f"{desired_deployment} is up to date, no action taken")
         return 0, None
+
+
+def create_kubernetes_application(kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]) -> None:
+    if isinstance(application, V1Deployment):
+        create_deployment(
+            kube_client=kube_client,
+            formatted_deployment=application,
+        )
+    elif isinstance(application, V1StatefulSet):
+        create_stateful_set(
+            kube_client=kube_client,
+            formatted_stateful_set=application,
+        )
+
+    else:
+        raise Exception("Unknown kubernetes object to create")
+
+
+def update_kubernetes_application(kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]) -> None:
+    if isinstance(application, V1Deployment):
+        update_deployment(
+            kube_client=kube_client,
+            formatted_deployment=application,
+        )
+    elif isinstance(application, V1StatefulSet):
+        update_stateful_set(
+            kube_client=kube_client,
+            formatted_stateful_set=application,
+        )
+
+    else:
+        raise Exception("Unknown kubernetes object to update")
 
 
 if __name__ == "__main__":
