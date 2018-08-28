@@ -183,3 +183,31 @@ def test_get_service_instances_that_need_bouncing_at_risk():
             marathon_clients=fake_clients,
             soa_dir='/fake/soa/dir',
         )) == {'fake_service.fake_instance'}
+
+
+def test_exceptions_logged_with_debug():
+    with mock.patch(
+        'paasta_tools.list_marathon_service_instances.get_services_for_cluster', autospec=True,
+    ) as mock_get_services_for_cluster, mock.patch(
+        'paasta_tools.list_marathon_service_instances.load_marathon_service_config', autospec=True,
+    ) as mock_load_marathon_service_config, mock.patch(
+        'paasta_tools.list_marathon_service_instances.load_system_paasta_config', autospec=True,
+    ), mock.patch(
+        'paasta_tools.list_marathon_service_instances._log', autospec=True,
+    ) as mock_log:
+        mock_app = mock.MagicMock(
+            format_marathon_app_dict=mock.MagicMock(side_effect=[Exception]),
+        )
+        mock_get_services_for_cluster.return_value = [('service', 'broken_instance')]
+        mock_load_marathon_service_config.side_effect = [mock_app]
+        list_marathon_service_instances.get_desired_marathon_configs('/fake/soa/dir')
+        mock_log.assert_called_once_with(
+            service='service',
+            line=mock.ANY,
+            component='deploy',
+            level='debug',
+            cluster=mock.ANY,
+            instance='broken_instance',
+        )
+	    
+

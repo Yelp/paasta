@@ -97,7 +97,7 @@ def get_desired_marathon_configs(soa_dir):
                 service=service,
                 line=str(errormsg),
                 component='deploy',
-                level='event',
+                level='debug',
                 cluster=cluster,
                 instance=instance,
             )
