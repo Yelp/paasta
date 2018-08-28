@@ -249,21 +249,17 @@ class SlackDeployNotifier(object):
     def deploy_group_is_set_to_notify(self, notify_type):
         for step in self.deploy_info.get('pipeline', []):
             if step.get('step', '') == self.deploy_group:
-                # If specific notify_type is turned on, then return True
-                if step.get(notify_type, False):
-                    return True
-                # If the specific notify_type isn't given, it defaults to True.
-                return step.get('slack_notify', False) and step.get(notify_type, True)
+                # Use the specific notify_type if available else use slack_notify
+                return step.get(notify_type, step.get('slack_notify', False))
         return False
 
-    def post(self, **kwargs):
-        self.sc.post(**kwargs)
+    def post(self, notify_type, **kwargs):
+        if self.deploy_group_is_set_to_notify(notify_type):
+            self.sc.post(**kwargs)
+        else:
+            log.debug(f"{self.deploy_group}.{notify_type} isn't set to notify slack")
 
     def notify_after_mark(self, ret):
-        if not self.deploy_group_is_set_to_notify('notify_after_mark'):
-            log.debug(f"{self.deploy_group}.notify_after_mark isn't set to notify slack")
-            return
-
         if ret == 0:
             if self.old_commit is not None and self.commit != self.old_commit:
                 mes = (
@@ -272,13 +268,13 @@ class SlackDeployNotifier(object):
                     f"{self.authors}\n"
                     f"{self.url_message}\n"
                 )
-                self.post(channels=self.channels, message=mes)
+                self.post('notify_after_mark', channels=self.channels, message=mes)
                 mes = (
                     "Roll it back at any time with:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                     f"--commit {self.old_commit}`"
                 )
-                self.post(channels=self.channels, message=mes)
+                self.post('notify_after_mark', channels=self.channels, message=mes)
         else:
             if self.old_commit is not None and self.commit != self.old_commit:
                 message = (
@@ -286,45 +282,33 @@ class SlackDeployNotifier(object):
                     f"{self.authors}\n"
                     f"{self.url_message}\n"
                 )
-                self.post(channels=self.channels, message=message)
+                self.post('notify_after_mark', channels=self.channels, message=message)
 
     def notify_after_good_deploy(self):
-        if not self.deploy_group_is_set_to_notify('notify_after_good_deploy'):
-            log.debug(f"{self.deploy_group}.notify_after_good_deploy isn't set to notify slack")
-            return
-
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
                 f"{self.authors}\n"
                 f"{self.url_message}\n"
             )
-            self.post(channels=self.channels, message=message)
+            self.post('notify_after_good_deploy', channels=self.channels, message=message)
             mes = (
                 "If you need to roll back, run:\n"
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                 f"--commit {self.old_commit}`"
             )
-            self.post(channels=self.channels, message=mes)
+            self.post('notify_after_good_deploy', channels=self.channels, message=mes)
 
     def notify_after_auto_rollback(self):
-        if not self.deploy_group_is_set_to_notify('notify_after_auto_rollback'):
-            log.debug(f"{self.deploy_group}.notify_after_auto_rollback isn't set to notify slack")
-            return
-
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
                 f"Auto-rolling back to {self.old_commit}\n"
                 f"{self.url_message}\n"
             )
-            self.post(channels=self.channels, message=message)
+            self.post('notify_after_auto_rollback', channels=self.channels, message=message)
 
     def notify_after_abort(self):
-        if not self.deploy_group_is_set_to_notify('notify_after_abort'):
-            log.debug(f"{self.deploy_group}.notify_after_abort isn't set to notify slack")
-            return
-
         if self.old_commit is not None and self.commit != self.old_commit:
             message = (
                 f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*,\n"
@@ -332,12 +316,12 @@ class SlackDeployNotifier(object):
                 f"{self.authors}\n"
                 f"{self.url_message}\n"
             )
-            self.post(channels=self.channels, message=message)
+            self.post('notify_after_abort', channels=self.channels, message=message)
             mes = (
                 "If you need to roll back, run:\n"
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"
             )
-            self.post(channels=self.channels, message=mes)
+            self.post('notify_after_abort', channels=self.channels, message=mes)
 
 
 def get_deploy_info(service, soa_dir):
