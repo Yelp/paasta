@@ -209,5 +209,3 @@ def test_exceptions_logged_with_debug():
             cluster=mock.ANY,
             instance='broken_instance',
         )
-	    
-
