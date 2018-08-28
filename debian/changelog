@@ -1,3 +1,19 @@
+paasta-tools (0.79.2) xenial; urgency=medium
+
+  * 0.79.2 tagged with 'make release'
+    Commit: Merge pull request #1952 from Yelp/stateful-sets  Add
+    support for StatefulSets
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 28 Aug 2018 05:05:35 -0700
+
+paasta-tools (0.79.1) xenial; urgency=medium
+
+  * 0.79.1 tagged with 'make release'
+    Commit: Merge pull request #1953 from Yelp/PAASTA-14712  Added a
+    spark-run option to enable different docker registries
+
+ -- Huadong Liu <hliu@yelp.com>  Mon, 27 Aug 2018 15:58:16 -0700
+
 paasta-tools (0.79.0) xenial; urgency=medium
 
   * 0.79.0 tagged with 'make release'
