@@ -246,17 +246,18 @@ class SlackDeployNotifier(object):
         else:
             return f"(Could not get authors: {authors})"
 
-    def deploy_group_is_set_to_notify(self):
+    def deploy_group_is_set_to_notify(self, notify_type):
         for step in self.deploy_info.get('pipeline', []):
             if step.get('step', '') == self.deploy_group:
-                return step.get('slack_notify', False)
+                # Use the specific notify_type if available else use slack_notify
+                return step.get(notify_type, step.get('slack_notify', False))
         return False
 
-    def post(self, **kwargs):
-        if self.deploy_group_is_set_to_notify():
+    def post(self, notify_type, **kwargs):
+        if self.deploy_group_is_set_to_notify(notify_type):
             self.sc.post(**kwargs)
         else:
-            log.debug(f"{self.deploy_group} isn't set to notify slack")
+            log.debug(f"{self.deploy_group}.{notify_type} isn't set to notify slack")
 
     def notify_after_mark(self, ret):
         if ret == 0:
@@ -267,13 +268,13 @@ class SlackDeployNotifier(object):
                     f"{self.authors}\n"
                     f"{self.url_message}\n"
                 )
-                self.post(channels=self.channels, message=mes)
+                self.post('notify_after_mark', channels=self.channels, message=mes)
                 mes = (
                     "Roll it back at any time with:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                     f"--commit {self.old_commit}`"
                 )
-                self.post(channels=self.channels, message=mes)
+                self.post('notify_after_mark', channels=self.channels, message=mes)
         else:
             if self.old_commit is not None and self.commit != self.old_commit:
                 message = (
@@ -281,7 +282,7 @@ class SlackDeployNotifier(object):
                     f"{self.authors}\n"
                     f"{self.url_message}\n"
                 )
-                self.post(channels=self.channels, message=message)
+                self.post('notify_after_mark', channels=self.channels, message=message)
 
     def notify_after_good_deploy(self):
         if self.old_commit is not None and self.commit != self.old_commit:
@@ -290,13 +291,13 @@ class SlackDeployNotifier(object):
                 f"{self.authors}\n"
                 f"{self.url_message}\n"
             )
-            self.post(channels=self.channels, message=message)
+            self.post('notify_after_good_deploy', channels=self.channels, message=message)
             mes = (
                 "If you need to roll back, run:\n"
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                 f"--commit {self.old_commit}`"
             )
-            self.post(channels=self.channels, message=mes)
+            self.post('notify_after_good_deploy', channels=self.channels, message=mes)
 
     def notify_after_auto_rollback(self):
         if self.old_commit is not None and self.commit != self.old_commit:
@@ -305,7 +306,7 @@ class SlackDeployNotifier(object):
                 f"Auto-rolling back to {self.old_commit}\n"
                 f"{self.url_message}\n"
             )
-            self.post(channels=self.channels, message=message)
+            self.post('notify_after_auto_rollback', channels=self.channels, message=message)
 
     def notify_after_abort(self):
         if self.old_commit is not None and self.commit != self.old_commit:
@@ -315,12 +316,12 @@ class SlackDeployNotifier(object):
                 f"{self.authors}\n"
                 f"{self.url_message}\n"
             )
-            self.post(channels=self.channels, message=message)
+            self.post('notify_after_abort', channels=self.channels, message=message)
             mes = (
                 "If you need to roll back, run:\n"
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"
             )
-            self.post(channels=self.channels, message=mes)
+            self.post('notify_after_abort', channels=self.channels, message=mes)
 
 
 def get_deploy_info(service, soa_dir):
