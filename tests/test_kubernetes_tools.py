@@ -752,7 +752,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             ]
             expected = [
                 V1PersistentVolumeClaim(
-                    metadata={'name': mock_get_persistent_volume_name.return_value},
+                    metadata=V1ObjectMeta(
+                        name=mock_get_persistent_volume_name.return_value,
+                    ),
                     spec=V1PersistentVolumeClaimSpec(
                         access_modes=["ReadWriteOnce"],
                         storage_class_name=mock_get_storage_class_name.return_value,
@@ -764,7 +766,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     ),
                 ),
                 V1PersistentVolumeClaim(
-                    metadata={'name': mock_get_persistent_volume_name.return_value},
+                    metadata=V1ObjectMeta(
+                        name=mock_get_persistent_volume_name.return_value,
+                    ),
                     spec=V1PersistentVolumeClaimSpec(
                         access_modes=["ReadWriteOnce"],
                         storage_class_name=mock_get_storage_class_name.return_value,

@@ -186,7 +186,6 @@ def create_kubernetes_application(kube_client: KubeClient, application: Union[V1
             kube_client=kube_client,
             formatted_stateful_set=application,
         )
-
     else:
         raise Exception("Unknown kubernetes object to create")
 
@@ -202,7 +201,6 @@ def update_kubernetes_application(kube_client: KubeClient, application: Union[V1
             kube_client=kube_client,
             formatted_stateful_set=application,
         )
-
     else:
         raise Exception("Unknown kubernetes object to update")
 

@@ -535,10 +535,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             raise Exception("Number of instances must be 1 or 0 if an EBS volume is defined.")
         return instances
 
-    def get_volume_claim_templates(self) -> List[V1PersistentVolumeClaim]:
+    def get_volume_claim_templates(self) -> Sequence[V1PersistentVolumeClaim]:
         return [
             V1PersistentVolumeClaim(
-                metadata={'name': self.get_persistent_volume_name(volume)},
+                metadata=V1ObjectMeta(
+                    name=self.get_persistent_volume_name(volume),
+                ),
                 spec=V1PersistentVolumeClaimSpec(
                     # must be ReadWriteOnce for EBS
                     access_modes=["ReadWriteOnce"],

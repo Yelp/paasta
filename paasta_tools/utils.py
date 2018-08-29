@@ -722,7 +722,7 @@ class InstanceConfig(object):
         deduped = {v['containerPath'].rstrip('/') + v['hostPath'].rstrip('/'): v for v in volumes}.values()
         return sort_dicts(deduped)
 
-    def get_persistent_volumes(self) -> List[PersistentVolume]:
+    def get_persistent_volumes(self) -> Sequence[PersistentVolume]:
         return self.config_dict.get('persistent_volumes', [])
 
     def get_dependencies_reference(self) -> Optional[str]:
