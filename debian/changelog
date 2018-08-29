@@ -1,3 +1,10 @@
+paasta-tools (0.79.3) xenial; urgency=medium
+
+  * 0.79.3 tagged with 'make release'
+    Commit: Merge branch "paasta-14607"
+
+ -- Jordan Lee <jordandl@yelp.com>  Wed, 29 Aug 2018 10:53:59 -0700
+
 paasta-tools (0.79.2) xenial; urgency=medium
 
   * 0.79.2 tagged with 'make release'
