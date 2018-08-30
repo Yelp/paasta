@@ -113,7 +113,7 @@
                 "bounce_method": {
                     "type": "string"
                 },
-                "bounce_method_params": {
+                "bounce_health_params": {
                     "type": "object",
                     "properties": {
                         "check_haproxy": {
@@ -127,17 +127,8 @@
                             "type": "number",
                             "minimum": 0.0,
                             "maximum": 1.0,
-                            "exclusiveMinimum": false,
+                            "exclusiveMinimum": true,
                             "exclusiveMaximum": false
-                        }
-                    }
-                },
-                "bounce_health_params": {
-                    "type": "object",
-                    "properties": {
-                        "check_haproxy": {
-                            "type": "boolean",
-                            "default": true
                         }
                     }
                 },
