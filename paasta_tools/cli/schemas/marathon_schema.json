@@ -122,6 +122,13 @@
                         },
                         "min_task_uptime": {
                             "type": "number"
+                        },
+                        "haproxy_min_fraction_up": {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "exclusiveMinimum": false,
+                            "exclusiveMaximum": false
                         }
                     }
                 },

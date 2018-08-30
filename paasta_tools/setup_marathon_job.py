@@ -236,7 +236,7 @@ def do_bounce(
     drain_method: drain_lib.DrainMethod,
     config: marathon_tools.FormattedMarathonAppDict,
     new_app_running: bool,
-    happy_new_tasks: List[Tuple[MarathonTask, MarathonClient]],
+    happy_new_tasks: List[MarathonTask],
     old_app_live_happy_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
     old_app_live_unhappy_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
     old_app_draining_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
