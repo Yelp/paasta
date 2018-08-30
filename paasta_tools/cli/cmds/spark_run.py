@@ -641,7 +641,11 @@ def build_and_push_docker_image(args):
     if retcode is not 0:
         return None
 
-    command = 'docker push %s' % docker_url
+    if args.docker_registry != DEFAULT_SPARK_DOCKER_REGISTRY:
+        command = 'sudo -H docker push %s' % docker_url
+    else:
+        command = 'docker push %s' % docker_url
+
     paasta_print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=True)
     if retcode is not 0:
