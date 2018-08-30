@@ -14,6 +14,7 @@
 # limitations under the License.
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
@@ -82,6 +83,23 @@ def add_subparser(subparsers):
         help=(
             'Group resource information of slaves grouped by attribute.'
             'Note: This is only effective with -vv'
+        ),
+    )
+    # The service and instance args default to None if not specified.
+    status_parser.add_argument(
+        '-s',
+        '--service',
+        help=(
+            'Show how many of a given service instance can be run on a cluster slave.'
+            'Note: This is only effective with -vvv and --instance must also be specified'
+        ),
+    ).completer = lazy_choices_completer(list_services)
+    status_parser.add_argument(
+        '-i',
+        '--instance',
+        help=(
+            'Show how many of a given service instance can be run on a cluster slave.'
+            'Note: This is only effective with -vvv and --service must also be specified'
         ),
     )
     status_parser.set_defaults(command=paasta_metastatus)

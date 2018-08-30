@@ -789,9 +789,10 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
             return instance_type
         suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
     else:
+        suggestions_str = ''.join(suggestions)
         raise NoConfigurationForServiceError(
             f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
-            f"to run on the {cluster} cluster.{suggestions}",
+            f"to run on the {cluster} cluster.{suggestions_str}",
         )
 
 
