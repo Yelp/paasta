@@ -114,3 +114,19 @@ def test_main_marathon_jsondecode_error():
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main(())
         assert excinfo.value.code == 2
+
+
+def test_get_service_instance_stats():
+    # The patch stuff is confusing.
+    # Basically we patch the validate_service_instance in the paasta_metastatus module and not the utils module
+    instance_config_mock = Mock()
+    instance_config_mock.get_instance.return_value = 'fakeinstance'
+    config_loader_mock = Mock()
+    config_loader_mock.instance_configs.return_value = [instance_config_mock]
+    with patch(
+        'paasta_tools.paasta_metastatus.validate_service_instance', autospec=True, return_value='marathon',
+    ), patch(
+        'paasta_tools.paasta_metastatus.PaastaServiceConfigLoader', autospec=True, return_value=config_loader_mock,
+    ):
+        stats = paasta_metastatus.get_service_instance_stats('fakeservice', 'fakeinstance', 'fakecluster')
+        assert set(stats.keys()) == {'mem', 'cpus', 'disk', 'gpus'}

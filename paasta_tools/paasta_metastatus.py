@@ -153,7 +153,7 @@ def utilization_table_by_grouping_from_mesos_state(
     # service_instance_stats could be None or an empty dict so use this check to cover both cases.
     if service_instance_stats:
         # Insert so agent count is still last
-        static_headers.insert(-1, 'Runnable service instances')
+        static_headers.insert(-1, 'Slots + Limiting Resource')
 
     all_rows = [
         [grouping.capitalize() for grouping in groupings] + static_headers,
