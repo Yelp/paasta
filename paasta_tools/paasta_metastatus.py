@@ -218,8 +218,9 @@ def get_service_instance_stats(service: str, instance: str, cluster: str) -> Dic
 
     try:
         instance_type: str = validate_service_instance(service, instance, cluster, DEFAULT_SOA_DIR)
-    except Exception:
+    except Exception as e:
         log.error(f'Failed to get stats for service {service} instance {instance}:')
+        log.error(e)
         return {}
     # Keys match paasta_tools.utils.INSTANCE_TYPES
     instance_class_dict = {
