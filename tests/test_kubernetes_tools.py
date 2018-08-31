@@ -716,6 +716,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
 
     def test_sanitize_config_hash(self):
         mock_config = V1Deployment(
+            kind='Deployment',
+            api_version='apps/v1',
             metadata=V1ObjectMeta(
                 name='qwe',
                 labels={
@@ -734,6 +736,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
         ret = self.deployment.sanitize_for_config_hash(mock_config)
         assert 'replicas' not in ret['spec'].keys()
+        assert 'kind' not in ret.keys()
+        assert 'api_version' not in ret.keys()
 
     def test_get_bounce_margin_factor(self):
         assert isinstance(self.deployment.get_bounce_margin_factor(), float)

@@ -83,7 +83,7 @@ from paasta_tools.utils import VolumeWithMode
 
 log = logging.getLogger(__name__)
 
-CONFIG_HASH_BLACKLIST = {'replicas'}
+CONFIG_HASH_BLACKLIST = {'replicas', 'kind', 'api_version'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KubeDeployment = NamedTuple(
     'KubeDeployment', [
