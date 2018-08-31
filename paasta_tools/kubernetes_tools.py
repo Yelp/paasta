@@ -13,7 +13,10 @@
 """
 """
 import copy
+import inspect
 import logging
+import re
+import sys
 from typing import Any
 from typing import Dict
 from typing import List
@@ -102,6 +105,38 @@ KubeService = NamedTuple(
         ('pod_ip', str),
     ],
 )
+
+
+_K8S_MODELS_MODULE = 'kubernetes.client.models'
+_K8S_MODEL_CLASS_NAME_RE = re.compile(r'V(?P<version>[1-9]+(?:(?:alpha|beta)[0-9]+)?)(?P<kind>.*)')
+
+
+def _autofill_kind_and_api_version_for_class(cls: Any) -> None:
+    match = _K8S_MODEL_CLASS_NAME_RE.match(cls.__name__)
+    if match:
+        orig__init__ = cls.__init__
+
+        def patched__init__(
+            self: Any,
+            kind: str = match.group('kind'),
+            api_version: str = 'apps/v{version}'.format(version=match.group('version')),
+            **kwargs: Any,
+        ) -> None:
+            return orig__init__(
+                self,
+                kind=kind,
+                api_version=api_version,
+                **kwargs,
+            )
+        cls.__init__ = patched__init__
+
+
+for name, obj in inspect.getmembers(sys.modules[__name__]):
+    if inspect.isclass(obj) and \
+            obj.__module__[:len(_K8S_MODELS_MODULE)] == _K8S_MODELS_MODULE and \
+            hasattr(obj, 'kind') and \
+            hasattr(obj, 'api_version'):
+        _autofill_kind_and_api_version_for_class(obj)
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -583,8 +618,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             code_sha = get_code_sha_from_dockerurl(docker_url)
             if self.get_persistent_volumes():
                 complete_config = V1StatefulSet(
-                    api_version='apps/v1',
-                    kind='StatefulSet',
                     metadata=self.get_kubernetes_metadata(code_sha),
                     spec=V1StatefulSetSpec(
                         service_name="{service}-{instance}".format(
@@ -607,8 +640,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             else:
                 complete_config = V1Deployment(
-                    api_version='apps/v1',
-                    kind='Deployment',
                     metadata=self.get_kubernetes_metadata(code_sha),
                     spec=V1DeploymentSpec(
                         replicas=self.get_desired_instances(),
