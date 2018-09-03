@@ -82,6 +82,7 @@ def make_app(global_config=None):
     config.add_route('service_autoscaler.pause.get', '/v1/service_autoscaler/pause', request_method="GET")
     config.add_route('version', '/v1/version')
     config.add_route('marathon_dashboard', '/v1/marathon_dashboard', request_method="GET")
+    config.add_route('metastatus', '/v1/metastatus')
     config.scan()
     return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")
 

@@ -12,9 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+from distutils.util import strtobool
 from typing import Sequence
+from typing import Tuple
 
+from bravado.exception import HTTPError
+
+from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
+from paasta_tools.cli.utils import get_paasta_metastatus_cmd_args
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -110,6 +117,35 @@ def add_subparser(
     status_parser.set_defaults(command=paasta_metastatus)
 
 
+def paasta_metastatus_on_api_endpoint(
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+    groupings: Sequence[str],
+    verbose: int,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> Tuple[int, str]:
+    client = get_paasta_api_client(cluster, system_paasta_config)
+    if not client:
+        paasta_print('Cannot get a paasta-api client')
+        exit(1)
+
+    try:
+        cmd_args, _ = get_paasta_metastatus_cmd_args(
+            groupings=groupings,
+            verbose=verbose,
+            autoscaling_info=autoscaling_info,
+            use_mesos_cache=use_mesos_cache,
+        )
+        res = client.metastatus.metastatus(cmd_args=[str(arg) for arg in cmd_args]).result()
+        output, exit_code = res.output, res.exit_code
+    except HTTPError as exc:
+        paasta_print(exc.response.text)
+        return exc.status_code
+
+    return exit_code, output
+
+
 def print_cluster_status(
     cluster: str,
     system_paasta_config: SystemPaastaConfig,
@@ -117,17 +153,28 @@ def print_cluster_status(
     verbose: int = 0,
     autoscaling_info: bool = False,
     use_mesos_cache: bool = False,
+    use_api_endpoint: bool = False,
 ) -> int:
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashboards even if the cluster is unavailable"""
-    return_code, output = execute_paasta_metastatus_on_remote_master(
-        cluster=cluster,
-        system_paasta_config=system_paasta_config,
-        groupings=groupings,
-        verbose=verbose,
-        autoscaling_info=autoscaling_info,
-        use_mesos_cache=use_mesos_cache,
-    )
+    if use_api_endpoint:
+        return_code, output = paasta_metastatus_on_api_endpoint(
+            cluster=cluster,
+            system_paasta_config=system_paasta_config,
+            groupings=groupings,
+            verbose=verbose,
+            autoscaling_info=autoscaling_info,
+            use_mesos_cache=use_mesos_cache,
+        )
+    else:
+        return_code, output = execute_paasta_metastatus_on_remote_master(
+            cluster=cluster,
+            system_paasta_config=system_paasta_config,
+            groupings=groupings,
+            verbose=verbose,
+            autoscaling_info=autoscaling_info,
+            use_mesos_cache=use_mesos_cache,
+        )
 
     paasta_print("Cluster: %s" % cluster)
     paasta_print(get_cluster_dashboards(cluster))
@@ -176,6 +223,12 @@ def paasta_metastatus(
     """Print the status of a PaaSTA clusters"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
+
+    if 'USE_API_ENDPOINT' in os.environ:
+        use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
+    else:
+        use_api_endpoint = False
+
     all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     return_codes = []
@@ -189,6 +242,7 @@ def paasta_metastatus(
                     verbose=args.verbose,
                     autoscaling_info=args.autoscaling_info,
                     use_mesos_cache=args.use_mesos_cache,
+                    use_api_endpoint=use_api_endpoint,
                 ),
             )
         else:
