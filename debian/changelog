@@ -1,3 +1,11 @@
+paasta-tools (0.79.4) xenial; urgency=medium
+
+  * 0.79.4 tagged with 'make release'
+    Commit: Merge pull request #1929 from Yelp/paasta-status-for-k8s
+    Basic `paasta status` for k8s
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 03 Sep 2018 06:59:17 -0700
+
 paasta-tools (0.79.3) xenial; urgency=medium
 
   * 0.79.3 tagged with 'make release'
