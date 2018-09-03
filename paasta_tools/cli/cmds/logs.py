@@ -532,7 +532,7 @@ class ScribeLogReader(LogReader):
     }
 
     def __init__(self, cluster_map):
-        super(ScribeLogReader, self).__init__()
+        super().__init__()
 
         if scribereader is None:
             raise Exception("scribereader package must be available to use scribereader log reading backend")

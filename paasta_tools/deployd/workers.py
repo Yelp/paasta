@@ -14,7 +14,7 @@ BounceResults = namedtuple('BounceResults', ['bounce_again_in_seconds', 'return_
 
 class PaastaDeployWorker(PaastaThread):
     def __init__(self, worker_number, inbox_q, bounce_q, config, metrics_provider):
-        super(PaastaDeployWorker, self).__init__()
+        super().__init__()
         self.daemon = True
         self.name = f"Worker{worker_number}"
         self.inbox_q = inbox_q

@@ -102,7 +102,7 @@ class InvalidParentError(Exception):
 class ChronosConfig(dict):
 
     def __init__(self, config):
-        super(ChronosConfig, self).__init__(config)
+        super().__init__(config)
 
     def get_url(self):
         """:returns: The Chronos API endpoint"""
@@ -137,15 +137,15 @@ class CachingChronosClient(chronos.ChronosClient):
 
     @time_cache(ttl=20)
     def list(self):
-        return super(CachingChronosClient, self).list()
+        return super().list()
 
     @time_cache(ttl=20)
     def metrics(self):
-        return super(CachingChronosClient, self).metrics()
+        return super().metrics()
 
     @time_cache(ttl=20)
     def scheduler_graph(self):
-        return super(CachingChronosClient, self).scheduler_graph()
+        return super().scheduler_graph()
 
 
 def get_chronos_client(config, cached=False):
@@ -253,7 +253,7 @@ class ChronosJobConfig(InstanceConfig):
     config_filename_prefix = 'chronos'
 
     def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
-        super(ChronosJobConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,
@@ -286,7 +286,7 @@ class ChronosJobConfig(InstanceConfig):
         """The expected input env for PaaSTA is a dictionary of key/value pairs
         Chronos requires an array of dictionaries in a very specific format:
         https://mesos.github.io/chronos/docs/api.html#sample-job"""
-        original_env = super(ChronosJobConfig, self).get_env()
+        original_env = super().get_env()
         return [{"name": key, "value": value} for key, value in original_env.items()]
 
     def get_calculated_constraints(self, system_paasta_config):
@@ -552,7 +552,7 @@ class ChronosJobConfig(InstanceConfig):
     def validate(self):
         error_msgs = []
         # Use InstanceConfig to validate shared config keys like cpus and mem
-        error_msgs.extend(super(ChronosJobConfig, self).validate())
+        error_msgs.extend(super().validate())
 
         for param in [
             'epsilon', 'retries', 'cpus', 'mem', 'disk',

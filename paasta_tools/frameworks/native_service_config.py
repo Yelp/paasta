@@ -168,7 +168,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
         soa_dir: str,
         service_namespace_config: Optional[ServiceNamespaceConfig]=None,
     ) -> None:
-        super(NativeServiceConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,

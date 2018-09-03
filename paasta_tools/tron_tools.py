@@ -56,7 +56,7 @@ class TronConfig(dict):
     """System-level configuration for Tron."""
 
     def __init__(self, config):
-        super(TronConfig, self).__init__(config)
+        super().__init__(config)
 
     def get_cluster_name(self):
         """:returns The name of the Tron cluster"""
@@ -108,7 +108,7 @@ class TronActionConfig(InstanceConfig):
     config_filename_prefix = 'tron'
 
     def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
-        super(TronActionConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,
@@ -176,7 +176,7 @@ class TronActionConfig(InstanceConfig):
 
     def validate(self) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
-        error_msgs = super(TronActionConfig, self).validate()
+        error_msgs = super().validate()
 
         if error_msgs:
             name = self.get_instance()

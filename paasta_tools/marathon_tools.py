@@ -291,7 +291,7 @@ class FormattedMarathonAppDict(BounceMethodConfigDict, total=False):
 class MarathonConfig(dict):
 
     def __init__(self, config: MarathonConfigDict) -> None:
-        super(MarathonConfig, self).__init__(config)
+        super().__init__(config)
 
     @property
     def url(self) -> List[str]:
@@ -446,7 +446,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
-        super(MarathonServiceConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,
@@ -887,7 +887,7 @@ class CachedMarathonClient(MarathonClient):
 
     @time_cache(ttl=20)
     def list_apps(self, *args: Any, **kwargs: Any) -> Any:
-        return super(CachedMarathonClient, self).list_apps(*args, **kwargs)
+        return super().list_apps(*args, **kwargs)
 
 
 def get_marathon_client(url: List[str], user: str, passwd: str, cached: bool=False) -> MarathonClient:

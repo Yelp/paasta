@@ -35,14 +35,14 @@ class AdhocScheduler(NativeScheduler):
         kwargs['service_config_overrides'].setdefault('instances', 1)
         self.finished_countdown = kwargs['service_config_overrides']['instances']
 
-        super(AdhocScheduler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def need_to_stop(self):
         # Is used to decide whether to stop the driver or try to start more tasks.
         return self.finished_countdown == 0
 
     def statusUpdate(self, driver: MesosSchedulerDriver, update: Dict):
-        super(AdhocScheduler, self).statusUpdate(driver, update)
+        super().statusUpdate(driver, update)
 
         if update['state'] not in LIVE_TASK_STATES:
             self.finished_countdown -= 1
@@ -60,13 +60,13 @@ class AdhocScheduler(NativeScheduler):
         # In dry run satisfy exit-conditions after we got the offer
         if self.dry_run or self.need_to_stop():
             if self.dry_run:
-                tasks, _ = super(AdhocScheduler, self). \
+                tasks, _ = super(). \
                     tasks_and_state_for_offer(driver, offer, state)
                 paasta_print("Would have launched: ", tasks)
             driver.stop()
             return [], state
 
-        return super(AdhocScheduler, self). \
+        return super(). \
             tasks_and_state_for_offer(driver, offer, state)
 
     def kill_tasks_if_necessary(self, *args, **kwargs):
