@@ -62,6 +62,7 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.paastakube.api_client import ApiClient
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
@@ -787,7 +788,7 @@ def get_kubernetes_services_running_here_for_nerve(
 class KubeClient():
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
-        self.deployments = kube_client.AppsV1Api()
+        self.deployments = kube_client.AppsV1Api(ApiClient())
         self.core = kube_client.CoreV1Api()
 
 
