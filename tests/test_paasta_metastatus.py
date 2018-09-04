@@ -18,6 +18,7 @@ from pytest import raises
 
 from paasta_tools import paasta_metastatus
 from paasta_tools.metrics.metastatus_lib import HealthCheckResult
+from paasta_tools.metrics.metastatus_lib import ResourceUtilization as RU
 
 
 def test_main_no_marathon_servers():
@@ -120,13 +121,22 @@ def test_get_service_instance_stats():
     # The patch stuff is confusing.
     # Basically we patch the validate_service_instance in the paasta_metastatus module and not the utils module
     instance_config_mock = Mock()
-    instance_config_mock.get_instance.return_value = 'fakeinstance'
-    config_loader_mock = Mock()
-    config_loader_mock.instance_configs.return_value = [instance_config_mock]
     with patch(
-        'paasta_tools.paasta_metastatus.validate_service_instance', autospec=True, return_value='marathon',
-    ), patch(
-        'paasta_tools.paasta_metastatus.PaastaServiceConfigLoader', autospec=True, return_value=config_loader_mock,
+        'paasta_tools.paasta_metastatus.get_instance_config', autospec=True, return_value=instance_config_mock,
     ):
         stats = paasta_metastatus.get_service_instance_stats('fakeservice', 'fakeinstance', 'fakecluster')
         assert set(stats.keys()) == {'mem', 'cpus', 'disk', 'gpus'}
+
+
+def test_fill_table_rows_with_service_instance_stats():
+    fake_service_instance_stats = {'mem': 40, 'cpus': 0.3, 'disk': 1.0, 'gpus': 0}
+    fake_table_rows = [[]]
+    # For reference, ResourceUtilization is (metric, total, free)
+    fake_rsrc_utils = [RU('mem', 100, 80), RU('cpus', 100, 50), RU('disk', 20, 15)]
+    paasta_metastatus.fill_table_rows_with_service_instance_stats(
+        fake_service_instance_stats, fake_rsrc_utils, fake_table_rows,
+    )
+    result_str = fake_table_rows[0][0]
+    # Clearly memory is the limiting factor as there is only 80 memory and each service instance takes 40 memory
+    assert '2' in result_str
+    assert 'mem' in result_str

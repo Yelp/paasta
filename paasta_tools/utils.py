@@ -266,6 +266,10 @@ def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
         return None
 
 
+# For mypy typing
+InstanceConfig_T = TypeVar('InstanceConfig_T', bound='InstanceConfig')
+
+
 class InstanceConfig(object):
     config_filename_prefix: str
 
@@ -765,10 +769,6 @@ class InstanceConfig(object):
                 self.service == other.service
         else:
             return False
-
-
-# For mypy typing
-InstanceConfig_T = TypeVar('InstanceConfig_T', bound=InstanceConfig)
 
 
 def stringify_constraint(usc: UnstringifiedConstraint) -> Constraint:

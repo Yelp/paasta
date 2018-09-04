@@ -27,32 +27,25 @@ import chronos
 from marathon.exceptions import MarathonError
 
 from paasta_tools import __version__
-from paasta_tools import adhoc_tools
-from paasta_tools import chronos_tools
-from paasta_tools import kubernetes_tools
-from paasta_tools import marathon_tools
-from paasta_tools import tron_tools
 from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
-from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
-from paasta_tools.utils import validate_service_instance
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('paasta_metastatus')
 logging.basicConfig()
 # kazoo can be really noisy - turn it down
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
@@ -177,21 +170,9 @@ def utilization_table_by_grouping_from_mesos_state(
             [v for g, v in grouping_values],
             healthcheck_utilization_pairs,
         ))
-
+        # Fill table rows with service-instance data if possible.
         if service_instance_stats:
-            # Calculate the max number of runnable service instances given the current resources (e.g. cpus, mem, disk)
-            resource_free_dict = {rsrc.metric: rsrc.free for rsrc in resource_utilizations}
-            num_service_instances_allowed = float('inf')
-            limiting_factor = 'Unknown'
-            # service_instance_stats.keys() should be a subset of resource_free_dict
-            for rsrc_name, rsrc_amt_wanted in service_instance_stats.items():
-                if rsrc_amt_wanted > 0:
-                    # default=0 to indicate there is none of that resource
-                    rsrc_free = resource_free_dict.get(rsrc_name, 0)
-                    if rsrc_free // rsrc_amt_wanted < num_service_instances_allowed:
-                        limiting_factor = rsrc_name
-                        num_service_instances_allowed = rsrc_free // rsrc_amt_wanted
-            table_rows[-1].append('{:6} ; {}'.format(int(num_service_instances_allowed), limiting_factor))
+            fill_table_rows_with_service_instance_stats(service_instance_stats, resource_utilizations, table_rows)
 
         # Always append the agent count last
         table_rows[-1].append(str(resource_info_dict['slave_count']))
@@ -200,6 +181,26 @@ def utilization_table_by_grouping_from_mesos_state(
     all_rows.extend(table_rows)
 
     return all_rows, healthy_exit
+
+
+def fill_table_rows_with_service_instance_stats(
+    service_instance_stats: Dict[str, float],
+    resource_utilizations: List[metastatus_lib.ResourceUtilization],
+    table_rows: List[List[str]],
+):
+    # Calculate the max number of runnable service instances given the current resources (e.g. cpus, mem, disk)
+    resource_free_dict = {rsrc.metric: rsrc.free for rsrc in resource_utilizations}
+    num_service_instances_allowed = float('inf')
+    limiting_factor = 'Unknown'
+    # service_instance_stats.keys() should be a subset of resource_free_dict
+    for rsrc_name, rsrc_amt_wanted in service_instance_stats.items():
+        if rsrc_amt_wanted > 0:
+            # default=0 to indicate there is none of that resource
+            rsrc_free = resource_free_dict.get(rsrc_name, 0)
+            if rsrc_free // rsrc_amt_wanted < num_service_instances_allowed:
+                limiting_factor = rsrc_name
+                num_service_instances_allowed = rsrc_free // rsrc_amt_wanted
+    table_rows[-1].append('{:6} ; {}'.format(int(num_service_instances_allowed), limiting_factor))
 
 
 def get_service_instance_stats(service: str, instance: str, cluster: str) -> Dict[str, float]:
@@ -216,42 +217,18 @@ def get_service_instance_stats(service: str, instance: str, cluster: str) -> Dic
     if service is None or instance is None or cluster is None:
         return {}
 
+    service_instance_stats: Dict[str, float] = {}
     try:
-        instance_type: str = validate_service_instance(service, instance, cluster, DEFAULT_SOA_DIR)
+        instance_config = get_instance_config(service, instance, cluster)
+        # Get all fields that are showed in the 'paasta metastatus -vvv' command
+        service_instance_stats['mem'] = instance_config.get_mem()
+        service_instance_stats['cpus'] = instance_config.get_cpus()
+        service_instance_stats['disk'] = instance_config.get_disk()
+        service_instance_stats['gpus'] = instance_config.get_gpus()
     except Exception as e:
-        log.error(f'Failed to get stats for service {service} instance {instance}:')
+        log.error(f'Failed to get stats for service {service} instance {instance}')
         log.error(repr(e))
-        return {}
-    # Keys match paasta_tools.utils.INSTANCE_TYPES
-    instance_class_dict = {
-        'marathon': marathon_tools.MarathonServiceConfig,
-        'chronos': chronos_tools.ChronosJobConfig,
-        'paasta_native': None,
-        'adhoc': adhoc_tools.AdhocJobConfig,
-        'kubernetes': kubernetes_tools.KubernetesDeploymentConfig,
-        'tron': tron_tools.TronActionConfig,
-    }
-    if instance_type not in instance_class_dict:
-        log.error(f'Instance type {instance_type} does not have instance_type_class')
-        return {}
-
-    # Use PaastaServiceConfigLoader to get the InstanceConfig object
-    service_config_loader = PaastaServiceConfigLoader(service)
-    instance_config_generator = service_config_loader.instance_configs(
-        cluster=cluster, instance_type_class=instance_class_dict[instance_type],
-    )
-    for instance_config in instance_config_generator:
-        if instance_config.get_instance() == instance:
-            service_instance_stats: Dict[str, float] = {}
-            # Get all fields that are showed in the 'paasta metastatus -vvv' command
-            service_instance_stats['mem'] = instance_config.get_mem()
-            service_instance_stats['cpus'] = instance_config.get_cpus()
-            service_instance_stats['disk'] = instance_config.get_disk()
-            service_instance_stats['gpus'] = instance_config.get_gpus()
-            return service_instance_stats
-    # Can reach here if a service doesn't contain the specified instance.
-    # It is up to the user to ensure the args are correctly input.
-    return {}
+    return service_instance_stats
 
 
 def main(argv: Optional[List[str]]=None) -> None:
@@ -334,6 +311,8 @@ def main(argv: Optional[List[str]]=None) -> None:
             print_with_indent('Per Slave Utilization', 2)
             cluster = system_paasta_config.get_cluster()
             service_instance_stats = get_service_instance_stats(args.service, args.instance, cluster)
+            if service_instance_stats:
+                print_with_indent('Service-Instance stats:' + str(service_instance_stats), 2)
             # print info about slaves here. Note that we don't make modifications to
             # the healthy_exit variable here, because we don't care about a single slave
             # having high usage.
