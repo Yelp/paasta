@@ -21,7 +21,6 @@ class TestTronConfig:
     def test_normal(self, config_dict):
         config = tron_tools.TronConfig(config_dict)
         assert config.get_cluster_name() == 'dev-batch'
-        assert config.get_default_paasta_cluster() == 'dev-oregon'
         assert config.get_url() == 'http://mesos-master.com:2000'
 
     def test_no_cluster_name(self, config_dict):
@@ -29,12 +28,6 @@ class TestTronConfig:
         config = tron_tools.TronConfig(config_dict)
         with pytest.raises(tron_tools.TronNotConfigured):
             config.get_cluster_name()
-
-    def test_no_default_paasta_cluster(self, config_dict):
-        del config_dict['default_paasta_cluster']
-        config = tron_tools.TronConfig(config_dict)
-        with pytest.raises(tron_tools.TronNotConfigured):
-            config.get_default_paasta_cluster()
 
     def test_no_url(self, config_dict):
         del config_dict['url']
@@ -120,12 +113,12 @@ class TestTronActionConfig:
 class TestTronJobConfig:
 
     @pytest.mark.parametrize(
-        'action_service,action_deploy,action_cluster, job_cluster', [
-            (None, None, None, None),
-            (None, 'special_deploy', None, None),
-            ('other_service', None, None, None),
-            (None, None, 'action-cluster', 'job-cluster'),
-            (None, None, None, 'job-cluster'),
+        'action_service,action_deploy', [
+            (None, None),
+            (None, 'special_deploy'),
+            ('other_service', None),
+            (None, None),
+            (None, None),
         ],
     )
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
@@ -134,8 +127,6 @@ class TestTronJobConfig:
         mock_load_deployments,
         action_service,
         action_deploy,
-        action_cluster,
-        job_cluster,
     ):
         """Check resulting action config with various overrides from the action."""
         action_dict = {
@@ -146,15 +137,12 @@ class TestTronJobConfig:
             action_dict['service'] = action_service
         if action_deploy:
             action_dict['deploy_group'] = action_deploy
-        if action_cluster:
-            action_dict['cluster'] = action_cluster
 
         job_service = 'my_service'
         job_deploy = 'prod'
-        default_cluster = 'paasta-dev'
         expected_service = action_service or job_service
         expected_deploy = action_deploy or job_deploy
-        expected_cluster = action_cluster or job_cluster or default_cluster
+        expected_cluster = 'paasta-dev'
 
         job_dict = {
             'name': 'my_job',
@@ -165,13 +153,11 @@ class TestTronJobConfig:
             'max_runtime': '2h',
             'actions': [action_dict],
         }
-        if job_cluster is not None:
-            job_dict['cluster'] = job_cluster
 
         soa_dir = '/other_dir'
-        job_config = tron_tools.TronJobConfig(job_dict, soa_dir=soa_dir)
+        job_config = tron_tools.TronJobConfig(job_dict, expected_cluster, soa_dir=soa_dir)
 
-        action_config = job_config._get_action_config(action_dict=action_dict, default_paasta_cluster=default_cluster)
+        action_config = job_config._get_action_config(action_dict=action_dict)
 
         mock_load_deployments.assert_called_once_with(expected_service, soa_dir)
         mock_deployments_json = mock_load_deployments.return_value
@@ -190,8 +176,6 @@ class TestTronJobConfig:
             'service': expected_service,
             'deploy_group': expected_deploy,
         }
-        if action_cluster:
-            expected_input_action_config['cluster'] = action_cluster
 
         assert action_config == tron_tools.TronActionConfig(
             service=expected_service,
@@ -220,11 +204,11 @@ class TestTronJobConfig:
             'max_runtime': '2h',
             'actions': [action_dict],
         }
-        job_config = tron_tools.TronJobConfig(job_dict)
+        job_config = tron_tools.TronJobConfig(job_dict, 'fake-cluster')
         mock_load_deployments.side_effect = NoDeploymentsAvailable
 
         with pytest.raises(tron_tools.InvalidTronConfig):
-            job_config._get_action_config(action_dict, 'some-cluster')
+            job_config._get_action_config(action_dict)
 
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
     def test_get_action_config_load_deployments_false(
@@ -245,20 +229,21 @@ class TestTronJobConfig:
             'actions': [action_dict],
         }
         soa_dir = '/other_dir'
-        default_cluster = 'paasta-dev'
+        cluster = 'paasta-dev'
         job_config = tron_tools.TronJobConfig(
             job_dict,
+            cluster,
             load_deployments=False,
             soa_dir=soa_dir,
         )
         mock_load_deployments.side_effect = NoDeploymentsAvailable
 
-        action_config = job_config._get_action_config(action_dict, default_cluster)
+        action_config = job_config._get_action_config(action_dict)
 
         assert mock_load_deployments.call_count == 0
         assert action_config == tron_tools.TronActionConfig(
             service='my_service',
-            cluster=default_cluster,
+            cluster=cluster,
             instance=tron_tools.compose_instance('my_job', 'normal'),
             config_dict={
                 'name': 'normal',
@@ -292,14 +277,13 @@ class TestTronJobConfig:
             'expected_runtime': '1h',
         }
         soa_dir = '/other_dir'
-        job_config = tron_tools.TronJobConfig(job_dict, soa_dir=soa_dir)
-        fqdn_format = 'paasta-{cluster:s}'
-        default_cluster = 'paasta-dev'
+        cluster = 'paasta-dev'
+        job_config = tron_tools.TronJobConfig(job_dict, cluster, soa_dir=soa_dir)
 
-        result = tron_tools.format_tron_job_dict(job_config, fqdn_format, default_cluster)
+        result = tron_tools.format_tron_job_dict(job_config)
 
-        mock_get_action_config.assert_called_once_with(job_config, action_dict, default_cluster)
-        mock_format_action.assert_called_once_with(mock_get_action_config.return_value, fqdn_format)
+        mock_get_action_config.assert_called_once_with(job_config, action_dict)
+        mock_format_action.assert_called_once_with(mock_get_action_config.return_value)
 
         assert result == {
             'name': 'my_job',
@@ -332,9 +316,9 @@ class TestTronJobConfig:
                 'command': 'rm *',
             },
         }
-        job_config = tron_tools.TronJobConfig(job_dict)
+        job_config = tron_tools.TronJobConfig(job_dict, 'paasta-dev')
 
-        result = tron_tools.format_tron_job_dict(job_config, 'paasta-{cluster:s}', 'paasta-dev')
+        result = tron_tools.format_tron_job_dict(job_config)
 
         assert mock_get_action_config.call_count == 2
         assert mock_format_action.call_count == 2
@@ -352,7 +336,6 @@ class TestTronJobConfig:
             'name': 'my_job',
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
-            'cluster': 'testcluster',
             'service': 'testservice',
             'actions': [
                 {
@@ -371,7 +354,7 @@ class TestTronJobConfig:
                 'cpus': 'also bad',
             },
         }
-        job_config = tron_tools.TronJobConfig(job_dict)
+        job_config = tron_tools.TronJobConfig(job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert len(errors) == 3
 
@@ -393,7 +376,7 @@ class TestTronJobConfig:
             ],
         }
         mock_teams.return_value = ['noop']
-        job_config = tron_tools.TronJobConfig(job_dict)
+        job_config = tron_tools.TronJobConfig(job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert len(errors) == 0
 
@@ -413,7 +396,7 @@ class TestTronJobConfig:
                 },
             ],
         }
-        job_config = tron_tools.TronJobConfig(job_dict)
+        job_config = tron_tools.TronJobConfig(job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert errors == ['Team name is required for monitoring']
 
@@ -435,7 +418,7 @@ class TestTronJobConfig:
             ],
         }
         mock_teams.return_value = ['valid_team', 'weird_name']
-        job_config = tron_tools.TronJobConfig(job_dict)
+        job_config = tron_tools.TronJobConfig(job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert errors == ["Invalid team name: invalid_team. Do you mean one of these: ['valid_team']"]
 
@@ -523,7 +506,7 @@ class TestTronTools:
             branch_dict=branch_dict,
             cluster="test-cluster",
         )
-        result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+        result = tron_tools.format_tron_action_dict(action_config)
         assert result == {
             'name': 'do_something',
             'command': 'echo something',
@@ -569,7 +552,7 @@ class TestTronTools:
             'get_docker_registry',
             return_value='docker-registry.com:400',
         ):
-            result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+            result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
             'name': 'do_something',
@@ -577,7 +560,6 @@ class TestTronTools:
             'requires': ['required_action'],
             'retries': 2,
             'retries_delay': '5m',
-            'mesos_address': 'test-cluster.com',
             'docker_image': mock.ANY,
             'executor': 'mesos',
             'cpus': 2,
@@ -627,14 +609,13 @@ class TestTronTools:
             cluster="paasta-dev",
         )
 
-        result = tron_tools.format_tron_action_dict(action_config, '{cluster:s}.com')
+        result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
             'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
-            'mesos_address': 'paasta-dev.com',
             'docker_image': '',
             'executor': 'mesos',
             'cpus': 2,
@@ -684,8 +665,8 @@ class TestTronTools:
         }
         assert job_configs == [mock_job_config.return_value for i in range(2)]
         assert mock_job_config.call_args_list == [
-            mock.call(config_dict=job_1, service='foo', load_deployments=True, soa_dir=soa_dir),
-            mock.call(config_dict=job_2, service='foo', load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_1, cluster='dev', service='foo', load_deployments=True, soa_dir=soa_dir),
+            mock.call(config_dict=job_2, cluster='dev', service='foo', load_deployments=True, soa_dir=soa_dir),
         ]
         assert mock_read_service_info.call_count == 1
         assert mock_read_file.call_count == 0
@@ -718,8 +699,8 @@ class TestTronTools:
         }
         assert job_configs == [mock_job_config.return_value for i in range(2)]
         assert mock_job_config.call_args_list == [
-            mock.call(config_dict=job_1, load_deployments=True, service='foo', soa_dir=soa_dir),
-            mock.call(config_dict=job_2, load_deployments=True, service='foo', soa_dir=soa_dir),
+            mock.call(config_dict=job_1, cluster='dev', load_deployments=True, service='foo', soa_dir=soa_dir),
+            mock.call(config_dict=job_2, cluster='dev', load_deployments=True, service='foo', soa_dir=soa_dir),
         ]
         assert mock_read_service_info.call_count == 1
         assert mock_read_file.call_count == 1
@@ -768,7 +749,7 @@ class TestTronTools:
         mock_system_config,
         service,
     ):
-        job_config = tron_tools.TronJobConfig({})
+        job_config = tron_tools.TronJobConfig({}, 'fake-cluster')
         other_config = {
             'my_config_value': [1, 2],
         }
@@ -799,8 +780,6 @@ class TestTronTools:
             assert mock_format_master_config.call_count == 0
         mock_format_job.assert_called_once_with(
             job_config,
-            mock_system_config.return_value.get_cluster_fqdn_format.return_value,
-            cluster,
         )
         complete_config = other_config.copy()
         complete_config.update({
@@ -1026,6 +1005,7 @@ def test_load_tron_service_config_interprets_correctly(mock_load_tron_yaml):
     expected1 = [
         tron_tools.TronJobConfig(
             service='service',
+            cluster='test-cluster',
             config_dict={'job1': {'actions': [{'action1': {}}]}},
             load_deployments=False,
             soa_dir='fake',
