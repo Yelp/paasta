@@ -91,7 +91,7 @@ class LongRunningServiceConfig(InstanceConfig):
         self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
         branch_dict: Optional[BranchDictV2], soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
-        super(LongRunningServiceConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,

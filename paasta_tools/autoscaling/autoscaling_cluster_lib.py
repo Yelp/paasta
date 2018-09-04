@@ -769,7 +769,7 @@ class ClusterAutoscaler(object):
 class SpotAutoscaler(ClusterAutoscaler):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(SpotAutoscaler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.sfr = self.get_sfr(self.resource['id'], region=self.resource['region'])
         if self.sfr:
             self.instances = self.get_spot_fleet_instances(self.resource['id'], region=self.resource['region'])
@@ -970,7 +970,7 @@ class SpotAutoscaler(ClusterAutoscaler):
 class AsgAutoscaler(ClusterAutoscaler):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(AsgAutoscaler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.asg = self.get_asg(self.resource['id'], region=self.resource['region'])
         if self.asg:
             self.instances = self.asg['Instances']

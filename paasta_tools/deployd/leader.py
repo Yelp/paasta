@@ -13,7 +13,7 @@ class PaastaLeaderElection(Election):
     def __init__(self, client, *args, **kwargs):
         self.client = client
         self.control = kwargs.pop('control')
-        super(PaastaLeaderElection, self).__init__(self.client, *args, **kwargs)
+        super().__init__(self.client, *args, **kwargs)
         self.client.add_listener(self.connection_listener)
         self.waiting_for_reconnect = False
 
@@ -24,7 +24,7 @@ class PaastaLeaderElection(Election):
 
     def run(self, func, *args, **kwargs):
         try:
-            super(PaastaLeaderElection, self).run(func, *args, **kwargs)
+            super().run(func, *args, **kwargs)
         except ConnectionClosedError:
             self.log.error("Zookeeper connection closed so can't tidy up!")
             return

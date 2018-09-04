@@ -224,7 +224,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
-        super(KubernetesDeploymentConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,

@@ -46,7 +46,7 @@ class Rule(_RuleBase):
         return result
 
     def _replace(self, **kwargs):
-        result = super(Rule, self)._replace(**kwargs)
+        result = super()._replace(**kwargs)
         result.validate()
         return result
 
