@@ -14,6 +14,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
@@ -88,7 +89,7 @@ class LongRunningServiceConfig(InstanceConfig):
     config_dict: LongRunningServiceConfigDict
 
     def __init__(
-        self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
+        self: InstanceConfig_T, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
         branch_dict: Optional[BranchDictV2], soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
         super(LongRunningServiceConfig, self).__init__(

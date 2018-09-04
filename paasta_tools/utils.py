@@ -104,7 +104,6 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
 
-
 TimeCacheEntry = TypedDict(
     'TimeCacheEntry',
     {
@@ -766,6 +765,10 @@ class InstanceConfig(object):
                 self.service == other.service
         else:
             return False
+
+
+# For mypy typing
+InstanceConfig_T = TypeVar('InstanceConfig_T', bound=InstanceConfig)
 
 
 def stringify_constraint(usc: UnstringifiedConstraint) -> Constraint:
