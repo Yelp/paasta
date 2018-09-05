@@ -232,8 +232,7 @@ def get_service_instance_stats(service: str, instance: str, cluster: str) -> Opt
         )
         return service_instance_stats
     except Exception as e:
-        log.error(f'Failed to get stats for service {service} instance {instance}')
-        log.error(repr(e))
+        log.error(f'Failed to get stats for service {service} instance {instance}: {str(e)}')
         return None
 
 
