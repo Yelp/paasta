@@ -165,10 +165,10 @@ class TestBounceLib:
         expected = bounce_lib.brutal_bounce
         assert actual == expected
 
-    def test_is_task_in_smartstack(self):
+    def test_filter_tasks_in_smartstack(self):
         service = 'foo'
         nerve_ns = 'bar'
-        fake_task = mock.Mock(host='foo', ports=[123456])
+        fake_task = mock.Mock(name='fake_task', host='foo', ports=[123456])
         fake_backend = {
             "svname": "foo_256.256.256.256:123456",
             "status": "UP",
@@ -179,12 +179,17 @@ class TestBounceLib:
             return_value=[fake_backend],
         ):
             with mock.patch('socket.gethostbyname', autospec=True, return_value='256.256.256.256'):
-                assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
+                assert [fake_task] == bounce_lib.filter_tasks_in_smartstack(
+                    [fake_task],
+                    service,
+                    nerve_ns,
+                    self.fake_system_paasta_config(),
+                )
 
         with mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True, return_value=[]):
             with mock.patch('socket.gethostbyname', autospec=True, return_value='256.256.256.256'):
-                assert not bounce_lib.is_task_in_smartstack(
-                    fake_task, service, nerve_ns,
+                assert [] == bounce_lib.filter_tasks_in_smartstack(
+                    [fake_task], service, nerve_ns,
                     self.fake_system_paasta_config(),
                 )
 
@@ -192,9 +197,24 @@ class TestBounceLib:
             'paasta_tools.bounce_lib.get_registered_marathon_tasks', autospec=True,
             side_effect=[[fake_task], [ConnectionError], [RequestException]],
         ):
-            assert bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
-            assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
-            assert not bounce_lib.is_task_in_smartstack(fake_task, service, nerve_ns, self.fake_system_paasta_config())
+            assert [fake_task] == bounce_lib.filter_tasks_in_smartstack(
+                [fake_task],
+                service,
+                nerve_ns,
+                self.fake_system_paasta_config(),
+            )
+            assert [] == bounce_lib.filter_tasks_in_smartstack(
+                [fake_task],
+                service,
+                nerve_ns,
+                self.fake_system_paasta_config(),
+            )
+            assert [] == bounce_lib.filter_tasks_in_smartstack(
+                [fake_task],
+                service,
+                nerve_ns,
+                self.fake_system_paasta_config(),
+            )
 
     def test_get_happy_tasks_when_running_without_healthchecks_defined(self):
         """All running tasks with no health checks results are healthy if the app does not define healthchecks"""
@@ -335,7 +355,7 @@ class TestBounceLib:
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)], host=f'fake_host{i}') for i in range(5)]
         with mock.patch(
             'paasta_tools.bounce_lib.get_registered_marathon_tasks',
-            side_effect=[tasks], autospec=True,
+            return_value=tasks, autospec=True,
         ) as get_registered_marathon_tasks_patch:
             actual = bounce_lib.filter_tasks_in_smartstack(
                 tasks,
@@ -345,7 +365,6 @@ class TestBounceLib:
                 max_hosts_to_query=3,
             )
             assert actual == tasks
-
             assert get_registered_marathon_tasks_patch.call_count == 3
 
     def test_flatten_tasks(self):

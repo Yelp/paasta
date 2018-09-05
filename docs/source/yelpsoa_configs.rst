@@ -196,7 +196,7 @@ instance MAY have:
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
 
-  * ``bounce_method_params``: A dictionary of parameters for the specified bounce_method.
+  * ``bounce_health_params``: A dictionary of parameters for get_happy_tasks.
 
     * ``check_haproxy``: Boolean indicating if PaaSTA should check the local
       haproxy to make sure this task has been registered and discovered
@@ -204,6 +204,10 @@ instance MAY have:
 
     * ``min_task_uptime``: Minimum number of seconds that a task must be
       running before we consider it healthy (Disabled by default)
+
+    * ``haproxy_min_fraction_up``: if ``check_haproxy`` is True, we check haproxy on up to 20 boxes to see whether a task is available.
+      This fraction of boxes must agree that the task is up for the bounce to treat a task as healthy.
+      Defaults to 1.0 -- haproxy on all queried boxes must agree that the task is up.
 
   * ``bounce_margin_factor``: proportionally increase the number of old instances
     to be drained when the crossover bounce method is used.

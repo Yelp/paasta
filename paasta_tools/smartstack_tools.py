@@ -14,20 +14,29 @@
 import collections
 import csv
 import socket
+from typing import cast
+from typing import Collection
+from typing import Container
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 
 import requests
 from mypy_extensions import TypedDict
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
+from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import SystemPaastaConfig
 
 
 HaproxyBackend = TypedDict(
@@ -35,12 +44,17 @@ HaproxyBackend = TypedDict(
     {
         'pxname': str,
         'svname': str,
+        'status': str,
     },
     total=False,
 )
 
 
-def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format) -> Iterable[Dict[str, str]]:
+def retrieve_haproxy_csv(
+    synapse_host: str,
+    synapse_port: int,
+    synapse_haproxy_url_format: str,
+) -> Iterable[Dict[str, str]]:
     """Retrieves the haproxy csv from the haproxy web interface
 
     :param synapse_host_port: A string in host:port format that this check
@@ -66,7 +80,12 @@ def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format)
     return reader
 
 
-def get_backends(service, synapse_host, synapse_port, synapse_haproxy_url_format):
+def get_backends(
+    service: str,
+    synapse_host: str,
+    synapse_port: int,
+    synapse_haproxy_url_format: str,
+) -> List[HaproxyBackend]:
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
@@ -87,7 +106,12 @@ def get_backends(service, synapse_host, synapse_port, synapse_haproxy_url_format
     )
 
 
-def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_url_format):
+def get_multiple_backends(
+    services: Optional[Container[str]],
+    synapse_host: str,
+    synapse_port: int,
+    synapse_haproxy_url_format: str,
+) -> List[HaproxyBackend]:
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
@@ -114,12 +138,18 @@ def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_
         # with 1/X healthchecks to go before going down get counted as UP:
         ha_slave, ha_service = line['svname'], line['pxname']
         if (services is None or ha_service in services) and ha_slave not in ('FRONTEND', 'BACKEND'):
-            backends.append(line)
+            backends.append(cast(HaproxyBackend, line))
 
     return backends
 
 
-def load_smartstack_info_for_service(service, namespace, blacklist, system_paasta_config, soa_dir=DEFAULT_SOA_DIR):
+def load_smartstack_info_for_service(
+    service: str,
+    namespace: str,
+    blacklist: DeployBlacklist,
+    system_paasta_config: SystemPaastaConfig,
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> Dict[str, Dict[str, int]]:
     """Retrieves number of available backends for given services
 
     :param service_instances: A list of tuples of (service, instance)
@@ -153,7 +183,13 @@ def load_smartstack_info_for_service(service, namespace, blacklist, system_paast
     )
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, system_paasta_config):
+def get_smartstack_replication_for_attribute(
+    attribute: str,
+    service: str,
+    namespace: str,
+    blacklist: DeployBlacklist,
+    system_paasta_config: SystemPaastaConfig,
+) -> Dict[str, Dict[str, int]]:
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -171,7 +207,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         whitelist=None,
     )
     if not filtered_slaves:
-        raise mesos_tools.NoSlavesAvailableError
+        raise NoSlavesAvailableError
 
     attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves,
@@ -217,8 +253,10 @@ def get_replication_for_all_services(
 
 
 def get_replication_for_services(
-    synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str,
-    services: List[str],
+    synapse_host: str,
+    synapse_port: int,
+    synapse_haproxy_url_format: str,
+    services: Collection[str],
 ) -> Dict[str, int]:
     """Returns the replication level for the provided services
 
@@ -247,7 +285,7 @@ def get_replication_for_services(
     return {sn: counter[sn] for sn in services}
 
 
-def backend_is_up(backend):
+def backend_is_up(backend: HaproxyBackend) -> bool:
     """Returns whether a server is receiving traffic in HAProxy.
 
     :param backend: backend dict, like one of those returned by smartstack_tools.get_multiple_backends.
@@ -257,7 +295,7 @@ def backend_is_up(backend):
     return str(backend['status']).startswith('UP')
 
 
-def ip_port_hostname_from_svname(svname):
+def ip_port_hostname_from_svname(svname: str) -> Tuple[str, int, str]:
     """This parses the haproxy svname that smartstack creates.
     In old versions of synapse, this is in the format ip:port_hostname.
     In versions newer than dd5843c987740a5d5ce1c83b12b258b7253784a8 it is
@@ -281,12 +319,12 @@ def ip_port_hostname_from_svname(svname):
 
 
 def get_registered_marathon_tasks(
-    synapse_host,
-    synapse_port,
-    synapse_haproxy_url_format,
-    service,
-    marathon_tasks,
-):
+    synapse_host: str,
+    synapse_port: int,
+    synapse_haproxy_url_format: str,
+    service: str,
+    marathon_tasks: Iterable[marathon_tools.MarathonTask],
+) -> List[marathon_tools.MarathonTask]:
     """Returns the marathon tasks that are registered in haproxy under a given service (nerve_ns).
 
     :param synapse_host: The host that this check should contact for replication information.
@@ -307,13 +345,13 @@ def get_registered_marathon_tasks(
 
 
 def are_services_up_on_ip_port(
-    synapse_host,
-    synapse_port,
-    synapse_haproxy_url_format,
-    services,
-    host_ip,
-    host_port,
-):
+    synapse_host: str,
+    synapse_port: int,
+    synapse_haproxy_url_format: str,
+    services: Collection[str],
+    host_ip: str,
+    host_port: int,
+) -> bool:
     backends = get_multiple_backends(
         services, synapse_host=synapse_host, synapse_port=synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
@@ -336,7 +374,10 @@ def are_services_up_on_ip_port(
     return all(services_with_atleast_one_backend_up.values())
 
 
-def match_backends_and_tasks(backends, tasks):
+def match_backends_and_tasks(
+    backends: Iterable[HaproxyBackend],
+    tasks: Iterable[marathon_tools.MarathonTask],
+) -> List[Tuple[Optional[HaproxyBackend], Optional[marathon_tools.MarathonTask]]]:
     """Returns tuples of matching (backend, task) pairs, as matched by IP and port. Each backend will be listed exactly
     once, and each task will be listed once per port. If a backend does not match with a task, (backend, None) will
     be included. If a task's port does not match with any backends, (None, task) will be included.
@@ -368,10 +409,13 @@ def match_backends_and_tasks(backends, tasks):
     return backend_task_pairs
 
 
+_MesosSlaveDict = TypeVar('_MesosSlaveDict', bound=Dict)  # no type has been defined in mesos_tools for these yet.
+
+
 class SmartstackReplicationChecker:
     """Retrieves the number of registered instances in each discoverable location.
 
-    Optimized for multiple queries. Gets the list of backends from synapse-haproxy
+    Optimized for multiple queries. Gets the list of backends from synapse-`roxy
     only once per location and reuse it in all subsequent calls of
     SmartstackReplicationChecker.get_replication_for_instance().
 
@@ -393,14 +437,21 @@ class SmartstackReplicationChecker:
     >>>
     """
 
-    def __init__(self, mesos_slaves, system_paasta_config):
+    def __init__(
+        self,
+        mesos_slaves: List[_MesosSlaveDict],
+        system_paasta_config: SystemPaastaConfig,
+    ) -> None:
         self._mesos_slaves = mesos_slaves
         self._synapse_port = system_paasta_config.get_synapse_port()
         self._synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
         self._system_paasta_config = system_paasta_config
-        self._cache = {}
+        self._cache: Dict[str, Dict[str, int]] = {}
 
-    def get_replication_for_instance(self, instance_config):
+    def get_replication_for_instance(
+        self,
+        instance_config: InstanceConfig,
+    ) -> Dict[str, Dict[str, int]]:
         """Returns the number of registered instances in each discoverable location.
 
         :param instance_config: An instance of MarathonServiceConfig.
@@ -415,13 +466,22 @@ class SmartstackReplicationChecker:
             replication_info[location] = self._get_replication_info(location, hostname, instance_config)
         return replication_info
 
-    def _get_first_slave_in_pool(self, slaves, pool):
+    def _get_first_slave_in_pool(
+        self,
+        slaves: List[_MesosSlaveDict],
+        pool: str,
+    ) -> _MesosSlaveDict:
         for slave in slaves:
             if slave['attributes']['pool'] == pool:
                 return slave
         return slaves[0]
 
-    def _get_replication_info(self, location, hostname, instance_config) -> Dict[str, int]:
+    def _get_replication_info(
+        self,
+        location: str,
+        hostname: str,
+        instance_config: InstanceConfig,
+    ) -> Dict[str, int]:
         """Returns service.instance and the number of instances registered in smartstack
         at the location as a dict.
 
@@ -439,7 +499,7 @@ class SmartstackReplicationChecker:
             )
         return {full_name: self._cache[location][full_name]}
 
-    def _get_allowed_locations_and_slaves(self, instance_config) -> Dict[str, List[dict]]:
+    def _get_allowed_locations_and_slaves(self, instance_config: InstanceConfig) -> Dict[str, List[dict]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
         where deployment of the instance is allowed.
 
