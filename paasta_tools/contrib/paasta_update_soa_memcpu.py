@@ -262,9 +262,9 @@ def main(argv=None):
             m=serv['money'],
             x=serv['old_cpus'],
             y=serv['cpus'],
-            cluster_param=_get_dashboard_qs_param('superregion', serv['cluster'].replace('marathon-', '')),
-            service_param=_get_dashboard_qs_param('service_name', serv['service']),
-            instance_param=_get_dashboard_qs_param('instance_name', serv['instance']),
+            cluster_param=_get_dashboard_qs_param('paasta_cluster', serv['cluster'].replace('marathon-', '')),
+            service_param=_get_dashboard_qs_param('paasta_service', serv['service']),
+            instance_param=_get_dashboard_qs_param('paasta_instance', serv['instance']),
         )
         branch = ''
         if args.no_tick:
