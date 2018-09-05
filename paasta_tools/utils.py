@@ -790,7 +790,7 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
         )
         if (service, instance) in service_instances:
             return instance_type
-        suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
+        suggestions.append(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
     else:
         suggestions_str = ''.join(suggestions)
         raise NoConfigurationForServiceError(

@@ -16,8 +16,8 @@ import argparse
 import itertools
 import logging
 import sys
-from typing import Dict
 from typing import List
+from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -25,6 +25,7 @@ from typing import Tuple
 import a_sync
 import chronos
 from marathon.exceptions import MarathonError
+from mypy_extensions import TypedDict
 
 from paasta_tools import __version__
 from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
@@ -38,6 +39,7 @@ from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.metrics.metastatus_lib import ResourceUtilization
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -50,6 +52,8 @@ logging.basicConfig()
 # kazoo can be really noisy - turn it down
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 logging.getLogger("paasta_tools.autoscaling.autoscaling_cluster_lib").setLevel(logging.ERROR)
+
+ServiceInstanceStats = TypedDict('ServiceInstanceStats', {'mem': float, 'cpus': float, 'disk': float, 'gpus': float})
 
 
 def parse_args(argv):
@@ -125,7 +129,7 @@ def utilization_table_by_grouping_from_mesos_state(
     groupings: Sequence[str],
     threshold: float,
     mesos_state: MesosState,
-    service_instance_stats: Optional[Dict[str, float]] = None,
+    service_instance_stats: Optional[ServiceInstanceStats] = None,
 ) -> Tuple[
     List[List[str]],
     bool,
@@ -143,7 +147,7 @@ def utilization_table_by_grouping_from_mesos_state(
         'GPU (used/total)',
         'Agent count',
     ]
-    # service_instance_stats could be None or an empty dict so use this check to cover both cases.
+    # service_instance_stats could be None so check and insert a header if needed.
     if service_instance_stats:
         # Insert so agent count is still last
         static_headers.insert(-1, 'Slots + Limiting Resource')
@@ -184,10 +188,10 @@ def utilization_table_by_grouping_from_mesos_state(
 
 
 def fill_table_rows_with_service_instance_stats(
-    service_instance_stats: Dict[str, float],
-    resource_utilizations: List[metastatus_lib.ResourceUtilization],
-    table_rows: List[List[str]],
-):
+    service_instance_stats: ServiceInstanceStats,
+    resource_utilizations: Sequence[ResourceUtilization],
+    table_rows: MutableSequence[MutableSequence[str]],
+) -> None:
     # Calculate the max number of runnable service instances given the current resources (e.g. cpus, mem, disk)
     resource_free_dict = {rsrc.metric: rsrc.free for rsrc in resource_utilizations}
     num_service_instances_allowed = float('inf')
@@ -203,7 +207,7 @@ def fill_table_rows_with_service_instance_stats(
     table_rows[-1].append('{:6} ; {}'.format(int(num_service_instances_allowed), limiting_factor))
 
 
-def get_service_instance_stats(service: str, instance: str, cluster: str) -> Dict[str, float]:
+def get_service_instance_stats(service: str, instance: str, cluster: str) -> Optional[ServiceInstanceStats]:
     """Returns a Dict with stats about a given service instance.
 
     Args:
@@ -215,20 +219,22 @@ def get_service_instance_stats(service: str, instance: str, cluster: str) -> Dic
         A Dict mapping resource name to the amount of that resource the particular service instance consumes.
     """
     if service is None or instance is None or cluster is None:
-        return {}
+        return None
 
-    service_instance_stats: Dict[str, float] = {}
     try:
         instance_config = get_instance_config(service, instance, cluster)
         # Get all fields that are showed in the 'paasta metastatus -vvv' command
-        service_instance_stats['mem'] = instance_config.get_mem()
-        service_instance_stats['cpus'] = instance_config.get_cpus()
-        service_instance_stats['disk'] = instance_config.get_disk()
-        service_instance_stats['gpus'] = instance_config.get_gpus()
+        service_instance_stats = ServiceInstanceStats(
+            mem=instance_config.get_mem(),
+            cpus=instance_config.get_cpus(),
+            disk=instance_config.get_disk(),
+            gpus=instance_config.get_gpus(),
+        )
+        return service_instance_stats
     except Exception as e:
         log.error(f'Failed to get stats for service {service} instance {instance}')
         log.error(repr(e))
-    return service_instance_stats
+        return None
 
 
 def main(argv: Optional[List[str]]=None) -> None:
