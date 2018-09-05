@@ -27,6 +27,7 @@ from socket import gaierror
 from socket import gethostbyname_ex
 from typing import Callable
 from typing import Iterable
+from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -53,6 +54,7 @@ from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
@@ -394,7 +396,10 @@ def list_instances(**kwargs):
     return sorted(all_instances)
 
 
-def calculate_remote_masters(cluster, system_paasta_config):
+def calculate_remote_masters(
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+) -> Tuple[List[str], str]:
     """Given a cluster, do a DNS lookup of that cluster (which
     happens to point, eventually, to the Mesos masters in that cluster).
     Return IPs of those Mesos masters.
@@ -410,7 +415,9 @@ def calculate_remote_masters(cluster, system_paasta_config):
     return (ips, output)
 
 
-def find_connectable_master(masters):
+def find_connectable_master(
+    masters: Sequence[str],
+) -> Tuple[Optional[str], Optional[str]]:
     """For each host in the iterable 'masters', try various connectivity
     checks. For each master that fails, emit an error message about which check
     failed and move on to the next master.
@@ -435,7 +442,10 @@ class NoMasterError(Exception):
     pass
 
 
-def connectable_master(cluster, system_paasta_config):
+def connectable_master(
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+) -> str:
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         raise NoMasterError('ERROR: %s' % output)
@@ -545,11 +555,12 @@ def execute_paasta_serviceinit_on_remote_master(
 
 
 def run_paasta_metastatus(
-    master, groupings,
-    verbose=0,
-    autoscaling_info=False,
-    use_mesos_cache=False,
-):
+    master: str,
+    groupings: Sequence[str],
+    verbose: int = 0,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> Tuple[int, str]:
     if verbose > 0:
         verbose_flag = "-%s" % ('v' * verbose)
         timeout = 120
@@ -578,10 +589,13 @@ def run_paasta_metastatus(
 
 
 def execute_paasta_metastatus_on_remote_master(
-    cluster, system_paasta_config, groupings, verbose,
-    autoscaling_info=False,
-    use_mesos_cache=False,
-):
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+    groupings: Sequence[str],
+    verbose: int,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> Tuple[int, str]:
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
