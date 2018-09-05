@@ -286,9 +286,14 @@ class DeployDaemon(PaastaThread):
         for watcher in self.watcher_threads:
             watcher.start()
         self.log.info("Waiting for all watchers to start")
+        attempts = 0
         while not all([watcher.is_ready for watcher in self.watcher_threads]):
-            self.log.debug("Sleeping and waiting for watchers to all start")
-            time.sleep(1)
+            while attempts < 12:
+                self.log.debug("Sleeping and waiting for watchers to all start")
+                time.sleep(5)
+                attempts += 1
+            self.log.error("Failed to start all the watchers, exiting...")
+            sys.exit(1)
 
 
 def main():
