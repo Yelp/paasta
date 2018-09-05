@@ -1,3 +1,10 @@
+paasta-tools (0.79.6) xenial; urgency=medium
+
+  * 0.79.6 tagged with 'make release'
+    Commit: Merge branch "fix_get_happy_tasks"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 05 Sep 2018 10:53:21 -0700
+
 paasta-tools (0.79.5) xenial; urgency=medium
 
   * 0.79.5 tagged with 'make release'
