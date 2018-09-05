@@ -125,7 +125,7 @@ class TaskStore(object):
 class DictTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.tasks: Dict[str, MesosTaskParameters] = {}
-        super(DictTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
+        super().__init__(service_name, instance_name, framework_id, system_paasta_config)
 
     def get_task(self, task_id: str) -> MesosTaskParameters:
         return self.tasks.get(task_id)
@@ -141,7 +141,7 @@ class DictTaskStore(TaskStore):
 
 class ZKTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
-        super(ZKTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
+        super().__init__(service_name, instance_name, framework_id, system_paasta_config)
         self.zk_hosts = system_paasta_config.get_zk_hosts()
 
         # For some reason, I could not get the code suggested by this SO post to work to ensure_path on the chroot.

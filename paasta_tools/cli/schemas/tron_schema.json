@@ -91,7 +91,7 @@
                 "notification_email": {"type": "string"},
                 "realert_every": {
                     "type": "integer",
-                    "minimum": 1,
+                    "minimum": -1,
                     "exclusiveMinimum": false
                 },
                 "dependencies": {

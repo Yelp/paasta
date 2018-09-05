@@ -18,6 +18,7 @@ import sys
 import traceback
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 
 import requests_cache
@@ -91,7 +92,11 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def get_deployment_version(actual_deployments: Dict[str, str], cluster: str, instance: str) -> Optional[str]:
+def get_deployment_version(
+    actual_deployments: Mapping[str, str],
+    cluster: str,
+    instance: str,
+) -> Optional[str]:
     key = '.'.join((cluster, instance))
     return actual_deployments[key][:8] if key in actual_deployments else None
 

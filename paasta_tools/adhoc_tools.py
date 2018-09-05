@@ -85,7 +85,7 @@ class AdhocJobConfig(LongRunningServiceConfig):
         branch_dict: BranchDictV2,
         soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
-        super(AdhocJobConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,

@@ -525,6 +525,10 @@
           "$ref": "#/definitions/InstanceStatusMarathon",
           "description": "Marathon specific instance status"
         },
+        "kubernetes": {
+          "$ref": "#/definitions/InstanceStatusKubernetes",
+          "description": "Kubernetes specific instance status"
+        },
         "chronos": {
           "$ref": "#/definitions/InstanceStatusChronos",
           "description": "Chronos specifid instance status"
@@ -567,6 +571,74 @@
         "deploy_status": {
           "type": "string",
           "description": "Deploy status of a marathon service",
+          "enum": [
+            "Running",
+            "Deploying",
+            "Stopped",
+            "Delayed",
+            "Waiting",
+            "NotRunning"
+          ]
+        },
+        "backoff_seconds": {
+          "type": "integer",
+          "format": "int32",
+          "description": "backoff in seconds before launching the next task"
+        },
+        "running_instance_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of actual running instances of the service"
+        },
+        "expected_instance_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of desired instances of the service"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message when a marathon job ID cannot be found"
+        }
+      },
+      "required": [
+        "desired_state",
+        "app_count",
+        "bounce_method"
+      ]
+    },
+    "InstanceStatusKubernetes": {
+      "type": "object",
+      "properties": {
+        "desired_state": {
+          "type": "string",
+          "description": "Desired state of a service, for Kubernetes",
+          "enum": [
+            "start",
+            "stop"
+          ]
+        },
+        "app_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing)"
+        },
+        "app_id": {
+          "type": "string",
+          "description": "ID of the desired version of a service instance"
+        },
+        "bounce_method": {
+          "type": "string",
+          "description": "Method to transit between new and old versions of a service",
+          "enum": [
+            "brutal",
+            "upthendown",
+            "downthenup",
+            "crossover"
+          ]
+        },
+        "deploy_status": {
+          "type": "string",
+          "description": "Deploy status of a Kubernetes service",
           "enum": [
             "Running",
             "Deploying",

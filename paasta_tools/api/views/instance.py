@@ -16,6 +16,10 @@
 PaaSTA service instance status/start/stop etc.
 """
 import traceback
+from typing import Any
+from typing import Dict
+from typing import Mapping
+from typing import MutableMapping
 
 import a_sync
 import marathon
@@ -23,6 +27,7 @@ from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools import chronos_tools
+from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -38,8 +43,13 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
 
 
-def chronos_instance_status(instance_status, service, instance, verbose):
-    cstatus = {}
+def chronos_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    cstatus: Dict[str, Any] = {}
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     job_config = chronos_tools.load_chronos_job_config(
@@ -98,16 +108,69 @@ def chronos_instance_status(instance_status, service, instance, verbose):
     return cstatus
 
 
-def adhoc_instance_status(instance_status, service, instance, verbose):
-    cstatus = {}
+def adhoc_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    cstatus: Dict[str, Any] = {}
     return cstatus
 
 
-def kubernetes_instance_status(instance_status, service, instance, verbose):
-    return {}
+def kubernetes_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    kstatus: Dict[str, Any] = {}
+    job_config = kubernetes_tools.load_kubernetes_service_config(
+        service, instance, settings.cluster, soa_dir=settings.soa_dir,
+    )
+    client = settings.kubernetes_client
+    if client is not None:
+        deployments = kubernetes_tools.list_matching_deployments(service, instance, client)
+
+        # bouncing status can be inferred from app_count, ref get_bouncing_status
+        kstatus['app_count'] = len(deployments)
+        kstatus['desired_state'] = job_config.get_desired_state()
+        kstatus['bounce_method'] = kubernetes_tools.KUBE_DEPLOY_STATEGY_REVMAP[job_config.get_bounce_method()]
+        kubernetes_job_status(kstatus, client, job_config, verbose)
+    return kstatus
 
 
-def marathon_job_status(mstatus, client, job_config, verbose):
+def kubernetes_job_status(
+    kstatus: MutableMapping[str, Any],
+    client: kubernetes_tools.KubeClient,
+    job_config: kubernetes_tools.KubernetesDeploymentConfig,
+    verbose: bool,
+) -> None:
+    app_id = job_config.get_sanitised_deployment_name()
+    kstatus['app_id'] = app_id
+    if verbose is True:
+        pod_list = client.core.list_namespaced_pod(
+            namespace='paasta',
+            label_selector=f'service={job_config.service},instance={job_config.instance}',
+        )
+        kstatus['slaves'] = [
+            pod.spec.node_name
+            for pod in pod_list.items
+        ]
+    kstatus['expected_instance_count'] = job_config.get_instances()
+
+    app = kubernetes_tools.get_deployment_by_name(app_id, client)
+    deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(client, app)
+    kstatus['deploy_status'] = kubernetes_tools.KubernetesDeployStatus.tostring(deploy_status)
+    kstatus['running_instance_count'] = app.status.ready_replicas
+
+
+def marathon_job_status(
+    mstatus: MutableMapping[str, Any],
+    client,
+    job_config,
+    verbose: bool,
+) -> None:
     try:
         app_id = job_config.format_marathon_app_dict()['id']
     except NoDockerImageError:
@@ -141,8 +204,13 @@ def marathon_job_status(mstatus, client, job_config, verbose):
             mstatus['backoff_seconds'] = backoff_seconds
 
 
-def marathon_instance_status(instance_status, service, instance, verbose):
-    mstatus = {}
+def marathon_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    mstatus: Dict[str, Any] = {}
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, settings.cluster, soa_dir=settings.soa_dir,
     )
@@ -163,7 +231,7 @@ def instance_status(request):
     instance = request.swagger_data.get('instance')
     verbose = request.matchdict.get('verbose', False)
 
-    instance_status = {}
+    instance_status: Dict[str, Any] = {}
     instance_status['service'] = service
     instance_status['instance'] = instance
 

@@ -85,6 +85,7 @@ log = logging.getLogger(__name__)
 
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
+KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 KubeDeployment = NamedTuple(
     'KubeDeployment', [
         ('service', str),
@@ -223,7 +224,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
-        super(KubernetesDeploymentConfig, self).__init__(
+        super().__init__(
             cluster=cluster,
             instance=instance,
             service=service,
@@ -434,10 +435,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             ),
-            name="{service}-{instance}".format(
-                service=self.get_sanitised_service_name(),
-                instance=self.get_sanitised_instance_name(),
-            ),
+            name=self.get_sanitised_deployment_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[
                 V1ContainerPort(
@@ -572,6 +570,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "instance": self.get_instance(),
                 "git_sha": code_sha,
             },
+        )
+
+    def get_sanitised_deployment_name(self) -> str:
+        return "{service}-{instance}".format(
+            service=self.get_sanitised_service_name(),
+            instance=self.get_sanitised_instance_name(),
         )
 
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
@@ -784,7 +788,7 @@ def get_kubernetes_services_running_here_for_nerve(
     return nerve_list
 
 
-class KubeClient():
+class KubeClient(object):
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
         self.deployments = kube_client.AppsV1Api()
@@ -807,9 +811,18 @@ def ensure_paasta_namespace(kube_client: KubeClient) -> None:
         kube_client.core.create_namespace(body=paasta_namespace)
 
 
-def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
-    deployments = kube_client.deployments.list_namespaced_deployment(namespace='paasta')
-    stateful_sets = kube_client.deployments.list_namespaced_stateful_set(namespace='paasta')
+def list_deployments(
+    kube_client: KubeClient,
+    label_selector: Optional[str] = None,
+) -> Sequence[KubeDeployment]:
+    deployments = kube_client.deployments.list_namespaced_deployment(
+        namespace='paasta',
+        label_selector=label_selector,
+    )
+    stateful_sets = kube_client.deployments.list_namespaced_stateful_set(
+        namespace='paasta',
+        label_selector=label_selector,
+    )
     return [
         KubeDeployment(
             service=item.metadata.labels['service'],
@@ -819,6 +832,28 @@ def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
             replicas=item.spec.replicas,
         ) for item in deployments.items + stateful_sets.items
     ]
+
+
+def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
+    return list_deployments(kube_client)
+
+
+def list_matching_deployments(
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+) -> Sequence[KubeDeployment]:
+    return list_deployments(kube_client, f'instance={instance},service={service}')
+
+
+def get_deployment_by_name(
+    name: str,
+    kube_client: KubeClient,
+) -> V1Deployment:
+    return kube_client.deployments.read_namespaced_deployment_status(
+        name=name,
+        namespace='paasta',
+    )
 
 
 def create_deployment(kube_client: KubeClient, formatted_deployment: V1Deployment) -> None:
@@ -849,3 +884,31 @@ def update_stateful_set(kube_client: KubeClient, formatted_stateful_set: V1State
         namespace='paasta',
         body=formatted_stateful_set,
     )
+
+
+def get_kubernetes_app_deploy_status(kube_client: KubeClient, app: V1Deployment) -> int:
+    if app.status.unavailable_replicas:
+        deploy_status = KubernetesDeployStatus.Waiting
+    elif app.status.updated_replicas < app.status.replicas:
+        deploy_status = KubernetesDeployStatus.Deploying
+    else:
+        deploy_status = KubernetesDeployStatus.Running
+    return deploy_status
+
+
+class KubernetesDeployStatus:
+    """ An enum to represent Kubernetes app deploy status.
+    Changing name of the keys will affect both the paasta CLI and API.
+    """
+    Running, Deploying, Waiting = range(0, 3)
+
+    @classmethod
+    def tostring(cls, val: int) -> str:
+        for k, v in vars(cls).items():
+            if v == val:
+                return k
+        raise ValueError("Unknown Kubernetes deploy status %d" % val)
+
+    @classmethod
+    def fromstring(cls, _str: str) -> int:
+        return getattr(cls, _str, None)

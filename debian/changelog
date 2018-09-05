@@ -1,3 +1,19 @@
+paasta-tools (0.79.5) xenial; urgency=medium
+
+  * 0.79.5 tagged with 'make release'
+    Commit: Merge pull request #1964 from Yelp/remove-cluster-tron-
+    actions  Remove cluster address from Tron actions
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 04 Sep 2018 15:39:16 -0700
+
+paasta-tools (0.79.4) xenial; urgency=medium
+
+  * 0.79.4 tagged with 'make release'
+    Commit: Merge pull request #1929 from Yelp/paasta-status-for-k8s
+    Basic `paasta status` for k8s
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 03 Sep 2018 06:59:17 -0700
+
 paasta-tools (0.79.3) xenial; urgency=medium
 
   * 0.79.3 tagged with 'make release'
