@@ -18,6 +18,7 @@ import logging
 from collections import defaultdict
 from typing import Dict
 from typing import List
+from typing import Set
 
 from mypy_extensions import TypedDict
 
@@ -92,14 +93,15 @@ def create_marathon_dashboard(
             shard_url_to_marathon_link_dict[shard.url[0]] = marathon_links[shard_number]
     elif isinstance(marathon_links, str):
         # In this case, the shard url will be the same for every service instance
-        shard_url = marathon_links.split(' ')[0]
-        return {cluster: [{'service': si[0], 'instance': si[1], 'shard_url': shard_url} for si in instances]}
+        static_shard_url = marathon_links.split(' ')[0]
+        return {cluster: [{'service': si[0], 'instance': si[1], 'shard_url': static_shard_url} for si in instances]}
 
-    # Setup Dict[str, Set[str]] since will instantiate 1 PSCL per service
-    service_instances_dict = defaultdict(set)
+    # Setup with service as key since will instantiate 1 PSCL per service
+    service_instances_dict: Dict[str, Set[str]] = defaultdict(set)
     for si in instances:
         service, instance = si[0], si[1]
         service_instances_dict[service].add(instance)
+
     for service, instance_set in service_instances_dict.items():
         pscl = PaastaServiceConfigLoader(
             service=service,
@@ -110,9 +112,9 @@ def create_marathon_dashboard(
             if marathon_service_config.get_instance() in instance_set:
                 client: MarathonClient = \
                     marathon_clients.get_current_client_for_service(job_config=marathon_service_config)
-                shard_url: str = client.servers[0]
-                # Convert to a marathon link if possible else default to the original shard_url IP address
-                shard_url = shard_url_to_marathon_link_dict.get(shard_url, shard_url)
+                ip_url: str = client.servers[0]
+                # Convert to a marathon link if possible else default to the originalIP address
+                shard_url: str = shard_url_to_marathon_link_dict.get(ip_url, ip_url)
                 service_info: Marathon_Dashboard_Item = {
                     'service': service,
                     'instance': instance,
