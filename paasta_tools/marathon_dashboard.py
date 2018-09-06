@@ -95,15 +95,11 @@ def create_marathon_dashboard(
         shard_url = marathon_links.split(' ')[0]
         return {cluster: [{'service': si[0], 'instance': si[1], 'shard_url': shard_url} for si in instances]}
 
-    print(cluster, dashboard_links.get(cluster))
-    print(marathon_links)
-    print(shard_url_to_marathon_link_dict)
-
+    # Setup Dict[str, Set[str]] since will instantiate 1 PSCL per service
     service_instances_dict = defaultdict(set)
     for si in instances:
         service, instance = si[0], si[1]
         service_instances_dict[service].add(instance)
-    # Loop through each service and load a PSCL
     for service, instance_set in service_instances_dict.items():
         pscl = PaastaServiceConfigLoader(
             service=service,
