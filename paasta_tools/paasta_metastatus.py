@@ -17,6 +17,7 @@ import itertools
 import logging
 import sys
 from typing import List
+from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -24,18 +25,21 @@ from typing import Tuple
 import a_sync
 import chronos
 from marathon.exceptions import MarathonError
+from mypy_extensions import TypedDict
 
 from paasta_tools import __version__
 from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.metrics.metastatus_lib import ResourceUtilization
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -43,10 +47,13 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
 
+log = logging.getLogger('paasta_metastatus')
 logging.basicConfig()
 # kazoo can be really noisy - turn it down
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 logging.getLogger("paasta_tools.autoscaling.autoscaling_cluster_lib").setLevel(logging.ERROR)
+
+ServiceInstanceStats = TypedDict('ServiceInstanceStats', {'mem': float, 'cpus': float, 'disk': float, 'gpus': float})
 
 
 def parse_args(argv):
@@ -72,6 +79,20 @@ def parse_args(argv):
     parser.add_argument(
         '-v', '--verbose', action='count', dest="verbose", default=0,
         help="Print out more output regarding the state of the cluster",
+    )
+    parser.add_argument(
+        '-s', '--service',
+        help=(
+            'Show how many of a given service instance can be run on a cluster slave.'
+            'Note: This is only effective with -vvv and --instance must also be specified'
+        ),
+    )
+    parser.add_argument(
+        '-i', '--instance',
+        help=(
+            'Show how many of a given service instance can be run on a cluster slave.'
+            'Note: This is only effective with -vvv and --service must also be specified'
+        ),
     )
     return parser.parse_args(argv)
 
@@ -108,6 +129,7 @@ def utilization_table_by_grouping_from_mesos_state(
     groupings: Sequence[str],
     threshold: float,
     mesos_state: MesosState,
+    service_instance_stats: Optional[ServiceInstanceStats] = None,
 ) -> Tuple[
     List[List[str]],
     bool,
@@ -125,6 +147,10 @@ def utilization_table_by_grouping_from_mesos_state(
         'GPU (used/total)',
         'Agent count',
     ]
+    # service_instance_stats could be None so check and insert a header if needed.
+    if service_instance_stats:
+        # Insert so agent count is still last
+        static_headers.insert(-1, 'Slots + Limiting Resource')
 
     all_rows = [
         [grouping.capitalize() for grouping in groupings] + static_headers,
@@ -147,11 +173,67 @@ def utilization_table_by_grouping_from_mesos_state(
         table_rows.append(metastatus_lib.get_table_rows_for_resource_info_dict(
             [v for g, v in grouping_values],
             healthcheck_utilization_pairs,
-        ) + [str(resource_info_dict['slave_count'])])
+        ))
+        # Fill table rows with service-instance data if possible.
+        if service_instance_stats:
+            fill_table_rows_with_service_instance_stats(service_instance_stats, resource_utilizations, table_rows)
+
+        # Always append the agent count last
+        table_rows[-1].append(str(resource_info_dict['slave_count']))
+
     table_rows = sorted(table_rows, key=lambda x: x[0:len(groupings)])
     all_rows.extend(table_rows)
 
     return all_rows, healthy_exit
+
+
+def fill_table_rows_with_service_instance_stats(
+    service_instance_stats: ServiceInstanceStats,
+    resource_utilizations: Sequence[ResourceUtilization],
+    table_rows: MutableSequence[MutableSequence[str]],
+) -> None:
+    # Calculate the max number of runnable service instances given the current resources (e.g. cpus, mem, disk)
+    resource_free_dict = {rsrc.metric: rsrc.free for rsrc in resource_utilizations}
+    num_service_instances_allowed = float('inf')
+    limiting_factor = 'Unknown'
+    # service_instance_stats.keys() should be a subset of resource_free_dict
+    for rsrc_name, rsrc_amt_wanted in service_instance_stats.items():
+        if rsrc_amt_wanted > 0:
+            # default=0 to indicate there is none of that resource
+            rsrc_free = resource_free_dict.get(rsrc_name, 0)
+            if rsrc_free // rsrc_amt_wanted < num_service_instances_allowed:
+                limiting_factor = rsrc_name
+                num_service_instances_allowed = rsrc_free // rsrc_amt_wanted
+    table_rows[-1].append('{:6} ; {}'.format(int(num_service_instances_allowed), limiting_factor))
+
+
+def get_service_instance_stats(service: str, instance: str, cluster: str) -> Optional[ServiceInstanceStats]:
+    """Returns a Dict with stats about a given service instance.
+
+    Args:
+        service: the service name
+        instance: the instance name
+        cluster: the cluster name where the service instance will be searched for
+
+    Returns:
+        A Dict mapping resource name to the amount of that resource the particular service instance consumes.
+    """
+    if service is None or instance is None or cluster is None:
+        return None
+
+    try:
+        instance_config = get_instance_config(service, instance, cluster)
+        # Get all fields that are showed in the 'paasta metastatus -vvv' command
+        service_instance_stats = ServiceInstanceStats(
+            mem=instance_config.get_mem(),
+            cpus=instance_config.get_cpus(),
+            disk=instance_config.get_disk(),
+            gpus=instance_config.get_gpus(),
+        )
+        return service_instance_stats
+    except Exception as e:
+        log.error(f'Failed to get stats for service {service} instance {instance}: {str(e)}')
+        return None
 
 
 def main(argv: Optional[List[str]]=None) -> None:
@@ -232,6 +314,10 @@ def main(argv: Optional[List[str]]=None) -> None:
 
         if args.verbose >= 3:
             print_with_indent('Per Slave Utilization', 2)
+            cluster = system_paasta_config.get_cluster()
+            service_instance_stats = get_service_instance_stats(args.service, args.instance, cluster)
+            if service_instance_stats:
+                print_with_indent('Service-Instance stats:' + str(service_instance_stats), 2)
             # print info about slaves here. Note that we don't make modifications to
             # the healthy_exit variable here, because we don't care about a single slave
             # having high usage.
@@ -239,6 +325,7 @@ def main(argv: Optional[List[str]]=None) -> None:
                 groupings=args.groupings + ["hostname"],
                 threshold=args.threshold,
                 mesos_state=mesos_state,
+                service_instance_stats=service_instance_stats,
             )
             # The last column from utilization_table_by_grouping_from_mesos_state is "Agent count", which will always be
             # 1 for per-slave resources, so delete it.

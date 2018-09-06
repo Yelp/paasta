@@ -104,7 +104,6 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
 
-
 TimeCacheEntry = TypedDict(
     'TimeCacheEntry',
     {
@@ -265,6 +264,10 @@ def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
         return cast(str, location_type), cast(List[str], allowed_values)
     except TypeError:
         return None
+
+
+# For mypy typing
+InstanceConfig_T = TypeVar('InstanceConfig_T', bound='InstanceConfig')
 
 
 class InstanceConfig(object):
@@ -787,11 +790,12 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
         )
         if (service, instance) in service_instances:
             return instance_type
-        suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
+        suggestions.append(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
     else:
+        suggestions_str = ''.join(suggestions)
         raise NoConfigurationForServiceError(
             f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
-            f"to run on the {cluster} cluster.{suggestions}",
+            f"to run on the {cluster} cluster.{suggestions_str}",
         )
 
 
