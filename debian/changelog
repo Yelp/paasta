@@ -1,3 +1,19 @@
+paasta-tools (0.79.7) xenial; urgency=medium
+
+  * 0.79.7 tagged with 'make release'
+    Commit: Merge pull request #1972 from Yelp/fix-k8s-bounce  Fix k8s
+    label selector
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 07 Sep 2018 03:20:40 -0700
+
+paasta-tools (0.79.7) xenial; urgency=medium
+
+  * 0.79.7 tagged with 'make release'
+    Commit: Merge pull request #1972 from Yelp/fix-k8s-bounce  Fix k8s
+    label selector
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 07 Sep 2018 03:20:34 -0700
+
 paasta-tools (0.79.6) xenial; urgency=medium
 
   * 0.79.6 tagged with 'make release'
