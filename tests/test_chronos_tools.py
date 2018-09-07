@@ -1082,8 +1082,8 @@ class TestChronosTools:
         fake_docker_volumes = ['fake_docker_volume']
         fake_cpus = 0.25
         fake_period = 200000
-        fake_burst = 200
-        fake_cpu_quota = fake_cpus * fake_period * (100 + fake_burst) / 100
+        fake_burst = 2
+        fake_cpu_quota = (fake_cpus + fake_burst) * fake_period
 
         chronos_job_config = chronos_tools.ChronosJobConfig(
             service=fake_service,
@@ -1095,7 +1095,7 @@ class TestChronosTools:
                 'epsilon': 'PT60S',
                 'cpus': fake_cpus,
                 'cfs_period_us': fake_period,
-                'cpu_burst_pct': fake_burst,
+                'cpu_burst_add': fake_burst,
             },
             branch_dict=None,
         )
@@ -1427,7 +1427,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '5500000'},
+                        {"key": "cpu-quota", "value": '650000'},
                         {"key": "label", "value": "paasta_service=test-service"},
                         {"key": "label", "value": "paasta_instance=test"},
                     ],
@@ -1558,7 +1558,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '5500000'},
+                        {"key": "cpu-quota", "value": '650000'},
                         {"key": "label", "value": "paasta_service=test-service"},
                         {"key": "label", "value": "paasta_instance=test"},
                     ],
@@ -1628,7 +1628,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '5500000'},
+                        {"key": "cpu-quota", "value": '650000'},
                         {"key": "label", "value": "paasta_service=test-service"},
                         {"key": "label", "value": "paasta_instance=test"},
                     ],
@@ -1714,7 +1714,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1089m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '5500000'},
+                        {"key": "cpu-quota", "value": '650000'},
                         {"key": "label", "value": "paasta_service=test-service"},
                         {"key": "label", "value": "paasta_instance=test"},
                     ],

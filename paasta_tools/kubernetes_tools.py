@@ -361,7 +361,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_resource_requirements(self) -> V1ResourceRequirements:
         return V1ResourceRequirements(
             limits={
-                'cpu': self.get_cpus() * self.get_cpu_burst_pct() / 100,
+                'cpu': self.get_cpus() + self.get_cpu_burst_add(),
                 'memory': f'{self.get_mem()}Mi',
             },
             requests={

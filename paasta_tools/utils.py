@@ -97,7 +97,7 @@ no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
 DEFAULT_CPU_PERIOD = 100000
-DEFAULT_CPU_BURST_PCT = 900
+DEFAULT_CPU_BURST_ADD = 1
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -196,7 +196,7 @@ InstanceConfigDict = TypedDict(
         'cmd': str,
         'args': List[str],
         'cfs_period_us': float,
-        'cpu_burst_pct': float,
+        'cpu_burst_add': float,
         'ulimit': Dict[str, Dict[str, Any]],
         'cap_add': List,
         'env': Dict[str, str],
@@ -362,10 +362,10 @@ class InstanceConfig:
         cpus = self.config_dict.get('cpus', .25)
         return cpus
 
-    def get_cpu_burst_pct(self) -> float:
-        """Returns the percent over its declared cpu usage that a container
-        will be allowed to go. Default to DEFAULT_CPU_PERIOD"""
-        return self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
+    def get_cpu_burst_add(self) -> float:
+        """Returns the number of additional cpus a container is allowed to use.
+        Defaults to DEFAULT_CPU_BURST_ADD"""
+        return self.config_dict.get('cpu_burst_add', DEFAULT_CPU_BURST_ADD)
 
     def get_cpu_period(self) -> float:
         """The --cpu-period option to be passed to docker
@@ -377,11 +377,11 @@ class InstanceConfig:
     def get_cpu_quota(self) -> float:
         """Gets the --cpu-quota option to be passed to docker
 
-        Calculation: cpus * cfs_period_us * (100 + cpu_burst_pct) / 100
+        Calculation: (cpus + cpus_burst_add) * cfs_period_us
 
         :returns: The number to be passed to the --cpu-quota docker flag"""
-        cpu_burst_pct = self.get_cpu_burst_pct()
-        return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
+        cpu_burst_add = self.get_cpu_burst_add()
+        return (self.get_cpus() + cpu_burst_add) * self.get_cpu_period()
 
     def get_extra_docker_args(self) -> Dict[str, str]:
         return self.config_dict.get('extra_docker_args', {})
