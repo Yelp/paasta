@@ -813,7 +813,7 @@ def ensure_paasta_namespace(kube_client: KubeClient) -> None:
 
 def list_deployments(
     kube_client: KubeClient,
-    label_selector: Optional[str] = None,
+    label_selector: str = '',
 ) -> Sequence[KubeDeployment]:
     deployments = kube_client.deployments.list_namespaced_deployment(
         namespace='paasta',
