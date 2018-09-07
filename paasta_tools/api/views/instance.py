@@ -15,14 +15,17 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
+import logging
 import traceback
 from typing import Any
 from typing import Dict
 from typing import Mapping
 from typing import MutableMapping
+from typing import Sequence
 
 import a_sync
 import marathon
+from kubernetes.client import V1Pod
 from pyramid.response import Response
 from pyramid.view import view_config
 
@@ -41,6 +44,7 @@ from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
+log = logging.getLogger(__name__)
 
 
 def chronos_instance_status(
@@ -130,13 +134,16 @@ def kubernetes_instance_status(
     )
     client = settings.kubernetes_client
     if client is not None:
-        deployments = kubernetes_tools.list_matching_deployments(service, instance, client)
-
         # bouncing status can be inferred from app_count, ref get_bouncing_status
-        kstatus['app_count'] = len(deployments)
+        pod_list = kubernetes_tools.pods_for_service_instance(job_config.service, job_config.instance, client)
+        active_shas = kubernetes_tools.get_active_shas_for_service(pod_list)
+        kstatus['app_count'] = max(
+            len(active_shas['config_sha']),
+            len(active_shas['git_sha']),
+        )
         kstatus['desired_state'] = job_config.get_desired_state()
         kstatus['bounce_method'] = kubernetes_tools.KUBE_DEPLOY_STATEGY_REVMAP[job_config.get_bounce_method()]
-        kubernetes_job_status(kstatus, client, job_config, verbose)
+        kubernetes_job_status(kstatus=kstatus, client=client, job_config=job_config, verbose=verbose, pod_list=pod_list)
     return kstatus
 
 
@@ -144,25 +151,22 @@ def kubernetes_job_status(
     kstatus: MutableMapping[str, Any],
     client: kubernetes_tools.KubeClient,
     job_config: kubernetes_tools.KubernetesDeploymentConfig,
+    pod_list: Sequence[V1Pod],
     verbose: bool,
 ) -> None:
     app_id = job_config.get_sanitised_deployment_name()
     kstatus['app_id'] = app_id
     if verbose is True:
-        pod_list = client.core.list_namespaced_pod(
-            namespace='paasta',
-            label_selector=f'service={job_config.service},instance={job_config.instance}',
-        )
         kstatus['slaves'] = [
             pod.spec.node_name
-            for pod in pod_list.items
+            for pod in pod_list
         ]
     kstatus['expected_instance_count'] = job_config.get_instances()
 
-    app = kubernetes_tools.get_deployment_by_name(app_id, client)
-    deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(client, app)
+    app = kubernetes_tools.get_kubernetes_app_by_name(app_id, client)
+    deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(client, app, job_config.get_instances())
     kstatus['deploy_status'] = kubernetes_tools.KubernetesDeployStatus.tostring(deploy_status)
-    kstatus['running_instance_count'] = app.status.ready_replicas
+    kstatus['running_instance_count'] = app.status.ready_replicas if app.status.ready_replicas else 0
 
 
 def marathon_job_status(
@@ -229,7 +233,7 @@ def marathon_instance_status(
 def instance_status(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
-    verbose = request.matchdict.get('verbose', False)
+    verbose = request.swagger_data.get('verbose', False)
 
     instance_status: Dict[str, Any] = {}
     instance_status['service'] = service

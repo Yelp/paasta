@@ -43,6 +43,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.slack import get_slack_client
@@ -561,6 +562,12 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             log.warning("Error getting service status from PaaSTA API for {}:"
                         "{}".format(cluster_data.cluster, e))
 
+        long_running_status = None
+        if status:
+            if status.marathon:
+                long_running_status = status.marathon
+            elif status.kubernetes:
+                long_running_status = status.kubernetes
         if not status:
             log.debug("No status for {}.{}, in {}. Not deployed yet."
                       .format(
@@ -569,15 +576,15 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                       ))
             cluster_data.instances_queue.task_done()
             instances_out.put(instance_config)
-        elif not status.marathon:
-            log.debug("{}.{} in {} is not a Marathon job. Marked as deployed."
+        elif not long_running_status:
+            log.debug("{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed."
                       .format(
                           cluster_data.service, instance,
                           cluster_data.cluster,
                       ))
         elif (
-            status.marathon.expected_instance_count == 0 or
-            status.marathon.desired_state == 'stop'
+            long_running_status.expected_instance_count == 0 or
+            long_running_status.desired_state == 'stop'
         ):
             log.debug("{}.{} in {} is marked as stopped. Marked as deployed."
                       .format(
@@ -585,13 +592,13 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                           cluster_data.cluster,
                       ))
         else:
-            if status.marathon.app_count != 1:
+            if long_running_status.app_count != 1:
                 paasta_print("  {}.{} on {} is still bouncing, {} versions "
                              "running"
                              .format(
                                  cluster_data.service, status.instance,
                                  cluster_data.cluster,
-                                 status.marathon.app_count,
+                                 long_running_status.app_count,
                              ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
@@ -605,12 +612,12 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
                 continue
-            if status.marathon.deploy_status not in ['Running', 'Deploying', 'Waiting']:
+            if long_running_status.deploy_status not in ['Running', 'Deploying', 'Waiting']:
                 paasta_print("  {}.{} on {} isn't running yet: {}"
                              .format(
                                  cluster_data.service, instance,
                                  cluster_data.cluster,
-                                 status.marathon.deploy_status,
+                                 long_running_status.deploy_status,
                              ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
@@ -619,17 +626,17 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             # The bounce margin factor defines what proportion of instances we need to be "safe",
             # so consider it scaled up "enough" if we have that proportion of instances ready.
             required_instance_count = int(math.ceil(
-                instance_config.get_bounce_margin_factor() * status.marathon.expected_instance_count,
+                instance_config.get_bounce_margin_factor() * long_running_status.expected_instance_count,
             ))
-            if required_instance_count > status.marathon.running_instance_count:
+            if required_instance_count > long_running_status.running_instance_count:
                 paasta_print("  {}.{} on {} isn't scaled up yet, "
                              "has {} out of {} required instances (out of a total of {})"
                              .format(
                                  cluster_data.service, instance,
                                  cluster_data.cluster,
-                                 status.marathon.running_instance_count,
+                                 long_running_status.running_instance_count,
                                  required_instance_count,
-                                 status.marathon.expected_instance_count,
+                                 long_running_status.expected_instance_count,
                              ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
@@ -639,7 +646,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                          .format(
                              cluster_data.service, instance,
                              cluster_data.cluster,
-                             status.marathon.running_instance_count,
+                             long_running_status.running_instance_count,
                              status.git_sha,
                          ))
             cluster_data.instances_queue.task_done()
@@ -712,6 +719,13 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         for instance_config in service_configs.instance_configs(
             cluster=cluster,
             instance_type_class=MarathonServiceConfig,
+        ):
+            if instance_config.get_deploy_group() == deploy_group:
+                instances_queue.put(instance_config)
+                total_instances += 1
+        for instance_config in service_configs.instance_configs(
+            cluster=cluster,
+            instance_type_class=KubernetesDeploymentConfig,
         ):
             if instance_config.get_deploy_group() == deploy_group:
                 instances_queue.put(instance_config)
