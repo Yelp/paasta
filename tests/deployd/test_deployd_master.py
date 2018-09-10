@@ -8,7 +8,7 @@ from pytest import raises
 from paasta_tools.deployd.common import BaseServiceInstance
 
 
-class FakePyinotify(object):  # pragma: no cover
+class FakePyinotify:  # pragma: no cover
     class ProcessEvent():
         pass
 
@@ -408,8 +408,8 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.inbox_q.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):
-        class FakeWatchers(object):  # pragma: no cover
-            class PaastaWatcher(object):
+        class FakeWatchers:  # pragma: no cover
+            class PaastaWatcher:
                 def __init__(self, *args, **kwargs):
                     pass
 

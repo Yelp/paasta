@@ -294,7 +294,7 @@ def test_list_chain_does_not_exist(mock_Table, mock_Chain):
         iptables.list_chain('PAASTA.internet')
 
 
-class TestReorderChain(object):
+class TestReorderChain:
     class FakeRule(namedtuple('FakeRule', ('target', 'id'))):
         def to_iptc(self):
             return self

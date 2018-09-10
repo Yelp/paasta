@@ -115,7 +115,7 @@ TimeCacheEntry = TypedDict(
 _CacheRetT = TypeVar('_CacheRetT')
 
 
-class time_cache(object):
+class time_cache:
     def __init__(self, ttl: float=0) -> None:
         self.configs: Dict[Tuple, TimeCacheEntry] = {}
         self.ttl = ttl
@@ -270,7 +270,7 @@ def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
 InstanceConfig_T = TypeVar('InstanceConfig_T', bound='InstanceConfig')
 
 
-class InstanceConfig(object):
+class InstanceConfig:
     config_filename_prefix: str
 
     def __init__(
@@ -1068,7 +1068,7 @@ _log_writer = None
 _log_writer_classes = {}
 
 
-class LogWriter(object):
+class LogWriter:
     def __init__(self, **kwargs: Any) -> None:
         pass
 
@@ -1522,7 +1522,7 @@ def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]]
     return SystemPaastaConfig(config, path)
 
 
-class SystemPaastaConfig(object):
+class SystemPaastaConfig:
 
     def __init__(self, config: SystemPaastaConfigDict, directory: str) -> None:
         self.directory = directory
@@ -2735,7 +2735,7 @@ def deep_merge_dictionaries(
     return result
 
 
-class ZookeeperPool(object):
+class ZookeeperPool:
     """
     A context manager that shares the same KazooClient with its children. The first nested context manager
     creates and deletes the client and shares it with any of its children. This allows to place a context
@@ -2895,7 +2895,7 @@ def timeout(
     return decorate
 
 
-class _Timeout(object):
+class _Timeout:
     def __init__(self, function: Callable[..., _TimeoutFuncRetType], seconds: float, error_message: str) -> None:
         self.seconds = seconds
         self.control: queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = queue.Queue()

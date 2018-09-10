@@ -35,7 +35,7 @@ def test_DictTaskStore():
     }
 
 
-class TestMesosTaskParameters(object):
+class TestMesosTaskParameters:
     def test_serdes(self):
         param_dict = {
             'health': 'health',
@@ -50,7 +50,7 @@ class TestMesosTaskParameters(object):
         assert MesosTaskParameters.deserialize(json.dumps(param_dict)) == MesosTaskParameters(**param_dict)
 
 
-class TestZKTaskStore(object):
+class TestZKTaskStore:
     @pytest.yield_fixture
     def mock_zk_client(self):
         spec_zk_client = KazooClient()

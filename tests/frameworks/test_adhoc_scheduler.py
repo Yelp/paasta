@@ -50,7 +50,7 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
     return offer
 
 
-class TestAdhocScheduler(object):
+class TestAdhocScheduler:
     def test_raise_error_when_cmd_missing(self, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"

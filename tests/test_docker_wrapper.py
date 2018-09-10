@@ -18,7 +18,7 @@ class ImmutableDict(dict):
         pass
 
 
-class TestParseEnvArgs(object):
+class TestParseEnvArgs:
     @pytest.fixture(autouse=True)
     def mock_empty_os_environ(self):
         # Patch `os.environ` to contain a not changeable empty set of environment variables.
@@ -145,7 +145,7 @@ class TestParseEnvArgs(object):
         return str(env_file)
 
 
-class TestCanAddHostname(object):
+class TestCanAddHostname:
     def test_empty(self):
         assert docker_wrapper.can_add_hostname(['docker']) is True
 
@@ -188,7 +188,7 @@ class TestCanAddHostname(object):
         assert docker_wrapper.can_add_hostname(args) is False
 
 
-class TestCanAddMacAddress(object):
+class TestCanAddMacAddress:
     def test_empty(self):
         assert docker_wrapper.can_add_mac_address(['docker']) is False
 
@@ -213,7 +213,7 @@ class TestCanAddMacAddress(object):
         assert docker_wrapper.can_add_mac_address(args) is False
 
 
-class TestMemInfo(object):
+class TestMemInfo:
     def test_get_numa_memsize(self):
         m = mock.mock_open()
         m.return_value.__iter__.return_value = [
@@ -225,7 +225,7 @@ class TestMemInfo(object):
             assert memtotal == 500
 
 
-class TestGenerateHostname(object):
+class TestGenerateHostname:
     def test_simple(self):
         hostname = docker_wrapper.generate_hostname(
             'first.part.matters',
@@ -280,7 +280,7 @@ def test_add_argument(input_args, expected_args):
     assert args == expected_args
 
 
-class TestMain(object):
+class TestMain:
     @pytest.yield_fixture(autouse=True)
     def mock_execlp(self):
         # always patch execlp so we don't actually exec

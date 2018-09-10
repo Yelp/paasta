@@ -1703,7 +1703,7 @@ class TestMarathonTools:
         assert actual == apps
 
 
-class TestMarathonServiceConfig(object):
+class TestMarathonServiceConfig:
 
     def test_get_healthcheck_mode_default(self):
         namespace_config = long_running_service_tools.ServiceNamespaceConfig({})

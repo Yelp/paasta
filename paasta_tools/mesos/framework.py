@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-class Framework(object):
+class Framework:
     def __init__(self, items):
         self.__items = items
 

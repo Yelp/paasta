@@ -56,7 +56,7 @@ def mock_ClientSession(**fake_session_kwargs):
         yield
 
 
-class TestHacheckDrainMethod(object):
+class TestHacheckDrainMethod:
     drain_method = drain_lib.HacheckDrainMethod(
         service="srv",
         instance="inst",
@@ -133,7 +133,7 @@ class TestHacheckDrainMethod(object):
             assert await self.drain_method.is_draining(fake_task) is False
 
 
-class TestHTTPDrainMethod(object):
+class TestHTTPDrainMethod:
     def test_get_format_params(self):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
         drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', ['fake_nerve_ns'], {}, {}, {}, {})

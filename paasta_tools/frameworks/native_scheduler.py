@@ -567,7 +567,7 @@ class NativeScheduler(Scheduler):
                 self.unblacklist_slave(agent_id)
 
 
-class DrainTask(object):
+class DrainTask:
     def __init__(self, id, host, ports):
         self.id = id
         self.host = host
