@@ -1844,7 +1844,7 @@ def make_fake_drain_method(
     )
 
 
-class TestGetOldHappyUnhappyDrainingTasks(object):
+class TestGetOldHappyUnhappyDrainingTasks:
     def fake_task(self, state, happiness):
         return mock.Mock(_drain_state=state, _happiness=happiness, id=f"fake_{state}_{happiness}")
 
@@ -2027,7 +2027,7 @@ class RegexMatcher:
         return f"RegexMatcher(pattern={self.pattern!r}, flags={self.flags!r})"
 
 
-class TestDrainTasksAndFindTasksToKill(object):
+class TestDrainTasksAndFindTasksToKill:
     def test_catches_exception_during_drain(self):
         tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
             (mock.Mock(id='to_drain', state='TASK_FOO'), mock.Mock()),

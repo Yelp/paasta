@@ -63,7 +63,7 @@ def list_drain_methods() -> List[str]:
 DrainTask = TypeVar('DrainTask', bound=Any)
 
 
-class DrainMethod(object):
+class DrainMethod:
     """A drain method is a way of stopping new traffic to tasks without killing them. For example, you might take a task
     out of a load balancer by causing its healthchecks to fail.
 

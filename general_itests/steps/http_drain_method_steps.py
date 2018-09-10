@@ -72,7 +72,7 @@ def check_retval(context, expected_retval):
     assert repr(context.retval) == expected_retval
 
 
-class FakeHTTPServer(object):
+class FakeHTTPServer:
     paths: List[str] = []
 
     def start(self):

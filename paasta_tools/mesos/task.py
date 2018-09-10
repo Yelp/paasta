@@ -25,7 +25,7 @@ from . import mesos_file
 from paasta_tools.async_utils import async_ttl_cache
 
 
-class Task(object):
+class Task:
 
     cmd_re = re.compile("\(Command: (.+)\)")
 

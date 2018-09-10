@@ -788,7 +788,7 @@ def get_kubernetes_services_running_here_for_nerve(
     return nerve_list
 
 
-class KubeClient(object):
+class KubeClient:
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
         self.deployments = kube_client.AppsV1Api()

@@ -19,7 +19,7 @@ from . import exceptions
 from paasta_tools.async_utils import async_ttl_cache
 
 
-class File(object):
+class File:
 
     chunk_size = 1024
 

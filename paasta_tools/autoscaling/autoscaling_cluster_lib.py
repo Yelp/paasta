@@ -102,7 +102,7 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-class Timer(object):
+class Timer:
     def __init__(self, timeout: int) -> None:
         self.timeout = timedelta(seconds=timeout)
         self.start()
@@ -117,7 +117,7 @@ class Timer(object):
         return self.last_start + self.timeout - datetime.now()
 
 
-class ClusterAutoscaler(object):
+class ClusterAutoscaler:
 
     def __init__(
         self,
@@ -1111,7 +1111,7 @@ class FailSetResourceCapacity(Exception):
     pass
 
 
-class PaastaAwsSlave(object):
+class PaastaAwsSlave:
     """
     Defines a slave object for use by the autoscaler, containing the mesos slave
     object from mesos state and some properties from AWS

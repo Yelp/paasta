@@ -51,7 +51,7 @@ def make_fake_offer(cpu=50000, mem=50000, port_begin=31000, port_end=32000, pool
     return offer
 
 
-class TestNativeScheduler(object):
+class TestNativeScheduler:
     @mock.patch('paasta_tools.frameworks.native_scheduler._log', autospec=True)
     def test_start_upgrade_rollback_scaledown(self, mock_log, system_paasta_config):
         service_name = "service_name"
@@ -275,7 +275,7 @@ class TestNativeScheduler(object):
         assert not scheduler.offer_matches_pool(make_fake_offer(port_begin=12345, port_end=12345, pool=None))
 
 
-class TestNativeServiceConfig(object):
+class TestNativeServiceConfig:
     def test_base_task(self, system_paasta_config):
         service_name = "service_name"
         instance_name = "instance_name"

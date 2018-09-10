@@ -204,7 +204,7 @@ def report_waiting_aborted(service, deploy_group):
     paasta_print()
 
 
-class SlackDeployNotifier(object):
+class SlackDeployNotifier:
     def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url):
         self.sc = get_slack_client()
         self.service = service

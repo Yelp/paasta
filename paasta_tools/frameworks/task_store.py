@@ -23,7 +23,7 @@ class MesosTaskParametersIsImmutableError(Exception):
 _SelfT = TypeVar('_SelfT', bound='MesosTaskParameters')
 
 
-class MesosTaskParameters(object):
+class MesosTaskParameters:
     health: Any
     mesos_task_state: str
     is_draining: bool
@@ -78,7 +78,7 @@ class MesosTaskParameters(object):
         return json.dumps(self.__dict__).encode('utf-8')
 
 
-class TaskStore(object):
+class TaskStore:
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.service_name = service_name
         self.instance_name = instance_name

@@ -60,7 +60,7 @@ def duration(start_time, end_time=None):
     return last_time - start_time
 
 
-class DateArithmetic(object):
+class DateArithmetic:
     """Parses a string which contains a date arithmetic pattern and returns
     a date with the delta added or subtracted.
     """
