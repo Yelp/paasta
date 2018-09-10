@@ -1,3 +1,11 @@
+paasta-tools (0.79.8) xenial; urgency=medium
+
+  * 0.79.8 tagged with 'make release'
+    Commit: Merge pull request #1969 from Yelp/deployd-leader-problems
+    Deployd leader problems
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 10 Sep 2018 06:21:03 -0700
+
 paasta-tools (0.79.7) xenial; urgency=medium
 
   * 0.79.7 tagged with 'make release'
