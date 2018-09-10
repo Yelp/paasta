@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 
 from kazoo.client import KazooState
@@ -40,8 +41,7 @@ class PaastaLeaderElection(Election):
                 reconnection_checker.start()
         elif state == KazooState.LOST:
             self.log.error("Leadership lost, quitting!")
-            self.control.put("ABORT")
-            self.client.stop()
+            self._terminate()
 
     def reconnection_listener(self):
         attempts = 0
@@ -54,5 +54,14 @@ class PaastaLeaderElection(Election):
             time.sleep(5)
             attempts += 1
         self.log.error("Connection did not recover, abdicating!")
+        self._terminate()
+
+    def _terminate(self):
+        thread_info = [{
+            'alive': t.is_alive(),
+            'daemon': t.daemon,
+            'name': t.__class__.__name__,
+        } for t in threading.enumerate()]
+        self.log.info(f"Thread info: {thread_info}")
         self.control.put("ABORT")
         self.client.stop()

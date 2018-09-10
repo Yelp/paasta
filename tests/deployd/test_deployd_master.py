@@ -430,7 +430,7 @@ class TestDeployDaemon(unittest.TestCase):
             'paasta_tools.deployd.master.watchers', autospec=False, new=FakeWatchers,
         ), mock.patch(
             'time.sleep', autospec=True,
-        ) as mock_sleep:
+        ):
             mock_zk = mock.Mock()
             self.deployd.zk = mock_zk
             mock_start = mock.Mock()
@@ -445,8 +445,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_start.call_count == 3
 
             FakeWatchers.PaastaWatcher.is_ready = False
-            mock_sleep.side_effect = LoopBreak
-            with raises(LoopBreak):
+            with raises(SystemExit):
                 self.deployd.start_watchers()
 
 
