@@ -246,6 +246,13 @@
             "name": "instance",
             "required": true,
             "type": "string"
+          },
+          {
+            "in": "query",
+            "description": "Include verbose status information",
+            "name": "verbose",
+            "required": false,
+            "type": "boolean"
           }
         ]
       }
