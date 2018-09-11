@@ -305,15 +305,15 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpus', autospec=True,
             return_value=0.3,
         ), mock.patch(
-            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_pct', autospec=True,
-            return_value=200,
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_add', autospec=True,
+            return_value=1,
         ), mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem', autospec=True,
             return_value=2048,
         ):
             assert self.deployment.get_resource_requirements() == V1ResourceRequirements(
                 limits={
-                    'cpu': 0.6,
+                    'cpu': 1.3,
                     'memory': '2048Mi',
                 },
                 requests={
