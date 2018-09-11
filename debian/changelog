@@ -1,3 +1,11 @@
+paasta-tools (0.80.0) xenial; urgency=medium
+
+  * 0.80.0 tagged with 'make release'
+    Commit: Merge pull request #1975 from Yelp/u/kawaiwan/change-cpu-
+    burst-from-pct-to-add  Change cpu_burst_pct to cpu_burst_add
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Tue, 11 Sep 2018 16:12:06 -0700
+
 paasta-tools (0.79.9) xenial; urgency=medium
 
   * 0.79.9 tagged with 'make release'
