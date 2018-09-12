@@ -87,7 +87,7 @@
                 "exclusiveMinimum": false
             },
             "cpu_burst_add": {
-                "type": "float",
+                "type": "number",
                 "minimum": 0.0,
                 "exclusiveMinimum": false
             },
