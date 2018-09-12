@@ -1,3 +1,43 @@
+paasta-tools (0.80.0) xenial; urgency=medium
+
+  * 0.80.0 tagged with 'make release'
+    Commit: Merge pull request #1975 from Yelp/u/kawaiwan/change-cpu-
+    burst-from-pct-to-add  Change cpu_burst_pct to cpu_burst_add
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Tue, 11 Sep 2018 16:12:06 -0700
+
+paasta-tools (0.79.9) xenial; urgency=medium
+
+  * 0.79.9 tagged with 'make release'
+    Commit: Merge pull request #1974 from Yelp/k8s-wait-for-deployment
+    Make k8s wait-for-deployment work
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 11 Sep 2018 04:09:50 -0700
+
+paasta-tools (0.79.8) xenial; urgency=medium
+
+  * 0.79.8 tagged with 'make release'
+    Commit: Merge pull request #1969 from Yelp/deployd-leader-problems
+    Deployd leader problems
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 10 Sep 2018 06:21:03 -0700
+
+paasta-tools (0.79.7) xenial; urgency=medium
+
+  * 0.79.7 tagged with 'make release'
+    Commit: Merge pull request #1972 from Yelp/fix-k8s-bounce  Fix k8s
+    label selector
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 07 Sep 2018 03:20:40 -0700
+
+paasta-tools (0.79.7) xenial; urgency=medium
+
+  * 0.79.7 tagged with 'make release'
+    Commit: Merge pull request #1972 from Yelp/fix-k8s-bounce  Fix k8s
+    label selector
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 07 Sep 2018 03:20:34 -0700
+
 paasta-tools (0.79.6) xenial; urgency=medium
 
   * 0.79.6 tagged with 'make release'

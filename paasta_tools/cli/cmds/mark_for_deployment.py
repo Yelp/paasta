@@ -43,6 +43,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.slack import get_slack_client
@@ -204,7 +205,7 @@ def report_waiting_aborted(service, deploy_group):
     paasta_print()
 
 
-class SlackDeployNotifier(object):
+class SlackDeployNotifier:
     def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url):
         self.sc = get_slack_client()
         self.service = service
@@ -220,7 +221,7 @@ class SlackDeployNotifier(object):
     def get_url_message(self):
         build_url = os.environ.get('BUILD_URL')
         if build_url is not None:
-            message = f"(Jenkins: {build_url}/consoleFull)"
+            message = f"<{build_url}/consoleFull|Jenkins Job>"
         else:
             message = f"(Run by {getpass.getuser()} on {socket.getfqdn()})"
         return message
@@ -241,8 +242,8 @@ class SlackDeployNotifier(object):
                 return ""
             else:
                 slacky_authors = ", ".join([f"<@{a}>" for a in authors.split()])
-                log.debug(f"Pinging authors: {slacky_authors}")
-                return f"Pinging authors: {slacky_authors}"
+                log.debug(f"Authors: {slacky_authors}")
+                return f"Authors: {slacky_authors}"
         else:
             return f"(Could not get authors: {authors})"
 
@@ -253,51 +254,66 @@ class SlackDeployNotifier(object):
                 return step.get(notify_type, step.get('slack_notify', False))
         return False
 
-    def post(self, notify_type, **kwargs):
+    def _notify_with_thread(self, notify_type, channels, initial_message, *followups):
+        """Start a new thread with `initial_message`, then add any followups.
+
+        This helps keep extra detail just a click away, without disrupting the
+        main channel with large descriptive messages.
+        """
         if self.deploy_group_is_set_to_notify(notify_type):
-            self.sc.post(**kwargs)
+            for channel in channels:
+                resp, = self.sc.post(channels=[channel], message=initial_message)
+
+                # If we got an error from Slack, fall back to posting it without a thread.
+                thread_ts = resp['message']['ts'] if resp and resp['ok'] else None
+
+                for followup in followups:
+                    self.sc.post(channels=[channel], message=followup, thread_ts=thread_ts)
         else:
             log.debug(f"{self.deploy_group}.{notify_type} isn't set to notify slack")
 
     def notify_after_mark(self, ret):
         if ret == 0:
             if self.old_commit is not None and self.commit != self.old_commit:
-                mes = (
-                    f"*{self.service}* - Marked *{self.commit}* for deployment on *{self.deploy_group}*.\n"
-                    "Will start deploying soon!\n"
-                    f"{self.authors}\n"
-                    f"{self.url_message}\n"
+                self._notify_with_thread(
+                    'notify_after_mark',
+                    self.channels,
+                    f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.",
+                    (
+                        f"{self.authors}\n"
+                        f"{self.url_message}\n"
+                        "\n"
+                        "Roll it back at any time with:\n"
+                        f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
+                        f"--commit {self.old_commit}`"
+                    ),
                 )
-                self.post('notify_after_mark', channels=self.channels, message=mes)
-                mes = (
-                    "Roll it back at any time with:\n"
-                    f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                    f"--commit {self.old_commit}`"
-                )
-                self.post('notify_after_mark', channels=self.channels, message=mes)
         else:
             if self.old_commit is not None and self.commit != self.old_commit:
-                message = (
-                    f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit}*.\n"
-                    f"{self.authors}\n"
-                    f"{self.url_message}\n"
+                self._notify_with_thread(
+                    'notify_after_mark',
+                    self.channels,
+                    f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.",
+                    (
+                        f"{self.authors}\n"
+                        f"{self.url_message}\n"
+                    ),
                 )
-                self.post('notify_after_mark', channels=self.channels, message=message)
 
     def notify_after_good_deploy(self):
         if self.old_commit is not None and self.commit != self.old_commit:
-            message = (
-                f"*{self.service}* - Finished for deployment of *{self.commit}* on *{self.deploy_group}*.\n"
-                f"{self.authors}\n"
-                f"{self.url_message}\n"
+            self._notify_with_thread(
+                'notify_after_good_deploy',
+                self.channels,
+                f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.",
+                (
+                    f"{self.authors}\n"
+                    f"{self.url_message}\n"
+                    "If you need to roll back, run:\n"
+                    f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
+                    f"--commit {self.old_commit}`"
+                ),
             )
-            self.post('notify_after_good_deploy', channels=self.channels, message=message)
-            mes = (
-                "If you need to roll back, run:\n"
-                f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                f"--commit {self.old_commit}`"
-            )
-            self.post('notify_after_good_deploy', channels=self.channels, message=mes)
 
     def notify_after_auto_rollback(self):
         if self.old_commit is not None and self.commit != self.old_commit:
@@ -306,22 +322,24 @@ class SlackDeployNotifier(object):
                 f"Auto-rolling back to {self.old_commit}\n"
                 f"{self.url_message}\n"
             )
-            self.post('notify_after_auto_rollback', channels=self.channels, message=message)
+            self._notify_with_thread('notify_after_auto_rollback', self.channels, message)
 
     def notify_after_abort(self):
         if self.old_commit is not None and self.commit != self.old_commit:
-            message = (
-                f"*{self.service}* - Deployment of {self.commit} to {self.deploy_group} *aborted*,\n"
-                "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy.\n"
-                f"{self.authors}\n"
-                f"{self.url_message}\n"
+            self._notify_with_thread(
+                'notify_after_abort',
+                self.channels,
+                (
+                    f"*{self.service}* - Deployment of {self.commit[:12]} to {self.deploy_group} *aborted*, "
+                    "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy."
+                ),
+                (
+                    f"{self.authors}\n"
+                    f"{self.url_message}\n"
+                    "If you need to roll back, run:\n"
+                    f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"  # noqa: E501
+                ),
             )
-            self.post('notify_after_abort', channels=self.channels, message=message)
-            mes = (
-                "If you need to roll back, run:\n"
-                f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"
-            )
-            self.post('notify_after_abort', channels=self.channels, message=mes)
 
 
 def get_deploy_info(service, soa_dir):
@@ -544,6 +562,12 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             log.warning("Error getting service status from PaaSTA API for {}:"
                         "{}".format(cluster_data.cluster, e))
 
+        long_running_status = None
+        if status:
+            if status.marathon:
+                long_running_status = status.marathon
+            elif status.kubernetes:
+                long_running_status = status.kubernetes
         if not status:
             log.debug("No status for {}.{}, in {}. Not deployed yet."
                       .format(
@@ -552,15 +576,15 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                       ))
             cluster_data.instances_queue.task_done()
             instances_out.put(instance_config)
-        elif not status.marathon:
-            log.debug("{}.{} in {} is not a Marathon job. Marked as deployed."
+        elif not long_running_status:
+            log.debug("{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed."
                       .format(
                           cluster_data.service, instance,
                           cluster_data.cluster,
                       ))
         elif (
-            status.marathon.expected_instance_count == 0 or
-            status.marathon.desired_state == 'stop'
+            long_running_status.expected_instance_count == 0 or
+            long_running_status.desired_state == 'stop'
         ):
             log.debug("{}.{} in {} is marked as stopped. Marked as deployed."
                       .format(
@@ -568,13 +592,13 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                           cluster_data.cluster,
                       ))
         else:
-            if status.marathon.app_count != 1:
+            if long_running_status.app_count != 1:
                 paasta_print("  {}.{} on {} is still bouncing, {} versions "
                              "running"
                              .format(
                                  cluster_data.service, status.instance,
                                  cluster_data.cluster,
-                                 status.marathon.app_count,
+                                 long_running_status.app_count,
                              ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
@@ -588,12 +612,12 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
                 continue
-            if status.marathon.deploy_status not in ['Running', 'Deploying', 'Waiting']:
+            if long_running_status.deploy_status not in ['Running', 'Deploying', 'Waiting']:
                 paasta_print("  {}.{} on {} isn't running yet: {}"
                              .format(
                                  cluster_data.service, instance,
                                  cluster_data.cluster,
-                                 status.marathon.deploy_status,
+                                 long_running_status.deploy_status,
                              ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
@@ -602,17 +626,17 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             # The bounce margin factor defines what proportion of instances we need to be "safe",
             # so consider it scaled up "enough" if we have that proportion of instances ready.
             required_instance_count = int(math.ceil(
-                instance_config.get_bounce_margin_factor() * status.marathon.expected_instance_count,
+                instance_config.get_bounce_margin_factor() * long_running_status.expected_instance_count,
             ))
-            if required_instance_count > status.marathon.running_instance_count:
+            if required_instance_count > long_running_status.running_instance_count:
                 paasta_print("  {}.{} on {} isn't scaled up yet, "
                              "has {} out of {} required instances (out of a total of {})"
                              .format(
                                  cluster_data.service, instance,
                                  cluster_data.cluster,
-                                 status.marathon.running_instance_count,
+                                 long_running_status.running_instance_count,
                                  required_instance_count,
-                                 status.marathon.expected_instance_count,
+                                 long_running_status.expected_instance_count,
                              ))
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
@@ -622,7 +646,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                          .format(
                              cluster_data.service, instance,
                              cluster_data.cluster,
-                             status.marathon.running_instance_count,
+                             long_running_status.running_instance_count,
                              status.git_sha,
                          ))
             cluster_data.instances_queue.task_done()
@@ -695,6 +719,13 @@ def wait_for_deployment(service, deploy_group, git_sha, soa_dir, timeout):
         for instance_config in service_configs.instance_configs(
             cluster=cluster,
             instance_type_class=MarathonServiceConfig,
+        ):
+            if instance_config.get_deploy_group() == deploy_group:
+                instances_queue.put(instance_config)
+                total_instances += 1
+        for instance_config in service_configs.instance_configs(
+            cluster=cluster,
+            instance_type_class=KubernetesDeploymentConfig,
         ):
             if instance_config.get_deploy_group() == deploy_group:
                 instances_queue.put(instance_config)

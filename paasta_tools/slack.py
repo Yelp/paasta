@@ -29,7 +29,8 @@ class PaastaSlackClient(SlackClient):
             self.sc = SlackClient(token)
         self.token = token
 
-    def post(self, channels, message):
+    def post(self, channels, message, *, thread_ts=None):
+        responses = []
         if self.token is not None:
             for channel in channels:
                 log.info(f"Slack notification [{channel}]: {message}")
@@ -37,11 +38,14 @@ class PaastaSlackClient(SlackClient):
                     "chat.postMessage",
                     channel=channel,
                     text=message,
+                    thread_ts=thread_ts,
                 )
                 if response["ok"] is not True:
                     log.error("Posting to slack failed: {}".format(response["error"]))
+                responses.append(response)
         else:
             log.info(f"(not sent to Slack) {channels}: {message}")
+        return responses
 
 
 def get_slack_client():

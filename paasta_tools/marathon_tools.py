@@ -129,7 +129,7 @@ def rendezvous_hash(
     return max_hash_choice
 
 
-class MarathonClients(object):
+class MarathonClients:
     def __init__(self, current: List[MarathonClient], previous: List[MarathonClient]) -> None:
         self.current = current
         self.previous = previous

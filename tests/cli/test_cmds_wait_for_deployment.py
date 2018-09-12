@@ -100,6 +100,7 @@ def mock_status_instance_side_effect(service, instance):  # pragma: no cover (ge
         # running the wrong version
         mock_status.git_sha = 'anothersha'
     mock_status.marathon = mock_mstatus
+    mock_status.kubernetes = None
     mock_result = mock_status
     mock_status_instance = Mock()
     mock_status_instance.result.return_value = mock_result
@@ -251,6 +252,8 @@ def test_wait_for_deployment(
     mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
+        [],
+        [],
     ]
     with patch('sys.stdout', autospec=True, flush=Mock()):
         assert mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 5) == 0
@@ -259,6 +262,8 @@ def test_wait_for_deployment(
     mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance2')],
         [mock_marathon_instance_config('instance1'), mock_marathon_instance_config('instance3')],
+        [],
+        [],
     ]
     with raises(TimeoutError):
         mark_for_deployment.wait_for_deployment('service', 'fake_deploy_group', 'somesha', '/nail/soa', 0)

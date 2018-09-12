@@ -149,7 +149,6 @@ class DeployDaemon(PaastaThread):
     def run(self):
         self.log.info("paasta-deployd starting up...")
         with ZookeeperPool() as self.zk:
-            self.log.info("Waiting to become leader")
             self.election = PaastaLeaderElection(
                 self.zk,
                 "/paasta-deployd-leader",
@@ -157,7 +156,9 @@ class DeployDaemon(PaastaThread):
                 control=self.control,
             )
             self.is_leader = False
+            self.log.info("Waiting to become leader")
             self.election.run(self.startup)
+            self.log.info("Leadership given up, exiting...")
 
     def bounce(self, service_instance):
         self.inbox_q.put(service_instance)
@@ -200,6 +201,7 @@ class DeployDaemon(PaastaThread):
             except Empty:
                 message = None
             if message == "ABORT":
+                self.log.info("Got ABORT message, main_loop exiting...")
                 break
             if not self.all_watchers_running():
                 self.log.error("One or more watcher died, committing suicide!")
@@ -286,9 +288,18 @@ class DeployDaemon(PaastaThread):
         for watcher in self.watcher_threads:
             watcher.start()
         self.log.info("Waiting for all watchers to start")
-        while not all([watcher.is_ready for watcher in self.watcher_threads]):
-            self.log.debug("Sleeping and waiting for watchers to all start")
+        attempts = 0
+        while attempts < 120:
+            if all([watcher.is_ready for watcher in self.watcher_threads]):
+                return
+            self.log.info("Sleeping and waiting for watchers to all start")
+            self.log.info("Waiting on: {}".format(
+                [watcher.__class__.__name__ for watcher in self.watcher_threads if not watcher.is_ready],
+            ))
             time.sleep(1)
+            attempts += 1
+        self.log.error("Failed to start all the watchers, exiting...")
+        sys.exit(1)
 
 
 def main():

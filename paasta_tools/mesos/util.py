@@ -22,7 +22,7 @@ def merge(obj, *keys):
     return itertools.chain(*[obj[k] for k in keys])
 
 
-class CachedProperty(object):
+class CachedProperty:
 
     def __init__(self, ttl=300):
         self.ttl = ttl

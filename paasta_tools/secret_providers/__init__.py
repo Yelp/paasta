@@ -4,7 +4,7 @@ from typing import Dict
 from typing import List
 
 
-class BaseSecretProvider(object):
+class BaseSecretProvider:
 
     def __init__(
         self,

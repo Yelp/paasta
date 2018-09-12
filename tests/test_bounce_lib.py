@@ -827,7 +827,7 @@ class TestCrossoverBounce:
         }
 
 
-class TestDownThenUpBounce(object):
+class TestDownThenUpBounce:
 
     def test_downthenup_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, downthenup bounce should try to

@@ -465,7 +465,7 @@ def get_log_reader():
     return log_reader_class(**log_reader_config.get('options', {}))
 
 
-class LogReader(object):
+class LogReader:
     # Tailing, i.e actively viewing logs as they come in
     SUPPORTS_TAILING = False
     # Getting the last n lines of logs

@@ -17,9 +17,11 @@ import logging
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Union
 
@@ -46,6 +48,7 @@ from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
+from kubernetes.client import V1Pod
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
@@ -56,6 +59,7 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client.rest import ApiException
 
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
@@ -361,7 +365,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_resource_requirements(self) -> V1ResourceRequirements:
         return V1ResourceRequirements(
             limits={
-                'cpu': self.get_cpus() * self.get_cpu_burst_pct() / 100,
+                'cpu': self.get_cpus() + self.get_cpu_burst_add(),
                 'memory': f'{self.get_mem()}Mi',
             },
             requests={
@@ -788,7 +792,7 @@ def get_kubernetes_services_running_here_for_nerve(
     return nerve_list
 
 
-class KubeClient(object):
+class KubeClient:
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
         self.deployments = kube_client.AppsV1Api()
@@ -813,7 +817,7 @@ def ensure_paasta_namespace(kube_client: KubeClient) -> None:
 
 def list_deployments(
     kube_client: KubeClient,
-    label_selector: Optional[str] = None,
+    label_selector: str = '',
 ) -> Sequence[KubeDeployment]:
     deployments = kube_client.deployments.list_namespaced_deployment(
         namespace='paasta',
@@ -846,11 +850,43 @@ def list_matching_deployments(
     return list_deployments(kube_client, f'instance={instance},service={service}')
 
 
-def get_deployment_by_name(
+def pods_for_service_instance(
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+) -> Sequence[V1Pod]:
+    return kube_client.core.list_namespaced_pod(
+        namespace='paasta',
+        label_selector=f'service={service},instance={instance}',
+    ).items
+
+
+def get_active_shas_for_service(
+    pod_list: Sequence[V1Pod],
+) -> Mapping[str, Set[str]]:
+    ret: Mapping[str, Set[str]] = {'config_sha': set(), 'git_sha': set()}
+    for pod in pod_list:
+        ret['config_sha'].add(pod.metadata.labels['config_sha'])
+        ret['git_sha'].add(pod.metadata.labels['git_sha'])
+    return ret
+
+
+def get_kubernetes_app_by_name(
     name: str,
     kube_client: KubeClient,
-) -> V1Deployment:
-    return kube_client.deployments.read_namespaced_deployment_status(
+) -> Union[V1Deployment, V1StatefulSet]:
+    try:
+        app = kube_client.deployments.read_namespaced_deployment_status(
+            name=name,
+            namespace='paasta',
+        )
+        return app
+    except ApiException as e:
+        if e.status == 404:
+            pass
+        else:
+            raise
+    return kube_client.deployments.read_namespaced_stateful_set_status(
         name=name,
         namespace='paasta',
     )
@@ -886,11 +922,19 @@ def update_stateful_set(kube_client: KubeClient, formatted_stateful_set: V1State
     )
 
 
-def get_kubernetes_app_deploy_status(kube_client: KubeClient, app: V1Deployment) -> int:
-    if app.status.unavailable_replicas:
+def get_kubernetes_app_deploy_status(
+    kube_client: KubeClient,
+    app: Union[V1Deployment, V1StatefulSet],
+    desired_instances: int,
+) -> int:
+    if app.status.ready_replicas is None or app.status.ready_replicas < desired_instances:
         deploy_status = KubernetesDeployStatus.Waiting
-    elif app.status.updated_replicas < app.status.replicas:
+    # updated_replicas can currently be None for stateful sets so we may not correctly detect status for now
+    # when https://github.com/kubernetes/kubernetes/pull/62943 lands in a release this should work for both:
+    elif app.status.updated_replicas is not None and (app.status.updated_replicas < desired_instances):
         deploy_status = KubernetesDeployStatus.Deploying
+    elif app.status.replicas == 0 and desired_instances == 0:
+        deploy_status = KubernetesDeployStatus.Stopped
     else:
         deploy_status = KubernetesDeployStatus.Running
     return deploy_status
@@ -900,7 +944,7 @@ class KubernetesDeployStatus:
     """ An enum to represent Kubernetes app deploy status.
     Changing name of the keys will affect both the paasta CLI and API.
     """
-    Running, Deploying, Waiting = range(0, 3)
+    Running, Deploying, Waiting, Stopped = range(0, 4)
 
     @classmethod
     def tostring(cls, val: int) -> str:

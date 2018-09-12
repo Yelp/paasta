@@ -8,7 +8,7 @@ from pytest import raises
 from paasta_tools.deployd.common import BaseServiceInstance
 
 
-class FakePyinotify(object):  # pragma: no cover
+class FakePyinotify:  # pragma: no cover
     class ProcessEvent():
         pass
 
@@ -408,8 +408,8 @@ class TestDeployDaemon(unittest.TestCase):
             self.deployd.inbox_q.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):
-        class FakeWatchers(object):  # pragma: no cover
-            class PaastaWatcher(object):
+        class FakeWatchers:  # pragma: no cover
+            class PaastaWatcher:
                 def __init__(self, *args, **kwargs):
                     pass
 
@@ -430,7 +430,7 @@ class TestDeployDaemon(unittest.TestCase):
             'paasta_tools.deployd.master.watchers', autospec=False, new=FakeWatchers,
         ), mock.patch(
             'time.sleep', autospec=True,
-        ) as mock_sleep:
+        ):
             mock_zk = mock.Mock()
             self.deployd.zk = mock_zk
             mock_start = mock.Mock()
@@ -445,8 +445,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_start.call_count == 3
 
             FakeWatchers.PaastaWatcher.is_ready = False
-            mock_sleep.side_effect = LoopBreak
-            with raises(LoopBreak):
+            with raises(SystemExit):
                 self.deployd.start_watchers()
 
 

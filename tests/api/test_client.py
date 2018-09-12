@@ -30,7 +30,7 @@ def test_get_paasta_api_client(system_paasta_config):
         assert client
 
 
-class Struct(object):
+class Struct:
     """
     convert a dictionary to an object
     """

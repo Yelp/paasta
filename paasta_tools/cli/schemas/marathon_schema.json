@@ -289,9 +289,9 @@
                     "maximum": "1000000",
                     "exclusiveMinimum": false
                 },
-                "cpu_burst_pct": {
-                    "type": "integer",
-                    "minimum": 0,
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
                     "exclusiveMinimum": false
                 },
                 "host_port": {
