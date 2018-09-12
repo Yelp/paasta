@@ -40,5 +40,5 @@ def test_create_marathon_dashboard(mock_load_system_paasta_config):
     soa_dir = '/fake/soa/dir'
     cluster = 'fake_cluster'
     expected_output = {'fake_cluster': []}
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, 'fake_directory')
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig({'dashboard_links': {}}, 'fake_directory')
     assert(marathon_dashboard.create_marathon_dashboard(cluster=cluster, soa_dir=soa_dir) == expected_output)
