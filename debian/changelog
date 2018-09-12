@@ -1,3 +1,12 @@
+paasta-tools (0.80.2) xenial; urgency=medium
+
+  * 0.80.2 tagged with 'make release'
+    Commit: Merge pull request #1944 from Yelp/selston_PAASTA-
+    14522_send_spark_resources  make spark-run send spark job resource
+    requirements via clusterman me…
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 12 Sep 2018 15:07:54 -0700
+
 paasta-tools (0.80.1) xenial; urgency=medium
 
   * 0.80.1 tagged with 'make release'
