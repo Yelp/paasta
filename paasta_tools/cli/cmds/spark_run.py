@@ -515,7 +515,7 @@ def create_spark_config_str(spark_config_dict):
     return ' '.join(spark_config_entries)
 
 
-def emit_resource_requirements(spark_config_dict, paasta_cluster):
+def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
     num_executors = int(spark_config_dict['spark.cores.max']) / int(spark_config_dict['spark.executor.cores'])
     memory_per_executor = spark_memory_to_megabytes(spark_config_dict['spark.executor.memory'])
 
@@ -528,7 +528,7 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster):
 
     paasta_print('Sending resource request metrics to Clusterman')
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
-    metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier='spark')
+    metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier=pool)
 
     with metrics_client.get_writer(clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True) as writer:
         for resource, desired_quantity in desired_resources.items():
@@ -626,9 +626,9 @@ def configure_and_run_docker_container(
     elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'jupyter']):
         paasta_print('\nSpark monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
 
-    if clusterman_metrics:
+    if clusterman_metrics and _should_emit_resource_requirements(docker_cmd):
         try:
-            emit_resource_requirements(spark_config_dict, args.cluster)
+            emit_resource_requirements(spark_config_dict, args.cluster, args.pool)
         except Boto3Error as e:
             paasta_print(
                 PaastaColors.red(f'Encountered {e} while attempting to send resource requirements to Clusterman.'),
@@ -646,6 +646,10 @@ def configure_and_run_docker_container(
         docker_cmd=docker_cmd,
         dry_run=args.dry_run,
     )
+
+
+def _should_emit_resource_requirements(docker_cmd):
+    return any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'spark-submit'])
 
 
 def get_docker_cmd(args, instance_config, spark_conf_str):
