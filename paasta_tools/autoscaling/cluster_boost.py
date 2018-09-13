@@ -15,6 +15,14 @@ from time import time as get_time
 
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+try:
+    import clusterman_metrics
+    CLUSTERMAN_YAML_FILE_PATH = '/nail/srv/configs/clusterman.yaml'
+    staticconf.YamlConfiguration('/nail/srv/configs/clusterman_metrics.yaml', namespace='clusterman_metrics')
+except ImportError:
+    # our cluster autoscaler is not currently open source, sorry!
+    clusterman_metrics = None
+    CLUSTERMAN_YAML_FILE_PATH = None
 
 from paasta_tools.utils import ZookeeperPool
 
@@ -161,6 +169,13 @@ def set_boost_factor(
     zk_boost_path = get_zk_boost_path(region, pool)
     current_time = get_time()
     end_time = current_time + 60 * duration_minutes
+
+    if clusterman_metrics:
+        metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=region, app_identifier='default')
+        with metrics_client.get_writer(clusterman_metrics.APP_METRICS) as writer:
+            writer.send(('boost_factor', current_time, factor))
+            if duration_minutes > 0:
+                writer.send(('boost_factor', end_time, 1.0))
 
     zk_end_time_path = zk_boost_path + '/end_time'
     zk_factor_path = zk_boost_path + '/factor'
