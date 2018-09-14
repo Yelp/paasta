@@ -60,8 +60,11 @@ def capture_oom_events_from_stdin():
     process_name = ''
 
     while True:
-        syslog = sys.stdin.readline()
-        if not syslog:
+        try:
+            syslog = sys.stdin.readline()
+            if not syslog:
+                break
+        except StopIteration:
             break
         r = process_name_regex.search(syslog)
         if r:

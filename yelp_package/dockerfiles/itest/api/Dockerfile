@@ -14,7 +14,7 @@
 
 FROM ubuntu:xenial
 
-# Need Python 3.6
+# Need Python 3.7
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
@@ -23,7 +23,7 @@ RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gcc \
         git \
-        python3.6-dev \
+        python3.7-dev \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -33,7 +33,7 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.6
+RUN virtualenv /venv -ppython3.7
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 

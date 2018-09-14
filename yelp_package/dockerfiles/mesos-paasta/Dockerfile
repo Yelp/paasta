@@ -6,7 +6,7 @@ RUN apt-get update > /dev/null && \
         libssl-dev \
         libyaml-dev \
         python-pip \
-        python3.6-dev \
+        python3.7-dev \
         openssh-server > /dev/null && \
     apt-get clean
 
@@ -18,7 +18,7 @@ RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 
 ADD requirements.txt requirements-dev.txt /paasta/
 RUN pip install virtualenv==15.1.0
-RUN virtualenv /venv -ppython3.6
+RUN virtualenv /venv -ppython3.7
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r /paasta/requirements.txt
 
