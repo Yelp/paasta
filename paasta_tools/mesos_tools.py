@@ -19,6 +19,7 @@ import logging
 import re
 import socket
 from collections import namedtuple
+from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -899,3 +900,7 @@ def is_task_terminal(
     :returns: a boolean indicating if the task is considered to be in a terminal state
     """
     return task['state'] in ['TASK_ERROR', 'TASK_KILLED', 'TASK_FAILED', 'TASK_FINISHED']
+
+
+def is_mesos_available() -> bool:
+    return Path(get_mesos_config_path()).exists()

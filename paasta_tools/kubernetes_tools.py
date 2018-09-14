@@ -17,6 +17,8 @@ import itertools
 import logging
 import math
 from datetime import datetime
+from enum import Enum
+from pathlib import Path
 from typing import Any
 from typing import List
 from typing import Mapping
@@ -97,6 +99,7 @@ from paasta_tools.utils import VolumeWithMode
 
 log = logging.getLogger(__name__)
 
+KUBE_CONFIG_PATH = '/etc/kubernetes/admin.conf'
 YELP_ATTRIBUTE_PREFIX = 'yelp.com/'
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
@@ -809,7 +812,7 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
+        kube_config.load_kube_config(config_file=KUBE_CONFIG_PATH)
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
@@ -940,11 +943,38 @@ def filter_pods_by_service_instance(
     ]
 
 
-def is_pod_ready(
-    pod: V1Pod,
+def _is_it_ready(
+    it: Union[V1Pod, V1Node],
 ) -> bool:
-    ready_conditions = [cond.status == 'True' for cond in pod.status.conditions if cond.type == 'Ready']
+    ready_conditions = [cond.status == 'True' for cond in it.status.conditions if cond.type == 'Ready']
     return all(ready_conditions) if ready_conditions else False
+
+
+is_pod_ready = _is_it_ready
+
+is_node_ready = _is_it_ready
+
+
+class PodStatus(Enum):
+    PENDING = 1,
+    RUNNING = 2,
+    SUCCEEDED = 3,
+    FAILED = 4,
+    UNKNOWN = 5,
+
+
+_POD_STATUS_NAME_TO_STATUS = {
+    s.name.upper(): s
+    for s in PodStatus
+}
+
+
+def get_pod_status(
+    pod: V1Pod,
+) -> PodStatus:
+    # TODO: we probably also need to deduce extended statuses here, like
+    # `CrashLoopBackOff`, `ContainerCreating` timeout, and etc.
+    return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
 
 
 def get_active_shas_for_service(
@@ -1099,3 +1129,7 @@ class KubernetesDeployStatus:
     @classmethod
     def fromstring(cls, _str: str) -> int:
         return getattr(cls, _str, None)
+
+
+def is_kubernetes_available() -> bool:
+    return Path(KUBE_CONFIG_PATH).exists()

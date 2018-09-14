@@ -24,13 +24,22 @@ from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
 from typing import Tuple
+from typing import TypeVar
 
 import a_sync
 from humanize import naturalsize
+from kubernetes.client import V1Node
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter  # noqa
 
 from paasta_tools import chronos_tools
+from paasta_tools.kubernetes_tools import get_all_nodes
+from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import get_pod_status
+from paasta_tools.kubernetes_tools import is_node_ready
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
@@ -79,8 +88,9 @@ def get_mesos_cpu_status(
 ) -> Tuple[int, int, int]:
     """Takes in the mesos metrics and analyzes them, returning the status.
 
-    :param metrics: mesos metrics dictionary
-    :returns: Tuple of the output array and is_ok bool
+    :param metrics: mesos metrics dictionary.
+    :param mesos_state: mesos state dictionary.
+    :returns: Tuple of total, used, and available CPUs.
     """
 
     total = metrics['master/cpus_total']
@@ -93,28 +103,117 @@ def get_mesos_cpu_status(
     return total, used, available
 
 
-def get_mesos_disk_status(
+def get_kube_cpu_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[int, int, int]:
+    """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
+
+    :param nodes: list of Kubernetes nodes.
+    :returns: Tuple of total, used, and available CPUs.
+    """
+
+    total = 0
+    available = 0
+    for node in nodes:
+        available += suffixed_number_value(node.status.allocatable['cpu'])
+        total += suffixed_number_value(node.status.capacity['cpu'])
+
+    used = total - available
+    return total, used, available
+
+
+def get_mesos_memory_status(
     metrics: MesosMetrics,
+    mesos_state: MesosState,
 ) -> Tuple[int, int, int]:
     """Takes in the mesos metrics and analyzes them, returning the status.
 
-    :param metrics: mesos metrics dictionary
-    :returns: Tuple of the output array and is_ok bool
+    :param metrics: mesos metrics dictionary.
+    :param mesos_state: mesos state dictionary.
+    :returns: Tuple of total, used, and available memory in Mi.
+    """
+    total = metrics['master/mem_total']
+    used = metrics['master/mem_used']
+
+    for slave in mesos_state['slaves']:
+        used += reserved_maintenence_resources(slave['reserved_resources'])['mem']
+
+    available = total - used
+
+    return total, used, available
+
+
+def get_kube_memory_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[int, int, int]:
+    """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
+
+    :param nodes: list of Kubernetes nodes.
+    :returns: Tuple of total, used, and available memory in Mi.
+    """
+    total = 0
+    available = 0
+    for node in nodes:
+        available += suffixed_number_value(node.status.allocatable['memory'])
+        total += suffixed_number_value(node.status.capacity['memory'])
+
+    total //= 1024 * 1024
+    available //= 1024 * 1024
+    used = total - available
+    return total, used, available
+
+
+def get_mesos_disk_status(
+    metrics: MesosMetrics,
+    mesos_state: MesosState,
+) -> Tuple[int, int, int]:
+    """Takes in the mesos metrics and analyzes them, returning the status.
+
+    :param metrics: mesos metrics dictionary.
+    :param mesos_state: mesos state dictionary.
+    :returns: Tuple of total, used, and available disk space in Mi.
     """
 
     total = metrics['master/disk_total']
     used = metrics['master/disk_used']
+
+    for slave in mesos_state['slaves']:
+        used += reserved_maintenence_resources(slave['reserved_resources'])['disk']
+
     available = total - used
+    return total, used, available
+
+
+def get_kube_disk_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[int, int, int]:
+    """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
+
+    :param nodes: list of Kubernetes nodes.
+    :returns: Tuple of total, used, and available disk space in Mi.
+    """
+
+    total = 0
+    available = 0
+    for node in nodes:
+        available += suffixed_number_value(node.status.allocatable['ephemeral-storage'])
+        total += suffixed_number_value(node.status.capacity['ephemeral-storage'])
+
+    total //= 1024 * 1024
+    available //= 1024 * 1024
+    used = total - available
     return total, used, available
 
 
 def get_mesos_gpu_status(
     metrics: MesosMetrics,
+    mesos_state: MesosState,
 ) -> Tuple[int, int, int]:
     """Takes in the mesos metrics and analyzes them, returning gpus status.
 
-    :param metrics: mesos metrics dictionary
-    :returns: Tuple of the output array and is_ok bool
+    :param metrics: mesos metrics dictionary.
+    :param mesos_state: mesos state dictionary.
+    :returns: Tuple of total, used, and available GPUs.
     """
     total = metrics['master/gpus_total']
     used = metrics['master/gpus_used']
@@ -126,8 +225,32 @@ def get_mesos_gpu_status(
     return total, used, available
 
 
+def get_kube_gpu_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[int, int, int]:
+    """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
+
+    :param nodes: list of Kubernetes nodes.
+    :returns: Tuple of total, used, and available GPUs.
+    """
+
+    total = 0
+    available = 0
+    for node in nodes:
+        available += suffixed_number_value(node.status.allocatable.get('nvidia.com/gpu', '0'))
+        total += suffixed_number_value(node.status.capacity.get('nvidia.com/gpu', '0'))
+
+    used = total - available
+    return total, used, available
+
+
 def filter_mesos_state_metrics(dictionary: Mapping[str, Any]) -> Mapping[str, Any]:
     valid_keys = ['cpus', 'mem', 'disk', 'gpus']
+    return {key: value for (key, value) in dictionary.items() if key in valid_keys}
+
+
+def filter_kube_resources(dictionary: Mapping[str, str]) -> Mapping[str, str]:
+    valid_keys = ['cpu', 'memory', 'ephemeral-storage', 'nvidia.com/gpu']
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
@@ -172,11 +295,10 @@ def percent_used(total: float, used: float) -> float:
 
 
 def assert_cpu_health(
-    metrics: MesosMetrics,
-    mesos_state: MesosState,
+    cpu_status: Tuple[int, int, int],
     threshold: int = 10,
 ) -> HealthCheckResult:
-    total, used, available = get_mesos_cpu_status(metrics, mesos_state)
+    total, used, available = cpu_status
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
@@ -200,17 +322,15 @@ def assert_cpu_health(
 
 
 def assert_memory_health(
-    metrics: MesosMetrics,
-    mesos_state: MesosState,
+    memory_status: Tuple[int, int, int],
     threshold: int = 10,
 ) -> HealthCheckResult:
-    total = metrics['master/mem_total'] / float(1024)
-    used: float = metrics['master/mem_used']
+    total: float
+    used: float
+    total, used, _ = memory_status
 
-    for slave in mesos_state['slaves']:
-        used += reserved_maintenence_resources(slave['reserved_resources'])['mem']
-
-    used /= float(1024)
+    total /= 1024
+    used /= 1024
 
     try:
         perc_used = percent_used(total, used)
@@ -235,17 +355,15 @@ def assert_memory_health(
 
 
 def assert_disk_health(
-    metrics: MesosMetrics,
-    mesos_state: MesosState,
+    disk_status: Tuple[int, int, int],
     threshold: int = 10,
 ) -> HealthCheckResult:
-    total = metrics['master/disk_total'] / float(1024)
-    used: float = metrics['master/disk_used']
+    total: float
+    used: float
+    total, used, _ = disk_status
 
-    for slave in mesos_state['slaves']:
-        used += reserved_maintenence_resources(slave['reserved_resources'])['disk']
-
-    used /= float(1024)
+    total /= 1024
+    used /= 1024
 
     try:
         perc_used = percent_used(total, used)
@@ -269,15 +387,15 @@ def assert_disk_health(
 
 
 def assert_gpu_health(
-    metrics: MesosMetrics,
+    gpu_status: Tuple[int, int, int],
     threshold: int = 0,
 ) -> HealthCheckResult:
-    total, used, available = get_mesos_gpu_status(metrics)
+    total, used, available = gpu_status
 
     if math.isclose(total, 0):
         # assume that no gpus is healthy since most machines don't have them
         return HealthCheckResult(
-            message="No gpus found from mesos!",
+            message="No GPUs found!",
             healthy=True,
         )
     else:
@@ -298,7 +416,7 @@ def assert_gpu_health(
         )
 
 
-def assert_tasks_running(
+def assert_mesos_tasks_running(
     metrics: MesosMetrics,
 ) -> HealthCheckResult:
     running = metrics['master/tasks_running']
@@ -307,6 +425,20 @@ def assert_tasks_running(
     return HealthCheckResult(
         message="Tasks: running: %d staging: %d starting: %d" % (running, staging, starting),
         healthy=True,
+    )
+
+
+def assert_kube_pods_running(
+    kube_client: KubeClient,
+) -> HealthCheckResult:
+    statuses = [get_pod_status(pod) for pod in get_all_pods(kube_client)]
+    running = statuses.count(PodStatus.RUNNING)
+    pending = statuses.count(PodStatus.PENDING)
+    failed = statuses.count(PodStatus.FAILED)
+    healthy = running > 0
+    return HealthCheckResult(
+        message=f'Pods: running: {running} pending: {pending} failed: {failed}',
+        healthy=healthy,
     )
 
 
@@ -370,13 +502,27 @@ def assert_frameworks_exist(
         )
 
 
-def assert_slave_health(
+def get_mesos_slaves_health_status(
     metrics: MesosMetrics,
+) -> Tuple[int, int]:
+    return metrics['master/slaves_active'], metrics['master/slaves_inactive']
+
+
+def get_kube_nodes_health_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[int, int]:
+    statuses = [is_node_ready(node) for node in nodes]
+    return statuses.count(True), statuses.count(False)
+
+
+def assert_nodes_health(
+    nodes_health_status: Tuple[int, int],
 ) -> HealthCheckResult:
-    active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
+    active, inactive = nodes_health_status
+    healthy = active > 0
     return HealthCheckResult(
-        message="Slaves: active: %d inactive: %d" % (active, inactive),
-        healthy=True,
+        message="Nodes: active: %d inactive: %d" % (active, inactive),
+        healthy=healthy,
     )
 
 
@@ -404,19 +550,21 @@ class _SlaveT(TypedDict):
     attributes: Mapping[str, str]
 
 
-_GroupingFunctionT = Callable[
-    [_SlaveT],
+_GenericNodeT = TypeVar('_GenericNodeT', _SlaveT, V1Node)
+
+_GenericNodeGroupingFunctionT = Callable[
+    [_GenericNodeT],
     _KeyFuncRetT,
 ]
 
-_SlaveFilterFunctionT = Callable[
-    [_SlaveT],
+_GenericNodeFilterFunctionT = Callable[
+    [_GenericNodeT],
     bool,
 ]
 
-_SlaveSortFunctionT = Callable[
-    [Sequence[_SlaveT]],
-    Sequence[_SlaveT],
+_GenericNodeSortFunctionT = Callable[
+    [Sequence[_GenericNodeT]],
+    Sequence[_GenericNodeT],
 ]
 
 
@@ -439,7 +587,7 @@ def key_func_for_attribute(
 
 def key_func_for_attribute_multi(
     attributes: Sequence[str],
-) -> _GroupingFunctionT:
+) -> _GenericNodeGroupingFunctionT:
     """ Return a closure that given a slave, will return the value of a list of
     attributes, compiled into a hashable tuple
 
@@ -457,9 +605,29 @@ def key_func_for_attribute_multi(
     return key_func
 
 
+def key_func_for_attribute_multi_kube(
+    attributes: Sequence[str],
+) -> Callable[
+    [V1Node],
+    _KeyFuncRetT,
+]:
+    """ Return a closure that given a node, will return the value of a list of
+    attributes, compiled into a hashable tuple
+
+    :param attributes: the attributes to inspect in the slave
+    :returns: a closure, which takes a node and returns the value of those attributes
+    """
+    def get_attribute(node, attribute):
+        return node.metadata.labels.get(f'yelp.com/{attribute}', 'unknown')
+
+    def key_func(node):
+        return tuple((a, get_attribute(node, a)) for a in attributes)
+    return key_func
+
+
 def sort_func_for_attributes(
     attributes: Sequence[str],
-) -> _SlaveSortFunctionT:
+) -> _GenericNodeSortFunctionT:
     def sort(slaves):
         for attribute in attributes:
             slaves = sorted(slaves, key=key_func_for_attribute(attribute))
@@ -468,10 +636,10 @@ def sort_func_for_attributes(
 
 
 def group_slaves_by_key_func(
-    key_func: _GroupingFunctionT,
-    slaves: Sequence[_SlaveT],
-    sort_func: _SlaveSortFunctionT = None,
-) -> Mapping[_KeyFuncRetT, Sequence[_SlaveT]]:
+    key_func: _GenericNodeGroupingFunctionT,
+    slaves: Sequence[_GenericNodeT],
+    sort_func: _GenericNodeSortFunctionT = None,
+) -> Mapping[_KeyFuncRetT, Sequence[_GenericNodeT]]:
     """ Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
     the key_func and the values are all those slaves which
@@ -481,7 +649,7 @@ def group_slaves_by_key_func(
     :param slaves: a list of slaves
     :returns: a dict of key: [slaves]
     """
-    sorted_slaves: Sequence[_SlaveT]
+    sorted_slaves: Sequence[_GenericNodeT]
     if sort_func is None:
         sorted_slaves = sorted(slaves, key=key_func)
     else:
@@ -539,6 +707,62 @@ def calculate_resource_utilization_for_slaves(
     }
 
 
+_IEC_NUMBER_SUFFIXES = {
+    'Ki': 1024,
+    'Mi': 1024**2,
+    'Gi': 1024**3,
+    'Ti': 1024**4,
+    'Pi': 1024**5,
+}
+
+
+def suffixed_number_value(s: str) -> int:
+    suff = s[-2:]
+    if suff in _IEC_NUMBER_SUFFIXES:
+        return int(s[:-2]) * _IEC_NUMBER_SUFFIXES[suff]
+    else:
+        return int(s)
+
+
+def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, int]:
+    return {k: suffixed_number_value(v) for k, v in d.items()}
+
+
+def calculate_resource_utilization_for_kube_nodes(
+    nodes: Sequence[V1Node],
+) -> ResourceUtilizationDict:
+    """ Given a list of Kubernetes nodes, calculate the total available
+    resource available and the resources consumed in that list of nodes.
+
+    :param nodes: a list of Kubernetes nodes to calculate resource usage for
+    :returns: a dict, containing keys for "free" and "total" resources. Each of these keys
+    is a ResourceInfo tuple, exposing a number for cpu, disk and mem.
+    """
+    resource_total_dict: _Counter[str] = Counter()
+    for node in nodes:
+        filtered_resources = filter_kube_resources(node.status.capacity)
+        resource_total_dict.update(Counter(suffixed_number_dict_values(filtered_resources)))
+    resource_free_dict: _Counter[str] = Counter()
+    for node in nodes:
+        filtered_resources = filter_kube_resources(node.status.allocatable)
+        resource_free_dict.update(Counter(suffixed_number_dict_values(filtered_resources)))
+    return {
+        "free": ResourceInfo(
+            cpus=resource_free_dict['cpu'],
+            disk=resource_free_dict['ephemeral-storage'] / (1024 ** 2),
+            mem=resource_free_dict['memory'] / (1024 ** 2),
+            gpus=resource_free_dict.get('nvidia.com/gpu', 0),
+        ),
+        "total": ResourceInfo(
+            cpus=resource_total_dict['cpu'],
+            disk=resource_total_dict['ephemeral-storage'] / (1024 ** 2),
+            mem=resource_total_dict['memory'] / (1024 ** 2),
+            gpus=resource_total_dict.get('nvidia.com/gpu', 0),
+        ),
+        "slave_count": len(nodes),
+    }
+
+
 def filter_tasks_for_slaves(
     slaves: Sequence[_SlaveT],
     tasks: Sequence[MesosTask],
@@ -560,16 +784,16 @@ def filter_tasks_for_slaves(
 def make_filter_slave_func(
     attribute: str,
     values: Sequence[str],
-) -> _SlaveFilterFunctionT:
+) -> _GenericNodeFilterFunctionT:
     def filter_func(slave):
         return slave['attributes'].get(attribute, None) in values
     return filter_func
 
 
 def filter_slaves(
-    slaves: Sequence[_SlaveT],
-    filters: Sequence[_SlaveFilterFunctionT],
-) -> Sequence[_SlaveT]:
+    slaves: Sequence[_GenericNodeT],
+    filters: Sequence[_GenericNodeFilterFunctionT],
+) -> Sequence[_GenericNodeT]:
     """ Filter slaves by attributes
 
     :param slaves: list of slaves to filter
@@ -583,10 +807,10 @@ def filter_slaves(
 
 
 def get_resource_utilization_by_grouping(
-    grouping_func: _GroupingFunctionT,
+    grouping_func: _GenericNodeGroupingFunctionT,
     mesos_state: MesosState,
-    filters: Sequence[_SlaveFilterFunctionT]=[],
-    sort_func: _SlaveSortFunctionT = None,
+    filters: Sequence[_GenericNodeFilterFunctionT]=[],
+    sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """ Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
@@ -617,6 +841,39 @@ def get_resource_utilization_by_grouping(
             tasks=filter_tasks_for_slaves(slaves, non_terminal_tasks),
         )
         for attribute_value, slaves in slave_groupings.items()
+    }
+
+
+def get_resource_utilization_by_grouping_kube(
+    grouping_func: _GenericNodeGroupingFunctionT,
+    kube_client: KubeClient,
+    filters: Sequence[_GenericNodeFilterFunctionT]=[],
+    sort_func: _GenericNodeSortFunctionT = None,
+) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
+    """ Given a function used to group nodes, calculate resource utilization
+    for each value of a given attribute.
+
+    :grouping_func: a function that given a node, will return the value of an
+    attribute to group by.
+    :param kube_client: the Kubernetes client
+    :param filters: filters to apply to the nodes in the calculation, with
+    filtering preformed by filter_slaves
+    :param sort_func: a function that given a list of nodes, will return the
+    sorted list of nodes.
+    :returns: a dict of {attribute_value: resource_usage}, where resource usage
+    is the dict returned by ``calculate_resource_utilization_for_kube_nodes`` for
+    nodes grouped by attribute value.
+    """
+    nodes: Sequence[V1Node] = get_all_nodes(kube_client)
+    nodes = filter_slaves(nodes, filters)
+    if len(nodes) == 0:
+        raise ValueError("There are no nodes registered in the Kubernetes.")
+
+    node_groupings = group_slaves_by_key_func(grouping_func, nodes, sort_func)
+
+    return {
+        attribute_value: calculate_resource_utilization_for_kube_nodes(nodes)
+        for attribute_value, nodes in node_groupings.items()
     }
 
 
@@ -658,12 +915,31 @@ def get_mesos_resource_utilization_health(
     :returns: a list of HealthCheckResult tuples
     """
     return [
-        assert_cpu_health(mesos_metrics, mesos_state),
-        assert_memory_health(mesos_metrics, mesos_state),
-        assert_disk_health(mesos_metrics, mesos_state),
-        assert_gpu_health(mesos_metrics),
-        assert_tasks_running(mesos_metrics),
-        assert_slave_health(mesos_metrics),
+        assert_cpu_health(get_mesos_cpu_status(mesos_metrics, mesos_state)),
+        assert_memory_health(get_mesos_memory_status(mesos_metrics, mesos_state)),
+        assert_disk_health(get_mesos_disk_status(mesos_metrics, mesos_state)),
+        assert_gpu_health(get_mesos_gpu_status(mesos_metrics, mesos_state)),
+        assert_mesos_tasks_running(mesos_metrics),
+        assert_nodes_health(get_mesos_slaves_health_status(mesos_metrics)),
+    ]
+
+
+def get_kube_resource_utilization_health(
+    kube_client: KubeClient,
+) -> Sequence[HealthCheckResult]:
+    """Perform healthchecks against Kubernetes.
+    :param kube_client: the KUbernetes client
+    :returns: a list of HealthCheckResult tuples
+    """
+
+    nodes = get_all_nodes(kube_client)
+
+    return [
+        assert_cpu_health(get_kube_cpu_status(nodes)),
+        assert_memory_health(get_kube_memory_status(nodes)),
+        assert_disk_health(get_kube_disk_status(nodes)),
+        assert_gpu_health(get_kube_gpu_status(nodes)),
+        assert_nodes_health(get_kube_nodes_health_status(nodes)),
     ]
 
 
@@ -725,6 +1001,16 @@ def assert_marathon_deployments(
     )
 
 
+def assert_kube_deployments(
+    kube_client: KubeClient,
+) -> HealthCheckResult:
+    num_deployments = len(list_all_deployments(kube_client))
+    return HealthCheckResult(
+        message=f'Kubernetes deployments: {num_deployments:>3}',
+        healthy=True,
+    )
+
+
 def get_marathon_status(
     clients: Sequence[MarathonClient],
 ) -> Sequence[HealthCheckResult]:
@@ -772,6 +1058,21 @@ def get_chronos_status(chronos_client):
         chronos_client, [
             assert_chronos_scheduled_jobs,
             assert_chronos_queued_jobs,
+        ],
+    )
+
+
+def get_kube_status(
+    kube_client: KubeClient,
+) -> Sequence[HealthCheckResult]:
+    """Gather information about Kubernetes.
+    :param kube_client: the KUbernetes client
+    :return: string containing the status
+    """
+    return run_healthchecks_with_param(
+        kube_client, [
+            assert_kube_deployments,
+            assert_kube_pods_running,
         ],
     )
 

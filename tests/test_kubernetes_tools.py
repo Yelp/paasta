@@ -50,6 +50,7 @@ from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
+from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -1362,6 +1363,52 @@ def test_is_pod_ready():
         ),
     )
     assert not is_pod_ready(mock_pod)
+
+
+def test_is_node_ready():
+    mock_node = mock.MagicMock(
+        status=mock.MagicMock(
+            conditions=[
+                mock.MagicMock(
+                    type='Ready',
+                    status='True',
+                ),
+                mock.MagicMock(
+                    type='Another',
+                    status='False',
+                ),
+            ],
+        ),
+    )
+    assert is_node_ready(mock_node)
+
+    mock_node = mock.MagicMock(
+        status=mock.MagicMock(
+            conditions=[
+                mock.MagicMock(
+                    type='Ready',
+                    status='False',
+                ),
+                mock.MagicMock(
+                    type='Another',
+                    status='False',
+                ),
+            ],
+        ),
+    )
+    assert not is_node_ready(mock_node)
+
+    mock_node = mock.MagicMock(
+        status=mock.MagicMock(
+            conditions=[
+                mock.MagicMock(
+                    type='Another',
+                    status='False',
+                ),
+            ],
+        ),
+    )
+    assert not is_node_ready(mock_node)
 
 
 def test_filter_nodes_by_blacklist():
