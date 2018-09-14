@@ -17,6 +17,7 @@ import itertools
 import logging
 import math
 from datetime import datetime
+from enum import Enum
 from typing import Any
 from typing import List
 from typing import Mapping
@@ -123,6 +124,10 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
     """
     self._disrupted_pods = disrupted_pods
+
+
+def get_kube_config_path() -> str:
+    return '/etc/kubernetes/admin.conf'
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -809,7 +814,7 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
+        kube_config.load_kube_config(config_file=get_kube_config_path())
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
@@ -940,11 +945,45 @@ def filter_pods_by_service_instance(
     ]
 
 
+def _is_it_ready(
+    it: Union[V1Pod, V1Node],
+) -> bool:
+    ready_conditions = [cond.status == 'True' for cond in it.status.conditions if cond.type == 'Ready']
+    return all(ready_conditions) if ready_conditions else False
+
+
 def is_pod_ready(
     pod: V1Pod,
 ) -> bool:
-    ready_conditions = [cond.status == 'True' for cond in pod.status.conditions if cond.type == 'Ready']
-    return all(ready_conditions) if ready_conditions else False
+    return _is_it_ready(pod)
+
+
+def is_node_ready(
+    node: V1Node,
+) -> bool:
+    return _is_it_ready(node)
+
+
+class PodStatus(Enum):
+    PENDING = 1,
+    RUNNING = 2,
+    SUCCEEDED = 3,
+    FAILED = 4,
+    UNKNOWN = 5,
+
+
+_POD_STATUS_NAME_TO_STATUS = {
+    s.name.upper(): s
+    for s in PodStatus
+}
+
+
+def get_pod_status(
+    pod: V1Pod,
+) -> PodStatus:
+    # TODO: we probably need to deduce extended statuses here like
+    # `CrashLoopBackOff`, `ContainerCreating` timeout, and etc.
+    return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
 
 
 def get_active_shas_for_service(

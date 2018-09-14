@@ -17,6 +17,8 @@ import io
 import itertools
 import logging
 import sys
+from pathlib import Path
+from typing import Mapping
 from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
@@ -33,6 +35,8 @@ from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_inf
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.kubernetes_tools import get_kube_config_path
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import MarathonClient
@@ -40,10 +44,14 @@ from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState
+from paasta_tools.mesos_tools import get_mesos_config_path
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.metrics.metastatus_lib import _GroupingFunctionT
+from paasta_tools.metrics.metastatus_lib import _KeyFuncRetT
 from paasta_tools.metrics.metastatus_lib import HealthCheckResult
 from paasta_tools.metrics.metastatus_lib import ResourceUtilization
+from paasta_tools.metrics.metastatus_lib import ResourceUtilizationDict
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -147,21 +155,16 @@ def all_marathon_clients(
     return [c for c in itertools.chain(marathon_clients.current, marathon_clients.previous)]
 
 
-def utilization_table_by_grouping_from_mesos_state(
+def utilization_table_by_grouping(
     groupings: Sequence[str],
+    grouping_function: _GroupingFunctionT,
+    resource_info_dict_grouped: Mapping[_KeyFuncRetT, ResourceUtilizationDict],
     threshold: float,
-    mesos_state: MesosState,
     service_instance_stats: Optional[ServiceInstanceStats] = None,
 ) -> Tuple[
     Sequence[MutableSequence[str]],
     bool,
 ]:
-    grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
-    resource_info_dict_grouped = metastatus_lib.get_resource_utilization_by_grouping(
-        grouping_function,
-        mesos_state,
-    )
-
     static_headers = [
         'CPU (used/total)',
         'RAM (used/total)',
@@ -207,6 +210,54 @@ def utilization_table_by_grouping_from_mesos_state(
     all_rows.extend(table_rows)
 
     return all_rows, healthy_exit
+
+
+def utilization_table_by_grouping_from_mesos_state(
+    groupings: Sequence[str],
+    threshold: float,
+    mesos_state: MesosState,
+    service_instance_stats: Optional[ServiceInstanceStats] = None,
+) -> Tuple[
+    Sequence[MutableSequence[str]],
+    bool,
+]:
+    grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
+    resource_info_dict_grouped = metastatus_lib.get_resource_utilization_by_grouping(
+        grouping_function,
+        mesos_state,
+    )
+
+    return utilization_table_by_grouping(
+        groupings,
+        grouping_function,
+        resource_info_dict_grouped,
+        threshold,
+        service_instance_stats,
+    )
+
+
+def utilization_table_by_grouping_from_kube(
+    groupings: Sequence[str],
+    threshold: float,
+    kube_client: KubeClient,
+    service_instance_stats: Optional[ServiceInstanceStats] = None,
+) -> Tuple[
+    Sequence[MutableSequence[str]],
+    bool,
+]:
+    grouping_function = metastatus_lib.key_func_for_attribute_multi_kube(groupings)
+    resource_info_dict_grouped = metastatus_lib.get_resource_utilization_by_grouping_kube(
+        grouping_function,
+        kube_client,
+    )
+
+    return utilization_table_by_grouping(
+        groupings,
+        grouping_function,
+        resource_info_dict_grouped,
+        threshold,
+        service_instance_stats,
+    )
 
 
 def fill_table_rows_with_service_instance_stats(
@@ -262,33 +313,68 @@ def get_service_instance_stats(
         return None
 
 
+def _run_kube_checks(
+    kube_client: KubeClient,
+) -> Sequence[HealthCheckResult]:
+    kube_status = metastatus_lib.get_kube_status(kube_client)
+    kube_metrics_status = metastatus_lib.get_kube_resource_utilization_health(
+        kube_client=kube_client,
+    )
+    return kube_status + kube_metrics_status
+
+
 def print_output(argv: Optional[Sequence[str]]=None) -> None:
+    marathon_enabled = Path(get_mesos_config_path()).exists()
+    kube_enabled = Path(get_kube_config_path()).exists()
+
     chronos_config = None
     args = parse_args(argv)
 
     system_paasta_config = load_system_paasta_config()
 
-    master_kwargs = {}
-    # we don't want to be passing False to not override a possible True
-    # value from system config
-    if args.use_mesos_cache:
-        master_kwargs['use_mesos_cache'] = True
-    master = get_mesos_master(**master_kwargs)
+    if marathon_enabled:
+        master_kwargs = {}
+        # we don't want to be passing False to not override a possible True
+        # value from system config
+        if args.use_mesos_cache:
+            master_kwargs['use_mesos_cache'] = True
 
-    marathon_servers = get_marathon_servers(system_paasta_config)
-    marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))
+        master = get_mesos_master(**master_kwargs)
 
-    try:
-        mesos_state = a_sync.block(master.state)
-        all_mesos_results = _run_mesos_checks(
-            mesos_master=master,
-            mesos_state=mesos_state,
-        )
-    except MasterNotAvailableException as e:
-        # if we can't connect to master at all,
-        # then bomb out early
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % '\n'.join(e.args)))
-        raise FatalError(2)
+        marathon_servers = get_marathon_servers(system_paasta_config)
+        marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))
+
+        try:
+            mesos_state = a_sync.block(master.state)
+            all_mesos_results = _run_mesos_checks(
+                mesos_master=master,
+                mesos_state=mesos_state,
+            )
+        except MasterNotAvailableException as e:
+            # if we can't connect to master at all,
+            # then bomb out early
+            paasta_print(PaastaColors.red("CRITICAL:  %s" % '\n'.join(e.args)))
+            raise FatalError(2)
+
+        marathon_results = _run_marathon_checks(marathon_clients)
+    else:
+        marathon_results = [metastatus_lib.HealthCheckResult(
+            message='Marathon is not configured to run here',
+            healthy=True,
+        )]
+        all_mesos_results = [metastatus_lib.HealthCheckResult(
+            message='Mesos is not configured to run here',
+            healthy=True,
+        )]
+
+    if kube_enabled:
+        kube_client = KubeClient()
+        kube_results = _run_kube_checks(kube_client)
+    else:
+        kube_results = [metastatus_lib.HealthCheckResult(
+            message='Kubernetesis not configured to run here',
+            healthy=True,
+        )]
 
     # Check to see if Chronos should be running here by checking for config
     chronos_config = load_chronos_config()
@@ -306,21 +392,21 @@ def print_output(argv: Optional[Sequence[str]]=None) -> None:
             healthy=True,
         )]
 
-    marathon_results = _run_marathon_checks(marathon_clients)
-
     mesos_ok = all(metastatus_lib.status_for_results(all_mesos_results))
     marathon_ok = all(metastatus_lib.status_for_results(marathon_results))
+    kube_ok = all(metastatus_lib.status_for_results(kube_results))
     chronos_ok = all(metastatus_lib.status_for_results(chronos_results))
 
     mesos_summary = metastatus_lib.generate_summary_for_check("Mesos", mesos_ok)
     marathon_summary = metastatus_lib.generate_summary_for_check("Marathon", marathon_ok)
+    kube_summary = metastatus_lib.generate_summary_for_check("Kubernetes", kube_ok)
     chronos_summary = metastatus_lib.generate_summary_for_check("Chronos", chronos_ok)
 
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
     paasta_print(f"Master paasta_tools version: {__version__}")
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
-    if args.verbose > 1:
+    if args.verbose > 1 and marathon_enabled:
         print_with_indent('Resources Grouped by %s' % ", ".join(args.groupings), 2)
         all_rows, healthy_exit = utilization_table_by_grouping_from_mesos_state(
             groupings=args.groupings,
@@ -361,6 +447,42 @@ def print_output(argv: Optional[Sequence[str]]=None) -> None:
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
     metastatus_lib.print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
+    metastatus_lib.print_results_for_healthchecks(kube_summary, kube_ok, kube_results, args.verbose)
+    if args.verbose > 1 and kube_enabled:
+        print_with_indent('Resources Grouped by %s' % ", ".join(args.groupings), 2)
+        all_rows, healthy_exit = utilization_table_by_grouping_from_kube(
+            groupings=args.groupings,
+            threshold=args.threshold,
+            kube_client=kube_client,
+        )
+        for line in format_table(all_rows):
+            print_with_indent(line, 4)
+
+        if args.autoscaling_info:
+            print_with_indent("No autoscaling resources for Kubernetes", 2)
+
+        if args.verbose >= 3:
+            print_with_indent('Per Slave Utilization', 2)
+            cluster = system_paasta_config.get_cluster()
+            service_instance_stats = get_service_instance_stats(args.service, args.instance, cluster)
+            if service_instance_stats:
+                print_with_indent('Service-Instance stats:' + str(service_instance_stats), 2)
+            # print info about slaves here. Note that we don't make modifications to
+            # the healthy_exit variable here, because we don't care about a single slave
+            # having high usage.
+            all_rows, _ = utilization_table_by_grouping_from_kube(
+                groupings=args.groupings + ["hostname"],
+                threshold=args.threshold,
+                kube_client=kube_client,
+                service_instance_stats=service_instance_stats,
+            )
+            # The last column from utilization_table_by_grouping_from_mesos_state is "Agent count", which will always be
+            # 1 for per-slave resources, so delete it.
+            for row in all_rows:
+                row.pop(-2)
+
+            for line in format_table(all_rows):
+                print_with_indent(line, 4)
     metastatus_lib.print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
     if not healthy_exit:

@@ -18,6 +18,10 @@ import re
 import mock
 from mock import Mock
 from mock import patch
+from kubernetes.client import V1Node
+from kubernetes.client import V1NodeStatus
+from kubernetes.client import V1Pod
+from kubernetes.client import V1PodStatus
 
 from paasta_tools.metrics import metastatus_lib
 from paasta_tools.utils import paasta_print
@@ -54,191 +58,106 @@ def test_get_mesos_cpu_status():
     assert available == 1
 
 
-def test_ok_cpu_health():
-    ok_metrics = {
-        'master/cpus_total': 10,
-        'master/cpus_used': 0.5,
-    }
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'reserved_resources': {
-                    'maintenance': {
-                        'cpus': 0.5,
-                    },
+def test_get_kube_cpu_status():
+    fake_nodes = [
+        V1Node(
+            status=V1NodeStatus(
+                allocatable={
+                    'cpu': '1',
                 },
-            },
-        ],
-    }
-    ok_output, ok_health = metastatus_lib.assert_cpu_health(ok_metrics, fake_mesos_state)
+                capacity = {
+                    'cpu': '3',
+                },
+            ),
+        ),
+    ]
+    total, used, available = metastatus_lib.get_kube_cpu_status(fake_nodes)
+    assert total == 3
+    assert used == 2
+    assert available == 1
+
+
+def test_ok_cpu_health():
+    ok_status = (10, 1, 9)
+    ok_output, ok_health = metastatus_lib.assert_cpu_health(ok_status)
     assert ok_health
     assert "CPUs: 1.00 / 10 in use (%s)" % PaastaColors.green("10.00%") in ok_output
 
 
 def test_bad_cpu_health():
-    failure_metrics = {
-        'master/cpus_total': 10,
-        'master/cpus_used': 8,
-    }
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'reserved_resources': {
-                    'maintenance': {
-                        'cpus': 1,
-                    },
-                },
-            },
-        ],
-    }
-    failure_output, failure_health = metastatus_lib.assert_cpu_health(failure_metrics, fake_mesos_state)
+    failure_status = (10, 9, 1)
+    failure_output, failure_health = metastatus_lib.assert_cpu_health(failure_status)
     assert not failure_health
     assert "CRITICAL: Less than 10% CPUs available. (Currently using 90.00% of 10)" in failure_output
 
 
 def test_assert_memory_health():
-    ok_metrics = {
-        'master/mem_total': 1024,
-        'master/mem_used': 256,
-    }
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'reserved_resources': {
-                    'maintenance': {
-                        'mem': 256,
-                    },
-                },
-            },
-        ],
-    }
-    ok_output, ok_health = metastatus_lib.assert_memory_health(ok_metrics, fake_mesos_state)
+    ok_status = (1024, 512, 512)
+    ok_output, ok_health = metastatus_lib.assert_memory_health(ok_status)
     assert ok_health
     assert "Memory: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50.00%") in ok_output
 
 
 def test_failing_memory_health():
-    failure_metrics = {
-        'master/mem_total': 1024,
-        'master/mem_used': 500,
-    }
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'reserved_resources': {
-                    'maintenance': {
-                        'mem': 500,
-                    },
-                },
-            },
-        ],
-    }
-    failure_output, failure_health = metastatus_lib.assert_memory_health(failure_metrics, fake_mesos_state)
+    failure_status = (1024, 1000, 24)
+    failure_output, failure_health = metastatus_lib.assert_memory_health(failure_status)
     assert not failure_health
     assert "CRITICAL: Less than 10% memory available. (Currently using 97.66% of 1.00GB)" in failure_output
 
 
 def test_assert_disk_health():
-    ok_metrics = {
-        'master/disk_total': 1024,
-        'master/disk_used': 256,
-    }
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'reserved_resources': {
-                    'maintenance': {
-                        'disk': 256,
-                    },
-                },
-            },
-        ],
-    }
-    ok_output, ok_health = metastatus_lib.assert_disk_health(ok_metrics, fake_mesos_state)
+    ok_status = (1024, 512, 512)
+    ok_output, ok_health = metastatus_lib.assert_disk_health(ok_status)
     assert ok_health
     assert "Disk: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50.00%") in ok_output
 
 
 def test_failing_disk_health():
-    failure_metrics = {
-        'master/disk_total': 1024,
-        'master/disk_used': 500,
-    }
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'reserved_resources': {
-                    'maintenance': {
-                        'disk': 500,
-                    },
-                },
-            },
-        ],
-    }
-    failure_output, failure_health = metastatus_lib.assert_disk_health(failure_metrics, fake_mesos_state)
+    failure_status = (1024, 1000, 24)
+    failure_output, failure_health = metastatus_lib.assert_disk_health(failure_status)
     assert not failure_health
     assert "CRITICAL: Less than 10% disk available. (Currently using 97.66%)" in failure_output
 
 
 def test_assert_gpu_health():
-    ok_metrics = {
-        'master/gpus_total': 3,
-        'master/gpus_used': 1,
-    }
-    ok_output, ok_health = metastatus_lib.assert_gpu_health(ok_metrics)
+    ok_status = (3, 1, 2)
+    ok_output, ok_health = metastatus_lib.assert_gpu_health(ok_status)
     assert ok_health
     assert "GPUs: 1 / 3 in use (%s)" % PaastaColors.green("33.33%") in ok_output
 
 
 def test_assert_no_gpu_health():
-    zero_metrics = {
-        'master/gpus_total': 0,
-        'master/gpus_used': 0,
-    }
-    zero_output, zero_health = metastatus_lib.assert_gpu_health(zero_metrics)
+    zero_status = (0, 0, 0)
+    zero_output, zero_health = metastatus_lib.assert_gpu_health(zero_status)
     assert zero_health
     assert "No gpus found from mesos!" in zero_output
 
 
 def test_assert_bad_gpu_health():
-    bad_metrics = {
-        'master/gpus_total': 4,
-        'master/gpus_used': 3,
-    }
-    bad_output, bad_health = metastatus_lib.assert_gpu_health(bad_metrics, threshold=50)
+    bad_status = (4, 3, 1)
+    bad_output, bad_health = metastatus_lib.assert_gpu_health(bad_status, threshold=50)
     assert not bad_health
     assert "CRITICAL: Less than 50% GPUs available. (Currently using 75.00% of 4)" in bad_output
 
 
 def test_cpu_health_mesos_reports_zero():
-    mesos_metrics = {
-        'master/cpus_total': 0,
-        'master/cpus_used': 1,
-    }
+    status = (0, 1, 42)
     fake_mesos_state = {'slaves': []}
-    failure_output, failure_health = metastatus_lib.assert_cpu_health(mesos_metrics, fake_mesos_state)
+    failure_output, failure_health = metastatus_lib.assert_cpu_health(status)
     assert failure_output == "Error reading total available cpu from mesos!"
     assert failure_health is False
 
 
 def test_memory_health_mesos_reports_zero():
-    mesos_metrics = {
-        'master/mem_total': 0,
-        'master/mem_used': 1,
-    }
-    fake_mesos_state = {'slaves': []}
-    failure_output, failure_health = metastatus_lib.assert_memory_health(mesos_metrics, fake_mesos_state)
+    status = (0, 1, 42)
+    failure_output, failure_health = metastatus_lib.assert_memory_health(status)
     assert failure_output == "Error reading total available memory from mesos!"
     assert failure_health is False
 
 
 def test_disk_health_mesos_reports_zero():
-    mesos_metrics = {
-        'master/disk_total': 0,
-        'master/disk_used': 1,
-    }
-    fake_mesos_state = {'slaves': []}
-    failure_output, failure_health = metastatus_lib.assert_disk_health(mesos_metrics, fake_mesos_state)
+    status = (0, 1, 42)
+    failure_output, failure_health = metastatus_lib.assert_disk_health(status)
     assert failure_output == "Error reading total available disk from mesos!"
     assert failure_health is False
 
@@ -358,23 +277,83 @@ def test_assert_marathon_deployments():
     assert ok
 
 
-def test_assert_slave_health():
-    fake_slave_info = {
-        'master/slaves_active': 10,
-        'master/slaves_inactive': 10,
-    }
-    output, ok = metastatus_lib.assert_slave_health(fake_slave_info)
-    assert "Slaves: active: 10 inactive: 10" in output
+def test_assert_kube_deployments():
+    with mock.patch(
+        'paasta_tools.metrics.metastatus_lib.list_all_deployments', autospec=True,
+    ) as mock_list_all_deployments:
+        client = Mock()
+        mock_list_all_deployments.return_value = ["KubeDeployment:1"]
+        output, ok = metastatus_lib.assert_kube_deployments(client)
+        assert re.match("Kubernetes deployments:   1", output)
+        assert ok
+
+
+def test_assert_kube_pods_running():
+    with mock.patch(
+        'paasta_tools.metrics.metastatus_lib.get_all_pods', autospec=True,
+    ) as mock_get_all_pods:
+        client = Mock()
+        mock_get_all_pods.return_value = [
+            V1Pod(
+                status=V1PodStatus(
+                    phase='Running',
+                ),
+            ),
+            V1Pod(
+                status=V1PodStatus(
+                    phase='Pending',
+                ),
+            ),
+            V1Pod(
+                status=V1PodStatus(
+                    phase='Pending',
+                ),
+            ),
+            V1Pod(
+                status=V1PodStatus(
+                    phase='Failed',
+                ),
+            ),
+            V1Pod(
+                status=V1PodStatus(
+                    phase='Failed',
+                ),
+            ),
+            V1Pod(
+                status=V1PodStatus(
+                    phase='Failed',
+                ),
+            ),
+        ]
+        output, ok = metastatus_lib.assert_kube_pods_running(client)
+        assert re.match("Pods: running: 1 pending: 2 failed: 3", output)
+        assert ok
+
+
+def test_assert_nodes_health():
+    nodes_health_status = (10, 10)
+    output, ok = metastatus_lib.assert_nodes_health(nodes_health_status)
+    assert "Nodes: active: 10 inactive: 10" in output
     assert ok
 
 
-def test_assert_tasks_running():
+def test_get_mesos_slaves_health_status():
+    fake_slave_info = {
+        'master/slaves_active': 10,
+        'master/slaves_inactive': 7,
+    }
+    active, inactive = metastatus_lib.get_mesos_slaves_health_status(fake_slave_info)
+    assert active == 10
+    assert inactive == 7
+
+
+def test_assert_mesos_tasks_running():
     fake_tasks_info = {
         'master/tasks_running': 20,
         'master/tasks_staging': 10,
         'master/tasks_starting': 10,
     }
-    output, ok = metastatus_lib.assert_tasks_running(fake_tasks_info)
+    output, ok = metastatus_lib.assert_mesos_tasks_running(fake_tasks_info)
     assert "Tasks: running: 20 staging: 10 starting: 10" in output
     assert ok
 
@@ -535,6 +514,24 @@ def test_filter_mesos_state_metrics():
         'gpus': 5,
     }
     assert metastatus_lib.filter_mesos_state_metrics(test_resource_dictionary) == expected
+
+
+def test_filter_kube_resources():
+    test_resource_dictionary = {
+        'cpu': 0,
+        'memory': 1,
+        'MEMORY': 2,
+        'garbage_data': 3,
+        'ephemeral-storage': 4,
+        'nvidia.com/gpu': 5,
+    }
+    expected = {
+        'cpu': 0,
+        'memory': 1,
+        'ephemeral-storage': 4,
+        'nvidia.com/gpu': 5,
+    }
+    assert metastatus_lib.filter_kube_resources(test_resource_dictionary) == expected
 
 
 def test_filter_slaves():
@@ -1012,22 +1009,121 @@ def test_key_func_for_attribute():
     assert inspect.isfunction(metastatus_lib.key_func_for_attribute('habitat'))
 
 
+def test_get_mesos_memory_status():
+    metrics = {
+        'master/mem_total': 100,
+        'master/mem_used': 50,
+    }
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {
+                    'maintenance': {
+                        'mem': 33,
+                    },
+                },
+            },
+        ],
+    }
+    actual = metastatus_lib.get_mesos_memory_status(metrics, fake_mesos_state)
+    assert actual == (100, 83, 17)
+
+
+def test_get_kube_memory_status():
+    fake_nodes = [
+        V1Node(
+            status=V1NodeStatus(
+                allocatable={
+                    'memory': '1Gi',
+                },
+                capacity = {
+                    'memory': '4Gi',
+                },
+            ),
+        ),
+    ]
+    total, used, available = metastatus_lib.get_kube_memory_status(fake_nodes)
+    assert total == 4 * 1024
+    assert used == 3 * 1024
+    assert available == 1 * 1024
+
+
 def test_get_mesos_disk_status():
     metrics = {
         'master/disk_total': 100,
         'master/disk_used': 50,
     }
-    actual = metastatus_lib.get_mesos_disk_status(metrics)
-    assert actual == (100, 50, 50)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {
+                    'maintenance': {
+                        'disk': 33,
+                    },
+                },
+            },
+        ],
+    }
+    actual = metastatus_lib.get_mesos_disk_status(metrics, fake_mesos_state)
+    assert actual == (100, 83, 17)
+
+
+def test_get_kube_disk_status():
+    fake_nodes = [
+        V1Node(
+            status=V1NodeStatus(
+                allocatable={
+                    'ephemeral-storage': '1Ti',
+                },
+                capacity = {
+                    'ephemeral-storage': '4Ti',
+                },
+            ),
+        ),
+    ]
+    total, used, available = metastatus_lib.get_kube_disk_status(fake_nodes)
+    assert total == 4 * 1024 ** 2
+    assert used == 3 * 1024 ** 2
+    assert available == 1 * 1024 ** 2
 
 
 def test_get_mesos_gpu_status():
     metrics = {
-        'master/gpus_total': 3,
-        'master/gpus_used': 1,
+        'master/gpus_total': 10,
+        'master/gpus_used': 5,
     }
-    actual = metastatus_lib.get_mesos_gpu_status(metrics)
-    assert actual == (3, 1, 2)
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'reserved_resources': {
+                    'maintenance': {
+                        'gpu': 2,
+                    },
+                },
+            },
+        ],
+    }
+    actual = metastatus_lib.get_mesos_gpu_status(metrics, fake_mesos_state)
+    assert actual == (10, 7, 3)
+
+
+def test_get_kube_gpu_status():
+    fake_nodes = [
+        V1Node(
+            status=V1NodeStatus(
+                allocatable={
+                    'nvidia.com/gpu': '1',
+                },
+                capacity = {
+                    'nvidia.com/gpu': '4',
+                },
+            ),
+        ),
+    ]
+    total, used, available = metastatus_lib.get_kube_gpu_status(fake_nodes)
+    assert total == 4
+    assert used == 3
+    assert available == 1
 
 
 def test_reserved_maintenence_resources_no_maintenenance():
