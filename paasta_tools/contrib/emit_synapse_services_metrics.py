@@ -22,9 +22,9 @@ def report_metric_to_meteorite(backend, metric, value, paasta_cluster):
         return
 
     meteorite_dims = {
-        'service_name': paasta_service,
+        'paasta_service': paasta_service,
         'paasta_cluster': paasta_cluster,
-        'instance_name': paasta_instance,
+        'paasta_instance': paasta_instance,
     }
     path = f'paasta.service.requests.{metric}'
     if metric in GUAGES:
