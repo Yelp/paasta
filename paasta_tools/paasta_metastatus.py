@@ -17,7 +17,6 @@ import io
 import itertools
 import logging
 import sys
-from threading import Lock
 from typing import List
 from typing import MutableSequence
 from typing import Optional
@@ -29,7 +28,6 @@ import chronos
 from marathon.exceptions import MarathonError
 from mypy_extensions import TypedDict
 
-import paasta_tools.utils
 from paasta_tools import __version__
 from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import get_autoscaling_info_for_all_resources
@@ -48,6 +46,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+from paasta_tools.utils import set_paasta_print_file
 
 
 log = logging.getLogger('paasta_metastatus')
@@ -352,36 +351,15 @@ def print_output(argv: Optional[List[str]]=None) -> None:
         raise FatalError(2)
 
 
-PAASTA_PRINT_PATCH_LOCK = Lock()
-
-
 def get_output(argv: Optional[List[str]]=None) -> Tuple[str, int]:
     output = io.StringIO()
-
-    def patched_paasta_print(*args, **kwargs):
-        if 'file' in kwargs:
-            del kwargs['file']
-        return print(*args, **kwargs, file=output)
-
     exit_code = 1
-    PAASTA_PRINT_PATCH_LOCK.acquire()
-    global paasta_print
-    orig_paasta_print = paasta_print
-    try:
-        # Monkey-patching `paasta_print` everywhere it's used to output results of `paasta metastatus` cmd.
-        paasta_print = patched_paasta_print
-        paasta_tools.utils.paasta_print = patched_paasta_print
-        paasta_tools.metrics.metastatus_lib.paasta_print = patched_paasta_print
+    with set_paasta_print_file(output):
         exit_code = 0
         try:
             print_output(argv)
         except FatalError as e:
             exit_code = e.exit_code
-    finally:
-        paasta_print = orig_paasta_print
-        paasta_tools.utils.paasta_print = orig_paasta_print
-        paasta_tools.metrics.metastatus_lib.paasta_print = orig_paasta_print
-        PAASTA_PRINT_PATCH_LOCK.release()
     ret = output.getvalue()
     return ret, exit_code
 

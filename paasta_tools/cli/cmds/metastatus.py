@@ -140,8 +140,7 @@ def paasta_metastatus_on_api_endpoint(
         res = client.metastatus.metastatus(cmd_args=[str(arg) for arg in cmd_args]).result()
         output, exit_code = res.output, res.exit_code
     except HTTPError as exc:
-        paasta_print(exc.response.text)
-        return exc.status_code
+        output, exit_code = exc.response.text, exc.status_code
 
     return exit_code, output
 
@@ -158,23 +157,18 @@ def print_cluster_status(
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashboards even if the cluster is unavailable"""
     if use_api_endpoint:
-        return_code, output = paasta_metastatus_on_api_endpoint(
-            cluster=cluster,
-            system_paasta_config=system_paasta_config,
-            groupings=groupings,
-            verbose=verbose,
-            autoscaling_info=autoscaling_info,
-            use_mesos_cache=use_mesos_cache,
-        )
+        metastatus_func = paasta_metastatus_on_api_endpoint
     else:
-        return_code, output = execute_paasta_metastatus_on_remote_master(
-            cluster=cluster,
-            system_paasta_config=system_paasta_config,
-            groupings=groupings,
-            verbose=verbose,
-            autoscaling_info=autoscaling_info,
-            use_mesos_cache=use_mesos_cache,
-        )
+        metastatus_func = execute_paasta_metastatus_on_remote_master
+
+    return_code, output = metastatus_func(
+        cluster=cluster,
+        system_paasta_config=system_paasta_config,
+        groupings=groupings,
+        verbose=verbose,
+        autoscaling_info=autoscaling_info,
+        use_mesos_cache=use_mesos_cache,
+    )
 
     paasta_print("Cluster: %s" % cluster)
     paasta_print(get_cluster_dashboards(cluster))
