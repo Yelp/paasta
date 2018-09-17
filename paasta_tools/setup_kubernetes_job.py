@@ -168,44 +168,25 @@ def reconcile_kubernetes_deployment(
             kube_client=kube_client,
             application=formatted_application,
         )
-        ensure_pod_disruption_budget(
-            kube_client=kube_client,
-            service=service,
-            instance=instance,
-            min_instances=service_instance_config.get_desired_instances() - max_unavailable(
-                instance_count=service_instance_config.get_desired_instances(),
-                bounce_margin_factor=service_instance_config.get_bounce_margin_factor(),
-            ),
-        )
-        return 0, None
     elif desired_deployment not in kube_deployments:
         log.debug(f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed")
         update_kubernetes_application(
             kube_client=kube_client,
             application=formatted_application,
         )
-        ensure_pod_disruption_budget(
-            kube_client=kube_client,
-            service=service,
-            instance=instance,
-            min_instances=service_instance_config.get_desired_instances() - max_unavailable(
-                instance_count=service_instance_config.get_desired_instances(),
-                bounce_margin_factor=service_instance_config.get_bounce_margin_factor(),
-            ),
-        )
-        return 0, None
     else:
-        ensure_pod_disruption_budget(
-            kube_client=kube_client,
-            service=service,
-            instance=instance,
-            min_instances=service_instance_config.get_desired_instances() - max_unavailable(
-                instance_count=service_instance_config.get_desired_instances(),
-                bounce_margin_factor=service_instance_config.get_bounce_margin_factor(),
-            ),
-        )
         log.debug(f"{desired_deployment} is up to date, no action taken")
-        return 0, None
+
+    ensure_pod_disruption_budget(
+        kube_client=kube_client,
+        service=service,
+        instance=instance,
+        min_instances=service_instance_config.get_desired_instances() - max_unavailable(
+            instance_count=service_instance_config.get_desired_instances(),
+            bounce_margin_factor=service_instance_config.get_bounce_margin_factor(),
+        ),
+    )
+    return 0, None
 
 
 def ensure_pod_disruption_budget(
