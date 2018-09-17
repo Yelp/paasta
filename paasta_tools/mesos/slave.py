@@ -24,7 +24,7 @@ from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.utils import get_user_agent
 
 
-class MesosSlave(object):
+class MesosSlave:
 
     def __init__(self, config, items):
         self.config = config

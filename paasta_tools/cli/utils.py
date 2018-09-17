@@ -25,9 +25,13 @@ import sys
 from shlex import quote
 from socket import gaierror
 from socket import gethostbyname_ex
-from typing import Any
 from typing import Callable
+from typing import Iterable
+from typing import List
 from typing import Optional
+from typing import Sequence
+from typing import Set
+from typing import Tuple
 
 import ephemeral_port_reserve
 from bravado.exception import HTTPError
@@ -50,6 +54,7 @@ from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
@@ -379,7 +384,7 @@ def list_instances(**kwargs):
     for tab completion. We try to guess what service you might be
     operating on, otherwise we just provide *all* of them
     """
-    all_instances = set()
+    all_instances: Set[str] = set()
     service = guess_service_name()
     try:
         validate_service_name(service)
@@ -391,7 +396,10 @@ def list_instances(**kwargs):
     return sorted(all_instances)
 
 
-def calculate_remote_masters(cluster, system_paasta_config):
+def calculate_remote_masters(
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+) -> Tuple[List[str], str]:
     """Given a cluster, do a DNS lookup of that cluster (which
     happens to point, eventually, to the Mesos masters in that cluster).
     Return IPs of those Mesos masters.
@@ -407,7 +415,9 @@ def calculate_remote_masters(cluster, system_paasta_config):
     return (ips, output)
 
 
-def find_connectable_master(masters):
+def find_connectable_master(
+    masters: Sequence[str],
+) -> Tuple[Optional[str], Optional[str]]:
     """For each host in the iterable 'masters', try various connectivity
     checks. For each master that fails, emit an error message about which check
     failed and move on to the next master.
@@ -432,7 +442,10 @@ class NoMasterError(Exception):
     pass
 
 
-def connectable_master(cluster, system_paasta_config):
+def connectable_master(
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+) -> str:
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         raise NoMasterError('ERROR: %s' % output)
@@ -542,11 +555,12 @@ def execute_paasta_serviceinit_on_remote_master(
 
 
 def run_paasta_metastatus(
-    master, groupings,
-    verbose=0,
-    autoscaling_info=False,
-    use_mesos_cache=False,
-):
+    master: str,
+    groupings: Sequence[str],
+    verbose: int = 0,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> Tuple[int, str]:
     if verbose > 0:
         verbose_flag = "-%s" % ('v' * verbose)
         timeout = 120
@@ -575,10 +589,13 @@ def run_paasta_metastatus(
 
 
 def execute_paasta_metastatus_on_remote_master(
-    cluster, system_paasta_config, groupings, verbose,
-    autoscaling_info=False,
-    use_mesos_cache=False,
-):
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+    groupings: Sequence[str],
+    verbose: int,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> Tuple[int, str]:
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
@@ -603,6 +620,7 @@ def run_paasta_cluster_boost(
 ):
     timeout = 20
 
+    verbose_flag: Optional[str]
     if verbose > 0:
         verbose_flag = '-{}'.format('v' * verbose)
     else:
@@ -785,9 +803,13 @@ def get_jenkins_build_output_url():
 
 
 def get_instance_config(
-    service: str, instance: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR,
-    load_deployments: bool=False, instance_type: Optional[str]=None,
-) -> Any:
+    service: str,
+    instance: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    load_deployments: bool = False,
+    instance_type: Optional[str] = None,
+) -> InstanceConfig:
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
     if instance_type is None:
@@ -800,9 +822,13 @@ def get_instance_config(
 
     instance_config_load_function: Callable[
         [
-            NamedArg(str, "service"), NamedArg(str, "instance"), NamedArg(str, "cluster"),
-            NamedArg(bool, "load_deployments"), NamedArg(str, "soa_dir"),
-        ], InstanceConfig
+            NamedArg(str, 'service'),
+            NamedArg(str, 'instance'),
+            NamedArg(str, 'cluster'),
+            NamedArg(bool, 'load_deployments'),
+            NamedArg(str, 'soa_dir'),
+        ],
+        InstanceConfig,
     ]
     if instance_type == 'marathon':
         instance_config_load_function = load_marathon_service_config
@@ -835,16 +861,22 @@ def extract_tags(paasta_tag):
     return regex_match.groupdict() if regex_match else {}
 
 
-def list_deploy_groups(parsed_args=None, service=None, soa_dir=DEFAULT_SOA_DIR, **kwargs):
-    if service is None:
-        service = parsed_args.service or guess_service_name()
+def list_deploy_groups(
+    service: Optional[str],
+    soa_dir: str = DEFAULT_SOA_DIR,
+    parsed_args=None,
+    **kwargs,
+) -> Set:
     return {config.get_deploy_group() for config in get_instance_configs_for_service(
-        service=service,
+        service=service if service is not None else parsed_args.service or guess_service_name(),
         soa_dir=soa_dir,
     )}
 
 
-def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
+def validate_given_deploy_groups(
+    all_deploy_groups: Sequence[str],
+    args_deploy_groups: Sequence[str],
+) -> Tuple[Set[str], Set[str]]:
     """Given two lists of deploy groups, return the intersection and difference between them.
 
     :param all_deploy_groups: instances actually belonging to a service
@@ -852,6 +884,7 @@ def validate_given_deploy_groups(all_deploy_groups, args_deploy_groups):
     :returns: a tuple with (common, difference) indicating deploy groups common in both
         lists and those only in args_deploy_groups
     """
+    invalid_deploy_groups: Set[str]
     if len(args_deploy_groups) is 0:
         valid_deploy_groups = set(all_deploy_groups)
         invalid_deploy_groups = set()
@@ -971,7 +1004,11 @@ def pick_slave_from_status(status, host=None):
         return slaves[0]
 
 
-def get_instance_configs_for_service(service, soa_dir, type_filter=None):
+def get_instance_configs_for_service(
+    service: str,
+    soa_dir: str,
+    type_filter: Optional[Sequence[str]] = None,
+) -> Iterable[InstanceConfig]:
     for cluster in list_clusters(
         service=service,
         soa_dir=soa_dir,

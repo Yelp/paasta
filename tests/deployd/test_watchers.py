@@ -8,7 +8,7 @@ from requests.exceptions import RequestException
 from paasta_tools.deployd.common import BaseServiceInstance
 
 
-class FakePyinotify(object):  # pragma: no cover
+class FakePyinotify:  # pragma: no cover
     class ProcessEvent():
         pass
 

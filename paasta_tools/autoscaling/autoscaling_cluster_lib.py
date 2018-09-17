@@ -102,7 +102,7 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-class Timer(object):
+class Timer:
     def __init__(self, timeout: int) -> None:
         self.timeout = timedelta(seconds=timeout)
         self.start()
@@ -117,7 +117,7 @@ class Timer(object):
         return self.last_start + self.timeout - datetime.now()
 
 
-class ClusterAutoscaler(object):
+class ClusterAutoscaler:
 
     def __init__(
         self,
@@ -769,7 +769,7 @@ class ClusterAutoscaler(object):
 class SpotAutoscaler(ClusterAutoscaler):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(SpotAutoscaler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.sfr = self.get_sfr(self.resource['id'], region=self.resource['region'])
         if self.sfr:
             self.instances = self.get_spot_fleet_instances(self.resource['id'], region=self.resource['region'])
@@ -970,7 +970,7 @@ class SpotAutoscaler(ClusterAutoscaler):
 class AsgAutoscaler(ClusterAutoscaler):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super(AsgAutoscaler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.asg = self.get_asg(self.resource['id'], region=self.resource['region'])
         if self.asg:
             self.instances = self.asg['Instances']
@@ -1111,7 +1111,7 @@ class FailSetResourceCapacity(Exception):
     pass
 
 
-class PaastaAwsSlave(object):
+class PaastaAwsSlave:
     """
     Defines a slave object for use by the autoscaler, containing the mesos slave
     object from mesos state and some properties from AWS

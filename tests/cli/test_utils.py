@@ -29,7 +29,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 
 @patch('paasta_tools.cli.utils.gethostbyname_ex', autospec=True)
 def test_bad_calculate_remote_master(mock_get_by_hostname, system_paasta_config):
-    mock_get_by_hostname.side_effect = gaierror('foo', 'bar')
+    mock_get_by_hostname.side_effect = gaierror(42, 'bar')
     ips, output = utils.calculate_remote_masters('myhost', system_paasta_config)
     assert ips == []
     assert 'ERROR while doing DNS lookup of paasta-myhost.yelp:\nbar\n' in output

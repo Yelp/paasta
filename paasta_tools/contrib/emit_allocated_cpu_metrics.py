@@ -24,9 +24,9 @@ def emit_metrics_for_type(instance_type):
             cluster=cluster,
         )
         dimensions = {
-            'service_name': service_instance_config.service,
+            'paasta_service': service_instance_config.service,
             'paasta_cluster': service_instance_config.cluster,
-            'instance_name': service_instance_config.instance,
+            'paasta_instance': service_instance_config.instance,
         }
 
         log.info(f"Emitting paasta.service.* with dimensions {dimensions}")

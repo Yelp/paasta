@@ -123,7 +123,7 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
 @mock.patch.object(firewall_update, 'smartstack_dependencies_of_running_firewalled_services', autospec=True)
 @mock.patch.object(firewall_update, 'process_inotify_event', side_effect=StopIteration, autospec=True)
 def test_run_daemon(process_inotify_mock, smartstack_deps_mock, mock_daemon_args):
-    class kill_after_too_long(object):
+    class kill_after_too_long:
         def __init__(self):
             self.count = 0
 

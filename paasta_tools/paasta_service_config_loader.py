@@ -17,7 +17,6 @@ from typing import Iterable
 from typing import List
 from typing import Tuple
 from typing import Type
-from typing import TypeVar
 
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
@@ -25,7 +24,7 @@ from service_configuration_lib import read_service_configuration
 from paasta_tools import utils
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -33,9 +32,6 @@ from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
-
-
-_InstanceConfig_T = TypeVar('_InstanceConfig_T', bound=InstanceConfig)
 
 
 class PaastaServiceConfigLoader():
@@ -89,7 +85,7 @@ class PaastaServiceConfigLoader():
         for cluster in self._clusters:
             yield cluster
 
-    def instances(self, cluster: str, instance_type_class: Type[_InstanceConfig_T]) -> Iterable[str]:
+    def instances(self, cluster: str, instance_type_class: Type[InstanceConfig_T]) -> Iterable[str]:
         """Returns an iterator that yields instance names as strings.
 
         :param cluster: The cluster name
@@ -104,8 +100,8 @@ class PaastaServiceConfigLoader():
     def instance_configs(
         self,
         cluster: str,
-        instance_type_class: Type[_InstanceConfig_T],
-    ) -> Iterable[_InstanceConfig_T]:
+        instance_type_class: Type[InstanceConfig_T],
+    ) -> Iterable[InstanceConfig_T]:
         """Returns an iterator that yields InstanceConfig objects.
 
         :param cluster: The cluster name
@@ -121,10 +117,10 @@ class PaastaServiceConfigLoader():
             except NoDeploymentsAvailable:
                 pass
 
-    def _framework_config_filename(self, cluster: str, instance_type_class: Type[_InstanceConfig_T]):
+    def _framework_config_filename(self, cluster: str, instance_type_class: Type[InstanceConfig_T]):
         return f"{instance_type_class.config_filename_prefix}-{cluster}"
 
-    def _refresh_framework_config(self, cluster: str, instance_type_class: Type[_InstanceConfig_T]):
+    def _refresh_framework_config(self, cluster: str, instance_type_class: Type[InstanceConfig_T]):
         conf_name = self._framework_config_filename(cluster, instance_type_class)
         log.info("Reading configuration file: %s.yaml", conf_name)
         instances = read_extra_service_information(
@@ -158,8 +154,8 @@ class PaastaServiceConfigLoader():
         cluster: str,
         instance: str,
         config: utils.InstanceConfigDict,
-        config_class: Type[_InstanceConfig_T],
-    ) -> _InstanceConfig_T:
+        config_class: Type[InstanceConfig_T],
+    ) -> InstanceConfig_T:
         """Create a service instance's configuration for marathon.
 
         :param cluster: The cluster to read the configuration for

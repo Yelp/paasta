@@ -23,7 +23,7 @@ class MesosTaskParametersIsImmutableError(Exception):
 _SelfT = TypeVar('_SelfT', bound='MesosTaskParameters')
 
 
-class MesosTaskParameters(object):
+class MesosTaskParameters:
     health: Any
     mesos_task_state: str
     is_draining: bool
@@ -78,7 +78,7 @@ class MesosTaskParameters(object):
         return json.dumps(self.__dict__).encode('utf-8')
 
 
-class TaskStore(object):
+class TaskStore:
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.service_name = service_name
         self.instance_name = instance_name
@@ -125,7 +125,7 @@ class TaskStore(object):
 class DictTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.tasks: Dict[str, MesosTaskParameters] = {}
-        super(DictTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
+        super().__init__(service_name, instance_name, framework_id, system_paasta_config)
 
     def get_task(self, task_id: str) -> MesosTaskParameters:
         return self.tasks.get(task_id)
@@ -141,7 +141,7 @@ class DictTaskStore(TaskStore):
 
 class ZKTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
-        super(ZKTaskStore, self).__init__(service_name, instance_name, framework_id, system_paasta_config)
+        super().__init__(service_name, instance_name, framework_id, system_paasta_config)
         self.zk_hosts = system_paasta_config.get_zk_hosts()
 
         # For some reason, I could not get the code suggested by this SO post to work to ensure_path on the chroot.

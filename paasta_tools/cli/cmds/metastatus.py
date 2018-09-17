@@ -12,16 +12,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Sequence
+
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_subparser(subparsers):
+def add_subparser(
+    subparsers,
+) -> None:
     status_parser = subparsers.add_parser(
         'metastatus',
         help="Display the status for an entire PaaSTA cluster",
@@ -84,15 +90,34 @@ def add_subparser(subparsers):
             'Note: This is only effective with -vv'
         ),
     )
+    # The service and instance args default to None if not specified.
+    status_parser.add_argument(
+        '-s',
+        '--service',
+        help=(
+            'Show how many of a given service instance can be run on a cluster slave.'
+            'Note: This is only effective with -vvv and --instance must also be specified'
+        ),
+    ).completer = lazy_choices_completer(list_services)
+    status_parser.add_argument(
+        '-i',
+        '--instance',
+        help=(
+            'Show how many of a given service instance can be run on a cluster slave.'
+            'Note: This is only effective with -vvv and --service must also be specified'
+        ),
+    )
     status_parser.set_defaults(command=paasta_metastatus)
 
 
 def print_cluster_status(
-    cluster, system_paasta_config, groupings,
-    verbose=0,
-    autoscaling_info=False,
-    use_mesos_cache=False,
-):
+    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
+    groupings: Sequence[str],
+    verbose: int = 0,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> int:
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashboards even if the cluster is unavailable"""
     return_code, output = execute_paasta_metastatus_on_remote_master(
@@ -112,7 +137,10 @@ def print_cluster_status(
     return return_code
 
 
-def figure_out_clusters_to_inspect(args, all_clusters):
+def figure_out_clusters_to_inspect(
+    args,
+    all_clusters,
+) -> Sequence[str]:
     if args.clusters is not None:
         clusters_to_inspect = args.clusters.split(",")
     else:
@@ -120,7 +148,9 @@ def figure_out_clusters_to_inspect(args, all_clusters):
     return clusters_to_inspect
 
 
-def get_cluster_dashboards(cluster):
+def get_cluster_dashboards(
+    cluster: str,
+) -> str:
     """Returns the direct dashboards for humans to use for a given cluster"""
     SPACER = ' '
     try:
@@ -140,7 +170,9 @@ def get_cluster_dashboards(cluster):
     return '\n'.join(output)
 
 
-def paasta_metastatus(args):
+def paasta_metastatus(
+    args,
+) -> int:
     """Print the status of a PaaSTA clusters"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()

@@ -1018,10 +1018,20 @@ class TestInstanceConfig:
             service='fake_name',
             cluster='',
             instance='fake_instance',
-            config_dict={'cpu_burst_pct': 0, 'cpus': 1},
+            config_dict={'cpu_burst_add': 0, 'cpus': 1},
             branch_dict=None,
         )
         assert fake_conf.get_cpu_quota() == 100000
+
+    def test_nonzero_cpu_burst(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_add': 10, 'cpus': 1},
+            branch_dict=None,
+        )
+        assert fake_conf.get_cpu_quota() == 1100000
 
     def test_format_docker_parameters_default(self):
         fake_conf = utils.InstanceConfig(
@@ -1037,7 +1047,7 @@ class TestInstanceConfig:
         assert fake_conf.format_docker_parameters() == [
             {"key": "memory-swap", "value": '1088m'},
             {"key": "cpu-period", "value": "100000"},
-            {"key": "cpu-quota", "value": "1000000"},
+            {"key": "cpu-quota", "value": "200000"},
             {"key": "label", "value": "paasta_service=fake_name"},
             {"key": "label", "value": "paasta_instance=fake_instance"},
         ]
@@ -1048,7 +1058,7 @@ class TestInstanceConfig:
             cluster='',
             instance='fake_instance',
             config_dict={
-                'cpu_burst_pct': 200,
+                'cpu_burst_add': 2,
                 'cfs_period_us': 200000,
                 'cpus': 1,
                 'mem': 1024,
@@ -1077,10 +1087,10 @@ class TestInstanceConfig:
             service='fake_name',
             cluster='',
             instance='fake_instance',
-            config_dict={'cpu_burst_pct': 100, 'cpus': 1},
+            config_dict={'cpu_burst_add': 2, 'cpus': 1},
             branch_dict=None,
         )
-        assert fake_conf.get_cpu_quota() == 200000
+        assert fake_conf.get_cpu_quota() == 300000
 
     def test_get_mem_swap_int(self):
         fake_conf = utils.InstanceConfig(

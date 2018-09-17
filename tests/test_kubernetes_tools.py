@@ -33,11 +33,15 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import get_active_shas_for_service
+from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
+from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
@@ -45,12 +49,14 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
+from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubeService
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
+from paasta_tools.kubernetes_tools import pods_for_service_instance
 from paasta_tools.kubernetes_tools import read_all_registrations_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
@@ -306,15 +312,15 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpus', autospec=True,
             return_value=0.3,
         ), mock.patch(
-            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_pct', autospec=True,
-            return_value=200,
+            'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cpu_burst_add', autospec=True,
+            return_value=1,
         ), mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem', autospec=True,
             return_value=2048,
         ):
             assert self.deployment.get_resource_requirements() == V1ResourceRequirements(
                 limits={
-                    'cpu': 0.6,
+                    'cpu': 1.3,
                     'memory': '2048Mi',
                 },
                 requests={
@@ -1140,3 +1146,107 @@ def test_update_stateful_set():
         namespace='paasta',
         body=V1StatefulSet(api_version='some'),
     )
+
+
+def test_get_kubernetes_app_deploy_status():
+    mock_status = mock.Mock(
+        replicas=1,
+        ready_replicas=1,
+        updated_replicas=1,
+    )
+    mock_app = mock.Mock(status=mock_status)
+    mock_client = mock.Mock()
+    assert get_kubernetes_app_deploy_status(
+        mock_client,
+        mock_app,
+        desired_instances=1,
+    ) == KubernetesDeployStatus.Running
+
+    assert get_kubernetes_app_deploy_status(
+        mock_client,
+        mock_app,
+        desired_instances=2,
+    ) == KubernetesDeployStatus.Waiting
+
+    mock_status = mock.Mock(
+        replicas=1,
+        ready_replicas=2,
+        updated_replicas=1,
+    )
+    mock_app = mock.Mock(status=mock_status)
+    assert get_kubernetes_app_deploy_status(
+        mock_client,
+        mock_app,
+        desired_instances=2,
+    ) == KubernetesDeployStatus.Deploying
+
+    mock_status = mock.Mock(
+        replicas=0,
+        ready_replicas=0,
+        updated_replicas=0,
+    )
+    mock_app = mock.Mock(status=mock_status)
+    assert get_kubernetes_app_deploy_status(
+        mock_client,
+        mock_app,
+        desired_instances=0,
+    ) == KubernetesDeployStatus.Stopped
+
+    mock_status = mock.Mock(
+        replicas=1,
+        ready_replicas=None,
+        updated_replicas=None,
+    )
+    mock_app = mock.Mock(status=mock_status)
+    assert get_kubernetes_app_deploy_status(
+        mock_client,
+        mock_app,
+        desired_instances=1,
+    ) == KubernetesDeployStatus.Waiting
+
+
+def test_get_kubernetes_app_by_name():
+    mock_client = mock.Mock()
+    mock_deployment = mock.Mock()
+    mock_client.deployments.read_namespaced_deployment_status.return_value = mock_deployment
+    assert get_kubernetes_app_by_name('someservice', mock_client) == mock_deployment
+    assert mock_client.deployments.read_namespaced_deployment_status.called
+    assert not mock_client.deployments.read_namespaced_stateful_set_status.called
+
+    mock_stateful_set = mock.Mock()
+    mock_client.deployments.read_namespaced_deployment_status.reset_mock()
+    mock_client.deployments.read_namespaced_deployment_status.side_effect = ApiException(404)
+    mock_client.deployments.read_namespaced_stateful_set_status.return_value = mock_stateful_set
+    assert get_kubernetes_app_by_name('someservice', mock_client) == mock_stateful_set
+    assert mock_client.deployments.read_namespaced_deployment_status.called
+    assert mock_client.deployments.read_namespaced_stateful_set_status.called
+
+
+def test_pods_for_service_instance():
+    mock_client = mock.Mock()
+    assert pods_for_service_instance(
+        'kurupt',
+        'fm',
+        mock_client,
+    ) == mock_client.core.list_namespaced_pod.return_value.items
+
+
+def test_get_active_shas_for_service():
+    mock_pod_list = [
+        mock.Mock(metadata=mock.Mock(labels={
+            'config_sha': 'a123',
+            'git_sha': 'b456',
+        })),
+        mock.Mock(metadata=mock.Mock(labels={
+            'config_sha': 'a123!!!',
+            'git_sha': 'b456!!!',
+        })),
+        mock.Mock(metadata=mock.Mock(labels={
+            'config_sha': 'a123!!!',
+            'git_sha': 'b456!!!',
+        })),
+    ]
+    assert get_active_shas_for_service(mock_pod_list) == {
+        'git_sha': {'b456', 'b456!!!'},
+        'config_sha': {'a123', 'a123!!!'},
+    }

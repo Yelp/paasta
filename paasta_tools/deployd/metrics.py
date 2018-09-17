@@ -5,7 +5,7 @@ from paasta_tools.deployd.common import PaastaThread
 
 class QueueMetrics(PaastaThread):
     def __init__(self, inbox, bounce_q, cluster, metrics_provider):
-        super(QueueMetrics, self).__init__()
+        super().__init__()
         self.daemon = True
         self.inbox_q = inbox.inbox_q
         self.inbox = inbox.to_bounce

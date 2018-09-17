@@ -20,6 +20,8 @@ import math
 import os
 import random
 import time
+import typing
+from collections import Counter
 from contextlib import contextmanager
 from typing import Any
 from typing import Callable
@@ -27,6 +29,7 @@ from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import TypeVar
@@ -208,27 +211,13 @@ def kill_old_ids(old_ids, client):
         delete_marathon_app(app, client)
 
 
-def is_task_in_smartstack(task, service, nerve_ns, system_paasta_config):
-    try:
-        registered_tasks = get_registered_marathon_tasks(
-            synapse_host=task.host,
-            synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-            service=compose_job_id(service, nerve_ns),
-            marathon_tasks=[task],
-        )
-        return task in registered_tasks
-    except (ConnectionError, RequestException) as e:
-        log.warning(f"Failed to connect to smartstack on {task.host}, assuming task {task} is unhealthy: {e}")
-        return False
-
-
 def filter_tasks_in_smartstack(
     tasks: Collection[MarathonTask],
     service: str,
     nerve_ns: str,
     system_paasta_config: SystemPaastaConfig,
     max_hosts_to_query: int = 20,
+    haproxy_min_fraction_up: float = 1.0,
 ) -> List[MarathonTask]:
     all_hosts = list({t.host for t in tasks})
     random.shuffle(all_hosts)
@@ -237,19 +226,23 @@ def filter_tasks_in_smartstack(
     # least one host in each habitat. For clusters with 3 habitats, the odds are about 3 * (2/3) ** 20 ~= 1-in-1000.
     # The only real effect would be that the bounce would decide to kill fewer old tasks, causing us to take another
     # round. If this becomes a problem, we can try to select tasks more intelligently.
+
     selected_hosts = all_hosts[:max_hosts_to_query]
-    all_registered_tasks: Set[MarathonTask] = set()
+    registered_task_count: typing.Counter[MarathonTask] = Counter()
 
     async def get_registered_tasks_on_host(host):
-        all_registered_tasks.update(
-            set(await a_sync.to_async(get_registered_marathon_tasks)(
-                synapse_host=host,
-                synapse_port=system_paasta_config.get_synapse_port(),
-                synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-                service=compose_job_id(service, nerve_ns),
-                marathon_tasks=tasks,
-            )),
-        )
+        try:
+            registered_task_count.update(
+                set(await a_sync.to_async(get_registered_marathon_tasks)(
+                    synapse_host=host,
+                    synapse_port=system_paasta_config.get_synapse_port(),
+                    synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+                    service=compose_job_id(service, nerve_ns),
+                    marathon_tasks=tasks,
+                )),
+            )
+        except (ConnectionError, RequestException) as e:
+            log.warning(f"Failed to connect to smartstack on {host}; this may cause us to consider tasks unhealthy.")
 
     if selected_hosts:
         a_sync.block(
@@ -258,10 +251,19 @@ def filter_tasks_in_smartstack(
             timeout=30,
         )
 
-    return [t for t in tasks if t in all_registered_tasks]
+    threshold = len(selected_hosts) * haproxy_min_fraction_up
+    return [t for t in tasks if registered_task_count[t] >= threshold]
 
 
-def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):
+def get_happy_tasks(
+    app: MarathonApp,
+    service: str,
+    nerve_ns: str,
+    system_paasta_config: SystemPaastaConfig,
+    min_task_uptime: Optional[float]=None,
+    check_haproxy: bool=False,
+    haproxy_min_fraction_up: float=1.0,
+) -> List[MarathonTask]:
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
     For it to do anything interesting, set min_task_uptime or check_haproxy.
@@ -297,7 +299,13 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
         happy.append(task)
 
     if check_haproxy:
-        return filter_tasks_in_smartstack(happy, service, nerve_ns, system_paasta_config)
+        return filter_tasks_in_smartstack(
+            happy,
+            service,
+            nerve_ns,
+            system_paasta_config,
+            haproxy_min_fraction_up=haproxy_min_fraction_up,
+        )
     else:
         return happy
 

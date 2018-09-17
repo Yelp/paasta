@@ -18,18 +18,24 @@ Client interface for the Paasta rest api.
 import json
 import logging
 import os
+from typing import Any
 from urllib.parse import urlparse
 
 from bravado.client import SwaggerClient
 
 import paasta_tools.api
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 
 log = logging.getLogger(__name__)
 
 
-def get_paasta_api_client(cluster=None, system_paasta_config=None, http_res=False):
+def get_paasta_api_client(
+    cluster: str = None,
+    system_paasta_config: SystemPaastaConfig = None,
+    http_res: bool = False,
+) -> Any:
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 

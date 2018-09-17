@@ -18,7 +18,7 @@ from paasta_tools import long_running_service_tools
 from paasta_tools.utils import InvalidInstanceConfig
 
 
-class TestLongRunningServiceConfig(object):
+class TestLongRunningServiceConfig:
 
     def test_get_healthcheck_cmd_happy(self):
         fake_conf = long_running_service_tools.LongRunningServiceConfig(
@@ -223,7 +223,7 @@ class TestLongRunningServiceConfig(object):
         assert fake_conf.get_instances() == 0
 
 
-class TestServiceNamespaceConfig(object):
+class TestServiceNamespaceConfig:
 
     def test_get_mode_default(self):
         assert long_running_service_tools.ServiceNamespaceConfig().get_mode() is None

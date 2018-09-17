@@ -63,7 +63,7 @@ def list_drain_methods() -> List[str]:
 DrainTask = TypeVar('DrainTask', bound=Any)
 
 
-class DrainMethod(object):
+class DrainMethod:
     """A drain method is a way of stopping new traffic to tasks without killing them. For example, you might take a task
     out of a load balancer by causing its healthchecks to fail.
 
@@ -170,7 +170,7 @@ class HacheckDrainMethod(DrainMethod):
         expiration: float=0,
         **kwargs: Dict,
     ) -> None:
-        super(HacheckDrainMethod, self).__init__(service, instance, registrations)
+        super().__init__(service, instance, registrations)
         self.delay = float(delay)
         self.hacheck_port = hacheck_port
         self.expiration = float(expiration) or float(delay) * 10
@@ -284,7 +284,7 @@ class HTTPDrainMethod(DrainMethod):
         is_draining: UrlSpec,
         is_safe_to_kill: UrlSpec,
     ) -> None:
-        super(HTTPDrainMethod, self).__init__(service, instance, registrations)
+        super().__init__(service, instance, registrations)
         self.drain_url_spec = drain
         self.stop_draining_url_spec = stop_draining
         self.is_draining_url_spec = is_draining

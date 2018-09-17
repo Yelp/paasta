@@ -62,7 +62,7 @@ MesosState = TypedDict(
 )
 
 
-class MesosMaster(object):
+class MesosMaster:
 
     def __init__(self, config):
         self.config = config

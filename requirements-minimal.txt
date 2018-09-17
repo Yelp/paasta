@@ -28,6 +28,7 @@ pymesos >= 0.2.0
 pyramid >= 1.8
 pyramid-swagger >= 2.3.0
 pysensu-yelp >= 0.3.4
+PyStaticConfiguration
 python-crontab>=2.1.1
 python-dateutil >= 2.4.0
 python-iptables

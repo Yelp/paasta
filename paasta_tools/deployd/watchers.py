@@ -32,7 +32,7 @@ from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 class PaastaWatcher(PaastaThread):
 
     def __init__(self, inbox_q, cluster, config):
-        super(PaastaWatcher, self).__init__()
+        super().__init__()
         self.daemon = True
         self.inbox_q = inbox_q
         self.cluster = cluster
@@ -43,7 +43,7 @@ class PaastaWatcher(PaastaThread):
 class AutoscalerWatcher(PaastaWatcher):
 
     def __init__(self, inbox_q, cluster, config, **kwargs):
-        super(AutoscalerWatcher, self).__init__(inbox_q, cluster, config)
+        super().__init__(inbox_q, cluster, config)
         self.zk = kwargs.pop('zookeeper_client')
         self.watchers: Dict[str, PaastaWatcher] = {}
 
@@ -107,7 +107,7 @@ class AutoscalerWatcher(PaastaWatcher):
 class SoaFileWatcher(PaastaWatcher):
 
     def __init__(self, inbox_q, cluster, config, **kwargs):
-        super(SoaFileWatcher, self).__init__(inbox_q, cluster, config)
+        super().__init__(inbox_q, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(
@@ -133,7 +133,7 @@ class SoaFileWatcher(PaastaWatcher):
 class PublicConfigFileWatcher(PaastaWatcher):
 
     def __init__(self, inbox_q, cluster, config, **kwargs):
-        super(PublicConfigFileWatcher, self).__init__(inbox_q, cluster, config)
+        super().__init__(inbox_q, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(
@@ -158,7 +158,7 @@ class PublicConfigFileWatcher(PaastaWatcher):
 
 class MaintenanceWatcher(PaastaWatcher):
     def __init__(self, inbox_q, cluster, config, **kwargs):
-        super(MaintenanceWatcher, self).__init__(inbox_q, cluster, config)
+        super().__init__(inbox_q, cluster, config)
         self.draining: Set[str] = set()
         self.marathon_clients = get_marathon_clients_from_config()
 

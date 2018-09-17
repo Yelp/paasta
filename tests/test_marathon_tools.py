@@ -880,8 +880,8 @@ class TestMarathonTools:
             },
         ]
         fake_period = 200000
-        fake_burst = 200
-        fake_cpu_quota = fake_cpus * fake_period * (100 + fake_burst) / 100
+        fake_burst = 2
+        fake_cpu_quota = (fake_cpus + fake_burst) * fake_period
 
         expected_conf = {
             'id': mock.ANY,
@@ -935,7 +935,7 @@ class TestMarathonTools:
                 'cmd': fake_cmd,
                 'args': fake_args,
                 'cfs_period_us': fake_period,
-                'cpu_burst_pct': fake_burst,
+                'cpu_burst_add': fake_burst,
                 'healthcheck_grace_period_seconds': 3,
                 'healthcheck_interval_seconds': 10,
                 'healthcheck_timeout_seconds': 10,
@@ -1703,7 +1703,7 @@ class TestMarathonTools:
         assert actual == apps
 
 
-class TestMarathonServiceConfig(object):
+class TestMarathonServiceConfig:
 
     def test_get_healthcheck_mode_default(self):
         namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
@@ -2184,7 +2184,7 @@ def test_format_marathon_app_dict_no_smartstack():
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1088m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '250000'},
+                        {"key": "cpu-quota", "value": '125000'},
                         {"key": "label", "value": 'paasta_service=service'},
                         {"key": "label", "value": 'paasta_instance=instance'},
                     ],
@@ -2260,7 +2260,7 @@ def test_format_marathon_app_dict_with_smartstack():
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1088m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '250000'},
+                        {"key": "cpu-quota", "value": '125000'},
                         {"key": "label", "value": 'paasta_service=service'},
                         {"key": "label", "value": 'paasta_instance=instance'},
                     ],
@@ -2408,7 +2408,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1088m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '250000'},
+                        {"key": "cpu-quota", "value": '125000'},
                         {"key": "label", "value": 'paasta_service=service'},
                         {"key": "label", "value": 'paasta_instance=instance'},
                     ],

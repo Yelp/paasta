@@ -97,13 +97,12 @@ no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
 DEFAULT_CPU_PERIOD = 100000
-DEFAULT_CPU_BURST_PCT = 900
+DEFAULT_CPU_BURST_ADD = 1
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
-
 
 TimeCacheEntry = TypedDict(
     'TimeCacheEntry',
@@ -116,7 +115,7 @@ TimeCacheEntry = TypedDict(
 _CacheRetT = TypeVar('_CacheRetT')
 
 
-class time_cache(object):
+class time_cache:
     def __init__(self, ttl: float=0) -> None:
         self.configs: Dict[Tuple, TimeCacheEntry] = {}
         self.ttl = ttl
@@ -197,7 +196,7 @@ InstanceConfigDict = TypedDict(
         'cmd': str,
         'args': List[str],
         'cfs_period_us': float,
-        'cpu_burst_pct': float,
+        'cpu_burst_add': float,
         'ulimit': Dict[str, Dict[str, Any]],
         'cap_add': List,
         'env': Dict[str, str],
@@ -267,7 +266,11 @@ def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
         return None
 
 
-class InstanceConfig(object):
+# For mypy typing
+InstanceConfig_T = TypeVar('InstanceConfig_T', bound='InstanceConfig')
+
+
+class InstanceConfig:
     config_filename_prefix: str
 
     def __init__(
@@ -359,10 +362,10 @@ class InstanceConfig(object):
         cpus = self.config_dict.get('cpus', .25)
         return cpus
 
-    def get_cpu_burst_pct(self) -> float:
-        """Returns the percent over its declared cpu usage that a container
-        will be allowed to go. Default to DEFAULT_CPU_PERIOD"""
-        return self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
+    def get_cpu_burst_add(self) -> float:
+        """Returns the number of additional cpus a container is allowed to use.
+        Defaults to DEFAULT_CPU_BURST_ADD"""
+        return self.config_dict.get('cpu_burst_add', DEFAULT_CPU_BURST_ADD)
 
     def get_cpu_period(self) -> float:
         """The --cpu-period option to be passed to docker
@@ -374,11 +377,11 @@ class InstanceConfig(object):
     def get_cpu_quota(self) -> float:
         """Gets the --cpu-quota option to be passed to docker
 
-        Calculation: cpus * cfs_period_us * (100 + cpu_burst_pct) / 100
+        Calculation: (cpus + cpus_burst_add) * cfs_period_us
 
         :returns: The number to be passed to the --cpu-quota docker flag"""
-        cpu_burst_pct = self.get_cpu_burst_pct()
-        return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
+        cpu_burst_add = self.get_cpu_burst_add()
+        return (self.get_cpus() + cpu_burst_add) * self.get_cpu_period()
 
     def get_extra_docker_args(self) -> Dict[str, str]:
         return self.config_dict.get('extra_docker_args', {})
@@ -787,11 +790,12 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
         )
         if (service, instance) in service_instances:
             return instance_type
-        suggestions.extend(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
+        suggestions.append(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
     else:
+        suggestions_str = ''.join(suggestions)
         raise NoConfigurationForServiceError(
             f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
-            f"to run on the {cluster} cluster.{suggestions}",
+            f"to run on the {cluster} cluster.{suggestions_str}",
         )
 
 
@@ -1064,7 +1068,7 @@ _log_writer = None
 _log_writer_classes = {}
 
 
-class LogWriter(object):
+class LogWriter:
     def __init__(self, **kwargs: Any) -> None:
         pass
 
@@ -1518,7 +1522,7 @@ def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]]
     return SystemPaastaConfig(config, path)
 
 
-class SystemPaastaConfig(object):
+class SystemPaastaConfig:
 
     def __init__(self, config: SystemPaastaConfigDict, directory: str) -> None:
         self.directory = directory
@@ -2731,7 +2735,7 @@ def deep_merge_dictionaries(
     return result
 
 
-class ZookeeperPool(object):
+class ZookeeperPool:
     """
     A context manager that shares the same KazooClient with its children. The first nested context manager
     creates and deletes the client and shares it with any of its children. This allows to place a context
@@ -2891,7 +2895,7 @@ def timeout(
     return decorate
 
 
-class _Timeout(object):
+class _Timeout:
     def __init__(self, function: Callable[..., _TimeoutFuncRetType], seconds: float, error_message: str) -> None:
         self.seconds = seconds
         self.control: queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = queue.Queue()

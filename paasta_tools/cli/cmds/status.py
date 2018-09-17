@@ -18,11 +18,20 @@ import os
 import sys
 from collections import defaultdict
 from distutils.util import strtobool
-from typing import Dict
+from typing import Callable
+from typing import DefaultDict
+from typing import Iterable
+from typing import List
+from typing import Mapping
+from typing import Optional
+from typing import Sequence
+from typing import Set
+from typing import Tuple
 
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
+from paasta_tools import kubernetes_tools
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
@@ -30,6 +39,7 @@ from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
@@ -37,17 +47,22 @@ from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_subparser(subparsers):
+def add_subparser(
+    subparsers,
+) -> None:
     status_parser = subparsers.add_parser(
         'status',
         help="Display the status of a PaaSTA service.",
@@ -80,7 +95,10 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_status)
 
 
-def add_instance_filter_arguments(status_parser, verb='inspect'):
+def add_instance_filter_arguments(
+    status_parser,
+    verb: str = 'inspect',
+) -> None:
     status_parser.add_argument(
         '-s', '--service',
         help=f'The name of the service you wish to {verb}',
@@ -112,7 +130,9 @@ def add_instance_filter_arguments(status_parser, verb='inspect'):
     )
 
 
-def missing_deployments_message(service):
+def missing_deployments_message(
+    service: str,
+) -> str:
     message = (
         f"{service} has no deployments in deployments.json yet.\n  "
         "Has Jenkins run?"
@@ -120,7 +140,9 @@ def missing_deployments_message(service):
     return message
 
 
-def get_deploy_info(deploy_file_path):
+def get_deploy_info(
+    deploy_file_path: str,
+) -> Mapping:
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
         paasta_print('Error encountered with %s' % deploy_file_path)
@@ -129,7 +151,10 @@ def get_deploy_info(deploy_file_path):
     return deploy_info
 
 
-def get_planned_deployments(service, soa_dir):
+def get_planned_deployments(
+    service: str,
+    soa_dir: str,
+) -> Iterable[str]:
     for cluster, cluster_deploy_file in get_soa_cluster_deploy_files(
         service=service,
         soa_dir=soa_dir,
@@ -138,10 +163,13 @@ def get_planned_deployments(service, soa_dir):
             yield f'{cluster}.{instance}'
 
 
-def list_deployed_clusters(pipeline, actual_deployments):
+def list_deployed_clusters(
+    pipeline: Sequence[str],
+    actual_deployments: Sequence[str],
+) -> Sequence[str]:
     """Returns a list of clusters that a service is deployed to given
     an input deploy pipeline and the actual deployments"""
-    deployed_clusters = []
+    deployed_clusters: List[str] = []
     for namespace in pipeline:
         cluster, instance = namespace.split('.')
         if namespace in actual_deployments:
@@ -150,7 +178,10 @@ def list_deployed_clusters(pipeline, actual_deployments):
     return deployed_clusters
 
 
-def get_actual_deployments(service: str, soa_dir: str) -> Dict[str, str]:
+def get_actual_deployments(
+    service: str,
+    soa_dir: str,
+) -> Mapping[str, str]:
     deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
         paasta_print("Warning: it looks like %s has not been deployed anywhere yet!" % service, file=sys.stderr)
@@ -165,7 +196,13 @@ def get_actual_deployments(service: str, soa_dir: str) -> Dict[str, str]:
     return actual_deployments
 
 
-def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_config, verbose):
+def paasta_status_on_api_endpoint(
+    cluster: str,
+    service: str,
+    instance: str,
+    system_paasta_config: SystemPaastaConfig,
+    verbose: int,
+) -> int:
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
         paasta_print('Cannot get a paasta-api client')
@@ -180,11 +217,21 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
     paasta_print('instance: %s' % PaastaColors.blue(instance))
     paasta_print('Git sha:    %s (desired)' % status.git_sha)
 
-    marathon_status = status.marathon
-    if marathon_status is None:
+    if status.marathon is not None:
+        return print_marathon_status(service, instance, status.marathon)
+    elif status.kubernetes is not None:
+        return print_kubernetes_status(service, instance, status.kubernetes)
+    else:
         paasta_print("Not implemented: Looks like %s is not a Marathon instance" % instance)
         return 0
-    elif marathon_status.error_message:
+
+
+def print_marathon_status(
+    service: str,
+    instance: str,
+    marathon_status,
+) -> int:
+    if marathon_status.error_message:
         paasta_print(marathon_status.error_message)
         return 1
 
@@ -221,10 +268,98 @@ def paasta_status_on_api_endpoint(cluster, service, instance, system_paasta_conf
     return 0
 
 
+def kubernetes_app_deploy_status_human(status, backoff_seconds=None):
+    status_string = kubernetes_tools.KubernetesDeployStatus.tostring(status)
+
+    if status == kubernetes_tools.KubernetesDeployStatus.Waiting:
+        deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
+    elif status == kubernetes_tools.KubernetesDeployStatus.Deploying:
+        deploy_status = PaastaColors.yellow(status_string)
+    elif status == kubernetes_tools.KubernetesDeployStatus.Running:
+        deploy_status = PaastaColors.bold(status_string)
+    else:
+        deploy_status = status_string
+
+    return deploy_status
+
+
+def status_kubernetes_job_human(
+    service: str,
+    instance: str,
+    deploy_status: str,
+    desired_app_id: str,
+    app_count: int,
+    running_instances: int,
+    normal_instance_count: int,
+) -> str:
+    name = PaastaColors.cyan(compose_job_id(service, instance))
+
+    if app_count >= 0:
+        if running_instances >= normal_instance_count:
+            status = PaastaColors.green("Healthy")
+            instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
+        elif running_instances == 0:
+            status = PaastaColors.yellow("Critical")
+            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
+        else:
+            status = PaastaColors.yellow("Warning")
+            instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
+        return "Kubernetes:   {} - up with {} instances. Status: {}".format(
+            status, instance_count, deploy_status,
+        )
+    else:
+        status = PaastaColors.yellow("Warning")
+        return "Kubernetes:   {} - {} (app {}) is not configured in Kubernetes yet (waiting for bounce)".format(
+            status, name, desired_app_id,
+        )
+
+
+def print_kubernetes_status(
+    service: str,
+    instance: str,
+    kubernetes_status,
+) -> int:
+    if kubernetes_status.error_message:
+        paasta_print(kubernetes_status.error_message)
+        return 1
+
+    bouncing_status = bouncing_status_human(
+        kubernetes_status.app_count,
+        kubernetes_status.bounce_method,
+    )
+    desired_state = desired_state_human(
+        kubernetes_status.desired_state,
+        kubernetes_status.expected_instance_count,
+    )
+    paasta_print(f"State:      {bouncing_status} - Desired state: {desired_state}")
+
+    status = KubernetesDeployStatus.fromstring(kubernetes_status.deploy_status)
+    deploy_status = kubernetes_app_deploy_status_human(status)
+
+    paasta_print(
+        status_kubernetes_job_human(
+            service=service,
+            instance=instance,
+            deploy_status=deploy_status,
+            desired_app_id=kubernetes_status.app_id,
+            app_count=kubernetes_status.app_count,
+            running_instances=kubernetes_status.running_instance_count,
+            normal_instance_count=kubernetes_status.expected_instance_count,
+        ),
+    )
+    return 0
+
+
 def report_status_for_cluster(
-    service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
-    system_paasta_config, verbose=0, use_api_endpoint=False,
-):
+    service: str,
+    cluster: str,
+    deploy_pipeline: Sequence[str],
+    actual_deployments: Mapping[str, str],
+    instance_whitelist: Set[str],
+    system_paasta_config: SystemPaastaConfig,
+    verbose: int = 0,
+    use_api_endpoint: bool = False,
+) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     output = ['', 'service: %s' % service, 'cluster: %s' % cluster]
@@ -280,14 +415,18 @@ def report_status_for_cluster(
     return return_code, output
 
 
-def report_invalid_whitelist_values(whitelist, items, item_type):
+def report_invalid_whitelist_values(
+    whitelist: Optional[Set[str]],
+    items: Sequence[str],
+    item_type: str,
+) -> str:
     """Warns the user if there are entries in ``whitelist`` which don't
     correspond to any item in ``items``. Helps highlight typos.
     """
     return_string = ""
     bogus_entries = []
     if whitelist is None:
-        return
+        return ''
     for entry in whitelist:
         if entry not in items:
             bogus_entries.append(entry)
@@ -299,7 +438,11 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     return return_string
 
 
-def verify_instances(args_instances, service, clusters):
+def verify_instances(
+    args_instances: str,
+    service: str,
+    clusters: Sequence[str],
+) -> Sequence[str]:
     """Verify that a list of instances specified by user is correct for this service.
 
     :param args_instances: a list of instances.
@@ -308,14 +451,14 @@ def verify_instances(args_instances, service, clusters):
     :returns: a list of instances specified in args_instances without any exclusions.
     """
     unverified_instances = args_instances.split(",")
-    service_instances = list_all_instances_for_service(service, clusters=clusters)
+    service_instances: Set[str] = list_all_instances_for_service(service, clusters=clusters)
 
-    misspelled_instances = [i for i in unverified_instances if i not in service_instances]
+    misspelled_instances: Sequence[str] = [i for i in unverified_instances if i not in service_instances]
 
     if misspelled_instances:
-        suggestions = []
+        suggestions: List[str] = []
         for instance in misspelled_instances:
-            suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))
+            suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))  # type: ignore
         suggestions = list(set(suggestions))
 
         if clusters:
@@ -341,7 +484,10 @@ def verify_instances(args_instances, service, clusters):
     return unverified_instances
 
 
-def normalize_registrations(service, registrations):
+def normalize_registrations(
+    service: str,
+    registrations: Sequence[str],
+) -> Sequence[str]:
     ret = []
     for reg in registrations:
         if '.' not in reg:
@@ -351,7 +497,9 @@ def normalize_registrations(service, registrations):
     return ret
 
 
-def get_filters(args):
+def get_filters(
+    args,
+) -> Sequence[Callable[[InstanceConfig], bool]]:
     """Figures out which filters to apply from an args object, and returns them
 
     :param args: args object
@@ -398,7 +546,9 @@ def get_filters(args):
     return filters
 
 
-def apply_args_filters(args):
+def apply_args_filters(
+    args,
+) -> Mapping[str, Mapping[str, Set[str]]]:
     """
     Take an args object and returns the dict of cluster:service:instances
     Currently, will filter by clusters, instances, services, and deploy_groups
@@ -408,7 +558,7 @@ def apply_args_filters(args):
     :param args: args object containing attributes to filter by
     :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
     """
-    clusters_services_instances = defaultdict(lambda: defaultdict(set))
+    clusters_services_instances: DefaultDict[str, DefaultDict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
 
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
@@ -424,7 +574,7 @@ def apply_args_filters(args):
             paasta_print(PaastaColors.red(f'Did you mean any of these?'))
             for suggestion in suggestions:
                 paasta_print(PaastaColors.red(f'  {suggestion}'))
-        return {}
+        return clusters_services_instances
 
     i_count = 0
     for service in all_services:
@@ -447,14 +597,16 @@ def apply_args_filters(args):
     return clusters_services_instances
 
 
-def paasta_status(args):
+def paasta_status(
+    args,
+) -> int:
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
 
     if 'USE_API_ENDPOINT' in os.environ:
-        use_api_endpoint = strtobool(os.environ.get('USE_API_ENDPOINT'))
+        use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
     else:
         use_api_endpoint = False
 
@@ -483,8 +635,8 @@ def paasta_status(args):
                 return_codes.append(1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        tasks = [executor.submit(t[0], **t[1]) for t in tasks]
-        for future in concurrent.futures.as_completed(tasks):
+        tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
+        for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
             paasta_print('\n'.join(output))
             return_codes.append(return_code)

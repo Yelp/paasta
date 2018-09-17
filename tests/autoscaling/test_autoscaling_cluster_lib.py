@@ -52,7 +52,7 @@ def get_coro_with_exception(error):
     return f
 
 
-class AsyncNone(object):
+class AsyncNone:
     """Same as asyncio.sleep(0), but needed to be able to patch asyncio.sleep"""
 
     def __await__(self):

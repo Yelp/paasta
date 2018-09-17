@@ -34,7 +34,7 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
     """
 
     def __init__(self, name, *args, **kwargs):
-        super(DedupedPriorityQueue, self).__init__(name, *args, **kwargs)
+        super().__init__(name, *args, **kwargs)
         self.bouncing = set()
 
     def put(self, priority, service_instance, *args, **kwargs):
@@ -44,12 +44,12 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
         )
         if service_instance_key not in self.bouncing:
             self.bouncing.add(service_instance_key)
-            super(DedupedPriorityQueue, self).put(priority, service_instance, *args, **kwargs)
+            super().put(priority, service_instance, *args, **kwargs)
         else:
             self.log.debug(f"{service_instance_key} already present in {self.name}, dropping extra message")
 
     def get(self, *args, **kwargs):
-        service_instance = super(DedupedPriorityQueue, self).get(*args, **kwargs)
+        service_instance = super().get(*args, **kwargs)
         service_instance_key = "{}.{}".format(
             service_instance.service,
             service_instance.instance,
@@ -60,7 +60,7 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
 
 class Inbox(PaastaThread):
     def __init__(self, inbox_q, bounce_q):
-        super(Inbox, self).__init__()
+        super().__init__()
         self.daemon = True
         self.name = "Inbox"
         self.inbox_q = inbox_q
@@ -125,7 +125,7 @@ class AddHostnameFilter(logging.Filter):
 
 class DeployDaemon(PaastaThread):
     def __init__(self):
-        super(DeployDaemon, self).__init__()
+        super().__init__()
         self.started = False
         self.daemon = True
         service_configuration_lib.disable_yaml_cache()
@@ -149,7 +149,6 @@ class DeployDaemon(PaastaThread):
     def run(self):
         self.log.info("paasta-deployd starting up...")
         with ZookeeperPool() as self.zk:
-            self.log.info("Waiting to become leader")
             self.election = PaastaLeaderElection(
                 self.zk,
                 "/paasta-deployd-leader",
@@ -157,7 +156,9 @@ class DeployDaemon(PaastaThread):
                 control=self.control,
             )
             self.is_leader = False
+            self.log.info("Waiting to become leader")
             self.election.run(self.startup)
+            self.log.info("Leadership given up, exiting...")
 
     def bounce(self, service_instance):
         self.inbox_q.put(service_instance)
@@ -200,6 +201,7 @@ class DeployDaemon(PaastaThread):
             except Empty:
                 message = None
             if message == "ABORT":
+                self.log.info("Got ABORT message, main_loop exiting...")
                 break
             if not self.all_watchers_running():
                 self.log.error("One or more watcher died, committing suicide!")
@@ -286,9 +288,18 @@ class DeployDaemon(PaastaThread):
         for watcher in self.watcher_threads:
             watcher.start()
         self.log.info("Waiting for all watchers to start")
-        while not all([watcher.is_ready for watcher in self.watcher_threads]):
-            self.log.debug("Sleeping and waiting for watchers to all start")
+        attempts = 0
+        while attempts < 120:
+            if all([watcher.is_ready for watcher in self.watcher_threads]):
+                return
+            self.log.info("Sleeping and waiting for watchers to all start")
+            self.log.info("Waiting on: {}".format(
+                [watcher.__class__.__name__ for watcher in self.watcher_threads if not watcher.is_ready],
+            ))
             time.sleep(1)
+            attempts += 1
+        self.log.error("Failed to start all the watchers, exiting...")
+        sys.exit(1)
 
 
 def main():

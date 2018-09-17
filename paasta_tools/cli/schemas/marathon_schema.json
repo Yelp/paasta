@@ -113,7 +113,7 @@
                 "bounce_method": {
                     "type": "string"
                 },
-                "bounce_method_params": {
+                "bounce_health_params": {
                     "type": "object",
                     "properties": {
                         "check_haproxy": {
@@ -122,15 +122,13 @@
                         },
                         "min_task_uptime": {
                             "type": "number"
-                        }
-                    }
-                },
-                "bounce_health_params": {
-                    "type": "object",
-                    "properties": {
-                        "check_haproxy": {
-                            "type": "boolean",
-                            "default": true
+                        },
+                        "haproxy_min_fraction_up": {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "exclusiveMinimum": true,
+                            "exclusiveMaximum": false
                         }
                     }
                 },
@@ -291,9 +289,9 @@
                     "maximum": "1000000",
                     "exclusiveMinimum": false
                 },
-                "cpu_burst_pct": {
-                    "type": "integer",
-                    "minimum": 0,
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
                     "exclusiveMinimum": false
                 },
                 "host_port": {

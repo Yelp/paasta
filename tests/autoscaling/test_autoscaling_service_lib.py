@@ -320,10 +320,10 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_big_cpu_limit():
     |  inst  | prev cputime | elasped_time | cputime | limit |  norm_cputime  |      utilization      |
     +--------+--------------+--------------+---------+-------+----------------+-----------------------+
     | 1      |          126 |          600 |     480 |   2.1 | 480/(2.1-0.1)  | (240-126)/600 => 0.19 |
-    | 2      |            0 |          600 |    9600 |   2.1 | 9600/(2.1-0.1) | 4800/600 => 8.0       |
+    | 2      |            0 |          600 |    6000 |   2.1 | 6000/(2.1-0.1) | 3000/600 => 5.0       |
     | 3(bug) |            0 |          600 |  987654 |   2.1 | 9600/(2.1-0.1) | 493827/600 => 823     |
     | -      |            - |            - |       - |     - | -              | -                     |
-    | avg    |              |              |         |       |                | 4.095                 |
+    | avg    |              |              |         |       |                | 2.595                 |
     +--------+--------------+--------------+---------+-------+----------------+-----------------------+
     """
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
@@ -346,7 +346,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_big_cpu_limit():
         stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 2.1,
             'cpus_system_time_secs': 0,
-            'cpus_user_time_secs': 9600,
+            'cpus_user_time_secs': 6000,
         }),
     )
     fake_mesos_task_3 = mock.MagicMock(
@@ -394,7 +394,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_big_cpu_limit():
     ):
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
-        assert 4.095 == round(
+        assert 2.595 == round(
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
@@ -410,11 +410,11 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
     +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
     |  inst  | prev norm_cputime | elasped_time | cputime | limit |  norm_cputime   |     utilization      |
     +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
-    | 1      |              1234 |          600 |   603.4 |   0.2 | 603.4/(0.2-0.1) | (6034-1234)/600 => 8 |
+    | 1      |              1234 |          600 |   423.4 |   0.2 | 423.4/(0.2-0.1) | (4234-1234)/600 => 5 |
     | 2      |                 0 |          600 |      48 |   0.2 | 48/(0.2-0.1)    | 480/600 => 0.8       |
     | 3(bug) |                 0 |          600 |    1234 |   0.2 | 1234/(0.2-0.1)  | 12340/600 => 20.5    |
     | -      |                 - |            - |       - |     - | -               | -                    |
-    | avg    |                   |              |         |       |                 | 4.4                  |
+    | avg    |                   |              |         |       |                 | 2.9                  |
     +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
     """
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
@@ -430,7 +430,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
         stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 103.4,
-            'cpus_user_time_secs': 500,
+            'cpus_user_time_secs': 320,
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
@@ -485,7 +485,7 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
     ):
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
-        assert 4.4 == round(
+        assert 2.9 == round(
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
@@ -498,15 +498,15 @@ def test_mesos_cpu_metrics_provider_filter_bogus_values_small_cpu_limit():
 
 def test_mesos_cpu_metrics_provider_filter_no_bogus_values_10_percent_cpu_limit():
     """
-    +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
-    |  inst  | prev norm_cputime | elasped_time | cputime | limit |  norm_cputime   |     utilization      |
-    +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
-    | 1      |              1234 |          600 |   603.4 |   0.2 | 603.4/(0.2-0.1) | (6034-1234)/600 => 8 |
-    | 2      |                 0 |          600 |      48 |   0.2 | 48/(0.2-0.1)    | 480/600 => 0.8       |
-    | 3      |                 0 |          600 |    630  |   0.2 | 630 /(0.2-0.1)  | 6300 /600 => 10.5    |
-    | -      |                 - |            - |       - |     - | -               | -                    |
-    | avg    |                   |              |         |       |                 | 6.4333               |
-    +--------+-------------------+--------------+---------+-------+-----------------+----------------------+
+    +--------+-------------------+--------------+---------+-------+-----------------+-------------------------+
+    |  inst  | prev norm_cputime | elasped_time | cputime | limit |  norm_cputime   |     utilization         |
+    +--------+-------------------+--------------+---------+-------+-----------------+-------------------------+
+    | 1      |              1234 |          600 |   323.4 |   0.2 | 323.4/(0.2-0.1) | (3234-1234)/600 => 3.33 |
+    | 2      |                 0 |          600 |      48 |   0.2 | 48/(0.2-0.1)    | 480/600 => 0.8          |
+    | 3      |                 0 |          600 |     300 |   0.2 | 300 /(0.2-0.1)  | 3000 /600 => 5          |
+    | -      |                 - |            - |       - |     - | -               | -                       |
+    | avg    |                   |              |         |       |                 | 3.044                   |
+    +--------+-------------------+--------------+---------+-------+-----------------+-------------------------+
     """
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -521,7 +521,7 @@ def test_mesos_cpu_metrics_provider_filter_no_bogus_values_10_percent_cpu_limit(
         stats=asynctest.CoroutineMock(return_value={
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 103.4,
-            'cpus_user_time_secs': 500,
+            'cpus_user_time_secs': 220,
         }),
     )
     fake_mesos_task_2 = mock.MagicMock(
@@ -536,7 +536,7 @@ def test_mesos_cpu_metrics_provider_filter_no_bogus_values_10_percent_cpu_limit(
             'cpus_limit': 0.2,
             'cpus_system_time_secs': 0,
             # bogus
-            'cpus_user_time_secs': 630,
+            'cpus_user_time_secs': 300,
         }),
     )
     fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
@@ -576,14 +576,14 @@ def test_mesos_cpu_metrics_provider_filter_no_bogus_values_10_percent_cpu_limit(
     ):
         mock_datetime.now.return_value = current_time
         log_utilization_data = {}
-        assert 6.4333 == round(
+        assert 3.044 == round(
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
                 fake_marathon_tasks,
                 (fake_mesos_task_2, fake_mesos_task_3, fake_mesos_task),
                 log_utilization_data=log_utilization_data,
-            ), 4,
+            ), 3,
         )
 
 

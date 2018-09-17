@@ -31,7 +31,7 @@ def build_filled_context(*context_objects):
     return functools.reduce(build, context_objects, None)
 
 
-class CommandContext(object):
+class CommandContext:
     """A CommandContext object is a wrapper around any object which has values
     to be used to render a command for execution.  It looks up values by name.
 
@@ -75,7 +75,7 @@ class CommandContext(object):
         return not self == other
 
 
-class JobContext(object):
+class JobContext:
     """A class which exposes properties for rendering commands."""
 
     def __init__(self, job):
@@ -107,7 +107,7 @@ class JobContext(object):
         return parts
 
 
-class JobRunContext(object):
+class JobRunContext:
 
     def __init__(self, job_run):
         self.job_run = job_run
@@ -137,7 +137,7 @@ class JobRunContext(object):
         raise KeyError(name)
 
 
-class ActionRunContext(object):
+class ActionRunContext:
     """Context object that gives us access to data about the action run."""
 
     def __init__(self, action_run):
@@ -152,7 +152,7 @@ class ActionRunContext(object):
         return self.action_run.node.hostname
 
 
-class ServiceInstancePidContext(object):
+class ServiceInstancePidContext:
 
     def __init__(self, service_instance):
         self.service_instance = service_instance
@@ -178,7 +178,7 @@ class ServiceInstanceContext(ServiceInstancePidContext):
         return self.service_instance.config.pid_file % context
 
 
-class Filler(object):
+class Filler:
     """Filler object for using CommandContext during config parsing. This class
     is used as a substitute for objects that would be passed to Context objects.
     This allows the Context objects to be used directly for config validation.
