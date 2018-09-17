@@ -197,8 +197,12 @@ class TestConfigureAndRunDockerContainer:
             'paasta_tools.cli.cmds.spark_run.clusterman_metrics', autospec=True,
         ):
             mock_emit_resource_requirements.side_effect = Boto3Error
+            mock_create_spark_config_str.return_value = '--conf spark.cores.max=5'
 
-            args = mock.MagicMock(suppress_clusterman_metrics_errors=False)
+            args = mock.MagicMock(
+                suppress_clusterman_metrics_errors=False,
+                cmd='pyspark',
+            )
             with pytest.raises(Boto3Error):
                 configure_and_run_docker_container(
                     args=args,
@@ -215,6 +219,34 @@ class TestConfigureAndRunDockerContainer:
                 instance_config=self.instance_config,
                 system_paasta_config=self.system_paasta_config,
             )
+
+    def test_dont_emit_metrics_for_inappropriate_commands(
+        self,
+        mock_time,
+        mock_run_docker_container,
+        mock_create_spark_config_str,
+        mock_get_spark_config,
+        mock_get_username,
+        mock_pick_random_port,
+        mock_os_path_exists,
+        mock_get_aws_credentials,
+    ):
+        mock_get_aws_credentials.return_value = ('id', 'secret')
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
+        ) as mock_emit_resource_requirements, mock.patch(
+            'paasta_tools.cli.cmds.spark_run.clusterman_metrics', autospec=True,
+        ):
+            mock_create_spark_config_str.return_value = '--conf spark.cores.max=5'
+            args = mock.MagicMock(cmd='bash')
+
+            configure_and_run_docker_container(
+                args=args,
+                docker_img='fake-registry/fake-service',
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+            )
+            assert not mock_emit_resource_requirements.called
 
 
 def test_emit_resource_requirements(tmpdir):
@@ -249,11 +281,11 @@ def test_emit_resource_requirements(tmpdir):
             f'{name}|framework_name={dims["framework_name"]}'
         )
 
-        emit_resource_requirements(spark_config_dict, 'anywhere-prod')
+        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'cool-pool')
 
         mock_clusterman_metrics.ClustermanMetricsBotoClient.assert_called_once_with(
             region_name='us-north-14',
-            app_identifier='spark',
+            app_identifier='cool-pool',
         )
         metrics_writer = mock_clusterman_metrics.ClustermanMetricsBotoClient.return_value.\
             get_writer.return_value.__enter__.return_value
