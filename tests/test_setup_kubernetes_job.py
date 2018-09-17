@@ -180,6 +180,10 @@ def test_reconcile_kubernetes_deployment():
         mock_kube_client = mock.Mock()
         mock_deployments: Sequence[KubeDeployment] = []
 
+        service_config = mock.MagicMock()
+        service_config.get_desired_instances.return_value = 5
+        mock_load_kubernetes_service_config_no_cache.return_value = service_config
+
         # no deployments so should create
         ret = reconcile_kubernetes_deployment(
             kube_client=mock_kube_client,
@@ -218,21 +222,25 @@ def test_reconcile_kubernetes_deployment():
 
         # instance correc so do nothing
         mock_create_kubernetes_application.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
-            return_value=V1Deployment(
-                metadata=V1ObjectMeta(
-                    labels={
-                        'git_sha': 'a12345',
-                        'config_sha': 'b12345',
-                    },
-                ),
-                spec=V1DeploymentSpec(
-                    selector=V1LabelSelector(),
-                    template=V1PodTemplateSpec(),
-                    replicas=3,
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
+            get_desired_instances=mock.Mock(return_value=3),
+            get_bounce_margin_factor=mock.Mock(return_value=1),
+            format_kubernetes_app=mock.Mock(
+                return_value=V1Deployment(
+                    metadata=V1ObjectMeta(
+                        labels={
+                            'git_sha': 'a12345',
+                            'config_sha': 'b12345',
+                        },
+                    ),
+                    spec=V1DeploymentSpec(
+                        selector=V1LabelSelector(),
+                        template=V1PodTemplateSpec(),
+                        replicas=3,
+                    ),
                 ),
             ),
-        ))
+        )
         mock_deployments = [KubeDeployment(
             service='kurupt',
             instance='fm',
@@ -253,21 +261,25 @@ def test_reconcile_kubernetes_deployment():
 
         # changed gitsha so update
         mock_create_kubernetes_application.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
-            return_value=V1Deployment(
-                metadata=V1ObjectMeta(
-                    labels={
-                        'git_sha': 'new_image',
-                        'config_sha': 'b12345',
-                    },
-                ),
-                spec=V1DeploymentSpec(
-                    selector=V1LabelSelector(),
-                    template=V1PodTemplateSpec(),
-                    replicas=3,
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
+            get_desired_instances=mock.Mock(return_value=3),
+            get_bounce_margin_factor=mock.Mock(return_value=1),
+            format_kubernetes_app=mock.Mock(
+                return_value=V1Deployment(
+                    metadata=V1ObjectMeta(
+                        labels={
+                            'git_sha': 'new_image',
+                            'config_sha': 'b12345',
+                        },
+                    ),
+                    spec=V1DeploymentSpec(
+                        selector=V1LabelSelector(),
+                        template=V1PodTemplateSpec(),
+                        replicas=3,
+                    ),
                 ),
             ),
-        ))
+        )
         mock_deployments = [KubeDeployment(
             service='kurupt',
             instance='fm',
@@ -293,21 +305,25 @@ def test_reconcile_kubernetes_deployment():
         # changed configsha so update
         mock_create_kubernetes_application.reset_mock()
         mock_update_kubernetes_application.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
-            return_value=V1Deployment(
-                metadata=V1ObjectMeta(
-                    labels={
-                        'git_sha': 'a12345',
-                        'config_sha': 'newconfig',
-                    },
-                ),
-                spec=V1DeploymentSpec(
-                    selector=V1LabelSelector(),
-                    template=V1PodTemplateSpec(),
-                    replicas=3,
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
+            get_desired_instances=mock.Mock(return_value=3),
+            get_bounce_margin_factor=mock.Mock(return_value=1),
+            format_kubernetes_app=mock.Mock(
+                return_value=V1Deployment(
+                    metadata=V1ObjectMeta(
+                        labels={
+                            'git_sha': 'a12345',
+                            'config_sha': 'newconfig',
+                        },
+                    ),
+                    spec=V1DeploymentSpec(
+                        selector=V1LabelSelector(),
+                        template=V1PodTemplateSpec(),
+                        replicas=3,
+                    ),
                 ),
             ),
-        ))
+        )
         mock_deployments = [KubeDeployment(
             service='kurupt',
             instance='fm',
@@ -333,21 +349,25 @@ def test_reconcile_kubernetes_deployment():
         # changed number of replicas so update
         mock_create_kubernetes_application.reset_mock()
         mock_update_kubernetes_application.reset_mock()
-        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(format_kubernetes_app=mock.Mock(
-            return_value=V1Deployment(
-                metadata=V1ObjectMeta(
-                    labels={
-                        'git_sha': 'a12345',
-                        'config_sha': 'b12345',
-                    },
-                ),
-                spec=V1DeploymentSpec(
-                    selector=V1LabelSelector(),
-                    template=V1PodTemplateSpec(),
-                    replicas=2,
+        mock_load_kubernetes_service_config_no_cache.return_value = mock.Mock(
+            get_desired_instances=mock.Mock(return_value=3),
+            get_bounce_margin_factor=mock.Mock(return_value=1),
+            format_kubernetes_app=mock.Mock(
+                return_value=V1Deployment(
+                    metadata=V1ObjectMeta(
+                        labels={
+                            'git_sha': 'a12345',
+                            'config_sha': 'b12345',
+                        },
+                    ),
+                    spec=V1DeploymentSpec(
+                        selector=V1LabelSelector(),
+                        template=V1PodTemplateSpec(),
+                        replicas=2,
+                    ),
                 ),
             ),
-        ))
+        )
         mock_deployments = [KubeDeployment(
             service='kurupt',
             instance='fm',
