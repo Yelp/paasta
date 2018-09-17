@@ -2,6 +2,8 @@
 [![Coverage Status](https://coveralls.io/repos/Yelp/paasta/badge.svg?branch=master&service=github)](https://coveralls.io/github/Yelp/paasta?branch=master)
 [![Download](https://api.bintray.com/packages/yelp/paasta/paasta-tools/images/download.svg)](https://bintray.com/yelp/paasta/paasta-tools/_latestVersion)
 [![Documentation Status](https://readthedocs.org/projects/paasta/badge/?version=latest)](https://paasta.readthedocs.io/en/latest/?badge=latest)
+[![Code Quality: Python](https://img.shields.io/lgtm/grade/python/g/Yelp/paasta.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Yelp/paasta/context:python)
+[![Total Alerts](https://img.shields.io/lgtm/alerts/g/Yelp/paasta.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Yelp/paasta/alerts)
 
 # PaaSTA - Build, Deploy, Connect, and Monitor Services
 ![PaaSTA Logo](http://engineeringblog.yelp.com/images/previews/paasta_preview.png)
