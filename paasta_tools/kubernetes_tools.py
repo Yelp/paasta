@@ -804,7 +804,6 @@ class KubeClient:
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
-            # fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fget=models.V1beta1PodDisruptionBudgetStatus.disrupted_pods,
             fset=set_disrupted_pods,
         )
