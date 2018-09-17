@@ -28,6 +28,7 @@ import requests
 import service_configuration_lib
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import models
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
@@ -65,7 +66,6 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.paastakube.api_client import ApiClient
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
@@ -106,6 +106,10 @@ KubeService = NamedTuple(
         ('pod_ip', str),
     ],
 )
+
+
+def set_disrupted_pods(self, disrupted_pods):
+    self._disrupted_pods = disrupted_pods
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -791,7 +795,12 @@ def get_kubernetes_services_running_here_for_nerve(
 class KubeClient():
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
-        self.deployments = kube_client.AppsV1Api(ApiClient())
+        models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
+            # fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
+            fget=models.V1beta1PodDisruptionBudgetStatus.disrupted_pods,
+            fset=set_disrupted_pods,
+        )
+        self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
 
