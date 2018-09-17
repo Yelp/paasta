@@ -1,3 +1,12 @@
+paasta-tools (0.80.3) xenial; urgency=medium
+
+  * 0.80.3 tagged with 'make release'
+    Commit: Merge pull request #1978 from Yelp/selston_PAASTA-
+    14776_spark_resource_followups  tag clusterman metrics with spark-
+    run resources requirements with paa…
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 17 Sep 2018 14:54:37 -0700
+
 paasta-tools (0.80.2) xenial; urgency=medium
 
   * 0.80.2 tagged with 'make release'
