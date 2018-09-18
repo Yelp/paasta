@@ -275,6 +275,8 @@ def test_emit_resource_requirements(tmpdir):
         clusterman_yaml_file_path,
         autospec=None,  # we're replacing this name, so we can't autospec
     ), mock.patch(
+        'paasta_tools.cli.cmds.spark_run.staticconf', autospec=True,
+    ), mock.patch(
         'time.time', return_value=1234, autospec=True,
     ):
         mock_clusterman_metrics.generate_key_with_dimensions.side_effect = lambda name, dims: (
