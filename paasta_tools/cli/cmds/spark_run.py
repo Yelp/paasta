@@ -33,11 +33,12 @@ from paasta_tools.utils import SystemPaastaConfig
 try:
     import clusterman_metrics
     CLUSTERMAN_YAML_FILE_PATH = '/nail/srv/configs/clusterman.yaml'
-    staticconf.YamlConfiguration('/nail/srv/configs/clusterman_metrics.yaml', namespace='clusterman_metrics')
+    CLUSTERMAN_METRICS_YAML_FILE_PATH = '/nail/srv/configs/clusterman_metrics.yaml'
 except ImportError:
     # our cluster autoscaler is not currently open source, sorry!
     clusterman_metrics = None
     CLUSTERMAN_YAML_FILE_PATH = None
+    CLUSTERMAN_METRICS_YAML_FILE_PATH = None
 
 AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
 DEFAULT_SERVICE = 'spark'
@@ -528,6 +529,7 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
 
     paasta_print('Sending resource request metrics to Clusterman')
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
+    staticconf.YamlConfiguration(CLUSTERMAN_METRICS_YAML_FILE_PATH, namespace='clusterman_metrics')
     metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier=pool)
 
     with metrics_client.get_writer(clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True) as writer:
