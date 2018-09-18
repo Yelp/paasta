@@ -5,7 +5,6 @@ import socket
 import sys
 import time
 
-import staticconf
 from boto3.exceptions import Boto3Error
 from botocore.session import Session
 from ruamel.yaml import YAML
@@ -17,6 +16,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import pick_random_port
+from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 from paasta_tools.utils import _run
@@ -30,15 +30,6 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-try:
-    import clusterman_metrics
-    CLUSTERMAN_YAML_FILE_PATH = '/nail/srv/configs/clusterman.yaml'
-    CLUSTERMAN_METRICS_YAML_FILE_PATH = '/nail/srv/configs/clusterman_metrics.yaml'
-except ImportError:
-    # our cluster autoscaler is not currently open source, sorry!
-    clusterman_metrics = None
-    CLUSTERMAN_YAML_FILE_PATH = None
-    CLUSTERMAN_METRICS_YAML_FILE_PATH = None
 
 AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
 DEFAULT_SERVICE = 'spark'
@@ -47,6 +38,8 @@ DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
 SENSITIVE_ENV = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
+clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
+
 
 deprecated_opts = {
     'j': 'spark.jars',
@@ -529,7 +522,6 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
 
     paasta_print('Sending resource request metrics to Clusterman')
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
-    staticconf.YamlConfiguration(CLUSTERMAN_METRICS_YAML_FILE_PATH, namespace='clusterman_metrics')
     metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier=pool)
 
     with metrics_client.get_writer(clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True) as writer:

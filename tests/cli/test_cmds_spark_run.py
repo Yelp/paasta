@@ -269,13 +269,13 @@ def test_emit_resource_requirements(tmpdir):
         YAML().dump(clusterman_yaml_contents, f)
 
     with mock.patch(
+        'paasta_tools.cli.cmds.spark_run.get_clusterman_metrics', autospec=True,
+    ), mock.patch(
         'paasta_tools.cli.cmds.spark_run.clusterman_metrics', autospec=True,
     ) as mock_clusterman_metrics, mock.patch(
         'paasta_tools.cli.cmds.spark_run.CLUSTERMAN_YAML_FILE_PATH',
         clusterman_yaml_file_path,
         autospec=None,  # we're replacing this name, so we can't autospec
-    ), mock.patch(
-        'paasta_tools.cli.cmds.spark_run.staticconf', autospec=True,
     ), mock.patch(
         'time.time', return_value=1234, autospec=True,
     ):
