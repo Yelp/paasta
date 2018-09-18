@@ -15,6 +15,7 @@
 import copy
 import logging
 import math
+from datetime import datetime
 from typing import Any
 from typing import Dict
 from typing import List
@@ -113,7 +114,10 @@ KubeService = NamedTuple(
 )
 
 
-def set_disrupted_pods(self, disrupted_pods):
+def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
+    """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
+    Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
+    """
     self._disrupted_pods = disrupted_pods
 
 
@@ -805,7 +809,7 @@ class KubeClient:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=models.V1beta1PodDisruptionBudgetStatus.disrupted_pods,
-            fset=set_disrupted_pods,
+            fset=_set_disrupted_pods,
         )
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
