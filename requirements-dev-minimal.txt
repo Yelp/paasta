@@ -4,6 +4,7 @@ coverage
 docutils
 flake8
 freezegun
+hypothesis
 mock
 path.py
 pep8
