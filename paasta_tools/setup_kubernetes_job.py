@@ -28,10 +28,14 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from kubernetes.client import V1beta1PodDisruptionBudget
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
+from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
@@ -39,6 +43,8 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.kubernetes_tools import max_unavailable
+from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import decompose_job_id
@@ -162,17 +168,73 @@ def reconcile_kubernetes_deployment(
             kube_client=kube_client,
             application=formatted_application,
         )
-        return 0, None
     elif desired_deployment not in kube_deployments:
         log.debug(f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed")
         update_kubernetes_application(
             kube_client=kube_client,
             application=formatted_application,
         )
-        return 0, None
     else:
         log.debug(f"{desired_deployment} is up to date, no action taken")
-        return 0, None
+
+    ensure_pod_disruption_budget(
+        kube_client=kube_client,
+        service=service,
+        instance=instance,
+        min_instances=service_instance_config.get_desired_instances() - max_unavailable(
+            instance_count=service_instance_config.get_desired_instances(),
+            bounce_margin_factor=service_instance_config.get_bounce_margin_factor(),
+        ),
+    )
+    return 0, None
+
+
+def ensure_pod_disruption_budget(
+        kube_client: KubeClient,
+        service: str,
+        instance: str,
+        min_instances: int,
+) -> V1beta1PodDisruptionBudget:
+    pdr = pod_disruption_budget_for_service_instance(
+        service=service,
+        instance=instance,
+        min_instances=min_instances,
+    )
+    try:
+        existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
+            name=pdr.metadata.name,
+            namespace=pdr.metadata.namespace,
+        )
+    except ApiException as e:
+        if e.status == 404:
+            existing_pdr = None
+        else:
+            raise
+
+    if existing_pdr:
+        if existing_pdr.spec.min_available != pdr.spec.min_available:
+            # poddisruptionbudget objects are not mutable like most things in the kubernetes api,
+            # so we have to do a delete/replace.
+            # unfortunately we can't really do this transactionally, but I guess we'll just hope for the best?
+            logging.debug(f'existing poddisruptionbudget {pdr.metadata.name} is out of date; deleting')
+            kube_client.policy.delete_namespaced_pod_disruption_budget(
+                name=pdr.metadata.name,
+                namespace=pdr.metadata.namespace,
+                body=V1DeleteOptions(),
+            )
+            logging.debug(f'creating poddisruptionbudget {pdr.metadata.name}')
+            return create_pod_disruption_budget(
+                kube_client=kube_client,
+                pod_disruption_budget=pdr,
+            )
+        else:
+            logging.debug(f'poddisruptionbudget {pdr.metadata.name} up to date')
+    else:
+        logging.debug(f'creating poddisruptionbudget {pdr.metadata.name}')
+        return create_pod_disruption_budget(
+            kube_client=kube_client,
+            pod_disruption_budget=pdr,
+        )
 
 
 def create_kubernetes_application(kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]) -> None:

@@ -14,6 +14,8 @@
 """
 import copy
 import logging
+import math
+from datetime import datetime
 from typing import Any
 from typing import Dict
 from typing import List
@@ -29,7 +31,10 @@ import requests
 import service_configuration_lib
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import models
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
+from kubernetes.client import V1beta1PodDisruptionBudget
+from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1Deployment
@@ -107,6 +112,13 @@ KubeService = NamedTuple(
         ('pod_ip', str),
     ],
 )
+
+
+def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
+    """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
+    Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
+    """
+    self._disrupted_pods = disrupted_pods
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -795,8 +807,13 @@ def get_kubernetes_services_running_here_for_nerve(
 class KubeClient:
     def __init__(self) -> None:
         kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
+        models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
+            fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
+            fset=_set_disrupted_pods,
+        )
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
+        self.policy = kube_client.PolicyV1beta1Api()
 
 
 def ensure_paasta_namespace(kube_client: KubeClient) -> None:
@@ -836,6 +853,45 @@ def list_deployments(
             replicas=item.spec.replicas,
         ) for item in deployments.items + stateful_sets.items
     ]
+
+
+def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
+    if instance_count == 0:
+        return 0
+    else:
+        return max(
+            instance_count - int(math.ceil(instance_count * bounce_margin_factor)),
+            1,
+        )
+
+
+def pod_disruption_budget_for_service_instance(
+    service: str,
+    instance: str,
+    min_instances: int,
+) -> V1beta1PodDisruptionBudget:
+    return V1beta1PodDisruptionBudget(
+        metadata=V1ObjectMeta(
+            name=f"{service}-{instance}",
+            namespace="paasta",
+        ),
+        spec=V1beta1PodDisruptionBudgetSpec(
+            min_available=min_instances,
+            selector=V1LabelSelector(
+                match_labels={
+                    "service": service,
+                    "instance": instance,
+                },
+            ),
+        ),
+    )
+
+
+def create_pod_disruption_budget(kube_client: KubeClient, pod_disruption_budget: V1beta1PodDisruptionBudget) -> None:
+    return kube_client.policy.create_namespaced_pod_disruption_budget(
+        namespace='paasta',
+        body=pod_disruption_budget,
+    )
 
 
 def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:

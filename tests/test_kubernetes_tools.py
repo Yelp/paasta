@@ -3,7 +3,11 @@ from typing import Sequence
 
 import mock
 import pytest
+from hypothesis import given
+from hypothesis.strategies import floats
+from hypothesis.strategies import integers
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
+from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1Deployment
@@ -32,6 +36,7 @@ from kubernetes.client import V1VolumeMount
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
@@ -49,6 +54,8 @@ from paasta_tools.kubernetes_tools import KubeService
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.kubernetes_tools import max_unavailable
+from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
 from paasta_tools.kubernetes_tools import read_all_registrations_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
@@ -1051,6 +1058,42 @@ def test_list_all_deployments():
             replicas=3,
         ),
     ]
+
+
+@given(integers(min_value=0), floats(min_value=0, max_value=1.0))
+def test_max_unavailable(instances, bmf):
+    res = max_unavailable(instances, bmf)
+    if instances == 0:
+        assert res == 0
+    if instances > 0:
+        assert res >= 1 and res <= instances
+    assert type(res) is int
+
+
+def test_pod_disruption_budget_for_service_instance():
+    x = pod_disruption_budget_for_service_instance(
+        service='foo',
+        instance='bar',
+        min_instances=10,
+    )
+
+    assert x.metadata.name == "foo-bar"
+    assert x.metadata.namespace == "paasta"
+    assert x.spec.min_available == 10
+    assert x.spec.selector.match_labels == {
+        'service': 'foo',
+        'instance': 'bar',
+    }
+
+
+def test_create_pod_disruption_budget():
+    mock_client = mock.Mock()
+    mock_pdr = V1beta1PodDisruptionBudget()
+    create_pod_disruption_budget(mock_client, mock_pdr)
+    mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(
+        namespace='paasta',
+        body=mock_pdr,
+    )
 
 
 def test_create_deployment():
