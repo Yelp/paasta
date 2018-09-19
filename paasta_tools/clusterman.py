@@ -9,7 +9,7 @@ def get_clusterman_metrics():
         import clusterman_metrics
         clusterman_yaml = CLUSTERMAN_YAML_FILE_PATH
         staticconf.YamlConfiguration(CLUSTERMAN_METRICS_YAML_FILE_PATH, namespace='clusterman_metrics')
-    except ImportError:
+    except (ImportError, FileNotFoundError):
         # our cluster autoscaler is not currently open source, sorry!
         clusterman_metrics = None
         clusterman_yaml = None
