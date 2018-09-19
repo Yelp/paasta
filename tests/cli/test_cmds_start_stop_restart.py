@@ -151,8 +151,12 @@ def test_paasta_start_or_stop(
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
-        'cluster1': {'fake_service': ['main1', 'canary']},
-        'cluster2': {'fake_service': ['main1', 'canary']},
+        'cluster1': {
+            'fake_service': {'main1': None, 'canary': None},
+        },
+        'cluster2': {
+            'fake_service': {'main1': None, 'canary': None},
+        },
     }
     ret = args.command(args)
     c1_get_instance_config_call = mock.call(
@@ -236,7 +240,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
-        'cluster1': {'fake_service': ['instance1']},
+        'cluster1': {'fake_service': {'instance1': None}},
     }
     ret = args.command(args)
 
@@ -291,8 +295,12 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
-        'cluster1': {'fake_service': ['main1']},
-        'cluster2': {'fake_service': ['main1', 'canary']},
+        'cluster1': {
+            'fake_service': {'main1': None},
+        },
+        'cluster2': {
+            'fake_service': {'main1': None, 'canary': None},
+        },
     }
     ret = args.command(args)
     c1_get_instance_config_call = mock.call(
@@ -394,8 +402,8 @@ def test_start_or_stop_bad_refs(
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783",
     }
     mock_apply_args_filters.return_value = {
-        'fake_cluster1': {'fake_service': ['fake_instance']},
-        'fake_cluster2': {'fake_service': ['fake_instance']},
+        'fake_cluster1': {'fake_service': {'fake_instance': None}},
+        'fake_cluster2': {'fake_service': {'fake_instance': None}},
     }
     assert args.command(args) == 1
     assert "No branches found for" in capfd.readouterr()[0]
@@ -438,8 +446,13 @@ def test_stop_or_start_warn_on_multi_instance(
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
-        'cluster1': {'fake_service': ['main1'], 'other_service': ['main1']},
-        'cluster2': {'fake_service': ['main1', 'canary']},
+        'cluster1': {
+            'fake_service': {'main1': None},
+            'other_service': {'main1': None},
+        },
+        'cluster2': {
+            'fake_service': {'main1': None, 'canary': None},
+        },
     }
     ret = args.command(args)
     out, err = capfd.readouterr()

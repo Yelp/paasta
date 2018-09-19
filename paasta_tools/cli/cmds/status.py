@@ -20,13 +20,14 @@ from collections import defaultdict
 from distutils.util import strtobool
 from typing import Callable
 from typing import DefaultDict
+from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Mapping
-from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import Type
 
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
@@ -39,6 +40,7 @@ from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import list_services
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
@@ -58,6 +60,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
+HTTP_ONLY_INSTANCE_CONFIG = [KubernetesDeploymentConfig]
 
 
 def add_subparser(
@@ -200,6 +203,7 @@ def paasta_status_on_api_endpoint(
     cluster: str,
     service: str,
     instance: str,
+    output: List[str],
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
 ) -> int:
@@ -214,25 +218,26 @@ def paasta_status_on_api_endpoint(
         paasta_print(exc.response.text)
         return exc.status_code
 
-    paasta_print('instance: %s' % PaastaColors.blue(instance))
-    paasta_print('Git sha:    %s (desired)' % status.git_sha)
+    output.append('    instance: %s' % PaastaColors.blue(instance))
+    output.append('    Git sha:    %s (desired)' % status.git_sha)
 
     if status.marathon is not None:
-        return print_marathon_status(service, instance, status.marathon)
+        return print_marathon_status(service, instance, output, status.marathon)
     elif status.kubernetes is not None:
-        return print_kubernetes_status(service, instance, status.kubernetes)
+        return print_kubernetes_status(service, instance, output, status.kubernetes)
     else:
-        paasta_print("Not implemented: Looks like %s is not a Marathon instance" % instance)
+        paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
 
 
 def print_marathon_status(
     service: str,
     instance: str,
+    output: List[str],
     marathon_status,
 ) -> int:
     if marathon_status.error_message:
-        paasta_print(marathon_status.error_message)
+        output.append(marathon_status.error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
@@ -243,7 +248,7 @@ def print_marathon_status(
         marathon_status.desired_state,
         marathon_status.expected_instance_count,
     )
-    paasta_print(f"State:      {bouncing_status} - Desired state: {desired_state}")
+    output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
     status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
     if status != MarathonDeployStatus.NotRunning:
@@ -254,15 +259,17 @@ def print_marathon_status(
     else:
         deploy_status = 'NotRunning'
 
-    paasta_print(
-        status_marathon_job_human(
-            service=service,
-            instance=instance,
-            deploy_status=deploy_status,
-            desired_app_id=marathon_status.app_id,
-            app_count=marathon_status.app_count,
-            running_instances=marathon_status.running_instance_count,
-            normal_instance_count=marathon_status.expected_instance_count,
+    output.append(
+        "    {}".format(
+            status_marathon_job_human(
+                service=service,
+                instance=instance,
+                deploy_status=deploy_status,
+                desired_app_id=marathon_status.app_id,
+                app_count=marathon_status.app_count,
+                running_instances=marathon_status.running_instance_count,
+                normal_instance_count=marathon_status.expected_instance_count,
+            ),
         ),
     )
     return 0
@@ -317,10 +324,11 @@ def status_kubernetes_job_human(
 def print_kubernetes_status(
     service: str,
     instance: str,
+    output: List[str],
     kubernetes_status,
 ) -> int:
     if kubernetes_status.error_message:
-        paasta_print(kubernetes_status.error_message)
+        output.append(kubernetes_status.error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
@@ -331,20 +339,22 @@ def print_kubernetes_status(
         kubernetes_status.desired_state,
         kubernetes_status.expected_instance_count,
     )
-    paasta_print(f"State:      {bouncing_status} - Desired state: {desired_state}")
+    output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
     status = KubernetesDeployStatus.fromstring(kubernetes_status.deploy_status)
     deploy_status = kubernetes_app_deploy_status_human(status)
 
-    paasta_print(
-        status_kubernetes_job_human(
-            service=service,
-            instance=instance,
-            deploy_status=deploy_status,
-            desired_app_id=kubernetes_status.app_id,
-            app_count=kubernetes_status.app_count,
-            running_instances=kubernetes_status.running_instance_count,
-            normal_instance_count=kubernetes_status.expected_instance_count,
+    output.append(
+        "    {}".format(
+            status_kubernetes_job_human(
+                service=service,
+                instance=instance,
+                deploy_status=deploy_status,
+                desired_app_id=kubernetes_status.app_id,
+                app_count=kubernetes_status.app_count,
+                running_instances=kubernetes_status.running_instance_count,
+                normal_instance_count=kubernetes_status.expected_instance_count,
+            ),
         ),
     )
     return 0
@@ -355,7 +365,7 @@ def report_status_for_cluster(
     cluster: str,
     deploy_pipeline: Sequence[str],
     actual_deployments: Mapping[str, str],
-    instance_whitelist: Set[str],
+    instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
     use_api_endpoint: bool = False,
@@ -365,6 +375,11 @@ def report_status_for_cluster(
     output = ['', 'service: %s' % service, 'cluster: %s' % cluster]
     seen_instances = []
     deployed_instances = []
+    instances = instance_whitelist.keys()
+    http_only_instances = [
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
+        in HTTP_ONLY_INSTANCE_CONFIG
+    ]
 
     for namespace in deploy_pipeline:
         cluster_in_pipeline, instance = namespace.split('.')
@@ -372,7 +387,7 @@ def report_status_for_cluster(
 
         if cluster_in_pipeline != cluster:
             continue
-        if instance_whitelist and instance not in instance_whitelist:
+        if instances and instance not in instances:
             continue
 
         # Case: service deployed to cluster.instance
@@ -384,24 +399,28 @@ def report_status_for_cluster(
             output.append('  instance: %s' % PaastaColors.red(instance))
             output.append('    Git sha:    None (not deployed yet)')
 
-    return_code = 0
+    ssh_instances = [i for i in deployed_instances if i not in http_only_instances]
+    api_return_code = 0
+    ssh_return_code = 0
     if len(deployed_instances) > 0:
-        if use_api_endpoint:
+        if use_api_endpoint or http_only_instances:
             return_codes = [
                 paasta_status_on_api_endpoint(
-                    cluster,
-                    service,
-                    deployed_instance,
-                    system_paasta_config,
+                    cluster=cluster,
+                    service=service,
+                    instance=deployed_instance,
+                    output=output,
+                    system_paasta_config=system_paasta_config,
                     verbose=verbose,
                 )
                 for deployed_instance in deployed_instances
+                if (deployed_instance in http_only_instances or use_api_endpoint)
             ]
             if any(return_code != 200 for return_code in return_codes):
-                return_code = 1
-        else:
-            return_code, status = execute_paasta_serviceinit_on_remote_master(
-                'status', cluster, service, ','.join(deployed_instances),
+                api_return_code = 1
+        if not use_api_endpoint and ssh_instances or not http_only_instances:
+            ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
+                'status', cluster, service, ','.join(ssh_instances),
                 system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
             )
@@ -410,13 +429,20 @@ def report_status_for_cluster(
                 for line in status.rstrip().split('\n'):
                     output.append('    %s' % line)
 
-    output.append(report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance'))
+    output.append(report_invalid_whitelist_values(instances, seen_instances, 'instance'))
+
+    if ssh_return_code:
+        return_code = ssh_return_code
+    elif api_return_code:
+        return_code = api_return_code
+    else:
+        return_code = 0
 
     return return_code, output
 
 
 def report_invalid_whitelist_values(
-    whitelist: Optional[Set[str]],
+    whitelist: Iterable[str],
     items: Sequence[str],
     item_type: str,
 ) -> str:
@@ -548,7 +574,7 @@ def get_filters(
 
 def apply_args_filters(
     args,
-) -> Mapping[str, Mapping[str, Set[str]]]:
+) -> Mapping[str, Mapping[str, Mapping[str, Type[InstanceConfig]]]]:
     """
     Take an args object and returns the dict of cluster:service:instances
     Currently, will filter by clusters, instances, services, and deploy_groups
@@ -558,7 +584,12 @@ def apply_args_filters(
     :param args: args object containing attributes to filter by
     :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
     """
-    clusters_services_instances: DefaultDict[str, DefaultDict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
+    clusters_services_instances: DefaultDict[
+        str,
+        DefaultDict[
+            str, Dict[str, Type[InstanceConfig]]
+        ]
+    ] = defaultdict(lambda: defaultdict(dict))
 
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
@@ -583,7 +614,8 @@ def apply_args_filters(
 
         for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
             if all([f(instance_conf) for f in filters]):
-                clusters_services_instances[instance_conf.get_cluster()][service].add(instance_conf.get_instance())
+                cluster_service = clusters_services_instances[instance_conf.get_cluster()][service]
+                cluster_service[instance_conf.get_instance()] = instance_conf.__class__
                 i_count += 1
 
     if i_count == 0 and args.service and args.instances:
