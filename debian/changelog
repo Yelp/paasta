@@ -1,3 +1,12 @@
+paasta-tools (0.80.4) xenial; urgency=medium
+
+  * 0.80.4 tagged with 'make release'
+    Commit: Merge pull request #1979 from Yelp/drmorr/PAASTA-
+    14625/paasta_boost_for_clusterman  adding clusterman metrics for
+    paasta boost
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 18 Sep 2018 17:49:59 -0700
+
 paasta-tools (0.80.3) xenial; urgency=medium
 
   * 0.80.3 tagged with 'make release'
