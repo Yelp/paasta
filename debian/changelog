@@ -1,3 +1,12 @@
+paasta-tools (0.80.5) xenial; urgency=medium
+
+  * 0.80.5 tagged with 'make release'
+    Commit: Merge pull request #1986 from
+    Yelp/selston_really_fix_manpages_this_time  Fix regression in
+    manpages build
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 19 Sep 2018 10:58:52 -0700
+
 paasta-tools (0.80.4) xenial; urgency=medium
 
   * 0.80.4 tagged with 'make release'
