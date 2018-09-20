@@ -18,7 +18,7 @@ before_cache:
 python:
   - "3.6"
 env:
-  - TOXENV=py36,coverage,docs,mypy
+  - TOXENV=py36,docs,mypy
   - TOXENV=general_itests
   - TOXENV=paasta_itests
   - TOXENV=example_cluster

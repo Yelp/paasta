@@ -13,8 +13,6 @@ tags
 venv
 .bash_history
 .lesshst
-.coverage
-coverage-html/
 
 # Generated debian artifacts
 debian/paasta-tools/
