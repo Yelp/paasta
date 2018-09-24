@@ -1,6 +1,5 @@
 astroid
 asynctest
-coverage
 docutils
 flake8
 freezegun
