@@ -17,6 +17,9 @@ specify the following options:
     available free CPU, but is guaranteed to get the CPU shares specified.  For
     a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
 
+    * ``cpu_burst_add``: Number of additional CPUs an instance may use while
+      bursting; if unspecified, PaaSTA defaults to 1.
+
   * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
     memory is constrained to the specified limit, and tasks will reach
     out-of-memory (OOM) conditions if they attempt to exceed these limits, and
