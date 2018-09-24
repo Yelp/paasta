@@ -554,6 +554,30 @@ def execute_paasta_serviceinit_on_remote_master(
         return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
+def get_paasta_metastatus_cmd_args(
+    groupings: Sequence[str],
+    verbose: int = 0,
+    autoscaling_info: bool = False,
+    use_mesos_cache: bool = False,
+) -> Tuple[Sequence[str], int]:
+    if verbose > 0:
+        verbose_arg = ["-%s" % ('v' * verbose)]
+        timeout = 120
+    else:
+        verbose_arg = []
+        timeout = 20
+    autoscaling_arg = ["-a"] if autoscaling_info else []
+    if autoscaling_arg and verbose < 2:
+        verbose_arg = ['-vv']
+    groupings_args = ["-g", *groupings] if groupings else []
+    cache_arg = ["--use-mesos-cache"] if use_mesos_cache else []
+    cmd_args = [
+        *verbose_arg, *groupings_args,
+        *autoscaling_arg, *cache_arg,
+    ]
+    return cmd_args, timeout
+
+
 def run_paasta_metastatus(
     master: str,
     groupings: Sequence[str],
@@ -561,28 +585,15 @@ def run_paasta_metastatus(
     autoscaling_info: bool = False,
     use_mesos_cache: bool = False,
 ) -> Tuple[int, str]:
-    if verbose > 0:
-        verbose_flag = "-%s" % ('v' * verbose)
-        timeout = 120
-    else:
-        verbose_flag = ''
-        timeout = 20
-    autoscaling_flag = "-a" if autoscaling_info else ""
-    if autoscaling_flag and verbose < 2:
-        verbose_flag = '-vv'
-    groupings_flag = "-g %s" % " ".join(groupings) if groupings else ''
-    cache_flag = "--use-mesos-cache" if use_mesos_cache else ''
-    cmd_args = " ".join(
-        filter(
-            None, [
-                verbose_flag, groupings_flag,
-                autoscaling_flag, cache_flag,
-            ],
-        ),
+    cmd_args, timeout = get_paasta_metastatus_cmd_args(
+        groupings=groupings,
+        verbose=verbose,
+        autoscaling_info=autoscaling_info,
+        use_mesos_cache=use_mesos_cache,
     )
     command = ('ssh -A -n -o StrictHostKeyChecking=no {} sudo paasta_metastatus {}'.format(
         master,
-        cmd_args,
+        " ".join(cmd_args),
     )).strip()
     return_code, output = _run(command, timeout=timeout)
     return return_code, output

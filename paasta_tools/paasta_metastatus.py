@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import io
 import itertools
 import logging
 import sys
@@ -45,6 +46,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+from paasta_tools.utils import set_paasta_print_file
 
 
 log = logging.getLogger('paasta_metastatus')
@@ -54,6 +56,14 @@ logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 logging.getLogger("paasta_tools.autoscaling.autoscaling_cluster_lib").setLevel(logging.ERROR)
 
 ServiceInstanceStats = TypedDict('ServiceInstanceStats', {'mem': float, 'cpus': float, 'disk': float, 'gpus': float})
+
+
+class FatalError(Exception):
+    def __init__(
+        self,
+        exit_code: int,
+    ) -> None:
+        self.exit_code = exit_code
 
 
 def parse_args(argv):
@@ -118,7 +128,7 @@ def _run_marathon_checks(marathon_clients):
         return marathon_results
     except (MarathonError, ValueError) as e:
         paasta_print(PaastaColors.red(f"CRITICAL: Unable to contact Marathon cluster: {e}"))
-        sys.exit(2)
+        raise FatalError(2)
 
 
 def all_marathon_clients(marathon_clients):
@@ -236,7 +246,7 @@ def get_service_instance_stats(service: str, instance: str, cluster: str) -> Opt
         return None
 
 
-def main(argv: Optional[List[str]]=None) -> None:
+def print_output(argv: Optional[List[str]]=None) -> None:
     chronos_config = None
     args = parse_args(argv)
 
@@ -262,7 +272,7 @@ def main(argv: Optional[List[str]]=None) -> None:
         # if we can't connect to master at all,
         # then bomb out early
         paasta_print(PaastaColors.red("CRITICAL:  %s" % '\n'.join(e.args)))
-        sys.exit(2)
+        raise FatalError(2)
 
     # Check to see if Chronos should be running here by checking for config
     chronos_config = load_chronos_config()
@@ -273,7 +283,7 @@ def main(argv: Optional[List[str]]=None) -> None:
             chronos_results = metastatus_lib.get_chronos_status(chronos_client)
         except (chronos.ChronosAPIError) as e:
             paasta_print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
-            sys.exit(2)
+            raise FatalError(2)
     else:
         chronos_results = [metastatus_lib.HealthCheckResult(
             message='Chronos is not configured to run here',
@@ -338,9 +348,29 @@ def main(argv: Optional[List[str]]=None) -> None:
     metastatus_lib.print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
     if not healthy_exit:
-        sys.exit(2)
-    else:
-        sys.exit(0)
+        raise FatalError(2)
+
+
+def get_output(argv: Optional[List[str]]=None) -> Tuple[str, int]:
+    output = io.StringIO()
+    exit_code = 1
+    with set_paasta_print_file(output):
+        exit_code = 0
+        try:
+            print_output(argv)
+        except FatalError as e:
+            exit_code = e.exit_code
+    ret = output.getvalue()
+    return ret, exit_code
+
+
+def main(argv: Optional[List[str]]=None) -> None:
+    exit_code = 0
+    try:
+        print_output(argv)
+    except FatalError as e:
+        exit_code = e.exit_code
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':

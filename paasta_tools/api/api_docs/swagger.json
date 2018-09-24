@@ -35,6 +35,36 @@
         "operationId": "showVersion"
       }
     },
+    "/metastatus": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "description": "comma separated list of command arguments",
+            "name": "cmd_args",
+            "required": true,
+            "type": "array",
+            "collectionFormat": "csv",
+            "items": {
+              "type": "string"
+            }
+          }
+	],
+        "responses": {
+          "200": {
+            "description": "Detailed metastatus",
+            "schema": {
+              "$ref": "#/definitions/MetaStatus"
+            }
+          },
+          "500": {
+            "description": "Metastatus failure"
+          }
+        },
+        "summary": "Get metastatus",
+        "operationId": "metastatus"
+      }
+    },
     "/service_autoscaler/pause": {
       "get": {
         "responses": {
@@ -809,6 +839,20 @@
         "shard_url": {
           "type": "string",
           "description": "Marathon Shard URL"
+        }
+      }
+    },
+    "MetaStatus": {
+      "type": "object",
+      "description": "Result of `paasta metastatus` command",
+      "properties": {
+        "output": {
+          "type": "string",
+          "description": "Output from `paasta metastatus` command"
+        },
+        "exit_code": {
+          "type": "integer",
+          "description": "Exit code from `paasta metastatus` command"
         }
       }
     },
