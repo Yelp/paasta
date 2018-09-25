@@ -1,3 +1,11 @@
+paasta-tools (0.80.7) xenial; urgency=medium
+
+  * 0.80.7 tagged with 'make release'
+    Commit: Merge pull request #1992 from Yelp/missing-tron-action-attrs
+    Add missing tron action fields
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 25 Sep 2018 07:20:41 -0700
+
 paasta-tools (0.80.6) xenial; urgency=medium
 
   * 0.80.6 tagged with 'make release'
