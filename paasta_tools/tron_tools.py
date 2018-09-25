@@ -145,6 +145,15 @@ class TronActionConfig(InstanceConfig):
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
+    def get_triggered_by(self):
+        return self.config_dict.get('triggered_by', None)
+
+    def get_trigger_downstreams(self):
+        return self.config_dict.get('trigger_downstreams', None)
+
+    def get_on_upstream_rerun(self):
+        return self.config_dict.get('on_upstream_rerun', None)
+
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
@@ -362,6 +371,9 @@ def format_tron_action_dict(action_config):
         'retries': action_config.get_retries(),
         'retries_delay': action_config.get_retries_delay(),
         'expected_runtime': action_config.get_expected_runtime(),
+        'trigger_downstreams': action_config.get_trigger_downstreams(),
+        'triggered_by': action_config.get_triggered_by(),
+        'on_upstream_rerun': action_config.get_on_upstream_rerun(),
     }
     if executor == 'mesos':
         result['cpus'] = action_config.get_cpus()
