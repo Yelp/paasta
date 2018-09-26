@@ -169,7 +169,7 @@ def set_boost_factor(
         cluster = load_system_paasta_config().get_cluster()
         metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=region, app_identifier='default')
         with metrics_client.get_writer(clusterman_metrics.APP_METRICS) as writer:
-            metrics_key = clusterman_metrics.generate_key_from_dimensions(
+            metrics_key = clusterman_metrics.generate_key_with_dimensions(
                 'boost_factor',
                 {'cluster': cluster, 'pool': pool},
             )
