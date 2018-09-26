@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
-from bravado.exception import HTTPError
-from bravado.requests_client import RequestsResponseAdapter
 
 from paasta_tools.api.client import get_paasta_api_client
-from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 
 
 def test_get_paasta_api_client(system_paasta_config):
@@ -28,49 +25,3 @@ def test_get_paasta_api_client(system_paasta_config):
 
         client = get_paasta_api_client()
         assert client
-
-
-class Struct:
-    """
-    convert a dictionary to an object
-    """
-
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
-
-
-def test_paasta_status(system_paasta_config):
-    fake_dict = {"git_sha": "fake_git_sha", "instance": "fake_instance", "service": "fake_service"}
-    fake_dict2 = {
-        "error_message": None, "desired_state": "start",
-        "app_id": "fake_app_id", "app_count": 1,
-        "running_instance_count": 2, "expected_instance_count": 2,
-        "deploy_status": "Running", "bounce_method": "crossover",
-    }
-    fake_status_obj = Struct(**fake_dict)
-    fake_status_obj.marathon = Struct(**fake_dict2)
-
-    system_paasta_config = system_paasta_config
-
-    with mock.patch('bravado.http_future.HttpFuture.result', autospec=True) as mock_result:
-        mock_result.return_value = fake_status_obj
-        paasta_status_on_api_endpoint(
-            'fake_cluster', 'fake_service', 'fake_instance',
-            system_paasta_config, verbose=False,
-        )
-
-
-def test_paasta_status_exception(system_paasta_config):
-    system_paasta_config = system_paasta_config
-
-    with mock.patch('paasta_tools.cli.cmds.status.get_paasta_api_client', autospec=True) as mock_get_paasta_api_client:
-        requests_response = mock.Mock(status_code=500, reason='Internal Server Error')
-        incoming_response = RequestsResponseAdapter(requests_response)
-
-        mock_swagger_client = mock.Mock()
-        mock_swagger_client.service.status_instance.side_effect = HTTPError(incoming_response)
-        mock_get_paasta_api_client.return_value = mock_swagger_client
-        paasta_status_on_api_endpoint(
-            'fake_cluster', 'fake_service', 'fake_instance',
-            system_paasta_config, verbose=False,
-        )

@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections import namedtuple
+from typing import Any
 from typing import Dict
 from typing import Set
 
+from bravado.exception import HTTPError
+from bravado.requests_client import RequestsResponseAdapter
 from mock import ANY
 from mock import call
 from mock import MagicMock
 from mock import Mock
 from mock import patch
-from mock import sentinel
 from pytest import mark
 from pytest import raises
 
@@ -29,10 +31,12 @@ from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
+from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.cmds.status import verify_instances
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
 def make_fake_instance_conf(cluster, service, instance, deploy_group=None, team=None, registrations=()):
@@ -115,10 +119,10 @@ def test_report_status_for_cluster_displays_deployed_service(
     actual_deployments = {
         'fake_cluster.fake_instance': 'sha',
     }
-    instance_whitelist: Set[str] = set()
+    instance_whitelist: Dict[str, Any] = {}
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
-        sentinel.return_value,
+        0,
         fake_status,
     )
     expected_output = (
@@ -157,10 +161,10 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
     actual_deployments = {
         'cluster.instance': 'this_is_a_sha',
     }
-    instance_whitelist: Set[str] = set()
+    instance_whitelist: Dict[str, Any] = {}
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
-        sentinel.return_value,
+        0,
         fake_status,
     )
     expected_output = (
@@ -198,10 +202,10 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         'fake_cluster.fake_instance_a': '533976a9',
         'fake_cluster.fake_instance_b': '533976a9',
     }
-    instance_whitelist: Set[str] = set()
+    instance_whitelist: Dict[str, Any] = {}
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
-        sentinel.return_value,
+        0,
         fake_status,
     )
     expected_output = (
@@ -243,10 +247,10 @@ def test_print_cluster_status_missing_deploys_in_red(
     actual_deployments = {
         'a_cluster.a_instance': '533976a981679d586bed1cfb534fdba4b4e2c815',
     }
-    instance_whitelist: Set[str] = set()
+    instance_whitelist: Dict[str, Any] = {}
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
-        sentinel.return_value,
+        0,
         fake_status,
     )
     expected_output = (
@@ -291,11 +295,11 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
     }
-    instance_whitelist: Set[str] = set()
+    instance_whitelist: Dict[str, Any] = {}
 
     fake_output = "Marathon: 5 instances"
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
-        sentinel.return_value,
+        0,
         fake_output,
     )
     expected_output = "    %s\n" % fake_output
@@ -319,6 +323,69 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
+@patch('paasta_tools.cli.cmds.status.paasta_status_on_api_endpoint', autospec=True)
+@patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
+def test_cluster_status_serviceinit_and_api_method(
+    mock_report_invalid_whitelist_values,
+    mock_paasta_status_on_api_endpoint,
+    mock_execute_paasta_serviceinit_on_remote_master,
+    system_paasta_config,
+):
+    service = 'fake_service'
+    planned_deployments = [
+        'a_cluster.a_instance',
+        'a_cluster.b_instance',
+    ]
+    actual_deployments = {
+        'a_cluster.a_instance': 'this_is_a_sha',
+    }
+    instance_whitelist: Dict[str, Any] = {'a_instance': None, 'b_instance': None}
+
+    fake_output = "Marathon: 5 instances"
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = (
+        0,
+        fake_output,
+    )
+    expected_output = "    %s\n" % fake_output
+    _, output = status.report_status_for_cluster(
+        service=service,
+        cluster='a_cluster',
+        deploy_pipeline=planned_deployments,
+        actual_deployments=actual_deployments,
+        instance_whitelist=instance_whitelist,
+        system_paasta_config=system_paasta_config,
+        verbose=False,
+    )
+    assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
+    assert mock_paasta_status_on_api_endpoint.call_count == 0
+    mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
+        'status', 'a_cluster', service, 'a_instance', system_paasta_config,
+        stream=False, verbose=False, ignore_ssh_output=True,
+    )
+
+    output = '\n'.join(str(line) for line in output)
+    assert expected_output in output
+
+    instance_whitelist: Dict[str, Any] = {'a_instance': None, 'b_instance': KubernetesDeploymentConfig}
+    actual_deployments = {
+        'a_cluster.a_instance': 'this_is_a_sha',
+        'a_cluster.b_instance': 'another_sha',
+    }
+    expected_output = "    %s\n" % fake_output
+    _, output = status.report_status_for_cluster(
+        service=service,
+        cluster='a_cluster',
+        deploy_pipeline=planned_deployments,
+        actual_deployments=actual_deployments,
+        instance_whitelist=instance_whitelist,
+        system_paasta_config=system_paasta_config,
+        verbose=False,
+    )
+    assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 2
+    assert mock_paasta_status_on_api_endpoint.call_count == 1
+
+
+@patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
 def test_report_status_for_cluster_obeys_instance_whitelist(
     mock_report_invalid_whitelist_values,
@@ -331,10 +398,10 @@ def test_report_status_for_cluster_obeys_instance_whitelist(
         'fake_cluster.fake_instance_a': 'sha',
         'fake_cluster.fake_instance_b': 'sha',
     }
-    instance_whitelist = {'fake_instance_a'}
+    instance_whitelist = {'fake_instance_a': None}
 
     mock_execute_paasta_serviceinit_on_remote_master.return_value = (
-        sentinel.return_value,
+        0,
         'fake_output',
     )
 
@@ -362,7 +429,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
     service = 'fake_service'
     planned_deployments = ['cluster.instance1', 'cluster.instance2']
     actual_deployments: Dict[str, str] = {}
-    instance_whitelist: Set[str] = set()
+    instance_whitelist: Dict[str, Any] = {}
 
     status.report_status_for_cluster(
         service=service,
@@ -373,7 +440,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
         system_paasta_config=system_paasta_config,
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
-        instance_whitelist,
+        {}.keys(),
         ['instance1', 'instance2'],
         'instance',
     )
@@ -514,7 +581,7 @@ def test_status_calls_sergeants(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         cluster=cluster,
-        instance_whitelist={'fi'},
+        instance_whitelist={'fi': mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
         verbose=False,
         use_api_endpoint=False,
@@ -572,15 +639,18 @@ def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_gro
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
+    mock_inst1 = make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group')
+    mock_inst2 = make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group')
+    mock_inst3 = make_fake_instance_conf('cluster2', 'fake_service', 'instance3', 'fake_deploy_group')
     mock_get_instance_configs_for_service.return_value = [
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group'),
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group'),
-        make_fake_instance_conf('cluster2', 'fake_service', 'instance3', 'fake_deploy_group'),
+        mock_inst1,
+        mock_inst2,
+        mock_inst3,
     ]
 
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ['cluster1']
-    assert pargs['cluster1']['fake_service'] == {'instance1'}
+    assert pargs['cluster1']['fake_service'] == {'instance1': mock_inst1.__class__}
 
 
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
@@ -602,16 +672,19 @@ def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_inst
 
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
+    mock_inst1 = make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group')
+    mock_inst2 = make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group')
+    mock_inst3 = make_fake_instance_conf('cluster2', 'fake_service', 'instance3', 'fake_deploy_group')
     mock_get_instance_configs_for_service.return_value = [
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group'),
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group'),
-        make_fake_instance_conf('cluster2', 'fake_service', 'instance3', 'fake_deploy_group'),
+        mock_inst1,
+        mock_inst2,
+        mock_inst3,
     ]
 
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ['cluster1', 'cluster2']
-    assert pargs['cluster1']['fake_service'] == {'instance1', 'instance2'}
-    assert pargs['cluster2']['fake_service'] == {'instance3'}
+    assert pargs['cluster1']['fake_service'] == {'instance1': mock_inst1.__class__, 'instance2': mock_inst2.__class__}
+    assert pargs['cluster2']['fake_service'] == {'instance3': mock_inst3.__class__}
 
 
 @patch('paasta_tools.cli.cmds.status.get_instance_configs_for_service', autospec=True)
@@ -686,15 +759,18 @@ def test_apply_args_filters_clusters_and_instances(
     )
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
+    mock_inst1 = make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group')
+    mock_inst2 = make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group')
+    mock_inst3 = make_fake_instance_conf('cluster1', 'fake_service', 'instance3', 'fake_deploy_group')
     mock_get_instance_configs_for_service.return_value = [
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'fake_deploy_group'),
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'fake_deploy_group'),
-        make_fake_instance_conf('cluster1', 'fake_service', 'instance3', 'fake_deploy_group'),
+        mock_inst1,
+        mock_inst2,
+        mock_inst3,
     ]
 
     pargs = apply_args_filters(args)
     assert sorted(pargs.keys()) == ['cluster1']
-    assert pargs['cluster1']['fake_service'] == {'instance1', 'instance3'}
+    assert pargs['cluster1']['fake_service'] == {'instance1': mock_inst1.__class__, 'instance3': mock_inst3.__class__}
 
 
 @patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
@@ -891,8 +967,62 @@ def test_status_with_registration(
         cluster=cluster,
         deploy_pipeline=ANY,
         actual_deployments=ANY,
-        instance_whitelist={'instance1', 'instance2'},
+        instance_whitelist={'instance1': mock_inst_1.__class__, 'instance2': mock_inst_2.__class__},
         system_paasta_config=system_paasta_config,
         verbose=args.verbose,
         use_api_endpoint=ANY,
     )
+
+
+class Struct:
+    """
+    convert a dictionary to an object
+    """
+
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
+
+def test_paasta_status(system_paasta_config):
+    fake_dict = {"git_sha": "fake_git_sha", "instance": "fake_instance", "service": "fake_service"}
+    fake_dict2 = {
+        "error_message": None, "desired_state": "start",
+        "app_id": "fake_app_id", "app_count": 1,
+        "running_instance_count": 2, "expected_instance_count": 2,
+        "deploy_status": "Running", "bounce_method": "crossover",
+    }
+    fake_status_obj = Struct(**fake_dict)
+    fake_status_obj.marathon = Struct(**fake_dict2)
+
+    system_paasta_config = system_paasta_config
+
+    with patch('bravado.http_future.HttpFuture.result', autospec=True) as mock_result:
+        mock_result.return_value = fake_status_obj
+        paasta_status_on_api_endpoint(
+            cluster='fake_cluster',
+            service='fake_service',
+            instance='fake_instance',
+            output=[],
+            system_paasta_config=system_paasta_config,
+            verbose=False,
+        )
+
+
+def test_paasta_status_exception(system_paasta_config):
+    system_paasta_config = system_paasta_config
+
+    with patch('paasta_tools.cli.cmds.status.get_paasta_api_client', autospec=True) as mock_get_paasta_api_client:
+        requests_response = Mock(status_code=500, reason='Internal Server Error')
+        incoming_response = RequestsResponseAdapter(requests_response)
+
+        mock_swagger_client = Mock()
+        mock_swagger_client.service.status_instance.side_effect = HTTPError(incoming_response)
+        mock_get_paasta_api_client.return_value = mock_swagger_client
+        paasta_status_on_api_endpoint(
+            cluster='fake_cluster',
+            service='fake_service',
+            instance='fake_instance',
+            output=[],
+            system_paasta_config=system_paasta_config,
+            verbose=False,
+        )

@@ -156,7 +156,7 @@ def paasta_start_or_stop(args, desired_state):
             paasta_print("Cluster %s:" % cluster)
             for service, instances in services_instances.items():
                 paasta_print("    Service %s:" % service)
-                paasta_print("        Instances %s" % ",".join(instances))
+                paasta_print("        Instances %s" % ",".join(instances.keys()))
 
         if sys.stdin.isatty():
             confirm = choice.Binary('Are you sure you want to continue?', False).ask()
@@ -184,7 +184,7 @@ def paasta_start_or_stop(args, desired_state):
                 paasta_print(msg)
                 return 1
 
-            for instance in instances:
+            for instance in instances.keys():
                 service_config = get_instance_config(
                     service=service,
                     cluster=cluster,
