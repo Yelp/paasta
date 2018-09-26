@@ -1,7 +1,19 @@
+#!/usr/bin/env python3.6
 import sys
 from collections import defaultdict
 
+import iptc
+
+from paasta_tools import iptables
 from paasta_tools.utils import get_docker_client
+
+
+def list_docker_nat_rules():
+    chain_name = 'DOCKER'
+    table = iptc.Table(iptc.Table.NAT)
+    chain = iptc.Chain(table, chain_name)
+    for rule in chain.rules:
+        yield iptables.Rule.from_iptc(rule)
 
 
 def main():
@@ -33,7 +45,24 @@ def main():
         return 2
     else:
         print('OK - No Docker containers sharing an IP on this host.')
-        return 0
+
+    targets_seen = {}
+    duplicates_found = False
+    for rule in list_docker_nat_rules():
+        target = rule.target_parameters
+        if target not in targets_seen:
+            targets_seen[target] = rule
+        else:
+            print("This is the second time we've seen a rule with the same target_parameters!")
+            print(rule)
+            print("The other rule with that target is:")
+            print(targets_seen[target])
+            duplicates_found = True
+    if duplicates_found is True:
+        print("CRITICAL - Duplicate iptables rules found! This will route traffic to the wrong service!")
+        return 2
+    else:
+        print("OK - No duplicate Docker iptables rules detected")
 
 
 if __name__ == '__main__':
