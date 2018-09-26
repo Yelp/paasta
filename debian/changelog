@@ -1,6 +1,14 @@
 paasta-tools (0.80.8) xenial; urgency=medium
 
   * 0.80.8 tagged with 'make release'
+    Commit: Merge pull request #1994 from Yelp/drmorr/fix_cluster_boost
+    fix cluster boost
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 26 Sep 2018 11:12:50 -0700
+
+paasta-tools (0.80.8) xenial; urgency=medium
+
+  * 0.80.8 tagged with 'make release'
     Commit: Merge pull request #1987 from Yelp/paasta-status-api-
     improvements  Update paasta status to use http api when needed
 
