@@ -1,3 +1,17 @@
+paasta-tools (0.80.9) xenial; urgency=medium
+
+  * 0.80.9 tagged with 'make release'
+    Commit: Released 0.80.8 via make release
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 26 Sep 2018 14:55:13 -0700
+
+paasta-tools (0.80.8) xenial; urgency=medium
+
+  * 0.80.8 tagged with 'make release'
+    Commit: Released 0.80.8 via make release
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 26 Sep 2018 11:29:54 -0700
+
 paasta-tools (0.80.8) xenial; urgency=medium
 
   * 0.80.8 tagged with 'make release'
