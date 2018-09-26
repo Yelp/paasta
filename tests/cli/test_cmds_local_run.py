@@ -1489,7 +1489,18 @@ def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_ti
     mock_parse_time_variables.return_value = "foo"
     fn = command_function_for_framework('chronos', fake_date)
     fn("foo")
-    mock_parse_time_variables.assert_called_once_with('foo', fake_date)
+    mock_parse_time_variables.assert_called_once_with('foo', fake_date, use_percent=True)
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.parse_time_variables', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.datetime', autospec=True)
+def test_command_function_for_framework_for_tron(mock_datetime, mock_parse_time_variables):
+    fake_date = mock.Mock()
+    mock_datetime.datetime.now.return_value = fake_date
+    mock_parse_time_variables.return_value = "foo"
+    fn = command_function_for_framework('tron', fake_date)
+    fn("foo")
+    mock_parse_time_variables.assert_called_once_with('foo', fake_date, use_percent=False)
 
 
 def test_command_function_for_framework_throws_error():

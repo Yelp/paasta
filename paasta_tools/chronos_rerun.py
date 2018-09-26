@@ -77,7 +77,7 @@ def modify_command_for_date(chronos_job, date, verbose):
     """
     current_command = chronos_job['command']
     if current_command is not None:
-        chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date)
+        chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date, use_percent=True)
     else:
         if verbose:
             job_name = ".".join(chronos_tools.decompose_job_id(chronos_job['name']))

@@ -10,11 +10,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import difflib
 import glob
 import os
 import re
 import subprocess
+from string import Formatter
 from typing import List
 from typing import Tuple
 
@@ -26,6 +28,7 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper
 
 from paasta_tools.tron.client import TronClient
+from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
@@ -95,6 +98,50 @@ def decompose_instance(instance):
     if len(decomposed) != 2:
         raise InvalidInstanceConfig('Invalid instance name: %s' % instance)
     return (decomposed[0], decomposed[1])
+
+
+class StringFormatter(Formatter):
+    def __init__(self, context=None):
+        Formatter.__init__(self)
+        self.context = context
+
+    def get_value(self, key, args, kwds):
+        if isinstance(key, str):
+            try:
+                return kwds[key]
+            except KeyError:
+                return self.context[key]
+            else:
+                return Formatter.get_value(key, args, kwds)
+
+
+def parse_time_variables(
+    command: str,
+    parse_time: datetime.datetime=None,
+    use_percent: bool=False,
+) -> str:
+    """Parses an input string and uses the Tron-style dateparsing
+    to replace time variables. Currently supports only the date/time
+    variables listed in the tron documentation:
+    http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc
+
+    :param input_string: input string to be parsed
+    :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
+    :returns: A string with the date and time variables replaced
+    """
+    if parse_time is None:
+        parse_time = datetime.datetime.now()
+    # We build up a tron context object that has the right
+    # methods to parse tron-style time syntax
+    job_context = tron_command_context.JobRunContext(tron_command_context.CommandContext())
+    # The tron context object needs the run_time attribute set so it knows
+    # how to interpret the date strings
+    job_context.job_run.run_time = parse_time
+    # The job_context object works like a normal dictionary for string replacement
+    if use_percent:
+        return command % job_context
+    else:
+        return StringFormatter(job_context).format(command)
 
 
 class TronActionConfig(InstanceConfig):

@@ -32,7 +32,7 @@ from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.secret_tools import get_secret_hashes
-from paasta_tools.tron import tron_command_context
+from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
@@ -396,7 +396,7 @@ class ChronosJobConfig(InstanceConfig):
         command = self.get_cmd()
         if command:
             try:
-                parse_time_variables(command)
+                parse_time_variables(command, use_percent=True)
                 return True, ""
             except (ValueError, KeyError, TypeError):
                 return False, ("Unparseable command '%s'. Hint: do you need to escape %% chars?") % command
@@ -530,7 +530,7 @@ class ChronosJobConfig(InstanceConfig):
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
             'constraints': constraints,
-            'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
+            'command': parse_time_variables(self.get_cmd(), use_percent=True) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
             'retries': self.get_retries(),
@@ -924,34 +924,12 @@ def parse_execution_date(execution_date_string):
     return parsed
 
 
-def parse_time_variables(input_string, parse_time=None):
-    """Parses an input string and uses the Tron-style dateparsing
-    to replace time variables. Currently supports only the date/time
-    variables listed in the tron documentation:
-    http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc
-
-    :param input_string: input string to be parsed
-    :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
-    :returns: A string with the date and time variables replaced
-    """
-    if parse_time is None:
-        parse_time = datetime.datetime.now()
-    # We build up a tron context object that has the right
-    # methods to parse tron-style time syntax
-    job_context = tron_command_context.JobRunContext(tron_command_context.CommandContext())
-    # The tron context object needs the run_time attribute set so it knows
-    # how to interpret the date strings
-    job_context.job_run.run_time = parse_time
-    # The job_context object works like a normal dictionary for string replacement
-    return input_string % job_context
-
-
 def uses_time_variables(chronos_job):
     """
     Given a chronos job config, returns True the if the command uses time variables
     """
     current_command = chronos_job.get_cmd()
-    interpolated_command = parse_time_variables(current_command, datetime.datetime.utcnow())
+    interpolated_command = parse_time_variables(current_command, datetime.datetime.utcnow(), use_percent=True)
     return current_command != interpolated_command
 
 

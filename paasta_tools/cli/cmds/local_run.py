@@ -784,11 +784,11 @@ def command_function_for_framework(framework, date):
         return cmd
 
     def format_chronos_command(cmd):
-        interpolated_command = parse_time_variables(cmd, date)
+        interpolated_command = parse_time_variables(cmd, date, use_percent=True)
         return interpolated_command
 
     def format_tron_command(cmd: str) -> str:
-        interpolated_command = parse_time_variables(cmd, date)
+        interpolated_command = parse_time_variables(cmd, date, use_percent=False)
         return interpolated_command
 
     def format_adhoc_command(cmd):
