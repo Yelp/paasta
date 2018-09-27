@@ -1971,24 +1971,25 @@ def _run(
         if timeout:
             proctimer = threading.Timer(timeout, _timeout, [process])
             proctimer.start()
-        for linestr in iter(process.stdout.readline, b''):
-            line = linestr.decode('utf-8')
+        for linebytes in iter(process.stdout.readline, b''):
+            line = linebytes.decode('utf-8', errors='replace').rstrip('\n')
+            linebytes = linebytes.strip(b'\n')
             # additional indentation is for the paasta status command only
             if stream:
                 if ('paasta_serviceinit status' in command):
                     if 'instance: ' in line:
-                        paasta_print('  ' + line.rstrip('\n'))
+                        paasta_print(b'  ' + linebytes)
                     else:
-                        paasta_print('    ' + line.rstrip('\n'))
+                        paasta_print(b'    ' + linebytes)
                 else:
-                    paasta_print(line.rstrip('\n'))
+                    paasta_print(linebytes)
             else:
-                output.append(line.rstrip('\n'))
+                output.append(line)
 
             if log:
                 _log(
                     service=service,
-                    line=line.rstrip('\n'),
+                    line=line,
                     component=component,
                     level=loglevel,
                     cluster=cluster,
