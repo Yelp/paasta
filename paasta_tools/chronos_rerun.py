@@ -63,7 +63,7 @@ def parse_args():
     return args
 
 
-def modify_command_for_date(chronos_job, date, verbose):
+def modify_command_for_date(chronos_job, date, verbose, use_percent):
     """
     Given a chronos job config, return a cloned job config where the command
     has been modified to reflect what it would have run as on
@@ -72,12 +72,17 @@ def modify_command_for_date(chronos_job, date, verbose):
     :param chronos_job: a chronos job dictionary, as created by
         ``chronos_tools.create_complete_config``
     :param date: a ``datetime.datetime`` object.
+    :param use_percent: if time variables use percent formatting
     :returns chronos_job: a chronos_job dict with the command modified to
         interpolate in the context of the date provided.
     """
     current_command = chronos_job['command']
     if current_command is not None:
-        chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date, use_percent=True)
+        chronos_job['command'] = chronos_tools.parse_time_variables(
+            current_command,
+            date,
+            use_percent=use_percent,
+        )
     else:
         if verbose:
             job_name = ".".join(chronos_tools.decompose_job_id(chronos_job['name']))
@@ -145,13 +150,12 @@ def remove_parents(chronos_job):
     return chronos_job
 
 
-def clone_job(chronos_job, date, timestamp=None, force_disabled=False, verbose=False):
+def clone_job(chronos_job, timestamp=None, force_disabled=False):
     """
     Given a chronos job, create a 'rerun' clone that respects the parents relations.
     If the job has his own schedule it will be executed once and only once, and as soon as possible.
 
     :param chronos_job: a chronos job suitable for POSTing to Chronos
-    :param date: the date for which the job is to be run.
     :param timestamp: timestamp to use for the generation of the tmp job name
     :returns: the chronos_job parameter, modified to be submitted as a
         temporary clone used to rerun a job in the context of a given date.
@@ -181,8 +185,6 @@ def clone_job(chronos_job, date, timestamp=None, force_disabled=False, verbose=F
     if force_disabled:
         clone['disabled'] = False
 
-    # modify the command to run commands for a given date
-    clone = modify_command_for_date(clone, date, verbose)
     return clone
 
 
@@ -264,10 +266,15 @@ def main():
         complete_job_config['command'] = original_command
         clone = clone_job(
             chronos_job=complete_job_config,
-            date=datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"),
             timestamp=timestamp,
             force_disabled=args.force_disabled,
+        )
+        # modify the command to run commands for a given date
+        clone = modify_command_for_date(
+            chronos_job=clone,
+            date=datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"),
             verbose=args.verbose,
+            use_percent=chronos_job_config.is_cmd_percent_format(),
         )
 
         if not args.run_all_related_jobs and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent:

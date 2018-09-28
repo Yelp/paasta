@@ -1487,7 +1487,7 @@ def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_ti
     fake_date = mock.Mock()
     mock_datetime.datetime.now.return_value = fake_date
     mock_parse_time_variables.return_value = "foo"
-    fn = command_function_for_framework('chronos', fake_date)
+    fn = command_function_for_framework('chronos', fake_date, True)
     fn("foo")
     mock_parse_time_variables.assert_called_once_with('foo', fake_date, use_percent=True)
 

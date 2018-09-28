@@ -367,6 +367,9 @@ class ChronosJobConfig(InstanceConfig):
         args = self.get_args()
         return args == [] or args is None
 
+    def is_cmd_percent_format(self):
+        return self.config_dict.get('use_percent_format', True)
+
     def check_epsilon(self):
         epsilon = self.get_epsilon()
         try:
@@ -396,7 +399,7 @@ class ChronosJobConfig(InstanceConfig):
         command = self.get_cmd()
         if command:
             try:
-                parse_time_variables(command, use_percent=True)
+                parse_time_variables(command, use_percent=self.is_cmd_percent_format())
                 return True, ""
             except (ValueError, KeyError, TypeError):
                 return False, ("Unparseable command '%s'. Hint: do you need to escape %% chars?") % command
@@ -514,6 +517,13 @@ class ChronosJobConfig(InstanceConfig):
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
         net = get_mesos_network_for_net(self.get_net())
+        if self.get_cmd():
+            command = parse_time_variables(
+                self.get_cmd(),
+                use_percent=self.is_cmd_percent_format(),
+            )
+        else:
+            command = self.get_cmd()
 
         complete_config = {
             'name': self.get_job_name(),
@@ -530,7 +540,7 @@ class ChronosJobConfig(InstanceConfig):
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
             'constraints': constraints,
-            'command': parse_time_variables(self.get_cmd(), use_percent=True) if self.get_cmd() else self.get_cmd(),
+            'command': command,
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
             'retries': self.get_retries(),
@@ -929,7 +939,11 @@ def uses_time_variables(chronos_job):
     Given a chronos job config, returns True the if the command uses time variables
     """
     current_command = chronos_job.get_cmd()
-    interpolated_command = parse_time_variables(current_command, datetime.datetime.utcnow(), use_percent=True)
+    interpolated_command = parse_time_variables(
+        current_command,
+        datetime.datetime.utcnow(),
+        use_percent=chronos_job.is_cmd_percent_format(),
+    )
     return current_command != interpolated_command
 
 

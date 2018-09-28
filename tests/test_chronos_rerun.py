@@ -30,9 +30,10 @@ def test_modify_command_for_date(mock_parse_time_variables):
         'command': 'foo',
     }
     actual = chronos_rerun.modify_command_for_date(
-        fake_chronos_job_config,
-        datetime.datetime.now(),
-        False,
+        chronos_job=fake_chronos_job_config,
+        date=datetime.datetime.now(),
+        verbose=False,
+        use_percent=True,
     )
 
     assert actual == {
@@ -46,9 +47,10 @@ def test_modify_command_for_date_no_command():
         'name': "service instance",
     }
     actual = chronos_rerun.modify_command_for_date(
-        fake_chronos_job_config,
-        datetime.datetime.now(),
-        True,
+        chronos_job=fake_chronos_job_config,
+        date=datetime.datetime.now(),
+        verbose=True,
+        use_percent=True,
     )
     assert actual == fake_chronos_job_config
 
@@ -92,7 +94,7 @@ def test_clone_job(
     }
     mock_get_job_type.return_value = chronos_tools.JobType.Dependent
     timestamp = datetime.datetime.utcnow().isoformat()
-    chronos_rerun.clone_job(fake_chronos_job_config, '2016-03-2016T04:40:31', timestamp=timestamp)
+    chronos_rerun.clone_job(fake_chronos_job_config, timestamp=timestamp)
     assert mock_get_job_type.call_count == 1
     assert mock_set_tmp_naming_scheme.call_count == 1
 
@@ -115,7 +117,6 @@ def test_clone_job_dependent_jobs(
 
     cloned_job = chronos_rerun.clone_job(
         fake_chronos_job_config,
-        '2016-03-2016T04:40:31',
         timestamp=timestamp,
     )
 

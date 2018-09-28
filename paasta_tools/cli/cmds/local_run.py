@@ -775,7 +775,7 @@ def run_docker_container(
     return returncode
 
 
-def command_function_for_framework(framework, date):
+def command_function_for_framework(framework, date, use_percent=False):
     """
     Given a framework, return a function that appropriately formats
     the command to be run.
@@ -784,7 +784,7 @@ def command_function_for_framework(framework, date):
         return cmd
 
     def format_chronos_command(cmd):
-        interpolated_command = parse_time_variables(cmd, date, use_percent=True)
+        interpolated_command = parse_time_variables(cmd, date, use_percent)
         return interpolated_command
 
     def format_tron_command(cmd: str) -> str:
@@ -925,8 +925,10 @@ def configure_and_run_docker_container(
         command = args.cmd
     else:
         command_from_config = instance_config.get_cmd()
+        # TODO: remove after all Chronos configs have been updated
+        use_percent = instance_config.is_cmd_percent_format() if instance_type == 'chronos' else False
         if command_from_config:
-            command_modifier = command_function_for_framework(instance_type, args.date)
+            command_modifier = command_function_for_framework(instance_type, args.date, use_percent)
             command = command_modifier(command_from_config)
         else:
             command = instance_config.get_args()
