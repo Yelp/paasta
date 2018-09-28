@@ -783,19 +783,19 @@ def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List
 
 @time_cache(ttl=60)
 def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
-    suggestions: List[str] = []
+    possibilities: List[str] = []
     for instance_type in INSTANCE_TYPES:
-        service_instances = get_services_for_cluster(
-            cluster=cluster, instance_type=instance_type, soa_dir=soa_dir,
+        sis = get_service_instance_list(
+            service=service, cluster=cluster, instance_type=instance_type, soa_dir=soa_dir,
         )
-        if (service, instance) in service_instances:
+        if (service, instance) in sis:
             return instance_type
-        suggestions.append(suggest_possibilities(word=instance, possibilities=[si[1] for si in service_instances]))
+        possibilities.extend(si[1] for si in sis)
     else:
-        suggestions_str = ''.join(suggestions)
+        suggestions = suggest_possibilities(word=instance, possibilities=possibilities)
         raise NoConfigurationForServiceError(
             f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
-            f"to run on the {cluster} cluster.{suggestions_str}",
+            f"to run on the {cluster} cluster.{suggestions}",
         )
 
 
@@ -2956,7 +2956,11 @@ class _Timeout:
 
 
 def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestions: int = 3) -> str:
-    suggestions = cast(List[str], difflib.get_close_matches(word=word, possibilities=possibilities, n=max_suggestions))
+    suggestions = cast(
+        List[str], difflib.get_close_matches(
+            word=word, possibilities=set(possibilities), n=max_suggestions,
+        ),
+    )
     if len(suggestions) == 1:
         return f"\nDid you mean: {suggestions[0]}?"
     elif len(suggestions) >= 1:
