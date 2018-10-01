@@ -79,8 +79,8 @@ def modify_command_for_date(chronos_job, date, verbose, use_percent):
     current_command = chronos_job['command']
     if current_command is not None:
         chronos_job['command'] = chronos_tools.parse_time_variables(
-            current_command,
-            date,
+            command=current_command,
+            parse_time=date,
             use_percent=use_percent,
         )
     else:

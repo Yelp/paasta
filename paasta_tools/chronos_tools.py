@@ -399,7 +399,7 @@ class ChronosJobConfig(InstanceConfig):
         command = self.get_cmd()
         if command:
             try:
-                parse_time_variables(command, use_percent=self.is_cmd_percent_format())
+                parse_time_variables(command=command, use_percent=self.is_cmd_percent_format())
                 return True, ""
             except (ValueError, KeyError, TypeError):
                 return False, ("Unparseable command '%s'. Hint: do you need to escape %% chars?") % command
@@ -519,7 +519,7 @@ class ChronosJobConfig(InstanceConfig):
         net = get_mesos_network_for_net(self.get_net())
         if self.get_cmd():
             command = parse_time_variables(
-                self.get_cmd(),
+                command=self.get_cmd(),
                 use_percent=self.is_cmd_percent_format(),
             )
         else:
@@ -940,8 +940,8 @@ def uses_time_variables(chronos_job):
     """
     current_command = chronos_job.get_cmd()
     interpolated_command = parse_time_variables(
-        current_command,
-        datetime.datetime.utcnow(),
+        command=current_command,
+        parse_time=datetime.datetime.utcnow(),
         use_percent=chronos_job.is_cmd_percent_format(),
     )
     return current_command != interpolated_command
