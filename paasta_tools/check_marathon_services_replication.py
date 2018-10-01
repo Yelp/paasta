@@ -44,7 +44,7 @@ from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.smartstack_tools import SmartstackReplicationChecker
+from paasta_tools.smartstack_tools import MesosSmartstackReplicationChecker
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated
@@ -160,7 +160,7 @@ def check_service_replication(
     should be monitored. (smartstack or mesos)
 
     :param instance_config: an instance of MarathonServiceConfig
-    :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
+    :param smartstack_replication_checker: an instance of MesosSmartstackReplicationChecker
     """
     expected_count = instance_config.get_instances()
     log.info("Expecting %d total tasks for %s" % (expected_count, instance_config.job_id))
@@ -200,7 +200,7 @@ def main():
     for client in all_clients:
         all_tasks.extend(client.list_tasks())
     mesos_slaves = a_sync.block(get_slaves)
-    smartstack_replication_checker = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
+    smartstack_replication_checker = MesosSmartstackReplicationChecker(mesos_slaves, system_paasta_config)
 
     for service in list_services(soa_dir=args.soa_dir):
         service_config = PaastaServiceConfigLoader(service=service, soa_dir=args.soa_dir)

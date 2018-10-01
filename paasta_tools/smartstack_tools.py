@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import abc
 import collections
 import csv
 import socket
@@ -21,7 +22,9 @@ from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import NamedTuple
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
 
@@ -412,41 +415,33 @@ def match_backends_and_tasks(
 _MesosSlaveDict = TypeVar('_MesosSlaveDict', bound=Dict)  # no type has been defined in mesos_tools for these yet.
 
 
-class SmartstackReplicationChecker:
-    """Retrieves the number of registered instances in each discoverable location.
+class SmartstackHost(NamedTuple):
+    hostname: str
+    pool: str
+
+
+class SmartstackReplicationChecker(abc.ABC):
+    """Base class for checking smartstack replication. Extendable for different frameworks.
 
     Optimized for multiple queries. Gets the list of backends from synapse-`roxy
     only once per location and reuse it in all subsequent calls of
     SmartstackReplicationChecker.get_replication_for_instance().
 
-    :Example:
-
-    >>> from paasta_tools.mesos_tools import get_slaves
-    >>> from paasta_tools.utils import load_system_paasta_config
-    >>> from paasta_tools.marathon_tools import load_marathon_service_config
-    >>> from paasta_tools.smartstack_tools import SmartstackReplicationChecker
-    >>>
-    >>> mesos_slaves = get_slaves()
-    >>> system_paasta_config = load_system_paasta_config()
-    >>> instance_config = load_marathon_service_config(service='fake_service',
-    ...                       instance='fake_instance', cluster='norcal-stagef')
-    >>>
-    >>> c = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
-    >>> c.get_replication_for_instance(instance_config)
-    {'uswest1-stagef': {'fake_service.fake_instance': 2}}
-    >>>
+    _get_allowed_locations_and_hosts must be implemented in sub class
     """
 
     def __init__(
         self,
-        mesos_slaves: List[_MesosSlaveDict],
         system_paasta_config: SystemPaastaConfig,
     ) -> None:
-        self._mesos_slaves = mesos_slaves
         self._synapse_port = system_paasta_config.get_synapse_port()
         self._synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
         self._system_paasta_config = system_paasta_config
         self._cache: Dict[str, Dict[str, int]] = {}
+
+    @abc.abstractmethod
+    def _get_allowed_locations_and_hosts(self, instance_config: InstanceConfig) -> Dict[str, Sequence[SmartstackHost]]:
+        pass
 
     def get_replication_for_instance(
         self,
@@ -458,23 +453,22 @@ class SmartstackReplicationChecker:
         :returns: a dict {'location_type': {'service.instance': int}}
         """
         replication_info = {}
-        attribute_slave_dict = self._get_allowed_locations_and_slaves(instance_config)
+        attribute_host_dict = self._get_allowed_locations_and_hosts(instance_config)
         instance_pool = instance_config.get_pool()
-        for location, slaves in attribute_slave_dict.items():
-            slave_to_check = self._get_first_slave_in_pool(slaves, instance_pool)
-            hostname = slave_to_check['hostname']
+        for location, hosts in attribute_host_dict.items():
+            hostname = self._get_first_host_in_pool(hosts, instance_pool)
             replication_info[location] = self._get_replication_info(location, hostname, instance_config)
         return replication_info
 
-    def _get_first_slave_in_pool(
+    def _get_first_host_in_pool(
         self,
-        slaves: List[_MesosSlaveDict],
+        hosts: Sequence[SmartstackHost],
         pool: str,
-    ) -> _MesosSlaveDict:
-        for slave in slaves:
-            if slave['attributes']['pool'] == pool:
-                return slave
-        return slaves[0]
+    ) -> str:
+        for host in hosts:
+            if host.pool == pool:
+                return host.hostname
+        return hosts[0].hostname
 
     def _get_replication_info(
         self,
@@ -499,12 +493,44 @@ class SmartstackReplicationChecker:
             )
         return {full_name: self._cache[location][full_name]}
 
-    def _get_allowed_locations_and_slaves(self, instance_config: InstanceConfig) -> Dict[str, List[dict]]:
+
+class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
+    """Retrieves the number of registered instances in each discoverable location.
+
+    Based on SmartstackReplicationChecker takes mesos slaves as an argument to filter
+    which services are allowed to run where.
+    :Example:
+
+    >>> from paasta_tools.mesos_tools import get_slaves
+    >>> from paasta_tools.utils import load_system_paasta_config
+    >>> from paasta_tools.marathon_tools import load_marathon_service_config
+    >>> from paasta_tools.smartstack_tools import SmartstackReplicationChecker
+    >>>
+    >>> mesos_slaves = get_slaves()
+    >>> system_paasta_config = load_system_paasta_config()
+    >>> instance_config = load_marathon_service_config(service='fake_service',
+    ...                       instance='fake_instance', cluster='norcal-stagef')
+    >>>
+    >>> c = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
+    >>> c.get_replication_for_instance(instance_config)
+    {'uswest1-stagef': {'fake_service.fake_instance': 2}}
+    >>>
+    """
+
+    def __init__(
+        self,
+        mesos_slaves: List[_MesosSlaveDict],
+        system_paasta_config: SystemPaastaConfig,
+    ) -> None:
+        self._mesos_slaves = mesos_slaves
+        super().__init__(system_paasta_config=system_paasta_config)
+
+    def _get_allowed_locations_and_hosts(self, instance_config: InstanceConfig) -> Dict[str, Sequence[SmartstackHost]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
         where deployment of the instance is allowed.
 
         :param instance_config: An instance of MarathonServiceConfig
-        :returns: A dict {"uswest1-prod": ['hostname1', 'hostname2], ...}.
+        :returns: A dict {"uswest1-prod": [SmartstackHost(), SmartstackHost(), ...]}
         """
         monitoring_blacklist = instance_config.get_monitoring_blacklist(
             system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist(),
@@ -519,7 +545,13 @@ class SmartstackReplicationChecker:
             namespace=instance_config.instance,
             soa_dir=instance_config.soa_dir,
         ).get_discover()
-        return mesos_tools.get_mesos_slaves_grouped_by_attribute(
+        attribute_to_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
             slaves=filtered_slaves,
             attribute=discover_location_type,
         )
+        ret: Dict[str, Sequence[SmartstackHost]] = {}
+        for attr, slaves in attribute_to_slaves.items():
+            ret[attr] = [
+                SmartstackHost(hostname=slave['hostname'], pool=slave['attributes']['pool']) for slave in slaves
+            ]
+        return ret

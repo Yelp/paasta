@@ -14,6 +14,7 @@
 import os
 
 import mock
+import pytest
 import requests
 
 from paasta_tools import smartstack_tools
@@ -249,7 +250,7 @@ def test_get_replication_for_all_services(mock_get_multiple_backends):
 
 @mock.patch('paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config', autospec=True)
 @mock.patch('paasta_tools.smartstack_tools.get_replication_for_all_services', autospec=True)
-def test_get_replication_for_instance(
+def test_get_replication_for_instance_mesos(
     mock_get_replication_for_all_services,
     mock_load_service_namespace_config,
     system_paasta_config,
@@ -264,7 +265,7 @@ def test_get_replication_for_instance(
     mock_get_replication_for_all_services.return_value = \
         {'fake_service.fake_instance': 20}
     mock_load_service_namespace_config.return_value.get_discover.return_value = 'region'
-    checker = smartstack_tools.SmartstackReplicationChecker(
+    checker = smartstack_tools.MesosSmartstackReplicationChecker(
         mesos_slaves=mock_mesos_slaves,
         system_paasta_config=system_paasta_config,
     )
@@ -391,3 +392,60 @@ def test_are_services_up_on_port():
             host_ip='10.1.1.1',
             host_port=8888,
         )
+
+
+@pytest.fixture
+def mock_replication_checker():
+    smartstack_tools.SmartstackReplicationChecker.__abstractmethods__ = frozenset()
+    return smartstack_tools.SmartstackReplicationChecker(system_paasta_config=mock.Mock())
+
+
+def test_get_allowed_locations_and_hosts(mock_replication_checker):
+    mock_replication_checker._get_allowed_locations_and_hosts(instance_config=mock.Mock())
+
+
+def test_get_replication_for_instance(mock_replication_checker):
+    with mock.patch(
+        'paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_allowed_locations_and_hosts', autospec=True,
+    ) as mock_get_allowed_locations_and_hosts, mock.patch(
+        'paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_first_host_in_pool', autospec=True,
+    ) as mock_get_first_host_in_pool, mock.patch(
+        'paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_replication_info', autospec=True,
+    ) as mock_get_replication_info:
+        mock_get_allowed_locations_and_hosts.return_value = {
+            'westeros-prod': [mock.Mock()],
+            'middleearth-prod': [mock.Mock(), mock.Mock()],
+        }
+        expected = {
+            'westeros-prod': mock_get_replication_info.return_value,
+            'middleearth-prod': mock_get_replication_info.return_value,
+        }
+        assert mock_replication_checker.get_replication_for_instance(mock.Mock()) == expected
+        assert mock_get_first_host_in_pool.call_count == 2
+
+
+def test_get_first_host_in_pool(mock_replication_checker):
+    mock_host_0 = mock.Mock(hostname='host0', pool='some')
+    mock_host_1 = mock.Mock(hostname='host123', pool='default')
+    mock_host_2 = mock.Mock(hostname='host456', pool='default')
+    mock_host_3 = mock.Mock(hostname='host789', pool='special')
+    mock_hosts = [mock_host_0, mock_host_1, mock_host_2, mock_host_3]
+    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, 'default')
+    assert ret == 'host123'
+    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, 'special')
+    assert ret == 'host789'
+    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, 'what')
+    assert ret == 'host0'
+
+
+def test_get_replication_info(mock_replication_checker):
+    with mock.patch(
+        'paasta_tools.smartstack_tools.get_replication_for_all_services', autospec=True,
+    ) as mock_get_replication_for_all_services:
+        mock_replication_checker._cache = {}
+        mock_instance_config = mock.Mock(service='thing', instance='main')
+        ret = mock_replication_checker._get_replication_info('westeros-prod', 'host1', mock_instance_config)
+        assert ret == {'thing.main': mock_get_replication_for_all_services.return_value['thing.main']}
+        assert mock_replication_checker._cache == {
+            'westeros-prod': mock_get_replication_for_all_services.return_value,
+        }
