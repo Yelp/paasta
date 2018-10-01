@@ -14,7 +14,7 @@
 # limitations under the License.
 from paasta_tools.cli.utils import list_paasta_services
 from paasta_tools.cli.utils import list_service_instances
-from paasta_tools.cli.utils import list_services
+from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SPACER
 

@@ -23,8 +23,8 @@ from socket import gethostname
 from paasta_tools import mesos_maintenance
 from paasta_tools import utils
 from paasta_tools.marathon_tools import get_expected_instance_count_for_namespace
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import marathon_services_running_here
-from paasta_tools.marathon_tools import read_registration_for_service_instance
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import get_replication_for_services
@@ -130,11 +130,14 @@ def is_healthy_in_haproxy(local_port, backends):
 
 def synapse_replication_is_low(service, instance, system_paasta_config, local_backends):
     crit_threshold = 80
-    reg_svc, reg_namespace, _, __ = utils.decompose_job_id(
-        read_registration_for_service_instance(
-            service=service, instance=instance,
-        ),
+    cluster = system_paasta_config.get_cluster()
+    marathon_service_config = load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        load_deployments=False,
     )
+    reg_svc, reg_namespace, _, __ = utils.decompose_job_id(marathon_service_config.get_registrations())
     # We only actually care about the replication of where we're registering
     service, namespace = reg_svc, reg_namespace
 

@@ -246,3 +246,24 @@ class TestServiceNamespaceConfig:
 
     def test_get_discover_default(self):
         assert long_running_service_tools.ServiceNamespaceConfig().get_discover() == 'region'
+
+
+def test_get_proxy_port_for_instance():
+    mock_config = mock.Mock(
+        get_registrations=mock.Mock(
+            return_value=['thing.main.sha.sha'],
+        ),
+        soa_dir='/nail/blah',
+    )
+    with mock.patch(
+        'paasta_tools.long_running_service_tools.load_service_namespace_config', autospec=True,
+    ) as mock_load_service_namespace_config:
+        mock_load_service_namespace_config.return_value = {
+            'proxy_port': 1234,
+        }
+        assert long_running_service_tools.get_proxy_port_for_instance(mock_config) == 1234
+        mock_load_service_namespace_config.assert_called_once_with(
+            service='thing',
+            namespace='main',
+            soa_dir='/nail/blah',
+        )

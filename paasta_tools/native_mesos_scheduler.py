@@ -109,10 +109,14 @@ def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname
     nerve_list = []
     for name, instance, port in paasta_native_services:
         try:
-            registrations = read_all_registrations_for_service_instance(
-                name, instance, cluster, soa_dir,
+            job_config = load_paasta_native_job_config(
+                service=name,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
             )
-            for registration in registrations:
+            for registration in job_config.get_registrations():
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
                 nerve_dict = load_service_namespace_config(
                     service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
@@ -124,29 +128,6 @@ def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname
         except KeyError:
             continue  # SOA configs got deleted for this app, it'll get cleaned up
     return nerve_list
-
-
-def read_all_registrations_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retrieve all registrations as fully specified name.instance pairs
-    for a particular service instance.
-
-    For example, the 'main' paasta instance of the 'test' service may register
-    in the 'test.main' namespace as well as the 'other_svc.main' namespace.
-
-    If one is not defined in the config file, returns a list containing
-    name.instance instead.
-    """
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-
-    job_config = load_paasta_native_job_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        load_deployments=False,
-        soa_dir=soa_dir,
-    )
-    return job_config.get_registrations()
 
 
 if __name__ == '__main__':

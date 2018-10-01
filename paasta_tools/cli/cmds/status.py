@@ -39,7 +39,6 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import list_services
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -55,6 +54,7 @@ from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import list_services
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
