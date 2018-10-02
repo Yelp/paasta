@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-import datetime
 
 import mock
 from mock import Mock
@@ -373,7 +372,7 @@ class TestChronosTools:
                 system_paasta_config.get_dockercfg_location(),
                 fake_constraints,
             )
-            mock_parse_time_variables.assert_called_with(fake_cmd)
+            mock_parse_time_variables.assert_called_with(fake_cmd, use_percent=True)
 
     def test_get_owner(self):
         fake_owner = 'fake_team'
@@ -1739,20 +1738,6 @@ class TestChronosTools:
         with mock.patch('paasta_tools.chronos_tools.sleep', autospec=True) as mock_sleep:
             assert chronos_tools.wait_for_job(client, 'foo')
             assert mock_sleep.call_count == 2
-
-    def test_parse_time_variables_parses_shortdate(self):
-        input_time = datetime.datetime(2012, 3, 14)
-        test_input = 'ls %(shortdate-1)s foo'
-        expected = 'ls 2012-03-13 foo'
-        actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
-        assert actual == expected
-
-    def test_parse_time_variables_parses_percent(self):
-        input_time = datetime.datetime(2012, 3, 14)
-        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%%L/%%Y/%%m/%%d/'
-        expected = './mycommand --date 2012-03-13 --format foo/logs/%L/%Y/%m/%d/'
-        actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
-        assert actual == expected
 
     def test_check_cmd_escaped_percent(self):
         test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%%L/%%Y/%%m/%%d/'
