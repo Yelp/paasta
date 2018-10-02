@@ -47,6 +47,7 @@ jsonref==0.1
 jsonschema==2.5.1
 kazoo==2.4.0
 kubernetes==6.0.0
+manhole==1.5.0
 marathon==0.9.3
 MarkupSafe==1.0
 msgpack-python==0.4.8

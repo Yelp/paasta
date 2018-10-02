@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 
+import manhole
 import requests_cache
 import service_configuration_lib
 from pyramid.config import Configurator
@@ -98,6 +99,9 @@ def application(env, start_response):
     global _app
     if not _app:
         _app = make_app()
+        manhole_path = os.environ.get("PAASTA_MANHOLE_PATH")
+        if manhole_path:
+            manhole.install(socket_path=f'{manhole_path}-{os.getpid()}', locals={'_app': _app})
     return _app(env, start_response)
 
 
