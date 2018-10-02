@@ -315,7 +315,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def read_only_mode(self, d: VolumeWithMode) -> bool:
         return d.get('mode', 'RO') == 'RO'
 
-    def get_sidecar_containers(self, system_paasta_config: SystemPaastaConfig) -> List[V1Container]:
+    def get_sidecar_containers(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        service_namespace_config: ServiceNamespaceConfig,
+    ) -> List[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
@@ -333,29 +337,31 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             readiness_probe = None
 
-        hacheck_sidecar = V1Container(
-            image=system_paasta_config.get_hacheck_sidecar_image_url(),
-            lifecycle=V1Lifecycle(
-                pre_stop=V1Handler(
-                    _exec=V1ExecAction(
-                        command=[
-                            "/bin/sh",
-                            "-c",
-                            f"/usr/bin/hadown {registrations}; sleep 31",
-                        ],
+        sidecars = []
+        if service_namespace_config.is_in_smartstack():
+            sidecars.append(V1Container(
+                image=system_paasta_config.get_hacheck_sidecar_image_url(),
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                f"/usr/bin/hadown {registrations}; sleep 31",
+                            ],
+                        ),
                     ),
                 ),
-            ),
-            name="hacheck",
-            env=self.get_kubernetes_environment(),
-            ports=[
-                V1ContainerPort(
-                    container_port=6666,
-                ),
-            ],
-            readiness_probe=readiness_probe,
-        )
-        return [hacheck_sidecar]
+                name="hacheck",
+                env=self.get_kubernetes_environment(),
+                ports=[
+                    V1ContainerPort(
+                        container_port=6666,
+                    ),
+                ],
+                readiness_probe=readiness_probe,
+            ))
+        return sidecars
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         user_env = [V1EnvVar(name=name, value=value) for name, value in self.get_env().items()]
@@ -464,7 +470,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 persistent_volumes=self.get_persistent_volumes(),
             ),
         )
-        containers = [service_container] + self.get_sidecar_containers(system_paasta_config=system_paasta_config)
+        containers = [service_container] + self.get_sidecar_containers(
+            system_paasta_config=system_paasta_config,
+            service_namespace_config=service_namespace_config,
+        )
         return containers
 
     def get_pod_volumes(
