@@ -25,4 +25,5 @@ RUN pip install -r /paasta/requirements.txt
 ADD ./yelp_package/dockerfiles/mesos-paasta/cron.d /etc/cron.d
 RUN chmod -R 600 /etc/cron.d
 ADD ./yelp_package/dockerfiles/mesos-paasta/start.sh /start.sh
+ADD ./yelp_package/dockerfiles/mesos-paasta/setup-ssh.sh /setup-ssh.sh
 ADD ./yelp_package/dockerfiles/mesos-paasta/start-slave.sh /start-slave.sh

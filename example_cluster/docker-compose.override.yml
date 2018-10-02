@@ -20,6 +20,7 @@ services:
     volumes:
       - ../:/work:rw
       - ./paasta:/etc/paasta:rw
+      - ./docker_registry.json:/etc/paasta/docker_registry.json:rw
       - ./boto:/etc/boto:rw
       - ./example-services:/nail/etc/services:rw
       - /var/run/docker.sock:/var/run/docker.sock
@@ -48,8 +49,8 @@ services:
   marathon2:
     ports:
       - 8080
-  itest_trusty:
-    build: ../yelp_package/dockerfiles/trusty/
+  itest_xenial:
+    build: ../yelp_package/dockerfiles/xenial/
   playground:
     build:
       context: ../
@@ -57,6 +58,7 @@ services:
     volumes:
       - ../:/work:rw
       - ./paasta:/etc/paasta:rw
+      - ./docker_registry.json:/etc/paasta/docker_registry.json:rw
       - ./boto:/etc/boto:rw
       - ./example-services:/nail/etc/services:rw
       - /var/run/docker.sock:/var/run/docker.sock
@@ -64,7 +66,7 @@ services:
     command: '/start.sh'
     depends_on:
       - mesosmaster
-      - itest_trusty
+      - itest_xenial
       - chronos
       - registry
       - git
@@ -102,4 +104,5 @@ services:
       - ../:/work:rw
       - nail-etc:/nail/etc
       - ./paasta:/etc/paasta:rw
+      - ./docker_registry.json:/etc/paasta/docker_registry.json:rw
       - ./example-services:/nail/etc/services:rw
