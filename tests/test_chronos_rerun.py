@@ -33,7 +33,6 @@ def test_modify_command_for_date(mock_parse_time_variables):
         chronos_job=fake_chronos_job_config,
         date=datetime.datetime.now(),
         verbose=False,
-        use_percent=True,
     )
 
     assert actual == {
@@ -50,7 +49,6 @@ def test_modify_command_for_date_no_command():
         chronos_job=fake_chronos_job_config,
         date=datetime.datetime.now(),
         verbose=True,
-        use_percent=True,
     )
     assert actual == fake_chronos_job_config
 
@@ -140,6 +138,7 @@ def test_clone_job_dependent_jobs(
     ),
 )
 @mock.patch('paasta_tools.chronos_rerun.clone_job', autospec=True)
+@mock.patch('paasta_tools.chronos_rerun.modify_command_for_date', autospec=True)
 @mock.patch('paasta_tools.chronos_rerun.chronos_tools.get_job_type', autospec=True)
 @mock.patch('paasta_tools.chronos_rerun.remove_parents', autospec=True)
 @mock.patch('paasta_tools.chronos_tools.create_complete_config', autospec=True)
@@ -159,6 +158,7 @@ def test_chronos_rerun_main_with_independent_job(
     mock_create_complete_config,
     mock_remove_parents,
     mock_get_job_type,
+    mock_modify_command_for_date,
     mock_clone_job,
     cluster, service, instance, run_all_related_jobs, is_dependent_job,
 ):

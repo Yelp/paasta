@@ -118,7 +118,6 @@ class StringFormatter(Formatter):
 def parse_time_variables(
     command: str,
     parse_time: datetime.datetime=None,
-    use_percent: bool=False,
 ) -> str:
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
@@ -137,11 +136,7 @@ def parse_time_variables(
     # The tron context object needs the run_time attribute set so it knows
     # how to interpret the date strings
     job_context.job_run.run_time = parse_time
-    # The job_context object works like a normal dictionary for string replacement
-    if use_percent:
-        return command % job_context
-    else:
-        return StringFormatter(job_context).format(command)
+    return StringFormatter(job_context).format(command)
 
 
 class TronActionConfig(InstanceConfig):

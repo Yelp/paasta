@@ -63,7 +63,7 @@ def parse_args():
     return args
 
 
-def modify_command_for_date(chronos_job, date, verbose, use_percent):
+def modify_command_for_date(chronos_job, date, verbose):
     """
     Given a chronos job config, return a cloned job config where the command
     has been modified to reflect what it would have run as on
@@ -72,7 +72,6 @@ def modify_command_for_date(chronos_job, date, verbose, use_percent):
     :param chronos_job: a chronos job dictionary, as created by
         ``chronos_tools.create_complete_config``
     :param date: a ``datetime.datetime`` object.
-    :param use_percent: if time variables use percent formatting
     :returns chronos_job: a chronos_job dict with the command modified to
         interpolate in the context of the date provided.
     """
@@ -81,7 +80,6 @@ def modify_command_for_date(chronos_job, date, verbose, use_percent):
         chronos_job['command'] = chronos_tools.parse_time_variables(
             command=current_command,
             parse_time=date,
-            use_percent=use_percent,
         )
     else:
         if verbose:
@@ -274,7 +272,6 @@ def main():
             chronos_job=clone,
             date=datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"),
             verbose=args.verbose,
-            use_percent=chronos_job_config.is_cmd_percent_format(),
         )
 
         if not args.run_all_related_jobs and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent:
