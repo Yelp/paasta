@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.6
 """Script for migrating Chronos command string formats.
 
 Used to upgrade from v0.80.11 to v0.81.0 or downgrade to a version <= v0.80.11.
