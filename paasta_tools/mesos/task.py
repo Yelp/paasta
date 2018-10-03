@@ -45,14 +45,14 @@ class Task:
     async def framework(self):
         return framework.Framework(await self.master.framework(self["framework_id"]))
 
-    @async_ttl_cache()
+    @async_ttl_cache(cleanup_self=True)
     async def directory(self):
         try:
             return (await self.executor())["directory"]
         except exceptions.MissingExecutor:
             return ""
 
-    @async_ttl_cache()
+    @async_ttl_cache(cleanup_self=True)
     async def slave(self):
         return await self.master.slave(self["slave_id"])
 

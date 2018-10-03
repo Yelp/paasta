@@ -84,7 +84,7 @@ class File:
     # look at the size to determine where to seek. Instead of requiring
     # multiple requests to the slave, the size is cached for a very short
     # period of time.
-    @async_ttl_cache(ttl=0.5)
+    @async_ttl_cache(ttl=0.5, cleanup_self=True)
     async def size(self):
         return (await self._fetch())["offset"]
 
