@@ -374,3 +374,50 @@ def check_smartstack_replication_for_instance(
             status = pysensu_yelp.Status.OK
             log.info(output)
     send_replication_event(instance_config=instance_config, status=status, output=output)
+
+
+def send_replication_event_if_under_replication(
+    instance_config,
+    expected_count,
+    num_available,
+):
+    crit_threshold = instance_config.get_replication_crit_percentage()
+    output = (
+        'Service %s has %d out of %d expected instances available!\n' +
+        '(threshold: %d%%)'
+    ) % (instance_config.job_id, num_available, expected_count, crit_threshold)
+    under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
+    if under_replicated:
+        output += (
+            "\n\n"
+            "What this alert means:\n"
+            "\n"
+            "  This replication alert means that the service PaaSTA can't keep the\n"
+            "  requested number of copies up and healthy in the cluster.\n"
+            "\n"
+            "Reasons this might be happening:\n"
+            "\n"
+            "  The service may simply unhealthy. There also may not be enough resources\n"
+            "  in the cluster to support the requested instance count.\n"
+            "\n"
+            "Things you can do:\n"
+            "\n"
+            "  * Increase the instance count\n"
+            "  * Fix the cause of the unhealthy service. Try running:\n"
+            "\n"
+            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+        ) % {
+            'service': instance_config.service,
+            'instance': instance_config.instance,
+            'cluster': instance_config.cluster,
+        }
+        log.error(output)
+        status = pysensu_yelp.Status.CRITICAL
+    else:
+        log.info(output)
+        status = pysensu_yelp.Status.OK
+    send_replication_event(
+        instance_config=instance_config,
+        status=status,
+        output=output,
+    )

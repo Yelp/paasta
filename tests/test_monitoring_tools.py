@@ -949,3 +949,69 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         alert_output = send_replication_event_kwargs["output"]
         assert ("{} has no Smartstack replication info."
                 .format(instance_config.job_id)) in alert_output
+
+
+def test_send_replication_event_if_under_replication_handles_0_expected(instance_config):
+    with mock.patch(
+        'paasta_tools.monitoring_tools.send_replication_event', autospec=True,
+    ) as mock_send_event:
+        monitoring_tools.send_replication_event_if_under_replication(
+            instance_config=instance_config,
+            expected_count=0,
+            num_available=0,
+        )
+        mock_send_event.assert_called_once_with(
+            instance_config=instance_config,
+            status=0,
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert ("{} has 0 out of 0 expected instances available!\n(threshold: 90%)"
+                .format(instance_config.job_id)) in alert_output
+
+
+def test_send_replication_event_if_under_replication_good(instance_config):
+    with mock.patch(
+        'paasta_tools.monitoring_tools.send_replication_event', autospec=True,
+    ) as mock_send_event:
+        monitoring_tools.send_replication_event_if_under_replication(
+            instance_config=instance_config,
+            expected_count=100,
+            num_available=100,
+        )
+        mock_send_event.assert_called_once_with(
+            instance_config=instance_config,
+            status=0,
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert ("{} has 100 out of 100 expected instances available!\n(threshold: 90%)"
+                .format(instance_config.job_id)) in alert_output
+
+
+def test_send_replication_event_if_under_replication_critical(instance_config):
+    with mock.patch(
+        'paasta_tools.monitoring_tools.send_replication_event', autospec=True,
+    ) as mock_send_event:
+        monitoring_tools.send_replication_event_if_under_replication(
+            instance_config=instance_config,
+            expected_count=100,
+            num_available=89,
+        )
+        mock_send_event.assert_called_once_with(
+            instance_config=instance_config,
+            status=2,
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert ("{} has 89 out of 100 expected instances available!\n(threshold: 90%)"
+                .format(instance_config.job_id)) in alert_output
+        assert ("paasta status -s {} -i {} -c {} -vv"
+                .format(
+                    instance_config.service,
+                    instance_config.instance,
+                    instance_config.cluster,
+                )) in alert_output
