@@ -21,66 +21,6 @@
     }
   ],
   "paths": {
-    "/objgraph/show_most_common_types": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "`objgraph.show_most_common_types()` status",
-            "schema": {
-              "type": "string"
-            }
-          }
-        },
-        "summary": "`objgraph.show_most_common_types()` output",
-        "operationId": "objgraph_show_most_common_types",
-        "parameters": [
-          {
-            "in": "query",
-            "description": "Maximum number of types",
-            "name": "limit",
-            "required": false,
-            "type": "integer"
-          }
-        ]
-      }
-    },
-    "/objgraph/show_backrefs/{type}": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "`objgraph.show_backrefs(objgraph.by_type(type))` status",
-            "schema": {
-              "type": "string"
-            }
-          }
-        },
-        "summary": "`objgraph.show_backrefs(objgraph.by_type(type))`",
-        "operationId": "objgraph_show_backrefs_for_type",
-        "parameters": [
-          {
-            "in": "path",
-            "description": "Type name",
-            "name": "type",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "in": "query",
-            "description": "Maximum number of objects to show references for",
-            "name": "max_objects",
-            "required": false,
-            "type": "integer"
-          },
-          {
-            "in": "query",
-            "description": "Maximum depth of the graph",
-            "name": "max_depth",
-            "required": false,
-            "type": "integer"
-          }
-        ]
-      }
-    },
     "/version": {
       "get": {
         "responses": {
