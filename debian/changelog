@@ -1,3 +1,11 @@
+paasta-tools (0.80.11) xenial; urgency=medium
+
+  * 0.80.11 tagged with 'make release'
+    Commit: Merge pull request #2004 from Yelp/remove-objgraph-api-
+    endpoints  Remove `objgraph` HTTP API endpoints
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 04 Oct 2018 03:27:33 -0700
+
 paasta-tools (0.80.10) xenial; urgency=medium
 
   * 0.80.10 tagged with 'make release'
