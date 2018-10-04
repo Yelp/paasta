@@ -15,15 +15,19 @@
 """
 Marathon Dashboard
 """
+import logging
+
 from pyramid.view import view_config
 
 from paasta_tools.api import settings
 from paasta_tools.marathon_dashboard import create_marathon_dashboard
 
+log = logging.getLogger(__name__)
+
 
 @view_config(route_name='marathon_dashboard', request_method='GET', renderer='json')
 def marathon_dashboard(request):
-    print("marathon_dashboard view")
+    log.debug("marathon_dashboard view")
     return create_marathon_dashboard(
         cluster=settings.cluster,
         soa_dir=settings.soa_dir,

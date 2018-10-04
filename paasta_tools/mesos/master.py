@@ -206,14 +206,14 @@ class MesosMaster:
         else:
             return cfg
 
-    @async_ttl_cache(ttl=15)
+    @async_ttl_cache(ttl=15, cleanup_self=True)
     async def state(self) -> MesosState:
         return await (await self.fetch("/master/state.json", cached=True)).json()
 
     async def state_summary(self) -> MesosState:
         return await (await self.fetch("/master/state-summary")).json()
 
-    @async_ttl_cache(ttl=0)
+    @async_ttl_cache(ttl=0, cleanup_self=True)
     async def slave(self, fltr):
         lst = await self.slaves(fltr)
 
@@ -289,7 +289,7 @@ class MesosMaster:
             keys.append("completed_frameworks")
         return util.merge(await self._frameworks(), *keys)
 
-    @async_ttl_cache(ttl=15)
+    @async_ttl_cache(ttl=15, cleanup_self=True)
     async def _frameworks(self):
         return await (await self.fetch("/master/frameworks", cached=True)).json()
 
