@@ -1,3 +1,11 @@
+paasta-tools (0.80.12) xenial; urgency=medium
+
+  * 0.80.12 tagged with 'make release'
+    Commit: Merge pull request #1998 from Yelp/refactor-check-marathon-
+    replication  Refactor check_marathon_services_replication
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 04 Oct 2018 04:35:55 -0700
+
 paasta-tools (0.80.11) xenial; urgency=medium
 
   * 0.80.11 tagged with 'make release'
