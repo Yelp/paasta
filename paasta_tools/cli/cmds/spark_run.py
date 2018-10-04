@@ -14,7 +14,6 @@ from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.mesos_tools import find_mesos_leader
@@ -22,6 +21,7 @@ from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
+from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable

@@ -25,7 +25,6 @@ from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import is_file_in_dir
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import success
@@ -40,6 +39,7 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 

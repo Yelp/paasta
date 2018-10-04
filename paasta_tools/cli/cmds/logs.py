@@ -49,7 +49,7 @@ from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_services
+from paasta_tools.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local

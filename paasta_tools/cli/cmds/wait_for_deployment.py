@@ -22,7 +22,6 @@ from paasta_tools.cli.cmds.mark_for_deployment import report_waiting_aborted
 from paasta_tools.cli.cmds.mark_for_deployment import wait_for_deployment
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
@@ -33,6 +32,7 @@ from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError

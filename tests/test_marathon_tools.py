@@ -294,45 +294,6 @@ class TestMarathonTools:
             get_namespaces_patch.assert_any_call('rid2', soa_dir)
             assert get_namespaces_patch.call_count == 2
 
-    def test_get_proxy_port_for_instance(self):
-        name = 'thats_no_moon'
-        instance = 'thats_a_space_station'
-        cluster = 'shot_line'
-        soa_dir = 'drink_up'
-        namespace = 'thirsty_mock'
-        fake_port = 1234567890
-        fake_nerve = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
-        with mock.patch(
-            'paasta_tools.marathon_tools.read_registration_for_service_instance',
-            autospec=True, return_value=compose_job_id(name, namespace),
-        ) as read_ns_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_service_namespace_config',
-            autospec=True, return_value=fake_nerve,
-        ) as read_config_patch:
-            actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
-            assert fake_port == actual
-            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
-            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
-
-    def test_get_proxy_port_for_instance_defaults_to_none(self):
-        name = 'thats_no_moon'
-        instance = 'thats_a_space_station'
-        cluster = 'shot_line'
-        soa_dir = 'drink_up'
-        namespace = 'thirsty_mock'
-        expected = None
-        with mock.patch(
-            'paasta_tools.marathon_tools.read_registration_for_service_instance',
-            autospec=True, return_value=compose_job_id(name, namespace),
-        ) as read_ns_patch, mock.patch(
-            'paasta_tools.marathon_tools.load_service_namespace_config',
-            autospec=True, return_value={},
-        ) as read_config_patch:
-            actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
-            assert expected == actual
-            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
-            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
-
     def test_read_service_namespace_config_exists(self):
         name = 'eman'
         namespace = 'ecapseman'
@@ -460,85 +421,6 @@ class TestMarathonTools:
                 marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
 
-    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_registration_for_service_instance_has_value_with_nerve_ns(self, load_config_patch):
-        name = 'dont_worry'
-        instance = 'im_a_professional'
-        cluster = 'andromeda'
-        namespace = 'spacename'
-        soa_dir = 'dirdirdir'
-        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
-            service=name,
-            cluster=cluster,
-            instance=instance,
-            config_dict={'nerve_ns': namespace},
-            branch_dict=None,
-        )
-        actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
-        assert actual == compose_job_id(name, namespace)
-        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
-
-    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_registration_for_service_instance_has_value(self, load_config_patch):
-        name = 'dont_worry'
-        instance = 'im_a_professional'
-        cluster = 'andromeda'
-        soa_dir = 'dirdirdir'
-        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
-            service=name,
-            cluster=cluster,
-            instance=instance,
-            config_dict={
-                'registrations': [
-                    compose_job_id(name, instance),
-                    compose_job_id(name, 'something else'),
-                ],
-            },
-            branch_dict=None,
-        )
-        actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
-        assert actual == compose_job_id(name, instance)
-        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
-
-    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_all_registrations_for_service_instance_has_value(self, load_config_patch):
-        name = 'dont_worry'
-        instance = 'im_a_professional'
-        cluster = 'andromeda'
-        namespaces = ['spacename', 'spaceiscool', 'rocketsarecooler']
-        registrations = [compose_job_id(name, ns) for ns in namespaces]
-        soa_dir = 'dirdirdir'
-        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
-            service=name,
-            cluster=cluster,
-            instance=instance,
-            config_dict={'registrations': registrations},
-            branch_dict=None,
-        )
-        actual_registrations = marathon_tools.read_all_registrations_for_service_instance(
-            name, instance, cluster, soa_dir,
-        )
-        assert set(actual_registrations) == set(registrations)
-        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
-
-    @mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
-    def test_read_registration_for_service_instance_no_value(self, load_config_patch):
-        name = 'wall_light'
-        instance = 'ceiling_light'
-        cluster = 'no_light'
-        soa_dir = 'warehouse_light'
-        load_config_patch.return_value = marathon_tools.MarathonServiceConfig(
-            service=name,
-            cluster=cluster,
-            instance=instance,
-            config_dict={'bounce_method': 'fakefakefake'},
-            branch_dict=None,
-        )
-
-        actual = marathon_tools.read_registration_for_service_instance(name, instance, cluster, soa_dir)
-        assert actual == compose_job_id(name, instance)
-        load_config_patch.assert_called_once_with(name, instance, cluster, load_deployments=False, soa_dir=soa_dir)
-
     @mock.patch('paasta_tools.mesos_tools.get_local_slave_state', autospec=True)
     def test_marathon_services_running_here(self, mock_get_local_slave_state):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr.someuuid'
@@ -618,20 +500,34 @@ class TestMarathonTools:
             autospec=True,
             return_value=fake_marathon_services,
         ) as mara_srvs_here_patch, mock.patch(
-            'paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
+            'paasta_tools.marathon_tools.load_marathon_service_config',
             autospec=True,
-            side_effect=lambda *args, **kwargs: registrations.pop(),
-        ) as get_namespace_patch, mock.patch(
+        ) as mock_load_marathon_service_config, mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             autospec=True,
             side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
         ) as read_ns_config_patch:
+            def mock_get_registrations(*args, **kwargs):
+                return registrations.pop()
+            mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             mara_srvs_here_patch.assert_called_once_with()
-            get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-            get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-            assert get_namespace_patch.call_count == 2
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_test',
+                instance='left_behind',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_docstrings',
+                instance='forever_abandoned',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            assert mock_load_marathon_service_config.call_count == 2
             read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
             read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             assert read_ns_config_patch.call_count == 2
@@ -664,20 +560,34 @@ class TestMarathonTools:
             autospec=True,
             return_value=fake_marathon_services,
         ) as mara_srvs_here_patch, mock.patch(
-            'paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
+            'paasta_tools.marathon_tools.load_marathon_service_config',
             autospec=True,
-            side_effect=lambda *args, **kwargs: namespaces.pop(),
-        ) as get_namespace_patch, mock.patch(
+        ) as mock_load_marathon_service_config, mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             autospec=True,
             side_effect=lambda service, namespace, soa_dir: nerve_dicts.pop((service, namespace)),
         ) as read_ns_config_patch:
+            def mock_get_registrations(*args, **kwargs):
+                return namespaces.pop()
+            mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             mara_srvs_here_patch.assert_called_once_with()
-            get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-            get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-            assert get_namespace_patch.call_count == 2
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_test',
+                instance='left_behind',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_docstrings',
+                instance='forever_abandoned',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            assert mock_load_marathon_service_config.call_count == 2
             read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
             read_ns_config_patch.assert_any_call('no_test', 'dos', soa_dir)
             read_ns_config_patch.assert_any_call('no_test', 'tres', soa_dir)
@@ -705,20 +615,34 @@ class TestMarathonTools:
             autospec=True,
             return_value=fake_marathon_services,
         ) as mara_srvs_here_patch, mock.patch(
-            'paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
+            'paasta_tools.marathon_tools.load_marathon_service_config',
             autospec=True,
-            side_effect=lambda *args, **kwargs: registrations.pop(),
-        ) as get_namespace_patch, mock.patch(
+        ) as mock_load_marathon_service_config, mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             autospec=True,
             side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
         ) as read_ns_config_patch:
+            def mock_get_registrations(*args, **kwargs):
+                return registrations.pop()
+            mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             mara_srvs_here_patch.assert_called_once_with()
-            get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-            get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-            assert get_namespace_patch.call_count == 2
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_test',
+                instance='left_behind',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_docstrings',
+                instance='forever_abandoned',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            assert mock_load_marathon_service_config.call_count == 2
             read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
             read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             assert read_ns_config_patch.call_count == 2
@@ -2543,19 +2467,6 @@ def test_marathon_service_config_get_desired_state_human_invalid_desired_state()
             fake_marathon_service_config.get_instances(),
         )
         assert 'Unknown (desired_state: fake-state)' in fake_desired_state
-
-
-def test_read_registration_for_service_instance_no_cluster():
-    mock_get_cluster = mock.Mock()
-    with mock.patch(
-        'paasta_tools.marathon_tools.load_marathon_service_config',
-        autospec=True,
-    ), mock.patch(
-        'paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
-        return_value=mock.Mock(get_cluster=mock_get_cluster),
-    ):
-        marathon_tools.read_registration_for_service_instance(mock.Mock(), mock.Mock())
-        mock_get_cluster.assert_called_once_with()
 
 
 def test_get_app_queue_status():

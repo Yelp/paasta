@@ -2963,3 +2963,8 @@ def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestio
         return f"\nDid you mean one of: {', '.join(suggestions)}?"
     else:
         return ""
+
+
+def list_services(soa_dir: str=DEFAULT_SOA_DIR) -> Sequence[str]:
+    """Returns a sorted list of all services"""
+    return sorted(os.listdir(os.path.abspath(soa_dir)))

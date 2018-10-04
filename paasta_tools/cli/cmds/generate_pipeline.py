@@ -18,7 +18,6 @@ import re
 
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.monitoring_tools import get_team
@@ -26,6 +25,7 @@ from paasta_tools.monitoring_tools import get_team_email_address
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 
 

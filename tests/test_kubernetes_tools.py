@@ -57,7 +57,6 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
-from paasta_tools.kubernetes_tools import read_all_registrations_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import AwsEbsVolume
@@ -807,27 +806,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ) == 'pv--slash-blahslash-what'
 
 
-def test_read_all_registrations_for_service_instance():
-    with mock.patch(
-        'paasta_tools.kubernetes_tools.load_system_paasta_config', autospec=True,
-    ), mock.patch(
-        'paasta_tools.kubernetes_tools.load_kubernetes_service_config', autospec=True,
-    ) as mock_load_kubernetes_service_config:
-        assert read_all_registrations_for_service_instance(
-            service='kurupt',
-            instance='fm',
-            cluster='brentford',
-            soa_dir='/nail/blah',
-        ) == mock_load_kubernetes_service_config.return_value.get_registrations()
-        mock_load_kubernetes_service_config.assert_called_with(
-            service='kurupt',
-            instance='fm',
-            cluster='brentford',
-            load_deployments=False,
-            soa_dir='/nail/blah',
-        )
-
-
 def test_get_kubernetes_services_running_here():
     with mock.patch(
         'paasta_tools.kubernetes_tools.requests.get', autospec=True,
@@ -906,8 +884,8 @@ def test_get_kubernetes_services_running_here_for_nerve():
     ) as mock_load_system_config, mock.patch(
         'paasta_tools.kubernetes_tools.get_kubernetes_services_running_here', autospec=True,
     ) as mock_get_kubernetes_services_running_here, mock.patch(
-        'paasta_tools.kubernetes_tools.read_all_registrations_for_service_instance', autospec=True,
-    ) as mock_read_all_registrations_for_service_instance, mock.patch(
+        'paasta_tools.kubernetes_tools.load_kubernetes_service_config', autospec=True,
+    ) as mock_load_kubernetes_service_config, mock.patch(
         'paasta_tools.kubernetes_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace:
 
@@ -926,7 +904,17 @@ def test_get_kubernetes_services_running_here_for_nerve():
             ),
         ]
 
-        mock_read_all_registrations_for_service_instance.side_effect = lambda a, b, c, d: [f"{a}.{b}"]
+        def mock_load_side_effect(
+            service,
+            instance,
+            cluster,
+            load_deployments,
+            soa_dir,
+        ):
+            return mock.Mock(get_registrations=mock.Mock(return_value=[f'{service}.{instance}']))
+
+        mock_load_kubernetes_service_config.return_value.get_registrations.side_effect = lambda a, b, c, d: [f"{a}.{b}"]
+        mock_load_kubernetes_service_config.side_effect = mock_load_side_effect
         mock_load_service_namespace.side_effect = lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
         mock_load_system_config.side_effect = PaastaNotConfiguredError
         ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
@@ -953,16 +941,24 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 'port': 8888,
             },
         )]
-        mock_read_all_registrations_for_service_instance.assert_has_calls([
+        mock_load_kubernetes_service_config.assert_has_calls([
             mock.call(
-                'kurupt', 'fm', 'brentford', '/nail/blah',
+                service='kurupt',
+                instance='fm',
+                cluster='brentford',
+                soa_dir='/nail/blah',
+                load_deployments=False,
             ),
             mock.call(
-                'kurupt', 'garage', 'brentford', '/nail/blah',
+                service='kurupt',
+                instance='garage',
+                cluster='brentford',
+                soa_dir='/nail/blah',
+                load_deployments=False,
             ),
         ])
 
-        mock_read_all_registrations_for_service_instance.side_effect = NoConfigurationForServiceError
+        mock_load_kubernetes_service_config.side_effect = NoConfigurationForServiceError
         ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
         assert ret == []
 

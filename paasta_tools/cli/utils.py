@@ -52,6 +52,7 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
@@ -351,12 +352,6 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
     if not service or not os.path.isdir(os.path.join(soa_dir, service)):
         raise NoSuchService(service)
     return True
-
-
-def list_services(**kwargs):
-    """Returns a sorted list of all services"""
-    soa_dir = kwargs.get('soa_dir', DEFAULT_SOA_DIR)
-    return sorted(os.listdir(os.path.abspath(soa_dir)))
 
 
 def list_paasta_services():

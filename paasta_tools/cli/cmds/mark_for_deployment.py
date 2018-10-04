@@ -37,7 +37,6 @@ from paasta_tools.api import client
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import validate_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
@@ -52,6 +51,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
+from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors

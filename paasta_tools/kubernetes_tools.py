@@ -717,34 +717,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get('bounce_margin_factor', 1.0)
 
 
-def read_all_registrations_for_service_instance(
-    service: str,
-    instance: str,
-    cluster: Optional[str]=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
-) -> Sequence[str]:
-    """Retrieve all registrations as fully specified name.instance pairs
-    for a particular service instance.
-
-    For example, the 'main' paasta instance of the 'test' service may register
-    in the 'test.main' namespace as well as the 'other_svc.main' namespace.
-
-    If one is not defined in the config file, returns a list containing
-    name.instance instead.
-    """
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-
-    kubernetes_service_config = load_kubernetes_service_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        load_deployments=False,
-        soa_dir=soa_dir,
-    )
-    return kubernetes_service_config.get_registrations()
-
-
 def get_kubernetes_services_running_here() -> Sequence[KubeService]:
     services = []
     pods = requests.get('http://127.0.0.1:10255/pods').json()
@@ -784,10 +756,14 @@ def get_kubernetes_services_running_here_for_nerve(
     nerve_list = []
     for kubernetes_service in kubernetes_services:
         try:
-            registrations = read_all_registrations_for_service_instance(
-                kubernetes_service.name, kubernetes_service.instance, cluster, soa_dir,
+            kubernetes_service_config = load_kubernetes_service_config(
+                service=kubernetes_service.name,
+                instance=kubernetes_service.instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
             )
-            for registration in registrations:
+            for registration in kubernetes_service_config.get_registrations():
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
                 nerve_dict = load_service_namespace_config(
                     service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,

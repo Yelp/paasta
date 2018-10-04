@@ -103,20 +103,34 @@ def test_get_paasta_native_services_running_here_for_nerve():
         autospec=True,
         return_value=fake_marathon_services,
     ) as pnsrh_patch, mock.patch(
-        'paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
+        'paasta_tools.native_mesos_scheduler.load_paasta_native_job_config',
         autospec=True,
-        side_effect=lambda *args, **kwargs: registrations.pop(),
-    ) as get_namespace_patch, mock.patch(
+    ) as mock_load_paasta_native_job_config, mock.patch(
         'paasta_tools.native_mesos_scheduler.load_service_namespace_config',
         autospec=True,
         side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
     ) as read_ns_config_patch:
+        def mock_registrations_side_effect(*args, **kwargs):
+            return registrations.pop()
+        mock_load_paasta_native_job_config.return_value.get_registrations.side_effect = mock_registrations_side_effect
         actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(cluster, soa_dir)
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
-        get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-        get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-        assert get_namespace_patch.call_count == 2
+        mock_load_paasta_native_job_config.assert_any_call(
+            service='no_test',
+            instance='left_behind',
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        mock_load_paasta_native_job_config.assert_any_call(
+            service='no_docstrings',
+            instance='forever_abandoned',
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        assert mock_load_paasta_native_job_config.call_count == 2
         read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
         read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
         assert read_ns_config_patch.call_count == 2
@@ -150,20 +164,34 @@ def test_get_paasta_native_services_running_here_for_nerve_multiple_namespaces()
         autospec=True,
         return_value=fake_marathon_services,
     ) as pnsrh_patch, mock.patch(
-        'paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
+        'paasta_tools.native_mesos_scheduler.load_paasta_native_job_config',
         autospec=True,
-        side_effect=lambda *args, **kwargs: namespaces.pop(),
-    ) as get_namespace_patch, mock.patch(
+    ) as mock_load_paasta_native_job_config, mock.patch(
         'paasta_tools.native_mesos_scheduler.load_service_namespace_config',
         autospec=True,
         side_effect=lambda service, namespace, soa_dir: nerve_dicts.pop((service, namespace)),
     ) as read_ns_config_patch:
+        def mock_registrations_side_effect(*args, **kwargs):
+            return namespaces.pop()
+        mock_load_paasta_native_job_config.return_value.get_registrations.side_effect = mock_registrations_side_effect
         actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(cluster, soa_dir)
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
-        get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-        get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-        assert get_namespace_patch.call_count == 2
+        mock_load_paasta_native_job_config.assert_any_call(
+            service='no_test',
+            instance='left_behind',
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        mock_load_paasta_native_job_config.assert_any_call(
+            service='no_docstrings',
+            instance='forever_abandoned',
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        assert mock_load_paasta_native_job_config.call_count == 2
         read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
         read_ns_config_patch.assert_any_call('no_test', 'dos', soa_dir)
         read_ns_config_patch.assert_any_call('no_test', 'tres', soa_dir)
@@ -192,20 +220,34 @@ def test_get_paasta_native_services_running_here_for_nerve_when_not_in_smartstac
         autospec=True,
         return_value=fake_marathon_services,
     ) as pnsrh_patch, mock.patch(
-        'paasta_tools.native_mesos_scheduler.read_all_registrations_for_service_instance',
+        'paasta_tools.native_mesos_scheduler.load_paasta_native_job_config',
         autospec=True,
-        side_effect=lambda *args, **kwargs: registrations.pop(),
-    ) as get_namespace_patch, mock.patch(
+    ) as mock_load_paasta_native_job_config, mock.patch(
         'paasta_tools.native_mesos_scheduler.load_service_namespace_config',
         autospec=True,
         side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
     ) as read_ns_config_patch:
+        def mock_registrations_side_effect(*args, **kwargs):
+            return registrations.pop()
+        mock_load_paasta_native_job_config.return_value.get_registrations.side_effect = mock_registrations_side_effect
         actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(cluster, soa_dir)
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
-        get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-        get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-        assert get_namespace_patch.call_count == 2
+        mock_load_paasta_native_job_config.assert_any_call(
+            service='no_test',
+            instance='left_behind',
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        mock_load_paasta_native_job_config.assert_any_call(
+            service='no_docstrings',
+            instance='forever_abandoned',
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        assert mock_load_paasta_native_job_config.call_count == 2
         read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
         read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
         assert read_ns_config_patch.call_count == 2

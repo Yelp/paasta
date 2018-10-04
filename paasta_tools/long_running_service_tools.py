@@ -389,3 +389,23 @@ def set_instances_for_marathon_service(
     with ZookeeperPool() as zookeeper_client:
         zookeeper_client.ensure_path(zookeeper_path)
         zookeeper_client.set(zookeeper_path, str(instance_count).encode('utf8'))
+
+
+def get_proxy_port_for_instance(
+    service_config: LongRunningServiceConfig,
+) -> Optional[int]:
+    """Get the proxy_port defined in the first namespace configuration for a
+    service instance.
+
+    This means that the namespace first has to be loaded from the service instance's
+    configuration, and then the proxy_port has to loaded from the smartstack configuration
+    for that namespace.
+
+    :param service_config: The instance of the services LongRunningServiceConfig
+    :returns: The proxy_port for the service instance, or None if not defined"""
+    registration = service_config.get_registrations()[0]
+    service, namespace, _, __ = decompose_job_id(registration)
+    nerve_dict = load_service_namespace_config(
+        service=service, namespace=namespace, soa_dir=service_config.soa_dir,
+    )
+    return nerve_dict.get('proxy_port')
