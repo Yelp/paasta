@@ -84,9 +84,6 @@ def make_app(global_config=None):
     config.add_route('version', '/v1/version')
     config.add_route('marathon_dashboard', '/v1/marathon_dashboard', request_method="GET")
     config.add_route('metastatus', '/v1/metastatus')
-    if os.environ.get("PAASTA_API_OBJGRAPH"):
-        config.add_route('objgraph_show_most_common_types', '/v1/objgraph/show_most_common_types')
-        config.add_route('objgraph_show_backrefs_for_type', '/v1/objgraph/show_backrefs/{type}')
     config.scan()
     return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")
 
