@@ -1,4 +1,5 @@
 #!/bin/bash
+/setup-ssh.sh
 rm -rf /root/.ssh/*
 cp /work/example_cluster/ssh_config /root/.ssh/config
 ssh-keygen -f /root/.ssh/id_rsa -N ''

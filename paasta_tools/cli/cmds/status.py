@@ -416,7 +416,7 @@ def report_status_for_cluster(
                 for deployed_instance in deployed_instances
                 if (deployed_instance in http_only_instances or use_api_endpoint)
             ]
-            if any(return_code != 200 for return_code in return_codes):
+            if any(return_codes):
                 api_return_code = 1
         if not use_api_endpoint and ssh_instances or not http_only_instances:
             ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(

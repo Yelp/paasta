@@ -219,7 +219,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 get_nerve_readiness_check_script=mock.Mock(return_value='/nail/blah.sh'),
                 get_hacheck_sidecar_image_url=mock.Mock(return_value='some-docker-image'),
             )
-            ret = self.deployment.get_sidecar_containers(mock_system_config)
+            mock_service_namespace = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
+            assert self.deployment.get_sidecar_containers(mock_system_config, mock_service_namespace) == []
+
+            mock_service_namespace = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
+            ret = self.deployment.get_sidecar_containers(mock_system_config, mock_service_namespace)
             expected = [
                 V1Container(
                     env={},
@@ -248,7 +252,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 get_nerve_readiness_check_script=mock.Mock(return_value='/nail/blah.sh'),
                 get_hacheck_sidecar_image_url=mock.Mock(return_value='some-docker-image'),
             )
-            ret = self.deployment.get_sidecar_containers(mock_system_config)
+            ret = self.deployment.get_sidecar_containers(mock_system_config, mock_service_namespace)
             expected = [
                 V1Container(
                     env={},

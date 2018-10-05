@@ -1,4 +1,4 @@
-FROM examplecluster_itest_trusty
+FROM examplecluster_itest_xenial
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -19,3 +19,4 @@ ENV PATH=/venv/bin:$PATH
 RUN pip install -r /paasta/requirements.txt
 
 ADD ./yelp_package/dockerfiles/playground/start.sh /start.sh
+ADD ./yelp_package/dockerfiles/playground/setup-ssh.sh /setup-ssh.sh
