@@ -41,6 +41,8 @@ import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools.async_utils import aiter_to_list
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import async_ttl_cache
+from paasta_tools.long_running_service_tools import host_passes_blacklist
+from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
@@ -665,48 +667,13 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist: DeployBlacklist, whiteli
     """
     filtered_slaves = []
     for slave in slaves:
-        if slave_passes_blacklist(slave, blacklist) and slave_passes_whitelist(slave, whitelist):
+        if host_passes_blacklist(
+            slave['attributes'], blacklist,
+        ) and host_passes_whitelist(
+            slave['attributes'], whitelist,
+        ):
             filtered_slaves.append(slave)
     return filtered_slaves
-
-
-def slave_passes_blacklist(slave, blacklist: DeployBlacklist) -> bool:
-    """
-    :param slave: A single mesos slave with attributes
-    :param blacklist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
-    :returns: boolean, True if the slave gets passed the blacklist
-    """
-    attributes = slave['attributes']
-    try:
-        for location_type, location in blacklist:
-            if attributes.get(location_type) == location:
-                return False
-    except ValueError as e:
-        log.error(f"Slave {slave} had errors processing the following blacklist: {blacklist}")
-        log.error("I will assume the slave does not pass\nError was: %s" % e)
-        return False
-    return True
-
-
-def slave_passes_whitelist(slave, whitelist: DeployWhitelist) -> bool:
-    """
-    :param slave: A single mesos slave with attributes.
-    :param whitelist: A 2 item list like ["location_type", ["location1", 'location2']]
-    :returns: boolean, True if the slave gets past the whitelist
-    """
-    # No whitelist, so disable whitelisting behavior.
-    if whitelist is None or len(whitelist) == 0:
-        return True
-    try:
-        attributes = slave["attributes"]
-        (location_type, locations) = whitelist
-        if attributes.get(location_type) in locations:
-            return True
-    except ValueError as e:
-        log.error(f"Slave {slave} had errors processing the following whitelist: {whitelist}")
-        log.error("I will assume the slave does not pass\nError was: %s" % e)
-        return False
-    return False
 
 
 def get_container_id_for_mesos_id(client, mesos_task_id):
