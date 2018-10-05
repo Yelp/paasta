@@ -16,9 +16,9 @@ import argparse
 import datetime
 import json
 import logging
-from collections import namedtuple
 from socket import getfqdn
 from socket import gethostbyname
+from typing import NamedTuple
 
 import a_sync
 from dateutil import parser
@@ -35,9 +35,24 @@ from paasta_tools.utils import to_bytes
 
 
 log = logging.getLogger(__name__)
-Hostname = namedtuple('Hostname', ['host', 'ip'])
-Credentials = namedtuple('Credentials', ['file', 'principal', 'secret'])
-Resource = namedtuple('Resource', ['name', 'amount'])
+
+
+class Hostname(NamedTuple):
+    host: str
+    ip: str
+
+
+class Credentials(NamedTuple):
+    file: str
+    principal: str
+    secret: str
+
+
+class Resource(NamedTuple):
+    name: str
+    amount: int
+
+
 MAINTENANCE_ROLE = 'maintenance'
 
 
@@ -581,7 +596,7 @@ def reserve_all_resources(hostnames):
         log.info("Reserving all resources on %s" % hostname)
         slave_id = slave['id']
         resources = []
-        for resource in ['disk', 'mem', 'cpus']:
+        for resource in ['disk', 'mem', 'cpus', 'gpus']:
             free_resource = slave['resources'][resource] - slave['used_resources'][resource]
             for role in slave['reserved_resources']:
                 free_resource -= slave['reserved_resources'][role][resource]
@@ -606,7 +621,7 @@ def unreserve_all_resources(hostnames):
         slave_id = slave['id']
         resources = []
         if MAINTENANCE_ROLE in slave['reserved_resources']:
-            for resource in ['disk', 'mem', 'cpus']:
+            for resource in ['disk', 'mem', 'cpus', 'gpus']:
                 reserved_resource = slave['reserved_resources'][MAINTENANCE_ROLE][resource]
                 resources.append(Resource(name=resource, amount=reserved_resource))
             try:

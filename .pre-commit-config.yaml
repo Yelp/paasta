@@ -14,6 +14,7 @@ repos:
         args: [--django]
     -   id: requirements-txt-fixer
     -   id: flake8
+        args: ['--ignore=E701,E704']
         exclude: ^docs/source/conf.py$
     -   id: fix-encoding-pragma
         args: [--remove]

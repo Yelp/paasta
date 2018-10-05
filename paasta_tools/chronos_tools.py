@@ -456,8 +456,8 @@ class ChronosJobConfig(InstanceConfig):
                 # one, so if someone does try to do something like "R1//P0.01M"
                 # then the API request to upload the job will fail.  TODO:
                 # detect when someone is trying to add a fractional period?
-                if(parsed_interval and isinstance(parsed_interval, datetime.timedelta)
-                        and parsed_interval < datetime.timedelta(seconds=60)):
+                if (parsed_interval and isinstance(parsed_interval, datetime.timedelta) and
+                        parsed_interval < datetime.timedelta(seconds=60)):
                     msgs.append('Unsupported interval "%s": jobs must be run at an interval of > 60 seconds' % interval)
 
                 if not self._check_schedule_repeat_helper(repeat):

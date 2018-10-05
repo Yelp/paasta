@@ -17,7 +17,6 @@ import io
 import itertools
 import logging
 import sys
-from typing import List
 from typing import MutableSequence
 from typing import Optional
 from typing import Sequence
@@ -36,10 +35,14 @@ from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
+from paasta_tools.marathon_tools import MarathonClient
+from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
+from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics import metastatus_lib
+from paasta_tools.metrics.metastatus_lib import HealthCheckResult
 from paasta_tools.metrics.metastatus_lib import ResourceUtilization
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
@@ -107,11 +110,16 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def get_marathon_framework_ids(marathon_clients):
+def get_marathon_framework_ids(
+    marathon_clients: Sequence[MarathonClient],
+) -> Sequence[str]:
     return [client.get_info().framework_id for client in marathon_clients]
 
 
-def _run_mesos_checks(mesos_master, mesos_state):
+def _run_mesos_checks(
+    mesos_master: MesosMaster,
+    mesos_state: MesosState,
+) -> Sequence[HealthCheckResult]:
     mesos_state_status = metastatus_lib.get_mesos_state_status(mesos_state)
 
     metrics = a_sync.block(mesos_master.metrics_snapshot)
@@ -119,10 +127,12 @@ def _run_mesos_checks(mesos_master, mesos_state):
         mesos_metrics=metrics,
         mesos_state=mesos_state,
     )
-    return mesos_state_status + mesos_metrics_status
+    return mesos_state_status + mesos_metrics_status  # type: ignore
 
 
-def _run_marathon_checks(marathon_clients):
+def _run_marathon_checks(
+    marathon_clients: Sequence[MarathonClient],
+) -> Sequence[HealthCheckResult]:
     try:
         marathon_results = metastatus_lib.get_marathon_status(marathon_clients)
         return marathon_results
@@ -131,7 +141,9 @@ def _run_marathon_checks(marathon_clients):
         raise FatalError(2)
 
 
-def all_marathon_clients(marathon_clients):
+def all_marathon_clients(
+    marathon_clients: MarathonClients,
+) -> Sequence[MarathonClient]:
     return [c for c in itertools.chain(marathon_clients.current, marathon_clients.previous)]
 
 
@@ -141,7 +153,7 @@ def utilization_table_by_grouping_from_mesos_state(
     mesos_state: MesosState,
     service_instance_stats: Optional[ServiceInstanceStats] = None,
 ) -> Tuple[
-    List[List[str]],
+    Sequence[MutableSequence[str]],
     bool,
 ]:
     grouping_function = metastatus_lib.key_func_for_attribute_multi(groupings)
@@ -217,7 +229,11 @@ def fill_table_rows_with_service_instance_stats(
     table_rows[-1].append('{:6} ; {}'.format(int(num_service_instances_allowed), limiting_factor))
 
 
-def get_service_instance_stats(service: str, instance: str, cluster: str) -> Optional[ServiceInstanceStats]:
+def get_service_instance_stats(
+    service: str,
+    instance: str,
+    cluster: str,
+) -> Optional[ServiceInstanceStats]:
     """Returns a Dict with stats about a given service instance.
 
     Args:
@@ -246,7 +262,7 @@ def get_service_instance_stats(service: str, instance: str, cluster: str) -> Opt
         return None
 
 
-def print_output(argv: Optional[List[str]]=None) -> None:
+def print_output(argv: Optional[Sequence[str]]=None) -> None:
     chronos_config = None
     args = parse_args(argv)
 
@@ -351,7 +367,7 @@ def print_output(argv: Optional[List[str]]=None) -> None:
         raise FatalError(2)
 
 
-def get_output(argv: Optional[List[str]]=None) -> Tuple[str, int]:
+def get_output(argv: Optional[Sequence[str]]=None) -> Tuple[str, int]:
     output = io.StringIO()
     exit_code = 1
     with set_paasta_print_file(output):
@@ -364,7 +380,7 @@ def get_output(argv: Optional[List[str]]=None) -> Tuple[str, int]:
     return ret, exit_code
 
 
-def main(argv: Optional[List[str]]=None) -> None:
+def main(argv: Optional[Sequence[str]]=None) -> None:
     exit_code = 0
     try:
         print_output(argv)

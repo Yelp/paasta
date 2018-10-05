@@ -92,7 +92,9 @@ def test_get_mesos_utilization_error():
             'free': ResourceInfo(cpus=7.0, mem=2048.0, disk=30.0),
             'total': ResourceInfo(cpus=10.0, mem=4096.0, disk=40.0),
         }
-        mock_get_resource_utilization_by_grouping.return_value = {('default', 'westeros-1'): mock_utilization}
+        mock_get_resource_utilization_by_grouping.return_value = {
+            (('pool', 'default'), ('region', 'westeros-1')): mock_utilization,
+        }
 
         ret = autoscaling_cluster_lib.get_mesos_utilization_error(
             mesos_state=mock_mesos_state,
@@ -318,7 +320,10 @@ def test_get_autoscaling_info_for_all_resources():
     mock_get_cluster_autoscaling_resources = mock.Mock(return_value=mock_resources)
     mock_system_config = mock.Mock(
         get_cluster_autoscaling_resources=mock_get_cluster_autoscaling_resources,
-        get_resource_pool_settings=mock.Mock(return_value={}),
+        get_resource_pool_settings=mock.Mock(return_value={
+            'default': {},
+            'not-default': {},
+        }),
     )
 
     mock_autoscaling_info = mock.Mock()

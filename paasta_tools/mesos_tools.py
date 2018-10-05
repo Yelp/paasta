@@ -25,6 +25,7 @@ from typing import Callable
 from typing import Collection
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -35,6 +36,7 @@ import a_sync
 import humanize
 import requests
 from kazoo.client import KazooClient
+from mypy_extensions import TypedDict
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
@@ -256,7 +258,7 @@ async def get_short_hostname_from_task(task: Task) -> str:
         return 'Unknown'
 
 
-def get_first_status_timestamp(task: Task):
+def get_first_status_timestamp(task: Task) -> str:
     """Gets the first status timestamp from a task id and returns a human
     readable string with the local time and a humanized duration:
     ``2015-01-30T08:45 (an hour ago)``
@@ -269,7 +271,7 @@ def get_first_status_timestamp(task: Task):
         return "Unknown"
 
 
-async def get_mem_usage(task: Task):
+async def get_mem_usage(task: Task) -> str:
     try:
         task_mem_limit = await task.mem_limit()
         task_rss = await task.rss()
@@ -287,7 +289,7 @@ async def get_mem_usage(task: Task):
         return "Timed Out"
 
 
-async def get_cpu_usage(task):
+async def get_cpu_usage(task: Task) -> str:
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
     (the sum of system and user time), OVER the total cpu time the task
@@ -559,12 +561,24 @@ def get_local_slave_state(hostname=None):
 
 
 async def get_mesos_quorum():
-    """Returns the configured quorum size.
-    :param state: mesos state dictionary"""
+    """Returns the configured quorum size."""
     return int((await get_master_flags())['flags']['quorum'])
 
 
-def get_all_tasks_from_state(mesos_state, include_orphans=False):
+MesosResources = Mapping[str, Any]
+
+
+class MesosTask(TypedDict):
+    resources: MesosResources
+    slave_id: str
+    id: str
+    state: str
+
+
+def get_all_tasks_from_state(
+    mesos_state: MesosState,
+    include_orphans: bool = False,
+) -> Sequence[MesosTask]:
     """Given a mesos state, find the tasks from all frameworks.
     :param mesos_state: the mesos_state
     :returns: a list of tasks
@@ -769,7 +783,7 @@ async def get_mesos_task_count_by_slave(
     return slaves_with_counts
 
 
-def get_count_running_tasks_on_slave(hostname):
+def get_count_running_tasks_on_slave(hostname: str) -> int:
     """Return the number of tasks running on a particular slave
     or 0 if the slave is not found.
     :param hostname: hostname of the slave
@@ -783,7 +797,7 @@ def get_count_running_tasks_on_slave(hostname):
         return 0
 
 
-def slave_pid_to_ip(slave_pid):
+def slave_pid_to_ip(slave_pid: str) -> str:
     """Convert slave_pid to IP
 
     :param: slave pid e.g. slave(1)@10.40.31.172:5051
@@ -816,7 +830,10 @@ async def get_tasks_from_app_id(app_id, slave_hostname=None):
     return tasks
 
 
-async def get_task(task_id, app_id=''):
+async def get_task(
+    task_id: str,
+    app_id: str = '',
+) -> MesosTask:
     tasks = await get_running_tasks_from_frameworks(app_id)
     tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
     if len(tasks) < 1:
@@ -826,7 +843,10 @@ async def get_task(task_id, app_id=''):
     return tasks[0]
 
 
-def filter_task_by_task_id(task, task_id):
+def filter_task_by_task_id(
+    task: MesosTask,
+    task_id: str,
+) -> bool:
     return task['id'] == task_id
 
 
@@ -867,7 +887,9 @@ def mesos_services_running_here(framework_filter, parse_service_instance_from_ex
     return srv_list
 
 
-def is_task_terminal(task):
+def is_task_terminal(
+    task: MesosTask,
+) -> bool:
     """Return whether a given mesos task is terminal.
 
     Terminal states are documented in
