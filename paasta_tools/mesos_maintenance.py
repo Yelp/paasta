@@ -16,9 +16,9 @@ import argparse
 import datetime
 import json
 import logging
-from collections import namedtuple
 from socket import getfqdn
 from socket import gethostbyname
+from typing import NamedTuple
 
 import a_sync
 from dateutil import parser
@@ -35,9 +35,24 @@ from paasta_tools.utils import to_bytes
 
 
 log = logging.getLogger(__name__)
-Hostname = namedtuple('Hostname', ['host', 'ip'])
-Credentials = namedtuple('Credentials', ['file', 'principal', 'secret'])
-Resource = namedtuple('Resource', ['name', 'amount'])
+
+
+class Hostname(NamedTuple):
+    host: str
+    ip: str
+
+
+class Credentials(NamedTuple):
+    file: str
+    principal: str
+    secret: str
+
+
+class Resource(NamedTuple):
+    name: str
+    amount: int
+
+
 MAINTENANCE_ROLE = 'maintenance'
 
 

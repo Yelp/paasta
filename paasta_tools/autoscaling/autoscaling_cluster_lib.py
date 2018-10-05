@@ -18,18 +18,21 @@ import math
 import os
 import time
 from collections import defaultdict
-from collections import namedtuple
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from math import ceil
 from math import floor
 from typing import Any
+from typing import DefaultDict
 from typing import Dict
-from typing import Iterable
 from typing import List
+from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
+from typing import Type
 from typing import Union
 
 import a_sync
@@ -57,39 +60,46 @@ from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
 
-AutoscalingInfo = namedtuple(
-    "AutoscalingInfo",
-    [
-        "resource_id",
-        "pool",
-        "state",
-        "current",
-        "target",
-        "min_capacity",
-        "max_capacity",
-        "instances",
-    ],
-)
+class AutoscalingInfo(NamedTuple):
+    resource_id: str
+    pool: str
+    state: str
+    current: str
+    target: str
+    min_capacity: str
+    max_capacity: str
+    instances: str
 
-ClusterAutoscalingResource = TypedDict(
-    'ClusterAutoscalingResource',
-    {
-        'type': str,
-        'id': str,
-        'region': str,
-        'pool': str,
-        'min_capacity': int,
-        'max_capacity': int,
-    },
-)
 
-ResourcePoolSetting = TypedDict(
-    'ResourcePoolSetting',
-    {
-        'target_utilization': float,
-        'drain_timeout': int,
-    },
-)
+class ClusterAutoscalingResource(TypedDict):
+    type: str
+    id: str
+    region: str
+    pool: str
+    min_capacity: int
+    max_capacity: int
+
+
+class ResourcePoolSetting(TypedDict):
+    target_utilization: float
+    drain_timeout: int
+
+
+class InstanceDescription(TypedDict):
+    InstanceId: str
+    PrivateIpAddress: str
+
+
+class SpotFleetRequestConfig(TypedDict):
+    FulfilledCapacity: int
+    TargetCapacity: int
+
+
+class SpotFleetRequestConfig0(TypedDict):
+    SpotFleetRequestState: str
+    CreateTime: str
+    SpotFleetRequestConfig: SpotFleetRequestConfig
+
 
 CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
 DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
@@ -145,7 +155,7 @@ class ClusterAutoscaler:
         if log_level is not None:
             self.log.setLevel(log_level)
         self.instances: List[Dict] = []
-        self.sfr: Optional[Dict[str, Any]] = None
+        self.sfr: Optional[SpotFleetRequestConfig0] = None
         self.enable_metrics = enable_metrics
         self.enable_maintenance_reservation = enable_maintenance_reservation
 
@@ -200,7 +210,7 @@ class ClusterAutoscaler:
     def set_capacity(self, capacity: float) -> Optional[Any]:
         pass
 
-    def get_instance_type_weights(self) -> Optional[Dict[str, float]]:
+    def get_instance_type_weights(self) -> Optional[Mapping[str, float]]:
         pass
 
     def is_resource_cancelled(self) -> bool:
@@ -211,10 +221,10 @@ class ClusterAutoscaler:
 
     def describe_instances(
         self,
-        instance_ids: List[str],
+        instance_ids: Sequence[str],
         region: Optional[str]=None,
-        instance_filters: Optional[List[Dict]]=None,
-    ) -> Optional[List[Dict]]:
+        instance_filters: Optional[Sequence[Mapping]]=None,
+    ) -> Optional[Sequence[InstanceDescription]]:
         """This wraps ec2.describe_instances and catches instance not
         found errors. It returns a list of instance description
         dictionaries.  Optionally, a filter can be passed through to
@@ -244,10 +254,10 @@ class ClusterAutoscaler:
 
     def describe_instance_status(
         self,
-        instance_ids: List[str],
+        instance_ids: Sequence[str],
         region: Optional[str]=None,
-        instance_filters: Optional[List[Dict]]=None,
-    ) -> Optional[Dict]:
+        instance_filters: Optional[Sequence[Mapping]]=None,
+    ) -> Optional[Mapping]:
         """This wraps ec2.describe_instance_status and catches instance not
         found errors. It returns a list of instance description
         dictionaries.  Optionally, a filter can be passed through to
@@ -275,9 +285,9 @@ class ClusterAutoscaler:
 
     def get_instance_ips(
         self,
-        instances: List[Dict],
+        instances: Sequence[Mapping],
         region: Optional[str]=None,
-    ) -> List[str]:
+    ) -> Sequence[str]:
         instance_descriptions = self.describe_instances(
             [instance['InstanceId'] for instance in instances],
             region=region,
@@ -307,7 +317,7 @@ class ClusterAutoscaler:
             os.remove(configs_to_delete[0])
         self.log.info("Deleted Resource config {}".format(configs_to_delete[0]))
 
-    def get_aws_slaves(self, mesos_state: MesosState) -> Dict[str, Dict]:
+    def get_aws_slaves(self, mesos_state: MesosState) -> Mapping[str, Mapping]:
         instance_ips = self.get_instance_ips(self.instances, region=self.resource['region'])
         slaves = {
             slave['id']: slave for slave in mesos_state.get('slaves', [])
@@ -318,7 +328,7 @@ class ClusterAutoscaler:
 
     def check_expected_slaves(
         self,
-        slaves: Dict[str, Dict],
+        slaves: Mapping[str, Mapping],
         expected_instances: Optional[int],
     ) -> None:
         current_instances = len(slaves)
@@ -431,7 +441,7 @@ class ClusterAutoscaler:
             ))
             self.terminate_instances([instance_id])
 
-    def terminate_instances(self, instance_ids: List[str]) -> None:
+    def terminate_instances(self, instance_ids: Sequence[str]) -> None:
         ec2_client = boto3.client('ec2', region_name=self.resource['region'])
         try:
             ec2_client.terminate_instances(
@@ -589,7 +599,7 @@ class ClusterAutoscaler:
                     unreserve_resources=self.enable_maintenance_reservation,
                 )
 
-    def filter_aws_slaves(self, slaves_list: Iterable[Dict[str, SlaveTaskCount]]) -> List['PaastaAwsSlave']:
+    def filter_aws_slaves(self, slaves_list: Sequence[Mapping[str, SlaveTaskCount]]) -> Sequence['PaastaAwsSlave']:
         ips = self.get_instance_ips(self.instances, region=self.resource['region'])
         self.log.debug(f"IPs in AWS resources: {ips}")
         slaves = [
@@ -610,7 +620,7 @@ class ClusterAutoscaler:
             if matching_descriptions:
                 assert len(matching_descriptions) == 1, (
                     "There should be only one instance with the same IP."
-                    "Found instances %s with the same ip %d"
+                    "Found instances %s with the same ip %s"
                     % (
                         ",".join(
                             [x['InstanceId'] for x in matching_descriptions],
@@ -638,8 +648,8 @@ class ClusterAutoscaler:
 
     def instance_status_for_instance_ids(
         self,
-        instance_ids: List[str],
-    ) -> Dict[str, List[Dict[str, Union[str, Dict, List]]]]:
+        instance_ids: Sequence[str],
+    ) -> Mapping[str, Sequence[Mapping[str, Union[str, Mapping, Sequence]]]]:
         """
         Return a list of instance statuses. Batch the API calls into
         groups of 99, since AWS limit it.
@@ -661,8 +671,8 @@ class ClusterAutoscaler:
 
         return accumulated
 
-    def instance_descriptions_for_ips(self, ips: List[str]) -> List[Dict[str, Any]]:
-        all_instances: List[Dict] = []
+    def instance_descriptions_for_ips(self, ips: Sequence[str]) -> Sequence[InstanceDescription]:
+        all_instances: List[InstanceDescription] = []
         for start, stop in zip(range(0, len(ips), 199), range(199, len(ips) + 199, 199)):
             all_instances += self.describe_instances(
                 instance_ids=[],
@@ -679,8 +689,8 @@ class ClusterAutoscaler:
     def filter_instance_description_for_ip(
         self,
         ip: str,
-        instance_descriptions: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        instance_descriptions: Sequence[InstanceDescription],
+    ) -> Sequence[InstanceDescription]:
         return [
             i for i in instance_descriptions
             if ip == i['PrivateIpAddress']
@@ -689,8 +699,8 @@ class ClusterAutoscaler:
     def filter_instance_status_for_instance_id(
         self,
         instance_id: str,
-        instance_statuses: Dict[str, List[Dict[str, Union[str, Dict, List]]]],
-    ) -> List[Dict[str, Union[str, Dict, List]]]:
+        instance_statuses: Mapping[str, Sequence[Mapping[str, Union[str, Mapping, Sequence]]]],
+    ) -> Sequence[Mapping[str, Union[str, Mapping, Sequence]]]:
         return [
             status for status in instance_statuses['InstanceStatuses']
             if status['InstanceId'] == instance_id
@@ -698,7 +708,7 @@ class ClusterAutoscaler:
 
     async def downscale_aws_resource(
         self,
-        filtered_slaves: List['PaastaAwsSlave'],
+        filtered_slaves: Sequence['PaastaAwsSlave'],
         current_capacity: float,
         target_capacity: int,
     ) -> None:
@@ -792,7 +802,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         self,
         spotfleet_request_id: str,
         region: Optional[str]=None,
-    ) -> Dict[str, Any]:
+    ) -> Optional[SpotFleetRequestConfig0]:
         ec2_client = boto3.client('ec2', region_name=region)
         try:
             sfrs = ec2_client.describe_spot_fleet_requests(SpotFleetRequestIds=[spotfleet_request_id])
@@ -821,7 +831,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         self,
         spotfleet_request_id: str,
         region: Optional[str]=None,
-    ) -> List[Dict[str, str]]:
+    ) -> Sequence[Mapping[str, str]]:
         ec2_client = boto3.client('ec2', region_name=region)
         spot_fleet_instances = ec2_client.describe_spot_fleet_instances(
             SpotFleetRequestId=spotfleet_request_id,
@@ -962,7 +972,7 @@ class SpotAutoscaler(ClusterAutoscaler):
             return True
         return False
 
-    def get_instance_type_weights(self) -> Dict[str, float]:
+    def get_instance_type_weights(self) -> Mapping[str, float]:
         launch_specifications = self.sfr['SpotFleetRequestConfig']['LaunchSpecifications']
         return {ls['InstanceType']: ls['WeightedCapacity'] for ls in launch_specifications}
 
@@ -1000,7 +1010,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         now = datetime.now(timezone.utc)
         return (now - self.asg['CreatedTime']).total_seconds() < self.slave_newness_threshold
 
-    def get_asg(self, asg_name: str, region: Optional[str]=None) -> Optional[Dict[str, Any]]:
+    def get_asg(self, asg_name: str, region: Optional[str]=None) -> Optional[Mapping[str, Any]]:
         asg_client = boto3.client('autoscaling', region_name=region)
         asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
         try:
@@ -1119,13 +1129,13 @@ class PaastaAwsSlave:
 
     def __init__(
         self,
-        slave: Dict[str, SlaveTaskCount],
-        instance_description: Dict[str, Any],
-        instance_status: Optional[Dict[str, Any]]=None,
-        instance_type_weights: Optional[Dict]=None,
+        slave: Mapping[str, SlaveTaskCount],
+        instance_description: Mapping[str, Any],
+        instance_status: Optional[Mapping[str, Any]]=None,
+        instance_type_weights: Optional[Mapping]=None,
     ) -> None:
         if instance_status is None:
-            self.instance_status: Dict[str, Any] = {}
+            self.instance_status: Mapping[str, Any] = {}
         else:
             self.instance_status = instance_status
         self.wrapped_slave = slave
@@ -1136,7 +1146,7 @@ class PaastaAwsSlave:
         self.ip = slave_pid_to_ip(self.slave['pid'])
 
     @property
-    def instance(self) -> Dict[str, Any]:
+    def instance(self) -> Mapping[str, Any]:
         return self.instance_description
 
     @property
@@ -1164,11 +1174,11 @@ class PaastaAwsSlave:
 
 
 def get_all_utilization_errors(
-    autoscaling_resources: Dict[str, Dict[str, str]],
-    all_pool_settings: Dict[str, Dict],
+    autoscaling_resources: Mapping[str, Mapping[str, str]],
+    all_pool_settings: Mapping[str, Mapping],
     mesos_state: MesosState,
     system_config: SystemPaastaConfig,
-) -> Dict[Tuple[str, str], float]:
+) -> Mapping[Tuple[str, str], float]:
     errors: Dict[Tuple[str, str], float] = {}
     for identifier, resource in autoscaling_resources.items():
         pool = resource['pool']
@@ -1213,7 +1223,7 @@ async def autoscale_local_cluster(
         system_config=system_config,
     )
     log.info("Utilization errors: %s" % utilization_errors)
-    autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
+    autoscaling_scalers: DefaultDict[Tuple[str, str], List[ClusterAutoscaler]] = defaultdict(list)
     for identifier, resource in autoscaling_resources.items():
         pool_settings = all_pool_settings.get(resource['pool'], {})
         try:
@@ -1241,17 +1251,17 @@ async def autoscale_local_cluster(
     await run_parallel_scalers(sorted_autoscaling_scalers, mesos_state)
 
 
-def sort_scalers(filtered_autoscaling_scalers: List[ClusterAutoscaler]) -> List[ClusterAutoscaler]:
+def sort_scalers(filtered_autoscaling_scalers: Sequence[ClusterAutoscaler]) -> Sequence[ClusterAutoscaler]:
     return sorted(
         filtered_autoscaling_scalers, key=lambda x: x.is_resource_cancelled(), reverse=True,
     )
 
 
 def filter_scalers(
-    autoscaling_scalers: Dict[Tuple[str, str], List[ClusterAutoscaler]],
-    utilization_errors: Dict[Tuple[str, str], float],
-) -> List[ClusterAutoscaler]:
-    any_cancelled_in_pool: Dict[Tuple[str, str], bool] = defaultdict(lambda: False)
+    autoscaling_scalers: Mapping[Tuple[str, str], Sequence[ClusterAutoscaler]],
+    utilization_errors: Mapping[Tuple[str, str], float],
+) -> Sequence[ClusterAutoscaler]:
+    any_cancelled_in_pool: DefaultDict[Tuple[str, str], bool] = defaultdict(lambda: False)
     for (region, pool), scalers in autoscaling_scalers.items():
         for scaler in scalers:
             if scaler.is_resource_cancelled():
@@ -1272,7 +1282,7 @@ def filter_scalers(
 
 
 async def run_parallel_scalers(
-    sorted_autoscaling_scalers: List[ClusterAutoscaler],
+    sorted_autoscaling_scalers: Sequence[ClusterAutoscaler],
     mesos_state: MesosState,
 ) -> None:
     scaling_tasks = []
@@ -1286,7 +1296,9 @@ async def run_parallel_scalers(
         await task
 
 
-def get_scaler(scaler_type: str) -> type:
+def get_scaler(
+    scaler_type: str,
+) -> Type[ClusterAutoscaler]:
     scalers = {
         'aws_spot_fleet_request': SpotAutoscaler,
         'aws_autoscaling_group': AsgAutoscaler,
@@ -1294,7 +1306,10 @@ def get_scaler(scaler_type: str) -> type:
     return scalers[scaler_type]
 
 
-async def autoscale_cluster_resource(scaler: ClusterAutoscaler, mesos_state: MesosState) -> None:
+async def autoscale_cluster_resource(
+    scaler: ClusterAutoscaler,
+    mesos_state: MesosState,
+) -> None:
     log.info("Autoscaling {} in pool, {}".format(scaler.resource['id'], scaler.resource['pool']))
     try:
         current, target = scaler.metrics_provider(mesos_state)
@@ -1304,7 +1319,10 @@ async def autoscale_cluster_resource(scaler: ClusterAutoscaler, mesos_state: Mes
         log.error('{}: {}'.format(scaler.resource['id'], e))
 
 
-def get_instances_from_ip(ip: str, instance_descriptions: List[Dict]) -> List[Dict]:
+def get_instances_from_ip(
+    ip: str,
+    instance_descriptions: Sequence[InstanceDescription],
+) -> Sequence[InstanceDescription]:
     """Filter AWS instance_descriptions based on PrivateIpAddress
 
     :param ip: private IP of AWS instance.
@@ -1314,7 +1332,9 @@ def get_instances_from_ip(ip: str, instance_descriptions: List[Dict]) -> List[Di
     return instances
 
 
-def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[AutoscalingInfo]:
+def get_autoscaling_info_for_all_resources(
+    mesos_state: MesosState,
+) -> Sequence[AutoscalingInfo]:
     system_config = load_system_paasta_config()
     autoscaling_resources = system_config.get_cluster_autoscaling_resources()
     pool_settings = system_config.get_resource_pool_settings()
@@ -1340,10 +1360,10 @@ def get_autoscaling_info_for_all_resources(mesos_state: MesosState) -> List[Auto
 
 
 def autoscaling_info_for_resource(
-    resource: Dict[str, str],
-    pool_settings: Dict[str, Dict],
+    resource: Mapping[str, str],
+    pool_settings: Mapping[str, Mapping],
     mesos_state: MesosState,
-    utilization_errors: Dict[Tuple[str, str], float],
+    utilization_errors: Mapping[Tuple[str, str], float],
     max_increase: float,
     max_decrease: float,
 ) -> Optional[AutoscalingInfo]:

@@ -18,7 +18,6 @@ import logging
 import math
 from datetime import datetime
 from typing import Any
-from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import NamedTuple
@@ -102,23 +101,21 @@ YELP_ATTRIBUTE_PREFIX = 'yelp.com/'
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
-KubeDeployment = NamedTuple(
-    'KubeDeployment', [
-        ('service', str),
-        ('instance', str),
-        ('git_sha', str),
-        ('config_sha', str),
-        ('replicas', int),
-    ],
-)
-KubeService = NamedTuple(
-    'KubeService', [
-        ('name', str),
-        ('instance', str),
-        ('port', int),
-        ('pod_ip', str),
-    ],
-)
+
+
+class KubeDeployment(NamedTuple):
+    service: str
+    instance: str
+    git_sha: str
+    config_sha: str
+    replicas: int
+
+
+class KubeService(NamedTuple):
+    name: str
+    instance: str
+    port: int
+    pod_ip: str
 
 
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
@@ -338,7 +335,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         system_paasta_config: SystemPaastaConfig,
         service_namespace_config: ServiceNamespaceConfig,
-    ) -> List[V1Container]:
+    ) -> Sequence[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
@@ -386,7 +383,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         user_env = [V1EnvVar(name=name, value=value) for name, value in self.get_env().items()]
         return user_env + self.get_kubernetes_environment()
 
-    def get_kubernetes_environment(self) -> List[V1EnvVar]:
+    def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
                 name='PAASTA_POD_IP',
@@ -629,6 +626,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             system_paasta_config = load_system_paasta_config()
             docker_url = self.get_docker_url()
             code_sha = get_code_sha_from_dockerurl(docker_url)
+            complete_config: Union[V1StatefulSet, V1Deployment]
             if self.get_persistent_volumes():
                 complete_config = V1StatefulSet(
                     api_version='apps/v1',
@@ -721,8 +719,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def sanitize_for_config_hash(
         self,
-        config: V1Deployment,
-    ) -> Dict[str, Any]:
+        config: Union[V1Deployment, V1StatefulSet],
+    ) -> Mapping[str, Any]:
         """Removes some data from config to make it suitable for
         calculation of config hash.
 

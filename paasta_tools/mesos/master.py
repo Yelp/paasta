@@ -54,10 +54,28 @@ MULTIPLE_SLAVES = "There are multiple slaves with that id. Please choose one: "
 logger = logging.getLogger(__name__)
 
 
-MesosState = TypedDict(
-    'MesosState',
+class MesosState(TypedDict):
+    slaves: List
+    frameworks: List
+    orphan_tasks: List
+
+
+MesosMetrics = TypedDict(
+    'MesosMetrics',
     {
-        'slaves': List,
+        'master/cpus_total': int,
+        'master/cpus_used': int,
+        'master/disk_total': int,
+        'master/disk_used': int,
+        'master/gpus_total': int,
+        'master/gpus_used': int,
+        'master/mem_total': int,
+        'master/mem_used': int,
+        'master/tasks_running': int,
+        'master/tasks_staging': int,
+        'master/tasks_starting': int,
+        'master/slaves_active': int,
+        'master/slaves_inactive': int,
     },
 )
 
@@ -302,7 +320,7 @@ class MesosMaster:
             "/master/teardown", data="frameworkId=%s" % framework_id,
         )
 
-    async def metrics_snapshot(self):
+    async def metrics_snapshot(self) -> MesosMetrics:
         return await (await self.fetch("/metrics/snapshot")).json()
 
     @property  # type: ignore
