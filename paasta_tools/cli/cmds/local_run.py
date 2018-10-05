@@ -423,7 +423,7 @@ def get_docker_run_cmd(
         cmd.append(f'{k}')
     cmd.append('--memory=%dm' % memory)
     for i in docker_params:
-        cmd.append('--{}={}'.format(i['key'], i['value']))
+        cmd.append(f"--{i['key']}={i['value']}")
     if net == 'bridge' and container_port is not None:
         cmd.append('--publish=%d:%d' % (chosen_port, container_port))
     elif net == 'host':
