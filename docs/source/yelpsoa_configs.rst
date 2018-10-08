@@ -281,12 +281,22 @@ instance MAY have:
     scripts will send a CRITICAL alert.
 
 In addition, each instancename MAY configure additional Marathon healthcheck
-options:
+options (Read the official
+`mesos documentation <https://mesos.readthedocs.io/en/latest/health-checks/>`_
+for more low-level details:
 
-  * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``. If your
-    service uses Smartstack, then this must match the value of the ``mode`` key
-    defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then
-    PaaSTA will execute ``healthcheck_cmd`` and examine the return code.
+  * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
+    If set to ``http`` or ``https``, a ``curl`` command will be executed
+    inside the container.
+
+    If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and
+    examine the return code. It must return 0 to be considered healthy.
+
+    If the service is registered in SmartStack, the healthcheck_mode will
+    automatically use the same setings specified by ``smartstack.yaml``.
+
+    If not in smartstack, the default healthcheck is "None", which means
+    the container is considered healthy unless it crashes.
 
   * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
     command is executed inside the container as a healthcheck. It must exit
@@ -308,12 +318,24 @@ options:
   * ``healthcheck_max_consecutive_failures``: Marathon will kill the current
     task if this many healthchecks fail consecutively. Defaults to 6 attempts.
 
+  * ``healthcheck_uri``: The url of the service to healthcheck if using http.
+    Defaults to the same uri specified in ``smartstack.yaml``, but can be
+    set to something different here.
 
-Many of these keys are passed directly to Marathon. Their docs aren't super
-clear about all these but start there:
-https://mesosphere.github.io/marathon/docs/rest-api.html
+**Note**: Although many of these settings are inherited from ``smartstack.yaml``,
+their thresholds are not the same. The reason for this has to do with control
+loops and infrastructure stability. The load balancer tier can be pickier
+about which copies of a service it can send requests to, compared to Mesos.
 
-Notes:
+A load balancer can take a container out of service and put it back in a few
+seconds later. Minor flaps and transient errors are tolerated.
+
+The healthchecks specified here in this file signal to the infrastructure that
+a container is unhealthy, and the action to take is to completely destroy it and
+launch it elsewhere. This is a more expensive operation than taking a container
+out of the load balancer, so it justifies having less sensitive thresholds.
+
+**Footnotes**:
 
 .. [#note] The Marathon docs and the Docker docs are inconsistent in their
    explanation of args/cmd:
