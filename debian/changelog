@@ -1,3 +1,12 @@
+paasta-tools (0.80.13) xenial; urgency=medium
+
+  * 0.80.13 tagged with 'make release'
+    Commit: Merge pull request #2008 from Yelp/u/sargurum/PAASTA-
+    14761_pre_limited_get_instances_autoscaling_api  Expose calculated
+    (pre-limited) number of instance by autoscaler
+
+ -- Sargurunathan Mohan <sargurum@yelp.com>  Tue, 09 Oct 2018 09:29:28 -0700
+
 paasta-tools (0.80.12) xenial; urgency=medium
 
   * 0.80.12 tagged with 'make release'
