@@ -1,3 +1,10 @@
+paasta-tools (0.80.14) xenial; urgency=medium
+
+  * 0.80.14 tagged with 'make release'
+    Commit: Released 0.80.13 via make release
+
+ -- Sargurunathan Mohan <sargurum@yelp.com>  Tue, 09 Oct 2018 09:39:55 -0700
+
 paasta-tools (0.80.13) xenial; urgency=medium
 
   * 0.80.13 tagged with 'make release'
