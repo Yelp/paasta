@@ -39,12 +39,18 @@ from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
+from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
+from paasta_tools.kubernetes_tools import get_all_nodes
+from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
+from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
+from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -55,6 +61,7 @@ from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
+from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
@@ -1250,3 +1257,146 @@ def test_get_active_shas_for_service():
         'git_sha': {'b456', 'b456!!!'},
         'config_sha': {'a123', 'a123!!!'},
     }
+
+
+def test_get_all_pods():
+    mock_client = mock.Mock()
+    assert get_all_pods(mock_client) == mock_client.core.list_namespaced_pod.return_value.items
+
+
+def test_get_all_nodes():
+    mock_client = mock.Mock()
+    assert get_all_nodes(mock_client) == mock_client.core.list_node.return_value.items
+
+
+def test_filter_pods_for_service_instance():
+    mock_pod_1 = mock.MagicMock(
+        metadata=mock.MagicMock(
+            labels={'service': 'kurupt', 'instance': 'fm'},
+        ),
+    )
+    mock_pod_2 = mock.MagicMock(
+        metadata=mock.MagicMock(
+            labels={'service': 'kurupt', 'instance': 'garage'},
+        ),
+    )
+    mock_pods = [mock_pod_1, mock_pod_2]
+    assert filter_pods_by_service_instance(mock_pods, 'kurupt', 'fm') == [mock_pod_1]
+
+
+def test_is_pod_ready():
+    mock_pod = mock.MagicMock(
+        status=mock.MagicMock(
+            conditions=[
+                mock.MagicMock(
+                    type='Ready',
+                    status=True,
+                ),
+                mock.MagicMock(
+                    type='Another',
+                    status=False,
+                ),
+            ],
+        ),
+    )
+    assert is_pod_ready(mock_pod)
+
+    mock_pod = mock.MagicMock(
+        status=mock.MagicMock(
+            conditions=[
+                mock.MagicMock(
+                    type='Ready',
+                    status=False,
+                ),
+                mock.MagicMock(
+                    type='Another',
+                    status=False,
+                ),
+            ],
+        ),
+    )
+    assert not is_pod_ready(mock_pod)
+
+    mock_pod = mock.MagicMock(
+        status=mock.MagicMock(
+            conditions=[
+                mock.MagicMock(
+                    type='Another',
+                    status=False,
+                ),
+            ],
+        ),
+    )
+    assert not is_pod_ready(mock_pod)
+
+
+def test_filter_nodes_by_blacklist():
+    with mock.patch(
+        'paasta_tools.kubernetes_tools.host_passes_whitelist', autospec=True,
+    ) as mock_host_passes_whitelist, mock.patch(
+        'paasta_tools.kubernetes_tools.host_passes_blacklist', autospec=True,
+    ) as mock_host_passes_blacklist, mock.patch(
+        'paasta_tools.kubernetes_tools.maybe_add_yelp_prefix', autospec=True,
+        side_effect=lambda x: x,
+    ):
+        mock_nodes = [mock.Mock(), mock.Mock()]
+        mock_host_passes_blacklist.return_value = True
+        mock_host_passes_whitelist.return_value = True
+        ret = filter_nodes_by_blacklist(
+            mock_nodes, blacklist=[('location', 'westeros')], whitelist=('nodes', ['1', '2']),
+        )
+        assert ret == mock_nodes
+
+        mock_nodes = [mock.Mock(), mock.Mock()]
+        mock_host_passes_blacklist.return_value = True
+        mock_host_passes_whitelist.return_value = True
+        ret = filter_nodes_by_blacklist(mock_nodes, blacklist=[('location', 'westeros')], whitelist=None)
+        assert ret == mock_nodes
+
+        mock_host_passes_blacklist.return_value = True
+        mock_host_passes_whitelist.return_value = False
+        ret = filter_nodes_by_blacklist(
+            mock_nodes, blacklist=[('location', 'westeros')], whitelist=('nodes', ['1', '2']),
+        )
+        assert ret == []
+
+        mock_host_passes_blacklist.return_value = False
+        mock_host_passes_whitelist.return_value = True
+        ret = filter_nodes_by_blacklist(
+            mock_nodes, blacklist=[('location', 'westeros')], whitelist=('nodes', ['1', '2']),
+        )
+        assert ret == []
+
+        mock_host_passes_blacklist.return_value = False
+        mock_host_passes_whitelist.return_value = False
+        ret = filter_nodes_by_blacklist(
+            mock_nodes, blacklist=[('location', 'westeros')], whitelist=('nodes', ['1', '2']),
+        )
+        assert ret == []
+
+
+def test_get_nodes_grouped_by_attribute():
+    with mock.patch(
+        'paasta_tools.kubernetes_tools.maybe_add_yelp_prefix', autospec=True,
+        side_effect=lambda x: x,
+    ):
+        mock_node_1 = mock.MagicMock(
+            metadata=mock.MagicMock(
+                labels={'region': 'westeros'},
+            ),
+        )
+        mock_node_2 = mock.MagicMock(
+            metadata=mock.MagicMock(
+                labels={'region': 'middle-earth'},
+            ),
+        )
+        assert get_nodes_grouped_by_attribute([mock_node_1, mock_node_2], 'region') == {
+            'westeros': [mock_node_1],
+            'middle-earth': [mock_node_2],
+        }
+        assert get_nodes_grouped_by_attribute([mock_node_1, mock_node_2], 'superregion') == {}
+
+
+def test_maybe_add_yelp_prefix():
+    assert maybe_add_yelp_prefix('kubernetes.io/thing') == 'kubernetes.io/thing'
+    assert maybe_add_yelp_prefix('region') == 'yelp.com/region'

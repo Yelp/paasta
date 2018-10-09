@@ -23,6 +23,7 @@ from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import match_backends_and_tasks
+from paasta_tools.smartstack_tools import SmartstackHost
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
@@ -398,6 +399,54 @@ def test_are_services_up_on_port():
 def mock_replication_checker():
     smartstack_tools.SmartstackReplicationChecker.__abstractmethods__ = frozenset()
     return smartstack_tools.SmartstackReplicationChecker(system_paasta_config=mock.Mock())
+
+
+@pytest.fixture
+def mock_kube_replication_checker():
+    mock_nodes = [mock.Mock()]
+    return smartstack_tools.KubeSmartstackReplicationChecker(nodes=mock_nodes, system_paasta_config=mock.Mock())
+
+
+def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
+    with mock.patch(
+        'paasta_tools.kubernetes_tools.filter_nodes_by_blacklist', autospec=True,
+    ) as mock_filter_nodes_by_blacklist, mock.patch(
+        'paasta_tools.kubernetes_tools.load_service_namespace_config', autospec=True,
+    ) as mock_load_service_namespace_config, mock.patch(
+        'paasta_tools.kubernetes_tools.get_nodes_grouped_by_attribute', autospec=True,
+    ) as mock_get_nodes_grouped_by_attribute:
+        mock_instance_config = mock.Mock(service="blah", instance="foo", soa_dir="/nail/thing")
+        mock_node_1 = mock.MagicMock(
+            metadata=mock.MagicMock(
+                labels={
+                    'yelp.com/hostname': 'foo1',
+                    'yelp.com/pool': 'default',
+                },
+            ),
+        )
+        mock_node_2 = mock.MagicMock(
+            metadata=mock.MagicMock(
+                labels={
+                    'yelp.com/hostname': 'foo2',
+                    'yelp.com/pool': 'default',
+                },
+            ),
+        )
+        mock_load_service_namespace_config.return_value = mock.Mock(get_discover=mock.Mock(
+            return_value='region',
+        ))
+        mock_get_nodes_grouped_by_attribute.return_value = {
+            'us-west-1': [mock_node_1, mock_node_2],
+        }
+        ret = mock_kube_replication_checker._get_allowed_locations_and_hosts(mock_instance_config)
+        assert ret == {'us-west-1': [
+            SmartstackHost(hostname='foo1', pool='default'),
+            SmartstackHost(hostname='foo2', pool='default'),
+        ]}
+        mock_get_nodes_grouped_by_attribute.assert_called_with(
+            nodes=mock_filter_nodes_by_blacklist.return_value,
+            attribute='region',
+        )
 
 
 def test_get_allowed_locations_and_hosts(mock_replication_checker):

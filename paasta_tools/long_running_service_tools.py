@@ -47,6 +47,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     min_instances: int
     nerve_ns: str
     registrations: List[str]
+    replication_threshold: int
     bounce_priority: int
 
 
@@ -147,6 +148,9 @@ class LongRunningServiceConfig(InstanceConfig):
             )
 
         return registrations or [compose_job_id(self.service, self.instance)]
+
+    def get_replication_crit_percentage(self) -> int:
+        return self.config_dict.get('replication_threshold', 50)
 
     def get_healthcheck_uri(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())

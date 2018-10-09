@@ -13,6 +13,7 @@
 """
 """
 import copy
+import itertools
 import logging
 import math
 from datetime import datetime
@@ -49,6 +50,7 @@ from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1Namespace
+from kubernetes.client import V1Node
 from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
@@ -66,6 +68,8 @@ from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.long_running_service_tools import host_passes_blacklist
+from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -76,6 +80,8 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeployBlacklist
+from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
@@ -92,6 +98,7 @@ from paasta_tools.utils import VolumeWithMode
 
 log = logging.getLogger(__name__)
 
+YELP_ATTRIBUTE_PREFIX = 'yelp.com/'
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
@@ -902,6 +909,33 @@ def pods_for_service_instance(
     ).items
 
 
+def get_all_pods(
+    kube_client: KubeClient,
+) -> Sequence[V1Pod]:
+    return kube_client.core.list_namespaced_pod(
+        namespace='paasta',
+    ).items
+
+
+def filter_pods_by_service_instance(
+    pod_list: Sequence[V1Pod],
+    service: str,
+    instance: str,
+) -> Sequence[V1Pod]:
+    return [
+        pod for pod in pod_list
+        if pod.metadata.labels['service'] == service and
+        pod.metadata.labels['instance'] == instance
+    ]
+
+
+def is_pod_ready(
+    pod: V1Pod,
+) -> bool:
+    ready_conditions = [cond.status for cond in pod.status.conditions if cond.type == 'Ready']
+    return all(ready_conditions) if ready_conditions else False
+
+
 def get_active_shas_for_service(
     pod_list: Sequence[V1Pod],
 ) -> Mapping[str, Set[str]]:
@@ -910,6 +944,63 @@ def get_active_shas_for_service(
         ret['config_sha'].add(pod.metadata.labels['config_sha'])
         ret['git_sha'].add(pod.metadata.labels['git_sha'])
     return ret
+
+
+def get_all_nodes(
+    kube_client: KubeClient,
+) -> Sequence[V1Node]:
+    return kube_client.core.list_node().items
+
+
+def filter_nodes_by_blacklist(
+    nodes: Sequence[V1Node],
+    blacklist: DeployBlacklist,
+    whitelist: DeployWhitelist,
+) -> Sequence[V1Node]:
+    """Takes an input list of nodes and filters them based on the given blacklist.
+    The blacklist is in the form of:
+
+        [["location_type", "location]]
+
+    Where the list inside is something like ["region", "uswest1-prod"]
+
+    :returns: The list of nodes after the filter
+    """
+    if whitelist:
+        whitelist = (maybe_add_yelp_prefix(whitelist[0]), whitelist[1])
+    blacklist = [(maybe_add_yelp_prefix(entry[0]), entry[1]) for entry in blacklist]
+    return [
+        node for node in nodes if host_passes_whitelist(
+            node.metadata.labels,
+            whitelist,
+        ) and host_passes_blacklist(
+            node.metadata.labels,
+            blacklist,
+        )
+    ]
+
+
+def maybe_add_yelp_prefix(
+    attribute: str,
+) -> str:
+    return YELP_ATTRIBUTE_PREFIX + attribute if '/' not in attribute else attribute
+
+
+def get_nodes_grouped_by_attribute(
+    nodes: Sequence[V1Node],
+    attribute: str,
+) -> Mapping[str, Sequence[V1Node]]:
+    attribute = maybe_add_yelp_prefix(attribute)
+    sorted_nodes = sorted(
+        nodes,
+        key=lambda node: node.metadata.labels.get(attribute, ""),
+    )
+    return {
+        key: list(group) for key, group in itertools.groupby(
+            sorted_nodes,
+            key=lambda node: node.metadata.labels.get(attribute, ""),
+        ) if key
+    }
 
 
 def get_kubernetes_app_by_name(
