@@ -1728,76 +1728,66 @@ def test_deploy_blacklist_to_constraints():
 
 
 def test_validate_service_instance_valid_marathon():
-    mock_marathon_services = [('service1', 'main'), ('service2', 'main')]
-    mock_chronos_services = [('service1', 'worker'), ('service2', 'tailer')]
+    mock_marathon_instances = [('service1', 'main'), ('service1', 'main2')]
+    mock_chronos_instances = [('service1', 'worker'), ('service1', 'tailer')]
     my_service = 'service1'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
     fake_soa_dir = 'fake_soa_dir'
     with mock.patch(
-        'paasta_tools.utils.get_services_for_cluster',
+        'paasta_tools.utils.get_service_instance_list',
         autospec=True,
-        side_effect=[mock_marathon_services, mock_chronos_services],
-    ) as get_services_for_cluster_patch:
+        side_effect=[mock_marathon_instances, mock_chronos_instances],
+    ):
         assert utils.validate_service_instance(
             my_service,
             my_instance,
             fake_cluster,
             fake_soa_dir,
         ) == 'marathon'
-        assert mock.call(
-            cluster=fake_cluster,
-            instance_type='marathon',
-            soa_dir=fake_soa_dir,
-        ) in get_services_for_cluster_patch.call_args_list
 
 
 def test_validate_service_instance_valid_chronos():
-    mock_marathon_services = [('service1', 'main'), ('service2', 'main')]
-    mock_chronos_services = [('service1', 'worker'), ('service2', 'tailer')]
+    mock_marathon_instances = [('service1', 'main'), ('service1', 'main2')]
+    mock_chronos_instances = [('service1', 'worker'), ('service1', 'tailer')]
     my_service = 'service1'
     my_instance = 'worker'
     fake_cluster = 'fake_cluster'
     fake_soa_dir = 'fake_soa_dir'
     with mock.patch(
-        'paasta_tools.utils.get_services_for_cluster',
+        'paasta_tools.utils.get_service_instance_list',
         autospec=True,
-        side_effect=[mock_marathon_services, mock_chronos_services],
-    ) as get_services_for_cluster_patch:
+        side_effect=[mock_marathon_instances, mock_chronos_instances],
+    ):
         assert utils.validate_service_instance(
             my_service,
             my_instance,
             fake_cluster,
             fake_soa_dir,
         ) == 'chronos'
-        assert mock.call(
-            cluster=fake_cluster,
-            instance_type='chronos',
-            soa_dir=fake_soa_dir,
-        ) in get_services_for_cluster_patch.call_args_list
 
 
 def test_validate_service_instance_invalid():
-    mock_marathon_services = [('service1', 'main'), ('service2', 'main')]
-    mock_chronos_services = [('service1', 'worker'), ('service2', 'tailer')]
-    mock_paasta_native_services = [('service1', 'main2'), ('service2', 'main2')]
-    mock_adhoc_services = [('service1', 'interactive'), ('service2', 'interactive')]
-    mock_k8s_services = [('service1', 'k8s'), ('service2', 'k8s')]
-    mock_tron_services = [('service1', 'job.action')]
-    my_service = 'bad_service'
+    mock_marathon_instances = [('service1', 'main1'), ('service1', 'main2')]
+    mock_chronos_instances = [('service1', 'main1_batch'), ('service1', 'tailer')]
+    mock_paasta_native_instances = [('service1', 'main2'), ('service1', 'main3')]
+    mock_adhoc_instances = [('service1', 'interactive')]
+    mock_k8s_instances = [('service1', 'k8s')]
+    mock_tron_instances = [('service1', 'job.action')]
+    my_service = 'service1'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
     fake_soa_dir = 'fake_soa_dir'
     with mock.patch(
-        'paasta_tools.utils.get_services_for_cluster',
+        'paasta_tools.utils.get_service_instance_list',
         autospec=True,
         side_effect=[
-            mock_marathon_services, mock_chronos_services,
-            mock_paasta_native_services, mock_adhoc_services,
-            mock_k8s_services, mock_tron_services,
+            mock_marathon_instances, mock_chronos_instances,
+            mock_paasta_native_instances, mock_adhoc_instances,
+            mock_k8s_instances, mock_tron_instances,
         ],
     ):
-        with raises(utils.NoConfigurationForServiceError):
+        with raises(utils.NoConfigurationForServiceError, match='Did you mean one of: main3, main2, main1?'):
             utils.validate_service_instance(
                 service=my_service,
                 instance=my_instance,
