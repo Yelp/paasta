@@ -96,6 +96,12 @@ def main():
         ),
     )
     parser.add_argument(
+        '--update-haproxy',
+        '-U',
+        action='store_true',
+        help='Whether to update haproxy for map updates',
+    )
+    parser.add_argument(
         'map_file',
         nargs='?',
         default='/var/run/synapse/maps/ip_to_service.map',
@@ -111,19 +117,21 @@ def main():
 
     for ip_addr, task_id in service_ips_and_ids:
         ip_addrs.append(ip_addr)
-        update_haproxy_mapping(
-            ip_addr,
-            task_id,
-            prev_ip_to_task_id,
-            args.map_file,
-        )
+        if args.update_haproxy:
+            update_haproxy_mapping(
+                ip_addr,
+                task_id,
+                prev_ip_to_task_id,
+                args.map_file,
+            )
         new_lines.append(f'{ip_addr} {task_id}')
 
-    remove_stopped_container_entries(
-        prev_ip_to_task_id.keys(),
-        ip_addrs,
-        args.map_file,
-    )
+    if args.update_haproxy:
+        remove_stopped_container_entries(
+            prev_ip_to_task_id.keys(),
+            ip_addrs,
+            args.map_file,
+        )
 
     # Replace the file contents with the new map
     with atomic_file_write(args.map_file) as fp:
