@@ -42,7 +42,10 @@ def get_autoscaler_count(request):
         error_message = f'Unable to load service config for {service}.{instance}'
         raise ApiFailure(error_message, 404)
 
-    response_body = {'desired_instances': service_config.get_instances()}
+    response_body = {
+        'desired_instances': service_config.get_instances(),
+        'calculated_instances': service_config.get_instances(with_limit=False),
+    }
     return Response(json_body=response_body, status_code=200)
 
 
