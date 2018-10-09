@@ -534,6 +534,9 @@
               "properties": {
                 "desired_instances": {
                   "type": "integer"
+                },
+                "calculated_instances": {
+                  "type": "integer"
                 }
               }
             }

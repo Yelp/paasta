@@ -185,7 +185,7 @@ class LongRunningServiceConfig(InstanceConfig):
         """
         return self.config_dict.get('bounce_priority', 0) * -1
 
-    def get_instances(self) -> int:
+    def get_instances(self, with_limit: bool=True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
         if self.get_max_instances() is not None:
@@ -199,7 +199,7 @@ class LongRunningServiceConfig(InstanceConfig):
                 log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
                 return self.get_max_instances()
             else:
-                limited_instances = self.limit_instance_count(zk_instances)
+                limited_instances = self.limit_instance_count(zk_instances) if with_limit else zk_instances
                 return limited_instances
         else:
             instances = self.config_dict.get('instances', 1)

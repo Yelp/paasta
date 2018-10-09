@@ -31,6 +31,7 @@ def test_get_autoscaler_count():
         mock_load_marathon_service_config.return_value = mock.MagicMock(get_instances=mock.MagicMock(return_value=123))
         response = autoscaler.get_autoscaler_count(request)
         assert response.json_body['desired_instances'] == 123
+        assert response.json_body['calculated_instances'] == 123
 
 
 @mock.patch('paasta_tools.api.views.autoscaler.load_marathon_service_config', autospec=True)
