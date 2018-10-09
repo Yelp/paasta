@@ -583,7 +583,7 @@ def configure_and_run_docker_container(
                 ),
             )
 
-    spark_ui_port = pick_random_port(args.service)
+    spark_ui_port = pick_random_port(args.service + str(os.getpid()))
     container_name = 'paasta_spark_run_{}_{}_{}'.format(get_username(), spark_ui_port, int(time.time()))
 
     spark_config_dict = get_spark_config(
