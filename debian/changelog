@@ -1,3 +1,12 @@
+paasta-tools (0.81.0) xenial; urgency=medium
+
+  * 0.81.0 tagged with 'make release'
+  * Remove percent formatting from Chronos
+  * Add pid to spark pick_random_port hash key
+  * Fix suggestions on bad instance names
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 10 Oct 2018 12:42:50 -0700
+
 paasta-tools (0.80.14) xenial; urgency=medium
 
   * 0.80.14 tagged with 'make release'
