@@ -38,28 +38,12 @@ class TestTronConfig:
             config.get_url()
 
 
-class TestParseTimeVariables:
-
-    def test_parse_time_variables_parses_shortdate_with_percent(self):
-        input_time = datetime.datetime(2012, 3, 14)
-        test_input = 'ls %(shortdate-1)s foo'
-        expected = 'ls 2012-03-13 foo'
-        actual = tron_tools.parse_time_variables(command=test_input, parse_time=input_time, use_percent=True)
-        assert actual == expected
-
-    def test_parse_time_variables_parses_percent(self):
-        input_time = datetime.datetime(2012, 3, 14)
-        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%%L/%%Y/%%m/%%d/'
-        expected = './mycommand --date 2012-03-13 --format foo/logs/%L/%Y/%m/%d/'
-        actual = tron_tools.parse_time_variables(command=test_input, parse_time=input_time, use_percent=True)
-        assert actual == expected
-
-    def test_parse_time_variables_parses_shortdate_with_braces(self):
-        input_time = datetime.datetime(2012, 3, 14)
-        test_input = 'ls {shortdate-1} foo'
-        expected = 'ls 2012-03-13 foo'
-        actual = tron_tools.parse_time_variables(command=test_input, parse_time=input_time, use_percent=False)
-        assert actual == expected
+def test_parse_time_variables_parses_shortdate():
+    input_time = datetime.datetime(2012, 3, 14)
+    test_input = 'mycommand --date {shortdate-1} --format foo/logs/%L/%Y/%m/%d/'
+    expected = 'mycommand --date 2012-03-13 --format foo/logs/%L/%Y/%m/%d/'
+    actual = tron_tools.parse_time_variables(command=test_input, parse_time=input_time)
+    assert actual == expected
 
 
 class TestTronActionConfig:

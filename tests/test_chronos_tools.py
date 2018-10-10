@@ -372,7 +372,7 @@ class TestChronosTools:
                 system_paasta_config.get_dockercfg_location(),
                 fake_constraints,
             )
-            mock_parse_time_variables.assert_called_with(fake_cmd, use_percent=True)
+            mock_parse_time_variables.assert_called_with(fake_cmd)
 
     def test_get_owner(self):
         fake_owner = 'fake_team'
@@ -1739,8 +1739,8 @@ class TestChronosTools:
             assert chronos_tools.wait_for_job(client, 'foo')
             assert mock_sleep.call_count == 2
 
-    def test_check_cmd_escaped_percent(self):
-        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%%L/%%Y/%%m/%%d/'
+    def test_check_cmd_escaped_brace(self):
+        test_input = './mycommand --date {shortdate-1} --config {{"key": "value"}}'
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1752,8 +1752,8 @@ class TestChronosTools:
         assert okay is True
         assert msg == ''
 
-    def test_check_cmd_unescaped_percent(self):
-        test_input = './mycommand --date %(shortdate-1)s --format foo/logs/%L/%Y/%m/%d/'
+    def test_check_cmd_unescaped_brace(self):
+        test_input = './mycommand --date {shortdate-1} --config {"key": "value"}'
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -1763,7 +1763,7 @@ class TestChronosTools:
         )
         okay, msg = fake_conf.check_cmd()
         assert okay is False
-        assert './mycommand --date %(shortdate-1)s --format foo/logs/%L/%Y/%m/%d/' in msg
+        assert './mycommand --date {shortdate-1} --config {"key": "value"}' in msg
 
     def test_cmp_datetimes(self):
         before = '2015-09-22T16:46:25.111Z'
@@ -1938,7 +1938,7 @@ class TestChronosTools:
 
     def test_uses_time_variables_true(self):
         fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
-        fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf %(shortdate)s'
+        fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf {shortdate}'
         assert chronos_tools.uses_time_variables(fake_chronos_job_config)
 
     @mock.patch('paasta_tools.mesos_tools.get_local_slave_state', autospec=True)

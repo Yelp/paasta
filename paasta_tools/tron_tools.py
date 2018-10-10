@@ -127,6 +127,7 @@ def parse_time_variables(
 
     :param input_string: input string to be parsed
     :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
+    :param use_percent: use percent formatting for the command (deprecated)
     :returns: A string with the date and time variables replaced
     """
     if parse_time is None:
@@ -137,8 +138,8 @@ def parse_time_variables(
     # The tron context object needs the run_time attribute set so it knows
     # how to interpret the date strings
     job_context.job_run.run_time = parse_time
-    # The job_context object works like a normal dictionary for string replacement
     if use_percent:
+        # Deprecated, here for migration purposes
         return command % job_context
     else:
         return StringFormatter(job_context).format(command)
