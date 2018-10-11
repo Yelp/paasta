@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./check_marathon_services_replication.py [options]
+Usage: ./check_kubernetes_services_replication.py [options]
 
 This is a script that checks the number of HAProxy backends via Synapse against
-the expected amount that should've been deployed via Marathon in a mesos cluster.
+the expected amount that should've been deployed via Kubernetes.
 
 Basically, the script checks smartstack.yaml for listed namespaces, and then queries
 Synapse for the number of available backends for that namespace. It then goes through
-the Marathon service configuration file for that cluster, and sees how many instances
+the Kubernetes service configuration file for that cluster, and sees how many instances
 are expected to be available for that namespace based on the number of instances deployed
 on that namespace.
 
@@ -32,19 +32,18 @@ instance then it will be used instead.
 """
 import argparse
 import logging
-from datetime import datetime
-from datetime import timedelta
 
-import a_sync
-
-from paasta_tools import marathon_tools
+from paasta_tools import kubernetes_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
+from paasta_tools.kubernetes_tools import get_all_nodes
+from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import is_pod_ready
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
-from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.smartstack_tools import MesosSmartstackReplicationChecker
-from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -71,30 +70,18 @@ def parse_args():
     return options
 
 
-def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
-    tasks_for_app = [task for task in all_tasks if task.app_id.startswith('/%s' % app_id)]
-    one_minute_ago = datetime.now() - timedelta(minutes=1)
-
-    healthy_tasks = []
-    for task in tasks_for_app:
-        if marathon_tools.is_task_healthy(task, default_healthy=True) \
-                and task.started_at is not None \
-                and datetime_from_utc_to_local(task.started_at) < one_minute_ago:
-            healthy_tasks.append(task)
-    return len(healthy_tasks)
-
-
-def check_healthy_marathon_tasks_for_service_instance(
+def check_healthy_kubernetes_tasks_for_service_instance(
     instance_config,
     expected_count,
-    all_tasks,
+    all_pods,
 ):
-    app_id = format_job_id(instance_config.service, instance_config.instance)
-    num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
-        all_tasks=all_tasks,
-        app_id=app_id,
+    si_pods = filter_pods_by_service_instance(
+        pod_list=all_pods,
+        service=instance_config.service,
+        instance=instance_config.instance,
     )
-    log.info("Checking %s in marathon as it is not in smartstack" % app_id)
+    num_healthy_tasks = len([pod for pod in si_pods if is_pod_ready(pod)])
+    log.info(f"Checking {instance_config.service}.{instance_config.instance} in kubernetes as it is not in smartstack")
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,
         expected_count=expected_count,
@@ -103,15 +90,15 @@ def check_healthy_marathon_tasks_for_service_instance(
 
 
 def check_service_replication(
-    instance_config,
-    all_tasks,
-    smartstack_replication_checker,
-):
+    instance_config: KubernetesDeploymentConfig,
+    all_pods,
+    smartstack_replication_checker: KubeSmartstackReplicationChecker,
+) -> None:
     """Checks a service's replication levels based on how the service's replication
-    should be monitored. (smartstack or mesos)
+    should be monitored. (smartstack or k8s)
 
-    :param instance_config: an instance of MarathonServiceConfig
-    :param smartstack_replication_checker: an instance of MesosSmartstackReplicationChecker
+    :param instance_config: an instance of KubernetesDeploymentConfig
+    :param smartstack_replication_checker: an instance of KubeSmartstackReplicationChecker
     """
     expected_count = instance_config.get_instances()
     log.info("Expecting %d total tasks for %s" % (expected_count, instance_config.job_id))
@@ -119,7 +106,7 @@ def check_service_replication(
 
     registrations = instance_config.get_registrations()
     # if the primary registration does not match the service_instance name then
-    # the best we can do is check marathon for replication (for now).
+    # the best we can do is check k8s for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
         monitoring_tools.check_smartstack_replication_for_instance(
             instance_config=instance_config,
@@ -127,42 +114,34 @@ def check_service_replication(
             smartstack_replication_checker=smartstack_replication_checker,
         )
     else:
-        check_healthy_marathon_tasks_for_service_instance(
+        check_healthy_kubernetes_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            all_tasks=all_tasks,
+            all_pods=all_pods,
         )
 
 
-def main():
-    args = parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARNING)
-
+def check_all_kubernetes_services_replication(soa_dir: str) -> None:
+    kube_client = KubeClient()
+    all_pods = get_all_pods(kube_client)
+    all_nodes = get_all_nodes(kube_client)
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
+    smartstack_replication_checker = KubeSmartstackReplicationChecker(
+        nodes=all_nodes,
+        system_paasta_config=system_paasta_config,
+    )
 
-    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers(system_paasta_config))
-    all_clients = clients.get_all_clients()
-    all_tasks = []
-    for client in all_clients:
-        all_tasks.extend(client.list_tasks())
-    mesos_slaves = a_sync.block(get_slaves)
-    smartstack_replication_checker = MesosSmartstackReplicationChecker(mesos_slaves, system_paasta_config)
-
-    for service in list_services(soa_dir=args.soa_dir):
-        service_config = PaastaServiceConfigLoader(service=service, soa_dir=args.soa_dir)
+    for service in list_services(soa_dir=soa_dir):
+        service_config = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
         for instance_config in service_config.instance_configs(
             cluster=cluster,
-            instance_type_class=marathon_tools.MarathonServiceConfig,
+            instance_type_class=kubernetes_tools.KubernetesDeploymentConfig,
         ):
             if instance_config.get_docker_image():
                 check_service_replication(
                     instance_config=instance_config,
-                    all_tasks=all_tasks,
+                    all_pods=all_pods,
                     smartstack_replication_checker=smartstack_replication_checker,
                 )
             else:
@@ -170,6 +149,15 @@ def main():
                     '%s is not deployed. Skipping replication monitoring.' %
                     instance_config.job_id,
                 )
+
+
+def main() -> None:
+    args = parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+    check_all_kubernetes_services_replication(soa_dir=args.soa_dir)
 
 
 if __name__ == "__main__":

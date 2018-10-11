@@ -267,3 +267,37 @@ def test_get_proxy_port_for_instance():
             namespace='main',
             soa_dir='/nail/blah',
         )
+
+
+def test_host_passes_blacklist_passes():
+    slave_attributes = {
+        'fake_attribute': 'fake_value_1',
+    }
+    blacklist = [["fake_attribute", "No what we have here"], ['foo', 'bar']]
+    actual = long_running_service_tools.host_passes_blacklist(host_attributes=slave_attributes, blacklist=blacklist)
+    assert actual is True
+
+
+def test_host_passes_blacklist_blocks_blacklisted_locations():
+    slave_attributes = {
+        'fake_attribute': 'fake_value_1',
+    }
+    blacklist = [["fake_attribute", "fake_value_1"]]
+    actual = long_running_service_tools.host_passes_blacklist(host_attributes=slave_attributes, blacklist=blacklist)
+    assert actual is False
+
+
+def test_host_passes_whitelist():
+    fake_slave_attributes = {
+        'location_type': 'fake_location',
+        'fake_location_type': 'fake_location',
+    }
+    fake_whitelist_allow = ['fake_location_type', ['fake_location']]
+    fake_whitelist_deny = ['anoterfake_location_type', ['anotherfake_location']]
+
+    slave_passes = long_running_service_tools.host_passes_whitelist(fake_slave_attributes, fake_whitelist_deny)
+    assert not slave_passes
+    slave_passes = long_running_service_tools.host_passes_whitelist(fake_slave_attributes, fake_whitelist_allow)
+    assert slave_passes
+    slave_passes = long_running_service_tools.host_passes_whitelist(fake_slave_attributes, None)
+    assert slave_passes

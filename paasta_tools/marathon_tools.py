@@ -207,7 +207,6 @@ class MarathonServiceConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_health_params: Dict[str, Any]
     bounce_margin_factor: float
     accepted_resource_roles: Optional[List[str]]
-    replication_threshold: int
     host_port: int
     marathon_shard: int
     previous_marathon_shards: List[int]
@@ -827,9 +826,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
     def get_accepted_resource_roles(self) -> Optional[List[str]]:
         return self.config_dict.get('accepted_resource_roles', None)
-
-    def get_replication_crit_percentage(self) -> int:
-        return self.config_dict.get('replication_threshold', 50)
 
     def get_host_port(self) -> int:
         '''Map this port on the host to your container's port 8888. Default is 0, which means Marathon picks a port.'''

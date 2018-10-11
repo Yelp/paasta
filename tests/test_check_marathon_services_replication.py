@@ -167,7 +167,7 @@ def test_get_healthy_marathon_instances_for_short_app_id_considers_none_start_ti
 
 
 @mock.patch(
-    'paasta_tools.check_marathon_services_replication.send_replication_event_if_under_replication',
+    'paasta_tools.monitoring_tools.send_replication_event_if_under_replication',
     autospec=True,
 )
 @mock.patch('paasta_tools.check_marathon_services_replication.filter_healthy_marathon_instances_for_short_app_id', autospec=True)  # noqa
@@ -187,72 +187,6 @@ def test_check_healthy_marathon_tasks_for_service_instance(
         expected_count=10,
         num_available=2,
     )
-
-
-def test_send_replication_event_if_under_replication_handles_0_expected(instance_config):
-    with mock.patch(
-        'paasta_tools.monitoring_tools.send_replication_event', autospec=True,
-    ) as mock_send_event:
-        check_marathon_services_replication.send_replication_event_if_under_replication(
-            instance_config=instance_config,
-            expected_count=0,
-            num_available=0,
-        )
-        mock_send_event.assert_called_once_with(
-            instance_config=instance_config,
-            status=0,
-            output=mock.ANY,
-        )
-        _, send_event_kwargs = mock_send_event.call_args
-        alert_output = send_event_kwargs["output"]
-        assert ("{} has 0 out of 0 expected instances available!\n(threshold: 90%)"
-                .format(instance_config.job_id)) in alert_output
-
-
-def test_send_replication_event_if_under_replication_good(instance_config):
-    with mock.patch(
-        'paasta_tools.monitoring_tools.send_replication_event', autospec=True,
-    ) as mock_send_event:
-        check_marathon_services_replication.send_replication_event_if_under_replication(
-            instance_config=instance_config,
-            expected_count=100,
-            num_available=100,
-        )
-        mock_send_event.assert_called_once_with(
-            instance_config=instance_config,
-            status=0,
-            output=mock.ANY,
-        )
-        _, send_event_kwargs = mock_send_event.call_args
-        alert_output = send_event_kwargs["output"]
-        assert ("{} has 100 out of 100 expected instances available!\n(threshold: 90%)"
-                .format(instance_config.job_id)) in alert_output
-
-
-def test_send_replication_event_if_under_replication_critical(instance_config):
-    with mock.patch(
-        'paasta_tools.monitoring_tools.send_replication_event', autospec=True,
-    ) as mock_send_event:
-        check_marathon_services_replication.send_replication_event_if_under_replication(
-            instance_config=instance_config,
-            expected_count=100,
-            num_available=89,
-        )
-        mock_send_event.assert_called_once_with(
-            instance_config=instance_config,
-            status=2,
-            output=mock.ANY,
-        )
-        _, send_event_kwargs = mock_send_event.call_args
-        alert_output = send_event_kwargs["output"]
-        assert ("{} has 89 out of 100 expected instances available!\n(threshold: 90%)"
-                .format(instance_config.job_id)) in alert_output
-        assert ("paasta status -s {} -i {} -c {} -vv"
-                .format(
-                    instance_config.service,
-                    instance_config.instance,
-                    instance_config.cluster,
-                )) in alert_output
 
 
 def test_main(instance_config):

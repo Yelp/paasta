@@ -2,6 +2,7 @@ import logging
 import socket
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Tuple
 
@@ -13,6 +14,8 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeployBlacklist
+from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
@@ -44,6 +47,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     min_instances: int
     nerve_ns: str
     registrations: List[str]
+    replication_threshold: int
     bounce_priority: int
 
 
@@ -144,6 +148,9 @@ class LongRunningServiceConfig(InstanceConfig):
             )
 
         return registrations or [compose_job_id(self.service, self.instance)]
+
+    def get_replication_crit_percentage(self) -> int:
+        return self.config_dict.get('replication_threshold', 50)
 
     def get_healthcheck_uri(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
@@ -409,3 +416,40 @@ def get_proxy_port_for_instance(
         service=service, namespace=namespace, soa_dir=service_config.soa_dir,
     )
     return nerve_dict.get('proxy_port')
+
+
+def host_passes_blacklist(host_attributes: Mapping[str, str], blacklist: DeployBlacklist) -> bool:
+    """
+    :param host: A single host attributes dict
+    :param blacklist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
+    :returns: boolean, True if the host gets passed the blacklist
+    """
+    try:
+        for location_type, location in blacklist:
+            if host_attributes.get(location_type) == location:
+                return False
+    except ValueError as e:
+        log.error(f"Errors processing the following blacklist: {blacklist}")
+        log.error("I will assume the host does not pass\nError was: %s" % e)
+        return False
+    return True
+
+
+def host_passes_whitelist(host_attributes: Mapping[str, str], whitelist: DeployWhitelist) -> bool:
+    """
+    :param host: A single host attributes dict.
+    :param whitelist: A 2 item list like ["location_type", ["location1", 'location2']]
+    :returns: boolean, True if the host gets past the whitelist
+    """
+    # No whitelist, so disable whitelisting behavior.
+    if whitelist is None or len(whitelist) == 0:
+        return True
+    try:
+        (location_type, locations) = whitelist
+        if host_attributes.get(location_type) in locations:
+            return True
+    except ValueError as e:
+        log.error(f"Errors processing the following whitelist: {whitelist}")
+        log.error("I will assume the host does not pass\nError was: %s" % e)
+        return False
+    return False
