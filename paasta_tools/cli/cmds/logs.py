@@ -251,8 +251,11 @@ def paasta_app_output_passes_filter(
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
-
-    timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
+    try:
+        timestamp = isodate.parse_datetime(parsed_line.get('timestamp'))
+    # https://github.com/gweis/isodate/issues/53
+    except ValueError:
+        return True
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
