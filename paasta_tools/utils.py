@@ -464,7 +464,7 @@ class InstanceConfig:
         gpus = self.config_dict.get('gpus', default)
         return gpus
 
-    def get_cmd(self) -> Optional[str]:
+    def get_cmd(self) -> Optional[Union[str, list]]:
         """Get the docker cmd specified in the service's configuration.
 
         Defaults to None if not specified in the config.

@@ -455,6 +455,17 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             soa_dir=soa_dir,
         )
 
+    def format_cmd(self) -> str:
+        cmd = self.get_cmd()
+        if cmd is None:
+            return None
+        if isinstance(cmd, str):
+            return cmd
+        elif isinstance(cmd, list):
+            return " ".join(cmd)
+        else:
+            raise ValueError("only list or str accepted for cmd")
+
     def copy(self) -> "MarathonServiceConfig":
         return self.__class__(
             service=self.service,
@@ -675,7 +686,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 service_namespace_config=service_namespace_config,
             ),
             'instances': self.get_desired_instances(),
-            'cmd': self.get_cmd(),
+            'cmd': self.format_cmd(),
             'args': self.get_args(),
         }
 
