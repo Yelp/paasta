@@ -57,6 +57,17 @@ BounceMethodConfigDict = TypedDict('BounceMethodConfigDict', {"instances": int})
 
 class ServiceNamespaceConfig(dict):
 
+    def get_healthcheck_mode(self) -> str:
+        """Get the healthcheck mode for the service. In most cases, this will match the mode
+        of the service, but we do provide the opportunity for users to specify both. Default to the mode
+        if no healthcheck_mode is specified.
+        """
+        healthcheck_mode = self.get('healthcheck_mode', None)
+        if not healthcheck_mode:
+            return self.get_mode()
+        else:
+            return healthcheck_mode
+
     def get_mode(self) -> str:
         """Get the mode that the service runs in and check that we support it.
         If the mode is not specified, we check whether the service uses smartstack
@@ -178,7 +189,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_healthcheck_mode(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
-            mode = service_namespace_config.get_mode()
+            mode = service_namespace_config.get_healthcheck_mode()
         elif mode not in ['http', 'https', 'tcp', 'cmd', None]:
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
