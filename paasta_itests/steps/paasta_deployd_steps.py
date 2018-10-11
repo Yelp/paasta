@@ -90,7 +90,7 @@ def second_deployd_is_leader(context):
         if output:
             print(output.rstrip('\n'))
         if time.time() > timeout:
-            raise "Timed out waiting for second deployd leader"
+            raise Exception("Timed out waiting for second deployd leader")
         time.sleep(1)
     context.daemon1.terminate()
     context.daemon1.wait()

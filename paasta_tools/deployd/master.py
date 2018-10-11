@@ -116,6 +116,7 @@ class Inbox(PaastaThread):
 
 class AddHostnameFilter(logging.Filter):
     def __init__(self):
+        super().__init__()
         self.hostname = socket.gethostname()
 
     def filter(self, record):

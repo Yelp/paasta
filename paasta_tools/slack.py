@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 
 class PaastaSlackClient(SlackClient):
     def __init__(self, token):
+        super().__init__(self)
         if token is None:
             log.warning("No slack token available, will only log")
         else:

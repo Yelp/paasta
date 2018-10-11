@@ -16,7 +16,6 @@ import time
 from tempfile import NamedTemporaryFile
 
 import itest_utils
-import mock
 import requests_cache
 from behave import given
 from behave import then
@@ -87,32 +86,6 @@ def status_marathon_job(context, status, job_id):
             verbose=0,
         )
     assert status in output, f"{status!r} not found in {output!r}"
-
-
-@then('marathon_serviceinit restart should get new task_ids for "{job_id}"')
-def marathon_restart_gets_new_task_ids(context, job_id):
-    (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
-    normal_instance_count = 1
-    cluster = context.system_paasta_config.get_cluster()
-
-    old_tasks = context.marathon_client.get_app(app_id).tasks
-    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
-        marathon_serviceinit.restart_marathon_job(
-            service,
-            instance,
-            app_id,
-            normal_instance_count,
-            context.marathon_client,
-            cluster,
-        )
-    paasta_print("Sleeping 5 seconds to wait for %s to be restarted." % service)
-    time.sleep(5)
-    new_tasks = context.marathon_client.get_app(app_id).tasks
-    paasta_print("Tasks before the restart: %s" % old_tasks)
-    paasta_print("Tasks after  the restart: %s" % new_tasks)
-    paasta_print()  # sacrificial line for behave to eat instead of our output
-    assert old_tasks != new_tasks
 
 
 @then((
