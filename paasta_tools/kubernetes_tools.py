@@ -259,6 +259,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             soa_dir=self.soa_dir,
         )
 
+    def get_cmd(self) -> Optional[List[str]]:
+        cmd = super(LongRunningServiceConfig, self).get_cmd()
+        if cmd:
+            if isinstance(cmd, str):
+                return cmd.split(' ')
+            elif isinstance(cmd, list):
+                return cmd
+            else:
+                raise ValueError("cmd should be str or list")
+        else:
+            return None
+
     def get_bounce_method(self) -> str:
         """Get the bounce method specified in the service's kubernetes configuration."""
         # map existing bounce methods to k8s equivalents.
