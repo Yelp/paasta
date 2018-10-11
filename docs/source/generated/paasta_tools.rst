@@ -29,6 +29,7 @@ Submodules
    paasta_tools.autoscale_cluster
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
+   paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
    paasta_tools.chronos_rerun

@@ -1,3 +1,11 @@
+paasta-tools (0.81.1) xenial; urgency=medium
+
+  * 0.81.1 tagged with 'make release'
+    Commit: Merge pull request #2009 from Yelp/add-check-k8s-rep  Add
+    check k8s replication
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 11 Oct 2018 03:11:28 -0700
+
 paasta-tools (0.81.0) xenial; urgency=medium
 
   * 0.81.0 tagged with 'make release'
