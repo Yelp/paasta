@@ -141,7 +141,6 @@ class TestTronJobConfig:
     ):
         """Check resulting action config with various overrides from the action."""
         action_dict = {
-            'name': 'normal',
             'command': 'echo first',
         }
         if action_service:
@@ -161,13 +160,13 @@ class TestTronJobConfig:
             'service': job_service,
             'deploy_group': job_deploy,
             'max_runtime': '2h',
-            'actions': [action_dict],
+            'actions': {'normal': action_dict},
         }
 
         soa_dir = '/other_dir'
         job_config = tron_tools.TronJobConfig('my_job', job_dict, expected_cluster, soa_dir=soa_dir)
 
-        action_config = job_config._get_action_config(action_dict=action_dict)
+        action_config = job_config._get_action_config('normal', action_dict=action_dict)
 
         mock_load_deployments.assert_called_once_with(expected_service, soa_dir)
         mock_deployments_json = mock_load_deployments.return_value
@@ -181,7 +180,6 @@ class TestTronJobConfig:
         }
 
         expected_input_action_config = {
-            'name': 'normal',
             'command': 'echo first',
             'service': expected_service,
             'deploy_group': expected_deploy,
@@ -202,7 +200,6 @@ class TestTronJobConfig:
         mock_load_deployments,
     ):
         action_dict = {
-            'name': 'normal',
             'command': 'echo first',
         }
         job_dict = {
@@ -211,13 +208,13 @@ class TestTronJobConfig:
             'service': 'my_service',
             'deploy_group': 'prod',
             'max_runtime': '2h',
-            'actions': [action_dict],
+            'actions': {'normal': action_dict},
         }
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
         mock_load_deployments.side_effect = NoDeploymentsAvailable
 
         with pytest.raises(tron_tools.InvalidTronConfig):
-            job_config._get_action_config(action_dict)
+            job_config._get_action_config('normal', action_dict)
 
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
     def test_get_action_config_load_deployments_false(
@@ -225,7 +222,6 @@ class TestTronJobConfig:
         mock_load_deployments,
     ):
         action_dict = {
-            'name': 'normal',
             'command': 'echo first',
         }
         job_dict = {
@@ -234,7 +230,7 @@ class TestTronJobConfig:
             'service': 'my_service',
             'deploy_group': 'prod',
             'max_runtime': '2h',
-            'actions': [action_dict],
+            'actions': {'normal': action_dict},
         }
         soa_dir = '/other_dir'
         cluster = 'paasta-dev'
@@ -247,7 +243,7 @@ class TestTronJobConfig:
         )
         mock_load_deployments.side_effect = NoDeploymentsAvailable
 
-        action_config = job_config._get_action_config(action_dict)
+        action_config = job_config._get_action_config('normal', action_dict)
 
         assert mock_load_deployments.call_count == 0
         assert action_config == tron_tools.TronActionConfig(
@@ -255,7 +251,6 @@ class TestTronJobConfig:
             cluster=cluster,
             instance=tron_tools.compose_instance('my_job', 'normal'),
             config_dict={
-                'name': 'normal',
                 'command': 'echo first',
                 'service': 'my_service',
                 'deploy_group': 'prod',
@@ -266,38 +261,47 @@ class TestTronJobConfig:
 
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.format_tron_action_dict', autospec=True)
+    @pytest.mark.parametrize('action_list', [True, False])
     def test_format_tron_job_dict(
         self,
         mock_format_action,
         mock_get_action_config,
+        action_list,
     ):
+        action_name = 'normal'
         action_dict = {
-            'name': 'normal',
             'command': 'echo first',
         }
+        if action_list:
+            action_dict['name'] = 'normal'
+            actions = [action_dict]
+        else:
+            actions = {action_name: action_dict}
+
         job_dict = {
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
             'service': 'my_service',
             'deploy_group': 'prod',
             'max_runtime': '2h',
-            'actions': [action_dict],
+            'actions': actions,
             'expected_runtime': '1h',
         }
         soa_dir = '/other_dir'
         cluster = 'paasta-dev'
         job_config = tron_tools.TronJobConfig('my_job', job_dict, cluster, soa_dir=soa_dir)
-
         result = tron_tools.format_tron_job_dict(job_config)
 
-        mock_get_action_config.assert_called_once_with(job_config, action_dict)
+        mock_get_action_config.assert_called_once_with(job_config, action_name, action_dict)
         mock_format_action.assert_called_once_with(mock_get_action_config.return_value)
 
         assert result == {
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
             'max_runtime': '2h',
-            'actions': [mock_format_action.return_value],
+            'actions': {
+                mock_get_action_config.return_value.get_action_name.return_value: mock_format_action.return_value,
+            },
             'expected_runtime': '1h',
         }
 
@@ -314,10 +318,11 @@ class TestTronJobConfig:
             'service': 'my_service',
             'deploy_group': 'prod',
             'max_runtime': '2h',
-            'actions': [{
-                'name': 'normal',
-                'command': 'echo first',
-            }],
+            'actions': {
+                'normal': {
+                    'command': 'echo first',
+                },
+            },
             'cleanup_action': {
                 'command': 'rm *',
             },
@@ -326,13 +331,18 @@ class TestTronJobConfig:
 
         result = tron_tools.format_tron_job_dict(job_config)
 
-        assert mock_get_action_config.call_count == 2
+        assert mock_get_action_config.call_args_list == [
+            mock.call(job_config, 'normal', job_dict['actions']['normal']),
+            mock.call(job_config, 'cleanup', job_dict['cleanup_action']),
+        ]
         assert mock_format_action.call_count == 2
         assert result == {
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
             'max_runtime': '2h',
-            'actions': [mock_format_action.return_value],
+            'actions': {
+                mock_get_action_config.return_value.get_action_name.return_value: mock_format_action.return_value,
+            },
             'cleanup_action': mock_format_action.return_value,
         }
 
@@ -341,18 +351,16 @@ class TestTronJobConfig:
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
             'service': 'testservice',
-            'actions': [
-                {
-                    'name': 'first',
+            'actions': {
+                'first': {
                     'command': 'echo first',
                     'cpus': 'bad string',
                 },
-                {
-                    'name': 'second',
+                'second': {
                     'command': 'echo second',
                     'mem': 'not a number',
                 },
-            ],
+            },
             'cleanup_action': {
                 'command': 'rm *',
                 'cpus': 'also bad',
@@ -371,12 +379,11 @@ class TestTronJobConfig:
                 'team': 'noop',
                 'page': True,
             },
-            'actions': [
-                {
-                    'name': 'first',
+            'actions': {
+                'first': {
                     'command': 'echo first',
                 },
-            ],
+            },
         }
         mock_teams.return_value = ['noop']
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
@@ -391,12 +398,11 @@ class TestTronJobConfig:
             'monitoring': {
                 'page': True,
             },
-            'actions': [
-                {
-                    'name': 'first',
+            'actions': {
+                'first': {
                     'command': 'echo first',
                 },
-            ],
+            },
         }
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
         errors = job_config.validate()
@@ -411,12 +417,11 @@ class TestTronJobConfig:
                 'team': 'invalid_team',
                 'page': True,
             },
-            'actions': [
-                {
-                    'name': 'first',
+            'actions': {
+                'first': {
                     'command': 'echo first',
                 },
-            ],
+            },
         }
         mock_teams.return_value = ['valid_team', 'weird_name']
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
@@ -488,7 +493,6 @@ class TestTronTools:
 
     def test_format_tron_action_dict_default_executor(self):
         action_dict = {
-            'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
@@ -509,7 +513,6 @@ class TestTronTools:
         )
         result = tron_tools.format_tron_action_dict(action_config)
         assert result == {
-            'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
@@ -518,7 +521,6 @@ class TestTronTools:
 
     def test_format_tron_action_dict_paasta(self):
         action_dict = {
-            'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
@@ -556,7 +558,6 @@ class TestTronTools:
             result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
-            'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
@@ -587,7 +588,6 @@ class TestTronTools:
 
     def test_format_tron_action_dict_paasta_no_branch_dict(self):
         action_dict = {
-            'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
@@ -613,7 +613,6 @@ class TestTronTools:
         result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
-            'name': 'do_something',
             'command': 'echo something',
             'requires': ['required_action'],
             'retries': 2,
