@@ -263,7 +263,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         cmd = super(LongRunningServiceConfig, self).get_cmd()
         if cmd:
             if isinstance(cmd, str):
-                return cmd.split(' ')
+                return ['sh', '-c', cmd]
             elif isinstance(cmd, list):
                 return cmd
             else:

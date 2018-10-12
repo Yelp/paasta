@@ -189,7 +189,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             branch_dict=None,
             soa_dir='/nail/blah',
         )
-        assert deployment.get_cmd() == ['/bin/echo', 'hi']
+        assert deployment.get_cmd() == ['sh', '-c', '/bin/echo hi']
 
     def test_get_cmd_list(self):
         deployment = KubernetesDeploymentConfig(
