@@ -14,9 +14,6 @@
             "cmd": {
                 "type": "string"
             },
-            "use_percent_format": {
-                "type": "boolean"
-            },
             "args": {
                 "type": "array",
                 "items": {
