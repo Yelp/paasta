@@ -24,12 +24,12 @@ class TestLongRunningServiceConfig:
         fake_conf = long_running_service_tools.LongRunningServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
+            config_dict={'healthcheck_cmd': '/bin/true'},
             instance='fake_instance',
-            config_dict={'healthcheck_cmd': 'test_cmd'},
             branch_dict=None,
         )
         actual = fake_conf.get_healthcheck_cmd()
-        assert actual == 'test_cmd'
+        assert actual == '/bin/true'
 
     def test_get_healthcheck_cmd_raises_when_unset(self):
         fake_conf = long_running_service_tools.LongRunningServiceConfig(
@@ -69,6 +69,35 @@ class TestLongRunningServiceConfig:
             'socket.getfqdn', autospec=True, return_value=fake_hostname,
         ):
             expected = ('http', 'http://%s:%d%s' % (fake_hostname, fake_random_port, fake_path))
+            actual = long_running_service_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_service_config, fake_random_port,
+            )
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_not_matching_mode(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+
+        fake_service_config = long_running_service_tools.LongRunningServiceConfig(
+            service=fake_service,
+            cluster='fake_cluster',
+            instance=fake_namespace,
+            config_dict={},
+            branch_dict=None,
+        )
+        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({
+            'mode': 'http',
+        })
+        with mock.patch(
+            'paasta_tools.long_running_service_tools.load_service_namespace_config',
+            autospec=True,
+            return_value=fake_service_namespace_config,
+        ), mock.patch(
+            'socket.getfqdn', autospec=True, return_value=fake_hostname,
+        ):
+            expected = ('http', 'http://fake_hostname:666/status')
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port,
             )

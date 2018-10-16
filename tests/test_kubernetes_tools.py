@@ -400,7 +400,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ), 'mock_sidecar',
             ]
             service_namespace_config = mock.Mock()
-            service_namespace_config.get_mode.return_value = 'http'
+            service_namespace_config.get_healthcheck_mode.return_value = 'http'
             service_namespace_config.get_healthcheck_uri.return_value = '/status'
             assert self.deployment.get_kubernetes_containers(
                 docker_volumes=mock_docker_volumes,
@@ -423,14 +423,14 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
 
         service_namespace_config = mock.Mock()
-        service_namespace_config.get_mode.return_value = 'http'
+        service_namespace_config.get_healthcheck_mode.return_value = 'http'
         service_namespace_config.get_healthcheck_uri.return_value = '/status'
 
         assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
 
     def test_get_liveness_probe_non_smartstack(self):
         service_namespace_config = mock.Mock()
-        service_namespace_config.get_mode.return_value = None
+        service_namespace_config.get_healthcheck_mode.return_value = None
         assert self.deployment.get_liveness_probe(service_namespace_config) is None
 
     def test_get_liveness_probe_numbers(self):
@@ -447,7 +447,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
 
         service_namespace_config = mock.Mock()
-        service_namespace_config.get_mode.return_value = 'http'
+        service_namespace_config.get_healthcheck_mode.return_value = 'http'
         service_namespace_config.get_healthcheck_uri.return_value = '/status'
 
         self.deployment.config_dict['healthcheck_max_consecutive_failures'] = 1
@@ -467,9 +467,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             period_seconds=10,
             timeout_seconds=10,
         )
-        service_namespace_config = mock.Mock()
-        service_namespace_config.get_mode.return_value = 'tcp'
-        assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+        mock_service_namespace_config = mock.Mock()
+        mock_service_namespace_config.get_healthcheck_mode.return_value = 'tcp'
+        assert self.deployment.get_liveness_probe(mock_service_namespace_config) == liveness_probe
 
     def test_get_liveness_probe_cmd(self):
         liveness_probe = V1Probe(
@@ -482,7 +482,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             timeout_seconds=10,
         )
         service_namespace_config = mock.Mock()
-        service_namespace_config.get_mode.return_value = 'cmd'
+        service_namespace_config.get_healthcheck_mode.return_value = 'cmd'
         self.deployment.config_dict['healthcheck_cmd'] = '/bin/true'
         assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
 
