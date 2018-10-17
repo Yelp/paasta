@@ -243,7 +243,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
                 ],
             },
             'command': {
-                'value': self.get_cmd(),
+                'value': str(self.get_cmd()),
                 'uris': [
                     {
                         'value': system_paasta_config.get_dockercfg_location(),

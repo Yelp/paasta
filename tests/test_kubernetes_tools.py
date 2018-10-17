@@ -175,6 +175,39 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         assert self.deployment.copy() == self.deployment
         assert self.deployment.copy() is not self.deployment
 
+    def test_get_cmd_returns_None(self):
+        deployment = KubernetesDeploymentConfig(
+            service='kurupt',
+            instance='fm',
+            cluster='brentford',
+            config_dict={'cmd': None},
+            branch_dict=None,
+            soa_dir='/nail/blah',
+        )
+        assert deployment.get_cmd() is None
+
+    def test_get_cmd_converts_str_to_list(self):
+        deployment = KubernetesDeploymentConfig(
+            service='kurupt',
+            instance='fm',
+            cluster='brentford',
+            config_dict={'cmd': "/bin/echo hi"},
+            branch_dict=None,
+            soa_dir='/nail/blah',
+        )
+        assert deployment.get_cmd() == ['sh', '-c', '/bin/echo hi']
+
+    def test_get_cmd_list(self):
+        deployment = KubernetesDeploymentConfig(
+            service='kurupt',
+            instance='fm',
+            cluster='brentford',
+            config_dict={'cmd': ['/bin/echo', 'hi']},
+            branch_dict=None,
+            soa_dir='/nail/blah',
+        )
+        assert deployment.get_cmd() == ['/bin/echo', 'hi']
+
     def test_get_bounce_method(self):
         with mock.patch(
             'paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes', autospec=True,
