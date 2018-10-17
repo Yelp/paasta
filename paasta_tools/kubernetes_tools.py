@@ -932,7 +932,7 @@ def filter_pods_by_service_instance(
 def is_pod_ready(
     pod: V1Pod,
 ) -> bool:
-    ready_conditions = [cond.status for cond in pod.status.conditions if cond.type == 'Ready']
+    ready_conditions = [cond.status == 'True' for cond in pod.status.conditions if cond.type == 'Ready']
     return all(ready_conditions) if ready_conditions else False
 
 
