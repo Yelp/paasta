@@ -477,7 +477,7 @@ class LogReader:
     SUPPORTS_TIME = False
     # Supporting at least one of these log retrieval modes is required
 
-    def tail_logs(self, service, levels, components, clusters, instances, raw_mode):
+    def tail_logs(self, service, levels, components, clusters, instances, raw_mode=False):
         raise NotImplementedError("tail_logs is not implemented")
 
     def print_logs_by_time(self, service, start_time, end_time, levels, components, clusters, instances, raw_mode):

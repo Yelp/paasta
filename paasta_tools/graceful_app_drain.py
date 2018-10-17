@@ -42,13 +42,13 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
         soa_dir=soa_dir,
     )
     complete_config = service_instance_config.format_marathon_app_dict()
-    nerve_ns = service_instance_config.get_nerve_namespace()
-    service_namespace_config = marathon_tools.load_service_namespace_config(service=service, namespace=nerve_ns)
+    registrations = service_instance_config.get_registrations()
+    service_namespace_config = marathon_tools.load_service_namespace_config(service=service, namespace=registrations[0])
     drain_method = drain_lib.get_drain_method(
         service_instance_config.get_drain_method(service_namespace_config),
         service=service,
         instance=instance,
-        nerve_ns=nerve_ns,
+        registrations=registrations,
         drain_method_params=service_instance_config.get_drain_method_params(service_namespace_config),
     )
 
@@ -65,7 +65,7 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
             other_apps=[app_to_kill],
             drain_method=drain_method,
             service=service,
-            nerve_ns=nerve_ns,
+            nerve_ns=registrations[0],
             bounce_health_params=service_instance_config.get_bounce_health_params(service_namespace_config),
         )
         do_bounce(

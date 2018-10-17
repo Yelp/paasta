@@ -50,11 +50,9 @@ def add_subparser(subparsers):
 
 def paasta_cook_image(args, service=None, soa_dir=None):
     """Build a docker image"""
-    if service:
-        service = service
-    else:
+    if not service:
         service = args.service
-    if service and service.startswith('services-'):
+    if service.startswith('services-'):
         service = service.split('services-', 1)[1]
     validate_service_name(service, soa_dir)
 
