@@ -1323,11 +1323,11 @@ def test_is_pod_ready():
             conditions=[
                 mock.MagicMock(
                     type='Ready',
-                    status=True,
+                    status='True',
                 ),
                 mock.MagicMock(
                     type='Another',
-                    status=False,
+                    status='False',
                 ),
             ],
         ),
@@ -1339,11 +1339,11 @@ def test_is_pod_ready():
             conditions=[
                 mock.MagicMock(
                     type='Ready',
-                    status=False,
+                    status='False',
                 ),
                 mock.MagicMock(
                     type='Another',
-                    status=False,
+                    status='False',
                 ),
             ],
         ),
@@ -1355,7 +1355,7 @@ def test_is_pod_ready():
             conditions=[
                 mock.MagicMock(
                     type='Another',
-                    status=False,
+                    status='False',
                 ),
             ],
         ),
