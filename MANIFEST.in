@@ -1,3 +1,4 @@
 recursive-include paasta_tools/cli/fsm/template *
 include paasta_tools/cli/schemas/*.json
 include paasta_tools/api/api_docs/*.json
+include requirements-minimal.txt
