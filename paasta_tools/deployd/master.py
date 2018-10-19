@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import inspect
 import logging
-import logging.handlers
 import socket
 import sys
 import time
