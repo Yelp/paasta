@@ -62,7 +62,7 @@ progressbar2==3.10.1
 py==1.5.2
 pyasn1==0.4.2
 pyasn1-modules==0.2.1
-pymesos==0.2.13
+pymesos==0.3.9
 pyramid==1.8.4
 pyramid-swagger==2.4.1
 pyrsistent==0.13.0
