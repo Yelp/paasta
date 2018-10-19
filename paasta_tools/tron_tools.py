@@ -239,9 +239,10 @@ class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
     def __init__(
-        self, config_dict: Dict[str, Any], cluster: str, service: Optional[str]=None,
+        self, name: str, config_dict: Dict[str, Any], cluster: str, service: Optional[str]=None,
         load_deployments: bool=True, soa_dir: str=DEFAULT_SOA_DIR,
     ) -> None:
+        self.name = name
         self.config_dict = config_dict
         self.cluster = cluster
         self.service = service
@@ -249,7 +250,7 @@ class TronJobConfig:
         self.soa_dir = soa_dir
 
     def get_name(self):
-        return self.config_dict.get('name')
+        return self.name
 
     def get_node(self):
         return self.config_dict.get('node')
@@ -293,7 +294,7 @@ class TronJobConfig:
     def get_expected_runtime(self):
         return self.config_dict.get('expected_runtime')
 
-    def _get_action_config(self, action_dict):
+    def _get_action_config(self, action_name, action_dict):
         action_service = action_dict.setdefault('service', self.get_service())
         action_deploy_group = action_dict.setdefault('deploy_group', self.get_deploy_group())
         if action_service and action_deploy_group and self.load_deployments:
@@ -321,7 +322,7 @@ class TronJobConfig:
 
         return TronActionConfig(
             service=action_service,
-            instance=compose_instance(self.get_name(), action_dict.get('name')),
+            instance=compose_instance(self.get_name(), action_name),
             cluster=self.get_cluster(),
             config_dict=action_dict,
             branch_dict=branch_dict,
@@ -329,10 +330,21 @@ class TronJobConfig:
         )
 
     def get_actions(self):
-        actions = [
-            self._get_action_config(action_dict)
-            for action_dict in self.config_dict.get('actions')
-        ]
+        actions = self.config_dict.get('actions')
+        if isinstance(actions, list):
+            actions = [
+                self._get_action_config(
+                    action_dict.get('name'),
+                    action_dict,
+                )
+                for action_dict in actions
+            ]
+        else:
+            actions = [
+                self._get_action_config(name, action_dict)
+                for name, action_dict in actions.items()
+            ]
+
         return actions
 
     def get_cleanup_action(self):
@@ -341,8 +353,7 @@ class TronJobConfig:
             return None
 
         # TODO: we should keep this trickery outside paasta repo
-        action_dict['name'] = 'cleanup'
-        return self._get_action_config(action_dict)
+        return self._get_action_config('cleanup', action_dict)
 
     def check_monitoring(self) -> Tuple[bool, str]:
         monitoring = self.get_monitoring()
@@ -411,7 +422,6 @@ def format_tron_action_dict(action_config):
     """
     executor = action_config.get_executor()
     result = {
-        'name': action_config.get_action_name(),
         'command': action_config.get_cmd(),
         'executor': executor,
         'requires': action_config.get_requires(),
@@ -455,16 +465,15 @@ def format_tron_job_dict(job_config):
 
     :param job_config: TronJobConfig
     """
-    action_dicts = [
-        format_tron_action_dict(action_config)
+    action_dict = {
+        action_config.get_action_name(): format_tron_action_dict(action_config)
         for action_config in job_config.get_actions()
-    ]
+    }
 
     result = {
-        'name': job_config.get_name(),
         'node': job_config.get_node(),
         'schedule': job_config.get_schedule(),
-        'actions': action_dicts,
+        'actions': action_dict,
         'monitoring': job_config.get_monitoring(),
         'queueing': job_config.get_queueing(),
         'run_limit': job_config.get_run_limit(),
@@ -478,7 +487,6 @@ def format_tron_job_dict(job_config):
     cleanup_config = job_config.get_cleanup_action()
     if cleanup_config:
         cleanup_action = format_tron_action_dict(cleanup_config)
-        del cleanup_action['name']
         result['cleanup_action'] = cleanup_action
 
     # Only pass non-None values, so Tron will use defaults for others
@@ -525,15 +533,29 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
     """Load all configured jobs for a service, and any additional config values."""
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    job_configs = [
-        TronJobConfig(
-            service=service,
-            cluster=cluster,
-            config_dict=job,
-            load_deployments=load_deployments,
-            soa_dir=soa_dir,
-        ) for job in config.get('jobs') or []
-    ]
+    jobs = config.get('jobs') or []
+    if isinstance(jobs, list):
+        job_configs = [
+            TronJobConfig(
+                name=job.get('name'),
+                service=service,
+                cluster=cluster,
+                config_dict=job,
+                load_deployments=load_deployments,
+                soa_dir=soa_dir,
+            ) for job in jobs
+        ]
+    else:
+        job_configs = [
+            TronJobConfig(
+                name=name,
+                service=service,
+                cluster=cluster,
+                config_dict=job,
+                load_deployments=load_deployments,
+                soa_dir=soa_dir,
+            ) for name, job in jobs.items()
+        ]
     return job_configs, extra_config
 
 
@@ -555,10 +577,10 @@ def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
             system_paasta_config.get_dockercfg_location(),
         )
 
-    other_config['jobs'] = [
-        format_tron_job_dict(job_config)
+    other_config['jobs'] = {
+        job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
-    ]
+    }
 
     return yaml.dump(
         other_config,
@@ -588,11 +610,11 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SO
             return check_msgs
 
     # Use Tronfig on generated config from PaaSTA to validate the rest
-    other_config['jobs'] = [
-        format_tron_job_dict(
-            job_config=job_config,
-        ) for job_config in job_configs
-    ]
+    other_config['jobs'] = {
+        job_config.get_name(): format_tron_job_dict(job_config)
+        for job_config in job_configs
+    }
+
     complete_config = yaml.dump(other_config, Dumper=Dumper)
 
     master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
