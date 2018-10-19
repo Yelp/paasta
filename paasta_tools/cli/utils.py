@@ -1020,7 +1020,7 @@ def get_instance_configs_for_service(
         soa_dir=soa_dir,
     ):
         if type_filter is None:
-            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes']
+            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron']
         if 'marathon' in type_filter:
             for _, instance in get_service_instance_list(
                 service=service,
@@ -1071,6 +1071,20 @@ def get_instance_configs_for_service(
                 soa_dir=soa_dir,
             ):
                 yield load_kubernetes_service_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'tron' in type_filter:
+            for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='tron',
+                soa_dir=soa_dir,
+            ):
+                yield load_tron_instance_config(
                     service=service,
                     instance=instance,
                     cluster=cluster,
