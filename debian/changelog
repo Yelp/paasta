@@ -1,3 +1,12 @@
+paasta-tools (0.81.4) xenial; urgency=medium
+
+  * 0.81.4 tagged with 'make release'
+    Commit: Merge pull request #2019 from Yelp/use_init  Added the
+    option to our configs to selectively disable the docker --init
+    behavior
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 22 Oct 2018 09:27:43 -0700
+
 paasta-tools (0.81.3) xenial; urgency=medium
 
   * 0.81.3 tagged with 'make release'
