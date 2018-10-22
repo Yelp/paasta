@@ -3,5 +3,7 @@
 # Generates all the per-service deployments.json files
 #
 
+set -eo pipefail
+
 # xargs will return 0 if everything went ok, but 12X if something else went wrong
 paasta list | shuf | xargs -n 1 -r -P 4 generate_deployments_for_service -s

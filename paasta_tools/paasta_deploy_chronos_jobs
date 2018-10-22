@@ -1,2 +1,3 @@
 #!/bin/bash
+set -eo pipefail
 list_chronos_jobs | shuf | xargs -n 1 -r -P 5 setup_chronos_job
