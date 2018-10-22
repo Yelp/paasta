@@ -1,3 +1,12 @@
+paasta-tools (0.81.5) xenial; urgency=medium
+
+  * 0.81.5 tagged with 'make release'
+    Commit: Merge pull request #2028 from Yelp/u/chl/TRON-
+    494_generate_deployments_for_tron_instance
+    generate_deployment_for_service includes Tron instances
+
+ -- Chien-An Lai <chl@yelp.com>  Mon, 22 Oct 2018 10:44:40 -0700
+
 paasta-tools (0.81.4) xenial; urgency=medium
 
   * 0.81.4 tagged with 'make release'
