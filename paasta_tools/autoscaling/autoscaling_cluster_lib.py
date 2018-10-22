@@ -42,8 +42,8 @@ from botocore.exceptions import ClientError
 from mypy_extensions import TypedDict
 from requests.exceptions import HTTPError
 
-from paasta_tools.autoscaling import cluster_boost
 from paasta_tools.autoscaling import ec2_fitness
+from paasta_tools.autoscaling import load_boost
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_maintenance import drain
 from paasta_tools.mesos_maintenance import undrain
@@ -1465,7 +1465,10 @@ def get_mesos_utilization_error(
 
         # We apply the boost only on the cpu resource.
         if resource == 'cpus' and system_config.get_cluster_boost_enabled():
-            boosted_load = cluster_boost.get_boosted_load(region=region, pool=pool, current_load=current_load)
+            boosted_load = load_boost.get_boosted_load(
+                zk_boost_path=load_boost.get_zk_cluster_boost_path(region=region, pool=pool),
+                current_load=current_load,
+            )
         else:
             boosted_load = current_load
 

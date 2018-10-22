@@ -1,11 +1,11 @@
 """
-Provides functions to temporary boost cluster capacity.
+Provides functions to temporary boost autoscaler results
 Useful during big service bounce or failovers to preemptively increase capacity.
 
-This works by setting a temporary multiplier on the initial cluster's measured load.
+This works by setting a temporary multiplier on the initial measured load.
 The resulting increased capacity is guaranteed until the end of the boost.
 If usage gets higher the pool will behave normally and scale up
-This applies to any resource (cpu, memory, disk). Usually the limiting one is the cpu.
+
 Default duration of the boost factor is 40 minutes and default value is 1.5
 """
 import logging
@@ -44,11 +44,11 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-def get_zk_boost_path(region: str, pool: str) -> str:
+def get_zk_cluster_boost_path(region: str, pool: str) -> str:
     return f'/paasta_cluster_autoscaler/{region}/{pool}/boost'
 
 
-def get_boosted_load(region: str, pool: str, current_load: float) -> float:
+def get_boosted_load(zk_boost_path: str, current_load: float) -> float:
     """Return the load to use for autoscaling calculations, taking into
     account the computed boost, if any.
 
@@ -56,11 +56,10 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
     so we don't block the autoscaler.
     """
     try:
-        zk_boost_path = get_zk_boost_path(region, pool)
         current_time = get_time()
 
         with ZookeeperPool() as zk:
-            boost_values = get_boost_values(region, pool, zk)
+            boost_values = get_boost_values(zk_boost_path, zk)
 
             if current_time >= boost_values.end_time:
                 # If there is an expected_load value, that means we've just completed
@@ -92,13 +91,13 @@ def get_boosted_load(region: str, pool: str, current_load: float) -> float:
         return current_load
 
 
-def get_boost_factor(region: str, pool: str) -> float:
+def get_boost_factor(zk_boost_path: str) -> float:
     """This function returns the boost factor value if a boost is active
     """
     current_time = get_time()
 
     with ZookeeperPool() as zk:
-        boost_values = get_boost_values(region, pool, zk)
+        boost_values = get_boost_values(zk_boost_path, zk)
         if current_time < boost_values.end_time:
             return boost_values.boost_factor
         else:
@@ -106,8 +105,7 @@ def get_boost_factor(region: str, pool: str) -> float:
 
 
 def get_boost_values(
-    region: str,
-    pool: str,
+    zk_boost_path: str,
     zk: KazooClient,
 ) -> BoostValues:
     # Default values, non-boost.
@@ -116,7 +114,6 @@ def get_boost_values(
     expected_load: float = 0
 
     try:
-        zk_boost_path = get_zk_boost_path(region, pool)
         end_time = float(zk.get(zk_boost_path + '/end_time')[0].decode('utf-8'))
         boost_factor = float(zk.get(zk_boost_path + '/factor')[0].decode('utf-8'))
         expected_load = float(zk.get(zk_boost_path + '/expected_load')[0].decode('utf-8'))
@@ -137,12 +134,23 @@ def get_boost_values(
 
 
 def set_boost_factor(
-    region: str,
-    pool: str,
-    factor=DEFAULT_BOOST_FACTOR,
-    duration_minutes=DEFAULT_BOOST_DURATION,
-    override=False,
+    zk_boost_path: str,
+    region: str='',
+    pool: str='',
+    send_clusterman_metrics: bool=False,
+    factor: float=DEFAULT_BOOST_FACTOR,
+    duration_minutes: int=DEFAULT_BOOST_DURATION,
+    override: bool=False,
 ) -> bool:
+    """
+    Set a boost factor for a path in zk
+
+    Can be used to boost either cluster or service autoscalers.
+    If using for cluster you must specify region, pool and set
+    send_clusterman_metrics=True so that clusterman metrics are updated
+
+    otherwise just zk_boost_path is enough.
+    """
     if factor < MIN_BOOST_FACTOR:
         log.error(f'Cannot set a boost factor smaller than {MIN_BOOST_FACTOR}')
         return False
@@ -161,11 +169,10 @@ def set_boost_factor(
         ))
         duration_minutes = MAX_BOOST_DURATION
 
-    zk_boost_path = get_zk_boost_path(region, pool)
     current_time = get_time()
     end_time = current_time + 60 * duration_minutes
 
-    if clusterman_metrics:
+    if clusterman_metrics and send_clusterman_metrics:
         cluster = load_system_paasta_config().get_cluster()
         metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=region, app_identifier='default')
         with metrics_client.get_writer(clusterman_metrics.APP_METRICS) as writer:
@@ -184,7 +191,7 @@ def set_boost_factor(
     with ZookeeperPool() as zk:
         if (
             not override and
-            current_time < get_boost_values(region, pool, zk).end_time
+            current_time < get_boost_values(zk_boost_path, zk).end_time
         ):
             log.error('Boost already active. Not overriding.')
             return False
@@ -200,25 +207,23 @@ def set_boost_factor(
             log.error('Error setting the boost in Zookeeper')
             raise
 
-        log.info('Cluster boost: Set capacity boost factor {} for pool {} in region {} until {}'.format(
+        log.info('Load boost: Set capacity boost factor {} at path {} until {}'.format(
             factor,
-            pool,
-            region,
+            zk_boost_path,
             datetime.fromtimestamp(end_time).strftime('%c'),
         ))
 
         # Let's check that this factor has been properly written to zk
-        return get_boost_values(region, pool, zk) == BoostValues(
+        return get_boost_values(zk_boost_path, zk) == BoostValues(
             end_time=end_time,
             boost_factor=factor,
             expected_load=0,
         )
 
 
-def clear_boost(region: str, pool: str) -> bool:
+def clear_boost(zk_boost_path) -> bool:
     return set_boost_factor(
-        region=region,
-        pool=pool,
+        zk_boost_path,
         factor=1,
         duration_minutes=0,
         override=True,

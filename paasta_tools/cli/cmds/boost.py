@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paasta_tools.autoscaling import cluster_boost
+from paasta_tools.autoscaling import load_boost
 from paasta_tools.cli.utils import execute_paasta_cluster_boost_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -67,13 +67,13 @@ def add_subparser(subparsers):
     boost_parser.add_argument(
         '-b', '--boost',
         type=float,
-        default=cluster_boost.DEFAULT_BOOST_FACTOR,
+        default=load_boost.DEFAULT_BOOST_FACTOR,
         help="Boost factor to apply. Default is 1.5. A big failover should be 2, 3 is the max.",
     )
     boost_parser.add_argument(
         '-d', '--duration',
         type=int,
-        default=cluster_boost.DEFAULT_BOOST_DURATION,
+        default=load_boost.DEFAULT_BOOST_DURATION,
         help="Duration of the capacity boost in minutes. Default is 40",
     )
     boost_parser.add_argument(
