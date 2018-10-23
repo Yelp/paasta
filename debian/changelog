@@ -1,3 +1,11 @@
+paasta-tools (0.81.6) xenial; urgency=medium
+
+  * 0.81.6 tagged with 'make release'
+    Commit: Merge pull request #2030 from Yelp/drmorr/PAASTA-
+    14917/set_pipefail  set pipefail on our bash scripts
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 23 Oct 2018 13:37:36 -0700
+
 paasta-tools (0.81.5) xenial; urgency=medium
 
   * 0.81.5 tagged with 'make release'
