@@ -104,13 +104,11 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
 
-TimeCacheEntry = TypedDict(
-    'TimeCacheEntry',
-    {
-        'data': Any,
-        'fetch_time': float,
-    },
-)
+
+class TimeCacheEntry(TypedDict):
+    data: Any
+    fetch_time: float
+
 
 _CacheRetT = TypeVar('_CacheRetT')
 
@@ -186,72 +184,54 @@ class PersistentVolume(VolumeWithMode):
     container_path: str
 
 
-InstanceConfigDict = TypedDict(
-    'InstanceConfigDict',
-    {
-        'deploy_group': str,
-        'mem': float,
-        'cpus': float,
-        'disk': float,
-        'cmd': str,
-        'args': List[str],
-        'cfs_period_us': float,
-        'cpu_burst_add': float,
-        'ulimit': Dict[str, Dict[str, Any]],
-        'cap_add': List,
-        'env': Dict[str, str],
-        'monitoring': Dict[str, str],
-        'deploy_blacklist': UnsafeDeployBlacklist,
-        'deploy_whitelist': UnsafeDeployWhitelist,
-        'monitoring_blacklist': UnsafeDeployBlacklist,
-        'pool': str,
-        'persistent_volumes': List[PersistentVolume],
-        'role': str,
-        'extra_volumes': List[DockerVolume],
-        'aws_ebs_volumes': List[AwsEbsVolume],
-        'security': SecurityConfigDict,
-        'dependencies_reference': str,
-        'dependencies': Dict[str, Dict],
-        'constraints': List[UnstringifiedConstraint],
-        'extra_constraints': List[UnstringifiedConstraint],
-        'net': str,
-        'extra_docker_args': Dict[str, str],
-        'gpus': float,
-        'branch': str,
-    },
-    total=False,
-)
+class InstanceConfigDict(TypedDict, total=False):
+    deploy_group: str
+    mem: float
+    cpus: float
+    disk: float
+    cmd: str
+    args: List[str]
+    cfs_period_us: float
+    cpu_burst_add: float
+    ulimit: Dict[str, Dict[str, Any]]
+    cap_add: List
+    env: Dict[str, str]
+    monitoring: Dict[str, str]
+    deploy_blacklist: UnsafeDeployBlacklist
+    deploy_whitelist: UnsafeDeployWhitelist
+    monitoring_blacklist: UnsafeDeployBlacklist
+    pool: str
+    persistent_volumes: List[PersistentVolume]
+    role: str
+    extra_volumes: List[DockerVolume]
+    aws_ebs_volumes: List[AwsEbsVolume]
+    security: SecurityConfigDict
+    dependencies_reference: str
+    dependencies: Dict[str, Dict]
+    constraints: List[UnstringifiedConstraint]
+    extra_constraints: List[UnstringifiedConstraint]
+    net: str
+    extra_docker_args: Dict[str, str]
+    gpus: float
+    branch: str
 
 
-BranchDictV1 = TypedDict(
-    'BranchDictV1',
-    {
-        'docker_image': str,
-        'desired_state': str,
-        'force_bounce': Optional[str],
-    },
-    total=False,
-)
+class BranchDictV1(TypedDict, total=False):
+    docker_image: str
+    desired_state: str
+    force_bounce: Optional[str]
 
 
-BranchDictV2 = TypedDict(
-    'BranchDictV2',
-    {
-        'git_sha': str,
-        'docker_image': str,
-        'desired_state': str,
-        'force_bounce': Optional[str],
-    },
-)
+class BranchDictV2(TypedDict):
+    git_sha: str
+    docker_image: str
+    desired_state: str
+    force_bounce: Optional[str]
 
 
-DockerParameter = TypedDict(
-    'DockerParameter',
-    {
-        'key': str,
-        'value': str,
-    },
-)
+class DockerParameter(TypedDict):
+    key: str
+    value: str
 
 
 def safe_deploy_blacklist(input: UnsafeDeployBlacklist) -> DeployBlacklist:
@@ -1045,21 +1025,14 @@ class NoSuchLogLevel(Exception):
     pass
 
 
-LogWriterConfig = TypedDict(
-    'LogWriterConfig',
-    {
-        'driver': str,
-        'options': Dict,
-    },
-)
+class LogWriterConfig(TypedDict):
+    driver: str
+    options: Dict
 
-LogReaderConfig = TypedDict(
-    'LogReaderConfig',
-    {
-        'driver': str,
-        'options': Dict,
-    },
-)
+
+class LogReaderConfig(TypedDict):
+    driver: str
+    options: Dict
 
 
 # The active log writer.
@@ -1367,120 +1340,115 @@ def get_readable_files_in_glob(glob: str, path: str) -> List[str]:
     return sorted(globbed_files)
 
 
-ClusterAutoscalingResources = Dict[str, Dict]
+class ClusterAutoscalingResource(TypedDict):
+    type: str
+    id: str
+    region: str
+    pool: str
+    min_capacity: int
+    max_capacity: int
 
-ResourcePoolSettings = Dict[str, Dict]
 
-ChronosConfig = TypedDict(
-    'ChronosConfig',
-    {
-        'user': str,
-        'password': str,
-        'url': List[str],
-    },
-    total=False,
-)
-MarathonConfigDict = TypedDict(
-    'MarathonConfigDict',
-    {
-        'user': str,
-        'password': str,
-        'url': List[str],
-    },
-    total=False,
-)
+IdToClusterAutoscalingResourcesDict = Dict[str, ClusterAutoscalingResource]
 
-LocalRunConfig = TypedDict(
-    'LocalRunConfig',
-    {
-        'default_cluster': str,
-    },
-    total=False,
-)
-RemoteRunConfig = TypedDict(
-    'RemoteRunConfig',
-    {
-        'default_role': str,
-    },
-    total=False,
-)
-PaastaNativeConfig = TypedDict(
-    'PaastaNativeConfig',
-    {
-        'principal': str,
-        'secret': str,
-    },
-    total=False,
-)
+
+class ResourcePoolSettings(TypedDict):
+    target_utilization: float
+    drain_timeout: int
+
+
+PoolToResourcePoolSettingsDict = Dict[str, ResourcePoolSettings]
+
+
+class ChronosConfig(TypedDict, total=False):
+    user: str
+    password: str
+    url: List[str]
+
+
+class MarathonConfigDict(TypedDict, total=False):
+    user: str
+    password: str
+    url: List[str]
+
+
+class LocalRunConfig(TypedDict, total=False):
+    default_cluster: str
+
+
+class RemoteRunConfig(TypedDict, total=False):
+    default_role: str
+
+
+class PaastaNativeConfig(TypedDict, total=False):
+    principal: str
+    secret: str
+
 
 ExpectedSlaveAttributes = List[Dict[str, Any]]
 
-SystemPaastaConfigDict = TypedDict(
-    'SystemPaastaConfigDict',
-    {
-        'auto_hostname_unique_size': int,
-        'zookeeper': str,
-        'docker_registry': str,
-        'volumes': List[DockerVolume],
-        'cluster': str,
-        'dashboard_links': Dict[str, Dict[str, str]],
-        'api_endpoints': Dict[str, str],
-        'fsm_template': str,
-        'log_reader': LogReaderConfig,
-        'log_writer': LogWriterConfig,
-        'deployd_metrics_provider': str,
-        'metrics_provider': str,
-        'deployd_worker_failure_backoff_factor': int,
-        'deployd_maintenance_polling_frequency': int,
-        'sensu_host': str,
-        'sensu_port': int,
-        'dockercfg_location': str,
-        'synapse_port': int,
-        'synapse_host': str,
-        'synapse_haproxy_url_format': str,
-        'cluster_autoscaling_resources': ClusterAutoscalingResources,
-        'resource_pool_settings': ResourcePoolSettings,
-        'cluster_fqdn_format': str,
-        'chronos_config': ChronosConfig,
-        'marathon_servers': List[MarathonConfigDict],
-        'previous_marathon_servers': List[MarathonConfigDict],
-        'local_run_config': LocalRunConfig,
-        'remote_run_config': RemoteRunConfig,
-        'paasta_native': PaastaNativeConfig,
-        'mesos_config': Dict,
-        'monitoring_config': Dict,
-        'deploy_blacklist': UnsafeDeployBlacklist,
-        'deploy_whitelist': UnsafeDeployWhitelist,
-        'expected_slave_attributes': ExpectedSlaveAttributes,
-        'security_check_command': str,
-        'deployd_number_workers': int,
-        'deployd_big_bounce_rate': float,
-        'deployd_startup_bounce_rate': float,
-        'deployd_log_level': str,
-        'deployd_startup_oracle_enabled': bool,
-        'cluster_autoscaling_draining_enabled': bool,
-        'cluster_autoscaler_max_decrease': float,
-        'cluster_autoscaler_max_increase': float,
-        'use_mesos_healthchecks': bool,
-        'taskproc': Dict,
-        'disabled_watchers': List,
-        'vault_environment': str,
-        'cluster_boost_enabled': bool,
-        'filter_bogus_mesos_cputime_enabled': bool,
-        'vault_cluster_map': Dict,
-        'secret_provider': str,
-        'slack': Dict[str, str],
-        'maintenance_resource_reservation_enabled': bool,
-        'hacheck_sidecar_image_url': str,
-        'enable_nerve_readiness_check': bool,
-        'register_k8s_pods': bool,
-        'register_marathon_services': bool,
-        'register_native_services': bool,
-        'nerve_readiness_check_script': str,
-        'tron': Dict,
-    },
-    total=False,
-)
+
+class SystemPaastaConfigDict(TypedDict, total=False):
+    auto_hostname_unique_size: int
+    zookeeper: str
+    docker_registry: str
+    volumes: List[DockerVolume]
+    cluster: str
+    dashboard_links: Dict[str, Dict[str, str]]
+    api_endpoints: Dict[str, str]
+    fsm_template: str
+    log_reader: LogReaderConfig
+    log_writer: LogWriterConfig
+    deployd_metrics_provider: str
+    metrics_provider: str
+    deployd_worker_failure_backoff_factor: int
+    deployd_maintenance_polling_frequency: int
+    sensu_host: str
+    sensu_port: int
+    dockercfg_location: str
+    synapse_port: int
+    synapse_host: str
+    synapse_haproxy_url_format: str
+    cluster_autoscaling_resources: IdToClusterAutoscalingResourcesDict
+    resource_pool_settings: PoolToResourcePoolSettingsDict
+    cluster_fqdn_format: str
+    chronos_config: ChronosConfig
+    marathon_servers: List[MarathonConfigDict]
+    previous_marathon_servers: List[MarathonConfigDict]
+    local_run_config: LocalRunConfig
+    remote_run_config: RemoteRunConfig
+    paasta_native: PaastaNativeConfig
+    mesos_config: Dict
+    monitoring_config: Dict
+    deploy_blacklist: UnsafeDeployBlacklist
+    deploy_whitelist: UnsafeDeployWhitelist
+    expected_slave_attributes: ExpectedSlaveAttributes
+    security_check_command: str
+    deployd_number_workers: int
+    deployd_big_bounce_rate: float
+    deployd_startup_bounce_rate: float
+    deployd_log_level: str
+    deployd_startup_oracle_enabled: bool
+    cluster_autoscaling_draining_enabled: bool
+    cluster_autoscaler_max_decrease: float
+    cluster_autoscaler_max_increase: float
+    use_mesos_healthchecks: bool
+    taskproc: Dict
+    disabled_watchers: List
+    vault_environment: str
+    cluster_boost_enabled: bool
+    filter_bogus_mesos_cputime_enabled: bool
+    vault_cluster_map: Dict
+    secret_provider: str
+    slack: Dict[str, str]
+    maintenance_resource_reservation_enabled: bool
+    hacheck_sidecar_image_url: str
+    enable_nerve_readiness_check: bool
+    register_k8s_pods: bool
+    register_marathon_services: bool
+    register_native_services: bool
+    nerve_readiness_check_script: str
+    tron: Dict
 
 
 def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
@@ -1568,7 +1536,7 @@ class SystemPaastaConfig:
                 % self.directory,
             )
 
-    def get_volumes(self) -> List[DockerVolume]:
+    def get_volumes(self) -> Sequence[DockerVolume]:
         """Get the volumes defined in this host's volumes config file.
 
         :returns: The list of volumes specified in the paasta configuration
@@ -1588,7 +1556,7 @@ class SystemPaastaConfig:
         except KeyError:
             raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
-    def get_dashboard_links(self) -> Dict[str, Dict[str, str]]:
+    def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
         return self.config_dict['dashboard_links']
 
     def get_auto_hostname_unique_size(self) -> int:
@@ -1601,7 +1569,7 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get('auto_hostname_unique_size', -1)
 
-    def get_api_endpoints(self) -> Dict[str, str]:
+    def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict['api_endpoints']
 
     def get_fsm_template(self) -> str:
@@ -1704,7 +1672,7 @@ class SystemPaastaConfig:
         :returns: A format string for constructing the URL of haproxy-synapse's status page."""
         return self.config_dict.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
 
-    def get_cluster_autoscaling_resources(self) -> ClusterAutoscalingResources:
+    def get_cluster_autoscaling_resources(self) -> IdToClusterAutoscalingResourcesDict:
         return self.config_dict.get('cluster_autoscaling_resources', {})
 
     def get_cluster_autoscaling_draining_enabled(self) -> bool:
@@ -1745,7 +1713,7 @@ class SystemPaastaConfig:
         :returns A bool: True means cluster boost is enabled."""
         return self.config_dict.get('cluster_boost_enabled', False)
 
-    def get_resource_pool_settings(self) -> ResourcePoolSettings:
+    def get_resource_pool_settings(self) -> PoolToResourcePoolSettingsDict:
         return self.config_dict.get('resource_pool_settings', {})
 
     def get_cluster_fqdn_format(self) -> str:
@@ -2450,41 +2418,24 @@ DeployGroup = str
 BranchName = str
 
 
-_DeploymentsJsonV2ControlsDict = TypedDict(
-    '_DeploymentsJsonV2ControlsDict',
-    {
-        'force_bounce': Optional[str],
-        'desired_state': str,
-    },
-    total=False,
-)
+class _DeploymentsJsonV2ControlsDict(TypedDict, total=False):
+    force_bounce: Optional[str]
+    desired_state: str
 
 
-_DeploymentsJsonV2DeploymentsDict = TypedDict(
-    '_DeploymentsJsonV2DeploymentsDict',
-    {
-        'docker_image': str,
-        'git_sha': str,
-    },
-)
+class _DeploymentsJsonV2DeploymentsDict(TypedDict):
+    docker_image: str
+    git_sha: str
 
 
-DeploymentsJsonV2Dict = TypedDict(
-    'DeploymentsJsonV2Dict',
-    {
-        'deployments': Dict[DeployGroup, _DeploymentsJsonV2DeploymentsDict],
-        'controls': Dict[BranchName, _DeploymentsJsonV2ControlsDict],
-    },
-)
+class DeploymentsJsonV2Dict(TypedDict):
+    deployments: Dict[DeployGroup, _DeploymentsJsonV2DeploymentsDict]
+    controls: Dict[BranchName, _DeploymentsJsonV2ControlsDict]
 
 
-DeploymentsJsonDict = TypedDict(
-    'DeploymentsJsonDict',
-    {
-        'v1': DeploymentsJsonV1Dict,
-        'v2': DeploymentsJsonV2Dict,
-    },
-)
+class DeploymentsJsonDict(TypedDict):
+    v1: DeploymentsJsonV1Dict
+    v2: DeploymentsJsonV2Dict
 
 
 class DeploymentsJsonV1:

@@ -29,6 +29,9 @@ def test_main_no_marathon_servers():
     ), patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
     ), patch(
+        'paasta_tools.paasta_metastatus.is_mesos_available', autospec=True,
+        return_value=True,
+    ), patch(
         'paasta_tools.metrics.metastatus_lib.get_chronos_status', autospec=True,
     ), patch(
         'paasta_tools.paasta_metastatus.get_mesos_master', autospec=True,
@@ -57,6 +60,9 @@ def test_main_no_marathon_servers():
 def test_main_no_chronos_config():
     with patch(
         'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+    ), patch(
+        'paasta_tools.paasta_metastatus.is_mesos_available', autospec=True,
+        return_value=True,
     ), patch(
         'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
     ) as load_chronos_config_patch, patch(
@@ -87,6 +93,9 @@ def test_main_no_chronos_config():
 def test_main_marathon_jsondecode_error():
     with patch(
         'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+    ), patch(
+        'paasta_tools.paasta_metastatus.is_mesos_available', autospec=True,
+        return_value=True,
     ), patch(
         'paasta_tools.marathon_tools.get_marathon_servers', autospec=True,
     ) as get_marathon_status_patch, patch(

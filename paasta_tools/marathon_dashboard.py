@@ -80,7 +80,7 @@ def create_marathon_dashboard(
     if marathon_clients is None:
         marathon_clients = get_marathon_clients(marathon_servers=marathon_servers, cached=False)
 
-    dashboard_links: Dict = system_paasta_config.get_dashboard_links()
+    dashboard_links = system_paasta_config.get_dashboard_links()
     marathon_links = dashboard_links.get(cluster, {}).get('Marathon RO')
 
     # e.g. 'http://10.64.97.75:5052': 'http://marathon-norcal-prod.yelpcorp.com'

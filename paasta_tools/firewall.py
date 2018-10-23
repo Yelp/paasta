@@ -368,8 +368,8 @@ def _dns_servers():
             parts = line.split()
             if (
                     len(parts) == 2 and
-                    parts[0] == 'nameserver'
-                    and IPV4_REGEX.match(parts[1])
+                    parts[0] == 'nameserver' and
+                    IPV4_REGEX.match(parts[1])
             ):
                 yield parts[1]
 

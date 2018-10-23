@@ -17,8 +17,9 @@ import itertools
 import logging
 import math
 from datetime import datetime
+from enum import Enum
+from pathlib import Path
 from typing import Any
-from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import NamedTuple
@@ -98,27 +99,26 @@ from paasta_tools.utils import VolumeWithMode
 
 log = logging.getLogger(__name__)
 
+KUBE_CONFIG_PATH = '/etc/kubernetes/admin.conf'
 YELP_ATTRIBUTE_PREFIX = 'yelp.com/'
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
-KubeDeployment = NamedTuple(
-    'KubeDeployment', [
-        ('service', str),
-        ('instance', str),
-        ('git_sha', str),
-        ('config_sha', str),
-        ('replicas', int),
-    ],
-)
-KubeService = NamedTuple(
-    'KubeService', [
-        ('name', str),
-        ('instance', str),
-        ('port', int),
-        ('pod_ip', str),
-    ],
-)
+
+
+class KubeDeployment(NamedTuple):
+    service: str
+    instance: str
+    git_sha: str
+    config_sha: str
+    replicas: int
+
+
+class KubeService(NamedTuple):
+    name: str
+    instance: str
+    port: int
+    pod_ip: str
 
 
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
@@ -338,7 +338,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         system_paasta_config: SystemPaastaConfig,
         service_namespace_config: ServiceNamespaceConfig,
-    ) -> List[V1Container]:
+    ) -> Sequence[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
@@ -384,9 +384,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         user_env = [V1EnvVar(name=name, value=value) for name, value in self.get_env().items()]
-        return user_env + self.get_kubernetes_environment()
+        return user_env + self.get_kubernetes_environment()  # type: ignore
 
-    def get_kubernetes_environment(self) -> List[V1EnvVar]:
+    def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
                 name='PAASTA_POD_IP',
@@ -489,7 +489,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 persistent_volumes=self.get_persistent_volumes(),
             ),
         )
-        containers = [service_container] + self.get_sidecar_containers(
+        containers = [service_container] + self.get_sidecar_containers(  # type: ignore
             system_paasta_config=system_paasta_config,
             service_namespace_config=service_namespace_config,
         )
@@ -629,6 +629,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             system_paasta_config = load_system_paasta_config()
             docker_url = self.get_docker_url()
             code_sha = get_code_sha_from_dockerurl(docker_url)
+            complete_config: Union[V1StatefulSet, V1Deployment]
             if self.get_persistent_volumes():
                 complete_config = V1StatefulSet(
                     api_version='apps/v1',
@@ -721,8 +722,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def sanitize_for_config_hash(
         self,
-        config: V1Deployment,
-    ) -> Dict[str, Any]:
+        config: Union[V1Deployment, V1StatefulSet],
+    ) -> Mapping[str, Any]:
         """Removes some data from config to make it suitable for
         calculation of config hash.
 
@@ -811,7 +812,7 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        kube_config.load_kube_config(config_file='/etc/kubernetes/admin.conf')
+        kube_config.load_kube_config(config_file=KUBE_CONFIG_PATH)
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
@@ -942,11 +943,38 @@ def filter_pods_by_service_instance(
     ]
 
 
-def is_pod_ready(
-    pod: V1Pod,
+def _is_it_ready(
+    it: Union[V1Pod, V1Node],
 ) -> bool:
-    ready_conditions = [cond.status == 'True' for cond in pod.status.conditions if cond.type == 'Ready']
+    ready_conditions = [cond.status == 'True' for cond in it.status.conditions if cond.type == 'Ready']
     return all(ready_conditions) if ready_conditions else False
+
+
+is_pod_ready = _is_it_ready
+
+is_node_ready = _is_it_ready
+
+
+class PodStatus(Enum):
+    PENDING = 1,
+    RUNNING = 2,
+    SUCCEEDED = 3,
+    FAILED = 4,
+    UNKNOWN = 5,
+
+
+_POD_STATUS_NAME_TO_STATUS = {
+    s.name.upper(): s
+    for s in PodStatus
+}
+
+
+def get_pod_status(
+    pod: V1Pod,
+) -> PodStatus:
+    # TODO: we probably also need to deduce extended statuses here, like
+    # `CrashLoopBackOff`, `ContainerCreating` timeout, and etc.
+    return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
 
 
 def get_active_shas_for_service(
@@ -1101,3 +1129,7 @@ class KubernetesDeployStatus:
     @classmethod
     def fromstring(cls, _str: str) -> int:
         return getattr(cls, _str, None)
+
+
+def is_kubernetes_available() -> bool:
+    return Path(KUBE_CONFIG_PATH).exists()
