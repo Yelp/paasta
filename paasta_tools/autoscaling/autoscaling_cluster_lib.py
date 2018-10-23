@@ -1362,7 +1362,19 @@ def get_autoscaling_info_for_all_resources(
     vals = [
         autoscaling_info_for_resource(
             resource=resource,
-            pool_settings=all_pool_settings[resource['pool']],
+            # The following line is supposed to be
+            # ```
+            # pool_settings=all_pool_settings[resource['pool']],
+            # ```
+            # but since
+            # 1. we're missing settings for some pools (e.g. `spam` and `kew`)
+            # 2. `pool_settings` wasn't actually used to configure autoscalers
+            #    as it contained `Mapping[Pool, ResourcePoolSettins]` instead of
+            #    `ResourcePoolSettins`, so the only `get()` for `'drain_timeout'`
+            #    key always returns the default drain timeout value
+            # 3. we're going to replace this autoscaler with Clusterman anyway
+            # let just hack it here.
+            pool_settings={},  # type: ignore
             mesos_state=mesos_state,
             utilization_errors=utilization_errors,
             max_increase=system_config.get_cluster_autoscaler_max_increase(),
