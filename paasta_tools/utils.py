@@ -2262,7 +2262,7 @@ def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str)
     for job_name, job in jobs:
         actions = job['actions']
         if isinstance(actions, dict):
-            action_names = actions.keys()
+            action_names = list(actions.keys())
         else:
             action_names = [action['name'] for action in actions]
 
