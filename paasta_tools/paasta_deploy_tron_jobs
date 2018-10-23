@@ -1,2 +1,3 @@
 #!/bin/bash
+set -eo pipefail
 paasta_list_tron_namespaces | xargs -n 1 -r -P 1 paasta_setup_tron_namespace
