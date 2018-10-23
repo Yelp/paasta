@@ -768,6 +768,38 @@ def test_get_tron_instance_list_from_yaml_finds_actions_properly():
         assert sorted(expected) == sorted(actual)
 
 
+def test_get_tron_instance_list_from_yaml_with_dicts():
+    fake_tron_job_config = {
+        "ssh_option": "foo",
+        "jobs": {
+            "job1": {
+                "actions": {
+                    "actionA": {},
+                    "actionB": {},
+                },
+            },
+            "job2": {
+                "actions": {
+                    "actionC": {},
+                    "actionD": {},
+                },
+            },
+        },
+    }
+    expected = [
+        ("fake_service", "job1.actionA"),
+        ("fake_service", "job1.actionB"),
+        ("fake_service", "job2.actionC"),
+        ("fake_service", "job2.actionD"),
+    ]
+    with mock.patch(
+        'paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
+        return_value=fake_tron_job_config,
+    ):
+        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', conf_file='fake', soa_dir='fake_dir')
+        assert sorted(expected) == sorted(actual)
+
+
 def test_get_services_for_cluster():
     cluster = 'honey_bunches_of_oats'
     soa_dir = 'completely_wholesome'

@@ -2221,9 +2221,21 @@ def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str)
         conf_file,
         soa_dir=soa_dir,
     )
-    for job in tron_config_content.get('jobs', []) or []:
-        for action in job['actions']:
-            instance = f"{job['name']}.{action['name']}"
+    jobs = tron_config_content.get('jobs', [])
+    if isinstance(jobs, list):
+        jobs = [(job['name'], job) for job in jobs]
+    else:
+        jobs = jobs.items()
+
+    for job_name, job in jobs:
+        actions = job['actions']
+        if isinstance(actions, dict):
+            action_names = list(actions.keys())
+        else:
+            action_names = [action['name'] for action in actions]
+
+        for name in action_names:
+            instance = f"{job_name}.{name}"
             instance_list.append((service, instance))
     return instance_list
 
