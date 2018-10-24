@@ -1,3 +1,11 @@
+paasta-tools (0.81.7) xenial; urgency=medium
+
+  * 0.81.7 tagged with 'make release'
+    Commit: Merge pull request #2034 from Yelp/u/chl/fix_paasta_info_bug
+    fix paasta info bug
+
+ -- Chien-An Lai <chl@yelp.com>  Wed, 24 Oct 2018 13:58:45 -0700
+
 paasta-tools (0.81.6) xenial; urgency=medium
 
   * 0.81.6 tagged with 'make release'
