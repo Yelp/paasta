@@ -76,7 +76,7 @@ def test_get_service_info():
 
 
 def test_deployments_to_clusters():
-    deployments = ['A.main', 'A.canary', 'B.main', 'C.othermain']
+    deployments = ['A.main', 'A.canary', 'B.main', 'C.othermain.dev']
     expected = {'A', 'B', 'C'}
     actual = info.deployments_to_clusters(deployments)
     assert actual == expected
