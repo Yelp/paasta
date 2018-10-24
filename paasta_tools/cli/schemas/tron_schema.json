@@ -139,7 +139,7 @@
   "required": ["jobs"],
   "properties": {
     "jobs": {
-      "type": ["null", "array", "object"],
+      "type": ["array", "object"],
       "items": {"$ref": "#definitions/job"},
       "patternProperties": {
         ".+": {"$ref": "#definitions/job"}
