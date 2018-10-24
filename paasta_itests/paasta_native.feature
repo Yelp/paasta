@@ -1,3 +1,4 @@
+@skip
 Feature: Paasta native mesos framework
   Scenario: we can start a service
     Given a working paasta cluster, with docker registry docker.io
