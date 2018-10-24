@@ -67,7 +67,7 @@ def add_subparser(subparsers):
 def deployments_to_clusters(deployments: Collection[str]) -> Collection[str]:
     clusters = []
     for deployment in deployments:
-        cluster, _ = deployment.split('.')
+        cluster = deployment.split('.')[0]
         clusters.append(cluster)
     return set(clusters)
 
