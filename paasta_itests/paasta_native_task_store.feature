@@ -1,3 +1,4 @@
+@skip
 Feature: ZKTaskStore
   Scenario: ZKTaskStore smoke test
     Given a working paasta cluster, with docker registry docker.io
