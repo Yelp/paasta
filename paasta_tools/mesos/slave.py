@@ -98,7 +98,7 @@ class MesosSlave:
     def file(self, task, path):
         return mesos_file.File(self, task, path)
 
-    @async_ttl_cache(ttl=1, cleanup_self=True)
+    @async_ttl_cache(ttl=30, cleanup_self=True)
     async def stats(self):
         return await (await self.fetch("/monitor/statistics.json")).json()
 
