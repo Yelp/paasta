@@ -30,6 +30,10 @@ def parse_args():
         '-v', '--verbose', action='store_true',
         help="Increase logging verboseness",
     )
+    parser.add_argument(
+        'services', type=str, nargs='*',
+        help='name of services to scale (optional defaults to all autoscaling enabled services)',
+    )
     args = parser.parse_args()
     return args
 
@@ -40,7 +44,7 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARNING)
-    autoscale_services(soa_dir=args.soa_dir)
+    autoscale_services(soa_dir=args.soa_dir, services=args.services)
 
 
 if __name__ == '__main__':

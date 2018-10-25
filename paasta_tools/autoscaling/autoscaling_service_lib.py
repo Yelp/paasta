@@ -21,6 +21,8 @@ from contextlib import contextmanager
 from datetime import datetime
 from math import ceil
 from math import floor
+from typing import Optional
+from typing import Sequence
 
 import a_sync
 import gevent
@@ -45,18 +47,18 @@ from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
-from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import get_all_running_tasks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import _log
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import mean
-from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
 try:
@@ -565,80 +567,91 @@ def is_task_data_insufficient(marathon_service_config, marathon_tasks, current_i
 
 
 def autoscale_marathon_instance(marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks):
-    current_instances = marathon_service_config.get_instances()
-    task_data_insufficient = is_task_data_insufficient(marathon_service_config, marathon_tasks, current_instances)
-    autoscaling_params = marathon_service_config.get_autoscaling_params()
-    log_utilization_data = {}
-    utilization = get_utilization(
-        marathon_service_config=marathon_service_config,
-        system_paasta_config=system_paasta_config,
-        autoscaling_params=autoscaling_params,
-        log_utilization_data=log_utilization_data,
-        marathon_tasks=marathon_tasks,
-        mesos_tasks=mesos_tasks,
-    )
-    error = get_error_from_utilization(
-        utilization=utilization,
-        setpoint=autoscaling_params['setpoint'],
-        current_instances=current_instances,
-    )
-    new_instance_count = get_new_instance_count(
-        utilization=utilization,
-        error=error,
-        autoscaling_params=autoscaling_params,
-        current_instances=current_instances,
-        marathon_service_config=marathon_service_config,
-        num_healthy_instances=len(marathon_tasks),
-    )
-
-    safe_downscaling_threshold = int(current_instances * 0.7)
-    if new_instance_count != current_instances:
-        if new_instance_count < current_instances and task_data_insufficient:
-            write_to_log(
-                config=marathon_service_config,
-                line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
-                     'This can happen because tasks are delayed/waiting/unhealthy or because we are '
-                     'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
-                     'we make a decision to scale down.',
+    try:
+        with create_autoscaling_lock(marathon_service_config.service, marathon_service_config.instance):
+            current_instances = marathon_service_config.get_instances()
+            task_data_insufficient = is_task_data_insufficient(
+                marathon_service_config=marathon_service_config,
+                marathon_tasks=marathon_tasks,
+                current_instances=current_instances,
             )
-            return
-        if new_instance_count == safe_downscaling_threshold:
-            write_to_log(
-                config=marathon_service_config,
-                line='Autoscaler clamped: %s' % str(log_utilization_data),
-                level='debug',
+            autoscaling_params = marathon_service_config.get_autoscaling_params()
+            log_utilization_data = {}
+            utilization = get_utilization(
+                marathon_service_config=marathon_service_config,
+                system_paasta_config=system_paasta_config,
+                autoscaling_params=autoscaling_params,
+                log_utilization_data=log_utilization_data,
+                marathon_tasks=marathon_tasks,
+                mesos_tasks=mesos_tasks,
+            )
+            error = get_error_from_utilization(
+                utilization=utilization,
+                setpoint=autoscaling_params['setpoint'],
+                current_instances=current_instances,
+            )
+            new_instance_count = get_new_instance_count(
+                utilization=utilization,
+                error=error,
+                autoscaling_params=autoscaling_params,
+                current_instances=current_instances,
+                marathon_service_config=marathon_service_config,
+                num_healthy_instances=len(marathon_tasks),
             )
 
-        write_to_log(
-            config=marathon_service_config,
-            line='Scaling from %d to %d instances (%s)' % (
-                current_instances, new_instance_count, humanize_error(error),
-            ),
-        )
-        set_instances_for_marathon_service(
+            safe_downscaling_threshold = int(current_instances * 0.7)
+            if new_instance_count != current_instances:
+                if new_instance_count < current_instances and task_data_insufficient:
+                    write_to_log(
+                        config=marathon_service_config,
+                        line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
+                             'This can happen because tasks are delayed/waiting/unhealthy or because we are '
+                             'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
+                             'we make a decision to scale down.',
+                    )
+                    return
+                if new_instance_count == safe_downscaling_threshold:
+                    write_to_log(
+                        config=marathon_service_config,
+                        line='Autoscaler clamped: %s' % str(log_utilization_data),
+                        level='debug',
+                    )
+
+                write_to_log(
+                    config=marathon_service_config,
+                    line='Scaling from %d to %d instances (%s)' % (
+                        current_instances, new_instance_count, humanize_error(error),
+                    ),
+                )
+                set_instances_for_marathon_service(
+                    service=marathon_service_config.service,
+                    instance=marathon_service_config.instance,
+                    instance_count=new_instance_count,
+                )
+            else:
+                write_to_log(
+                    config=marathon_service_config,
+                    line='Staying at %d instances (%s)' % (current_instances, humanize_error(error)),
+                    level='debug',
+                )
+            meteorite_dims = {
+                'service_name': marathon_service_config.service,
+                'decision_policy': autoscaling_params[DECISION_POLICY_KEY],
+                'paasta_cluster': marathon_service_config.cluster,
+                'instance_name': marathon_service_config.instance,
+            }
+            if yelp_meteorite:
+                gauge = yelp_meteorite.create_gauge('paasta.service.instances', meteorite_dims)
+                gauge.set(new_instance_count)
+                gauge = yelp_meteorite.create_gauge('paasta.service.max_instances', meteorite_dims)
+                gauge.set(marathon_service_config.get_max_instances())
+                gauge = yelp_meteorite.create_gauge('paasta.service.min_instances', meteorite_dims)
+                gauge.set(marathon_service_config.get_min_instances())
+    except LockHeldException:
+        log.warning("Skipping autoscaling run for {service}.{instance} because the lock is held".format(
             service=marathon_service_config.service,
             instance=marathon_service_config.instance,
-            instance_count=new_instance_count,
-        )
-    else:
-        write_to_log(
-            config=marathon_service_config,
-            line='Staying at %d instances (%s)' % (current_instances, humanize_error(error)),
-            level='debug',
-        )
-    meteorite_dims = {
-        'service_name': marathon_service_config.service,
-        'decision_policy': autoscaling_params[DECISION_POLICY_KEY],
-        'paasta_cluster': marathon_service_config.cluster,
-        'instance_name': marathon_service_config.instance,
-    }
-    if yelp_meteorite:
-        gauge = yelp_meteorite.create_gauge('paasta.service.instances', meteorite_dims)
-        gauge.set(new_instance_count)
-        gauge = yelp_meteorite.create_gauge('paasta.service.max_instances', meteorite_dims)
-        gauge.set(marathon_service_config.get_max_instances())
-        gauge = yelp_meteorite.create_gauge('paasta.service.min_instances', meteorite_dims)
-        gauge.set(marathon_service_config.get_min_instances())
+        ))
 
 
 def humanize_error(error):
@@ -650,29 +663,28 @@ def humanize_error(error):
         return 'utilization within thresholds'
 
 
-def get_configs_of_services_to_scale(cluster, soa_dir=DEFAULT_SOA_DIR):
-    services = get_services_for_cluster(
-        cluster=cluster,
-        instance_type='marathon',
-        soa_dir=soa_dir,
-    )
+def get_configs_of_services_to_scale(
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    services: Optional[Sequence[str]] = None,
+) -> Sequence[MarathonServiceConfig]:
+    if not services:
+        services = list_services(
+            soa_dir=soa_dir,
+        )
     configs = []
-    for service, instance in services:
-        try:
-            service_config = load_marathon_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
-        except NoDeploymentsAvailable:
-            log.debug("%s is not deployed yet, refusing to do autoscaling calculations for it" %
-                      compose_job_id(service, instance))
-            continue
-
-        if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
-                and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
-            configs.append(service_config)
+    for service in services:
+        service_config = PaastaServiceConfigLoader(
+            service=service,
+            soa_dir=soa_dir,
+        )
+        for instance_config in service_config.instance_configs(
+            cluster=cluster,
+            instance_type_class=MarathonServiceConfig,
+        ):
+            if instance_config.get_max_instances() and instance_config.get_desired_state() == 'start' \
+                    and instance_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
+                configs.append(instance_config)
 
     return configs
 
@@ -682,7 +694,7 @@ def autoscaling_is_paused():
         try:
             pause_until = zk.get(ZK_PAUSE_AUTOSCALE_PATH)[0].decode('utf8')
             pause_until = float(pause_until)
-        except (NoNodeError, ValueError, AttributeError) as e:
+        except (NoNodeError, ValueError, AttributeError):
             pause_until = 0
 
     remaining = pause_until - time.time()
@@ -693,40 +705,44 @@ def autoscaling_is_paused():
         return False
 
 
+def autoscale_services(
+    soa_dir: str = DEFAULT_SOA_DIR,
+    services: Optional[Sequence[str]] = None,
+) -> None:
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+    configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir, services=services)
+    autoscale_service_configs(service_configs=configs, system_paasta_config=system_paasta_config)
+
+
 @use_requests_cache('service_autoscaler')
-def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
+def autoscale_service_configs(
+    service_configs: Sequence[MarathonServiceConfig],
+    system_paasta_config: SystemPaastaConfig,
+) -> None:
     if autoscaling_is_paused():
         log.warning("Skipping autoscaling because autoscaler paused")
         return
 
-    try:
-        with create_autoscaling_lock():
-            system_paasta_config = load_system_paasta_config()
-            cluster = system_paasta_config.get_cluster()
-            configs = get_configs_of_services_to_scale(cluster=cluster, soa_dir=soa_dir)
-
-            marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
-            apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
-            all_mesos_tasks = a_sync.block(get_all_running_tasks)
-            if configs:
-                with ZookeeperPool():
-                    for config in configs:
-                        try:
-                            marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
-                                [app for (app, client) in apps_with_clients],
-                                all_mesos_tasks,
-                                config,
-                            )
-                            autoscale_marathon_instance(
-                                config,
-                                system_paasta_config,
-                                list(marathon_tasks.values()),
-                                mesos_tasks,
-                            )
-                        except Exception as e:
-                            write_to_log(config=config, line='Caught Exception %s' % e)
-    except LockHeldException:
-        log.warning("Skipping autoscaling run for services because the lock is held")
+    marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
+    apps_with_clients = get_marathon_apps_with_clients(marathon_clients.get_all_clients(), embed_tasks=True)
+    all_mesos_tasks = a_sync.block(get_all_running_tasks)
+    with ZookeeperPool():
+        for config in service_configs:
+            try:
+                marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
+                    [app for (app, client) in apps_with_clients],
+                    all_mesos_tasks,
+                    config,
+                )
+                autoscale_marathon_instance(
+                    config,
+                    system_paasta_config,
+                    list(marathon_tasks.values()),
+                    mesos_tasks,
+                )
+            except Exception as e:
+                write_to_log(config=config, line='Caught Exception %s' % e)
 
 
 def filter_autoscaling_tasks(marathon_apps, all_mesos_tasks, config):
@@ -743,8 +759,7 @@ def filter_autoscaling_tasks(marathon_apps, all_mesos_tasks, config):
         for task in app.tasks:
             if task.id.startswith(job_id_prefix) and (
                 is_task_healthy(task) or not
-                app.health_checks or
-                is_old_task_missing_healthchecks(task, app)
+                app.health_checks or is_old_task_missing_healthchecks(task, app)
             ):
                 marathon_tasks[task.id] = task
 
@@ -770,19 +785,19 @@ def get_short_job_id(task_id):
 
 
 @contextmanager
-def create_autoscaling_lock():
+def create_autoscaling_lock(service, instance):
     """Acquire a lock in zookeeper for autoscaling. This is
     to avoid autoscaling a service multiple times, and to avoid
     having multiple paasta services all attempting to autoscale and
     fetching mesos data."""
     zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
-    lock = zk.Lock('/autoscaling/autoscaling.lock')
+    lock = zk.Lock(f'/autoscaling/{service}/{instance}/autoscaling.lock')
     try:
         lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
         yield
     except LockTimeout:
-        raise LockHeldException("Failed to acquire lock for autoscaling!")
+        raise LockHeldException(f"Failed to acquire lock for autoscaling! {service}.{instance}")
     else:
         lock.release()
     finally:
