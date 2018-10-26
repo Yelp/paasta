@@ -1,3 +1,12 @@
+paasta-tools (0.81.8) xenial; urgency=medium
+
+  * 0.81.8 tagged with 'make release'
+    Commit: Merge branch "u/kawaiwan/add-precious-attr-to-tron-schema"
+  * Changed Tron schema to allow new attribute that enables precious
+    monitoring
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 26 Oct 2018 10:02:40 -0700
+
 paasta-tools (0.81.7) xenial; urgency=medium
 
   * 0.81.7 tagged with 'make release'
