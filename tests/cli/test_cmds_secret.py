@@ -27,7 +27,8 @@ def test_add_subparser():
 
 
 def test_print_paasta_helper():
-    secret.print_paasta_helper('/blah/what', 'keepithidden')
+    secret.print_paasta_helper('/blah/what', 'keepithidden', False)
+    secret.print_paasta_helper('/blah/what', 'keepithidden', True)
 
 
 def test_get_plaintext_input():
@@ -125,6 +126,7 @@ def test_paasta_secret():
             secret_name='theonering',
             service='middleearth',
             clusters='mesosstage',
+            shared=False,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with('middleearth', cluster_names='mesosstage')
@@ -139,6 +141,7 @@ def test_paasta_secret():
             secret_name='theonering',
             service='middleearth',
             clusters='mesosstage',
+            shared=False,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with('middleearth', cluster_names='mesosstage')
@@ -153,6 +156,7 @@ def test_paasta_secret():
             secret_name='theonering',
             service='middleearth',
             clusters='mesosstage',
+            shared=False,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with('middleearth', cluster_names='mesosstage')
@@ -160,6 +164,33 @@ def test_paasta_secret():
             secret_provider=mock_secret_provider,
             secret_name='theonering',
         )
+
+        mock_args = mock.Mock(
+            action='add',
+            secret_name='theonering',
+            service=None,
+            clusters='mesosstage',
+            shared=True,
+        )
+        secret.paasta_secret(mock_args)
+        mock_get_secret_provider_for_service.assert_called_with(
+            secret.SHARED_SECRET_SERVICE,
+            cluster_names='mesosstage',
+        )
+        mock_decrypt_secret.assert_called_with(
+            secret_provider=mock_secret_provider,
+            secret_name='theonering',
+        )
+
+        mock_args = mock.Mock(
+            action='add',
+            secret_name='theonering',
+            service=None,
+            clusters=None,
+            shared=True,
+        )
+        with raises(SystemExit):
+            secret.paasta_secret(mock_args)
 
 
 def test_decrypt_secret():
