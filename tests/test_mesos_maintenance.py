@@ -14,6 +14,7 @@
 import argparse
 import datetime
 import json
+from socket import gaierror
 
 import mock
 import pytest
@@ -1050,6 +1051,16 @@ def test_hostnames_to_components_resolve(
     mock_gethostbyname.return_value = ip
     expected = [Hostname(host=hostname, ip=ip)]
     actual = hostnames_to_components([hostname], resolve=True)
+    assert actual == expected
+
+
+@mock.patch('paasta_tools.mesos_maintenance.gethostbyname', autospec=True)
+def test_hostnames_to_components_resolve_failure(
+    mock_gethostbyname,
+):
+    mock_gethostbyname.side_effect = ['10.1.1.1', gaierror]
+    expected = [Hostname(host='host1', ip='10.1.1.1')]
+    actual = hostnames_to_components(['host1', 'host2'], resolve=True)
     assert actual == expected
 
 

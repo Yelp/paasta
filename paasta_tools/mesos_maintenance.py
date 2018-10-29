@@ -16,6 +16,7 @@ import argparse
 import datetime
 import json
 import logging
+from socket import gaierror
 from socket import getfqdn
 from socket import gethostbyname
 from typing import NamedTuple
@@ -377,7 +378,11 @@ def hostnames_to_components(hostnames, resolve=False):
             (host, ip) = hostname.split('|')
             components.append(Hostname(host=host, ip=ip))
         else:
-            ip = gethostbyname(hostname) if resolve else None
+            try:
+                ip = gethostbyname(hostname) if resolve else None
+            except gaierror:
+                log.error(f"Failed to resolve IP for {hostname}, continuing regardless")
+                continue
             components.append(Hostname(host=hostname, ip=ip))
     return components
 
