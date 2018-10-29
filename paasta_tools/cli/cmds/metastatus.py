@@ -221,7 +221,7 @@ def paasta_metastatus(
     if 'USE_API_ENDPOINT' in os.environ:
         use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
     else:
-        use_api_endpoint = False
+        use_api_endpoint = True
 
     all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
