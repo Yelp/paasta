@@ -21,6 +21,6 @@ from paasta_tools.autoscale_all_services import main
 @mock.patch('paasta_tools.autoscale_all_services.autoscale_services', autospec=True)
 @mock.patch('paasta_tools.autoscale_all_services.parse_args', autospec=True)
 def test_main(mock_parse_args, mock_autoscale_services, logging):
-    mock_parse_args.return_value = mock.Mock(soa_dir='/nail/blah')
+    mock_parse_args.return_value = mock.Mock(soa_dir='/nail/blah', services=None)
     main()
-    mock_autoscale_services.assert_called_with(soa_dir='/nail/blah')
+    mock_autoscale_services.assert_called_with(soa_dir='/nail/blah', services=None)
