@@ -1,3 +1,11 @@
+paasta-tools (0.81.9) xenial; urgency=medium
+
+  * 0.81.9 tagged with 'make release'
+    Commit: Merge pull request #2040 from Yelp/u/mmb/catch-dns-error-
+    maint  Ignore failure to get IP for maintenance code
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 30 Oct 2018 10:25:07 -0700
+
 paasta-tools (0.81.8) xenial; urgency=medium
 
   * 0.81.8 tagged with 'make release'
