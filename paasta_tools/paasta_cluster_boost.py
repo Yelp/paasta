@@ -16,7 +16,7 @@ import argparse
 import logging
 import sys
 
-from paasta_tools.autoscaling import cluster_boost
+from paasta_tools.autoscaling import load_boost
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
@@ -35,13 +35,13 @@ def parse_args():
     parser.add_argument(
         '-b', '--boost',
         type=float,
-        default=cluster_boost.DEFAULT_BOOST_FACTOR,
+        default=load_boost.DEFAULT_BOOST_FACTOR,
         help="Boost factor to apply. Default is 1.5. A big failover should be 2, 3 is the max.",
     )
     parser.add_argument(
         '-d', '--duration',
         type=int,
-        default=cluster_boost.DEFAULT_BOOST_DURATION,
+        default=load_boost.DEFAULT_BOOST_DURATION,
         help="Duration of the capacity boost in minutes. Default is 40min.",
     )
     parser.add_argument(
@@ -86,22 +86,17 @@ def get_regions(pool: str) -> list:
     return regions
 
 
-def paasta_cluster_boost():
+def paasta_cluster_boost(
+    action: str,
+    pool: str,
+    boost: float,
+    duration: int,
+    override: bool,
+) -> bool:
     """ Set, Get or clear a boost on a paasta cluster for a given pool in a given region
     :returns: None
     """
     system_config = load_system_paasta_config()
-    args = parse_args()
-
-    if args.verbose >= 2:
-        logging.basicConfig(level=logging.DEBUG)
-    elif args.verbose == 1:
-        logging.basicConfig(level=logging.INFO)
-    else:
-        logging.basicConfig(level=logging.WARNING)
-
-    action = args.action
-    pool = args.pool
 
     if not system_config.get_cluster_boost_enabled():
         paasta_print('ERROR: cluster_boost feature is not enabled.')
@@ -114,13 +109,19 @@ def paasta_cluster_boost():
         return False
 
     for region in regions:
+        zk_boost_path = load_boost.get_zk_cluster_boost_path(
+            region=region,
+            pool=pool,
+        )
         if action == 'set':
-            if not cluster_boost.set_boost_factor(
+            if not load_boost.set_boost_factor(
+                zk_boost_path=zk_boost_path,
                 region=region,
                 pool=pool,
-                factor=args.boost,
-                duration_minutes=args.duration,
-                override=args.override,
+                send_clusterman_metrics=True,
+                factor=boost,
+                duration_minutes=duration,
+                override=override,
             ):
                 paasta_print(f'ERROR: Failed to set the boost for pool {pool}, region {region}.')
                 return False
@@ -129,7 +130,7 @@ def paasta_cluster_boost():
             pass
 
         elif action == 'clear':
-            if not cluster_boost.clear_boost(pool=pool, region=region):
+            if not load_boost.clear_boost(zk_boost_path):
                 paasta_print('ERROR: Failed to clear the boost for pool {}, region {}.')
                 return False
 
@@ -137,14 +138,34 @@ def paasta_cluster_boost():
             raise NotImplementedError("Action: '%s' is not implemented." % action)
             return False
 
-        paasta_print('Current boost value for pool: {}, region: {}: {}'.format(
-            pool, region, cluster_boost.get_boost_factor(
-                region=region, pool=pool,
+        paasta_print('Current boost value for path: {}: {}'.format(
+            zk_boost_path, load_boost.get_boost_factor(
+                zk_boost_path=zk_boost_path,
             ),
         ))
+    return True
+
+
+def main() -> bool:
+    args = parse_args()
+
+    if args.verbose >= 2:
+        logging.basicConfig(level=logging.DEBUG)
+    elif args.verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
+    if paasta_cluster_boost(
+        action=args.action,
+        pool=args.pool,
+        boost=args.boost,
+        duration=args.duration,
+        override=args.override,
+    ):
+        sys.exit(0)
+    sys.exit(1)
 
 
 if __name__ == '__main__':
-    if paasta_cluster_boost():
-        sys.exit(0)
-    sys.exit(1)
+    main()
