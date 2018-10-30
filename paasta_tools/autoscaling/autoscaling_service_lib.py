@@ -21,8 +21,11 @@ from contextlib import contextmanager
 from datetime import datetime
 from math import ceil
 from math import floor
+from typing import Iterator
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 
 import a_sync
 import gevent
@@ -31,6 +34,8 @@ from gevent import monkey
 from gevent import pool
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+from marathon.models.app import MarathonApp
+from marathon.models.app import MarathonTask
 
 from paasta_tools.autoscaling.forecasting import get_forecast_policy
 from paasta_tools.autoscaling.utils import get_autoscaling_component
@@ -49,6 +54,7 @@ from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
+from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_all_running_tasks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -566,7 +572,12 @@ def is_task_data_insufficient(marathon_service_config, marathon_tasks, current_i
     return too_many_instances_running or too_few_instances_running
 
 
-def autoscale_marathon_instance(marathon_service_config, system_paasta_config, marathon_tasks, mesos_tasks):
+def autoscale_marathon_instance(
+    marathon_service_config: MarathonServiceConfig,
+    system_paasta_config: SystemPaastaConfig,
+    marathon_tasks: Sequence[MarathonTask],
+    mesos_tasks: Sequence[Task],
+) -> None:
     try:
         with create_autoscaling_lock(marathon_service_config.service, marathon_service_config.instance):
             current_instances = marathon_service_config.get_instances()
@@ -576,7 +587,7 @@ def autoscale_marathon_instance(marathon_service_config, system_paasta_config, m
                 current_instances=current_instances,
             )
             autoscaling_params = marathon_service_config.get_autoscaling_params()
-            log_utilization_data = {}
+            log_utilization_data: Mapping = {}
             utilization = get_utilization(
                 marathon_service_config=marathon_service_config,
                 system_paasta_config=system_paasta_config,
@@ -636,7 +647,7 @@ def autoscale_marathon_instance(marathon_service_config, system_paasta_config, m
                 )
             meteorite_dims = {
                 'service_name': marathon_service_config.service,
-                'decision_policy': autoscaling_params[DECISION_POLICY_KEY],
+                'decision_policy': autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
                 'paasta_cluster': marathon_service_config.cluster,
                 'instance_name': marathon_service_config.instance,
             }
@@ -745,7 +756,11 @@ def autoscale_service_configs(
                 write_to_log(config=config, line='Caught Exception %s' % e)
 
 
-def filter_autoscaling_tasks(marathon_apps, all_mesos_tasks, config):
+def filter_autoscaling_tasks(
+    marathon_apps: Sequence[MarathonApp],
+    all_mesos_tasks: Sequence[Task],
+    config: MarathonServiceConfig,
+) -> Tuple[Mapping[str, MarathonTask], Sequence[Task]]:
     job_id_prefix = "{}{}".format(format_job_id(service=config.service, instance=config.instance), MESOS_TASK_SPACER)
 
     # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
@@ -785,7 +800,7 @@ def get_short_job_id(task_id):
 
 
 @contextmanager
-def create_autoscaling_lock(service, instance):
+def create_autoscaling_lock(service: str, instance: str) -> Iterator[None]:
     """Acquire a lock in zookeeper for autoscaling. This is
     to avoid autoscaling a service multiple times, and to avoid
     having multiple paasta services all attempting to autoscale and
