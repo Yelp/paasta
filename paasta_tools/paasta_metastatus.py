@@ -478,7 +478,7 @@ def print_output(argv: Optional[Sequence[str]]=None) -> None:
             # The last column from utilization_table_by_grouping_from_kube is "Agent count", which will always be
             # 1 for per-node resources, so delete it.
             for row in all_rows:
-                row.pop(-2)
+                row.pop()
 
             for line in format_table(all_rows):
                 print_with_indent(line, 4)

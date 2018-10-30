@@ -39,6 +39,7 @@ from paasta_tools.kubernetes_tools import get_pod_status
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.mesos.master import MesosMetrics
@@ -618,7 +619,7 @@ def key_func_for_attribute_multi_kube(
     :returns: a closure, which takes a node and returns the value of those attributes
     """
     def get_attribute(node, attribute):
-        return node.metadata.labels.get(f'yelp.com/{attribute}', 'unknown')
+        return node.metadata.labels.get(maybe_add_yelp_prefix(attribute), 'unknown')
 
     def key_func(node):
         return tuple((a, get_attribute(node, a)) for a in attributes)
