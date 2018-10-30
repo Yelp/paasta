@@ -20,7 +20,8 @@ from typing import Optional
 
 from paasta_tools.secret_providers import SecretProvider
 
-SECRET_REGEX = "^SECRET\([A-Za-z0-9_-]*\)$"
+SECRET_REGEX = "^(SHARED_)?SECRET\([A-Za-z0-9_-]*\)$"
+SHARED_SECRET_SERVICE = '_shared'
 
 
 def is_secret_ref(env_var_val: str) -> bool:
@@ -33,6 +34,10 @@ def is_secret_ref(env_var_val: str) -> bool:
     return match is not None
 
 
+def is_shared_secret(env_var_val: str) -> bool:
+    return env_var_val.startswith('SHARED_')
+
+
 def get_hmac_for_secret(
     env_var_val: str,
     service: str,
@@ -40,6 +45,8 @@ def get_hmac_for_secret(
     secret_environment: str,
 ) -> Optional[str]:
     secret_name = get_secret_name_from_ref(env_var_val)
+    if is_shared_secret(env_var_val):
+        service = SHARED_SECRET_SERVICE
     secret_path = os.path.join(
         soa_dir,
         service,
