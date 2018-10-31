@@ -1,3 +1,11 @@
+paasta-tools (0.81.10) xenial; urgency=medium
+
+  * 0.81.10 tagged with 'make release'
+    Commit: Merge pull request #2029 from Yelp/refactor-cluster-boost
+    Re-factor paasta cluster boost
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 31 Oct 2018 04:56:39 -0700
+
 paasta-tools (0.81.9) xenial; urgency=medium
 
   * 0.81.9 tagged with 'make release'
