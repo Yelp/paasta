@@ -146,11 +146,11 @@ def confirm_to_continue(cluster_service_instances, desired_state):
     for cluster, services_instances in cluster_service_instances:
         for service, instances in services_instances.items():
             for instance in instances.keys():
-                paasta_print(f'cluster = {cluster}, instance = {service}')
+                paasta_print(f'cluster = {cluster}, instance = {instance}')
                 i_count += 1
     if sys.stdin.isatty():
         return choice.Binary(f'Are you sure you want to {desired_state} these {i_count} instances?', False).ask()
-    return False
+    return True
 
 
 def paasta_start_or_stop(args, desired_state):
@@ -183,10 +183,11 @@ def paasta_start_or_stop(args, desired_state):
     invalid_deploy_groups = []
     marathon_message_printed, chronos_message_printed = False, False
 
-    if confirm_to_continue(pargs.items(), desired_state) is False:
-        paasta_print()
-        paasta_print("exiting")
-        return 1
+    if args.clusters is None or args.instances is None:
+        if confirm_to_continue(pargs.items(), desired_state) is False:
+            paasta_print()
+            paasta_print("exiting")
+            return 1
 
     for cluster, services_instances in pargs.items():
         for service, instances in services_instances.items():
