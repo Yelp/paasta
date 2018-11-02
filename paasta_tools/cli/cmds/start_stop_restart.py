@@ -142,6 +142,7 @@ def print_chronos_message(desired_state):
 
 def confirm_to_continue(cluster_service_instances, desired_state):
     paasta_print(f'You are about to {desired_state} the following instances:')
+    paasta_print("Either --instances or --clusters not specified. Asking for confirmation.")
     i_count = 0
     for cluster, services_instances in cluster_service_instances:
         for service, instances in services_instances.items():
