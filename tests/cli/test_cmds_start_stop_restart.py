@@ -119,6 +119,7 @@ def test_log_event():
         )
 
 
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
@@ -138,6 +139,7 @@ def test_paasta_start_or_stop(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
+    mock_confirm_to_continue,
 ):
     args, _ = parse_args([
         'start', '-s', 'fake_service', '-i', 'main1,canary',
@@ -158,6 +160,8 @@ def test_paasta_start_or_stop(
             'fake_service': {'main1': None, 'canary': None},
         },
     }
+    mock_confirm_to_continue.return_value = True
+
     ret = args.command(args)
     c1_get_instance_config_call = mock.call(
         service='fake_service',
@@ -208,6 +212,7 @@ def test_paasta_start_or_stop(
     assert(ret == 0)
 
 
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
@@ -227,6 +232,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
+    mock_confirm_to_continue,
 ):
     args, _ = parse_args([
         'start', '-s', 'fake_service', '-c', 'cluster1',
@@ -242,6 +248,8 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_apply_args_filters.return_value = {
         'cluster1': {'fake_service': {'instance1': None}},
     }
+    mock_confirm_to_continue.return_value = True
+
     ret = args.command(args)
 
     mock_get_instance_config.assert_called_once_with(
@@ -263,6 +271,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     assert ret == 0
 
 
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
@@ -282,6 +291,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_format_timestamp,
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
+    mock_confirm_to_continue,
 ):
     args, _ = parse_args([
         'start', '-s', 'fake_service', '-i', 'main1,canary',
@@ -302,6 +312,8 @@ def test_stop_or_start_figures_out_correct_instances(
             'fake_service': {'main1': None, 'canary': None},
         },
     }
+    mock_confirm_to_continue.return_value = True
+
     ret = args.command(args)
     c1_get_instance_config_call = mock.call(
         service='fake_service',
@@ -344,6 +356,7 @@ def test_stop_or_start_figures_out_correct_instances(
     assert(ret == 0)
 
 
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
@@ -355,6 +368,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_instance_config,
     mock_list_remote_refs,
     mock_apply_args_filters,
+    mock_confirm_to_continue,
     capfd,
 ):
     args, _ = parse_args([
@@ -369,11 +383,13 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_apply_args_filters.return_value = {
         'cluster1': {'fake_service': ['instance1']},
     }
+    mock_confirm_to_continue.return_value = True
 
     assert args.command(args) == 1
     assert "may be down" in capfd.readouterr()[0]
 
 
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
@@ -383,6 +399,7 @@ def test_start_or_stop_bad_refs(
     mock_list_remote_refs,
     mock_get_instance_config,
     mock_apply_args_filters,
+    mock_confirm_to_continue,
     capfd,
 ):
     args, _ = parse_args([
@@ -405,6 +422,7 @@ def test_start_or_stop_bad_refs(
         'fake_cluster1': {'fake_service': {'fake_instance': None}},
         'fake_cluster2': {'fake_service': {'fake_instance': None}},
     }
+    mock_confirm_to_continue.return_value = True
     assert args.command(args) == 1
     assert "No branches found for" in capfd.readouterr()[0]
 
