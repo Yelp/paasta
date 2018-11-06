@@ -32,6 +32,7 @@ from pyramid.view import view_config
 from paasta_tools import chronos_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
+from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -110,6 +111,27 @@ def chronos_instance_status(
     cstatus['last_status']['time'] = last_time
 
     return cstatus
+
+
+def tron_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    status: Dict[str, Any] = {}
+    client = tron_tools.get_tron_client()
+    short_job, action = instance.split('.')
+    job = f"{service}.{short_job}"
+
+    latest_run_id = client.get_latest_job_run_id(job=job)
+    action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
+    status["state"] = action_run["state"]
+    status["command"] = action_run["command"]
+    status["raw_command"] = action_run["raw_command"]
+    status["stdout"] = action_run["stdout"]
+    status["stderr"] = action_run["stderr"]
+    return status
 
 
 def adhoc_instance_status(
@@ -263,6 +285,8 @@ def instance_status(request):
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'kubernetes':
             instance_status['kubernetes'] = kubernetes_instance_status(instance_status, service, instance, verbose)
+        elif instance_type == 'tron':
+            instance_status['tron'] = tron_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
             raise ApiFailure(error_message, 404)

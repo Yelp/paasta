@@ -109,3 +109,15 @@ class TronClient:
         """Gets the namespaces that are currently configured."""
         response = self._get('/api')
         return response.get('namespaces', [])
+
+    def get_latest_job_run_id(self, job):
+        job_content = self._get(f"/api/jobs/{job}/")
+        job_runs = sorted(
+            job_content.get('runs', []),
+            key=lambda k: (k['end_time'] is None, k['end_time'], k['run_time']),
+            reverse=True,
+        )
+        return job_runs[0]["run_num"]
+
+    def get_action_run(self, job, action, run_id):
+        return self._get(f"/api/jobs/{job}/{run_id}/{action}?include_stderr=1&include_stdout=1&num_lines=10")

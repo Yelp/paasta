@@ -563,15 +563,19 @@
         },
         "marathon": {
           "$ref": "#/definitions/InstanceStatusMarathon",
-          "description": "Marathon specific instance status"
+          "description": "Marathon instance status"
         },
         "kubernetes": {
           "$ref": "#/definitions/InstanceStatusKubernetes",
-          "description": "Kubernetes specific instance status"
+          "description": "Kubernetes instance status"
         },
         "chronos": {
           "$ref": "#/definitions/InstanceStatusChronos",
-          "description": "Chronos specifid instance status"
+          "description": "Chronos instance status"
+        },
+        "tron": {
+          "$ref": "#/definitions/InstanceStatusTron",
+          "description": "Tron instance status"
         }
       }
     },
@@ -803,7 +807,43 @@
         "last_status"
       ]
     },
-    "InstanceTasks": {
+    "InstanceStatusTron": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "description": "State of a Tron action or job"
+        },
+        "command": {
+          "type": "string",
+          "description": "The command for the action"
+        },
+        "raw_command": {
+          "type": "string",
+          "description": "The raw command for the action"
+        },
+        "stdout": {
+          "type": "string",
+          "description": "The stdout for the action"
+        },
+        "stderr": {
+          "type": "string",
+          "description": "The stderr command for the action"
+        },
+        "last_status": {
+          "type": "object",
+          "properties": {
+            "result": {
+              "type": "string"
+            },
+            "time": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+   "InstanceTasks": {
       "type": "array",
       "description": "List of tasks associated with instance",
       "items": {
