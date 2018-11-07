@@ -16,9 +16,12 @@ arguments cpuset-cpus and cpuset-mems.
 """
 import logging
 import os
+import random
 import re
 import socket
 import sys
+
+from ipaddress import ip_network
 
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
 from paasta_tools.firewall import firewall_flock
@@ -132,6 +135,36 @@ def can_add_mac_address(args):
             return False
 
     return True
+
+
+def can_add_ip_address(args):
+    # Can only specify an IP address for user defined networks
+    if is_network_host(args) or not is_run(args):
+        return False
+
+    for index, arg in enumerate(args):
+        # Check for --ip
+        if arg.startswith('--ip'):
+            return False
+
+    return True
+
+
+def get_ip_for_container():
+    # This would look at the currently outstanding IP addresses
+    # Something like but not necessarily =>
+    # for i in $(sudo docker network ls | cut -d ' ' -f 1 | tail -n +2); do sudo docker network inspect $i; done | jq -r '.[].Containers | to_entries | .[].value.IPv4Address'
+    current_ip_addresses = []
+    # Then try to get one in the subnet of the docker 
+    # Ideally get this from config etc
+    subnet = ip_network(u'169.254.1.1/20', False)
+    hosts = list(subnet.hosts())
+    new_ip = random.choice(hosts)
+    while new_ip in current_ip_addressess:
+        # TODO: Infinite loop?
+        new_ip = random.choice(hosts)
+
+    return new_ip
 
 
 def generate_hostname(fqdn, mesos_task_id):
@@ -329,5 +362,22 @@ def main(argv=None):
             argv = add_firewall(argv, service, instance)
         except Exception as e:
             print(f'Unhandled exception in add_firewall: {e}', file=sys.stderr)
+
+    # Would probably also be based on some configuration so that
+    # the feature can be toggled for rollout / rollback
+    if can_add_ip_address(argv):
+        try:
+            # Need cross-process locking semantics to avoid race condition where
+            # multiple paasta invocations try to acquire the same IP address
+
+            # get_lock()
+
+            ip_addr = get_ip_for_container()
+            # Only add the --ip argument if we actually got an IP
+            if ip_addr:
+                argv = add_argument(argv, f'--ip={ip_addr}')
+
+        finally:
+            # release_lock()
 
     os.execlp('docker', 'docker', *argv[1:])
