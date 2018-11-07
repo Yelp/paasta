@@ -58,7 +58,18 @@
           "uniqueItems": true
         },
         "cluster": {"type": "string"},
-        "expected_runtime": {"$ref": "#definitions/time_delta"}
+        "expected_runtime": {"$ref": "#definitions/time_delta"},
+        "triggered_by": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "trigger_downstreams": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "on_upstream_rerun": {"type": "string"},
+        "trigger_timeout": {"$ref": "#definitions/time_delta"}
       }
     },
     "job": {
