@@ -26,6 +26,7 @@ from ipaddress import ip_network
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
 from paasta_tools.firewall import firewall_flock
 from paasta_tools.firewall import prepare_new_container
+from paasta_tools.ip import ip_flock
 from paasta_tools.mac_address import reserve_unique_mac_address
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
@@ -160,11 +161,20 @@ def get_ip_for_container():
     subnet = ip_network(u'169.254.1.1/20', False)
     hosts = list(subnet.hosts())
     new_ip = random.choice(hosts)
-    while new_ip in current_ip_addressess:
+    while new_ip in current_ip_addresses:
         # TODO: Infinite loop?
         new_ip = random.choice(hosts)
 
     return new_ip
+
+
+def add_ip_address(argv, service, instance):
+    ip_addr = get_ip_for_container()
+    # Only add the --ip argument if we actually got an IP
+    if ip_addr:
+        argv = add_argument(argv, f'--ip={ip_addr}')
+    }
+    return argv
 
 
 def generate_hostname(fqdn, mesos_task_id):
@@ -366,18 +376,15 @@ def main(argv=None):
     # Would probably also be based on some configuration so that
     # the feature can be toggled for rollout / rollback
     if can_add_ip_address(argv):
-        try:
-            # Need cross-process locking semantics to avoid race condition where
-            # multiple paasta invocations try to acquire the same IP address
+        with ip_flock:
+            try:
+                argv = add_ip_address(argv)
+            except Exception as e:
+                print(f'Unhandled exception in add_ip_address: {e}', file=sys.stderr)
 
-            # get_lock()
-
-            ip_addr = get_ip_for_container()
-            # Only add the --ip argument if we actually got an IP
-            if ip_addr:
-                argv = add_argument(argv, f'--ip={ip_addr}')
-
-        finally:
-            # release_lock()
-
-    os.execlp('docker', 'docker', *argv[1:])
+            # If we explicitly set the IP address, we need to do the docker run
+            # execution before releasing the lock, to reduce the likelihood of a
+            # race condition where two instances choose the same IP address
+            os.execlp('docker', 'docker', *argv[1:])
+    else:
+        os.execlp('docker', 'docker', *argv[1:])
