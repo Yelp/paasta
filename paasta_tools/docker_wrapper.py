@@ -154,9 +154,15 @@ def can_add_ip_address(args):
 def get_ip_for_container():
     # This would look at the currently outstanding IP addresses
     # Something like but not necessarily =>
-    # for i in $(sudo docker network ls | cut -d ' ' -f 1 | tail -n +2); do sudo docker network inspect $i; done | jq -r '.[].Containers | to_entries | .[].value.IPv4Address'
-    current_ip_addresses = []
-    # Then try to get one in the subnet of the docker 
+    current_ip_addresses = subprocess.check_output((
+        "for i in $(sudo docker network ls | cut -d ' ' -f 1 | tail -n +2); "
+        "do "
+            "sudo docker network inspect $i; "
+        "done "
+            "| jq -r '.[].Containers | to_entries | .[].value.IPv4Address' "
+            "| sed 's/\/.*$//g'"
+    ), shell=True).split()
+    # Then try to get one in the subnet of the docker
     # Ideally get this from config etc
     subnet = ip_network(u'169.254.1.1/20', False)
     hosts = list(subnet.hosts())
