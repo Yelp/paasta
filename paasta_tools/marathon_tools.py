@@ -26,6 +26,7 @@ from collections import defaultdict
 from collections import namedtuple
 from math import ceil
 from typing import Any
+from typing import cast
 from typing import Callable
 from typing import Collection
 from typing import Dict
@@ -470,8 +471,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             service=self.service,
             instance=self.instance,
             cluster=self.cluster,
-            config_dict=dict(self.config_dict),
-            branch_dict=dict(self.branch_dict) if self.branch_dict is not None else None,
+            config_dict=cast(MarathonServiceConfigDict, dict(self.config_dict)),
+            branch_dict=cast(BranchDictV2, dict(self.branch_dict)) if self.branch_dict is not None else None,
             soa_dir=self.soa_dir,
         )
 

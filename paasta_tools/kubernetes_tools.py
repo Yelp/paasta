@@ -20,6 +20,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from typing import cast
 from typing import List
 from typing import Mapping
 from typing import NamedTuple
@@ -261,8 +262,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.service,
             instance=self.instance,
             cluster=self.cluster,
-            config_dict=dict(self.config_dict),
-            branch_dict=dict(self.branch_dict) if self.branch_dict is not None else None,
+            config_dict=cast(KubernetesDeploymentConfigDict, dict(self.config_dict)),
+            branch_dict=cast(BranchDictV2, dict(self.branch_dict)) if self.branch_dict is not None else None,
             soa_dir=self.soa_dir,
         )
 

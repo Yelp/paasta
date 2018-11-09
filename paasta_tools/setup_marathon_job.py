@@ -295,7 +295,7 @@ def do_bounce(
     )
 
     actions = bounce_func(
-        new_config=config,
+        required_capacity=config['instances'],
         new_app_running=new_app_running,
         happy_new_tasks=happy_new_tasks,
         old_non_draining_tasks=old_non_draining_tasks,

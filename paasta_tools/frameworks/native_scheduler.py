@@ -440,7 +440,7 @@ class NativeScheduler(Scheduler):
         )
 
         actions = bounce_lib.crossover_bounce(
-            new_config={"instances": desired_instances},
+            required_capacity=desired_instances,
             new_app_running=True,
             happy_new_tasks=happy_new_tasks_with_params.keys(),
             old_non_draining_tasks=new_task_ids_to_kill + old_non_draining_tasks,

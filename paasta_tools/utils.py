@@ -1886,6 +1886,13 @@ class SystemPaastaConfig:
     def get_tron_config(self) -> dict:
         return self.config_dict.get('tron', {})
 
+    def get_aws_region(self) -> str:
+        try:
+            return self.config_dict['aws_region']
+        except KeyError:
+            return "us-west-1"  # REMOVE ME
+            raise PaastaNotConfiguredError('Could not find aws_region in configuration directory: %s' % self.directory)
+
 
 def _run(
     command: Union[str, List[str]],

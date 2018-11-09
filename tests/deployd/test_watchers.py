@@ -29,7 +29,7 @@ class FakePyinotify:  # pragma: no cover
 # and we will be mocking it in the unit tests anyway
 # so this just creates it as a dummy module to prevent
 # the ImportError
-sys.modules['pyinotify'] = FakePyinotify
+sys.modules['pyinotify'] = FakePyinotify  # type: ignore
 from paasta_tools.deployd.watchers import PaastaWatcher  # noqa
 from paasta_tools.deployd.watchers import SoaFileWatcher  # noqa
 from paasta_tools.deployd.watchers import YelpSoaEventHandler  # noqa

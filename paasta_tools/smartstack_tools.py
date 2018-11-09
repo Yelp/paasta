@@ -31,6 +31,7 @@ from typing import TypeVar
 import requests
 from kubernetes.client import V1Node
 from mypy_extensions import TypedDict
+from typing_extensions import Protocol
 
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
@@ -323,20 +324,28 @@ def ip_port_hostname_from_svname(svname: str) -> Tuple[str, int, str]:
     return ip, int(port), hostname
 
 
+class MatchableTask(Protocol):
+    host: str
+    ports: Sequence[int]
+
+
+_MatchableTaskT = TypeVar('_MatchableTaskT', bound=MatchableTask)
+
+
 def get_registered_marathon_tasks(
     synapse_host: str,
     synapse_port: int,
     synapse_haproxy_url_format: str,
     service: str,
-    marathon_tasks: Iterable[marathon_tools.MarathonTask],
-) -> List[marathon_tools.MarathonTask]:
+    marathon_tasks: Iterable[_MatchableTaskT],
+) -> List[_MatchableTaskT]:
     """Returns the marathon tasks that are registered in haproxy under a given service (nerve_ns).
 
     :param synapse_host: The host that this check should contact for replication information.
     :param synapse_port: The port that this check should contact for replication information.
     :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :param service: A list of strings that are the service names that should be checked for replication.
-    :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
+    :param marathon_tasks: A list of _MatchableTaskT objects, whose tasks we will check for in the HAProxy status.
     """
     backends = get_multiple_backends(
         [service], synapse_host=synapse_host, synapse_port=synapse_port,
@@ -381,15 +390,15 @@ def are_services_up_on_ip_port(
 
 def match_backends_and_tasks(
     backends: Iterable[HaproxyBackend],
-    tasks: Iterable[marathon_tools.MarathonTask],
-) -> List[Tuple[Optional[HaproxyBackend], Optional[marathon_tools.MarathonTask]]]:
+    tasks: Iterable[_MatchableTaskT],
+) -> List[Tuple[Optional[HaproxyBackend], Optional[_MatchableTaskT]]]:
     """Returns tuples of matching (backend, task) pairs, as matched by IP and port. Each backend will be listed exactly
     once, and each task will be listed once per port. If a backend does not match with a task, (backend, None) will
     be included. If a task's port does not match with any backends, (None, task) will be included.
 
     :param backends: An iterable of haproxy backend dictionaries, e.g. the list returned by
                      smartstack_tools.get_multiple_backends.
-    :param tasks: An iterable of MarathonTask objects.
+    :param tasks: An iterable of _MatchableTaskT objects.
     """
 
     # { (ip, port) : [backend1, backend2], ... }

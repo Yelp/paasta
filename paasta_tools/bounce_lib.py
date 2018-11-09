@@ -48,6 +48,7 @@ from requests.exceptions import RequestException
 from paasta_tools import marathon_tools
 from paasta_tools.long_running_service_tools import BounceMethodConfigDict
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
+from paasta_tools.smartstack_tools import _MatchableTaskT
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
@@ -74,7 +75,7 @@ BounceMethodResult = TypedDict(
 
 BounceMethod = Callable[
     [
-        Arg(BounceMethodConfigDict, 'new_config'),
+        Arg(float, 'required_capacity'),
         Arg(bool, 'new_app_running'),
         Arg(Collection, 'happy_new_tasks'),
         Arg(Sequence, 'old_non_draining_tasks'),
@@ -212,13 +213,13 @@ def kill_old_ids(old_ids, client):
 
 
 def filter_tasks_in_smartstack(
-    tasks: Collection[MarathonTask],
+    tasks: Collection[_MatchableTaskT],
     service: str,
     nerve_ns: str,
     system_paasta_config: SystemPaastaConfig,
     max_hosts_to_query: int = 20,
     haproxy_min_fraction_up: float = 1.0,
-) -> List[MarathonTask]:
+) -> List[_MatchableTaskT]:
     all_hosts = list({t.host for t in tasks})
     random.shuffle(all_hosts)
     # We select a random 20 hosts here. This should be enough most of the time: for services discovered at the habitat
@@ -228,7 +229,7 @@ def filter_tasks_in_smartstack(
     # round. If this becomes a problem, we can try to select tasks more intelligently.
 
     selected_hosts = all_hosts[:max_hosts_to_query]
-    registered_task_count: typing.Counter[MarathonTask] = Counter()
+    registered_task_count: typing.Counter[_MatchableTaskT] = Counter()
 
     async def get_registered_tasks_on_host(host):
         try:
@@ -325,17 +326,18 @@ def flatten_tasks(tasks_by_app_id: Mapping[Any, Collection[_Flatten_Tasks_T]]) -
 
 @register_bounce_method('brutal')
 def brutal_bounce(
-    new_config: BounceMethodConfigDict,
+    required_capacity: float,
     new_app_running: bool,
     happy_new_tasks: Collection,
     old_non_draining_tasks: Sequence,
     margin_factor=1.0,
+    weight_function: Callable[[Any], float] = lambda task: 1.0,
 ) -> BounceMethodResult:
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
     but might be tolerable for some services.
 
-    :param new_config: The configuration dictionary representing the desired new app.
+    :param required_capacity: The required amount of capacity
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_non_draining_tasks: A sequence of tasks not belonging to the new version. Tasks should be ordered from
@@ -354,17 +356,18 @@ def brutal_bounce(
 
 @register_bounce_method('upthendown')
 def upthendown_bounce(
-    new_config: BounceMethodConfigDict,
+    required_capacity: float,
     new_app_running: bool,
     happy_new_tasks: Collection,
     old_non_draining_tasks: Sequence,
     margin_factor=1.0,
+    weight_function: Callable[[Any], float] = lambda task: 1.0,
 ) -> BounceMethodResult:
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
     See the docstring for brutal_bounce() for parameters and return value.
     """
-    if new_app_running and len(happy_new_tasks) == new_config['instances']:
+    if new_app_running and sum(weight_function(t) for t in happy_new_tasks) >= required_capacity:
         return {
             "create_app": False,
             "tasks_to_drain": set(old_non_draining_tasks),
@@ -378,11 +381,12 @@ def upthendown_bounce(
 
 @register_bounce_method('crossover')
 def crossover_bounce(
-    new_config: BounceMethodConfigDict,
+    required_capacity: float,
     new_app_running: bool,
     happy_new_tasks: Collection,
     old_non_draining_tasks: Sequence,
     margin_factor=1.0,
+    weight_function: Callable[[Any], float] = lambda task: 1.0,
 ) -> BounceMethodResult:
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
@@ -392,24 +396,35 @@ def crossover_bounce(
     assert margin_factor > 0
     assert margin_factor <= 1
 
-    needed_count = max(
-        int(math.ceil(new_config['instances'] * margin_factor)) -
-        len(happy_new_tasks), 0,
+    required_old_capacity = max(
+        required_capacity * margin_factor - sum(weight_function(t) for t in happy_new_tasks),
+        0.0,
     )
+
+    tasks_to_drain = set()
+    kept_capacity = 0.0
+
+    for task in old_non_draining_tasks:
+        if kept_capacity >= required_old_capacity:
+            tasks_to_drain.add(task)
+        else:
+            # keep this task by not adding it to tasks_to_drain
+            kept_capacity += weight_function(task)
 
     return {
         "create_app": not new_app_running,
-        "tasks_to_drain": set(old_non_draining_tasks[needed_count:]),
+        "tasks_to_drain": tasks_to_drain,
     }
 
 
 @register_bounce_method('downthenup')
 def downthenup_bounce(
-    new_config: BounceMethodConfigDict,
+    required_capacity: float,
     new_app_running: bool,
     happy_new_tasks: Collection,
     old_non_draining_tasks: Sequence,
     margin_factor=1.0,
+    weight_function: Callable[[Any], float] = lambda task: 1.0,
 ) -> BounceMethodResult:
     """Stops any old apps and waits for them to die before starting a new one.
 
@@ -423,11 +438,12 @@ def downthenup_bounce(
 
 @register_bounce_method('down')
 def down_bounce(
-    new_config: BounceMethodConfigDict,
+    required_capacity: float,
     new_app_running: bool,
     happy_new_tasks: Collection,
     old_non_draining_tasks: Sequence,
     margin_factor=1.0,
+    weight_function: Callable[[Any], float] = lambda task: 1.0,
 ) -> BounceMethodResult:
     """
     Stops old apps, doesn't start any new apps.
