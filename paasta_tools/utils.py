@@ -212,7 +212,7 @@ class InstanceConfigDict(TypedDict, total=False):
     extra_constraints: List[UnstringifiedConstraint]
     net: str
     extra_docker_args: Dict[str, str]
-    gpus: float
+    gpus: int
     branch: str
 
 
@@ -435,14 +435,26 @@ class InstanceConfig:
         disk = self.config_dict.get('disk', default)
         return disk
 
-    def get_gpus(self, default: float=0) -> float:
+    def get_gpus(self) -> Optional[int]:
         """Gets the number of gpus required from the service's configuration.
 
-        Default to 0 if no value is specified in the config.
+        Default to None if no value is specified in the config.
 
         :returns: The number of gpus specified by the config, 0 if not specified"""
-        gpus = self.config_dict.get('gpus', default)
+        gpus = self.config_dict.get('gpus', None)
         return gpus
+
+    def get_container_type(self) -> Optional[str]:
+        """Get Mesos containerizer type.
+
+        Default to DOCKER if gpus are not used.
+
+        :returns: Mesos containerizer type, DOCKER or MESOS"""
+        if self.get_gpus() is not None:
+            container_type = 'MESOS'
+        else:
+            container_type = 'DOCKER'
+        return container_type
 
     def get_cmd(self) -> Optional[Union[str, List[str]]]:
         """Get the docker cmd specified in the service's configuration.
@@ -596,12 +608,6 @@ class InstanceConfig:
         if disk is not None:
             if not isinstance(disk, (float, int)):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
-        return True, ''
-
-    def check_gpus(self) -> Tuple[bool, str]:
-        gpus = self.get_gpus()
-        if gpus is not None and not isinstance(gpus, (float, int)):
-            return False, 'The specified gpus value "%s" is not a valid float or int.' % gpus
         return True, ''
 
     def check_security(self) -> Tuple[bool, str]:

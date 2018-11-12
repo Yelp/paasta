@@ -1186,7 +1186,7 @@ class TestInstanceConfig:
             config_dict={},
             branch_dict=None,
         )
-        assert fake_conf.get_gpus() == 0
+        assert fake_conf.get_gpus() is None
 
     def test_get_ulimit_in_config(self):
         fake_conf = utils.InstanceConfig(
