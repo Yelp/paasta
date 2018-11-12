@@ -80,6 +80,11 @@
                     "exclusiveMinimum": true,
                     "default": 1024
                 },
+                "gpus": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
                 "instances": {
                     "type": "integer",
                     "minimum": 0,

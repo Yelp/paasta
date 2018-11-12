@@ -29,8 +29,7 @@
             "gpus": {
                 "type": "integer",
                 "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 0
+                "exclusiveMinimum": false
             },
             "cmd": {
                 "type": "string"

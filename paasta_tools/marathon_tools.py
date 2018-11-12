@@ -277,6 +277,7 @@ class FormattedMarathonAppDict(BounceMethodConfigDict, total=False):
     env: Dict[str, str]
     mem: float
     cpus: float
+    gpus: int
     disk: float
     constraints: List[Constraint]
     cmd: str
@@ -658,8 +659,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         net = get_mesos_network_for_net(self.get_net())
 
-        complete_config: FormattedMarathonAppDict = {
-            'container': {
+        if self.get_container_type() == 'DOCKER':
+            container_dict: MarathonContainerInfo = {
                 'docker': {
                     'image': docker_url,
                     'network': net,
@@ -667,7 +668,19 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
-            },
+            }
+        else:
+            # Only image and forcePullImage are supported: "Mesos Containerizer and Universal Container Runtime"
+            # in http://mesosphere.github.io/marathon/1.4/docs/native-docker.html
+            container_dict = {  # type: ignore
+                'docker': {
+                    'image': docker_url,
+                },
+                'type': 'MESOS',
+            }
+
+        complete_config: FormattedMarathonAppDict = {
+            'container': container_dict,
             'uris': [system_paasta_config.get_dockercfg_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': self.get_backoff_factor(),
@@ -689,7 +702,11 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'args': self.get_args(),
         }
 
-        if net == 'BRIDGE':
+        if self.get_gpus() is not None:
+            complete_config['gpus'] = self.get_gpus()
+
+        # Mesos containerizer does not support portMappings
+        if net == 'BRIDGE' and complete_config['container']['type'] == 'DOCKER':
             complete_config['container']['docker']['portMappings'] = [
                 {
                     'containerPort': self.get_container_port(),
