@@ -318,6 +318,7 @@ class TestNativeServiceConfig:
                         {"key": "cpu-quota", "value": mock.ANY},
                         {"key": "label", "value": mock.ANY},  # service
                         {"key": "label", "value": mock.ANY},  # instance
+                        {'key': 'init', 'value': 'true'},
                     ],
                     'network': 'BRIDGE',
                     'port_mappings': [{
