@@ -1,3 +1,11 @@
+paasta-tools (0.81.11) xenial; urgency=medium
+
+  * 0.81.11 tagged with 'make release'
+    Commit: Merge pull request #2042 from Yelp/u/hliu/PAASTA-14786  Add
+    the Mesos containerizer to Marathon
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 14 Nov 2018 05:19:22 -0800
+
 paasta-tools (0.81.10) xenial; urgency=medium
 
   * 0.81.10 tagged with 'make release'
