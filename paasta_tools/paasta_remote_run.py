@@ -210,7 +210,7 @@ def paasta_to_task_config_kwargs(
     }
     if cmd:
         kwargs['cmd'] = cmd
-    if gpus > 0:
+    if gpus:
         kwargs['gpus'] = int(gpus)
         kwargs['containerizer'] = 'MESOS'
 
