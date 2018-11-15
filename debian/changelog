@@ -1,3 +1,11 @@
+paasta-tools (0.81.12) xenial; urgency=medium
+
+  * 0.81.12 tagged with 'make release'
+    Commit: Merge pull request #2048 from Yelp/u/hliu/gpus_type  Check
+    get_gpus() return value for meta-status and remote-run
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 15 Nov 2018 05:49:10 -0800
+
 paasta-tools (0.81.11) xenial; urgency=medium
 
   * 0.81.11 tagged with 'make release'
