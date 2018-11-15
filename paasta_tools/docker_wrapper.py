@@ -382,7 +382,7 @@ def main(argv=None):
     # Would probably also be based on some configuration so that
     # the feature can be toggled for rollout / rollback
     if can_add_ip_address(argv) and 'run' in argv:
-        with ip_flock:
+        with ip_flock():
             try:
                 argv = add_ip_address(argv)
             except Exception as e:
