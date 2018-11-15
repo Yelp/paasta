@@ -65,7 +65,7 @@ logging.basicConfig()
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 logging.getLogger("paasta_tools.autoscaling.autoscaling_cluster_lib").setLevel(logging.ERROR)
 
-ServiceInstanceStats = TypedDict('ServiceInstanceStats', {'mem': float, 'cpus': float, 'disk': float, 'gpus': float})
+ServiceInstanceStats = TypedDict('ServiceInstanceStats', {'mem': float, 'cpus': float, 'disk': float, 'gpus': int})
 
 
 class FatalError(Exception):
@@ -300,11 +300,15 @@ def get_service_instance_stats(
     try:
         instance_config = get_instance_config(service, instance, cluster)
         # Get all fields that are showed in the 'paasta metastatus -vvv' command
+        if instance_config.get_gpus():
+            gpus = int(instance_config.get_gpus())
+        else:
+            gpus = 0
         service_instance_stats = ServiceInstanceStats(
             mem=instance_config.get_mem(),
             cpus=instance_config.get_cpus(),
             disk=instance_config.get_disk(),
-            gpus=instance_config.get_gpus(),
+            gpus=gpus,
         )
         return service_instance_stats
     except Exception as e:

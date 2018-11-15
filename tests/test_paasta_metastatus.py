@@ -130,6 +130,7 @@ def test_get_service_instance_stats():
     # The patch stuff is confusing.
     # Basically we patch the validate_service_instance in the paasta_metastatus module and not the utils module
     instance_config_mock = Mock()
+    instance_config_mock.get_gpus.return_value = None
     with patch(
         'paasta_tools.paasta_metastatus.get_instance_config', autospec=True, return_value=instance_config_mock,
     ):
