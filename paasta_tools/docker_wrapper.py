@@ -164,7 +164,7 @@ def get_ip_for_container():
     ), shell=True).split()
     # Then try to get one in the subnet of the docker
     # Ideally get this from config etc
-    subnet = ip_network(u'169.254.1.1/20', False)
+    subnet = ip_network(u'169.254.16.0/24', False)
     hosts = list(subnet.hosts())
     new_ip = random.choice(hosts)
     while new_ip in current_ip_addresses:
@@ -179,6 +179,7 @@ def add_ip_address(argv, service, instance):
     # Only add the --ip argument if we actually got an IP
     if ip_addr:
         argv = add_argument(argv, f'--ip={ip_addr}')
+        argv = add_argument(argv, f'--net=dswg')
     }
     return argv
 
@@ -381,7 +382,7 @@ def main(argv=None):
 
     # Would probably also be based on some configuration so that
     # the feature can be toggled for rollout / rollback
-    if can_add_ip_address(argv):
+    if can_add_ip_address(argv) and 'run' in argv:
         with ip_flock:
             try:
                 argv = add_ip_address(argv)
