@@ -19,6 +19,7 @@ import os
 import random
 import re
 import socket
+import subprocess
 import sys
 
 from ipaddress import ip_network
