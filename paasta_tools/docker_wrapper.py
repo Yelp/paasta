@@ -174,7 +174,7 @@ def get_ip_for_container():
     return new_ip
 
 
-def add_ip_address(argv, service, instance):
+def add_ip_address(argv)
     ip_addr = get_ip_for_container()
     # Only add the --ip argument if we actually got an IP
     if ip_addr:
