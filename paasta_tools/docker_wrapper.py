@@ -180,7 +180,6 @@ def add_ip_address(argv, service, instance):
     if ip_addr:
         argv = add_argument(argv, f'--ip={ip_addr}')
         argv = add_argument(argv, f'--net=dswg')
-    }
     return argv
 
 
