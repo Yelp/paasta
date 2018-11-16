@@ -24,7 +24,7 @@ RUN apt-get update > /dev/null && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF && \
     apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
-        libsasl2-modules mesos=1.5.0-2.0.1 > /dev/null && \
+        libsasl2-modules mesos=1.7.0-2.0.3 > /dev/null && \
     apt-get clean
 
 RUN apt-get update > /dev/null && \
