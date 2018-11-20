@@ -859,6 +859,19 @@ def test_get_kubernetes_services_running_here():
         mock_requests_get.return_value.json.return_value = {'items': []}
         assert get_kubernetes_services_running_here() == []
 
+        spec = {
+            'containers': [
+                {
+                    'name': 'something-something',
+                    'ports': [
+                        {
+                            'containerPort': 8888,
+                        },
+                    ],
+                },
+            ],
+        }
+
         mock_requests_get.return_value.json.return_value = {'items': [
             {
                 'status': {
@@ -872,6 +885,7 @@ def test_get_kubernetes_services_running_here():
                         'instance': 'fm',
                     },
                 },
+                'spec': spec,
             }, {
                 'status': {
                     'phase': 'Something',
@@ -884,6 +898,7 @@ def test_get_kubernetes_services_running_here():
                         'instance': 'garage',
                     },
                 },
+                'spec': spec,
             }, {
                 'status': {
                     'phase': 'Running',
@@ -895,6 +910,7 @@ def test_get_kubernetes_services_running_here():
                         'instance': 'grindah',
                     },
                 },
+                'spec': spec,
             }, {
                 'status': {
                     'phase': 'Running',
@@ -907,6 +923,7 @@ def test_get_kubernetes_services_running_here():
                         'instance': 'beats',
                     },
                 },
+                'spec': spec,
             },
         ]}
         assert get_kubernetes_services_running_here() == [
