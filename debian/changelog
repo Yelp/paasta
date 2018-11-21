@@ -1,3 +1,11 @@
+paasta-tools (0.81.14) xenial; urgency=medium
+
+  * 0.81.14 tagged with 'make release'
+    Commit: Merge pull request #2052 from Yelp/kube-container_port  Use
+    `container_port` instead of hardcoded 8888 for Kubernetes
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 21 Nov 2018 06:05:00 -0800
+
 paasta-tools (0.81.13) xenial; urgency=medium
 
   * 0.81.13 tagged with 'make release'
