@@ -174,6 +174,27 @@ _main_http:
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_marathon_validate_understands_underscores(
+    mock_get_file_contents, capfd,
+):
+    marathon_content = """
+---
+_template: &template
+  foo: bar
+
+main:
+  cpus: 0.1
+  instances: 2
+  env:
+    <<: *template
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
 def test_marathon_validate_schema_healthcheck_non_cmd(
     mock_get_file_contents, capfd,
 ):
