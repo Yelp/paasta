@@ -315,7 +315,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     ports=[V1ContainerPort(container_port=6666)],
                     readiness_probe=V1Probe(
                         _exec=V1ExecAction(
-                            command=['/nail/blah.sh', 'universal.credit'],
+                            command=['/nail/blah.sh', '8888', 'universal.credit'],
                         ),
                         initial_delay_seconds=10,
                         period_seconds=10,

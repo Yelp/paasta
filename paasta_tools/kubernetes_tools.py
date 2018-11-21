@@ -349,6 +349,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 _exec=V1ExecAction(
                     command=[
                         system_paasta_config.get_nerve_readiness_check_script(),
+                        str(self.get_container_port()),
                     ] + self.get_registrations(),
                 ),
                 initial_delay_seconds=10,
