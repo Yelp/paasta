@@ -3,102 +3,109 @@
     "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#adhoc-clustername-yaml",
     "type": "object",
     "minProperties": 1,
-    "additionalProperties": {
-        "type": "object",
-        "additionalProperties": false,
-        "minProperties": 1,
-        "properties": {
-            "cpus": {
-                "type": "number",
-                "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 1
-            },
-            "mem": {
-                "type": "number",
-                "minimum": 32,
-                "exclusiveMinimum": true,
-                "default": 1024
-            },
-            "disk": {
-                "type": "number",
-                "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 1024
-            },
-            "gpus": {
-                "type": "integer",
-                "minimum": 0,
-                "exclusiveMinimum": false
-            },
-            "cmd": {
-                "type": "string"
-            },
-            "args": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-            "env": {
-                "type": "object",
-                "additionalProperties": { "type": "string" }
-            },
-            "extra_volumes": {
-                "type": "array",
-                "items": {
-                    "type": "object"
+    "additionalProperties": false,
+    "patternProperties": {
+        "^_.*$": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 1
                 },
-                "uniqueItems": true
-            },
-            "deploy_group": {
-                "type": "string"
-            },
-            "net": {
-                "type": "string"
-            },
-            "ulimit": {
-                "type": "object",
-                "additionalProperties": {
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "gpus": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "cmd": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
                     "type": "object",
-                    "properties": {
-                        "soft": {
-                            "type": "number"
-                        },
-                        "hard": {
-                            "type": "number"
-                        }
+                    "additionalProperties": { "type": "string" }
+                },
+                "extra_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
                     },
-                    "required": ["soft"],
-                    "additionalProperties": false
-                }
-            },
-            "cap_add": {
-                "type": "array",
-                "items": {
+                    "uniqueItems": true
+                },
+                "deploy_group": {
+                    "type": "string"
+                },
+                "net": {
+                    "type": "string"
+                },
+                "ulimit": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                            "soft": {
+                                "type": "number"
+                            },
+                            "hard": {
+                                "type": "number"
+                            }
+                        },
+                        "required": ["soft"],
+                        "additionalProperties": false
+                    }
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "cfs_period_us": {
+                    "type": "integer",
+                    "minimum": "1000",
+                    "maximum": "1000000",
+                    "exclusiveMinimum": false
+                },
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "exclusiveMinimum": false
+                },
+                "extra_docker_args": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "pool": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
-            },
-            "cfs_period_us": {
-                "type": "integer",
-                "minimum": "1000",
-                "maximum": "1000000",
-                "exclusiveMinimum": false
-            },
-            "cpu_burst_add": {
-                "type": "number",
-                "minimum": 0.0,
-                "exclusiveMinimum": false
-            },
-            "extra_docker_args": {
-                "type": "object",
-                "additionalProperties": { "type": "string" }
-            },
-            "pool": {
-                "type": "string"
-            },
-            "role": {
-                "type": "string"
             }
         }
     }

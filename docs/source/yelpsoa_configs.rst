@@ -1,9 +1,35 @@
 Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
-
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
+
+Each object inside of these YAML files is called an "instance" of a PaaSTA
+service. It describes a unique way to run the service, with a unique command,
+cpu and ram requirements, etc.
+
+Duplication can be reduced by using YAML `anchors and merges<https://gist.github.com/bowsersenior/979804>`_.
+PaaSTA will **not** attempt to run any definition prefixed with ``_``,
+so you are free to use them for YAML templates.
+
+Example::
+
+    _template: &template
+        env:
+            foo: bar
+
+    main:
+        <<: *template
+        cpus: 1.0
+        mem: 1000
+        command: busybox httpd
+
+    worker:
+        <<: *template
+        cpus: 0.1
+        mem: 100
+        command: python -m worker
+
 
 ``Common Settings``
 -------------------
@@ -458,7 +484,7 @@ Each job configuration MAY specify the following options:
 
   * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
 
-  * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
+  * ``deploy_group``: Same as ``deploy_group`` for marathon-\*.yaml.
 
   * ``schedule_time_zone``: The time zone name to use when scheduling the job.
     Unlike schedule, this is specified in the tz database format, not the ISO 8601 format.
@@ -474,7 +500,7 @@ Each job configuration MAY specify the following options:
           schedule_time_zone: America/Los_Angeles
 
 ``tron-[tron-clustername].yaml``
-------------------------------
+--------------------------------
 
 This file stores configuration for periodically scheduled jobs for execution on
 `Tron <https://github.com/yelp/tron>`_.
