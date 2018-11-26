@@ -273,6 +273,52 @@ def instance_status(request):
     return instance_status
 
 
+@view_config(route_name='service.instance.kube_config', request_method='POST', renderer='json')
+def get_kubernetes_deployment(request):
+    config_dict = request.swagger_data.get('json_body')
+    service_config = get_kubernetes_deployment_config_from_request(request)
+    instances = config_dict.get('instances', None)
+    container_image = config_dict.get('container_image', None)
+    return service_config.format_kubernetes_app(
+        instances=instances,
+        container_image=container_image,
+    ).to_dict()
+
+
+@view_config(route_name='service.instance.kube_volumes', request_method='POST', renderer='json')
+def get_kubernetes_volumes(request):
+    service_config = get_kubernetes_deployment_config_from_request(request)
+    system_volumes = service_config.get_volumes(system_volumes=settings.system_paasta_config.get_volumes())
+    return service_config.get_pod_volumes(
+        docker_volumes=system_volumes,
+        aws_ebs_volumes=service_config.get_aws_ebs_volumes(),
+    )
+
+
+@view_config(route_name='service.instance.kube_pod_template_spec', request_method='POST', renderer='json')
+def get_kubernetes_pod_template_spec(request):
+    config_dict = request.swagger_data.get('json_body')
+    service_config = get_kubernetes_deployment_config_from_request(request)
+    container_image = config_dict.get('container_image', None)
+    return service_config.get_pod_template_spec(
+        system_paasta_config=settings.system_paasta_config,
+        container_image=container_image,
+    ).to_dict()
+
+
+def get_kubernetes_deployment_config_from_request(request) -> kubernetes_tools.KubernetesDeploymentConfig:
+    service = request.swagger_data.get('service')
+    instance = request.swagger_data.get('instance')
+    config_dict = request.swagger_data.get('json_body')
+    return kubernetes_tools.get_kubernetes_service_config_no_cache(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        config_dict=config_dict,
+    )
+
+
 @view_config(route_name='service.instance.tasks.task', request_method='GET', renderer='json')
 def instance_task(request):
     status = instance_status(request)

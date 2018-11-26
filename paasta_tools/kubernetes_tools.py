@@ -134,6 +134,41 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_margin_factor: float
 
 
+def get_kubernetes_service_config_no_cache(
+    service: str,
+    instance: str,
+    cluster: str,
+    config_dict: Mapping[str, Any],
+    soa_dir: str=DEFAULT_SOA_DIR,
+) -> "KubernetesDeploymentConfig":
+    """Loads kube service config from config_dict param
+    useful for API where we may not want to load from disk
+
+    Deliberately does not load deployments since we prefer to set the
+    deployment info elsewhere in the consumers of the API
+
+    :param servcie: The service name
+    :param instance: The instance of the service to retrieve
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA configuration directory to read from
+    :param config_dict: The dictionary defining a paasta service instance
+    :returns: A dictionary of whatever was in the config for the service instance"""
+
+    if instance.startswith('_'):
+        raise InvalidJobNameError(
+            f"Unable to load kubernetes job config for {service}.{instance} as instance name starts with '_'",
+        )
+
+    return KubernetesDeploymentConfig(
+        service=service,
+        cluster=cluster,
+        instance=instance,
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir=soa_dir,
+    )
+
+
 def load_kubernetes_service_config_no_cache(
     service: str,
     instance: str,
@@ -460,9 +495,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         system_paasta_config: SystemPaastaConfig,
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         service_namespace_config: ServiceNamespaceConfig,
+        image: Optional[str],
     ) -> Sequence[V1Container]:
         service_container = V1Container(
-            image=self.get_docker_url(),
+            image=image if image else self.get_docker_url(),
             command=self.get_cmd(),
             args=self.get_args(),
             env=self.get_container_env(),
@@ -624,13 +660,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             instance=self.get_sanitised_instance_name(),
         )
 
-    def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
+    def format_kubernetes_app(
+        self,
+        container_image: Optional[str]=None,
+        instances: Optional[int]=None,
+    ) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
         try:
             system_paasta_config = load_system_paasta_config()
-            docker_url = self.get_docker_url()
-            code_sha = get_code_sha_from_dockerurl(docker_url)
+            docker_url = container_image if container_image else self.get_docker_url()
+            code_sha = get_code_sha_from_dockerurl(docker_url) if container_image else None
             complete_config: Union[V1StatefulSet, V1Deployment]
             if self.get_persistent_volumes():
                 complete_config = V1StatefulSet(
@@ -643,7 +683,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             instance=self.get_sanitised_instance_name(),
                         ),
                         volume_claim_templates=self.get_volume_claim_templates(),
-                        replicas=self.get_desired_instances(),
+                        replicas=instances if instances else self.get_desired_instances(),
                         selector=V1LabelSelector(
                             match_labels={
                                 "service": self.get_service(),
@@ -653,6 +693,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         template=self.get_pod_template_spec(
                             code_sha=code_sha,
                             system_paasta_config=system_paasta_config,
+                            container_image=container_image,
                         ),
                     ),
                 )
@@ -662,7 +703,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     kind='Deployment',
                     metadata=self.get_kubernetes_metadata(code_sha),
                     spec=V1DeploymentSpec(
-                        replicas=self.get_desired_instances(),
+                        replicas=instances if instances else self.get_desired_instances(),
                         selector=V1LabelSelector(
                             match_labels={
                                 "service": self.get_service(),
@@ -672,6 +713,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         template=self.get_pod_template_spec(
                             code_sha=code_sha,
                             system_paasta_config=system_paasta_config,
+                            container_image=container_image,
                         ),
                         strategy=self.get_deployment_strategy_config(),
                     ),
@@ -690,8 +732,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_pod_template_spec(
         self,
-        code_sha: str,
         system_paasta_config: SystemPaastaConfig,
+        code_sha: Optional[str]=None,
+        container_image: Optional[str]=None,
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service,
@@ -712,6 +755,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     aws_ebs_volumes=self.get_aws_ebs_volumes(),
                     system_paasta_config=system_paasta_config,
                     service_namespace_config=service_namespace_config,
+                    image=container_image,
                 ),
                 restart_policy="Always",
                 volumes=self.get_pod_volumes(

@@ -287,6 +287,141 @@
         ]
       }
     },
+    "/services/{service}/{instance}/kube_pod_template_spec": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Returns kube pods for instance",
+            "schema": {
+              "$ref": "#/definitions/KubePodTemplateSpec"
+            }
+          },
+          "500": {
+            "description": "Failure"
+          }
+        },
+        "summary": "Get kube pods from posted config",
+        "operationId": "get_kubernetes_pod_template_spec",
+        "tags": [
+          "service"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "json_body",
+            "required": true,
+            "schema": {
+              "type": "object",
+	      "additionalProperties": true
+            }
+          }
+        ]
+      }
+    },
+    "/services/{service}/{instance}/kube_volumes": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Returns kube volumes for instance",
+            "schema": {
+              "$ref": "#/definitions/KubeVolumes"
+            }
+          },
+          "500": {
+            "description": "Failure"
+          }
+        },
+        "summary": "Get kube volumes from posted config",
+        "operationId": "get_kubernetes_volumes",
+        "tags": [
+          "service"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "json_body",
+            "required": true,
+            "schema": {
+              "type": "object",
+	      "additionalProperties": true
+            }
+          }
+        ]
+      }
+    },
+    "/services/{service}/{instance}/kube_config": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Returns kube config for instance",
+            "schema": {
+              "$ref": "#/definitions/KubeConfig"
+            }
+          },
+          "500": {
+            "description": "Failure"
+          }
+        },
+        "summary": "Get kube config from posted config",
+        "operationId": "get_kubernetes_deployment",
+        "tags": [
+          "service"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "description": "Service name",
+            "name": "service",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "description": "Instance name",
+            "name": "instance",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "json_body",
+            "required": true,
+            "schema": {
+              "type": "object",
+	      "additionalProperties": true
+            }
+          }
+        ]
+      }
+    },
     "/services/{service}/{instance}/delay": {
       "get": {
         "responses": {
@@ -576,6 +711,18 @@
       }
     },
     "InstanceDelay": {
+      "type": "object"
+    },
+    "KubeConfig": {
+      "type": "object"
+    },
+    "KubeVolumes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "KubePodTemplateSpec": {
       "type": "object"
     },
     "InstanceStatusMarathon": {
