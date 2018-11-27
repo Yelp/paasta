@@ -1061,13 +1061,13 @@ def get_marathon_services_running_here_for_nerve(
     if not cluster:
         try:
             system_paasta_config = load_system_paasta_config()
+            cluster = system_paasta_config.get_cluster()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
         # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
         except (PaastaNotConfiguredError):
             return []
-        cluster = system_paasta_config.get_cluster()
         if not system_paasta_config.get_register_marathon_services():
             return []
     # When a cluster is defined in mesos, let's iterate through marathon services
