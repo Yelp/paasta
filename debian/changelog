@@ -1,3 +1,19 @@
+paasta-tools (0.81.14) xenial; urgency=medium
+
+  * 0.81.14 tagged with 'make release'
+    Commit: Merge pull request #2052 from Yelp/kube-container_port  Use
+    `container_port` instead of hardcoded 8888 for Kubernetes
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 21 Nov 2018 06:05:00 -0800
+
+paasta-tools (0.81.13) xenial; urgency=medium
+
+  * 0.81.13 tagged with 'make release'
+    Commit: Merge pull request #2051 from Yelp/u/kawaiwan/read-logs-as-
+    str-not-bytes  Read Marathon and Chronos logs as strings not bytes
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Tue, 20 Nov 2018 11:24:53 -0800
+
 paasta-tools (0.81.12) xenial; urgency=medium
 
   * 0.81.12 tagged with 'make release'

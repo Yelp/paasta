@@ -104,6 +104,7 @@ YELP_ATTRIBUTE_PREFIX = 'yelp.com/'
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
+HACHECK_POD_NAME = 'hacheck'
 
 
 class KubeDeployment(NamedTuple):
@@ -348,6 +349,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 _exec=V1ExecAction(
                     command=[
                         system_paasta_config.get_nerve_readiness_check_script(),
+                        str(self.get_container_port()),
                     ] + self.get_registrations(),
                 ),
                 initial_delay_seconds=10,
@@ -371,7 +373,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     ),
                 ),
-                name="hacheck",
+                name=HACHECK_POD_NAME,
                 env=self.get_kubernetes_environment(),
                 ports=[
                     V1ContainerPort(
@@ -434,12 +436,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             path = self.get_healthcheck_uri(service_namespace_config)
             probe.http_get = V1HTTPGetAction(
                 path=path,
-                port=8888,
+                port=self.get_container_port(),
                 scheme=mode.upper(),
             )
         elif mode == 'tcp':
             probe.tcp_socket = V1TCPSocketAction(
-                port=8888,
+                port=self.get_container_port(),
             )
         elif mode == 'cmd':
             probe._exec = V1ExecAction(
@@ -480,7 +482,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[
                 V1ContainerPort(
-                    container_port=8888,
+                    container_port=self.get_container_port(),
                 ),
             ],
             volume_mounts=self.get_volume_mounts(
@@ -754,10 +756,15 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
         if pod['status']['phase'] != 'Running' or pod['metadata']['namespace'] != 'paasta':
             continue
         try:
+            port = None
+            for container in pod['spec']['containers']:
+                if container['name'] != HACHECK_POD_NAME:
+                    port = container['ports'][0]['containerPort']
+                    break
             services.append(KubeService(
                 name=pod['metadata']['labels']['service'],
                 instance=pod['metadata']['labels']['instance'],
-                port=8888,
+                port=port,
                 pod_ip=pod['status']['podIP'],
             ))
         except KeyError as e:

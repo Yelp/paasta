@@ -786,6 +786,9 @@ class ScribeLogReader(LogReader):
         with scribe_reader_ctx as scribe_reader:
             try:
                 for line in scribe_reader:
+                    # temporary until all log lines are strings not byte strings
+                    if isinstance(line, bytes):
+                        line = line.decode('utf-8')
                     if parser_fn:
                         line = parser_fn(line, clusters, service)
                     if filter_fn:
