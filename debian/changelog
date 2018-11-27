@@ -1,3 +1,10 @@
+paasta-tools (0.81.16) xenial; urgency=medium
+
+  * 0.81.16 tagged with 'make release'
+    Commit: fix tron schema
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 27 Nov 2018 07:21:02 -0800
+
 paasta-tools (0.81.15) xenial; urgency=medium
 
   * 0.81.15 tagged with 'make release'

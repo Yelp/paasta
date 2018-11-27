@@ -535,6 +535,9 @@ class TestTronTools:
             'extra_volumes': [
                 {'containerPath': '/nail/tmp', 'hostPath': '/nail/tmp', 'mode': 'RW'},
             ],
+            'trigger_downstreams': True,
+            'triggered_by': ['foo.bar.{shortdate}'],
+            'trigger_timeout': '5m',
         }
         branch_dict = {
             'docker_image': 'my_service:paasta-123abcde',
@@ -580,6 +583,9 @@ class TestTronTools:
                     'value': 'special_pool',
                 },
             ],
+            'trigger_downstreams': True,
+            'triggered_by': ['foo.bar.{shortdate}'],
+            'trigger_timeout': '5m',
         }
         expected_docker = '{}/{}'.format('docker-registry.com:400', branch_dict['docker_image'])
         assert result['docker_image'] == expected_docker
