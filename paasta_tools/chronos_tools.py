@@ -584,12 +584,6 @@ class ChronosJobConfig(InstanceConfig):
         to announce chronos tasks in nerve"""
         return None
 
-    def format_docker_parameters(self):
-        init = {'key': 'init', 'value': 'true'}
-        params = super().format_docker_parameters()
-        params.append(init)
-        return params
-
 
 def paasta_to_chronos_job_name(job_name):
     """Converts a paasta-style job name service.main to what chronos
