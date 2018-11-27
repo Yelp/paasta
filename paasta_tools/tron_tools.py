@@ -169,12 +169,6 @@ class TronActionConfig(InstanceConfig):
         executor = self.config_dict.get('executor', None)
         return 'mesos' if executor == 'paasta' else executor
 
-    def format_docker_parameters(self):
-        init = {'key': 'init', 'value': 'true'}
-        params = super().format_docker_parameters()
-        params.append(init)
-        return params
-
     def get_healthcheck_mode(self, _) -> None:
         return None
 

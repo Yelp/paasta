@@ -118,7 +118,6 @@ class TestTronActionConfig:
             branch_dict={},
         )
         assert action_config.get_executor() == 'mesos'
-        assert {'key': 'init', 'value': 'true'} in action_config.format_docker_parameters()
 
 
 class TestTronJobConfig:
