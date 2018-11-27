@@ -65,7 +65,7 @@
           "uniqueItems": true
         },
         "trigger_downstreams": {
-          "type": "object",
+          "type": ["object", "boolean"],
           "additionalProperties": {"type": "string"}
         },
         "on_upstream_rerun": {"type": "string"},
