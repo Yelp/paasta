@@ -445,7 +445,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         elif mode == 'cmd':
             probe._exec = V1ExecAction(
-                command=self.get_healthcheck_cmd(),
+                command=[
+                    "/bin/sh",
+                    "-c",
+                    self.get_healthcheck_cmd(),
+                ],
             )
         else:
             raise InvalidHealthcheckMode(

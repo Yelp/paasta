@@ -509,7 +509,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         liveness_probe = V1Probe(
             failure_threshold=30,
             _exec=V1ExecAction(
-                command='/bin/true',
+                command=[
+                    '/bin/sh',
+                    '-c',
+                    '/bin/true',
+                ],
             ),
             initial_delay_seconds=60,
             period_seconds=10,
