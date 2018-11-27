@@ -1,3 +1,11 @@
+paasta-tools (0.81.18) xenial; urgency=medium
+
+  * 0.81.18 tagged with 'make release'
+    Commit: Merge pull request #2059 from Yelp/fix-chronos-schema  Fix
+    chronos schema
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 27 Nov 2018 10:54:14 -0800
+
 paasta-tools (0.81.17) xenial; urgency=medium
 
   * 0.81.17 tagged with 'make release'
