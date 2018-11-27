@@ -1,3 +1,11 @@
+paasta-tools (0.81.19) xenial; urgency=medium
+
+  * 0.81.19 tagged with 'make release'
+    Commit: Merge pull request #2060 from Yelp/fix-kube-healthcheck_cmd
+    Fix `healthcheck_cmd` not working for kube
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 27 Nov 2018 12:13:06 -0800
+
 paasta-tools (0.81.18) xenial; urgency=medium
 
   * 0.81.18 tagged with 'make release'
