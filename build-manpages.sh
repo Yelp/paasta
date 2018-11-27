@@ -24,7 +24,7 @@ set +u
 . .tox/manpages/bin/activate
 set -u
 
-VERSION=`paasta --version 2>&1 | cut -f 2 -d ' '`
+VERSION=`paasta --version 2>/dev/null | cut -f 2 -d ' '`
 
 function build_man() {
     COMMAND=$1
