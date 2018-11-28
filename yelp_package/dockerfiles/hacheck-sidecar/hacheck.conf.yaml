@@ -1,0 +1,5 @@
+cache_time: 1.0
+allow_remote_spool_changes: true
+http_headers_to_copy:
+    - Host
+    - X-Mode
