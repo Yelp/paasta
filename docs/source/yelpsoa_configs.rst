@@ -8,7 +8,7 @@ Each object inside of these YAML files is called an "instance" of a PaaSTA
 service. It describes a unique way to run the service, with a unique command,
 cpu and ram requirements, etc.
 
-Duplication can be reduced by using YAML `anchors and merges<https://gist.github.com/bowsersenior/979804>`_.
+Duplication can be reduced by using YAML `anchors and merges <https://gist.github.com/bowsersenior/979804>`_.
 PaaSTA will **not** attempt to run any definition prefixed with ``_``,
 so you are free to use them for YAML templates.
 
