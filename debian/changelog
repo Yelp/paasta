@@ -1,3 +1,13 @@
+paasta-tools (0.81.20) xenial; urgency=medium
+
+  * 0.81.20 tagged with 'make release'
+    Commit: Merge pull request #2061 from
+    Yelp/get_native_services_running_here_for_nerve-for-non-paasta-hosts
+    Fix `get_cluster()` throws `PaastaNotConfiguredError` on non-PaaSTA
+    h…
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 28 Nov 2018 09:50:42 -0800
+
 paasta-tools (0.81.19) xenial; urgency=medium
 
   * 0.81.19 tagged with 'make release'
