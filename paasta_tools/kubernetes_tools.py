@@ -115,6 +115,13 @@ class KubeDeployment(NamedTuple):
     replicas: int
 
 
+class KubeCustomResource(NamedTuple):
+    service: str
+    instance: str
+    config_sha: str
+    kind: str
+
+
 class KubeService(NamedTuple):
     name: str
     instance: str
@@ -836,6 +843,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
+        self.custom = kube_client.CustomObjectsApi()
 
 
 def ensure_paasta_namespace(kube_client: KubeClient) -> None:
@@ -875,6 +883,83 @@ def list_deployments(
             replicas=item.spec.replicas,
         ) for item in deployments.items + stateful_sets.items
     ]
+
+
+def create_custom_resource(
+    kube_client: KubeClient,
+    formatted_resource: Mapping[str, Any],
+    version: str,
+    plural_kind: str,
+) -> None:
+    return kube_client.custom.create_namespaced_custom_object(
+        group='yelp.com',
+        version=version,
+        namespace='paasta',
+        plural=plural_kind,
+        body=formatted_resource,
+    )
+
+
+def update_custom_resource(
+    kube_client: KubeClient,
+    formatted_resource: Mapping[str, Any],
+    version: str,
+    plural_kind: str,
+    name: str,
+) -> None:
+    co = kube_client.custom.get_namespaced_custom_object(
+        name=name,
+        group='yelp.com',
+        version=version,
+        namespace='paasta',
+        plural=plural_kind,
+    )
+    formatted_resource['metadata']['resourceVersion'] = co['metadata']['resourceVersion']
+    return kube_client.custom.replace_namespaced_custom_object(
+        name=name,
+        group='yelp.com',
+        version=version,
+        namespace='paasta',
+        plural=plural_kind,
+        body=formatted_resource,
+    )
+
+
+def list_custom_resources(
+    plural_kind: str,
+    version: str,
+    kube_client: KubeClient,
+    label_selector: str = '',
+) -> Sequence[KubeCustomResource]:
+    crs = kube_client.custom.list_namespaced_custom_object(
+        group='yelp.com',
+        version=version,
+        namespace='paasta',
+        plural=plural_kind,
+    )
+    kube_custom_resources = []
+    for cr in crs['items']:
+        kube_custom_resources.append(
+            KubeCustomResource(
+                service=cr['metadata']['labels']['paasta_service'],
+                instance=cr['metadata']['labels']['paasta_instance'],
+                config_sha=cr['metadata']['labels']['paasta_config_sha'],
+                kind=cr['kind'],
+            ),
+        )
+    return kube_custom_resources
+
+
+def list_all_custom_resources(
+    plural_kind: str,
+    version: str,
+    kube_client: KubeClient,
+) -> Sequence[KubeCustomResource]:
+    return list_custom_resources(
+        version=version,
+        plural_kind=plural_kind,
+        kube_client=kube_client,
+    )
 
 
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
