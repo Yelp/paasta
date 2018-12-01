@@ -499,6 +499,9 @@ def get_spark_config(
         )
         sys.exit(1)
 
+    # Limit a container's cpu usage
+    non_user_args['spark.mesos.executor.docker.parameters'] += ',cpus={}'.format(user_args['spark.executor.cores'])
+
     return dict(non_user_args, **user_args)
 
 
