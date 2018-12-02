@@ -34,8 +34,7 @@ from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
 
 from paasta_tools import mesos_tools
-from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
-from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
+from paasta_tools.cli.cmds.remote_run import add_action_parsers
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
 from paasta_tools.mesos_tools import get_all_frameworks
@@ -65,29 +64,7 @@ def parse_args(argv):
         dest='action',
         help='Subcommands of paasta_remote_run',
     )
-
-    start_parser = subs.add_parser('start', help='Start task')
-    add_start_args_to_parser(start_parser)
-    add_common_args_to_parser(start_parser)
-    start_parser.add_argument(
-        '-X', '--constraints-json',
-        help=('Mesos constraints JSON'),
-        required=False,
-        default=None,
-    )
-
-    stop_parser = subs.add_parser('stop', help='Stop task')
-    add_common_args_to_parser(stop_parser)
-    stop_parser.add_argument(
-        '-F', '--framework-id',
-        help=('ID of framework to stop'),
-        required=False,
-        default=None,
-    )
-
-    list_parser = subs.add_parser('list', help='List tasks')
-    add_common_args_to_parser(list_parser)
-
+    parser.add_action_parsers(parser)
     return parser.parse_args(argv)
 
 
