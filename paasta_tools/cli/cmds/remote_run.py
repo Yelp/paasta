@@ -32,6 +32,15 @@ from paasta_tools.utils import SystemPaastaConfig
 REMOTE_RUN_ACTIONS = ['start', 'stop', 'list']
 
 
+def _get_default_cluster(system_paasta_config=None):
+    if not system_paasta_config:
+        try:
+            system_paasta_config = load_system_paasta_config()
+        except PaastaNotConfiguredError:
+            return None
+    return system_paasta_config.get_remote_run_config().get('default_cluster')
+
+
 def add_output_args(parser):
     """ Adds CLI options for the following output modifiers:
     - verbose: Verbosity of log output
@@ -64,30 +73,39 @@ def add_selector_args(parser):
     """
     parser.add_argument(
         '-s', '--service',
-        help='The name of the service you wish to inspect',
+        help=(
+            'The name of the service you wish to inspect. '
+            'The service must have an adhoc soa-configs file: '
+            'adhoc-<cluster>.yaml'
+        ),
+        required=True,
     ).completer = lazy_choices_completer(list_services)
     parser.add_argument(
         '-i', '--instance',
         help=(
             "Simulate a docker run for a particular instance of the "
-            "service, like 'main' or 'canary'"
+            "service, like 'main' or 'canary'. "
+            "The instance must be configured in the service's adhoc "
+            "soa-configs file. "
+            "Default: remote"
         ),
-        default=None,
+        default='remote',
     ).completer = lazy_choices_completer(list_instances)
     parser.add_argument(
         '-c', '--cluster',
         help=(
             'The name of the cluster you wish to run your task on. '
             'If omitted, uses the default cluster defined in the paasta'
-            'remote-run configs'
+            'remote-run configs. '
+            f'Default: {_get_default_cluster()}'
         ),
-        default=None,
+        default=_get_default_cluster(),
     ).completer = lazy_choices_completer(list_clusters)
 
 
 def add_start_args(parser):
     """ Adds CLI options specific to the start action """
-    ### Run related arguments
+    # Run related arguments
     parser.add_argument(
         '-d', '--dry-run',
         help='Don\'t launch the task',
@@ -102,7 +120,7 @@ def add_start_args(parser):
         default=False,
     )
 
-    ### Task config related arguments
+    # Task config related arguments
     parser.add_argument(
         '-R', '--run-id',
         help='Identifier to assign to individual task runs',
@@ -182,10 +200,7 @@ def add_action_parsers(parser):
     }
     action_args_adders = {
         'start': [add_output_args, add_selector_args, add_start_args],
-        # stop is the only action for which we do not add "selector" args (to
-        # specify service, instance, and cluster), since users should know
-        # exactly which task they want to stop
-        'stop': [add_output_args, add_stop_args],
+        'stop': [add_output_args, add_selector_args, add_stop_args],
         'list': [add_output_args, add_selector_args, add_list_args],
     }
     for action in REMOTE_RUN_ACTIONS:
@@ -278,24 +293,19 @@ def paasta_remote_run(args):
     constraints = [x.split(',', 2) for x in args_vars.get('constraint', [])]
     if len(constraints) > 0:
         cmd_parts.extend(
-            ['--constraints-json', quote(json.dumps(constraints))],
+            ['--constraints', quote(json.dumps(constraints))],
         )
 
     if not args.cluster:
-        default_cluster = system_paasta_config.get_remote_run_config().get('default_cluster')
-        if not default_cluster and not args.cluster:
-            paasta_print(PaastaColors.red("Error: no cluster specified and no default cluster available"))
-            return 1
-        cluster = default_cluster
-    else:
-        cluster = args.cluster
+        paasta_print(PaastaColors.red("Error: no cluster specified and no default cluster available"))
+        return 1
 
     cmd_parts.extend(
-        ['--cluster', quote(cluster)],
+        ['--cluster', quote(args.cluster)],
     )
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
-        cluster=cluster,
+        cluster=args.cluster,
         system_paasta_config=system_paasta_config,
         cmd_parts=cmd_parts,
         graceful_exit=graceful_exit,

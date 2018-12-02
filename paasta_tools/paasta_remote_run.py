@@ -60,11 +60,7 @@ def emit_counter_metric(counter_name, service, instance):
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
-    subs = parser.add_subparsers(
-        dest='action',
-        help='Subcommands of paasta_remote_run',
-    )
-    parser.add_action_parsers(parser)
+    add_action_parsers(parser)
     return parser.parse_args(argv)
 
 
@@ -290,7 +286,7 @@ def remote_run_start(args):
         soa_dir, instance, instance_type = extract_args(args)
     overrides_dict = {}
 
-    constraints_json = args.constraints_json
+    constraints_json = args.constraints
     if constraints_json:
         try:
             constraints = json.loads(constraints_json)
