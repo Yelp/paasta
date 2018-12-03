@@ -23,14 +23,13 @@ import logging
 import os
 import sys
 from collections import defaultdict
-from collections import namedtuple
 from math import ceil
 from typing import Any
 from typing import Callable
-from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -97,7 +96,10 @@ CONFIG_HASH_BLACKLIST = {'instances', 'backoff_seconds', 'min_instances', 'max_i
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
-MarathonServers = namedtuple('MarathonServers', ['current', 'previous'])
+
+class MarathonServers(NamedTuple):
+    current: Sequence['MarathonConfig']
+    previous: Sequence['MarathonConfig']
 
 
 _RendezvousHashT = TypeVar('_RendezvousHashT')
@@ -106,8 +108,8 @@ _RendezvousHashT = TypeVar('_RendezvousHashT')
 def rendezvous_hash(
     choices: Sequence[_RendezvousHashT],
     key: str,
-    salt: str='',
-    hash_func: Callable[[str], str]=get_config_hash,
+    salt: str = '',
+    hash_func: Callable[[str], str] = get_config_hash,
 ) -> _RendezvousHashT:
     """For each choice, calculate the hash of the index of that choice combined with the key, then return the choice
     whose corresponding hash is highest.
@@ -130,7 +132,11 @@ def rendezvous_hash(
 
 
 class MarathonClients:
-    def __init__(self, current: List[MarathonClient], previous: List[MarathonClient]) -> None:
+    def __init__(
+        self,
+        current: Sequence[MarathonClient],
+        previous: Sequence[MarathonClient],
+    ) -> None:
         self.current = current
         self.previous = previous
 
@@ -161,12 +167,14 @@ class MarathonClients:
 
         return dedupe_clients(all_clients)
 
-    def get_all_clients(self) -> List[MarathonClient]:
+    def get_all_clients(self) -> Sequence[MarathonClient]:
         """Return the set of all unique clients."""
-        return dedupe_clients(self.current + self.previous)
+        return dedupe_clients(self.current + self.previous)  # type: ignore
 
 
-def dedupe_clients(all_clients: Iterable[MarathonClient]) -> List[MarathonClient]:
+def dedupe_clients(
+    all_clients: Iterable[MarathonClient],
+) -> Sequence[MarathonClient]:
     """Return a subset of the clients with no servers in common. The assumption here is that if there's any overlap in
     servers, then two clients are talking about the same cluster."""
     all_seen_servers: Set[str] = set()
@@ -229,42 +237,28 @@ class HealthcheckDict(TypedDict, total=False):
 
 # These are more-or-less duplicated from native_service_config, but this code uses camelCase, not snake_case.
 # We could probably refactor this, and just use snake_case -- Mesos is picky, but marathon-python will auto-convert.
-MarathonDockerPortMapping = TypedDict(
-    'MarathonDockerPortMapping',
-    {
-        'hostPort': int,
-        'containerPort': int,
-        'protocol': str,
-    },
-)
+class MarathonDockerPortMapping(TypedDict):
+    hostPort: int
+    containerPort: int
+    protocol: str
 
-MarathonPortDefinition = TypedDict(
-    'MarathonPortDefinition',
-    {
-        'port': int,
-        'protocol': str,
-    },
-)
 
-MarathonDockerInfo = TypedDict(
-    'MarathonDockerInfo',
-    {
-        'image': str,
-        'network': str,
-        'portMappings': List[MarathonDockerPortMapping],
-        'parameters': Sequence[DockerParameter],
-    },
-    total=False,
-)
+class MarathonPortDefinition(TypedDict):
+    port: int
+    protocol: str
 
-MarathonContainerInfo = TypedDict(
-    'MarathonContainerInfo',
-    {
-        'type': str,
-        'docker': MarathonDockerInfo,
-        'volumes': List[DockerVolume],
-    },
-)
+
+class MarathonDockerInfo(TypedDict, total=False):
+    image: str
+    network: str
+    portMappings: List[MarathonDockerPortMapping]
+    parameters: Sequence[DockerParameter]
+
+
+class MarathonContainerInfo(TypedDict):
+    type: str
+    docker: MarathonDockerInfo
+    volumes: List[DockerVolume]
 
 
 class FormattedMarathonAppDict(BounceMethodConfigDict, total=False):
@@ -337,8 +331,8 @@ def load_marathon_service_config_no_cache(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> "MarathonServiceConfig":
     """Read a service instance's configuration for marathon.
 
@@ -404,8 +398,8 @@ def load_marathon_service_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> "MarathonServiceConfig":
     """Read a service instance's configuration for marathon.
 
@@ -444,7 +438,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         instance: str,
         config_dict: MarathonServiceConfigDict,
         branch_dict: Optional[BranchDictV2],
-        soa_dir: str=DEFAULT_SOA_DIR,
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         super().__init__(
             cluster=cluster,
@@ -888,7 +882,10 @@ class MarathonDeployStatus:
         return getattr(cls, _str, None)
 
 
-def get_marathon_app_deploy_status(client: MarathonClient, app: MarathonApp=None) -> int:
+def get_marathon_app_deploy_status(
+    client: MarathonClient,
+    app: MarathonApp = None,
+) -> int:
     # Check the launch queue to see if an app is blocked
     is_overdue, backoff_seconds = get_app_queue_status(client, app.id)
 
@@ -914,7 +911,12 @@ class CachedMarathonClient(MarathonClient):
         return super().list_apps(*args, **kwargs)
 
 
-def get_marathon_client(url: List[str], user: str, passwd: str, cached: bool=False) -> MarathonClient:
+def get_marathon_client(
+    url: Sequence[str],
+    user: str,
+    passwd: str,
+    cached: bool = False,
+) -> MarathonClient:
     """Get a new Marathon client connection in the form of a MarathonClient object.
 
     :param url: The url to connect to Marathon at
@@ -933,7 +935,10 @@ def get_marathon_client(url: List[str], user: str, passwd: str, cached: bool=Fal
         return MarathonClient(url, user, passwd, timeout=30, session=session)
 
 
-def get_marathon_clients(marathon_servers: MarathonServers, cached: bool=False) -> MarathonClients:
+def get_marathon_clients(
+    marathon_servers: MarathonServers,
+    cached: bool = False,
+) -> MarathonClients:
     current_servers = marathon_servers.current
     current_clients = []
     for current_server in current_servers:
@@ -956,16 +961,21 @@ def get_marathon_clients(marathon_servers: MarathonServers, cached: bool=False) 
 
 
 def get_list_of_marathon_clients(
-        system_paasta_config: Optional[SystemPaastaConfig]=None,
-        cached: bool=False,
-) -> List[MarathonClient]:
+    system_paasta_config: Optional[SystemPaastaConfig] = None,
+    cached: bool = False,
+) -> Sequence[MarathonClient]:
     if system_paasta_config is None:
         system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config)
     return get_marathon_clients(marathon_servers, cached=cached).get_all_clients()
 
 
-def format_job_id(service: str, instance: str, git_hash: Optional[str]=None, config_hash: Optional[str]=None) -> str:
+def format_job_id(
+    service: str,
+    instance: str,
+    git_hash: Optional[str] = None,
+    config_hash: Optional[str] = None,
+) -> str:
     """Compose a Marathon app id formatted to meet Marathon's
     `app id requirements <https://mesosphere.github.io/marathon/docs/rest-api.html#id-string>`_
 
@@ -995,9 +1005,9 @@ def deformat_job_id(job_id: str) -> Tuple[str, str, str, str]:
 
 def get_all_namespaces_for_service(
     service: str,
-    soa_dir: str=DEFAULT_SOA_DIR,
-    full_name: bool=True,
-) -> List[Tuple[str, str]]:
+    soa_dir: str = DEFAULT_SOA_DIR,
+    full_name: bool = True,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     """Get all the smartstack namespaces listed for a given service name.
 
     :param service: The service name
@@ -1019,14 +1029,16 @@ def get_all_namespaces_for_service(
     return namespace_list
 
 
-def get_all_namespaces(soa_dir: str=DEFAULT_SOA_DIR) -> List[Tuple[str, str]]:
+def get_all_namespaces(
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     """Get all the smartstack namespaces across all services.
     This is mostly so synapse can get everything it needs in one call.
 
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of the form (service.namespace, namespace_config)"""
     rootdir = os.path.abspath(soa_dir)
-    namespace_list = []
+    namespace_list: List[Tuple[str, ServiceNamespaceConfig]] = []
     for srv_dir in os.listdir(rootdir):
         namespace_list.extend(get_all_namespaces_for_service(srv_dir, soa_dir))
     return namespace_list
@@ -1057,7 +1069,7 @@ def marathon_services_running_here() -> List[Tuple[str, str, int]]:
 def get_marathon_services_running_here_for_nerve(
     cluster: str,
     soa_dir: str,
-) -> List[Tuple[str, ServiceNamespaceConfig]]:
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     if not cluster:
         try:
             system_paasta_config = load_system_paasta_config()
@@ -1113,7 +1125,9 @@ def get_puppet_services_that_run_here() -> Dict[str, List[str]]:
     return puppet_service_dir_services
 
 
-def get_puppet_services_running_here_for_nerve(soa_dir: str) -> List[Tuple[str, ServiceNamespaceConfig]]:
+def get_puppet_services_running_here_for_nerve(
+    soa_dir: str,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     puppet_services = []
     for service, namespaces in sorted(get_puppet_services_that_run_here().items()):
         for namespace in namespaces:
@@ -1139,14 +1153,15 @@ def _namespaced_get_classic_service_information_for_nerve(
     # If the namespace defines a port, prefer that, otherwise use the
     # service wide port file.
     nerve_dict['port'] = (
-        nerve_dict.get('port', None) or
-        service_configuration_lib.read_port(port_file)
+        nerve_dict.get('port', None) or service_configuration_lib.read_port(port_file)
     )
     nerve_name = compose_job_id(name, namespace)
     return (nerve_name, nerve_dict)
 
 
-def get_classic_services_running_here_for_nerve(soa_dir: str) -> List[Tuple[str, ServiceNamespaceConfig]]:
+def get_classic_services_running_here_for_nerve(
+    soa_dir: str,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     classic_services = []
     classic_services_here = service_configuration_lib.services_that_run_here()
     for service in sorted(classic_services_here):
@@ -1162,7 +1177,9 @@ def get_classic_services_running_here_for_nerve(soa_dir: str) -> List[Tuple[str,
     return classic_services
 
 
-def list_all_marathon_app_ids(client: MarathonClient) -> List[str]:
+def list_all_marathon_app_ids(
+    client: MarathonClient,
+) -> Sequence[str]:
     """List all marathon app_ids, regardless of state
 
     The raw marathon API returns app ids in their URL form, with leading '/'s
@@ -1191,7 +1208,7 @@ def app_has_tasks(
     client: MarathonClient,
     app_id: str,
     expected_tasks: int,
-    exact_matches_only: bool=False,
+    exact_matches_only: bool = False,
 ) -> bool:
     """A predicate function indicating whether an app has launched *at least* expected_tasks
     tasks.
@@ -1255,7 +1272,9 @@ def get_app_queue_status_from_queue(
     return (app_queue_item.delay.overdue, app_queue_item.delay.time_left_seconds)
 
 
-def get_app_queue_last_unused_offers(app_queue_item: Optional[MarathonQueueItem]) -> List[Dict]:
+def get_app_queue_last_unused_offers(
+    app_queue_item: Optional[MarathonQueueItem],
+) -> Sequence[Dict]:
     """Returns the unused offers for an app
 
     :param app_queue_item: app_queue_item returned by get_app_queue
@@ -1280,7 +1299,11 @@ def summarize_unused_offers(app_queue: Optional[MarathonQueueItem]) -> Dict[str,
     return reasons
 
 
-def create_complete_config(service: str, instance: str, soa_dir: str=DEFAULT_SOA_DIR) -> FormattedMarathonAppDict:
+def create_complete_config(
+    service: str,
+    instance: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> FormattedMarathonAppDict:
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
     return load_marathon_service_config(
         service=service,
@@ -1293,8 +1316,8 @@ def create_complete_config(service: str, instance: str, soa_dir: str=DEFAULT_SOA
 def get_expected_instance_count_for_namespace(
     service: str,
     namespace: str,
-    cluster: str=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    cluster: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> int:
     """Get the number of expected instances for a namespace, based on the number
     of instances set to run on that namespace as specified in Marathon service
@@ -1319,7 +1342,12 @@ def get_expected_instance_count_for_namespace(
     return total_expected
 
 
-def get_matching_appids(service: str, instance: str, client: MarathonClient, embed_tasks: bool=False) -> List[str]:
+def get_matching_appids(
+    service: str,
+    instance: str,
+    client: MarathonClient,
+    embed_tasks: bool = False,
+) -> List[str]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
@@ -1327,7 +1355,11 @@ def get_matching_appids(service: str, instance: str, client: MarathonClient, emb
     return [app.id for app in marathon_apps if does_app_id_match(service, instance, app.id)]
 
 
-def get_matching_apps(service: str, instance: str, marathon_apps: Collection[MarathonApp]) -> List[MarathonApp]:
+def get_matching_apps(
+    service: str,
+    instance: str,
+    marathon_apps: Sequence[MarathonApp],
+) -> Sequence[MarathonApp]:
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
@@ -1337,7 +1369,7 @@ def get_matching_apps(service: str, instance: str, marathon_apps: Collection[Mar
 def get_matching_apps_with_clients(
     service: str,
     instance: str,
-    marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
+    marathon_apps_with_clients: Sequence[Tuple[MarathonApp, MarathonClient]],
 ) -> List[Tuple[MarathonApp, MarathonClient]]:
     return [(a, c) for a, c in marathon_apps_with_clients if does_app_id_match(service, instance, a.id)]
 
@@ -1350,8 +1382,8 @@ def does_app_id_match(service: str, instance: str, app_id: str) -> bool:
 
 def get_all_marathon_apps(
     client: MarathonClient,
-    service_name: Optional[str]=None,
-    embed_tasks: bool=False,
+    service_name: Optional[str] = None,
+    embed_tasks: bool = False,
 ) -> List[MarathonApp]:
     if service_name:
         return client.list_apps(embed_tasks=embed_tasks, app_id='/' + format_job_id(service=service_name, instance=''))
@@ -1360,10 +1392,10 @@ def get_all_marathon_apps(
 
 
 def get_marathon_apps_with_clients(
-    clients: Collection[MarathonClient],
-    service_name: Optional[str]=None,
-    embed_tasks: bool=False,
-) -> List[Tuple[MarathonApp, MarathonClient]]:
+    clients: Sequence[MarathonClient],
+    service_name: Optional[str] = None,
+    embed_tasks: bool = False,
+) -> Sequence[Tuple[MarathonApp, MarathonClient]]:
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
     for client in clients:
         for app in get_all_marathon_apps(client, service_name, embed_tasks=embed_tasks):
@@ -1391,7 +1423,11 @@ def kill_task(client: MarathonClient, app_id: str, task_id: str, scale: bool) ->
             raise
 
 
-def kill_given_tasks(client: MarathonClient, task_ids: List[str], scale: bool) -> bool:
+def kill_given_tasks(
+    client: MarathonClient,
+    task_ids: Sequence[str],
+    scale: bool,
+) -> bool:
     """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
     if not task_ids:
         log.debug("No task_ids specified, not killing any tasks")
@@ -1410,7 +1446,11 @@ def kill_given_tasks(client: MarathonClient, task_ids: List[str], scale: bool) -
             raise
 
 
-def is_task_healthy(task: MarathonTask, require_all: bool=True, default_healthy: bool=False) -> bool:
+def is_task_healthy(
+    task: MarathonTask,
+    require_all: bool = True,
+    default_healthy: bool = False,
+) -> bool:
     """Check that a marathon task is healthy
 
     :param task: the marathon task object
@@ -1443,7 +1483,10 @@ def is_old_task_missing_healthchecks(task: MarathonTask, app: MarathonApp) -> bo
     return False
 
 
-def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
+def get_num_at_risk_tasks(
+    app: MarathonApp,
+    draining_hosts: Sequence[str],
+) -> int:
     """Determine how many of an application's tasks are running on
     at-risk (Mesos Maintenance Draining) hosts.
 
@@ -1461,7 +1504,10 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: List[str]) -> int:
     return num_at_risk_tasks
 
 
-def broadcast_log_all_services_running_here(line: str, component: str='monitoring') -> None:
+def broadcast_log_all_services_running_here(
+    line: str,
+    component: str = 'monitoring',
+) -> None:
     """Log a line of text to paasta logs of all services running on this host.
 
     :param line: text to log
@@ -1484,7 +1530,9 @@ def broadcast_log_all_services_running_here(line: str, component: str='monitorin
         )
 
 
-def broadcast_log_all_services_running_here_from_stdin(component: str='monitoring') -> None:
+def broadcast_log_all_services_running_here_from_stdin(
+    component: str = 'monitoring',
+) -> None:
     broadcast_log_all_services_running_here(sys.stdin.read().strip())
 
 

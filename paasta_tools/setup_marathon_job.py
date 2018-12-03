@@ -52,6 +52,7 @@ from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Set
 from typing import Tuple
 
@@ -250,10 +251,10 @@ def do_bounce(
     clients: marathon_tools.MarathonClients,
     soa_dir: str,
     job_config: marathon_tools.MarathonServiceConfig,
-    bounce_margin_factor: float=1.0,
-    enable_maintenance_reservation: bool=True,
+    bounce_margin_factor: float = 1.0,
+    enable_maintenance_reservation: bool = True,
 ) -> Optional[float]:
-    def log_bounce_action(line: str, level: str='debug') -> None:
+    def log_bounce_action(line: str, level: str = 'debug') -> None:
         return _log(
             service=service,
             line=line,
@@ -527,7 +528,7 @@ def undrain_tasks(
                 return
             try:
                 await drain_method.stop_draining(task)
-            except Exception as e:
+            except Exception:
                 log_deploy_error(f"Ignoring exception during stop_draining of task {task.id}: {traceback.format_exc()}")
 
     if to_undrain:
@@ -543,7 +544,7 @@ def deploy_service(
     marathon_jobid: str,
     config: marathon_tools.FormattedMarathonAppDict,
     clients: marathon_tools.MarathonClients,
-    marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
+    marathon_apps_with_clients: Sequence[Tuple[MarathonApp, MarathonClient]],
     bounce_method: str,
     drain_method_name: str,
     drain_method_params: Dict[str, Any],
@@ -552,7 +553,7 @@ def deploy_service(
     bounce_health_params: Dict[str, Any],
     soa_dir: str,
     job_config: marathon_tools.MarathonServiceConfig,
-    bounce_margin_factor: float=1.0,
+    bounce_margin_factor: float = 1.0,
 ) -> Tuple[int, str, Optional[float]]:
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
@@ -569,7 +570,7 @@ def deploy_service(
     :param bounce_margin_factor: the multiplication factor used to calculate the number of instances to be drained
     :returns: A tuple of (status, output, bounce_in_seconds) to be used with send_sensu_event"""
 
-    def log_deploy_error(errormsg: str, level: str='event') -> None:
+    def log_deploy_error(errormsg: str, level: str = 'event') -> None:
         return _log(
             service=service,
             line=errormsg,
@@ -766,7 +767,7 @@ def setup_service(
     instance: str,
     clients: marathon_tools.MarathonClients,
     job_config: marathon_tools.MarathonServiceConfig,
-    marathon_apps_with_clients: Collection[Tuple[MarathonApp, MarathonClient]],
+    marathon_apps_with_clients: Sequence[Tuple[MarathonApp, MarathonClient]],
     soa_dir: str,
 ) -> Tuple[int, str, Optional[float]]:
     """Setup the service instance given and attempt to deploy it, if possible.
@@ -869,7 +870,7 @@ def deploy_marathon_service(
     instance: str,
     clients: marathon_tools.MarathonClients,
     soa_dir: str,
-    marathon_apps_with_clients: Optional[Collection[Tuple[MarathonApp, MarathonClient]]],
+    marathon_apps_with_clients: Optional[Sequence[Tuple[MarathonApp, MarathonClient]]],
 ) -> Tuple[int, float]:
     """deploy the service instance given and process return code
     if there was an error we send a sensu alert.
