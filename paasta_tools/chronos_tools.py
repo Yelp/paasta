@@ -1091,6 +1091,8 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_configs = {}
     for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir):
         for instance in read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir):
+            if instance.startswith('_'):  # some dependencies are templates
+                instance = instance.lstrip('_')
             try:
                 chronos_configs[(service, instance)] = load_chronos_job_config(
                     service=service,
