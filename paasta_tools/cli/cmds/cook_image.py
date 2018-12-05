@@ -18,6 +18,7 @@ import sys
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_username
@@ -45,6 +46,12 @@ def add_subparser(subparsers):
         ),
         required=True,
     )
+    list_parser.add_argument(
+        '-y', '--yelpsoa-config-root',
+        dest='yelpsoa_config_root',
+        help='A directory from which yelpsoa-configs should be read from',
+        default=DEFAULT_SOA_DIR,
+    )
     list_parser.set_defaults(command=paasta_cook_image)
 
 
@@ -54,6 +61,8 @@ def paasta_cook_image(args, service=None, soa_dir=None):
         service = args.service
     if service.startswith('services-'):
         service = service.split('services-', 1)[1]
+    if not soa_dir:
+        soa_dir = args.yelpsoa_config_root
     validate_service_name(service, soa_dir)
 
     run_env = os.environ.copy()
