@@ -324,6 +324,9 @@ for more low-level details:
     If not in smartstack, the default healthcheck is "None", which means
     the container is considered healthy unless it crashes.
 
+    A http healthcheck is considered healthy if it returns a 2xx or 3xx
+    response code.
+
   * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
     command is executed inside the container as a healthcheck. It must exit
     with status code 0 to signify a successful healthcheck. Any other exit code
