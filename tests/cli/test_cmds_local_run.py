@@ -1222,7 +1222,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 1
-    assert ATTACH_OUTPUT in capfd.readouterr()[0]
+    assert ATTACH_OUTPUT not in capfd.readouterr()[0]  # streamed by docker lgos thread instead
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)

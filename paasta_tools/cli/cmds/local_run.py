@@ -205,7 +205,6 @@ def simulate_healthcheck_on_service(
                 except StopIteration:  # natural end of logs
                     break
 
-        paasta_print('Starting docker logs stream throughout health check:')
         docker_logs_generator = docker_client.logs(container_id, stderr=True, stream=True)
         threading.Thread(
             target=_stream_docker_logs,
