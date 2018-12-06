@@ -1,3 +1,11 @@
+paasta-tools (0.81.22) xenial; urgency=medium
+
+  * 0.81.22 tagged with 'make release'
+    - Add -y option for 'paasta cook-image'
+    - Make 'paasta local-run' stream docker logs while healthchecking
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 06 Dec 2018 14:20:53 -0800
+
 paasta-tools (0.81.21) xenial; urgency=medium
 
   * 0.81.21 tagged with 'make release'
