@@ -879,7 +879,11 @@ def mesos_services_running_here(framework_filter, parse_service_instance_from_ex
                  if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
+        try:
+            srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
+        except ValueError:
+            log.error("Failed to decode paasta service instance from {}".format(executor['id']))
+            continue
         if 'ports' in executor['resources']:
             srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         else:

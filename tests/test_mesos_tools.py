@@ -819,3 +819,81 @@ async def test_get_current_tasks():
         expected = [mock_task_1, mock_task_2]
         ret = await mesos_tools.get_current_tasks('')
         assert ret == expected and len(ret) == len(expected)
+
+
+def test_mesos_services_running_here():
+    with mock.patch(
+        'paasta_tools.mesos_tools.get_local_slave_state', autospec=True,
+    ) as mock_get_local_slave_state:
+        mock_state = {
+            "frameworks": [
+                {
+                    "name": "marathon2",
+                    "executors": [
+                        {
+                            "id": "thing.main",
+                            "resources": {
+                                "ports": "[31062-31062]",
+                            },
+                            "tasks": [
+                                {
+                                    "state": "TASK_RUNNING",
+                                },
+                            ],
+                        },
+                        {
+                            "id": "thing.another",
+                            "tasks": [
+                                {
+                                    "state": "TASK_LOST",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "name": "chronos",
+                    "executors": [
+                        {
+                            "id": "c.main",
+                            "resources": {
+                            },
+                            "tasks": [
+                                {
+                                    "state": "TASK_RUNNING",
+                                },
+                            ],
+                        },
+                        {
+                            "id": "c.another",
+                            "resources": {
+                            },
+                            "tasks": [
+                                {
+                                    "state": "TASK_RUNNING",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+        mock_get_local_slave_state.return_value = {}
+        assert mesos_tools.mesos_services_running_here(lambda _: True, lambda id_str: id_str.split('.')) == []
+
+        mock_get_local_slave_state.return_value = mock_state
+        expected = [('thing', 'main', 31062), ('c', 'main', None), ('c', 'another', None)]
+        assert mesos_tools.mesos_services_running_here(lambda _: True, lambda id_str: id_str.split('.')) == expected
+
+        mock_fw_filter = mock.Mock(side_effect=[True, False])
+        expected = [('thing', 'main', 31062)]
+        assert mesos_tools.mesos_services_running_here(mock_fw_filter, lambda id_str: id_str.split('.')) == expected
+
+        mock_parse_service_instance_from_executor_id = mock.Mock(side_effect=[
+            ('thing', 'main'), ValueError, ('c', 'another'),
+        ])
+        expected = [('thing', 'main', 31062), ('c', 'another', None)]
+        assert mesos_tools.mesos_services_running_here(
+            lambda _: True,
+            mock_parse_service_instance_from_executor_id,
+        ) == expected
