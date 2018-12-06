@@ -17,6 +17,7 @@ import json
 import os
 import socket
 import sys
+import threading
 import time
 import uuid
 from os import execlpe
@@ -188,6 +189,29 @@ def simulate_healthcheck_on_service(
         # silently start performing health checks until grace period ends or first check succeeds
         graceperiod_end_time = time.time() + grace_period
         after_grace_period_attempts = 0
+        healthchecking = True
+
+        def _stream_docker_logs(container_id, generator):
+            while healthchecking:
+                try:
+                    # the generator will block until another log line is available
+                    log_line = next(generator).decode("utf-8").rstrip('\n')
+                    if healthchecking:
+                        paasta_print(f'container [{container_id[:12]}]: {log_line}')
+                    else:
+                        # stop streaming at first opportunity, since generator.close()
+                        # cant be used until the container is dead
+                        break
+                except StopIteration:  # natural end of logs
+                    break
+
+        docker_logs_generator = docker_client.logs(container_id, stderr=True, stream=True)
+        threading.Thread(
+            target=_stream_docker_logs,
+            daemon=True,
+            args=(container_id, docker_logs_generator),
+        ).start()
+
         while True:
             # First inspect the container for early exits
             container_state = docker_client.inspect_container(container_id)
@@ -236,6 +260,7 @@ def simulate_healthcheck_on_service(
                 break
 
             time.sleep(interval)
+        healthchecking = False   # end docker logs stream
     else:
         paasta_print('\nPaaSTA would have healthchecked your service via\n%s' % healthcheck_link)
         healthcheck_passed = True
@@ -777,17 +802,13 @@ def run_docker_container(
                 healthcheck_enabled=healthcheck,
             )
 
-        def _output_stdout_and_exit_code():
+        def _output_exit_code():
             returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
-            paasta_print('Container exited: %d)' % returncode)
-            paasta_print('Here is the stdout and stderr:\n\n')
-            paasta_print(
-                docker_client.attach(container_id, stderr=True, stream=False, logs=True),
-            )
+            paasta_print(f'Container exited: {returncode})')
 
         if healthcheck_only:
             if container_started:
-                _output_stdout_and_exit_code()
+                _output_exit_code()
                 _cleanup_container(docker_client, container_id)
             if healthcheck_mode is None:
                 paasta_print('--healthcheck-only, but no healthcheck is defined for this instance!')
@@ -803,7 +824,7 @@ def run_docker_container(
             for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
                 paasta_print(line)
         else:
-            _output_stdout_and_exit_code()
+            _output_exit_code()
             returncode = 3
 
     except KeyboardInterrupt:
