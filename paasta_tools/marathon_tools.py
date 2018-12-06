@@ -671,6 +671,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                     'image': docker_url,
                 },
                 'type': 'MESOS',
+                'volumes': docker_volumes,
             }
 
         complete_config: FormattedMarathonAppDict = {
