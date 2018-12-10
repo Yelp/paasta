@@ -1,3 +1,11 @@
+paasta-tools (0.81.24) xenial; urgency=medium
+
+  * 0.81.24 tagged with 'make release'
+    Commit: Merge pull request #2063 from Yelp/secrets_newline_eof  Bump
+    vault-tools to get newlines at end of secrets files
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 10 Dec 2018 05:15:10 -0800
+
 paasta-tools (0.81.23) xenial; urgency=medium
 
   * 0.81.23 tagged with 'make release'
