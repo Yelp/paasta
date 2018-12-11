@@ -928,8 +928,8 @@ def configure_and_run_docker_container(
     except NoDeploymentsAvailable:
         paasta_print(
             PaastaColors.red(
-                "Error: No deployments.json found in %(soa_dir)s/%(service)s."
-                "You can generate this by running:"
+                "Error: No deployments.json found in %(soa_dir)s/%(service)s. "
+                "You can generate this by running: "
                 "generate_deployments_for_service -d %(soa_dir)s -s %(service)s" % {
                     'soa_dir': soa_dir,
                     'service': service,
