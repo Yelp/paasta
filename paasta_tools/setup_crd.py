@@ -31,9 +31,10 @@ from typing import Sequence
 import service_configuration_lib
 
 from paasta_tools.kubernetes_tools import create_custom_resource
-from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeCustomResource
+from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_all_custom_resources
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -42,11 +43,6 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
-
-
-class KubeKind(NamedTuple):
-    singular: str
-    plural: str
 
 
 class CustomResource(NamedTuple):
@@ -85,11 +81,9 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.WARNING)
+        logging.basicConfig(level=logging.INFO)
 
     kube_client = KubeClient()
-
-    ensure_paasta_namespace(kube_client)
 
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
@@ -106,6 +100,10 @@ def setup_all_custom_resources(
 ) -> bool:
     results = []
     for custom_resource in CUSTOM_RESOURCES:
+        ensure_namespace(
+            kube_client=kube_client,
+            namespace=f'paasta-{custom_resource.kube_kind.plural}',
+        )
         config_dicts = load_all_configs(
             cluster=cluster,
             file_prefix=custom_resource.file_prefix,
@@ -147,7 +145,7 @@ def setup_custom_resources(
     if config_dicts:
         crs = list_all_custom_resources(
             kube_client=kube_client,
-            plural_kind=kind.plural,
+            kind=kind,
             version=version,
         )
     for service, config in config_dicts.items():
@@ -219,26 +217,26 @@ def reconcile_kubernetes_resource(
 
         try:
             if not (service, instance, kind.singular) in [(c.service, c.instance, c.kind) for c in custom_resources]:
-                log.debug(f"{desired_resource} does not exist so creating")
+                log.info(f"{desired_resource} does not exist so creating")
                 create_custom_resource(
                     kube_client=kube_client,
                     version=version,
-                    plural_kind=kind.plural,
+                    kind=kind,
                     formatted_resource=formatted_resource,
                 )
             elif desired_resource not in custom_resources:
                 sanitised_service = service.replace('_', '--')
                 sanitised_instance = instance.replace('_', '--')
-                log.debug(f"{desired_resource} exists but config_sha doesn't match")
+                log.info(f"{desired_resource} exists but config_sha doesn't match")
                 update_custom_resource(
                     kube_client=kube_client,
                     name=f'{sanitised_service}-{sanitised_instance}',
                     version=version,
-                    plural_kind=kind.plural,
+                    kind=kind,
                     formatted_resource=formatted_resource,
                 )
             else:
-                log.debug(f"{desired_resource} is up to date, no action taken")
+                log.info(f"{desired_resource} is up to date, no action taken")
         except Exception as e:
             log.error(e)
             results.append(False)

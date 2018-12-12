@@ -37,15 +37,15 @@ def test_main():
     ) as mock_parse_args, mock.patch(
         'paasta_tools.setup_kubernetes_job.KubeClient', autospec=True,
     ) as mock_kube_client, mock.patch(
-        'paasta_tools.setup_kubernetes_job.ensure_paasta_namespace', autospec=True,
-    ) as mock_ensure_paasta_namespace, mock.patch(
+        'paasta_tools.setup_kubernetes_job.ensure_namespace', autospec=True,
+    ) as mock_ensure_namespace, mock.patch(
         'paasta_tools.setup_kubernetes_job.setup_kube_deployments', autospec=True,
     ) as mock_setup_kube_deployments:
         mock_setup_kube_deployments.return_value = True
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 0
-        assert mock_ensure_paasta_namespace.called
+        assert mock_ensure_namespace.called
         mock_setup_kube_deployments.assert_called_with(
             kube_client=mock_kube_client.return_value,
             service_instances=mock_parse_args.return_value.service_instance_list,

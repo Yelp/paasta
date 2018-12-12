@@ -38,7 +38,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
@@ -1042,25 +1042,25 @@ def test_KubeClient():
         assert client.core == mock_kube_client.CoreV1Api()
 
 
-def test_ensure_paasta_namespace():
+def test_ensure_namespace():
     mock_metadata = mock.Mock()
     type(mock_metadata).name = 'paasta'
     mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
     mock_client = mock.Mock(core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)))
-    ensure_paasta_namespace(mock_client)
+    ensure_namespace(mock_client, namespace='paasta')
     assert not mock_client.core.create_namespace.called
 
     mock_metadata = mock.Mock()
     type(mock_metadata).name = 'kube-system'
     mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
     mock_client = mock.Mock(core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)))
-    ensure_paasta_namespace(mock_client)
+    ensure_namespace(mock_client, namespace='paasta')
     assert mock_client.core.create_namespace.called
 
     mock_client.core.create_namespace.reset_mock()
     mock_namespaces = mock.Mock(items=[])
     mock_client = mock.Mock(core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)))
-    ensure_paasta_namespace(mock_client)
+    ensure_namespace(mock_client, namespace='paasta')
     assert mock_client.core.create_namespace.called
 
 
