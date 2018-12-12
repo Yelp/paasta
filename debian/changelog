@@ -1,3 +1,11 @@
+paasta-tools (0.81.25) xenial; urgency=medium
+
+  * 0.81.25 tagged with 'make release'
+    Commit: Merge pull request #2078 from Yelp/bump-vault-tools-again
+    Bump vault_tools
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 12 Dec 2018 08:02:48 -0800
+
 paasta-tools (0.81.24) xenial; urgency=medium
 
   * 0.81.24 tagged with 'make release'
