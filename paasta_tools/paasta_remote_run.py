@@ -54,6 +54,28 @@ from paasta_tools.utils import validate_service_instance
 MESOS_TASK_SPACER = '.'
 
 
+# def add_common_args_to_parser(parser):
+#     parser.add_argument(
+#         '-y', '--yelpsoa-config-root',
+#         dest='yelpsoa_config_root',
+#         help='A directory from which yelpsoa-configs should be read from',
+#         default=DEFAULT_SOA_DIR,
+#     )
+#     parser.add_argument(
+#         '--debug',
+#         help='Show debug output',
+#         action='store_true',
+#         required=False,
+#         default=False,
+#     )
+#     parser.add_argument(
+#         '--aws-region',
+#         choices=['us-east-1', 'us-west-1', 'us-west-2'],
+#         help='aws region of the dynamodb state table',
+#         default=None,
+#     )
+
+
 def emit_counter_metric(counter_name, service, instance):
     create_counter(counter_name, {'service': service, 'instance': instance})
     get_metric(counter_name).count(1)
