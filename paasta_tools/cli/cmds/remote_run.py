@@ -21,7 +21,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import run_on_master
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -31,7 +30,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 @lru_cache(maxsize=1)
-def _get_system_paasta_config():
+def get_system_paasta_config():
     try:
         return load_system_paasta_config()
     except PaastaNotConfiguredError:
@@ -51,16 +50,16 @@ def _get_system_paasta_config():
 
 
 @lru_cache(maxsize=1)
-def _get_default_cluster():
-    remote_run_config = _get_system_paasta_config().get_remote_run_config()
-    return remote_run_config.get('default_cluster')
+def get_default_cluster():
+    remote_run_config = get_system_paasta_config().get_remote_run_config()
+    return remote_run_config.get('default_cluster', None)
 
 
 ARG_DEFAULTS = dict(
     common=dict(
         service=None,
         instance=None,
-        cluster=_get_default_cluster(),
+        cluster=get_default_cluster(),
         verbose=False,
     ),
     start=dict(
@@ -73,6 +72,7 @@ ARG_DEFAULTS = dict(
         constraint=[],
     ),
     stop=dict(run_id=None, framework_id=None),
+    list=dict(),
 )
 
 
@@ -108,8 +108,8 @@ def add_common_args_to_parser(parser):
     )
 
 
-def add_start_parser(main_subparser):
-    parser = main_subparser.add_parser(
+def add_start_parser(subparser):
+    parser = subparser.add_parser(
         'start',
         help="Start task subcommand",
     )
@@ -150,6 +150,11 @@ def add_start_parser(main_subparser):
         default=ARG_DEFAULTS['start']['docker_image'],
     )
     parser.add_argument(
+        '-R', '--run-id',
+        help='ID of task to stop',
+        default=ARG_DEFAULTS['stop']['run_id'],
+    )
+    parser.add_argument(
         '-d', '--dry-run',
         help=(
             'Don\'t launch the task. '
@@ -170,8 +175,8 @@ def add_start_parser(main_subparser):
     return parser
 
 
-def add_stop_parser(main_subparser):
-    parser = main_subparser.add_parser(
+def add_stop_parser(subparser):
+    parser = subparser.add_parser(
         'stop',
         help="Stop task subcommand",
     )
@@ -193,8 +198,8 @@ def add_stop_parser(main_subparser):
     return parser
 
 
-def add_list_parser(main_subparser):
-    parser = main_subparser.add_parser(
+def add_list_parser(subparser):
+    parser = subparser.add_parser(
         'list',
         help="List tasks subcommand",
     )
@@ -227,14 +232,19 @@ def add_subparser(subparsers):
     main_parser.set_defaults(command=paasta_remote_run)
 
 
-def _create_remote_run_command(args):
+def split_constraints(constraints):
+    return [c.split(',', 2) for c in constraints]
+
+
+def create_remote_run_command(args):
     cmd_parts = ['/usr/bin/paasta_remote_run', args.action]
     arg_vars = vars(args)
     arg_defaults = dict(ARG_DEFAULTS[args.action])  # copy dict
     arg_defaults.update(ARG_DEFAULTS['common'])
 
     arg_defaults['cluster'] = None  # special case, we always want to append cluster below
-    del arg_defaults['constraint']  # special case, needs conversion to json
+    if 'constraint' in arg_defaults:
+        del arg_defaults['constraint']  # special case, needs conversion to json
 
     for k in arg_vars.keys():
         if k not in arg_defaults:  # skip keys we don't know about
@@ -249,27 +259,24 @@ def _create_remote_run_command(args):
             cmd_parts.extend([f'--{k}', quote(str(v))])
 
     # constraint, convert to json
-    constraints = [c.split(',', 2) for c in arg_vars.get('constraint', [])]
-    if len(constraints) > 0:
+    if len(arg_vars['constraint']) > 0:
+        constraints = split_constraints(arg_vars['constraint'])
         cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
     return cmd_parts
 
 
 def paasta_remote_run(args):
-    system_paasta_config = _get_system_paasta_config()
-
     # ensure we have a cluster
     if not args.cluster and not ARG_DEFAULTS['common']['cluster']:
         paasta_print(PaastaColors.red("Error: no cluster specified and no default cluster available"))
         return 1
 
-    cmd_parts = _create_remote_run_command(args)
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         cluster=args.cluster,
-        system_paasta_config=system_paasta_config,
-        cmd_parts=cmd_parts,
+        system_paasta_config=get_system_paasta_config(),
+        cmd_parts=create_remote_run_command(args),
         graceful_exit=graceful_exit,
     )
 
