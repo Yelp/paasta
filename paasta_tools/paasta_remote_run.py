@@ -15,11 +15,11 @@
 import argparse
 import json
 import logging
+import pprint
 import os
 import random
 import re
 import signal
-import simplejson as json
 import string
 import sys
 import traceback
@@ -82,7 +82,7 @@ def add_debug_args_to_parser(parser):
         '--aws-region',
         choices=['us-east-1', 'us-west-1', 'us-west-2'],
         help='aws region of the dynamodb state table',
-        default=None,
+        default=get_system_paasta_config().get_taskproc().get('aws_region'),
     )
 
 
@@ -239,6 +239,15 @@ def paasta_to_task_config_kwargs(
     return kwargs
 
 
+def task_config_to_dict(task_config):
+    """ Convert a task config to a dict and remove all empty keys """
+    dconf = dict(task_config)
+    for k in list(dconf.keys()):
+        if not dconf[k]:
+            del dconf[k]
+    return dconf
+
+
 def build_executor_stack(
     # TODO: rename to registry?
     processor,
@@ -293,9 +302,6 @@ def build_executor_stack(
     else:
         raise ValueError("Required aws credentials")
 
-    if not region:
-        region = taskproc_config.get('aws_region')
-
     endpoint = taskproc_config.get('dynamodb_endpoint')
     session = Session(
         region_name=region,
@@ -317,6 +323,14 @@ def build_executor_stack(
 
 
 def remote_run_start(args):
+    """ Start a task in Mesos
+
+    Steps:
+    1. Accumulate overrides
+    2. Create task configuration
+    3. Build executor stack
+    4. Run the task on the executor stack
+    """
     system_paasta_config = get_system_paasta_config()
     service, cluster, soa_dir, instance, instance_type = extract_args(args)
     overrides_dict = {}
@@ -325,11 +339,10 @@ def remote_run_start(args):
     if constraints_json:
         try:
             constraints = json.loads(constraints_json)
+            if constraints:
+                overrides_dict['constraints'] = constraints
         except Exception as e:
-            paasta_print("Error while parsing constraints: %s", e)
-
-        if constraints:
-            overrides_dict['constraints'] = constraints
+            paasta_print(f"Error while parsing constraints: {e}")
 
     if args.cmd:
         overrides_dict['cmd'] = args.cmd
@@ -355,12 +368,9 @@ def remote_run_start(args):
         sys.stdout = open('/dev/null', 'w')
         sys.stderr = open('/dev/null', 'w')
 
-    paasta_print('Scheduling a task on Mesos')
-
     processor = TaskProcessor()
     processor.load_plugin(provider_module='task_processing.plugins.mesos')
     processor.load_plugin(provider_module='task_processing.plugins.stateful')
-
     MesosExecutor = processor.executor_cls(provider='mesos')
 
     native_job_config = load_paasta_native_job_config(
@@ -430,22 +440,41 @@ def remote_run_start(args):
 
     default_role = system_paasta_config.get_remote_run_config().get('default_role')
     assert default_role
+    build_kwargs=dict(
+        service=service,
+        instance=instance,
+        role=native_job_config.get_role() or default_role,
+        pool=native_job_config.get_pool(),
+        cluster=cluster,
+        framework_staging_timeout=args.staging_timeout,
+    )
+    role = native_job_config.get_role() or default_role
+    pool = native_job_config.get_pool()
+
+    if args.dry_run:
+        task_config_dict = task_config_to_dict(task_config)
+        pp = pprint.PrettyPrinter(indent=2)
+        paasta_print(
+            PaastaColors.green("Would have run task with:"),
+            PaastaColors.green("Executor config:"),
+            pp.pformat(build_kwargs),
+            PaastaColors.green("Task config:"),
+            pp.pformat(task_config_dict),
+            sep='\n',
+        )
+        return
 
     try:
         executor_stack = build_executor_stack(
+            **build_kwargs,
             processor=processor,
-            service=service,
-            instance=instance,
-            role=native_job_config.get_role() or default_role,
-            pool=native_job_config.get_pool(),
-            cluster=cluster,
             run_id=run_id,
             system_paasta_config=system_paasta_config,
-            framework_staging_timeout=args.staging_timeout,
             region=args.aws_region,
         )
         runner = Sync(executor_stack)
 
+        paasta_print('Scheduling a task on Mesos')
         terminal_event = runner.run(task_config)
         runner.stop()
     except (Exception, ValueError) as e:

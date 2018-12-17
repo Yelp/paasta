@@ -256,12 +256,12 @@ def create_remote_run_command(args):
         if isinstance(v, bool) and v:
             cmd_parts.append(f'--{k}')
         else:
-            cmd_parts.extend([f'--{k}', quote(str(v))])
+            cmd_parts.extend([f'--{k}', str(v)])
 
     # constraint, convert to json
     if len(arg_vars['constraint']) > 0:
         constraints = split_constraints(arg_vars['constraint'])
-        cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
+        cmd_parts.extend(['--constraints-json', json.dumps(constraints)])
 
     return cmd_parts
 
@@ -272,11 +272,12 @@ def paasta_remote_run(args):
         paasta_print(PaastaColors.red("Error: no cluster specified and no default cluster available"))
         return 1
 
+    cmd_parts = create_remote_run_command(args)
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
         cluster=args.cluster,
         system_paasta_config=get_system_paasta_config(),
-        cmd_parts=create_remote_run_command(args),
+        cmd_parts=cmd_parts,
         graceful_exit=graceful_exit,
     )
 
