@@ -757,9 +757,9 @@ def run_on_master(
         cmd_parts.append(
             # send process to background and capture it's pid
             '& p=$!; ' +
-            # wait for stdin with timeout in a loop, exit when original process finished
+            # noqa: W504 wait for stdin with timeout in a loop, exit when original process finished
             'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
-            # kill original process if loop finished (something on stdin)
+            # noqa: W504 kill original process if loop finished (something on stdin)
             'kill $p; wait',
         )
         stdin = subprocess.PIPE
@@ -873,10 +873,13 @@ def list_deploy_groups(
     parsed_args=None,
     **kwargs,
 ) -> Set:
-    return {config.get_deploy_group() for config in get_instance_configs_for_service(
-        service=service if service is not None else parsed_args.service or guess_service_name(),
-        soa_dir=soa_dir,
-    )}
+    return set(filter(
+        None,
+        {config.get_deploy_group() for config in get_instance_configs_for_service(
+            service=service if service is not None else parsed_args.service or guess_service_name(),
+            soa_dir=soa_dir,
+        )},
+    ))
 
 
 def validate_given_deploy_groups(
