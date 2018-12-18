@@ -15,7 +15,6 @@
 import json
 import re
 from functools import lru_cache
-from shlex import quote
 
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
