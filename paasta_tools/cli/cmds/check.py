@@ -235,7 +235,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
                 deploy_groups.append(config.get_deploy_group())
             except NotImplementedError:
                 pass
-    return deploy_groups
+    return set(filter(None, deploy_groups))
 
 
 def deployments_check(service, soa_dir):
