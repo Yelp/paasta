@@ -34,21 +34,22 @@ from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
 
 from paasta_tools import mesos_tools
-from paasta_tools.cli.cmds.remote_run import add_common_args_to_parser
-from paasta_tools.cli.cmds.remote_run import add_start_args_to_parser
+from paasta_tools.cli.cmds.remote_run import add_list_parser
+from paasta_tools.cli.cmds.remote_run import add_start_parser
+from paasta_tools.cli.cmds.remote_run import add_stop_parser
+from paasta_tools.cli.cmds.remote_run import get_system_paasta_config
+from paasta_tools.cli.cmds.remote_run import split_constraints
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
 from paasta_tools.mesos_tools import get_all_frameworks
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
 MESOS_TASK_SPACER = '.'
@@ -59,55 +60,56 @@ def emit_counter_metric(counter_name, service, instance):
     get_metric(counter_name).count(1)
 
 
+def add_debug_args_to_parser(parser):
+    parser.add_argument(
+        '-y', '--yelpsoa-config-root',
+        dest='yelpsoa_config_root',
+        help='A directory from which yelpsoa-configs should be read from',
+        default=DEFAULT_SOA_DIR,
+    )
+    parser.add_argument(
+        '--debug',
+        help='Show debug output',
+        action='store_true',
+        default=False,
+    )
+    parser.add_argument(
+        '--aws-region',
+        choices=['us-east-1', 'us-west-1', 'us-west-2'],
+        help='aws region of the dynamodb state table',
+        default=None,  # load later from system paasta configs
+    )
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='')
     subs = parser.add_subparsers(
         dest='action',
         help='Subcommands of paasta_remote_run',
     )
+    action_parsers = dict(
+        start=add_start_parser(subs),
+        stop=add_stop_parser(subs),
+        list=add_list_parser(subs),
+    )
+    for ap in action_parsers.values():
+        add_debug_args_to_parser(ap)
 
-    start_parser = subs.add_parser('start', help='Start task')
-    add_start_args_to_parser(start_parser)
-    add_common_args_to_parser(start_parser)
-    start_parser.add_argument(
-        '-X', '--constraints-json',
-        help=('Mesos constraints JSON'),
-        required=False,
+    action_parsers['start'].add_argument(
+        '--constraints-json',
+        help='Mesos constraints JSON',
         default=None,
     )
-
-    stop_parser = subs.add_parser('stop', help='Stop task')
-    add_common_args_to_parser(stop_parser)
-    stop_parser.add_argument(
-        '-F', '--framework-id',
-        help=('ID of framework to stop'),
-        required=False,
-        default=None,
-    )
-
-    list_parser = subs.add_parser('list', help='List tasks')
-    add_common_args_to_parser(list_parser)
 
     return parser.parse_args(argv)
 
 
 def extract_args(args):
-    try:
-        system_paasta_config = load_system_paasta_config()
-    except PaastaNotConfiguredError:
-        paasta_print(
-            PaastaColors.yellow(
-                "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
-                "PaaSTA is not configured locally on this host, and remote-run may not behave"
-                "the same way it would behave on a server configured for PaaSTA.",
-            ),
-            sep='\n',
-        )
-        system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
-
+    system_paasta_config = get_system_paasta_config()
+    soa_dir = args.yelpsoa_config_root
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
-    cluster = args.cluster or system_paasta_config.get_local_run_config().get('default_cluster', None)
 
+    cluster = args.cluster or system_paasta_config.get_remote_run_config().get('default_cluster', None)
     if not cluster:
         paasta_print(
             PaastaColors.red(
@@ -120,7 +122,6 @@ def extract_args(args):
         emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, 'UNKNOWN')
         sys.exit(1)
 
-    soa_dir = args.yelpsoa_config_root
     instance = args.instance
     if instance is None:
         instance_type = 'adhoc'
@@ -308,20 +309,29 @@ def build_executor_stack(
 
 
 def remote_run_start(args):
-
+    """ Start a task in Mesos
+    Steps:
+    1. Accumulate overrides
+    2. Create task configuration
+    3. Build executor stack
+    4. Run the task on the executor stack
+    """
     system_paasta_config, service, cluster, \
         soa_dir, instance, instance_type = extract_args(args)
     overrides_dict = {}
 
-    constraints_json = args.constraints_json
-    if constraints_json:
-        try:
-            constraints = json.loads(constraints_json)
-        except Exception as e:
-            paasta_print("Error while parsing constraints: %s", e)
-
-        if constraints:
-            overrides_dict['constraints'] = constraints
+    constraints = []
+    try:
+        if args.constraints_json:
+            constraints.extend(json.loads(args.constraints_json))
+        if args.constraint:
+            constraints.extend(split_constraints(args.constraint))
+    except Exception as e:
+        paasta_print("Error while parsing constraints: %s", e)
+        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
+        sys.exit(1)
+    if constraints:
+        overrides_dict['constraints'] = constraints
 
     if args.cmd:
         overrides_dict['cmd'] = args.cmd
@@ -416,10 +426,7 @@ def remote_run_start(args):
         )
         if runner is not None:
             runner.stop()
-        if _signum == signal.SIGTERM:
-            sys.exit(143)
-        else:
-            sys.exit(1)
+        sys.exit(143 if _signum == signal.SIGTERM else 1)
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
@@ -561,8 +568,6 @@ def main(argv):
         logging.basicConfig(level=logging.DEBUG)
     elif args.verbose:
         logging.basicConfig(level=logging.INFO)
-    # elif args.quiet:
-    #     logging.basicConfig(level=logging.ERROR)
     else:
         logging.basicConfig(level=logging.WARNING)
 
