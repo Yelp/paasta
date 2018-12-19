@@ -20,7 +20,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import run_on_master
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -66,7 +65,7 @@ def get_system_paasta_config():
         return SystemPaastaConfig(
             {"volumes": []},
             '/etc/paasta',
-)
+        )
 
 
 def add_common_args_to_parser(parser):
@@ -262,7 +261,7 @@ def paasta_remote_run(args):
         default_cluster = system_paasta_config.get_remote_run_config().get('default_cluster')
         if not default_cluster:
             paasta_print(PaastaColors.red(
-                "Error: no cluster specified and no default cluster available"
+                "Error: no cluster specified and no default cluster available",
             ))
             return 1
         args.cluster = default_cluster
