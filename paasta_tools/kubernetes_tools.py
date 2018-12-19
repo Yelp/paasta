@@ -138,8 +138,8 @@ def load_kubernetes_service_config_no_cache(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> "KubernetesDeploymentConfig":
     """Read a service instance's configuration for kubernetes.
 
@@ -205,8 +205,8 @@ def load_kubernetes_service_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> "KubernetesDeploymentConfig":
     """Read a service instance's configuration for kubernetes.
 
@@ -246,7 +246,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         instance: str,
         config_dict: KubernetesDeploymentConfigDict,
         branch_dict: Optional[BranchDictV2],
-        soa_dir: str=DEFAULT_SOA_DIR,
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         super().__init__(
             cluster=cluster,
@@ -777,7 +777,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
 
 
 def get_kubernetes_services_running_here_for_nerve(
-    cluster: str,
+    cluster: Optional[str],
     soa_dir: str,
 ) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     try:
@@ -949,8 +949,7 @@ def filter_pods_by_service_instance(
 ) -> Sequence[V1Pod]:
     return [
         pod for pod in pod_list
-        if pod.metadata.labels['service'] == service and
-        pod.metadata.labels['instance'] == instance
+        if pod.metadata.labels['service'] == service and pod.metadata.labels['instance'] == instance
     ]
 
 
