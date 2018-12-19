@@ -1068,7 +1068,7 @@ def marathon_services_running_here() -> List[Tuple[str, str, int]]:
 
 
 def get_marathon_services_running_here_for_nerve(
-    cluster: str,
+    cluster: Optional[str],
     soa_dir: str,
 ) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     if not cluster:

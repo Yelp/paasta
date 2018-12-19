@@ -3,6 +3,9 @@ import argparse
 import sys
 import time
 from time import sleep
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
 
 from paasta_tools import mesos_tools
 from paasta_tools.frameworks.native_scheduler import create_driver
@@ -10,6 +13,7 @@ from paasta_tools.frameworks.native_scheduler import get_paasta_native_jobs_for_
 from paasta_tools.frameworks.native_scheduler import load_paasta_native_job_config
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
 from paasta_tools.long_running_service_tools import load_service_namespace_config
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -91,7 +95,11 @@ def paasta_native_services_running_here(hostname=None, framework_id=None):
     )
 
 
-def get_paasta_native_services_running_here_for_nerve(cluster, soa_dir, hostname=None):
+def get_paasta_native_services_running_here_for_nerve(
+    cluster: Optional[str],
+    soa_dir: str,
+    hostname: Optional[str] = None,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     if not cluster:
         try:
             system_paasta_config = load_system_paasta_config()
