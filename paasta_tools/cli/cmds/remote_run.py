@@ -45,7 +45,7 @@ ARG_DEFAULTS = dict(
         dry_run=False,
         constraint=[],
         notification_email=None,  # always append to remote-run command, so no default
-        retries=3,
+        retries=0,
     ),
     stop=dict(run_id=None, framework_id=None),
     list=dict(),

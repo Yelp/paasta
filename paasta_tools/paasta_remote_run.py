@@ -30,6 +30,7 @@ from pyrsistent import InvariantException
 from pyrsistent import PTypeError
 from task_processing.metrics import create_counter
 from task_processing.metrics import get_metric
+from task_processing.plugins.mesos.task_config import MesosTaskConfig
 from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
@@ -54,6 +55,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
 MESOS_TASK_SPACER = '.'
+TASKPROC_OFFER_TIMEOUT_RAW = 'Failed due to offer timeout'
 
 
 def emit_counter_metric(counter_name, service, instance):
@@ -110,16 +112,13 @@ def extract_args(args):
     soa_dir = args.yelpsoa_config_root
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
 
-    cluster = args.cluster or system_paasta_config.get_remote_run_config().get('default_cluster', None)
+    cluster = args.cluster or \
+        system_paasta_config.get_remote_run_config().get('default_cluster', None)
     if not cluster:
-        paasta_print(
-            PaastaColors.red(
-                "PaaSTA on this machine has not been configured with a default cluster."
-                "Please pass one using '-c'.",
-            ),
-            sep='\n',
-            file=sys.stderr,
-        )
+        paasta_print(PaastaColors.red(
+            "PaaSTA on this machine has not been configured with a default cluster."
+            "Please pass one using '-c'.",
+        ))
         emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, 'UNKNOWN')
         sys.exit(1)
 
@@ -138,14 +137,10 @@ def extract_args(args):
             sys.exit(1)
 
         if instance_type != 'adhoc':
-            paasta_print(
-                PaastaColors.red(
-                    (
-                        "Please use instance declared in adhoc.yaml for use "
-                        "with remote-run, {} is declared as {}"
-                    ).format(instance, instance_type),
-                ),
-            )
+            paasta_print(PaastaColors.red(
+                "Please use instance declared in adhoc.yaml for use "
+                f"with remote-run, {instance} is declared as {instance_type}"
+            ))
             emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, instance)
             sys.exit(1)
 
@@ -159,177 +154,13 @@ def extract_args(args):
     )
 
 
-def paasta_to_task_config_kwargs(
-    service,
-    instance,
-    native_job_config,
-    offer_timeout,
-    system_paasta_config,
-    config_overrides=None,
-    docker_image=None,
-):
-
-    if docker_image is None:
-        docker_image = native_job_config.get_docker_url()
-    docker_parameters = [
-        {'key': param['key'], 'value': param['value']}
-        for param in native_job_config.format_docker_parameters()
-    ]
-    # network = native_job_config.get_mesos_network_mode()
-
-    docker_volumes = native_job_config.get_volumes(
-        system_volumes=system_paasta_config.get_volumes(),
-    )
-    volumes = [
-        {
-            'container_path': volume['containerPath'],
-            'host_path': volume['hostPath'],
-            'mode': volume['mode'].upper(),
-        }
-        for volume in docker_volumes
-    ]
-    cmd = native_job_config.get_cmd()
-    uris = system_paasta_config.get_dockercfg_location()
-    cpus = native_job_config.get_cpus()
-    mem = native_job_config.get_mem()
-    disk = native_job_config.get_disk(10)
-    gpus = native_job_config.get_gpus()
-
-    kwargs = {
-        'image': str(docker_image),
-        'cpus': cpus,
-        'mem': float(mem),
-        'disk': float(disk),
-        'volumes': volumes,
-        # 'ports': None,
-        # 'cap_add'
-        # 'ulimit'
-        'uris': [uris],
-        'docker_parameters': docker_parameters,
-        'containerizer': 'DOCKER',
-        'environment': native_job_config.get_env_dictionary(),
-        'offer_timeout': offer_timeout,
-    }
-    if cmd:
-        kwargs['cmd'] = cmd
-    if gpus:
-        kwargs['gpus'] = int(gpus)
-        kwargs['containerizer'] = 'MESOS'
-
-    config_hash = get_config_hash(
-        kwargs,
-        force_bounce=native_job_config.get_force_bounce(),
-    )
-
-    kwargs['name'] = str(compose_job_id(
-        service,
-        instance,
-        git_hash=get_code_sha_from_dockerurl(docker_image),
-        config_hash=config_hash,
-        spacer=MESOS_TASK_SPACER,
-    ))
-
-    return kwargs
-
-
-def task_config_to_dict(task_config):
-    """ Convert a task config to a dict and remove all empty keys """
-    dconf = dict(task_config)
-    for k in list(dconf.keys()):
-        if not dconf[k]:
-            del dconf[k]
-    return dconf
-
-
-def build_executor_stack(
-    # TODO: rename to registry?
-    processor,
-    service,
-    instance,
-    cluster,
-    role,
-    pool,
-    # TODO: move run_id into task identifier?
-    run_id,
-    system_paasta_config,
-    framework_staging_timeout,
-    region,
-):
-
-    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
-    mesos_address = '{}:{}'.format(
-        mesos_tools.find_mesos_leader(cluster_fqdn),
-        mesos_tools.MESOS_MASTER_PORT,
-    )
-
-    # TODO: implement DryRunExecutor?
-    taskproc_config = system_paasta_config.get_taskproc()
-
-    MesosExecutor = processor.executor_cls('mesos')
-    mesos_executor = MesosExecutor(
-        role=role,
-        pool=pool,
-        principal=taskproc_config.get('principal'),
-        secret=taskproc_config.get('secret'),
-        mesos_address=mesos_address,
-        framework_name="paasta-remote {} {} {}".format(
-            compose_job_id(service, instance),
-            datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
-            run_id,
-        ),
-        framework_staging_timeout=framework_staging_timeout,
-        initial_decline_delay=0.5,
-    )
-
-    task_logging_executor = processor.executor_from_config(
-        provider='logging',
-        provider_config={
-            'downstream_executor': mesos_executor,
-        },
-    )
-
-    credentials_file = taskproc_config.get('boto_credential_file')
-    if credentials_file:
-        with open(credentials_file) as f:
-            credentials = json.loads(f.read())
-    else:
-        raise ValueError("Required aws credentials")
-
-    if not region:
-        region = taskproc_config.get('aws_region')
-
-    endpoint = taskproc_config.get('dynamodb_endpoint')
-    session = Session(
-        region_name=region,
-        aws_access_key_id=credentials['accessKeyId'],
-        aws_secret_access_key=credentials['secretAccessKey'],
-    )
-
-    StatefulExecutor = processor.executor_cls(provider='stateful')
-    stateful_executor = StatefulExecutor(
-        downstream_executor=task_logging_executor,
-        persister=DynamoDBPersister(
-            table_name="taskproc_events_%s" % cluster,
-            session=session,
-            endpoint_url=endpoint,
-        ),
-    )
-
-    return stateful_executor
-
-
-def remote_run_start(args):
-    """ Start a task in Mesos
-    Steps:
-    1. Accumulate overrides
-    2. Create task configuration
-    3. Build executor stack
-    4. Run the task on the executor stack
+def accumulate_config_overrides(args):
+    """ Although task configs come with defaults values, certain args can
+    override them. We accumulate them in a dict here and return them.
     """
-    system_paasta_config, service, cluster, \
-        soa_dir, instance, instance_type = extract_args(args)
-    overrides_dict = {}
+    overrides = {}
 
+    # constraint overrides
     constraints = []
     try:
         if args.constraints_json:
@@ -341,92 +172,220 @@ def remote_run_start(args):
         emit_counter_metric('paasta.remote_run.start.failed', service, instance)
         sys.exit(1)
     if constraints:
-        overrides_dict['constraints'] = constraints
-
+        overrides['constraints'] = constraints
+    # cmd overrides
     if args.cmd:
-        overrides_dict['cmd'] = args.cmd
-
+        overrides['cmd'] = args.cmd
+    # instance count override
     if args.instances:
-        overrides_dict['instances'] = args.instances
+        overrides['instances'] = args.instances
 
-    run_id = args.run_id
-    if run_id is None:
-        run_id = ''.join(
-            random.choice(string.ascii_uppercase + string.digits)
-            for _ in range(8)
-        )
-        paasta_print("Assigned random run-id: %s" % run_id)
+    return overrides
 
-    if args.detach:
-        paasta_print("Running in background")
-        if os.fork() > 0:
-            return
-        os.setsid()
-        if os.fork() > 0:
-            return
-        sys.stdout = open('/dev/null', 'w')
-        sys.stderr = open('/dev/null', 'w')
 
-    processor = TaskProcessor()
-    processor.load_plugin(provider_module='task_processing.plugins.mesos')
-    processor.load_plugin(provider_module='task_processing.plugins.stateful')
+def generate_run_id(length=8):
+    """ Generates a random string of uppercase letters and digits for use as
+    a run identifier
+    """
+    run_id = ''.join(
+        random.choice(string.ascii_uppercase + string.digits)
+        for _ in range(length)
+    )
+    paasta_print(f"Generated random run identifier: {run_id}")
+    return run_id
 
-    MesosExecutor = processor.executor_cls(provider='mesos')
 
-    native_job_config = load_paasta_native_job_config(
+def create_framework_name(service, instance, run_id):
+    """ Creates a framework name for our task """
+    return "paasta-remote {} {} {}".format(
+        compose_job_id(service, instance),
+        datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
+        run_id,
+    )
+
+
+def create_mesos_executor(
+    processor,
+    system_paasta_config,
+    taskproc_config,
+    cluster,
+    framework_name,
+    framework_staging_timeout,
+    role='*',
+    pool='default',
+):
+    """ Create a Mesos executor specific to our cluster """
+    MesosExecutor = processor.executor_cls('mesos_task')
+
+    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
+    mesos_address = '{}:{}'.format(
+        mesos_tools.find_mesos_leader(cluster_fqdn),
+        mesos_tools.MESOS_MASTER_PORT,
+    )
+
+    return MesosExecutor(
+        role=role,
+        pool=pool,
+        principal=taskproc_config.get('principal'),
+        secret=taskproc_config.get('secret'),
+        mesos_address=mesos_address,
+        framework_name=framework_name,
+        framework_staging_timeout=framework_staging_timeout,
+        initial_decline_delay=0.5,
+    )
+
+
+def paasta_to_task_config_kwargs(
+    service,
+    instance,
+    system_paasta_config,
+    native_job_config,
+    offer_timeout,
+    docker_image=None,
+):
+    kwargs = {
+        'cpus': float(native_job_config.get_cpus()),
+        'mem': float(native_job_config.get_mem()),
+        'disk': float(native_job_config.get_disk(10)),
+        'uris': [system_paasta_config.get_dockercfg_location()],
+        'environment': native_job_config.get_env_dictionary(),
+        'containerizer': 'DOCKER',
+        'image': docker_image or native_job_config.get_docker_url(),
+        'offer_timeout': offer_timeout,
+    }
+
+    # docker kwargs
+    kwargs['docker_parameters'] = [
+        {'key': param['key'], 'value': param['value']}
+        for param in native_job_config.format_docker_parameters()
+    ]
+    docker_volumes = native_job_config.get_volumes(
+        system_volumes=system_paasta_config.get_volumes(),
+    )
+    kwargs['volumes'] = [
+        {
+            'container_path': volume['containerPath'],
+            'host_path': volume['hostPath'],
+            'mode': volume['mode'].upper(),
+        }
+        for volume in docker_volumes
+    ]
+    # cmd kwarg
+    cmd = native_job_config.get_cmd()
+    if cmd:
+        kwargs['cmd'] = cmd
+    # gpus kwarg
+    gpus = native_job_config.get_gpus()
+    if gpus:
+        kwargs['gpus'] = int(gpus)
+        kwargs['containerizer'] = 'MESOS'  # docker containerizer does not support gpus
+    # task name kwarg (requires everything else to hash)
+    config_hash = get_config_hash(
+        kwargs,
+        force_bounce=native_job_config.get_force_bounce(),
+    )
+    kwargs['name'] = str(compose_job_id(
         service,
         instance,
-        cluster,
-        soa_dir=soa_dir,
-        instance_type=instance_type,
-        config_overrides=overrides_dict,
-        load_deployments=not args.docker_image,
-    )
+        git_hash=get_code_sha_from_dockerurl(kwargs['image']),
+        config_hash=config_hash,
+        spacer=MESOS_TASK_SPACER,
+    ))
+
+    return kwargs
+
+
+def create_mesos_task_config(processor, *args, **kwargs):
+    """ Creates a Mesos task configuration """
+    MesosExecutor = processor.executor_cls('mesos_task')
     try:
-        task_config = MesosExecutor.TASK_CONFIG_INTERFACE(
-            **paasta_to_task_config_kwargs(
-                service=service,
-                instance=instance,
-                system_paasta_config=system_paasta_config,
-                native_job_config=native_job_config,
-                config_overrides=overrides_dict,
-                docker_image=args.docker_image,
-                offer_timeout=args.staging_timeout,
-            ),
+        return MesosExecutor.TASK_CONFIG_INTERFACE(
+            **paasta_to_task_config_kwargs(*args, **kwargs)
         )
     except InvariantException as e:
         if len(e.missing_fields) > 0:
-            paasta_print(
-                PaastaColors.red(
-                    "Mesos task config is missing following fields: {}".format(
-                        ', '.join(e.missing_fields),
-                    ),
-                ),
-            )
+            paasta_print(PaastaColors.red(
+                "Mesos task config is missing following fields: "
+                f"{', '.join(e.missing_fields)}"
+            ))
         elif len(e.invariant_errors) > 0:
-            paasta_print(
-                PaastaColors.red(
-                    "Mesos task config is failing following checks: {}".format(
-                        ', '.join(str(ie) for ie in e.invariant_errors),
-                    ),
-                ),
-            )
+            paasta_print(PaastaColors.red(
+                "Mesos task config is failing following checks: "
+                f"{', '.join(str(ie) for ie in e.invariant_errors)}"
+            ))
         else:
-            paasta_print(
-                PaastaColors.red(f"Mesos task config error: {e}"),
-            )
-        traceback.print_exc()
-        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
-        sys.exit(1)
+            paasta_print(PaastaColors.red(f"Mesos task config error: {e}"))
     except PTypeError as e:
-        paasta_print(
-            PaastaColors.red(
-                f"Mesos task config is failing a type check: {e}",
-            ),
-        )
-        traceback.print_exc()
-        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
-        sys.exit(1)
+        paasta_print(PaastaColors.red(
+            f"Mesos task config is failing a type check: {e}",
+        ))
+    traceback.print_exc()
+    emit_counter_metric('paasta.remote_run.start.failed', service, instance)
+    sys.exit(1)
+
+
+def task_config_to_dict(task_config):
+    """ Convert a task config to a dict and remove all empty keys """
+    dconf = dict(task_config)
+    for k in list(dconf.keys()):
+        if not dconf[k]:
+            del dconf[k]
+    return dconf
+
+
+def create_boto_session(taskproc_config, region):
+    # first, try to load credentials
+    credentials_file = taskproc_config.get('boto_credential_file')
+    if credentials_file:
+        with open(credentials_file) as f:
+            credentials = json.loads(f.read())
+    else:
+        raise ValueError("Required aws credentials")
+
+    # second, create the session for the given region
+    return Session(
+        region_name=region,
+        aws_access_key_id=credentials['accessKeyId'],
+        aws_secret_access_key=credentials['secretAccessKey'],
+    )
+
+
+# TODO: rename to registry?
+def build_executor_stack(
+    processor,
+    cluster_executor,
+    taskproc_config,
+    cluster,
+    region,
+):
+    """ Executor stack consists of:
+    1. Cluster Executor (e.g. MesosExecutor)
+    2. LoggingExecutor
+    3. StatefulExecutor
+    """
+    # logging executor
+    task_logging_executor = processor.executor_from_config(
+        provider='logging',
+        provider_config={
+            'downstream_executor': cluster_executor,
+        },
+    )
+    # stateful executor
+    StatefulExecutor = processor.executor_cls(provider='stateful')
+    stateful_executor = StatefulExecutor(
+        downstream_executor=task_logging_executor,
+        persister=DynamoDBPersister(
+            table_name=f"taskproc_events_{cluster}",
+            session=create_boto_session(taskproc_config, region),
+            endpoint_url=taskproc_config.get('dynamodb_endpoint'),
+        ),
+    )
+    return stateful_executor
+
+
+def run_task(executor, task_config):
+    """ Runs a task until a terminal event is received, which is returned. """
+    runner = Sync(executor)
 
     def handle_interrupt(_signum, _frame):
         paasta_print(
@@ -438,59 +397,170 @@ def remote_run_start(args):
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
+    terminal_event = runner.run(task_config)
+    runner.stop()
+    return terminal_event
+
+
+def get_terminal_event_error_message(terminal_event):
+    if not terminal_event.terminal:
+        return None  # not terminal...
+    elif TASKPROC_OFFER_TIMEOUT_RAW in terminal_event.raw:
+        return terminal_event.raw
+    else:  # should be a dict
+        return pprint.pformat(terminal_event.raw)
+
+
+def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
+    # use max in case retries is negative, +1 for initial try
+    tries_left = max(retries, 0) + 1
+    terminal_events = []
+
+    while tries_left > 0:
+        paasta_print(PaastaColors.yellow(
+            f"Scheduling task on Mesos (tries left: {tries_left})"
+        ))
+
+        try:
+            executor = executor_factory()
+            task_config = task_config_factory()
+            terminal_event = run_task(executor, task_config)
+        except (Exception, ValueError) as e:
+            # implies an error with our code, and not with mesos, so return
+            # the traceback instead
+            paasta_print(f"Except while running executor stack: {e}")
+            traceback.print_exc()
+            return None
+
+        mesos_type = getattr(terminal_event, 'platform_type', None)
+        terminal_events.append(terminal_event)
+        if terminal_event.success:
+            paasta_print(PaastaColors.green("Task finished successfully"))
+            break
+        else:
+            # TODO: add reconciliation and other more specific behavior
+            error_msg = get_terminal_event_error_message(terminal_event)
+            paasta_print(PaastaColors.red(f"Task failed:\n{error_msg}"))
+
+        tries_left -= 1
+
+    return terminal_events
+
+
+def handle_terminal_event(event, service, instance):
+    """ Given a terminal event:
+    1. Emit metrics
+    2. Notify users
+    3. Produce exit code
+    """
+    if not event:
+        error_message = (
+            "Encountered an exception while running task:\n"
+            f'{traceback.format_exc()}'
+        )
+    elif event.success:
+        return 0
+    else:
+        error_message = get_terminal_event_error_message(event)
+
+    # TODO: notify users
+    emit_counter_metric('paasta.remote_run.start.failed', service, instance)
+    return 1
+
+
+def remote_run_start(args):
+    """ Start a task in Mesos
+    Steps:
+    1. Accumulate overrides
+    2. Create task configuration
+    3. Build executor stack
+    4. Run the task on the executor stack
+    """
+    # accumulate all configuration needed to build what we need to run a task
+    system_paasta_config, service, cluster, \
+        soa_dir, instance, instance_type = extract_args(args)
+    # TODO: move run_id into task identifier?
+    run_id = args.run_id or generate_run_id(length=10)
+    framework_name = create_framework_name(service, instance, run_id)
+    overrides = accumulate_config_overrides(args)
+    # TODO: implement DryRunExecutor?
+    taskproc_config = system_paasta_config.get_taskproc()
+    native_job_config = load_paasta_native_job_config(
+        service,
+        instance,
+        cluster,
+        soa_dir=soa_dir,
+        instance_type=instance_type,
+        config_overrides=overrides,
+        load_deployments=not args.docker_image,
+    )
+    region = args.aws_region or taskproc_config.get('aws_region')
     default_role = system_paasta_config.get_remote_run_config().get('default_role')
     assert default_role
-    build_kwargs = dict(
-        service=service,
-        instance=instance,
-        role=native_job_config.get_role() or default_role,
-        pool=native_job_config.get_pool(),
+    role = native_job_config.get_role() or default_role
+    pool = native_job_config.get_pool()
+    processor = TaskProcessor()
+    processor.load_plugin(provider_module='task_processing.plugins.stateful')
+    processor.load_plugin(provider_module='task_processing.plugins.mesos')
+
+    if args.detach:
+        paasta_print("Running in background")
+        if os.fork() > 0:
+            return
+        os.setsid()
+        if os.fork() > 0:
+            return
+        sys.stdout = open('/dev/null', 'w')
+        sys.stderr = open('/dev/null', 'w')
+
+    # create factory functions for task_config and executors, which makes it
+    # easier to recreate them for retry purposes
+    def task_config_factory():
+        return create_mesos_task_config(
+            processor=processor,
+            service=service,
+            instance=instance,
+            system_paasta_config=system_paasta_config,
+            native_job_config=native_job_config,
+            offer_timeout=args.staging_timeout,
+            docker_image=args.docker_image,
+        )
+    executor_kwargs = dict(  # used to create mesos executor
+        processor=processor,
+        system_paasta_config=system_paasta_config,
+        taskproc_config=taskproc_config,
         cluster=cluster,
+        framework_name=framework_name,
         framework_staging_timeout=args.staging_timeout,
+        role=role,
+        pool=pool,
     )
+    def executor_factory():
+        mesos_executor = create_mesos_executor(**executor_kwargs)
+        return build_executor_stack(
+            processor, mesos_executor, taskproc_config, cluster, region)
+
     if args.dry_run:
-        task_config_dict = task_config_to_dict(task_config)
+        task_config_dict = task_config_to_dict(task_config_factory())
         pp = pprint.PrettyPrinter(indent=2)
         paasta_print(
             PaastaColors.green("Would have run task with:"),
             PaastaColors.green("Executor config:"),
-            pp.pformat(build_kwargs),
+            pp.pformat(executor_kwargs),
             PaastaColors.green("Task config:"),
             pp.pformat(task_config_dict),
             sep='\n',
         )
         return
 
-    try:
-        executor_stack = build_executor_stack(
-            **build_kwargs,
-            processor=processor,
-            run_id=run_id,
-            system_paasta_config=system_paasta_config,
-            region=args.aws_region,
-        )
-        runner = Sync(executor_stack)
-
-        paasta_print('Scheduling a task on Mesos')
-        terminal_event = runner.run(task_config)
-        runner.stop()
-    except (Exception, ValueError) as e:
-        paasta_print("Except while running executor stack: %s", e)
-        traceback.print_exc()
-        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
-        sys.exit(1)
-
-    if terminal_event.success:
-        paasta_print("Task finished successfully")
-        sys.exit(0)
-    else:
-        paasta_print(
-            PaastaColors.red(f"Task failed: {terminal_event.raw}"),
-        )
-        # This is not necessarily an infrastructure failure. It may just be a
-        # application failure.
-        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
-        sys.exit(1)
+    terminal_events = run_tasks_with_retries(
+        executor_factory,
+        task_config_factory,
+        retries=args.retries
+    )
+    final_event = terminal_events[-1] if terminal_events else None
+    exit_code = handle_terminal_event(final_event, service, instance)
+    sys.exit(exit_code)
 
 
 # TODO: reimplement using build_executor_stack and task uuid instead of run_id
