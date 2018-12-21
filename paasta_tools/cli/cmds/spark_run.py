@@ -399,6 +399,7 @@ def get_spark_config(
 ):
     # User configurable Spark options
     user_args = {
+        'spark.app.name': container_name,
         'spark.cores.max': '4',
         'spark.executor.cores': '2',
         'spark.executor.memory': '4g',
@@ -416,7 +417,6 @@ def get_spark_config(
     )
     non_user_args = {
         'spark.master': 'mesos://%s' % mesos_address,
-        'spark.app.name': container_name,
         'spark.ui.port': spark_ui_port,
         'spark.executorEnv.PAASTA_SERVICE': args.service,
         'spark.executorEnv.PAASTA_INSTANCE': '{}_{}'.format(args.instance, get_username()),
