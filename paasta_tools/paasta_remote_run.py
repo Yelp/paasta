@@ -20,17 +20,18 @@ import pprint
 import random
 import re
 import signal
+import smtplib
 import string
 import sys
 import traceback
 from datetime import datetime
+from email.message import EmailMessage
 
 from boto3.session import Session
 from pyrsistent import InvariantException
 from pyrsistent import PTypeError
 from task_processing.metrics import create_counter
 from task_processing.metrics import get_metric
-from task_processing.plugins.mesos.task_config import MesosTaskConfig
 from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
 from task_processing.runners.sync import Sync
 from task_processing.task_processor import TaskProcessor
@@ -154,7 +155,7 @@ def extract_args(args):
     )
 
 
-def accumulate_config_overrides(args):
+def accumulate_config_overrides(args, service, instance):
     """ Although task configs come with defaults values, certain args can
     override them. We accumulate them in a dict here and return them.
     """
@@ -295,12 +296,12 @@ def paasta_to_task_config_kwargs(
     return kwargs
 
 
-def create_mesos_task_config(processor, *args, **kwargs):
+def create_mesos_task_config(processor, service, instance, *args, **kwargs):
     """ Creates a Mesos task configuration """
     MesosExecutor = processor.executor_cls('mesos_task')
     try:
         return MesosExecutor.TASK_CONFIG_INTERFACE(
-            **paasta_to_task_config_kwargs(*args, **kwargs)
+            **paasta_to_task_config_kwargs(service, instance, *args, **kwargs)
         )
     except InvariantException as e:
         if len(e.missing_fields) > 0:
@@ -383,10 +384,7 @@ def build_executor_stack(
     return stateful_executor
 
 
-def run_task(executor, task_config):
-    """ Runs a task until a terminal event is received, which is returned. """
-    runner = Sync(executor)
-
+def set_runner_signal_handlers(runner):
     def handle_interrupt(_signum, _frame):
         paasta_print(
             PaastaColors.red("Signal received, shutting down scheduler."),
@@ -397,6 +395,11 @@ def run_task(executor, task_config):
     signal.signal(signal.SIGINT, handle_interrupt)
     signal.signal(signal.SIGTERM, handle_interrupt)
 
+
+def run_task(executor, task_config):
+    """ Runs a task until a terminal event is received, which is returned. """
+    runner = Sync(executor)
+    set_runner_signal_handlers(runner)
     terminal_event = runner.run(task_config)
     runner.stop()
     return terminal_event
@@ -414,7 +417,7 @@ def get_terminal_event_error_message(terminal_event):
 def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
     # use max in case retries is negative, +1 for initial try
     tries_left = max(retries, 0) + 1
-    terminal_events = []
+    terminals = []
 
     while tries_left > 0:
         paasta_print(PaastaColors.yellow(
@@ -426,14 +429,14 @@ def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
             task_config = task_config_factory()
             terminal_event = run_task(executor, task_config)
         except (Exception, ValueError) as e:
-            # implies an error with our code, and not with mesos, so return
-            # the traceback instead
+            # implies an error with our code, and not with mesos, so just return
+            # immediately
             paasta_print(f"Except while running executor stack: {e}")
             traceback.print_exc()
-            return None
+            terminals.append((None, task_config))
+            return terminals
 
-        mesos_type = getattr(terminal_event, 'platform_type', None)
-        terminal_events.append(terminal_event)
+        terminals.append((terminal_event, task_config))
         if terminal_event.success:
             paasta_print(PaastaColors.green("Task finished successfully"))
             break
@@ -444,28 +447,78 @@ def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
 
         tries_left -= 1
 
-    return terminal_events
+    return terminals
 
 
-def handle_terminal_event(event, service, instance):
+def send_notification_email(
+    email_address,
+    framework_config,
+    task_config,
+    success=True,
+    error_message=None,
+):
+    success_str = 'succeeded' if success else 'failed'
+
+    msg = EmailMessage()
+    msg['From'] = email_address
+    msg['To'] = email_address
+    msg['Subject'] = (f"remote-run {success_str.upper()} - {task_config['name']}")
+
+    email_content = [f"Task '{task_config['name']}' {success_str}\n"]
+    if not success and error_message:  # show errors first
+        email_content.extend(['Error message from the last attempt:', f'{error_message}\n'])
+    email_content.extend([
+        'Framework configuration:',
+        f'{pprint.pformat(framework_config)}\n',
+    ])
+    email_content.extend([
+        'Task configuration:',
+        pprint.pformat(task_config),
+    ])
+    msg.set_content('\n'.join(email_content))
+
+    with smtplib.SMTP('localhost') as s:
+        s.send_message(msg)
+
+
+def handle_terminal_event(
+    event,
+    service,
+    instance,
+    email_address=None,
+    framework_config=None,
+    task_config=None,
+):
     """ Given a terminal event:
     1. Emit metrics
     2. Notify users
     3. Produce exit code
     """
-    if not event:
-        error_message = (
-            "Encountered an exception while running task:\n"
-            f'{traceback.format_exc()}'
-        )
-    elif event.success:
-        return 0
+    if event and event.success:
+        exit_code = 0
+        error_message = None
     else:
-        error_message = get_terminal_event_error_message(event)
+        emit_counter_metric('paasta.remote_run.start.failed', service, instance)
+        exit_code = 1
+        if not event:
+            error_message = (
+                "Encountered an exception while running task:\n"
+                f'{traceback.format_exc()}'
+            )
+        elif not event.success:
+            error_message = get_terminal_event_error_message(event)
 
-    # TODO: notify users
-    emit_counter_metric('paasta.remote_run.start.failed', service, instance)
-    return 1
+    if email_address:
+        framework_config['service'] = service
+        framework_config['instance'] = instance
+        send_notification_email(
+            email_address,
+            framework_config=framework_config,
+            task_config=task_config_to_dict(task_config),
+            success=event.success,
+            error_message=error_message,
+        )
+    return exit_code
 
 
 def remote_run_start(args):
@@ -482,7 +535,7 @@ def remote_run_start(args):
     # TODO: move run_id into task identifier?
     run_id = args.run_id or generate_run_id(length=10)
     framework_name = create_framework_name(service, instance, run_id)
-    overrides = accumulate_config_overrides(args)
+    overrides = accumulate_config_overrides(args, service, instance)
     # TODO: implement DryRunExecutor?
     taskproc_config = system_paasta_config.get_taskproc()
     native_job_config = load_paasta_native_job_config(
@@ -525,16 +578,21 @@ def remote_run_start(args):
             offer_timeout=args.staging_timeout,
             docker_image=args.docker_image,
         )
-    executor_kwargs = dict(  # used to create mesos executor
-        processor=processor,
-        system_paasta_config=system_paasta_config,
-        taskproc_config=taskproc_config,
+
+    framework_config = dict(
         cluster=cluster,
         framework_name=framework_name,
         framework_staging_timeout=args.staging_timeout,
         role=role,
         pool=pool,
     )
+    executor_kwargs = dict(  # used to create mesos executor
+        processor=processor,
+        system_paasta_config=system_paasta_config,
+        taskproc_config=taskproc_config,
+        **framework_config,
+    )
+
     def executor_factory():
         mesos_executor = create_mesos_executor(**executor_kwargs)
         return build_executor_stack(
@@ -545,21 +603,28 @@ def remote_run_start(args):
         pp = pprint.PrettyPrinter(indent=2)
         paasta_print(
             PaastaColors.green("Would have run task with:"),
-            PaastaColors.green("Executor config:"),
-            pp.pformat(executor_kwargs),
+            PaastaColors.green("Framework config:"),
+            pp.pformat(framework_config),
             PaastaColors.green("Task config:"),
             pp.pformat(task_config_dict),
             sep='\n',
         )
         return
 
-    terminal_events = run_tasks_with_retries(
+    terminals = run_tasks_with_retries(
         executor_factory,
         task_config_factory,
         retries=args.retries
     )
-    final_event = terminal_events[-1] if terminal_events else None
-    exit_code = handle_terminal_event(final_event, service, instance)
+    final_event, final_task_config = terminals[-1]
+    exit_code = handle_terminal_event(
+        event=final_event,
+        service=service,
+        instance=instance,
+        email_address=args.notification_email,
+        framework_config=framework_config,
+        task_config=final_task_config,
+    )
     sys.exit(exit_code)
 
 

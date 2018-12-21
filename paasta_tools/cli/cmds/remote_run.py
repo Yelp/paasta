@@ -44,7 +44,7 @@ ARG_DEFAULTS = dict(
         docker_image=None,
         dry_run=False,
         constraint=[],
-        notification_email=None,  # always append to remote-run command, so no default
+        notification_email=None,
         retries=0,
     ),
     stop=dict(run_id=None, framework_id=None),
@@ -176,10 +176,9 @@ def add_start_parser(subparser):
         help=(
             'Email address to send remote-run notifications to. '
             'A notification will be sent when a task either succeeds or fails. '
-            'Required if environment variable $EMAIL not set. '
-        ) + (f'Default: {default_email}' if default_email else ''),
+            'Defaults to env variable $EMAIL if set'
+        ) + (f': {default_email}' if default_email else '.'),
         default=default_email,
-        required=default_email is None,
     )
     default_retries = ARG_DEFAULTS['start']['retries']
     parser.add_argument(
