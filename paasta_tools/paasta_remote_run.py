@@ -140,7 +140,7 @@ def extract_args(args):
         if instance_type != 'adhoc':
             paasta_print(PaastaColors.red(
                 "Please use instance declared in adhoc.yaml for use "
-                f"with remote-run, {instance} is declared as {instance_type}"
+                f"with remote-run, {instance} is declared as {instance_type}",
             ))
             emit_counter_metric('paasta.remote_run.' + args.action + '.failed', service, instance)
             sys.exit(1)
@@ -301,18 +301,18 @@ def create_mesos_task_config(processor, service, instance, *args, **kwargs):
     MesosExecutor = processor.executor_cls('mesos_task')
     try:
         return MesosExecutor.TASK_CONFIG_INTERFACE(
-            **paasta_to_task_config_kwargs(service, instance, *args, **kwargs)
+            **paasta_to_task_config_kwargs(service, instance, *args, **kwargs),
         )
     except InvariantException as e:
         if len(e.missing_fields) > 0:
             paasta_print(PaastaColors.red(
                 "Mesos task config is missing following fields: "
-                f"{', '.join(e.missing_fields)}"
+                f"{', '.join(e.missing_fields)}",
             ))
         elif len(e.invariant_errors) > 0:
             paasta_print(PaastaColors.red(
                 "Mesos task config is failing following checks: "
-                f"{', '.join(str(ie) for ie in e.invariant_errors)}"
+                f"{', '.join(str(ie) for ie in e.invariant_errors)}",
             ))
         else:
             paasta_print(PaastaColors.red(f"Mesos task config error: {e}"))
@@ -401,17 +401,34 @@ def run_task(executor, task_config):
     runner = Sync(executor)
     set_runner_signal_handlers(runner)
     terminal_event = runner.run(task_config)
+    if getattr(terminal_event, 'platform_type', None) == 'lost':
+        runner.kill(task_config.task_id)
     runner.stop()
     return terminal_event
 
 
 def get_terminal_event_error_message(terminal_event):
-    if not terminal_event.terminal:
-        return None  # not terminal...
+    if not terminal_event.terminal or terminal_event.success:
+        return None  # not terminal or not an error
     elif TASKPROC_OFFER_TIMEOUT_RAW in terminal_event.raw:
         return terminal_event.raw
-    else:  # should be a dict
-        return pprint.pformat(terminal_event.raw)
+    else:
+        mesos_type = getattr(terminal_event, 'platform_type', None)
+        if mesos_type == 'failed':
+            error_message = ''
+        elif mesos_type == 'lost':
+            error_message = (
+                "- Task was lost probably due to a network partition or an "
+                "going away. It probably isn't coming back :("
+            )
+        elif mesos_type == 'error':
+            error_message = "- Encountered an unexpected error with Mesos"
+        else:
+            error_message = "- Unknown failure"
+
+        error_parts = [error_message] if error_message else []
+        error_parts.append(f"- Raw: {pprint.pformat(terminal_event.raw)}")
+        return '\n'.join(error_parts)
 
 
 def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
@@ -421,7 +438,7 @@ def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
 
     while tries_left > 0:
         paasta_print(PaastaColors.yellow(
-            f"Scheduling task on Mesos (tries left: {tries_left})"
+            f"Scheduling task on Mesos (tries left: {tries_left})",
         ))
 
         try:
@@ -596,7 +613,8 @@ def remote_run_start(args):
     def executor_factory():
         mesos_executor = create_mesos_executor(**executor_kwargs)
         return build_executor_stack(
-            processor, mesos_executor, taskproc_config, cluster, region)
+            processor, mesos_executor, taskproc_config, cluster, region,
+        )
 
     if args.dry_run:
         task_config_dict = task_config_to_dict(task_config_factory())
@@ -614,7 +632,7 @@ def remote_run_start(args):
     terminals = run_tasks_with_retries(
         executor_factory,
         task_config_factory,
-        retries=args.retries
+        retries=args.retries,
     )
     final_event, final_task_config = terminals[-1]
     exit_code = handle_terminal_event(
