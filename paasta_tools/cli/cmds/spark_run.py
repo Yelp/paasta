@@ -391,15 +391,14 @@ def load_aws_credentials_from_yaml(yaml_file_path):
 
 def get_spark_config(
     args,
-    container_name,
     spark_ui_port,
     docker_img,
     system_paasta_config,
     volumes,
 ):
-    # User configurable Spark options
+    # Defaults for user configurable Spark options
     user_args = {
-        'spark.app.name': container_name,
+        'spark.app.name': 'paasta_spark_run_{}'.format(get_username()),
         'spark.cores.max': '4',
         'spark.executor.cores': '2',
         'spark.executor.memory': '4g',
@@ -499,6 +498,9 @@ def get_spark_config(
         )
         sys.exit(1)
 
+    # Make spark.app.name fairly unique
+    user_args['spark.app.name'] = '{}_{}_{}'.format(user_args['spark.app.name'], spark_ui_port, int(time.time()))
+
     # Limit a container's cpu usage
     non_user_args['spark.mesos.executor.docker.parameters'] += ',cpus={}'.format(user_args['spark.executor.cores'])
 
@@ -587,11 +589,9 @@ def configure_and_run_docker_container(
             )
 
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    container_name = 'paasta_spark_run_{}_{}_{}'.format(get_username(), spark_ui_port, int(time.time()))
 
     spark_config_dict = get_spark_config(
         args=args,
-        container_name=container_name,
         spark_ui_port=spark_ui_port,
         docker_img=docker_img,
         system_paasta_config=system_paasta_config,
@@ -636,7 +636,7 @@ def configure_and_run_docker_container(
                 raise
 
     return run_docker_container(
-        container_name=container_name,
+        container_name=spark_config_dict['spark.app.name'],
         volumes=volumes,
         environment=environment,
         docker_img=docker_img,

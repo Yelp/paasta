@@ -63,16 +63,21 @@ def test_get_docker_run_cmd(
 
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.find_mesos_leader', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run.get_username', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run.time.time', autospec=True)
 def test_get_spark_config(
+    mock_time,
+    mock_get_username,
     mock_find_mesos_leader,
 ):
+    mock_time.return_value = 1138
+    mock_get_username.return_value = 'fake_user'
     mock_find_mesos_leader.return_value = 'fake_leader'
     args = mock.MagicMock()
     args.cluster = 'fake_cluster'
 
     spark_conf = get_spark_config(
         args=args,
-        container_name='fake_name',
         spark_ui_port=123,
         docker_img='fake-registry/fake-service',
         system_paasta_config=SystemPaastaConfig(
@@ -82,6 +87,7 @@ def test_get_spark_config(
         volumes=['v1:v1:rw', 'v2:v2:rw'],
     )
 
+    assert spark_conf['spark.app.name'] == 'paasta_spark_run_fake_user_123_1138'
     assert spark_conf['spark.master'] == 'mesos://fake_leader:5050'
     assert 'spark.master=mesos://fake_leader:5050' in create_spark_config_str(spark_conf)
 
@@ -89,7 +95,6 @@ def test_get_spark_config(
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.os.path.exists', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.pick_random_port', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.spark_run.get_username', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_spark_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.create_spark_config_str', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.run_docker_container', autospec=True)
@@ -127,17 +132,16 @@ class TestConfigureAndRunDockerContainer:
         mock_run_docker_container,
         mock_create_spark_config_str,
         mock_get_spark_config,
-        mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
         mock_get_aws_credentials,
     ):
         mock_pick_random_port.return_value = 123
-        mock_get_username.return_value = 'fake_user'
         mock_create_spark_config_str.return_value = '--conf spark.app.name=fake_app'
         mock_run_docker_container.return_value = 0
         mock_get_aws_credentials.return_value = ('id', 'secret')
         mock_time.return_value = 1138
+        mock_get_spark_config.return_value = {'spark.app.name': 'spark_app_name'}
 
         args = mock.MagicMock()
         args.cluster = 'fake_cluster'
@@ -154,7 +158,7 @@ class TestConfigureAndRunDockerContainer:
 
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
-            container_name='paasta_spark_run_fake_user_123_1138',
+            container_name='spark_app_name',
             volumes=[
                 '/h1:/c1:ro',
                 '/h2:/c2:ro',
@@ -184,7 +188,6 @@ class TestConfigureAndRunDockerContainer:
         mock_run_docker_container,
         mock_create_spark_config_str,
         mock_get_spark_config,
-        mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
         mock_get_aws_credentials,
@@ -226,7 +229,6 @@ class TestConfigureAndRunDockerContainer:
         mock_run_docker_container,
         mock_create_spark_config_str,
         mock_get_spark_config,
-        mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
         mock_get_aws_credentials,
