@@ -151,17 +151,6 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
-        '--mesos-principal',
-        help="Mesos principal (username) to run a framework on Mesos.",
-        default='spark',
-    )
-
-    list_parser.add_argument(
-        '--mesos-secret',
-        help="Mesos secret (password) to run a framework on Mesos.",
-    )
-
-    list_parser.add_argument(
         '--spark-args',
         help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html. '
         'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
@@ -426,24 +415,12 @@ def get_spark_config(
         ),
         'spark.mesos.executor.docker.volumes': ','.join(volumes),
         'spark.mesos.executor.docker.image': docker_img,
-        'spark.mesos.principal': args.mesos_principal,
-        'spark.mesos.secret': args.mesos_secret,
+        'spark.mesos.principal': 'spark',
+        'spark.mesos.secret': _load_mesos_secret(),
         # derby.system.home property defaulting to '.',
         # which requires directory permission changes.
         'spark.driver.extraJavaOptions': '-Dderby.system.home=/tmp/derby',
     }
-
-    if not args.mesos_secret:
-        try:
-            with open(DEFAULT_SPARK_MESOS_SECRET_FILE, 'r') as f:
-                mesos_secret = f.read()
-                non_user_args['spark.mesos.secret'] = mesos_secret
-        except IOError:
-            paasta_print(
-                'Cannot load mesos secret from %s' % DEFAULT_SPARK_MESOS_SECRET_FILE,
-                file=sys.stderr,
-            )
-            sys.exit(1)
 
     if not args.build and not args.image:
         non_user_args['spark.mesos.uris'] = 'file:///root/.dockercfg'
@@ -503,6 +480,18 @@ def get_spark_config(
     non_user_args['spark.mesos.executor.docker.parameters'] += ',cpus={}'.format(user_args['spark.executor.cores'])
 
     return dict(non_user_args, **user_args)
+
+
+def _load_mesos_secret():
+    try:
+        with open(DEFAULT_SPARK_MESOS_SECRET_FILE, 'r') as f:
+            return f.read()
+    except IOError:
+        paasta_print(
+            'Cannot load mesos secret from %s' % DEFAULT_SPARK_MESOS_SECRET_FILE,
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 def create_spark_config_str(spark_config_dict):

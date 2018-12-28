@@ -63,7 +63,9 @@ def test_get_docker_run_cmd(
 
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.find_mesos_leader', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run._load_mesos_secret', autospec=True)
 def test_get_spark_config(
+    mock_load_mesos_secret,
     mock_find_mesos_leader,
 ):
     mock_find_mesos_leader.return_value = 'fake_leader'
