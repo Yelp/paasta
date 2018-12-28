@@ -512,7 +512,7 @@ def create_spark_config_str(spark_config_dict):
     return ' '.join(spark_config_entries)
 
 
-def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
+def emit_resource_requirements(spark_config_dict, paasta_cluster, pool, webui_url):
     num_executors = int(spark_config_dict['spark.cores.max']) / int(spark_config_dict['spark.executor.cores'])
     memory_per_executor = spark_memory_to_megabytes(spark_config_dict['spark.executor.memory'])
 
@@ -521,7 +521,7 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
         'mem': memory_per_executor * num_executors,
         'disk': memory_per_executor * num_executors,  # rough guess since spark does not collect this information
     }
-    dimensions = {'framework_name': spark_config_dict['spark.app.name']}
+    dimensions = {'framework_name': spark_config_dict['spark.app.name'], 'webui_url': webui_url}
 
     paasta_print('Sending resource request metrics to Clusterman')
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
@@ -618,14 +618,16 @@ def configure_and_run_docker_container(
         ),
     )
 
+    webui_url = f'http://{socket.getfqdn()}:{spark_ui_port}'
+
     if 'history-server' in docker_cmd:
-        paasta_print('\nSpark history server URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
+        paasta_print(f'\nSpark history server URL {webui_url}\n')
     elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'jupyter']):
-        paasta_print('\nSpark monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
+        paasta_print(f'\nSpark monitoring URL {webui_url}\n')
 
     if clusterman_metrics and _should_emit_resource_requirements(docker_cmd):
         try:
-            emit_resource_requirements(spark_config_dict, args.cluster, args.pool)
+            emit_resource_requirements(spark_config_dict, args.cluster, args.pool, webui_url)
         except Boto3Error as e:
             paasta_print(
                 PaastaColors.red(f'Encountered {e} while attempting to send resource requirements to Clusterman.'),

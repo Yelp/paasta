@@ -280,10 +280,10 @@ def test_emit_resource_requirements(tmpdir):
         'time.time', return_value=1234, autospec=True,
     ):
         mock_clusterman_metrics.generate_key_with_dimensions.side_effect = lambda name, dims: (
-            f'{name}|framework_name={dims["framework_name"]}'
+            f'{name}|framework_name={dims["framework_name"]},webui_url={dims["webui_url"]}'
         )
 
-        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'cool-pool')
+        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'cool-pool', 'http://spark.yelp')
 
         mock_clusterman_metrics.ClustermanMetricsBotoClient.assert_called_once_with(
             region_name='us-north-14',
@@ -292,7 +292,9 @@ def test_emit_resource_requirements(tmpdir):
         metrics_writer = mock_clusterman_metrics.ClustermanMetricsBotoClient.return_value.\
             get_writer.return_value.__enter__.return_value
 
-        metric_key_template = 'requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3'
+        metric_key_template = (
+            'requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp'
+        )
         metrics_writer.send.assert_has_calls(
             [
                 mock.call((metric_key_template.format(resource='cpus'), 1234, 4)),
