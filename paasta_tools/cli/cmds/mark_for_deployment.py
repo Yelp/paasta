@@ -278,9 +278,11 @@ class SlackDeployNotifier:
                 self._notify_with_thread(
                     'notify_after_mark',
                     self.channels,
-                    f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.",
                     (
-                        f"{self.authors}\n"
+                        f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.\n"
+                        f"{self.authors}"
+                    ),
+                    (
                         f"{self.url_message}\n"
                         "\n"
                         "Roll it back at any time with:\n"
@@ -293,11 +295,11 @@ class SlackDeployNotifier:
                 self._notify_with_thread(
                     'notify_after_mark',
                     self.channels,
-                    f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.",
                     (
-                        f"{self.authors}\n"
-                        f"{self.url_message}\n"
+                        f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.\n",
+                        f"{self.authors}"
                     ),
+                    self.url_message,
                 )
 
     def notify_after_good_deploy(self):
@@ -305,7 +307,10 @@ class SlackDeployNotifier:
             self._notify_with_thread(
                 'notify_after_good_deploy',
                 self.channels,
-                f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.",
+                (
+                    f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.\n"
+                    f"{self.authors}"
+                ),
                 (
                     f"{self.authors}\n"
                     f"{self.url_message}\n"
@@ -331,10 +336,10 @@ class SlackDeployNotifier:
                 self.channels,
                 (
                     f"*{self.service}* - Deployment of {self.commit[:12]} to {self.deploy_group} *aborted*, "
-                    "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy."
+                    "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy.\n"
+                    f"{self.authors}"
                 ),
                 (
-                    f"{self.authors}\n"
                     f"{self.url_message}\n"
                     "If you need to roll back, run:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"  # noqa: E501
