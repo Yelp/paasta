@@ -171,7 +171,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     for attempt in range(1, max_attempts + 1):
         try:
             remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
-        except Exception as e:
+        except Exception:
             logline = "Failed to mark {} for deployment in deploy group {}! (attempt {}/{})".format(
                 commit, deploy_group, attempt, max_attempts,
             )
@@ -296,7 +296,7 @@ class SlackDeployNotifier:
                     'notify_after_mark',
                     self.channels,
                     (
-                        f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.\n",
+                        f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.\n"  # noqa: E501
                         f"{self.authors}"
                     ),
                     self.url_message,
