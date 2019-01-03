@@ -74,7 +74,7 @@ def test_get_spark_config(
 
     spark_conf = get_spark_config(
         args=args,
-        container_name='fake_name',
+        spark_app_name='fake_name',
         spark_ui_port=123,
         docker_img='fake-registry/fake-service',
         system_paasta_config=SystemPaastaConfig(
@@ -139,7 +139,6 @@ class TestConfigureAndRunDockerContainer:
         mock_create_spark_config_str.return_value = '--conf spark.app.name=fake_app'
         mock_run_docker_container.return_value = 0
         mock_get_aws_credentials.return_value = ('id', 'secret')
-        mock_time.return_value = 1138
 
         args = mock.MagicMock()
         args.cluster = 'fake_cluster'
@@ -156,7 +155,7 @@ class TestConfigureAndRunDockerContainer:
 
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
-            container_name='paasta_spark_run_fake_user_123_1138',
+            container_name='paasta_spark_run_fake_user_123',
             volumes=[
                 '/h1:/c1:ro',
                 '/h2:/c2:ro',

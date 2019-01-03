@@ -140,7 +140,6 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-C', '--cmd',
         help="Run the spark-shell, pyspark, spark-submit, jupyter, or history-server command.",
-        default='pyspark',
     )
 
     list_parser.add_argument(
@@ -380,7 +379,7 @@ def load_aws_credentials_from_yaml(yaml_file_path):
 
 def get_spark_config(
     args,
-    container_name,
+    spark_app_name,
     spark_ui_port,
     docker_img,
     system_paasta_config,
@@ -388,7 +387,7 @@ def get_spark_config(
 ):
     # User configurable Spark options
     user_args = {
-        'spark.app.name': container_name,
+        'spark.app.name': spark_app_name,
         'spark.cores.max': '4',
         'spark.executor.cores': '2',
         'spark.executor.memory': '4g',
@@ -576,11 +575,15 @@ def configure_and_run_docker_container(
             )
 
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    container_name = 'paasta_spark_run_{}_{}_{}'.format(get_username(), spark_ui_port, int(time.time()))
+    spark_app_name = 'paasta_spark_run_{}'.format(get_username())
+    container_name = spark_app_name + "_" + str(spark_ui_port)
+    original_docker_cmd = args.cmd or instance_config.get_cmd()
+    if 'jupyter' not in original_docker_cmd:
+        spark_app_name = container_name
 
     spark_config_dict = get_spark_config(
         args=args,
-        container_name=container_name,
+        spark_app_name=spark_app_name,
         spark_ui_port=spark_ui_port,
         docker_img=docker_img,
         system_paasta_config=system_paasta_config,
@@ -593,11 +596,6 @@ def configure_and_run_docker_container(
     volumes.append('/etc/passwd:/etc/passwd:ro')
     volumes.append('/etc/group:/etc/group:ro')
 
-    docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
-    if docker_cmd is None:
-        paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
-        return 1
-
     environment = instance_config.get_env_dictionary()
     environment.update(
         get_spark_env(
@@ -609,9 +607,10 @@ def configure_and_run_docker_container(
 
     webui_url = f'http://{socket.getfqdn()}:{spark_ui_port}'
 
+    docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if 'history-server' in docker_cmd:
         paasta_print(f'\nSpark history server URL {webui_url}\n')
-    elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'jupyter']):
+    elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'spark-submit']):
         paasta_print(f'\nSpark monitoring URL {webui_url}\n')
 
     if clusterman_metrics and _should_emit_resource_requirements(docker_cmd):
@@ -642,8 +641,6 @@ def _should_emit_resource_requirements(docker_cmd):
 
 def get_docker_cmd(args, instance_config, spark_conf_str):
     original_docker_cmd = args.cmd or instance_config.get_cmd()
-    if original_docker_cmd is None:
-        return None
 
     # Default cli options to start the jupyter notebook server.
     if original_docker_cmd == 'jupyter':
@@ -772,6 +769,10 @@ def paasta_spark_run(args):
             sep='\n',
             file=sys.stderr,
         )
+        return 1
+
+    if not args.cmd and not instance_config.get_cmd():
+        paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
         return 1
 
     if args.build:
