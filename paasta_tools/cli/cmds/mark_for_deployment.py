@@ -171,7 +171,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     for attempt in range(1, max_attempts + 1):
         try:
             remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
-        except Exception as e:
+        except Exception:
             logline = "Failed to mark {} for deployment in deploy group {}! (attempt {}/{})".format(
                 commit, deploy_group, attempt, max_attempts,
             )
@@ -278,9 +278,11 @@ class SlackDeployNotifier:
                 self._notify_with_thread(
                     'notify_after_mark',
                     self.channels,
-                    f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.",
                     (
-                        f"{self.authors}\n"
+                        f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.\n"
+                        f"{self.authors}"
+                    ),
+                    (
                         f"{self.url_message}\n"
                         "\n"
                         "Roll it back at any time with:\n"
@@ -293,11 +295,11 @@ class SlackDeployNotifier:
                 self._notify_with_thread(
                     'notify_after_mark',
                     self.channels,
-                    f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.",
                     (
-                        f"{self.authors}\n"
-                        f"{self.url_message}\n"
+                        f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.\n"  # noqa: E501
+                        f"{self.authors}"
                     ),
+                    self.url_message,
                 )
 
     def notify_after_good_deploy(self):
@@ -305,7 +307,10 @@ class SlackDeployNotifier:
             self._notify_with_thread(
                 'notify_after_good_deploy',
                 self.channels,
-                f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.",
+                (
+                    f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.\n"
+                    f"{self.authors}"
+                ),
                 (
                     f"{self.authors}\n"
                     f"{self.url_message}\n"
@@ -331,10 +336,10 @@ class SlackDeployNotifier:
                 self.channels,
                 (
                     f"*{self.service}* - Deployment of {self.commit[:12]} to {self.deploy_group} *aborted*, "
-                    "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy."
+                    "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy.\n"
+                    f"{self.authors}"
                 ),
                 (
-                    f"{self.authors}\n"
                     f"{self.url_message}\n"
                     "If you need to roll back, run:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"  # noqa: E501
