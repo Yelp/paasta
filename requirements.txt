@@ -76,7 +76,7 @@ pytimeparse==1.1.5
 pytz==2016.10
 PyYAML==3.12
 repoze.lru==0.6
-requests==2.19.0
+requests==2.21.0
 requests-cache==0.4.10
 requests-oauthlib==0.8.0
 requests-toolbelt==0.4.0
