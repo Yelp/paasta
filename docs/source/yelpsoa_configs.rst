@@ -766,6 +766,36 @@ Routing and Reliability
  * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
    in milliseconds, defaults to 1000.
 
+Fault Injection
+```````````````
+
+These keys are meant to control the built-in fault and delay injection features
+of Envoy, the new proxy we are using to replace HAProxy, and thus won't work
+with the latter.
+
+**Note:** The described Fault Injection features are currently only available
+internally at Yelp.
+
+ * ``fixed_delay``: A map of locations to delays. Controls the injection of a
+   particular delay for a particular service, in a particular environment and
+   for a particular percentage of requests. From the example: ::
+
+      main:
+        proxy_port: 20028
+        timeout_server_ms: 5000
+        fixed_delay:
+          ecosystem:stagec:
+            duration_ms: 3000
+            percent: 20
+          superregion:uswest1-prod:
+            duration_ms: 1000
+            percent: 40
+
+   - ``duration_ms``: The duration of the delay in milliseconds.
+   - ``percent``: Percentage of requests (0-100) to be randomly affected by this
+     delay. Note that due to Envoy's current definition of _percentage_ as an
+     integer, this cannot be specified as a floating-point number.
+
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If you don’t care about dropping traffic you can just change ``discover`` and
