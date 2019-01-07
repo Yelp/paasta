@@ -793,7 +793,7 @@ internally at Yelp.
 
    - ``duration_ms``: The duration of the delay in milliseconds.
    - ``percent``: Percentage of requests (0-100) to be randomly affected by this
-     delay. Note that due to Envoy's current definition of _percentage_ as an
+     delay. Note that due to Envoy's current definition of *percentage* as an
      integer, this cannot be specified as a floating-point number.
 
 Moving a Service to a different location type
