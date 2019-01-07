@@ -312,7 +312,6 @@ class SlackDeployNotifier:
                     f"{self.authors}"
                 ),
                 (
-                    f"{self.authors}\n"
                     f"{self.url_message}\n"
                     "If you need to roll back, run:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
