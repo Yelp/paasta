@@ -1,3 +1,12 @@
+paasta-tools (0.81.28) xenial; urgency=medium
+
+  * 0.81.28 tagged with 'make release'
+    Commit: Merge pull request #2094 from Yelp/CORESERV-
+    6271_document_fault_injection  Document delay injection in
+    smartstack.yaml
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 07 Jan 2019 09:57:35 -0800
+
 paasta-tools (0.81.27) xenial; urgency=medium
 
   * 0.81.27 tagged with 'make release'
