@@ -196,6 +196,7 @@ class InstanceConfigDict(TypedDict, total=False):
     ulimit: Dict[str, Dict[str, Any]]
     cap_add: List
     env: Dict[str, str]
+    docker_init: bool
     monitoring: Dict[str, str]
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
@@ -424,7 +425,14 @@ class InstanceConfig:
                 ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
+        parameters.extend(self.get_docker_init())
         return parameters
+
+    def get_docker_init(self) -> Iterable[DockerParameter]:
+        if self.config_dict.get('docker_init', True) is True:
+            return [{'key': 'init', 'value': 'true'}]
+        else:
+            return []
 
     def get_disk(self, default: float=1024) -> float:
         """Gets the  amount of disk space required from the service's configuration.

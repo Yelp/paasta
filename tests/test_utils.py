@@ -1082,6 +1082,7 @@ class TestInstanceConfig:
             {"key": "cpu-quota", "value": "200000"},
             {"key": "label", "value": "paasta_service=fake_name"},
             {"key": "label", "value": "paasta_instance=fake_instance"},
+            {'key': 'init', 'value': 'true'},
         ]
 
     def test_format_docker_parameters_non_default(self):
@@ -1099,6 +1100,7 @@ class TestInstanceConfig:
                     'nice': {'soft': 20},
                 },
                 'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
+                'docker_init': False,
             },
             branch_dict=None,
         )
