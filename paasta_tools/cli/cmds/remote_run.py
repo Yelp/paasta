@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 import re
 from shlex import quote
 
@@ -43,6 +44,8 @@ ARG_DEFAULTS = dict(
         docker_image=None,
         dry_run=False,
         constraint=[],
+        notification_email=None,
+        retries=0,
     ),
     stop=dict(run_id=None, framework_id=None),
     list=dict(),
@@ -120,9 +123,13 @@ def add_start_parser(subparser):
         action='store_true',
         default=ARG_DEFAULTS['start']['detach'],
     )
+    default_staging_timeout = ARG_DEFAULTS['start']['staging_timeout']
     parser.add_argument(
         '-t', '--staging-timeout',
-        help='A timeout for the task to be launching before killed',
+        help=(
+            'A timeout in seconds for the task to be launching before killed. '
+            f'Default: {default_staging_timeout}s'
+        ),
         default=ARG_DEFAULTS['start']['staging_timeout'],
         type=float,
     )
@@ -163,6 +170,26 @@ def add_start_parser(subparser):
         action='append',
         default=ARG_DEFAULTS['start']['constraint'],
     )
+    default_email = os.environ.get('EMAIL', None)
+    parser.add_argument(
+        '-E', '--notification-email',
+        help=(
+            'Email address to send remote-run notifications to. '
+            'A notification will be sent when a task either succeeds or fails. '
+            'Defaults to env variable $EMAIL: '
+        ) + (default_email if default_email else '(currently not set)'),
+        default=default_email,
+    )
+    default_retries = ARG_DEFAULTS['start']['retries']
+    parser.add_argument(
+        '-r', '--retries',
+        help=(
+            'Number of times to retry if task fails at launch or at runtime. '
+            f'Default: {default_retries}'
+        ),
+        type=int,
+        default=default_retries,
+    )
     return parser
 
 
@@ -184,6 +211,7 @@ def add_stop_parser(subparser):
             'ID of framework to stop. Must belong to remote-run of selected '
             'service instance.'
         ),
+        type=str,
         default=ARG_DEFAULTS['stop']['framework_id'],
     )
     return parser
