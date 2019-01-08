@@ -175,10 +175,13 @@ def paasta_secret(args):
         service = args.service
     secret_provider = _get_secret_provider_for_service(service, cluster_names=args.clusters)
     if args.action in ["add", "update"]:
+        plaintext = get_plaintext_input(args)
+        if not plaintext:
+            print("Warning: Given plaintext is an empty string.")
         secret_provider.write_secret(
             action=args.action,
             secret_name=args.secret_name,
-            plaintext=get_plaintext_input(args),
+            plaintext=plaintext,
         )
         secret_path = os.path.join(secret_provider.secret_dir, f"{args.secret_name}.json")
         print_paasta_helper(secret_path, args.secret_name, args.shared)
