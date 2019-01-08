@@ -1,3 +1,12 @@
+paasta-tools (0.82.0) xenial; urgency=medium
+
+  * 0.82.0 tagged with 'make release'
+    Commit: Merge pull request #2047 from
+    Yelp/docker_init_all_the_things  Enable docker --init for all paasta
+    things by default
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 08 Jan 2019 13:46:56 -0800
+
 paasta-tools (0.81.28) xenial; urgency=medium
 
   * 0.81.28 tagged with 'make release'
