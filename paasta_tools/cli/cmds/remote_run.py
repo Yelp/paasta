@@ -176,15 +176,15 @@ def add_start_parser(subparser):
         help=(
             'Email address to send remote-run notifications to. '
             'A notification will be sent when a task either succeeds or fails. '
-            'Defaults to env variable $EMAIL if set'
-        ) + (f': {default_email}' if default_email else '.'),
+            'Defaults to env variable $EMAIL: '
+        ) + (default_email if default_email else '(currently not set)'),
         default=default_email,
     )
     default_retries = ARG_DEFAULTS['start']['retries']
     parser.add_argument(
         '-r', '--retries',
         help=(
-            'Number of times to retry if task fails to launch. '
+            'Number of times to retry if task fails at launch or at runtime. '
             f'Default: {default_retries}'
         ),
         type=int,
@@ -211,7 +211,7 @@ def add_stop_parser(subparser):
             'ID of framework to stop. Must belong to remote-run of selected '
             'service instance.'
         ),
-        type=int,
+        type=str,
         default=ARG_DEFAULTS['stop']['framework_id'],
     )
     return parser

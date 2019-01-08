@@ -415,11 +415,11 @@ def get_terminal_event_error_message(terminal_event):
     else:
         mesos_type = getattr(terminal_event, 'platform_type', None)
         if mesos_type == 'failed':
-            error_message = ''
+            error_message = '- Task exited with non-zero exit code'
         elif mesos_type == 'lost':
             error_message = (
                 "- Task was lost probably due to a network partition or an "
-                "going away. It probably isn't coming back :("
+                "agent going away. It probably isn't coming back :("
             )
         elif mesos_type == 'error':
             error_message = "- Encountered an unexpected error with Mesos"
@@ -471,6 +471,7 @@ def send_notification_email(
     email_address,
     framework_config,
     task_config,
+    run_id,
     success=True,
     error_message=None,
 ):
@@ -481,7 +482,10 @@ def send_notification_email(
     msg['To'] = email_address
     msg['Subject'] = (f"remote-run {success_str.upper()} - {task_config['name']}")
 
-    email_content = [f"Task '{task_config['name']}' {success_str}\n"]
+    email_content = [
+        f"Task '{task_config['name']}' {success_str}",
+        f"Run id: {run_id}\n",
+    ]
     if not success and error_message:  # show errors first
         email_content.extend(['Error message from the last attempt:', f'{error_message}\n'])
     email_content.extend([
@@ -502,6 +506,7 @@ def handle_terminal_event(
     event,
     service,
     instance,
+    run_id,
     email_address=None,
     framework_config=None,
     task_config=None,
@@ -530,8 +535,9 @@ def handle_terminal_event(
         framework_config['instance'] = instance
         send_notification_email(
             email_address,
-            framework_config=framework_config,
-            task_config=task_config_to_dict(task_config),
+            framework_config,
+            task_config_to_dict(task_config),
+            run_id,
             success=event.success,
             error_message=error_message,
         )
@@ -639,6 +645,7 @@ def remote_run_start(args):
         event=final_event,
         service=service,
         instance=instance,
+        run_id=run_id,
         email_address=args.notification_email,
         framework_config=framework_config,
         task_config=final_task_config,
