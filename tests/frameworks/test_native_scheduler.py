@@ -319,6 +319,20 @@ class TestNativeServiceConfig:
                         {"key": "label", "value": mock.ANY},  # service
                         {"key": "label", "value": mock.ANY},  # instance
                         {'key': 'init', 'value': 'true'},
+                        {'key': 'cap-drop', 'value': 'SETPCAP'},
+                        {'key': 'cap-drop', 'value': 'MKNOD'},
+                        {'key': 'cap-drop', 'value': 'AUDIT_WRITE'},
+                        {'key': 'cap-drop', 'value': 'CHOWN'},
+                        {'key': 'cap-drop', 'value': 'NET_RAW'},
+                        {'key': 'cap-drop', 'value': 'DAC_OVERRIDE'},
+                        {'key': 'cap-drop', 'value': 'FOWNER'},
+                        {'key': 'cap-drop', 'value': 'FSETID'},
+                        {'key': 'cap-drop', 'value': 'KILL'},
+                        {'key': 'cap-drop', 'value': 'SETGID'},
+                        {'key': 'cap-drop', 'value': 'SETUID'},
+                        {'key': 'cap-drop', 'value': 'NET_BIND_SERVICE'},
+                        {'key': 'cap-drop', 'value': 'SYS_CHROOT'},
+                        {'key': 'cap-drop', 'value': 'SETFCAP'},
                     ],
                     'network': 'BRIDGE',
                     'port_mappings': [{

@@ -400,6 +400,19 @@ class InstanceConfig:
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": f"{value}"}
 
+    def get_cap_drop(self) -> Iterable[DockerParameter]:
+        """Generates --cap-drop options to be passed to docker by default, which
+        makes them not able to perform special privilege escalation stuff
+        https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
+        """
+        caps = [
+            "SETPCAP", "MKNOD", "AUDIT_WRITE", "CHOWN", "NET_RAW", "DAC_OVERRIDE",
+            "FOWNER", "FSETID", "KILL", "SETGID", "SETUID", "NET_BIND_SERVICE",
+            "SYS_CHROOT", "SETFCAP",
+        ]
+        for cap in caps:
+            yield {"key": "cap-drop", "value": cap}
+
     def format_docker_parameters(self, with_labels: bool=True) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
@@ -426,6 +439,7 @@ class InstanceConfig:
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         parameters.extend(self.get_docker_init())
+        parameters.extend(self.get_cap_drop())
         return parameters
 
     def get_docker_init(self) -> Iterable[DockerParameter]:
