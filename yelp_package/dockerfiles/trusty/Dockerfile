@@ -28,7 +28,6 @@ RUN apt-get update > /dev/null && \
         debhelper \
         gdebi-core \
         git \
-        help2man \
         libffi-dev \
         libgpgme11 \
         libssl-dev \
