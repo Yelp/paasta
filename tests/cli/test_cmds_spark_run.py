@@ -256,6 +256,7 @@ def test_emit_resource_requirements(tmpdir):
         'spark.cores.max': '4',
         'spark.executor.memory': '4g',
         'spark.app.name': 'paasta_spark_run_johndoe_2_3',
+        'spark.mesos.constraints': 'pool:cool-pool\\;other:value',
     }
 
     clusterman_yaml_contents = {
@@ -284,7 +285,7 @@ def test_emit_resource_requirements(tmpdir):
             f'{name}|framework_name={dims["framework_name"]},webui_url={dims["webui_url"]}'
         )
 
-        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'cool-pool', 'http://spark.yelp')
+        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'http://spark.yelp')
 
         mock_clusterman_metrics.ClustermanMetricsBotoClient.assert_called_once_with(
             region_name='us-north-14',
