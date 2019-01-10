@@ -500,7 +500,7 @@ def create_spark_config_str(spark_config_dict):
     return ' '.join(spark_config_entries)
 
 
-def emit_resource_requirements(spark_config_dict, paasta_cluster, pool, webui_url):
+def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     num_executors = int(spark_config_dict['spark.cores.max']) / int(spark_config_dict['spark.executor.cores'])
     memory_per_executor = spark_memory_to_megabytes(spark_config_dict['spark.executor.memory'])
 
@@ -510,6 +510,9 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, pool, webui_ur
         'disk': memory_per_executor * num_executors,  # rough guess since spark does not collect this information
     }
     dimensions = {'framework_name': spark_config_dict['spark.app.name'], 'webui_url': webui_url}
+
+    constraints = parse_constraints_string(spark_config_dict['spark.mesos.constraints'])
+    pool = constraints['pool']
 
     paasta_print('Sending resource request metrics to Clusterman')
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
@@ -530,6 +533,17 @@ def get_aws_region_for_paasta_cluster(paasta_cluster):
 def spark_memory_to_megabytes(spark_memory_string):
     # expected to be in format "dg" where d is an integer
     return 1000 * int(spark_memory_string[:-1])
+
+
+def parse_constraints_string(constraints_string):
+    constraints = {}
+    for constraint in constraints_string.split(';'):
+        if constraint[-1] == '\\':
+            constraint = constraint[:-1]
+        k, v = constraint.split(':')
+        constraints[k] = v
+
+    return constraints
 
 
 def run_docker_container(
@@ -615,7 +629,7 @@ def configure_and_run_docker_container(
 
     if clusterman_metrics and _should_emit_resource_requirements(docker_cmd):
         try:
-            emit_resource_requirements(spark_config_dict, args.cluster, args.pool, webui_url)
+            emit_resource_requirements(spark_config_dict, args.cluster, webui_url)
         except Boto3Error as e:
             paasta_print(
                 PaastaColors.red(f'Encountered {e} while attempting to send resource requirements to Clusterman.'),
