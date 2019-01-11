@@ -13,9 +13,6 @@ override_dh_auto_clean:
 override_dh_auto_build:
 	true
 
-override_dh_installdocs:
-	tox -e manpages -i $(PIP_INDEX_URL)
-
 # do not call `make test` as part of packaging
 override_dh_auto_test:
 	true
