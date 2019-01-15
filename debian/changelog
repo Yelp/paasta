@@ -1,3 +1,12 @@
+paasta-tools (0.82.1) xenial; urgency=medium
+
+  * 0.82.1 tagged with 'make release'
+    Commit: Merge pull request #2103 from Yelp/drmorr/CLUSTERMAN-
+    193/fix_app_identifier_for_boost  make boost work for non-default
+    pools
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 14 Jan 2019 16:34:35 -0800
+
 paasta-tools (0.82.0) xenial; urgency=medium
 
   * 0.82.0 tagged with 'make release'
