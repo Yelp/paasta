@@ -61,10 +61,10 @@ def get_hmac_for_secret(
                 print("Failed to get secret signature at environments:{}:signature in json"
                       " file".format(secret_environment))
                 return None
-    except IOError as e:
+    except IOError:
         print(f"Failed to open json secret at {secret_path}")
         return None
-    except json.decoder.JSONDecodeError as e:
+    except json.decoder.JSONDecodeError:
         print(f"Failed to deserialise json secret at {secret_path}")
         return None
 

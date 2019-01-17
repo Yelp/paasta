@@ -241,7 +241,7 @@ def filter_tasks_in_smartstack(
                     marathon_tasks=tasks,
                 )),
             )
-        except (ConnectionError, RequestException) as e:
+        except (ConnectionError, RequestException):
             log.warning(f"Failed to connect to smartstack on {host}; this may cause us to consider tasks unhealthy.")
 
     if selected_hosts:

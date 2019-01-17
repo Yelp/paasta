@@ -73,7 +73,7 @@ def get_priority(service: str, instance: str, cluster: str) -> int:
             cluster=cluster,
             soa_dir=DEFAULT_SOA_DIR,
         )
-    except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError) as e:
+    except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError):
         return 0
     return config.get_bounce_priority()
 
