@@ -23,4 +23,4 @@ def test_paasta_version(capfd):
         main(('-V',))
     assert excinfo.value.code == 0
     out, err = capfd.readouterr()
-    assert re.match('^paasta-tools \d+\.\d+\.\d+\n$', out)
+    assert re.match(r'^paasta-tools \d+\.\d+\.\d+\n$', out)

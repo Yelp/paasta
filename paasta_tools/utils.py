@@ -92,7 +92,7 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
 ANY_CLUSTER = 'N/A'
 ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
-no_escape = re.compile('\x1B\[[0-9;]*[mK]')
+no_escape = re.compile(r'\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 

@@ -406,7 +406,7 @@ class ChronosJobConfig(InstanceConfig):
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
     # more info: https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals
     def _check_schedule_repeat_helper(self, repeat_string):
-        pattern = re.compile('^R\d*$')
+        pattern = re.compile(r'^R\d*$')
         return pattern.match(repeat_string) is not None
 
     def check_schedule(self):

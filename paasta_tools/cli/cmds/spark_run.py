@@ -152,7 +152,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '--spark-args',
         help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html. '
-        'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
+        r'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
         'spark.executor.cores=4".',
     )
 

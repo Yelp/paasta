@@ -20,7 +20,7 @@ from typing import Optional
 
 from paasta_tools.secret_providers import SecretProvider
 
-SECRET_REGEX = "^(SHARED_)?SECRET\([A-Za-z0-9_-]*\)$"
+SECRET_REGEX = r"^(SHARED_)?SECRET\([A-Za-z0-9_-]*\)$"
 SHARED_SECRET_SERVICE = '_shared'
 
 
