@@ -157,5 +157,11 @@
         ".+": {"$ref": "#definitions/job"}
       }
     }
+  },
+  "patternProperties": {
+    "^_.*$": {
+      "type": "object",
+      "additionalProperties": true
+    }
   }
 }
