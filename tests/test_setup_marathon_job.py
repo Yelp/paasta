@@ -2008,7 +2008,7 @@ class TestGetOldHappyUnhappyDrainingTasks:
 
         fake_log_deploy_error.assert_any_call(
             RegexMatcher(
-                'Ignoring exception during is_draining of task fake_down_unhappy: Traceback \(most recent call last\):'
+                r'Ignoring exception during is_draining of task fake_down_unhappy: Traceback \(most recent call last\):'
                 '.*Exception: ohai',
                 flags=re.DOTALL,
             ),
@@ -2054,7 +2054,7 @@ class TestDrainTasksAndFindTasksToKill:
         fake_log_bounce_action.assert_any_call(
             line=RegexMatcher(
                 'fake bounce killing task to_drain due to exception when draining: '
-                'Traceback \(most recent call last\):'
+                r'Traceback \(most recent call last\):'
                 '.*'
                 'Exception: Hello',
                 flags=re.MULTILINE | re.DOTALL,
@@ -2091,7 +2091,7 @@ class TestDrainTasksAndFindTasksToKill:
         fake_log_bounce_action.assert_any_call(
             line=RegexMatcher(
                 'fake bounce killing task to_drain due to exception in is_safe_to_kill: '
-                'Traceback \(most recent call last\):'
+                r'Traceback \(most recent call last\):'
                 '.*'
                 'Exception: Hello',
                 flags=re.MULTILINE | re.DOTALL,

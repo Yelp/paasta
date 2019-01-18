@@ -31,7 +31,7 @@ DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS = 5
 
 RESOLV_CONF = '/etc/resolv.conf'
 # not exactly correct, but sufficient to filter out ipv6 or other weird things
-IPV4_REGEX = re.compile('[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
+IPV4_REGEX = re.compile(r'[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
 
 
 log = logging.getLogger(__name__)

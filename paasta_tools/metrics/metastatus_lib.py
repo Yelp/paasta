@@ -445,7 +445,7 @@ def assert_kube_pods_running(
 
 def assert_no_duplicate_frameworks(
     state: MesosState,
-    framework_list: Sequence[str]=['marathon', 'chronos'],
+    framework_list: Sequence[str] = ['marathon', 'chronos'],
 ) -> HealthCheckResult:
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
@@ -810,7 +810,7 @@ def filter_slaves(
 def get_resource_utilization_by_grouping(
     grouping_func: _GenericNodeGroupingFunctionT,
     mesos_state: MesosState,
-    filters: Sequence[_GenericNodeFilterFunctionT]=[],
+    filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """ Given a function used to group slaves and mesos state, calculate
@@ -848,7 +848,7 @@ def get_resource_utilization_by_grouping(
 def get_resource_utilization_by_grouping_kube(
     grouping_func: _GenericNodeGroupingFunctionT,
     kube_client: KubeClient,
-    filters: Sequence[_GenericNodeFilterFunctionT]=[],
+    filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """ Given a function used to group nodes, calculate resource utilization

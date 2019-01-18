@@ -117,7 +117,7 @@ class StringFormatter(Formatter):
 
 def parse_time_variables(
     command: str,
-    parse_time: datetime.datetime=None,
+    parse_time: datetime.datetime = None,
 ) -> str:
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
@@ -236,8 +236,8 @@ class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
     def __init__(
-        self, name: str, config_dict: Dict[str, Any], cluster: str, service: Optional[str]=None,
-        load_deployments: bool=True, soa_dir: str=DEFAULT_SOA_DIR,
+        self, name: str, config_dict: Dict[str, Any], cluster: str, service: Optional[str] = None,
+        load_deployments: bool = True, soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         self.name = name
         self.config_dict = config_dict
@@ -495,8 +495,8 @@ def load_tron_instance_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> TronActionConfig:
     jobs, _ = load_tron_service_config(
         service=service,
@@ -588,7 +588,7 @@ def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     )
 
 
-def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
     job_configs, other_config = load_tron_service_config(
         service=service,
         cluster=cluster,
@@ -675,7 +675,7 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return namespaces
 
 
-def list_tron_clusters(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
     """Returns the Tron clusters a service is configured to deploy to."""
     search_re = r'/tron-([0-9a-z-_]*)\.yaml$'
     service_dir = os.path.join(soa_dir, service)

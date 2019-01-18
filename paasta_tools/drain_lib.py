@@ -51,7 +51,7 @@ def get_drain_method(
     service: str,
     instance: str,
     registrations: List[str],
-    drain_method_params: Optional[Dict]=None,
+    drain_method_params: Optional[Dict] = None,
 ) -> "DrainMethod":
     return _drain_methods[name](service, instance, registrations, **(drain_method_params or {}))
 
@@ -165,9 +165,9 @@ class HacheckDrainMethod(DrainMethod):
         service: str,
         instance: str,
         registrations: List[str],
-        delay: float=240,
-        hacheck_port: int=6666,
-        expiration: float=0,
+        delay: float = 240,
+        hacheck_port: int = 6666,
+        expiration: float = 0,
         **kwargs: Dict,
     ) -> None:
         super().__init__(service, instance, registrations)

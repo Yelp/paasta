@@ -107,8 +107,8 @@ class MesosMaster:
     async def _request(
         self,
         url: str,
-        method: str='GET',
-        cached: bool=False,
+        method: str = 'GET',
+        cached: bool = False,
         **kwargs,
     ) -> aiohttp.ClientResponse:
         headers = {'User-Agent': get_user_agent()}
@@ -174,7 +174,7 @@ class MesosMaster:
 
             def get_masters():
                 return [x for x in zk.get_children(path)
-                        if re.search("\d+", x)]
+                        if re.search(r"\d+", x)]
 
             leader = sorted(get_masters(), key=lambda x: master_id(x))
 

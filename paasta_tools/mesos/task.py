@@ -27,7 +27,7 @@ from paasta_tools.async_utils import async_ttl_cache
 
 class Task:
 
-    cmd_re = re.compile("\(Command: (.+)\)")
+    cmd_re = re.compile(r"\(Command: (.+)\)")
 
     def __init__(self, master, items):
         self.master = master
