@@ -1408,6 +1408,11 @@ class RemoteRunConfig(TypedDict, total=False):
     default_role: str
 
 
+class SparkRunConfig(TypedDict, total=False):
+    default_cluster: str
+    default_pool: str
+
+
 class PaastaNativeConfig(TypedDict, total=False):
     principal: str
     secret: str
@@ -1445,6 +1450,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     previous_marathon_servers: List[MarathonConfigDict]
     local_run_config: LocalRunConfig
     remote_run_config: RemoteRunConfig
+    spark_run_config: SparkRunConfig
     paasta_native: PaastaNativeConfig
     mesos_config: Dict
     monitoring_config: Dict
@@ -1774,6 +1780,12 @@ class SystemPaastaConfig:
 
         :returns: The remote-run system_paasta_config dictionary"""
         return self.config_dict.get('remote_run_config', {})
+
+    def get_spark_run_config(self) -> SparkRunConfig:
+        """Get the spark-run config
+
+        :returns: The spark-run system_paasta_config dictionary"""
+        return self.config_dict.get('spark_run_config', {})
 
     def get_paasta_native_config(self) -> PaastaNativeConfig:
         return self.config_dict.get('paasta_native', {})

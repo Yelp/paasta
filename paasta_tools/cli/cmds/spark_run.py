@@ -109,19 +109,26 @@ def add_subparser(subparsers):
         default='client',
     ).completer = lazy_choices_completer(list_instances)
 
-    # Restrict usage to norcal-devc and pnw-devc for now.
+    try:
+        system_paasta_config = load_system_paasta_config()
+        default_spark_cluster = system_paasta_config.get_spark_run_config().get('default_cluster')
+        default_spark_pool = system_paasta_config.get_spark_run_config().get('default_pool')
+    except PaastaNotConfiguredError:
+        default_spark_cluster = 'pnw-devc'
+        default_spark_pool = 'batch'
+
     list_parser.add_argument(
         '-c', '--cluster',
         help=(
             "The name of the cluster you wish to run Spark on."
         ),
-        default='norcal-devc',
+        default=default_spark_cluster,
     )
 
     list_parser.add_argument(
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
-        default='default',
+        default=default_spark_pool,
     )
 
     list_parser.add_argument(
