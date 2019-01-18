@@ -15,6 +15,7 @@
 from paasta_tools.autoscaling.pause_service_autoscaler import delete_service_autoscale_pause_time
 from paasta_tools.autoscaling.pause_service_autoscaler import get_service_autoscale_pause_time
 from paasta_tools.autoscaling.pause_service_autoscaler import update_service_autoscale_pause_time
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import paasta_print
 
 MAX_PAUSE_DURATION = 320
@@ -82,8 +83,17 @@ def paasta_pause_service_autoscaler(args):
         return_code = get_service_autoscale_pause_time(args.cluster)
     elif args.resume:
         return_code = delete_service_autoscale_pause_time(args.cluster)
+        _log_audit(
+            action='resume-service-autoscaler',
+            cluster=args.cluster,
+        )
     else:
         minutes = args.duration
         return_code = update_service_autoscale_pause_time(args.cluster, minutes)
+        _log_audit(
+            action='pause-service-autoscaler',
+            action_details={'duration': minutes},
+            cluster=args.cluster,
+        )
 
     return return_code

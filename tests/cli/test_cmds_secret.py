@@ -118,7 +118,9 @@ def test_paasta_secret():
         'paasta_tools.cli.cmds.secret.decrypt_secret', autospec=True,
     ) as mock_decrypt_secret, mock.patch(
         'paasta_tools.cli.cmds.secret.get_plaintext_input', autospec=True,
-    ) as mock_get_plaintext_input:
+    ) as mock_get_plaintext_input, mock.patch(
+        'paasta_tools.cli.cmds.secret._log_audit', autospec=True,
+    ) as mock_log_audit:
         mock_secret_provider = mock.Mock(secret_dir='/nail/blah')
         mock_get_secret_provider_for_service.return_value = mock_secret_provider
         mock_args = mock.Mock(
@@ -135,6 +137,14 @@ def test_paasta_secret():
             secret_name='theonering',
             plaintext=mock_get_plaintext_input.return_value,
         )
+        mock_log_audit.assert_called_with(
+            action='add-secret',
+            action_details={
+                'secret_name': 'theonering',
+                'clusters': 'mesosstage',
+            },
+            service='middleearth',
+        )
 
         mock_args = mock.Mock(
             action='update',
@@ -149,6 +159,14 @@ def test_paasta_secret():
             action='update',
             secret_name='theonering',
             plaintext=mock_get_plaintext_input.return_value,
+        )
+        mock_log_audit.assert_called_with(
+            action='update-secret',
+            action_details={
+                'secret_name': 'theonering',
+                'clusters': 'mesosstage',
+            },
+            service='middleearth',
         )
 
         mock_args = mock.Mock(
@@ -180,6 +198,14 @@ def test_paasta_secret():
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider,
             secret_name='theonering',
+        )
+        mock_log_audit.assert_called_with(
+            action='add-secret',
+            action_details={
+                'secret_name': 'theonering',
+                'clusters': 'mesosstage',
+            },
+            service='_shared',
         )
 
         mock_args = mock.Mock(

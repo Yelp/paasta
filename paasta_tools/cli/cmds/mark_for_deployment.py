@@ -47,6 +47,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
@@ -190,6 +191,17 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
                 component='deploy',
                 level='event',
             )
+
+            audit_action_details = {
+                'deploy_group': deploy_group,
+                'commit': commit,
+            }
+            _log_audit(
+                action='mark-for-deployment',
+                action_details=audit_action_details,
+                service=service,
+            )
+
             return 0
     return 1
 

@@ -45,6 +45,7 @@ from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.tron_tools import load_tron_instance_config
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -685,6 +686,19 @@ def execute_paasta_cluster_boost_on_remote_master(
             override=override,
             boost=boost,
             verbose=verbose,
+        )
+
+        audit_details = {
+            'boost_action': action,
+            'pool': pool,
+            'duration': duration,
+            'override': override,
+            'boost': boost,
+        }
+        _log_audit(
+            action='cluster-boost',
+            action_details=audit_details,
+            cluster=cluster,
         )
 
     aggregated_code = 0

@@ -19,6 +19,7 @@ import sys
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
@@ -93,6 +94,15 @@ def paasta_cook_image(args, service=None, soa_dir=None):
                 line='ERROR: make cook-image failed for %s.' % service,
                 component='build',
                 level='event',
+            )
+        else:
+            action_details = {
+                'tag': tag,
+            }
+            _log_audit(
+                action='cook-image',
+                action_details=action_details,
+                service=service,
             )
         return returncode
 
