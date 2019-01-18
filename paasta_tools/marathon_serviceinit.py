@@ -521,7 +521,7 @@ def perform_command(
     soa_dir: str,
     clients: marathon_tools.MarathonClients,
     job_config: marathon_tools.MarathonServiceConfig,
-    app_id: str=None,
+    app_id: str = None,
 ) -> int:
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, status

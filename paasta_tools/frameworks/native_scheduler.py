@@ -70,12 +70,12 @@ class NativeScheduler(Scheduler):
         cluster: str,
         system_paasta_config: SystemPaastaConfig,
         staging_timeout: float,
-        soa_dir: str=DEFAULT_SOA_DIR,
-        service_config: Optional[NativeServiceConfig]=None,
-        reconcile_backoff: float=30,
-        instance_type: str='paasta_native',
-        service_config_overrides: Optional[Dict]=None,
-        reconcile_start_time: float=float('inf'),
+        soa_dir: str = DEFAULT_SOA_DIR,
+        service_config: Optional[NativeServiceConfig] = None,
+        reconcile_backoff: float = 30,
+        instance_type: str = 'paasta_native',
+        service_config_overrides: Optional[Dict] = None,
+        reconcile_start_time: float = float('inf'),
         task_store_type=ZKTaskStore,
     ) -> None:
         self.service_name = service_name

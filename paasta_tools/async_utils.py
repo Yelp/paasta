@@ -17,7 +17,7 @@ T = TypeVar('T')
 
 
 def async_ttl_cache(
-    ttl: float=300,
+    ttl: float = 300,
     cleanup_self: bool = False,
 ) -> Callable[
     [Callable[..., Awaitable[T]]],  # wrapped
@@ -78,7 +78,7 @@ async def aiter_to_list(
 
 
 def async_timeout(
-    seconds: int=10,
+    seconds: int = 10,
 ) -> Callable[
     [Callable[..., Awaitable[T]]],  # wrapped
     Callable[..., Awaitable[T]],  # inner

@@ -207,8 +207,8 @@ def load_chronos_job_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> 'ChronosJobConfig':
     general_config = service_configuration_lib.read_service_configuration(
         service,

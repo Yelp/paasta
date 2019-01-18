@@ -260,9 +260,9 @@ def get_happy_tasks(
     service: str,
     nerve_ns: str,
     system_paasta_config: SystemPaastaConfig,
-    min_task_uptime: Optional[float]=None,
-    check_haproxy: bool=False,
-    haproxy_min_fraction_up: float=1.0,
+    min_task_uptime: Optional[float] = None,
+    check_haproxy: bool = False,
+    haproxy_min_fraction_up: float = 1.0,
 ) -> List[MarathonTask]:
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.

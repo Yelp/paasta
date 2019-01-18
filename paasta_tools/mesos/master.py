@@ -107,8 +107,8 @@ class MesosMaster:
     async def _request(
         self,
         url: str,
-        method: str='GET',
-        cached: bool=False,
+        method: str = 'GET',
+        cached: bool = False,
         **kwargs,
     ) -> aiohttp.ClientResponse:
         headers = {'User-Agent': get_user_agent()}
