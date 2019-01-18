@@ -751,6 +751,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     },
                 ),
                 spec=V1PodSpec(
+                    service_account_name=None,
                     containers=mock_get_kubernetes_containers.return_value,
                     restart_policy='Always',
                     volumes=[],

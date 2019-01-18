@@ -132,6 +132,7 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
+    service_account_name: str
 
 
 def load_kubernetes_service_config_no_cache(
@@ -692,6 +693,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
+    def get_kubernetes_service_account_name(self) -> Optional[str]:
+        return self.config_dict.get('service_account_name', None)
+
     def get_pod_template_spec(
         self,
         code_sha: str,
@@ -711,6 +715,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 },
             ),
             spec=V1PodSpec(
+                service_account_name=self.get_kubernetes_service_account_name(),
                 containers=self.get_kubernetes_containers(
                     docker_volumes=docker_volumes,
                     aws_ebs_volumes=self.get_aws_ebs_volumes(),
