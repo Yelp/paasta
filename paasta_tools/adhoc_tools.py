@@ -83,7 +83,7 @@ class AdhocJobConfig(LongRunningServiceConfig):
         cluster: str,
         config_dict: LongRunningServiceConfigDict,
         branch_dict: BranchDictV2,
-        soa_dir: str=DEFAULT_SOA_DIR,
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         super().__init__(
             cluster=cluster,
@@ -99,7 +99,7 @@ def get_default_interactive_config(
     service: str,
     cluster: str,
     soa_dir: str,
-    load_deployments: bool=False,
+    load_deployments: bool = False,
 ) -> AdhocJobConfig:
     default_job_config = {
         'cpus': 4,

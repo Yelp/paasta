@@ -32,9 +32,9 @@ class SecretProvider(BaseSecretProvider):
         soa_dir: str,
         service_name: str,
         cluster_names: List[str],
-        vault_cluster_config: Dict[str, str]={},
-        vault_auth_method: str='ldap',
-        vault_token_file: str='/root/.vault-token',
+        vault_cluster_config: Dict[str, str] = {},
+        vault_auth_method: str = 'ldap',
+        vault_token_file: str = '/root/.vault-token',
         **kwargs: Any,
     ) -> None:
         super().__init__(soa_dir, service_name, cluster_names)

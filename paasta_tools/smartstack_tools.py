@@ -153,7 +153,7 @@ def load_smartstack_info_for_service(
     namespace: str,
     blacklist: DeployBlacklist,
     system_paasta_config: SystemPaastaConfig,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, Dict[str, int]]:
     """Retrieves number of available backends for given services
 

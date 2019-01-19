@@ -326,7 +326,7 @@ def _run_kube_checks(
     return kube_status + kube_metrics_status  # type: ignore
 
 
-def print_output(argv: Optional[Sequence[str]]=None) -> None:
+def print_output(argv: Optional[Sequence[str]] = None) -> None:
     mesos_available = is_mesos_available()
     kube_available = is_kubernetes_available()
 
@@ -492,7 +492,7 @@ def print_output(argv: Optional[Sequence[str]]=None) -> None:
         raise FatalError(2)
 
 
-def get_output(argv: Optional[Sequence[str]]=None) -> Tuple[str, int]:
+def get_output(argv: Optional[Sequence[str]] = None) -> Tuple[str, int]:
     output = io.StringIO()
     exit_code = 1
     with set_paasta_print_file(output):
@@ -505,7 +505,7 @@ def get_output(argv: Optional[Sequence[str]]=None) -> Tuple[str, int]:
     return ret, exit_code
 
 
-def main(argv: Optional[Sequence[str]]=None) -> None:
+def main(argv: Optional[Sequence[str]] = None) -> None:
     exit_code = 0
     try:
         print_output(argv)

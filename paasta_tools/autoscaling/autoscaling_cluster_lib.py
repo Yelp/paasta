@@ -135,10 +135,10 @@ class ClusterAutoscaler:
         utilization_error: float,
         max_increase: float,
         max_decrease: float,
-        log_level: str=None,
-        draining_enabled: bool=True,
-        enable_metrics: bool=False,
-        enable_maintenance_reservation: bool=True,
+        log_level: str = None,
+        draining_enabled: bool = True,
+        enable_metrics: bool = False,
+        enable_maintenance_reservation: bool = True,
     ) -> None:
         self.resource = resource
         self.pool_settings = pool_settings
@@ -219,8 +219,8 @@ class ClusterAutoscaler:
     def describe_instances(
         self,
         instance_ids: Sequence[str],
-        region: Optional[str]=None,
-        instance_filters: Optional[Sequence[Mapping]]=None,
+        region: Optional[str] = None,
+        instance_filters: Optional[Sequence[Mapping]] = None,
     ) -> Optional[Sequence[InstanceDescription]]:
         """This wraps ec2.describe_instances and catches instance not
         found errors. It returns a list of instance description
@@ -252,8 +252,8 @@ class ClusterAutoscaler:
     def describe_instance_status(
         self,
         instance_ids: Sequence[str],
-        region: Optional[str]=None,
-        instance_filters: Optional[Sequence[Mapping]]=None,
+        region: Optional[str] = None,
+        instance_filters: Optional[Sequence[Mapping]] = None,
     ) -> Optional[Mapping]:
         """This wraps ec2.describe_instance_status and catches instance not
         found errors. It returns a list of instance description
@@ -283,7 +283,7 @@ class ClusterAutoscaler:
     def get_instance_ips(
         self,
         instances: Sequence[InstanceDescription],
-        region: Optional[str]=None,
+        region: Optional[str] = None,
     ) -> Sequence[str]:
         instance_descriptions = self.describe_instances(
             [instance['InstanceId'] for instance in instances],
@@ -302,7 +302,7 @@ class ClusterAutoscaler:
         self,
         resource_id: str,
         config_folder: str,
-        dry_run: bool=False,
+        dry_run: bool = False,
     ) -> None:
         file_name = f"{resource_id}.json"
         configs_to_delete = [os.path.join(walk[0], file_name)
@@ -390,8 +390,8 @@ class ClusterAutoscaler:
         drain_timeout: int,
         dry_run: bool,
         timer: Timer,
-        region: Optional[str]=None,
-        should_drain: bool=True,
+        region: Optional[str] = None,
+        should_drain: bool = True,
     ) -> None:
         """Waits for slave to be drained and then terminate
 
@@ -808,7 +808,7 @@ class SpotAutoscaler(ClusterAutoscaler):
     def get_sfr(
         self,
         spotfleet_request_id: str,
-        region: Optional[str]=None,
+        region: Optional[str] = None,
     ) -> Optional[SpotFleetRequestConfig0]:
         ec2_client = boto3.client('ec2', region_name=region)
         try:
@@ -837,7 +837,7 @@ class SpotAutoscaler(ClusterAutoscaler):
     def get_spot_fleet_instances(
         self,
         spotfleet_request_id: str,
-        region: Optional[str]=None,
+        region: Optional[str] = None,
     ) -> Sequence[InstanceDescription]:
         ec2_client = boto3.client('ec2', region_name=region)
         spot_fleet_instances = ec2_client.describe_spot_fleet_instances(
@@ -1017,7 +1017,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         now = datetime.now(timezone.utc)
         return (now - self.asg['CreatedTime']).total_seconds() < self.slave_newness_threshold
 
-    def get_asg(self, asg_name: str, region: Optional[str]=None) -> Optional[Mapping[str, Any]]:
+    def get_asg(self, asg_name: str, region: Optional[str] = None) -> Optional[Mapping[str, Any]]:
         asg_client = boto3.client('autoscaling', region_name=region)
         asgs = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
         try:
@@ -1138,8 +1138,8 @@ class PaastaAwsSlave:
         self,
         slave: Mapping[str, SlaveTaskCount],
         instance_description: Mapping[str, Any],
-        instance_status: Optional[Mapping[str, Any]]=None,
-        instance_type_weights: Optional[Mapping]=None,
+        instance_status: Optional[Mapping[str, Any]] = None,
+        instance_type_weights: Optional[Mapping] = None,
     ) -> None:
         if instance_status is None:
             self.instance_status: Mapping[str, Any] = {}
@@ -1214,8 +1214,8 @@ def get_all_utilization_errors(
 
 async def autoscale_local_cluster(
     config_folder: str,
-    dry_run: bool=False,
-    log_level: str=None,
+    dry_run: bool = False,
+    log_level: str = None,
 ) -> None:
     log.debug("Sleep 20s to throttle AWS API calls")
     time.sleep(20)

@@ -668,7 +668,7 @@ def remote_run_stop(args):
     ]
     framework_id = args.framework_id
     if framework_id is None:
-        if re.match('\s', args.run_id):
+        if re.match(r'\s', args.run_id):
             paasta_print(PaastaColors.red("Run id must not contain whitespace."))
             emit_counter_metric('paasta.remote_run.stop.failed', service, instance)
             sys.exit(1)
@@ -720,7 +720,7 @@ def remote_run_list_report(service, instance, cluster, frameworks=None):
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
         launch_time, run_id = re.match(
-            'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
+            r'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
         ).groups()
         paasta_print("Launch time: %s, run id: %s, framework id: %s" %
                      (launch_time, run_id, f.id))

@@ -166,7 +166,7 @@ class NativeServiceConfig(LongRunningServiceConfig):
         config_dict: NativeServiceConfigDict,
         branch_dict: Optional[BranchDictV2],
         soa_dir: str,
-        service_namespace_config: Optional[ServiceNamespaceConfig]=None,
+        service_namespace_config: Optional[ServiceNamespaceConfig] = None,
     ) -> None:
         super().__init__(
             cluster=cluster,

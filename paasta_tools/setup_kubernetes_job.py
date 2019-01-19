@@ -101,7 +101,7 @@ def main() -> None:
 def setup_kube_deployments(
     kube_client: KubeClient,
     service_instances: Sequence[str],
-    soa_dir: str=DEFAULT_SOA_DIR,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     succeeded = True
     if service_instances:
