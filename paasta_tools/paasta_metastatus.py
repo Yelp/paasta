@@ -117,12 +117,6 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def get_marathon_framework_ids(
-    marathon_clients: Sequence[MarathonClient],
-) -> Sequence[str]:
-    return [client.get_info().framework_id for client in marathon_clients]
-
-
 def _run_mesos_checks(
     mesos_master: MesosMaster,
     mesos_state: MesosState,

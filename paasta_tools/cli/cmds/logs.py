@@ -456,10 +456,6 @@ def get_log_reader_class(name):
     return _log_reader_classes[name]
 
 
-def list_log_readers():
-    return _log_reader_classes.keys()
-
-
 def get_log_reader():
     log_reader_config = load_system_paasta_config().get_log_reader()
     log_reader_class = get_log_reader_class(log_reader_config['driver'])

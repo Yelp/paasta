@@ -1212,25 +1212,6 @@ class TestChronosTools:
             'cron schedule nor a valid ISO 8601 schedule' % fake_schedule
         ) in str(exc.value)
 
-    def test_list_job_names(self):
-        fake_name = 'vegetables'
-        fake_job_1 = 'carrot'
-        fake_job_2 = 'celery'
-        fake_cluster = 'broccoli'
-        fake_dir = '/nail/home/veggies'
-        fake_job_config = {
-            fake_job_1: self.fake_config_dict,
-            fake_job_2: self.fake_config_dict,
-        }
-        expected = [(fake_name, fake_job_1), (fake_name, fake_job_2)]
-        with mock.patch(
-            'service_configuration_lib.read_extra_service_information', autospec=True,
-            return_value=fake_job_config,
-        ) as read_extra_info_patch:
-            actual = chronos_tools.list_job_names(fake_name, fake_cluster, fake_dir)
-            read_extra_info_patch.assert_called_once_with(fake_name, "chronos-broccoli", soa_dir=fake_dir)
-            assert sorted(expected) == sorted(actual)
-
     def test_get_chronos_jobs_for_cluster(self):
         with mock.patch(
             'paasta_tools.chronos_tools.get_services_for_cluster',
@@ -1941,26 +1922,6 @@ class TestChronosTools:
         jobs = [early_job, late_job, unrun_job]
         assert chronos_tools.sort_jobs(jobs) == [late_job, early_job, unrun_job]
 
-    def test_disable_job(self):
-        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
-        fake_client = fake_client_class(servers=[])
-        chronos_tools.disable_job(job={}, client=fake_client)
-        fake_client.update.assert_called_once_with({"disabled": True})
-
-    def test_delete_job(self):
-        fake_job_to_delete = copy.deepcopy(self.fake_config_dict)
-        fake_job_to_delete["name"] = 'fake_job'
-        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
-        fake_client = fake_client_class(servers=[])
-        chronos_tools.delete_job(job=fake_job_to_delete, client=fake_client)
-        fake_client.delete.assert_called_once_with('fake_job')
-
-    def test_create_job(self):
-        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
-        fake_client = fake_client_class(servers=[])
-        chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
-        fake_client.add.assert_called_once_with(self.fake_config_dict)
-
     def test_update_job(self):
         fake_client_class = mock.Mock(spec='chronos.ChronosClient')
         fake_client = fake_client_class(servers=[])
@@ -2015,40 +1976,6 @@ class TestChronosTools:
         fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
         fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf {shortdate}'
         assert chronos_tools.uses_time_variables(fake_chronos_job_config)
-
-    @mock.patch('paasta_tools.mesos_tools.get_local_slave_state', autospec=True)
-    def test_chronos_services_running_here(self, mock_get_local_slave_state):
-        id_1 = "ct:1494968280000:0:my-test-service my_test_date_interpolation:"
-        id_2 = "ct:1494968700000:0:my-test-service my_fail_occasionally:"
-        id_3 = "ct:1494957600000:0:my-test-service my_long_running:"
-        mock_get_local_slave_state.return_value = {
-            'frameworks': [
-                {
-                    'name': 'chronos',
-                    'executors': [
-                        {'id': id_1, 'resources': {}, 'tasks': [{'state': 'TASK_RUNNING'}]},
-                        {'id': id_2, 'resources': {}, 'tasks': [{'state': 'TASK_STAGED'}]},
-                        {'id': id_3, 'resources': {}, 'tasks': [{'state': 'TASK_RUNNING'}]},
-                    ],
-                },
-                {
-                    'name': 'marathon-1111111',
-                    'executors': [
-                        {
-                            'id': 'marathon.service', 'resources': {'ports': '[111-111]'},
-                            'tasks': [{'state': 'TASK_RUNNING'}],
-                        },
-                    ],
-                },
-            ],
-        }
-        expected = [
-            ('my-test-service', 'my_test_date_interpolation', None),
-            ('my-test-service', 'my_long_running', None),
-        ]
-        actual = chronos_tools.chronos_services_running_here()
-        mock_get_local_slave_state.assert_called_once_with(hostname=None)
-        assert expected == actual
 
     @mock.patch('service_configuration_lib.read_services_configuration', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True)

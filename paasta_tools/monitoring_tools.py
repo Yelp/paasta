@@ -70,10 +70,6 @@ def get_page(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('page', overrides, service, soa_dir)
 
 
-def get_alert_after(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('alert_after', overrides, service, soa_dir)
-
-
 def get_realert_every(
     overrides, service, soa_dir=DEFAULT_SOA_DIR,
     monitoring_defaults=monitoring_defaults,
@@ -85,10 +81,6 @@ def get_realert_every(
         soa_dir=soa_dir,
         monitoring_defaults=monitoring_defaults,
     )
-
-
-def get_check_every(overrides, service, soa_dir=DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('check_every', overrides, service, soa_dir)
 
 
 def get_irc_channels(overrides, service, soa_dir=DEFAULT_SOA_DIR):

@@ -21,14 +21,12 @@ import pytest
 from dateutil import tz
 from requests.exceptions import HTTPError
 
-from paasta_tools.mesos_maintenance import _make_request_payload
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_down
 from paasta_tools.mesos_maintenance import are_hosts_forgotten_draining
 from paasta_tools.mesos_maintenance import build_maintenance_payload
 from paasta_tools.mesos_maintenance import build_maintenance_schedule_payload
 from paasta_tools.mesos_maintenance import build_reservation_payload
 from paasta_tools.mesos_maintenance import components_to_hosts
-from paasta_tools.mesos_maintenance import datetime_seconds_from_now
 from paasta_tools.mesos_maintenance import datetime_to_nanoseconds
 from paasta_tools.mesos_maintenance import down
 from paasta_tools.mesos_maintenance import drain
@@ -90,15 +88,6 @@ def test_parse_datetime_invalid():
 
 def test_parse_datetime():
     assert parse_datetime('November 11, 2011 11:11:11Z') == 1321009871000000000
-
-
-@mock.patch('paasta_tools.mesos_maintenance.now', autospec=True)
-def test_datetime_seconds_from_now(
-    mock_now,
-):
-    mock_now.return_value = datetime.datetime(2016, 4, 16, 0, 23, 25, 157145, tzinfo=tz.tzutc())
-    expected = datetime.datetime(2016, 4, 16, 0, 23, 40, 157145, tzinfo=tz.tzutc())
-    assert datetime_seconds_from_now(15) == expected
 
 
 def test_seconds_to_nanoseconds():
@@ -284,16 +273,6 @@ def test_build_reservation_payload(
         },
     ]
     assert actual == expected
-
-
-def test_make_request_payload():
-    ret = _make_request_payload('slave_id', {'name': 'res+ource'})
-    assert ret == {
-        'slaveId': b'slave_id',
-        'resources': b'{"name": "res%20ource"}',
-    }
-    assert type(ret['slaveId']) is bytes
-    assert type(ret['resources']) is bytes
 
 
 @mock.patch('paasta_tools.mesos_maintenance.get_maintenance_schedule', autospec=True)

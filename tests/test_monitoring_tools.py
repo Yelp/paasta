@@ -132,16 +132,6 @@ class TestMonitoring_Tools:
                 self.soa_dir,
             )
 
-    def test_get_alert_after(self):
-        with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_alert_after(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                'alert_after', self.overrides, self.service,
-                self.soa_dir,
-            )
-
     def test_get_realert_every(self):
         with mock.patch(
             'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
@@ -151,16 +141,6 @@ class TestMonitoring_Tools:
             get_monitoring_config_value_patch.assert_called_once_with(
                 'realert_every', self.overrides,
                 self.service, self.soa_dir, monitoring_defaults,
-            )
-
-    def test_get_check_every(self):
-        with mock.patch(
-            'paasta_tools.monitoring_tools.__get_monitoring_config_value', autospec=True,
-        ) as get_monitoring_config_value_patch:
-            monitoring_tools.get_check_every(self.overrides, self.service, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with(
-                'check_every', self.overrides, self.service,
-                self.soa_dir,
             )
 
     def test_get_irc_channels(self):

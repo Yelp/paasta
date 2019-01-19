@@ -27,21 +27,6 @@ class TestBounceLib:
     def fake_system_paasta_config(self):
         return utils.SystemPaastaConfig({"synapse_port": 123456}, "/fake/configs")
 
-    def test_bounce_lock(self):
-        import fcntl
-        lock_name = 'the_internet'
-        lock_file = '/var/lock/%s.lock' % lock_name
-        fake_fd = mock.mock_open()
-        with mock.patch('builtins.open', fake_fd, autospec=None) as open_patch:
-            with mock.patch('fcntl.lockf', autospec=None) as lockf_patch:
-                with mock.patch('os.remove', autospec=None) as remove_patch:
-                    with bounce_lib.bounce_lock(lock_name):
-                        pass
-        open_patch.assert_called_once_with(lock_file, 'w')
-        lockf_patch.assert_called_once_with(fake_fd.return_value, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        fake_fd.return_value.__exit__.assert_called_once_with(None, None, None)
-        remove_patch.assert_called_once_with(lock_file)
-
     def test_bounce_lock_zookeeper(self):
         lock_name = 'watermelon'
         fake_lock = mock.Mock()

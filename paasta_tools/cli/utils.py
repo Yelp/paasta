@@ -177,17 +177,6 @@ class PaastaCheckMessages:
         "More info:", "http://y/paasta-runbook-dockerfile",
     )
 
-    DOCKERFILE_YELPCORP = success(
-        "Your Dockerfile pulls from the standard Yelp images.",
-    )
-
-    DOCKERFILE_NOT_YELPCORP = failure(
-        "Your Dockerfile does not use the standard Yelp images.\n  "
-        "This is bad because your `docker pulls` will be slow and you won't be "
-        "using the local mirrors.\n"
-        "More info:", "http://y/base-docker-images",
-    )
-
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
@@ -238,14 +227,6 @@ class PaastaCheckMessages:
         "The Makefile contains no reference to DOCKER_TAG. Make sure you\n"
         "specify a DOCKER_TAG and that your itest tags your docker image with $DOCKER_TAG.",
         "http://paasta.readthedocs.io/en/latest/about/contract.html",
-    )
-
-    PIPELINE_FOUND = success("Jenkins build pipeline found")
-
-    PIPELINE_MISSING = failure(
-        "Jenkins build pipeline missing. Please run "
-        "'paasta generate-pipeline'\n"
-        "  More info:", "http://y/paasta-deploy",
     )
 
     SENSU_MONITORING_FOUND = success(

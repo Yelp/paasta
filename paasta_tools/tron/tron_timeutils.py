@@ -11,21 +11,9 @@ def current_time():
     return datetime.datetime.now()
 
 
-def current_timestamp():
-    """Return the current time as a timestamp."""
-    return to_timestamp(current_time())
-
-
 def to_timestamp(time_val):
     """Generate a unix timestamp for the given datetime instance"""
     return time.mktime(time_val.timetuple())
-
-
-def delta_total_seconds(td):
-    """Equivalent to timedelta.total_seconds() available in Python 2.7.
-    """
-    microseconds, seconds, days = td.microseconds, td.seconds, td.days
-    return (microseconds + (seconds + days * 24 * 3600) * 10**6) / 10**6
 
 
 def macro_timedelta(start_date, years=0, months=0, days=0, hours=0):

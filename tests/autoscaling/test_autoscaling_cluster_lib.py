@@ -115,16 +115,6 @@ def test_get_mesos_utilization_error():
         assert ret == 0
 
 
-def test_get_instances_from_ip():
-    mock_instances = []
-    ret = autoscaling_cluster_lib.get_instances_from_ip('10.1.1.1', mock_instances)
-    assert ret == []
-
-    mock_instances = [{'InstanceId': 'i-blah', 'PrivateIpAddress': '10.1.1.1'}]
-    ret = autoscaling_cluster_lib.get_instances_from_ip('10.1.1.1', mock_instances)
-    assert ret == mock_instances
-
-
 @mark.asyncio
 async def test_autoscale_local_cluster_with_cancelled():
     with mock.patch(
@@ -1956,58 +1946,52 @@ class TestClusterAutoscaler(unittest.TestCase):
 class TestPaastaAwsSlave(unittest.TestCase):
 
     def setUp(self):
-        with mock.patch(
-            'paasta_tools.autoscaling.autoscaling_cluster_lib.get_instances_from_ip', autospec=True,
-        ) as mock_get_instances_from_ip:
-            mock_get_instances_from_ip.return_value = [{'InstanceId': 'i-1'}]
-            self.mock_instances = [
-                {
-                    'InstanceId': 'i-1',
-                    'InstanceType': 'c4.blah',
+        self.mock_instances = [
+            {
+                'InstanceId': 'i-1',
+                'InstanceType': 'c4.blah',
+            },
+            {
+                'InstanceId': 'i-2',
+                'InstanceType': 'm4.whatever',
+            },
+            {
+                'InstanceId': 'i-3',
+                'InstanceType': 'm4.whatever',
+            },
+        ]
+        self.mock_slave_1 = {
+            'task_counts': SlaveTaskCount(
+                slave={
+                    'pid': 'slave(1)@10.1.1.1:5051',
+                    'id': '123',
+                    'hostname': 'host123',
                 },
-                {
-                    'InstanceId': 'i-2',
-                    'InstanceType': 'm4.whatever',
-                },
-                {
-                    'InstanceId': 'i-3',
-                    'InstanceType': 'm4.whatever',
-                },
-            ]
-            self.mock_slave_1 = {
-                'task_counts': SlaveTaskCount(
-                    slave={
-                        'pid': 'slave(1)@10.1.1.1:5051',
-                        'id': '123',
-                        'hostname': 'host123',
-                    },
-                    count=0,
-                    batch_count=0,
-                ),
-            }
-            mock_instance_type_weights = {'c4.blah': 2, 'm4.whatever': 5}
-            self.mock_slave = autoscaling_cluster_lib.PaastaAwsSlave(
-                slave=self.mock_slave_1,
-                instance_description=self.mock_instances[0],
-                instance_type_weights=mock_instance_type_weights,
-            )
-            self.mock_asg_slave = autoscaling_cluster_lib.PaastaAwsSlave(
-                slave=self.mock_slave_1,
-                instance_description=self.mock_instances,
-                instance_type_weights=None,
-            )
-            mock_get_instances_from_ip.return_value = []
-            self.mock_slave_no_instance = autoscaling_cluster_lib.PaastaAwsSlave(
-                slave=self.mock_slave_1,
-                instance_description=self.mock_instances,
-                instance_type_weights=None,
-            )
-            mock_get_instances_from_ip.return_value = [{'InstanceId': 'i-1'}, {'InstanceId': 'i-2'}]
-            self.mock_slave_extra_instance = autoscaling_cluster_lib.PaastaAwsSlave(
-                slave=self.mock_slave_1,
-                instance_description=self.mock_instances,
-                instance_type_weights=None,
-            )
+                count=0,
+                batch_count=0,
+            ),
+        }
+        mock_instance_type_weights = {'c4.blah': 2, 'm4.whatever': 5}
+        self.mock_slave = autoscaling_cluster_lib.PaastaAwsSlave(
+            slave=self.mock_slave_1,
+            instance_description=self.mock_instances[0],
+            instance_type_weights=mock_instance_type_weights,
+        )
+        self.mock_asg_slave = autoscaling_cluster_lib.PaastaAwsSlave(
+            slave=self.mock_slave_1,
+            instance_description=self.mock_instances,
+            instance_type_weights=None,
+        )
+        self.mock_slave_no_instance = autoscaling_cluster_lib.PaastaAwsSlave(
+            slave=self.mock_slave_1,
+            instance_description=self.mock_instances,
+            instance_type_weights=None,
+        )
+        self.mock_slave_extra_instance = autoscaling_cluster_lib.PaastaAwsSlave(
+            slave=self.mock_slave_1,
+            instance_description=self.mock_instances,
+            instance_type_weights=None,
+        )
 
     def test_instance_id(self):
         assert self.mock_slave.instance_id == 'i-1'

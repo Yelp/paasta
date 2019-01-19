@@ -65,7 +65,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
@@ -78,7 +77,6 @@ import paasta_tools.cli.fsm
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
 SPACER = '.'
-INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
@@ -1099,10 +1097,6 @@ def register_log_writer(name: str) -> Callable[[_LogWriterTypeT], _LogWriterType
 
 def get_log_writer_class(name: str) -> Type[LogWriter]:
     return _log_writer_classes[name]
-
-
-def list_log_writers() -> Iterable[str]:
-    return _log_writer_classes.keys()
 
 
 def configure_log() -> None:
@@ -2378,10 +2372,6 @@ def get_services_for_cluster(
     return instance_list
 
 
-def parse_yaml_file(yaml_file: str) -> Any:
-    return yaml.safe_load(open(yaml_file))
-
-
 def get_docker_host() -> str:
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
 
@@ -2473,11 +2463,6 @@ class DeploymentsJsonV2Dict(TypedDict):
     controls: Dict[BranchName, _DeploymentsJsonV2ControlsDict]
 
 
-class DeploymentsJsonDict(TypedDict):
-    v1: DeploymentsJsonV1Dict
-    v2: DeploymentsJsonV2Dict
-
-
 class DeploymentsJsonV1:
     def __init__(self, config_dict: DeploymentsJsonV1Dict) -> None:
         self.config_dict = config_dict
@@ -2556,13 +2541,8 @@ def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str
     return f'paasta-{identifier}-{timestamp}-{desired_state}'
 
 
-def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
-    timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f'paasta-{cluster}.{instance}-{timestamp}-{desired_state}'
-
-
 def format_tag(tag: str) -> str:
-    return 'refs/tags/%s' % tag
+    return f'refs/tags/{tag}'
 
 
 class NoDockerImageError(Exception):

@@ -40,16 +40,10 @@ from . import zookeeper
 from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.utils import get_user_agent
 
-ZOOKEEPER_TIMEOUT = 1
-
-INVALID_PATH = "{0} does not have a valid path. Did you forget /mesos?"
-
 MISSING_MASTER = """unable to connect to a master at {0}.
 
 Try running `mesos config master zk://localhost:2181/mesos`. See the README for
 more examples."""
-
-MULTIPLE_SLAVES = "There are multiple slaves with that id. Please choose one: "
 
 logger = logging.getLogger(__name__)
 

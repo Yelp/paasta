@@ -119,9 +119,6 @@ class File:
     async def _read(self, size=None):
         start = self.tell()
 
-        def pre(x):
-            return x == ""
-
         def post(x):
             return size and (self.tell() - start) >= size
 

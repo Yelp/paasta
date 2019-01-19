@@ -345,8 +345,3 @@ def paasta_check(args):
     sensu_check(service, service_path, soa_dir)
     smartstack_check(service, service_path, soa_dir)
     paasta_validate_soa_configs(service_path)
-
-
-def read_dockerfile_lines(path):
-    with open(path, 'r') as dockerfile:
-        return dockerfile.readlines()

@@ -14,10 +14,8 @@
 # limitations under the License.
 import asyncio
 import datetime
-import fcntl
 import logging
 import math
-import os
 import random
 import time
 import typing
@@ -109,32 +107,11 @@ class LockHeldException(Exception):
 
 
 @contextmanager
-def bounce_lock(name):
-    """Acquire a bounce lockfile for the name given. The name should generally
-    be the service namespace being bounced.
-
-    This is a contextmanager. Please use it via 'with bounce_lock(name):'.
-
-    :param name: The lock name to acquire"""
-    lockfile = '/var/lock/%s.lock' % name
-    with open(lockfile, 'w') as fd:
-        remove = False
-        try:
-            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            remove = True
-            yield
-        except IOError:
-            raise LockHeldException("Service %s is already being bounced!" % name)
-        finally:
-            if remove:
-                os.remove(lockfile)
-
-
-@contextmanager
 def bounce_lock_zookeeper(name):
     """Acquire a bounce lock in zookeeper for the name given. The name should
     generally be the service namespace being bounced.
-    This is a contextmanager. Please use it via 'with bounce_lock(name):'.
+    This is a contextmanager. Please use it via
+    ``with bounce_lock_zookeeper(name):``.
     :param name: The lock name to acquire"""
     zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()

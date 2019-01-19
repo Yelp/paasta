@@ -89,7 +89,6 @@ ServiceAutoscalingInfo = namedtuple(
 SERVICE_METRICS_PROVIDER_KEY = 'metrics_provider'
 DECISION_POLICY_KEY = 'decision_policy'
 
-AUTOSCALING_DELAY = 300
 MAX_TASK_DELTA = 0.3
 
 log = logging.getLogger(__name__)
@@ -793,10 +792,6 @@ def write_to_log(config, line, level='event'):
         cluster=config.cluster,
         instance=config.instance,
     )
-
-
-def get_short_job_id(task_id):
-    return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
 
 
 @contextmanager

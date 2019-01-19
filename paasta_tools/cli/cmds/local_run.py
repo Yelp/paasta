@@ -267,11 +267,6 @@ def simulate_healthcheck_on_service(
     return healthcheck_passed
 
 
-def read_local_dockerfile_lines():
-    dockerfile = os.path.join(os.getcwd(), 'Dockerfile')
-    return open(dockerfile).readlines()
-
-
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'local-run',

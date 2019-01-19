@@ -32,7 +32,6 @@ from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
-from paasta_tools.utils import to_bytes
 
 
 log = logging.getLogger(__name__)
@@ -316,15 +315,6 @@ def parse_datetime(value):
     return datetime_to_nanoseconds(dt)
 
 
-def datetime_seconds_from_now(seconds):
-    """Given a number of seconds, returns a datetime object representing that number of seconds in the future from the
-    current time.
-    :param seconds: an integer representing a certain number of seconds
-    :returns: a datetime.timedelta representing now + the specified number of seconds
-    """
-    return now() + datetime.timedelta(seconds=seconds)
-
-
 def now():
     """Returns a datetime object representing the current time
 
@@ -513,15 +503,6 @@ def get_secret(mesos_secrets='/nail/etc/mesos-slave-secret'):
     :returns: a string containing the secret/password
     """
     return load_credentials(mesos_secrets).secret
-
-
-def _make_request_payload(slave_id, reservation_payload):
-    return {
-        'slaveId': slave_id.encode('UTF-8'),
-        # We used to_bytes here since py2 json doesn't have a well defined
-        # return type.  When moving to python 3, replace with .encode()
-        'resources': to_bytes(json.dumps(reservation_payload)).replace(b'+', b'%20'),
-    }
 
 
 def _make_operator_reservation_request_payload(slave_id, payload, request_type):

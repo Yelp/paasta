@@ -422,10 +422,6 @@ def load_marathon_service_config(
     )
 
 
-class InvalidMarathonConfig(Exception):
-    pass
-
-
 class MarathonServiceConfig(LongRunningServiceConfig):
     config_dict: MarathonServiceConfigDict
 

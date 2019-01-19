@@ -98,7 +98,6 @@ class SpotFleetRequestConfig0(TypedDict):
     SpotFleetRequestConfig: SpotFleetRequestConfig
 
 
-CLUSTER_METRICS_PROVIDER_KEY = 'cluster_metrics_provider'
 DEFAULT_TARGET_UTILIZATION = 0.8  # decimal fraction
 DEFAULT_DRAIN_TIMEOUT = 600  # seconds
 
@@ -1332,19 +1331,6 @@ async def autoscale_cluster_resource(
         await scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
         log.error('{}: {}'.format(scaler.resource['id'], e))
-
-
-def get_instances_from_ip(
-    ip: str,
-    instance_descriptions: Sequence[InstanceDescription],
-) -> Sequence[InstanceDescription]:
-    """Filter AWS instance_descriptions based on PrivateIpAddress
-
-    :param ip: private IP of AWS instance.
-    :param instance_descriptions: list of AWS instance description dicts.
-    :returns: list of instance description dicts"""
-    instances = [instance for instance in instance_descriptions if instance['PrivateIpAddress'] == ip]
-    return instances
 
 
 def get_autoscaling_info_for_all_resources(

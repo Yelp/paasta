@@ -30,13 +30,11 @@ from crontab import CronSlices
 
 from paasta_tools import monitoring_tools
 from paasta_tools.mesos_tools import get_mesos_network_for_net
-from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
@@ -591,17 +589,6 @@ def paasta_to_chronos_job_name(job_name):
     return job_name.replace(INTERNAL_SPACER, SPACER)
 
 
-def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """A chronos-specific wrapper around utils.get_service_instance_list.
-
-    :param name: The service name
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (name, job) for each job defined for the service name
-    """
-    return get_service_instance_list(service, cluster, 'chronos', soa_dir)
-
-
 def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """A chronos-specific wrapper around utils.get_services_for_cluster
 
@@ -942,22 +929,6 @@ def check_parent_format(parent):
     return len(parent.split(".")) == 2
 
 
-def disable_job(client, job):
-    job["disabled"] = True
-    log.debug("Disabling job: %s" % job)
-    client.update(job)
-
-
-def delete_job(client, job):
-    log.debug("Deleting job: %s" % job["name"])
-    client.delete(job["name"])
-
-
-def create_job(client, job):
-    log.debug("Creating job: %s" % job)
-    client.add(job)
-
-
 def update_job(client, job):
     log.debug("Updating job: %s" % job)
     client.update(job)
@@ -1012,16 +983,6 @@ def is_temporary_job(job):
     :returns: a boolean indicating if a job is a temporary job
     """
     return job['name'].startswith(TMP_JOB_IDENTIFIER)
-
-
-def chronos_services_running_here():
-    """See what chronos services are being run by a mesos-slave on this host.
-    :returns: A list of triples of (service, instance, port)"""
-
-    return mesos_services_running_here(
-        framework_filter=lambda fw: fw['name'].startswith('chronos'),
-        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3]),
-    )
 
 
 ENTERED, ENTERED_AND_EXITED = range(0, 2)
