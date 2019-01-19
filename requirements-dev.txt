@@ -30,5 +30,5 @@ requirements-tools==1.1.2
 snowballstemmer==1.2.0
 Sphinx==1.4.1
 toml==0.9.4
-virtualenv==15.1.0
+virtualenv==16.2.0
 wrapt==1.10.8
