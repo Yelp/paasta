@@ -1,10 +1,19 @@
+import os
 import time
 from datetime import datetime
 
-from tzlocal import get_localzone
+import pytz
+from tzlocal import get_localzone as wrong_localzone
 
 from paasta_tools.api import client
 from paasta_tools.utils import paasta_print
+
+
+def get_localzone():
+    if 'TZ' in os.environ:
+        return pytz.timezone(os.environ['TZ'])
+    else:
+        return wrong_localzone()
 
 
 def get_service_autoscale_pause_time(cluster):
