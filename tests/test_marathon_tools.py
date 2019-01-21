@@ -306,7 +306,7 @@ class TestMarathonTools:
         fake_retries = 9001
         fake_discover = 'myhabitat'
         fake_advertise = ['red', 'blue']
-        fake_body_expect = '"master\/elected":1'
+        fake_body_expect = r'"master\/elected":1'
         fake_info = {
             'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,

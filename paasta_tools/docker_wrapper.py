@@ -28,7 +28,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 LOCK_DIRECTORY = '/var/lib/paasta/mac-address'
-ENV_MATCH_RE = re.compile('^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
+ENV_MATCH_RE = re.compile(r'^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
 MAX_HOSTNAME_LENGTH = 63
 
 
@@ -169,7 +169,7 @@ def get_cpumap():
     try:
         with open('/proc/cpuinfo', 'r') as f:
             for line in f:
-                m = re.match('physical\sid.*(\d)', line)
+                m = re.match(r'physical\sid.*(\d)', line)
                 if m:
                     cpuid = int(m.group(1))
                     if cpuid not in cpumap:
@@ -188,7 +188,7 @@ def get_numa_memsize(nb_nodes):
     try:
         with open('/proc/meminfo', 'r') as f:
             for line in f:
-                m = re.match('MemTotal:\s*(\d+)\skB', line)
+                m = re.match(r'MemTotal:\s*(\d+)\skB', line)
                 if m:
                     return int(m.group(1)) / 1024 / int(nb_nodes)
     except IOError:

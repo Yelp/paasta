@@ -686,6 +686,7 @@ class TestTronTools:
     @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
     def test_load_tron_service_config(self, mock_load_tron_yaml):
         mock_load_tron_yaml.return_value = {
+            '_template': {'actions': {'action1': {}}},
             'extra': 'data',
             'jobs': {
                 'job1': {
@@ -706,7 +707,7 @@ class TestTronTools:
                 soa_dir='fake',
             ),
         ]
-        assert extra_config == {'extra': 'data'}
+        assert extra_config == {'extra': 'data'}  # template filtered out
         mock_load_tron_yaml.assert_called_once_with(
             service='service',
             cluster='test-cluster',

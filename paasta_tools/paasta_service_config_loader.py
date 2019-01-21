@@ -65,7 +65,7 @@ class PaastaServiceConfigLoader():
     _clusters: List[str]
     _deployments_json: utils.DeploymentsJsonV2
 
-    def __init__(self, service: str, soa_dir: str=DEFAULT_SOA_DIR, load_deployments: bool=True) -> None:
+    def __init__(self, service: str, soa_dir: str = DEFAULT_SOA_DIR, load_deployments: bool = True) -> None:
         self._service = service
         self._soa_dir = soa_dir
         self._load_deployments = load_deployments

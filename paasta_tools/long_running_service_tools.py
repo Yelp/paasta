@@ -104,7 +104,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def __init__(
         self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
-        branch_dict: Optional[BranchDictV2], soa_dir: str=DEFAULT_SOA_DIR,
+        branch_dict: Optional[BranchDictV2], soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         super().__init__(
             cluster=cluster,
@@ -203,7 +203,7 @@ class LongRunningServiceConfig(InstanceConfig):
         """
         return self.config_dict.get('bounce_priority', 0) * -1
 
-    def get_instances(self, with_limit: bool=True) -> int:
+    def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
         if self.get_max_instances() is not None:
@@ -270,7 +270,7 @@ def get_healthcheck_for_instance(
     instance: str,
     service_manifest: LongRunningServiceConfig,
     random_port: int,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Tuple[Optional[str], Optional[str]]:
     """
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
@@ -298,7 +298,11 @@ def get_healthcheck_for_instance(
     return (mode, healthcheck_command)
 
 
-def load_service_namespace_config(service: str, namespace: str, soa_dir: str=DEFAULT_SOA_DIR) -> ServiceNamespaceConfig:
+def load_service_namespace_config(
+    service: str,
+    namespace: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> ServiceNamespaceConfig:
     """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
     Retrieves the following keys:
@@ -401,7 +405,7 @@ def set_instances_for_marathon_service(
     service: str,
     instance: str,
     instance_count: int,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> None:
     zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
     with ZookeeperPool() as zookeeper_client:

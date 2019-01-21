@@ -660,6 +660,30 @@ jobs:
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_tron_validate_schema_understands_underscores(
+    mock_get_file_contents, capfd,
+):
+    tron_content = """
+_my_template: &a_template
+    actions:
+        - name: first
+          command: echo hello world
+
+jobs:
+    - name: test_job
+      node: batch_box
+      schedule:
+        type: cron
+        value: "0 7 * * 5"
+      <<: *a_template
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert validate_schema('unused_service_path.yaml', 'tron')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
 def test_tron_validate_schema_job_extra_properties_bad(
     mock_get_file_contents, capfd,
 ):
