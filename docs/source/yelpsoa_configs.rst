@@ -888,6 +888,23 @@ Here is a list of options that PaaSTA will pass through:
  * ``project``: String naming the project where JIRA tickets will be created.
    Overrides the global default for the team.
 
+ * ``priority``: A JIRA ticket priority to use. This value should be a string
+   value like ``'0'``, ``'1'``, ``'3.14'``, etc. If not set, the default will
+   be the ``default_priority`` setting for the sensu team or the default
+   priority used for the JIRA project.
+
+ * ``tags``: An list of tags that are used as labels when creating a JIRA
+   ticket. Note that this list of tags does not overwrite the default values
+   added for sensu checks (tags like ``SENSU`` for example), it just adds to
+   that existing list.
+
+ * ``component``: Array of components affected by this check. These are used as
+   components when creating a JIRA ticket.
+
+ * ``description``: A description giving more context on the check or event.
+   This should be a longer expansion of information than what is included in
+   the ``tip`` option.
+
  * ``alert_after``: Time string that represents how long a a check should be
    failing before an actual alert should be fired. Currently defaults to ``2m``
    for the replication alert.
