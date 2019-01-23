@@ -18,6 +18,7 @@ Usage: ./setup_kubernetes_crd.py <service.crd> [options]
 Command line options:
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
+- -c <cluster>, --cluster <cluster>: Specify a kubernetes cluster name
 - -v, --verbose: Verbose output
 """
 import argparse
@@ -25,11 +26,15 @@ import logging
 import sys
 from typing import Sequence
 
+import service_configuration_lib
+from kubernetes.client.rest import ApiException
+
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1beta1CustomResourceDefinition
-
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+
+log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,6 +43,11 @@ def parse_args() -> argparse.Namespace:
         'service_list', nargs='+',
         help="The list of services to create or update CRDs for",
         metavar="SERVICE",
+    )
+    parser.add_argument(
+        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        default=None,
+        help="Kubernetes cluster name",
     )
     parser.add_argument(
         '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
@@ -60,12 +70,17 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    system_paasta_config = load_system_paasta_config()
+    if args.cluster:
+        cluster = args.cluster
+    else:
+        system_paasta_config = load_system_paasta_config()
+        cluster = system_paasta_config.get_cluster()
+
     kube_client = KubeClient()
 
     success = setup_kube_crd(
         kube_client=kube_client,
-        cluster=system_paasta_config.get_cluster(),
+        cluster=cluster,
         services=args.service_list,
         soa_dir=soa_dir,
     )
@@ -76,10 +91,49 @@ def setup_kube_crd(
         kube_client: KubeClient,
         cluster: str,
         services: Sequence[str],
-        soa_dir: str=DEFAULT_SOA_DIR,
-):
+        soa_dir: str = DEFAULT_SOA_DIR,
+) -> bool:
+    existing_crds = kube_client.apiextensions.list_custom_resource_definition()
+    success = True
     for service in services:
-        print(f"deploying {cluster}:{service}")
+        crd_config = service_configuration_lib.read_extra_service_information(
+            service, f'kubernetes-crd-{cluster}', soa_dir=soa_dir,
+        )
+        desired_crd = V1beta1CustomResourceDefinition(
+            api_version=crd_config.get('apiVersion'),
+            kind=crd_config.get('kind'),
+            metadata=crd_config.get('metadata'),
+            spec=crd_config.get('spec'),
+            status=crd_config.get('status'),
+        )
+
+        existing_crd = None
+        for crd in existing_crds.items:
+            if crd.metadata.name == desired_crd.metadata['name']:
+                existing_crd = crd
+                break
+
+        try:
+            if existing_crd:
+                desired_crd.metadata['resourceVersion'] = existing_crd.metadata.resource_version
+                kube_client.apiextensions.replace_custom_resource_definition(
+                    name=desired_crd.metadata['name'],
+                    body=desired_crd,
+                )
+            else:
+                kube_client.apiextensions.create_custom_resource_definition(
+                    body=desired_crd,
+                )
+            log.info(f"deployed kubernetes crd for {cluster}:{service}")
+        except ApiException as exc:
+            log.error(
+                f"error deploying crd for {cluster}:{service}, "
+                f"status: {exc.status}, reason: {exc.reason}",
+            )
+            log.debug(exc.body)
+            success = False
+
+    return success
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ import copy
 import itertools
 import logging
 import math
+import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -37,7 +38,6 @@ from kubernetes.client import models
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
-from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1Deployment
@@ -824,7 +824,12 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        kube_config.load_kube_config(config_file=KUBE_CONFIG_PATH)
+        if 'KUBECONFIG' in os.environ:
+            kube_config_path = os.environ.get('KUBECONFIG')
+        else:
+            kube_config_path = KUBE_CONFIG_PATH
+
+        kube_config.load_kube_config(config_file=kube_config_path)
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
@@ -832,6 +837,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
 
 
 def ensure_paasta_namespace(kube_client: KubeClient) -> None:
