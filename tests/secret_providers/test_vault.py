@@ -94,8 +94,11 @@ def test_write_secret():
     ) as mock_get_client, mock.patch(
         'paasta_tools.secret_providers.vault.encrypt_secret', autospec=False,
     ) as mock_encrypt_secret, mock.patch(
+        'paasta_tools.secret_providers.read_service_configuration', autospec=False,
+    ) as mock_read_service_configuration, mock.patch(
         'paasta_tools.secret_providers.vault.getpass', autospec=True,
     ):
+        mock_read_service_configuration.return_value = {}
         sp = SecretProvider(
             soa_dir='/nail/blah',
             service_name='universe',
@@ -120,6 +123,35 @@ def test_write_secret():
             plaintext=b"SECRETSQUIRREL",
             service_name='universe',
             soa_dir='/nail/blah',
+            transit_key='paasta',
+        )
+
+        mock_read_service_configuration.return_value = {'encryption_key': 'special-key'}
+        sp = SecretProvider(
+            soa_dir='/nail/blah',
+            service_name='universe',
+            cluster_names=['mesosstage'],
+            vault_auth_method='ldap',
+            vault_token_file='/nail/blah',
+            vault_cluster_config={
+                'mesosstage': 'devc',
+            },
+        )
+        sp.write_secret(
+            action='add',
+            secret_name='mysecret',
+            plaintext=b"SECRETSQUIRREL",
+        )
+        assert mock_get_client.called
+        mock_encrypt_secret.assert_called_with(
+            client=mock_get_client.return_value,
+            action="add",
+            ecosystem="devc",
+            secret_name="mysecret",
+            plaintext=b"SECRETSQUIRREL",
+            service_name='universe',
+            soa_dir='/nail/blah',
+            transit_key='special-key',
         )
 
 
