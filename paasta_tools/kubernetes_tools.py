@@ -829,12 +829,9 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        if 'KUBECONFIG' in os.environ:
-            kube_config_path = os.environ.get('KUBECONFIG')
-        else:
-            kube_config_path = KUBE_CONFIG_PATH
-
-        kube_config.load_kube_config(config_file=kube_config_path)
+        kube_config.load_kube_config(
+            config_file=os.environ.get('KUBECONFIG', KUBE_CONFIG_PATH),
+        )
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
