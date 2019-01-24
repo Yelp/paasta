@@ -1437,7 +1437,7 @@ def kill_given_tasks(
     try:
         return client.kill_given_tasks(task_ids=task_ids, scale=scale, force=True)
     except MarathonHttpError as e:
-        # hon's interface is always async, so it is possible for you to see
+        # Marathon's interface is always async, so it is possible for you to see
         # a task in the interface and kill it, yet by the time it tries to kill
         # it, it is already gone. This is not really a failure condition, so we
         # swallow this error.
