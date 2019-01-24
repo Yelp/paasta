@@ -1400,7 +1400,8 @@ def get_marathon_apps_with_clients(
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
     for client in clients:
         for app in get_all_marathon_apps(client, service_name, embed_tasks=embed_tasks):
-            marathon_apps_with_clients.append((app, client))
+            if len(app.id.split('/')) <= 2: # Ignore all folders
+                marathon_apps_with_clients.append((app, client))
     return marathon_apps_with_clients
 
 
@@ -1436,7 +1437,7 @@ def kill_given_tasks(
     try:
         return client.kill_given_tasks(task_ids=task_ids, scale=scale, force=True)
     except MarathonHttpError as e:
-        # Marathon's interface is always async, so it is possible for you to see
+        # hon's interface is always async, so it is possible for you to see
         # a task in the interface and kill it, yet by the time it tries to kill
         # it, it is already gone. This is not really a failure condition, so we
         # swallow this error.

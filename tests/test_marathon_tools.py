@@ -2421,6 +2421,25 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         assert MarathonApp(**actual)
 
 
+def test_get_marathon_apps_with_clients_ignore_folders():
+    fake_normal_apps = [
+        mock.Mock(id='/test_app{}'.format(idx)) for idx in range(10)
+    ]
+    fake_apps_in_folder = [
+        mock.Mock(id='/folder/app'),
+        mock.Mock(id='/deeper/folder/app'),
+    ]
+    with mock.patch(
+        'paasta_tools.marathon_tools.get_all_marathon_apps', autospec=True,
+        return_value=fake_normal_apps + fake_apps_in_folder,
+    ):
+        apps_returned = [
+            app for app, _
+            in marathon_tools.get_marathon_apps_with_clients([mock.Mock()])
+        ]
+        assert apps_returned == fake_normal_apps
+
+
 def test_kill_tasks_passes_through():
     fake_client = mock.Mock()
     marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
