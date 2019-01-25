@@ -1400,8 +1400,7 @@ class FileLogWriter(LogWriter):
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:
                 with self.maybe_flock(f):
-                    # remove type ignore comment below once https://github.com/python/typeshed/pull/1541 is merged.
-                    f.write(message.encode('UTF-8'))  # type: ignore
+                    f.write(message.encode('UTF-8'))
         except IOError as e:
             paasta_print(
                 "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), message),
