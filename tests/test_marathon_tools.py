@@ -2423,7 +2423,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
 
 def test_get_marathon_apps_with_clients_ignore_folders():
     fake_normal_apps = [
-        mock.Mock(id='/test_app{}'.format(idx)) for idx in range(10)
+        mock.Mock(id=f'/test_app{idx}') for idx in range(10)
     ]
     fake_apps_in_folder = [
         mock.Mock(id='/folder/app'),

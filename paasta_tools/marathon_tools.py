@@ -1400,7 +1400,7 @@ def get_marathon_apps_with_clients(
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
     for client in clients:
         for app in get_all_marathon_apps(client, service_name, embed_tasks=embed_tasks):
-            if len(app.id.split('/')) <= 2: # Ignore all folders
+            if len(app.id.split('/')) <= 2:  # Ignore all folders
                 marathon_apps_with_clients.append((app, client))
     return marathon_apps_with_clients
 
