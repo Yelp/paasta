@@ -1636,7 +1636,11 @@ class TestMarathonTools:
             mock.Mock(id='/fake--service.fake--instance.bouncingold'),
             mock.Mock(id='/fake--service.fake--instance.bouncingnew'),
         ]
-        list_apps_mock = mock.Mock(return_value=apps)
+        apps_inside_folder = [
+            mock.Mock(id='/folder/fake-app.fake--instance.ignoreme'),
+            mock.Mock(id='/deep/folder/fake-app.fake--instance.ignoreme'),
+        ]
+        list_apps_mock = mock.Mock(return_value=apps + apps_inside_folder)
         fake_client = mock.Mock(list_apps=list_apps_mock)
         actual = marathon_tools.get_all_marathon_apps(fake_client)
         assert actual == apps
@@ -2419,25 +2423,6 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
 
         # Assert that the complete config can be inserted into the MarathonApp model
         assert MarathonApp(**actual)
-
-
-def test_get_marathon_apps_with_clients_ignore_folders():
-    fake_normal_apps = [
-        mock.Mock(id=f'/test_app{idx}') for idx in range(10)
-    ]
-    fake_apps_in_folder = [
-        mock.Mock(id='/folder/app'),
-        mock.Mock(id='/deeper/folder/app'),
-    ]
-    with mock.patch(
-        'paasta_tools.marathon_tools.get_all_marathon_apps', autospec=True,
-        return_value=fake_normal_apps + fake_apps_in_folder,
-    ):
-        apps_returned = [
-            app for app, _
-            in marathon_tools.get_marathon_apps_with_clients([mock.Mock()])
-        ]
-        assert apps_returned == fake_normal_apps
 
 
 def test_kill_tasks_passes_through():
