@@ -1,3 +1,11 @@
+paasta-tools (0.82.2) xenial; urgency=medium
+
+  * 0.82.2 tagged with 'make release'
+    Commit: Merge pull request #2093 from Yelp/make-vault-key-settable
+    Make vault key settable
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 21 Jan 2019 03:43:35 -0800
+
 paasta-tools (0.82.1) xenial; urgency=medium
 
   * 0.82.1 tagged with 'make release'
