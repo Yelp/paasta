@@ -13,21 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./setup_kubernetes_crd.py <service.crd> [options]
+Usage: ./cleanup_kubernetes_crds.py [options]
 
 Command line options:
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -c <cluster>, --cluster <cluster>: Specify a kubernetes cluster name
 - -v, --verbose: Verbose output
+- -n, --dry-run: Only report what would have been deleted
 """
 import argparse
 import logging
 import sys
-from typing import Sequence
 
 import service_configuration_lib
-from kubernetes.client import V1beta1CustomResourceDefinition
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
@@ -38,12 +38,7 @@ log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Creates/updates kubernetes CRDs.')
-    parser.add_argument(
-        'service_list', nargs='+',
-        help="The list of services to create or update CRDs for",
-        metavar="SERVICE",
-    )
+    parser = argparse.ArgumentParser(description='Removes stale kubernetes CRDs.')
     parser.add_argument(
         '-c', '--cluster', dest="cluster", metavar="CLUSTER",
         default=None,
@@ -57,6 +52,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '-v', '--verbose', action='store_true',
         dest="verbose", default=False,
+    )
+    parser.add_argument(
+        '-n', '--dry-run', action='store_true',
+        dest="dry_run", default=False,
     )
     args = parser.parse_args()
     return args
@@ -78,57 +77,51 @@ def main() -> None:
 
     kube_client = KubeClient()
 
-    success = setup_kube_crd(
+    success = cleanup_kube_crd(
         kube_client=kube_client,
         cluster=cluster,
-        services=args.service_list,
         soa_dir=soa_dir,
+        dry_run=args.dry_run,
     )
     sys.exit(0 if success else 1)
 
 
-def setup_kube_crd(
+def cleanup_kube_crd(
         kube_client: KubeClient,
         cluster: str,
-        services: Sequence[str],
         soa_dir: str = DEFAULT_SOA_DIR,
+        dry_run: bool = False,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
         label_selector="paasta=yes",
     )
 
     success = True
-    for service in services:
+    for crd in existing_crds.items:
+        service = crd.metadata.annotations.get('paasta-service', None)
+        if not service:
+            log.warning(
+                f"CRD {crd.metadata.name} has paasta=yes label "
+                "but no paasta-service annotation, skipping",
+            )
+            continue
+
         crd_config = service_configuration_lib.read_extra_service_information(
             service, f'kubernetes-crd-{cluster}', soa_dir=soa_dir,
         )
-        desired_crd = V1beta1CustomResourceDefinition(
-            api_version=crd_config.get('apiVersion'),
-            kind=crd_config.get('kind'),
-            metadata=crd_config.get('metadata'),
-            spec=crd_config.get('spec'),
-            status=crd_config.get('status'),
-        )
+        if crd_config:
+            continue
 
-        existing_crd = None
-        for crd in existing_crds.items:
-            if crd.metadata.name == desired_crd.metadata['name']:
-                existing_crd = crd
-                break
+        log.info(f"CRD {crd.metadata.name} not found in {service} service")
+        if dry_run:
+            log.info("not deleting in dry-run mode")
+            continue
 
         try:
-            if existing_crd:
-                desired_crd.metadata['resourceVersion'] = existing_crd.metadata.resource_version
-                desired_crd.metadata['labels'] = {'paasta': 'yes'}
-                desired_crd.metadata['annotations'] = {'paasta-service': service}
-                kube_client.apiextensions.replace_custom_resource_definition(
-                    name=desired_crd.metadata['name'],
-                    body=desired_crd,
-                )
-            else:
-                kube_client.apiextensions.create_custom_resource_definition(
-                    body=desired_crd,
-                )
+            kube_client.apiextensions.delete_custom_resource_definition(
+                name=crd.metadata.name,
+                body=V1DeleteOptions(),
+            )
             log.info(f"deployed kubernetes crd for {cluster}:{service}")
         except ApiException as exc:
             log.error(
