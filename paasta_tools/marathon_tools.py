@@ -1389,7 +1389,11 @@ def get_all_marathon_apps(
     if service_name:
         return client.list_apps(embed_tasks=embed_tasks, app_id='/' + format_job_id(service=service_name, instance=''))
     else:
-        return client.list_apps(embed_tasks=embed_tasks)
+        # Ignore apps inside a folder
+        return [
+            app for app in client.list_apps(embed_tasks=embed_tasks)
+            if len(app.id.split('/')) <= 2
+        ]
 
 
 def get_marathon_apps_with_clients(
