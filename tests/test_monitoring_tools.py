@@ -331,18 +331,29 @@ class TestMonitoring_Tools:
         expected_runbook = 'http://y/paasta-troubleshooting'
         expected_check_name = fake_check_name
         expected_kwargs = {
+            'name': expected_check_name,
+            'runbook': expected_runbook,
+            'status': fake_status,
+            'output': fake_output,
+            'team': fake_team,
+            'page': True,
             'tip': fake_tip,
             'notification_email': fake_notification_email,
-            'irc_channels': fake_irc,
-            'slack_channels': fake_slack,
-            'project': None,
-            'ticket': False,
-            'page': True,
-            'alert_after': '5m',
             'check_every': '1m',
             'realert_every': -1,
+            'alert_after': '5m',
+            'irc_channels': fake_irc,
+            'slack_channels': fake_slack,
+            'ticket': False,
+            'project': None,
+            'priority': None,
             'source': 'paasta-fake_cluster',
+            'tags': [],
             'ttl': None,
+            'sensu_host': fake_sensu_host,
+            'sensu_port': fake_sensu_port,
+            'component': None,
+            'description': None,
         }
         with mock.patch(
             "paasta_tools.monitoring_tools.get_team",
@@ -377,6 +388,22 @@ class TestMonitoring_Tools:
             return_value=True,
             autospec=True,
         ) as get_page_patch, mock.patch(
+            "paasta_tools.monitoring_tools.get_priority",
+            return_value=None,
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_tags",
+            return_value=[],
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_component",
+            return_value=None,
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.monitoring_tools.get_description",
+            return_value=None,
+            autospec=True,
+        ), mock.patch(
             "pysensu_yelp.send_event", autospec=True,
         ) as pysensu_yelp_send_event_patch, mock.patch(
             'paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True,
@@ -425,13 +452,6 @@ class TestMonitoring_Tools:
                 fake_soa_dir,
             )
             pysensu_yelp_send_event_patch.assert_called_once_with(
-                expected_check_name,
-                expected_runbook,
-                fake_status,
-                fake_output,
-                fake_team,
-                sensu_host=fake_sensu_host,
-                sensu_port=fake_sensu_port,
                 **expected_kwargs,
             )
             load_system_paasta_config_patch.return_value.get_cluster.assert_called_once_with()
