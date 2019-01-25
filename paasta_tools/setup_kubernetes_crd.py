@@ -27,10 +27,10 @@ import sys
 from typing import Sequence
 
 import service_configuration_lib
+from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import V1beta1CustomResourceDefinition
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -93,7 +93,10 @@ def setup_kube_crd(
         services: Sequence[str],
         soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
-    existing_crds = kube_client.apiextensions.list_custom_resource_definition()
+    existing_crds = kube_client.apiextensions.list_custom_resource_definition(
+        label_selector="paasta=yes",
+    )
+
     success = True
     for service in services:
         crd_config = service_configuration_lib.read_extra_service_information(
@@ -116,6 +119,7 @@ def setup_kube_crd(
         try:
             if existing_crd:
                 desired_crd.metadata['resourceVersion'] = existing_crd.metadata.resource_version
+                desired_crd.metadata['labels'] = {'paasta': 'yes'}
                 kube_client.apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata['name'],
                     body=desired_crd,
