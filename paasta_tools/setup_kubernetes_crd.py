@@ -105,9 +105,12 @@ def setup_kube_crd(
         desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get('apiVersion'),
             kind=crd_config.get('kind'),
-            metadata=crd_config.get('metadata'),
+            metadata=dict(
+                labels={'paasta': 'yes'},
+                annotations={'paasta-service': service},
+                **crd_config.get('metadata'),
+            ),
             spec=crd_config.get('spec'),
-            status=crd_config.get('status'),
         )
 
         existing_crd = None
@@ -119,17 +122,24 @@ def setup_kube_crd(
         try:
             if existing_crd:
                 desired_crd.metadata['resourceVersion'] = existing_crd.metadata.resource_version
-                desired_crd.metadata['labels'] = {'paasta': 'yes'}
-                desired_crd.metadata['annotations'] = {'paasta-service': service}
                 kube_client.apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata['name'],
                     body=desired_crd,
                 )
             else:
-                kube_client.apiextensions.create_custom_resource_definition(
-                    body=desired_crd,
-                )
-            log.info(f"deployed kubernetes crd for {cluster}:{service}")
+                try:
+                    kube_client.apiextensions.create_custom_resource_definition(
+                        body=desired_crd,
+                    )
+                except ValueError as err:
+                    # TODO: kubernetes server will sometimes reply with conditions:null,
+                    # figure out how to deal with this correctly, for more details:
+                    # https://github.com/kubernetes/kubernetes/pull/64996
+                    if '`conditions`, must not be `None`' in str(err):
+                        pass
+                    else:
+                        raise err
+            log.info(f"deployed {crd.metadata.name} for {cluster}:{service}")
         except ApiException as exc:
             log.error(
                 f"error deploying crd for {cluster}:{service}, "

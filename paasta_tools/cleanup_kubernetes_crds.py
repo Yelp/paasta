@@ -122,7 +122,7 @@ def cleanup_kube_crd(
                 name=crd.metadata.name,
                 body=V1DeleteOptions(),
             )
-            log.info(f"deployed kubernetes crd for {cluster}:{service}")
+            log.info(f"deleted {crd.metadata.name} for {cluster}:{service}")
         except ApiException as exc:
             log.error(
                 f"error deploying crd for {cluster}:{service}, "
