@@ -1636,7 +1636,11 @@ class TestMarathonTools:
             mock.Mock(id='/fake--service.fake--instance.bouncingold'),
             mock.Mock(id='/fake--service.fake--instance.bouncingnew'),
         ]
-        list_apps_mock = mock.Mock(return_value=apps)
+        apps_inside_folder = [
+            mock.Mock(id='/folder/fake-app.fake--instance.ignoreme'),
+            mock.Mock(id='/deep/folder/fake-app.fake--instance.ignoreme'),
+        ]
+        list_apps_mock = mock.Mock(return_value=apps + apps_inside_folder)
         fake_client = mock.Mock(list_apps=list_apps_mock)
         actual = marathon_tools.get_all_marathon_apps(fake_client)
         assert actual == apps
