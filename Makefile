@@ -32,10 +32,11 @@ test: .paasta/bin/activate
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
 	test -d .paasta/bin/activate || virtualenv -p python3.6 .paasta
-	.paasta/bin/pip install -U pip==9.0.1
-	.paasta/bin/pip install -U virtualenv==15.1.0
-	.paasta/bin/pip install -U tox==2.6.0
-	.paasta/bin/pip install -U tox-pip-extensions==1.2.1
+	.paasta/bin/pip install -U \
+		pip==18.1 \
+		virtualenv==16.2.0 \
+		tox==3.7.0 \
+		tox-pip-extensions==1.4.2
 	touch .paasta/bin/activate
 
 itest: test .paasta/bin/activate
