@@ -1,3 +1,10 @@
+paasta-tools (0.83.0) xenial; urgency=medium
+
+  * 0.83.0 tagged with 'make release'
+    Commit: Merge branch "audit-logging" of github.com:Yelp/paasta
+
+ -- Evan Krall <krall@yelp.com>  Mon, 28 Jan 2019 10:51:11 -0800
+
 paasta-tools (0.82.2) xenial; urgency=medium
 
   * 0.82.2 tagged with 'make release'
