@@ -132,9 +132,123 @@ def test_format_log_line_rejects_invalid_components():
         )
 
 
+def test_format_audit_log_line_no_details():
+    fake_user = 'fake_user'
+    fake_hostname = 'fake_hostname'
+    fake_action = 'mark-for-deployment'
+    fake_cluster = 'fake_cluster'
+    fake_service = 'fake_service'
+    fake_instance = 'fake_instance'
+    fake_now = 'fake_now'
+
+    expected_dict = {
+        'timestamp': fake_now,
+        'cluster': fake_cluster,
+        'service': fake_service,
+        'instance': fake_instance,
+        'user': fake_user,
+        'host': fake_hostname,
+        'action': fake_action,
+        'action_details': {},
+    }
+
+    expected = json.dumps(expected_dict, sort_keys=True)
+
+    with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
+        mock_now.return_value = fake_now
+        actual = utils.format_audit_log_line(
+            cluster=fake_cluster,
+            service=fake_service,
+            instance=fake_instance,
+            user=fake_user,
+            host=fake_hostname,
+            action=fake_action,
+        )
+        assert actual == expected
+
+
+def test_format_audit_log_line_with_details():
+    fake_user = 'fake_user'
+    fake_hostname = 'fake_hostname'
+    fake_action = 'mark-for-deployment'
+    fake_action_details = {
+        'sha': 'deadbeef',
+    }
+    fake_cluster = 'fake_cluster'
+    fake_service = 'fake_service'
+    fake_instance = 'fake_instance'
+    fake_now = 'fake_now'
+
+    expected_dict = {
+        'timestamp': fake_now,
+        'cluster': fake_cluster,
+        'service': fake_service,
+        'instance': fake_instance,
+        'user': fake_user,
+        'host': fake_hostname,
+        'action': fake_action,
+        'action_details': fake_action_details,
+    }
+
+    expected = json.dumps(expected_dict, sort_keys=True)
+
+    with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
+        mock_now.return_value = fake_now
+        actual = utils.format_audit_log_line(
+            cluster=fake_cluster,
+            service=fake_service,
+            instance=fake_instance,
+            user=fake_user,
+            host=fake_hostname,
+            action=fake_action,
+            action_details=fake_action_details,
+        )
+        assert actual == expected
+
+
 def test_ScribeLogWriter_log_raise_on_unknown_level():
     with raises(utils.NoSuchLogLevel):
         utils.ScribeLogWriter().log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+
+
+def test_ScribeLogWriter_logs_audit_messages():
+    slw = utils.ScribeLogWriter(scribe_disable=True)
+    mock_clog = mock.Mock()
+    slw.clog = mock_clog
+
+    user = 'fake_user'
+    host = 'fake_hostname'
+    action = 'mark-for-deployment'
+    action_details = {
+        'sha': 'deadbeef',
+    }
+    service = 'fake_service'
+    cluster = 'fake_cluster'
+    instance = 'fake_instance'
+
+    expected_log_name = utils.AUDIT_LOG_STREAM
+    expected_line = utils.format_audit_log_line(
+        user=user,
+        host=host,
+        action=action,
+        action_details=action_details,
+        service=service,
+        cluster=cluster,
+        instance=instance,
+    )
+
+    slw.log_audit(
+        user=user,
+        host=host,
+        action=action,
+        action_details=action_details,
+        service=service,
+        cluster=cluster,
+        instance=instance,
+    )
+
+    assert mock_clog.log_line.call_count == 1
+    assert mock_clog.log_line.called_once_with(expected_log_name, expected_line)
 
 
 def test_get_log_name_for_service():
@@ -1915,6 +2029,7 @@ def test_null_log_writer():
     """Basic smoke test for NullLogWriter"""
     lw = utils.NullLogWriter(driver='null')
     lw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+    lw.log_audit('fake_user', 'fake_hostname', 'fake_action', service='fake_service')
 
 
 class TestFileLogWriter:
@@ -1922,6 +2037,7 @@ class TestFileLogWriter:
         """Smoke test for FileLogWriter"""
         fw = utils.FileLogWriter('/dev/null')
         fw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+        fw.log_audit('fake_user', 'fake_hostname', 'fake_action', service='fake_service')
 
     def test_format_path(self):
         """Test the path formatting for FileLogWriter"""

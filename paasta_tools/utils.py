@@ -29,6 +29,7 @@ import queue
 import re
 import shlex
 import signal
+import socket
 import sys
 import tempfile
 import threading
@@ -93,6 +94,11 @@ ANY_CLUSTER = 'N/A'
 ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile(r'\x1B\[[0-9;]*[mK]')
+
+# instead of the convention of using underscores in this scribe channel name,
+# the audit log uses dashes to prevent collisions with a service that might be
+# named 'audit_log'
+AUDIT_LOG_STREAM = 'stream_paasta-audit-log'
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
@@ -1084,6 +1090,18 @@ class LogWriter:
     ) -> None:
         raise NotImplementedError()
 
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        raise NotImplementedError()
+
 
 _LogWriterTypeT = TypeVar('_LogWriterTypeT', bound=Type[LogWriter])
 
@@ -1133,6 +1151,30 @@ def _log(
     )
 
 
+def _log_audit(
+    action: str,
+    action_details: dict = None,
+    service: str = None,
+    cluster: str = ANY_CLUSTER,
+    instance: str = ANY_INSTANCE,
+) -> None:
+    if _log_writer is None:
+        configure_log()
+
+    user = get_username()
+    host = get_hostname()
+
+    return _log_writer.log_audit(
+        user=user,
+        host=host,
+        action=action,
+        action_details=action_details,
+        service=service,
+        cluster=cluster,
+        instance=instance,
+    )
+
+
 def _now() -> str:
     return datetime.datetime.utcnow().isoformat()
 
@@ -1169,6 +1211,47 @@ def format_log_line(
             'instance': instance,
             'component': component,
             'message': line,
+        }, sort_keys=True,
+    )
+    return message
+
+
+def format_audit_log_line(
+    cluster: str,
+    instance: str,
+    user: str,
+    host: str,
+    action: str,
+    action_details: dict = None,
+    service: str = None,
+    timestamp: str = None,
+) -> str:
+    """Accepts:
+
+        * a string 'user' describing the user that initiated the action
+        * a string 'host' describing the server where the user initiated the action
+        * a string 'action' describing an action performed by paasta_tools
+        * a dict 'action_details' optional information about the action
+
+    Returns an appropriately-formatted dictionary which can be serialized to
+    JSON for logging and which contains details about an action performed on
+    a service/instance.
+    """
+    if not timestamp:
+        timestamp = _now()
+    if not action_details:
+        action_details = {}
+
+    message = json.dumps(
+        {
+            'timestamp': timestamp,
+            'cluster': cluster,
+            'service': service,
+            'instance': instance,
+            'user': user,
+            'host': host,
+            'action': action,
+            'action_details': action_details,
         }, sort_keys=True,
     )
     return message
@@ -1214,6 +1297,28 @@ class ScribeLogWriter(LogWriter):
         formatted_line = format_log_line(level, cluster, service, instance, component, line)
         self.clog.log_line(log_name, formatted_line)
 
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        log_name = AUDIT_LOG_STREAM
+        formatted_line = format_audit_log_line(
+            user=user,
+            host=host,
+            action=action,
+            action_details=action_details,
+            service=service,
+            cluster=cluster,
+            instance=instance,
+        )
+        self.clog.log_line(log_name, formatted_line)
+
 
 @register_log_writer('null')
 class NullLogWriter(LogWriter):
@@ -1234,6 +1339,18 @@ class NullLogWriter(LogWriter):
     ) -> None:
         pass
 
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        pass
+
 
 @contextlib.contextmanager
 def _empty_context() -> Iterator[None]:
@@ -1249,13 +1366,13 @@ class FileLogWriter(LogWriter):
         self,
         path_format: str,
         mode: str = 'a+',
-        line_delimeter: str = '\n',
+        line_delimiter: str = '\n',
         flock: bool = False,
     ) -> None:
         self.path_format = path_format
         self.mode = mode
         self.flock = flock
-        self.line_delimeter = line_delimeter
+        self.line_delimiter = line_delimiter
 
     def maybe_flock(self, fd: _AnyIO) -> ContextManager:
         if self.flock:
@@ -1273,6 +1390,23 @@ class FileLogWriter(LogWriter):
             instance=instance,
         )
 
+    def _log_message(self, path: str, message: str) -> None:
+        # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
+        # and on Linux, writes to O_APPEND files with a single write syscall are atomic.
+        #
+        # https://docs.python.org/2/library/io.html#io.FileIO
+        # http://article.gmane.org/gmane.linux.kernel/43445
+
+        try:
+            with io.FileIO(path, mode=self.mode, closefd=True) as f:
+                with self.maybe_flock(f):
+                    f.write(message.encode('UTF-8'))
+        except IOError as e:
+            paasta_print(
+                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), message),
+                file=sys.stderr,
+            )
+
     def log(
         self,
         service: str,
@@ -1283,28 +1417,37 @@ class FileLogWriter(LogWriter):
         instance: str = ANY_INSTANCE,
     ) -> None:
         path = self.format_path(service, component, level, cluster, instance)
-
-        # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
-        # and on Linux, writes to O_APPEND files with a single write syscall are atomic.
-        #
-        # https://docs.python.org/2/library/io.html#io.FileIO
-        # http://article.gmane.org/gmane.linux.kernel/43445
-
         to_write = "{}{}".format(
             format_log_line(level, cluster, service, instance, component, line),
-            self.line_delimeter,
+            self.line_delimiter,
         )
 
-        try:
-            with io.FileIO(path, mode=self.mode, closefd=True) as f:
-                with self.maybe_flock(f):
-                    # remove type ignore comment below once https://github.com/python/typeshed/pull/1541 is merged.
-                    f.write(to_write.encode('UTF-8'))  # type: ignore
-        except IOError as e:
-            paasta_print(
-                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), to_write),
-                file=sys.stderr,
-            )
+        self._log_message(path, to_write)
+
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        path = self.format_path(AUDIT_LOG_STREAM, '', '', cluster, instance)
+        formatted_line = format_audit_log_line(
+            user=user,
+            host=host,
+            action=action,
+            action_details=action_details,
+            service=service,
+            cluster=cluster,
+            instance=instance,
+        )
+
+        to_write = f"{formatted_line}{self.line_delimiter}"
+
+        self._log_message(path, to_write)
 
 
 @contextlib.contextmanager
@@ -2186,6 +2329,13 @@ def get_username() -> str:
     http://stackoverflow.com/a/2899055
     """
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
+
+
+def get_hostname() -> str:
+    """Returns the fully-qualified domain name of the server this code is
+    running on.
+    """
+    return socket.getfqdn()
 
 
 def get_soa_cluster_deploy_files(

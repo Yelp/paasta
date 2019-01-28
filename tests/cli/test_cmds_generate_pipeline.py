@@ -126,7 +126,9 @@ def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.guess_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.generate_pipeline', autospec=True)
+@patch('paasta_tools.cli.cmds.generate_pipeline._log_audit', autospec=True)
 def test_paasta_generate_pipeline_success_guesses_service_name(
+        mock_log_audit,
         mock_generate_pipeline,
         mock_guess_service_name,
         mock_validate_service_name,
@@ -138,11 +140,14 @@ def test_paasta_generate_pipeline_success_guesses_service_name(
     args.service = None
     assert paasta_generate_pipeline(args) is None
     mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir=ANY)
+    mock_log_audit.assert_called_once_with(action='generate-pipeline', service='fake_service')
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.generate_pipeline', autospec=True)
+@patch('paasta_tools.cli.cmds.generate_pipeline._log_audit', autospec=True)
 def test_generate_pipeline_success_with_no_opts(
+        mock_log_audit,
         mock_generate_pipeline,
         mock_validate_service_name,
 ):
@@ -152,6 +157,7 @@ def test_generate_pipeline_success_with_no_opts(
     args.service = 'fake_service'
     assert paasta_generate_pipeline(args) is None
     mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir=ANY)
+    mock_log_audit.assert_called_once_with(action='generate-pipeline', service='fake_service')
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_git_url', autospec=True)

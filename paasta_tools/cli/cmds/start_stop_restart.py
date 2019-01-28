@@ -98,6 +98,13 @@ def log_event(service_config, desired_state):
         line=line,
     )
 
+    utils._log_audit(
+        action=desired_state,
+        service=service_config.get_service(),
+        cluster=service_config.get_cluster(),
+        instance=service_config.get_instance(),
+    )
+
 
 def issue_state_change_for_service(service_config, force_bounce, desired_state):
     ref_mutator = make_mutate_refs_func(

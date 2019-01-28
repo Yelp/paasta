@@ -24,6 +24,7 @@ from paasta_tools.cli.utils import execute_chronos_rerun_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -198,18 +199,29 @@ def paasta_rerun(args):
             )
             return
 
+        formatted_execution_date = execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT)
         rc, output = execute_chronos_rerun_on_remote_master(
             service=service,
             instancename=args.instance,
             cluster=cluster,
             verbose=args.verbose,
-            execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT),
+            execution_date=formatted_execution_date,
             system_paasta_config=system_paasta_config,
             run_all_related_jobs=args.rerun_type == 'graph',
             force_disabled=args.force_disabled,
         )
         if rc == 0:
             paasta_print(PaastaColors.green('  successfully created job'))
+            _log_audit(
+                action='chronos-rerun',
+                action_details={
+                    'rerun_type': args.rerun_type,
+                    'execution_date': formatted_execution_date,
+                },
+                service=service,
+                instance=args.instance,
+                cluster=cluster,
+            )
         else:
             paasta_print(PaastaColors.red('  error'))
             paasta_print(output)

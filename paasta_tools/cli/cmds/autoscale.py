@@ -18,6 +18,7 @@ from paasta_tools.api import client
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
@@ -71,6 +72,14 @@ def paasta_autoscale(args):
         res, http = api.autoscaler.update_autoscaler_count(
             service=service, instance=args.instance, json_body=body,
         ).result()
+
+        _log_audit(
+            action='manual-scale',
+            action_details=body,
+            service=service,
+            instance=args.instance,
+            cluster=args.cluster,
+        )
 
     log.debug(f"Res: {res} Http: {http}")
     print(res["desired_instances"])
