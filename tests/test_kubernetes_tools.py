@@ -35,6 +35,7 @@ from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
@@ -53,18 +54,21 @@ from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubeService
 from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
+from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import AwsEbsVolume
@@ -1184,6 +1188,71 @@ def test_update_deployment():
         namespace='paasta',
         body=V1Deployment(api_version='some'),
     )
+
+
+def test_create_custom_resource():
+    mock_client = mock.Mock()
+    formatted_resource = mock.Mock()
+    create_custom_resource(mock_client, formatted_resource, version='v1', kind=mock.Mock(plural='someclusters'))
+    mock_client.custom.create_namespaced_custom_object.assert_called_with(
+        namespace='paasta-someclusters',
+        body=formatted_resource,
+        version='v1',
+        plural='someclusters',
+        group='yelp.com',
+    )
+
+
+def test_update_custom_resource():
+    mock_get_object = mock.Mock(return_value={'metadata': {'resourceVersion': 2}})
+    mock_client = mock.Mock(custom=mock.Mock(get_namespaced_custom_object=mock_get_object))
+    mock_formatted_resource = {'metadata': {}}
+    update_custom_resource(
+        kube_client=mock_client,
+        formatted_resource=mock_formatted_resource,
+        version='v1',
+        kind=mock.Mock(plural='someclusters'),
+        name='grindah',
+    )
+    mock_client.custom.replace_namespaced_custom_object.assert_called_with(
+        namespace='paasta-someclusters',
+        group='yelp.com',
+        name='grindah',
+        version='v1',
+        plural='someclusters',
+        body={'metadata': {'resourceVersion': 2}},
+    )
+
+
+def test_list_custom_resources():
+    mock_list_object = mock.Mock(return_value={
+        'items': [
+            {'some': 'nonpaasta'},
+            {
+                'kind': 'somecluster',
+                'metadata': {
+                    'labels': {
+                        'paasta_service': 'kurupt',
+                        'paasta_instance': 'fm',
+                        'paasta_config_sha': 'con123',
+                    },
+                },
+            },
+        ],
+    })
+
+    mock_client = mock.Mock(custom=mock.Mock(list_namespaced_custom_object=mock_list_object))
+    expected = [KubeCustomResource(
+        service='kurupt',
+        instance='fm',
+        config_sha='con123',
+        kind='somecluster',
+    )]
+    assert list_custom_resources(
+        kind=mock.Mock(plural='someclusters'),
+        version='v1',
+        kube_client=mock_client,
+    ) == expected
 
 
 def test_create_stateful_set():

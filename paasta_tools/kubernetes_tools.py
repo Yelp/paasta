@@ -955,20 +955,9 @@ def list_custom_resources(
                 ),
             )
         except KeyError:
+            log.debug(f"Ignoring custom resource that is missing paasta labels: {cr}")
             continue
     return kube_custom_resources
-
-
-def list_all_custom_resources(
-    kind: KubeKind,
-    version: str,
-    kube_client: KubeClient,
-) -> Sequence[KubeCustomResource]:
-    return list_custom_resources(
-        version=version,
-        kind=kind,
-        kube_client=kube_client,
-    )
 
 
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:

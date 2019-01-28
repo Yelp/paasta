@@ -35,7 +35,7 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeKind
-from paasta_tools.kubernetes_tools import list_all_custom_resources
+from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
@@ -143,7 +143,7 @@ def setup_custom_resources(
 ) -> bool:
     succeded = True
     if config_dicts:
-        crs = list_all_custom_resources(
+        crs = list_custom_resources(
             kube_client=kube_client,
             kind=kind,
             version=version,
@@ -170,7 +170,7 @@ def format_custom_resource(
 ) -> Mapping[str, Any]:
     sanitised_service = service.replace('_', '--')
     sanitised_instance = instance.replace('_', '--')
-    resource = {
+    resource: Mapping[str, Any] = {
         'apiVersion': f'yelp.com/{version}',
         'kind': kind,
         'metadata': {
@@ -184,7 +184,6 @@ def format_custom_resource(
     }
     config_hash = get_config_hash(
         instance_config,
-        force_bounce=False,
     )
     resource['metadata']['labels']['paasta_config_sha'] = config_hash
     return resource
@@ -238,7 +237,7 @@ def reconcile_kubernetes_resource(
             else:
                 log.info(f"{desired_resource} is up to date, no action taken")
         except Exception as e:
-            log.error(e)
+            log.error(str(e))
             results.append(False)
         results.append(True)
     return all(results) if results else True
