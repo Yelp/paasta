@@ -94,7 +94,7 @@ def setup_kube_crd(
         soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="paasta=yes",
+        label_selector="paasta_service",
     )
 
     success = True
@@ -102,14 +102,18 @@ def setup_kube_crd(
         crd_config = service_configuration_lib.read_extra_service_information(
             service, f'kubernetes-crd-{cluster}', soa_dir=soa_dir,
         )
+        if not crd_config:
+            log.info("nothing to deploy")
+            continue
+
+        metadata = crd_config.get('metadata', {})
+        if 'labels' not in metadata:
+            metadata['labels'] = {}
+        metadata['labels']['paasta_service'] = service
         desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get('apiVersion'),
             kind=crd_config.get('kind'),
-            metadata=dict(
-                labels={'paasta': 'yes'},
-                annotations={'paasta-service': service},
-                **crd_config.get('metadata'),
-            ),
+            metadata=metadata,
             spec=crd_config.get('spec'),
         )
 

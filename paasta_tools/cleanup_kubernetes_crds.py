@@ -93,16 +93,15 @@ def cleanup_kube_crd(
         dry_run: bool = False,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="paasta=yes",
+        label_selector="paasta_service",
     )
 
     success = True
     for crd in existing_crds.items:
-        service = crd.metadata.annotations.get('paasta-service', None)
+        service = crd.metadata.labels['paasta_service']
         if not service:
-            log.warning(
-                f"CRD {crd.metadata.name} has paasta=yes label "
-                "but no paasta-service annotation, skipping",
+            log.error(
+                f"CRD {crd.metadata.name} has empty paasta_service label",
             )
             continue
 
@@ -110,6 +109,7 @@ def cleanup_kube_crd(
             service, f'kubernetes-crd-{cluster}', soa_dir=soa_dir,
         )
         if crd_config:
+            log.debug(f"CRD {crd.metadata.name} declaration found in {service}")
             continue
 
         log.info(f"CRD {crd.metadata.name} not found in {service} service")
