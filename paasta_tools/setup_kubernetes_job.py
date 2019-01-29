@@ -37,7 +37,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -89,7 +89,7 @@ def main() -> None:
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
 
-    ensure_paasta_namespace(kube_client)
+    ensure_namespace(kube_client, namespace='paasta')
     setup_kube_succeeded = setup_kube_deployments(
         kube_client=kube_client,
         service_instances=args.service_instance_list,

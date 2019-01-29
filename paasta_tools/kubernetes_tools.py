@@ -107,12 +107,24 @@ KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 HACHECK_POD_NAME = 'hacheck'
 
 
+class KubeKind(NamedTuple):
+    singular: str
+    plural: str
+
+
 class KubeDeployment(NamedTuple):
     service: str
     instance: str
     git_sha: str
     config_sha: str
     replicas: int
+
+
+class KubeCustomResource(NamedTuple):
+    service: str
+    instance: str
+    config_sha: str
+    kind: str
 
 
 class KubeService(NamedTuple):
@@ -836,21 +848,22 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
+        self.custom = kube_client.CustomObjectsApi()
 
 
-def ensure_paasta_namespace(kube_client: KubeClient) -> None:
+def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(
-            name="paasta",
+            name=namespace,
             labels={
-                "name": "paasta",
+                "name": namespace,
             },
         ),
     )
     namespaces = kube_client.core.list_namespace()
     namespace_names = [item.metadata.name for item in namespaces.items]
-    if 'paasta' not in namespace_names:
-        log.warning("Creating paasta namespace as it does not exist")
+    if namespace not in namespace_names:
+        log.warning(f"Creating namespace: {namespace} as it does not exist")
         kube_client.core.create_namespace(body=paasta_namespace)
 
 
@@ -875,6 +888,76 @@ def list_deployments(
             replicas=item.spec.replicas,
         ) for item in deployments.items + stateful_sets.items
     ]
+
+
+def create_custom_resource(
+    kube_client: KubeClient,
+    formatted_resource: Mapping[str, Any],
+    version: str,
+    kind: KubeKind,
+) -> None:
+    return kube_client.custom.create_namespaced_custom_object(
+        group='yelp.com',
+        version=version,
+        namespace=f'paasta-{kind.plural}',
+        plural=kind.plural,
+        body=formatted_resource,
+    )
+
+
+def update_custom_resource(
+    kube_client: KubeClient,
+    formatted_resource: Mapping[str, Any],
+    version: str,
+    name: str,
+    kind: KubeKind,
+) -> None:
+    co = kube_client.custom.get_namespaced_custom_object(
+        name=name,
+        group='yelp.com',
+        version=version,
+        namespace=f'paasta-{kind.plural}',
+        plural=kind.plural,
+    )
+    formatted_resource['metadata']['resourceVersion'] = co['metadata']['resourceVersion']
+    return kube_client.custom.replace_namespaced_custom_object(
+        name=name,
+        group='yelp.com',
+        version=version,
+        namespace=f'paasta-{kind.plural}',
+        plural=kind.plural,
+        body=formatted_resource,
+    )
+
+
+def list_custom_resources(
+    kind: KubeKind,
+    version: str,
+    kube_client: KubeClient,
+    label_selector: str = '',
+) -> Sequence[KubeCustomResource]:
+    crs = kube_client.custom.list_namespaced_custom_object(
+        group='yelp.com',
+        version=version,
+        label_selector=label_selector,
+        plural=kind.plural,
+        namespace=f'paasta-{kind.plural}',
+    )
+    kube_custom_resources = []
+    for cr in crs['items']:
+        try:
+            kube_custom_resources.append(
+                KubeCustomResource(
+                    service=cr['metadata']['labels']['paasta_service'],
+                    instance=cr['metadata']['labels']['paasta_instance'],
+                    config_sha=cr['metadata']['labels']['paasta_config_sha'],
+                    kind=cr['kind'],
+                ),
+            )
+        except KeyError:
+            log.debug(f"Ignoring custom resource that is missing paasta labels: {cr}")
+            continue
+    return kube_custom_resources
 
 
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:

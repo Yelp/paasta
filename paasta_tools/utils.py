@@ -2471,7 +2471,7 @@ def get_service_instance_list_no_cache(
     instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
         conf_file = f"{srv_instance_type}-{cluster}"
-        log.info(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
+        log.debug(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
         if srv_instance_type == 'tron':
             instance_list.extend(
                 get_tron_instance_list_from_yaml(
