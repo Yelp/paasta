@@ -16,6 +16,7 @@ import copy
 import itertools
 import logging
 import math
+import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -840,7 +841,9 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        kube_config.load_kube_config(config_file=KUBE_CONFIG_PATH)
+        kube_config.load_kube_config(
+            config_file=os.environ.get('KUBECONFIG', KUBE_CONFIG_PATH),
+        )
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
@@ -848,6 +851,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
 
 
