@@ -55,8 +55,9 @@ def test_paasta_mark_for_deployment_acts_like_main(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log_audit', autospec=True)
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
-def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log):
+def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log_audit, mock__log):
     actual = mark_for_deployment.mark_for_deployment(
         git_url='fake_git_url',
         deploy_group='fake_deploy_group',
@@ -69,11 +70,17 @@ def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log):
         ref_mutator=ANY,
         force=True,
     )
+    mock__log_audit.assert_called_once_with(
+        action='mark-for-deployment',
+        action_details={'deploy_group': 'fake_deploy_group', 'commit': 'fake_commit'},
+        service='fake_service',
+    )
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log_audit', autospec=True)
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
-def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
+def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock__log):
     mock_create_remote_refs.side_effect = Exception('something bad')
     with patch('time.sleep', autospec=True):
         actual = mark_for_deployment.mark_for_deployment(
@@ -84,6 +91,7 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
         )
     assert actual == 1
     assert mock_create_remote_refs.call_count == 3
+    assert not mock__log_audit.called
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)

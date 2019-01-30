@@ -18,6 +18,7 @@ import sys
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -184,6 +185,15 @@ def paasta_secret(args):
             plaintext=plaintext,
         )
         secret_path = os.path.join(secret_provider.secret_dir, f"{args.secret_name}.json")
+        _log_audit(
+            action=f'{args.action}-secret',
+            action_details={
+                'secret_name': args.secret_name,
+                'clusters': args.clusters,
+            },
+            service=service,
+        )
+
         print_paasta_helper(secret_path, args.secret_name, args.shared)
     elif args.action == "decrypt":
         print(decrypt_secret(

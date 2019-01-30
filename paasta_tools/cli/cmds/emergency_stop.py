@@ -16,6 +16,7 @@ from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
@@ -70,6 +71,13 @@ def paasta_emergency_stop(args):
         instances=args.instance,
         system_paasta_config=system_paasta_config,
     )
+    _log_audit(
+        action='emergency-stop',
+        service=service,
+        cluster=args.cluster,
+        instance=args.instance,
+    )
+
     paasta_print("Output: %s" % output)
     paasta_print("%s" % "\n".join(paasta_emergency_stop.__doc__.splitlines()[-7:]))
     paasta_print("To start this service again asap, run:")

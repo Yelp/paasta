@@ -94,10 +94,14 @@ def test_log_event():
     with mock.patch(
         'paasta_tools.utils.get_username', autospec=True, return_value='fake_user',
     ), mock.patch(
+        'paasta_tools.utils.get_hostname', autospec=True, return_value='fake_fqdn',
+    ), mock.patch(
         'socket.getfqdn', autospec=True, return_value='fake_fqdn',
     ), mock.patch(
         'paasta_tools.utils._log', autospec=True,
-    ) as mock_log:
+    ) as mock_log, mock.patch(
+        'paasta_tools.utils._log_audit', autospec=True,
+    ) as mock_log_audit:
         service_config = MarathonServiceConfig(
             cluster='fake_cluster',
             instance='fake_instance',
@@ -105,7 +109,7 @@ def test_log_event():
             config_dict={'deploy_group': 'fake_deploy_group'},
             branch_dict=None,
         )
-        start_stop_restart.log_event(service_config, 'stopped')
+        start_stop_restart.log_event(service_config, 'stop')
         mock_log.assert_called_once_with(
             instance='fake_instance',
             service='fake_service',
@@ -114,8 +118,14 @@ def test_log_event():
             cluster='fake_cluster',
             line=(
                 "Issued request to change state of fake_instance (an instance of "
-                "fake_service) to 'stopped' by fake_user@fake_fqdn"
+                "fake_service) to 'stop' by fake_user@fake_fqdn"
             ),
+        )
+        mock_log_audit.assert_called_once_with(
+            action='stop',
+            instance='fake_instance',
+            service='fake_service',
+            cluster='fake_cluster',
         )
 
 
