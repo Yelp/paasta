@@ -157,8 +157,8 @@ def reconcile_kubernetes_deployment(
     desired_deployment = KubeDeployment(
         service=service,
         instance=instance,
-        git_sha=formatted_application.metadata.labels["git_sha"],
-        config_sha=formatted_application.metadata.labels["config_sha"],
+        git_sha=formatted_application.metadata.labels["yelp.com/paasta_git_sha"],
+        config_sha=formatted_application.metadata.labels["yelp.com/paasta_config_sha"],
         replicas=formatted_application.spec.replicas,
     )
 
