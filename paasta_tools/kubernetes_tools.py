@@ -14,6 +14,7 @@
 """
 import copy
 import itertools
+import json
 import logging
 import math
 import os
@@ -133,6 +134,7 @@ class KubeService(NamedTuple):
     instance: str
     port: int
     pod_ip: str
+    registrations: Sequence[str]
 
 
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
@@ -726,6 +728,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "yelp.com/paasta_instance": self.get_instance(),
                     "yelp.com/paasta_git_sha": code_sha,
                 },
+                annotations={
+                    "smartstack_registrations": json.dumps(self.get_registrations()),
+                },
             ),
             spec=V1PodSpec(
                 service_account_name=self.get_kubernetes_service_account_name(),
@@ -775,7 +780,8 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
     services = []
     pods = requests.get('http://127.0.0.1:10255/pods').json()
     for pod in pods['items']:
-        if pod['status']['phase'] != 'Running' or pod['metadata']['namespace'] != 'paasta':
+        if pod['status']['phase'] != 'Running' \
+                or 'smartstack_registrations' not in pod['metadata'].get('annotations', {}):
             continue
         try:
             port = None
@@ -788,6 +794,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
                 instance=pod['metadata']['labels']['yelp.com/paasta_instance'],
                 port=port,
                 pod_ip=pod['status']['podIP'],
+                registrations=json.loads(pod['metadata']['annotations']['smartstack_registrations']),
             ))
         except KeyError as e:
             log.warning(f"Found running paasta pod but missing {e} key so not registering with nerve")
@@ -815,25 +822,24 @@ def get_kubernetes_services_running_here_for_nerve(
     nerve_list = []
     for kubernetes_service in kubernetes_services:
         try:
-            kubernetes_service_config = load_kubernetes_service_config(
-                service=kubernetes_service.name,
-                instance=kubernetes_service.instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
-            for registration in kubernetes_service_config.get_registrations():
+            for registration in kubernetes_service.registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
-                nerve_dict = load_service_namespace_config(
-                    service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
-                )
+                try:
+                    nerve_dict = load_service_namespace_config(
+                        service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
+                    )
+                except Exception as e:
+                    log.warning(str(e))
+                    log.warning(f"Could not get smartstack config for {reg_service}.{reg_namespace}, skipping")
+                    # but the show must go on!
+                    continue
                 if not nerve_dict.is_in_smartstack():
                     continue
                 nerve_dict['port'] = kubernetes_service.port
                 nerve_dict['service_ip'] = kubernetes_service.pod_ip
                 nerve_dict['hacheck_ip'] = kubernetes_service.pod_ip
                 nerve_list.append((registration, nerve_dict))
-        except (KeyError, NoConfigurationForServiceError):
+        except (KeyError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list

@@ -75,7 +75,6 @@ from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def test_load_kubernetes_service_config_no_cache():
@@ -757,6 +756,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         'yelp.com/paasta_instance': mock_get_instance.return_value,
                         'yelp.com/paasta_service': mock_get_service.return_value,
                     },
+                    annotations={
+                        'smartstack_registrations': '["kurupt.fm"]',
+                    },
                 ),
                 spec=V1PodSpec(
                     service_account_name=None,
@@ -897,6 +899,9 @@ def test_get_kubernetes_services_running_here():
                         'yelp.com/paasta_service': 'kurupt',
                         'yelp.com/paasta_instance': 'fm',
                     },
+                    'annotations': {
+                        'smartstack_registrations': "[]",
+                    },
                 },
                 'spec': spec,
             }, {
@@ -910,6 +915,9 @@ def test_get_kubernetes_services_running_here():
                         'yelp.com/paasta_service': 'kurupt',
                         'yelp.com/paasta_instance': 'garage',
                     },
+                    'annotations': {
+                        'smartstack_registrations': "[]",
+                    },
                 },
                 'spec': spec,
             }, {
@@ -922,6 +930,9 @@ def test_get_kubernetes_services_running_here():
                         'yelp.com/paasta_service': 'kurupt',
                         'yelp.com/paasta_instance': 'grindah',
                     },
+                    'annotations': {
+                        'smartstack_registrations': "[]",
+                    },
                 },
                 'spec': spec,
             }, {
@@ -930,11 +941,12 @@ def test_get_kubernetes_services_running_here():
                     'podIP': '10.1.1.1',
                 },
                 'metadata': {
-                    'namespace': 'kube-system',
+                    'namespace': 'paasta',
                     'labels': {
                         'yelp.com/paasta_service': 'kurupt',
                         'yelp.com/paasta_instance': 'beats',
                     },
+                    'annotations': {},
                 },
                 'spec': spec,
             },
@@ -945,6 +957,7 @@ def test_get_kubernetes_services_running_here():
                 instance='fm',
                 port=8888,
                 pod_ip='10.1.1.1',
+                registrations=[],
             ),
         ]
 
@@ -960,41 +973,33 @@ def test_get_kubernetes_services_running_here_for_nerve():
     ) as mock_load_system_config, mock.patch(
         'paasta_tools.kubernetes_tools.get_kubernetes_services_running_here', autospec=True,
     ) as mock_get_kubernetes_services_running_here, mock.patch(
-        'paasta_tools.kubernetes_tools.load_kubernetes_service_config', autospec=True,
-    ) as mock_load_kubernetes_service_config, mock.patch(
         'paasta_tools.kubernetes_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace:
 
+        mock_load_service_namespace.side_effect = lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
         mock_get_kubernetes_services_running_here.return_value = [
             KubeService(
                 name='kurupt',
                 instance='fm',
                 port=8888,
                 pod_ip='10.1.1.1',
+                registrations=['kurupt.fm'],
+            ),
+            KubeService(
+                name='unkurupt',
+                instance='garage',
+                port=8888,
+                pod_ip='10.1.1.1',
+                registrations=['unkurupt.garage'],
             ),
             KubeService(
                 name='kurupt',
                 instance='garage',
                 port=8888,
                 pod_ip='10.1.1.1',
+                registrations=[],
             ),
         ]
-
-        def mock_load_side_effect(
-            service,
-            instance,
-            cluster,
-            load_deployments,
-            soa_dir,
-        ):
-            return mock.Mock(get_registrations=mock.Mock(return_value=[f'{service}.{instance}']))
-
-        mock_load_kubernetes_service_config.return_value.get_registrations.side_effect = lambda a, b, c, d: [f"{a}.{b}"]
-        mock_load_kubernetes_service_config.side_effect = mock_load_side_effect
-        mock_load_service_namespace.side_effect = lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
-        mock_load_system_config.side_effect = PaastaNotConfiguredError
-        ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
-        assert ret == []
 
         mock_load_system_config.side_effect = None
         mock_load_system_config.return_value = mock.Mock(
@@ -1017,24 +1022,12 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 'port': 8888,
             },
         )]
-        mock_load_kubernetes_service_config.assert_has_calls([
-            mock.call(
-                service='kurupt',
-                instance='fm',
-                cluster='brentford',
-                soa_dir='/nail/blah',
-                load_deployments=False,
-            ),
-            mock.call(
-                service='kurupt',
-                instance='garage',
-                cluster='brentford',
-                soa_dir='/nail/blah',
-                load_deployments=False,
-            ),
-        ])
 
-        mock_load_kubernetes_service_config.side_effect = NoConfigurationForServiceError
+        def mock_load_namespace_side(service, namespace, soa_dir):
+            if namespace != 'kurupt':
+                raise Exception
+            return MockNerveDict(name=namespace)
+        mock_load_service_namespace.side_effect = mock_load_namespace_side
         ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
         assert ret == []
 
