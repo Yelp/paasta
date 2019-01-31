@@ -101,6 +101,12 @@
                     },
                     "uniqueItems": true
                 },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "extra_constraints": {
                     "type": "array",
                     "items": {
