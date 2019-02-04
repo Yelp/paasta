@@ -1564,6 +1564,17 @@ class PaastaNativeConfig(TypedDict, total=False):
 ExpectedSlaveAttributes = List[Dict[str, Any]]
 
 
+class KubeKindDict(TypedDict, total=False):
+    singular: str
+    plural: str
+
+
+class KubeCustomResourceDict(TypedDict, total=False):
+    version: str
+    file_prefix: str
+    kube_kind: KubeKindDict
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     auto_hostname_unique_size: int
     zookeeper: str
@@ -1619,6 +1630,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     secret_provider: str
     slack: Dict[str, str]
     maintenance_resource_reservation_enabled: bool
+    kubernetes_custom_resources: List[KubeCustomResourceDict]
     hacheck_sidecar_image_url: str
     enable_nerve_readiness_check: bool
     register_k8s_pods: bool
@@ -2026,6 +2038,10 @@ class SystemPaastaConfig:
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
         return self.config_dict.get('register_k8s_pods', False)
+
+    def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
+        """List of custom resources that should be synced by setup_kubernetes_cr """
+        return self.config_dict.get('kubernetes_custom_resources', [])
 
     def get_register_marathon_services(self) -> bool:
         """Enable registration of marathon services in nerve"""

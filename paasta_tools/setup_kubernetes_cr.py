@@ -41,6 +41,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
 
@@ -51,13 +52,12 @@ class CustomResource(NamedTuple):
     kube_kind: KubeKind
 
 
-CUSTOM_RESOURCES = [
-    CustomResource(
-        file_prefix='flinkcluster',
-        version='v1alpha1',
-        kube_kind=KubeKind(singular='FlinkCluster', plural='flinkclusters'),
-    ),
-]
+def load_custom_resources(system_paasta_config: SystemPaastaConfig) -> Sequence[CustomResource]:
+    custom_resources = []
+    for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
+        kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
+        custom_resources.append(CustomResource(kube_kind=kube_kind, **custom_resource_dict))
+    return custom_resources
 
 
 def parse_args() -> argparse.Namespace:
@@ -88,7 +88,7 @@ def main() -> None:
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
         soa_dir=soa_dir,
-        cluster=load_system_paasta_config().get_cluster(),
+        system_paasta_config=load_system_paasta_config(),
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -96,10 +96,12 @@ def main() -> None:
 def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
-    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
 ) -> bool:
+    cluster = system_paasta_config.get_cluster()
+    custom_resources = load_custom_resources(system_paasta_config)
     results = []
-    for custom_resource in CUSTOM_RESOURCES:
+    for custom_resource in custom_resources:
         ensure_namespace(
             kube_client=kube_client,
             namespace=f'paasta-{custom_resource.kube_kind.plural}',
