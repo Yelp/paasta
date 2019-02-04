@@ -106,7 +106,7 @@ def cleanup_kube_crd(
             continue
 
         crd_config = service_configuration_lib.read_extra_service_information(
-            service, f'kubernetes-crd-{cluster}', soa_dir=soa_dir,
+            service, f'crd-{cluster}', soa_dir=soa_dir,
         )
         if crd_config:
             log.debug(f"CRD {crd.metadata.name} declaration found in {service}")
