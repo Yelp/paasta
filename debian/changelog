@@ -1,3 +1,10 @@
+paasta-tools (0.83.1) xenial; urgency=medium
+
+  * 0.83.1 tagged with 'make release'
+    Commit: Merge branch "paasta_15170"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 04 Feb 2019 14:41:20 -0800
+
 paasta-tools (0.83.0) xenial; urgency=medium
 
   * 0.83.0 tagged with 'make release'
