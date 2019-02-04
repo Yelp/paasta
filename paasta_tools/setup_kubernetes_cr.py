@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./setup_kubernetes_job.py <service.instance> [options]
+Usage: ./setup_kubernetes_cr.py [options]
 
 Command line options:
 

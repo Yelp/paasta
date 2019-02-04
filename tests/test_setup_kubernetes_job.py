@@ -229,8 +229,8 @@ def test_reconcile_kubernetes_deployment():
                 return_value=V1Deployment(
                     metadata=V1ObjectMeta(
                         labels={
-                            'git_sha': 'a12345',
-                            'config_sha': 'b12345',
+                            'yelp.com/paasta_git_sha': 'a12345',
+                            'yelp.com/paasta_config_sha': 'b12345',
                         },
                     ),
                     spec=V1DeploymentSpec(
@@ -268,8 +268,8 @@ def test_reconcile_kubernetes_deployment():
                 return_value=V1Deployment(
                     metadata=V1ObjectMeta(
                         labels={
-                            'git_sha': 'new_image',
-                            'config_sha': 'b12345',
+                            'yelp.com/paasta_git_sha': 'new_image',
+                            'yelp.com/paasta_config_sha': 'b12345',
                         },
                     ),
                     spec=V1DeploymentSpec(
@@ -312,8 +312,8 @@ def test_reconcile_kubernetes_deployment():
                 return_value=V1Deployment(
                     metadata=V1ObjectMeta(
                         labels={
-                            'git_sha': 'a12345',
-                            'config_sha': 'newconfig',
+                            'yelp.com/paasta_git_sha': 'a12345',
+                            'yelp.com/paasta_config_sha': 'newconfig',
                         },
                     ),
                     spec=V1DeploymentSpec(
@@ -356,8 +356,8 @@ def test_reconcile_kubernetes_deployment():
                 return_value=V1Deployment(
                     metadata=V1ObjectMeta(
                         labels={
-                            'git_sha': 'a12345',
-                            'config_sha': 'b12345',
+                            'yelp.com/paasta_git_sha': 'a12345',
+                            'yelp.com/paasta_config_sha': 'b12345',
                         },
                     ),
                     spec=V1DeploymentSpec(

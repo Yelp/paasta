@@ -15,58 +15,62 @@
 import mock
 import pytest
 
-from paasta_tools import setup_crd
+from paasta_tools import setup_kubernetes_cr
 from paasta_tools.kubernetes_tools import KubeCustomResource
 
 
 def test_main():
     with mock.patch(
-        'paasta_tools.setup_crd.KubeClient', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.KubeClient', autospec=True,
     ), mock.patch(
-        'paasta_tools.setup_crd.setup_all_custom_resources', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.setup_all_custom_resources', autospec=True,
     ) as mock_setup:
         mock_setup.return_value = True
         with pytest.raises(SystemExit) as e:
-            setup_crd.main()
+            setup_kubernetes_cr.main()
             assert e.value.code == 0
 
         mock_setup.return_value = False
         with pytest.raises(SystemExit) as e:
-            setup_crd.main()
+            setup_kubernetes_cr.main()
             assert e.value.code == 1
 
 
 def test_setup_all_custom_resources():
     with mock.patch(
-        'paasta_tools.setup_crd.ensure_namespace', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.ensure_namespace', autospec=True,
     ), mock.patch(
-        'paasta_tools.setup_crd.load_all_configs', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.load_all_configs', autospec=True,
     ), mock.patch(
-        'paasta_tools.setup_crd.setup_custom_resources', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.setup_custom_resources', autospec=True,
     ) as mock_setup:
-        setup_crd.CUSTOM_RESOURCES = [mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters')]
+        setup_kubernetes_cr.CUSTOM_RESOURCES = [
+            mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters'),
+        ]
         mock_setup.side_effect = [True, False]
         mock_client = mock.Mock()
-        assert not setup_crd.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
+        assert not setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
 
-        setup_crd.CUSTOM_RESOURCES = [mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters')]
+        setup_kubernetes_cr.CUSTOM_RESOURCES = [
+            mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters'),
+        ]
         mock_setup.side_effect = [True, True]
         mock_client = mock.Mock()
-        assert setup_crd.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
+        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
 
-        setup_crd.CUSTOM_RESOURCES = []
+        setup_kubernetes_cr.CUSTOM_RESOURCES = []
         mock_client = mock.Mock()
-        assert setup_crd.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
+        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
 
 
 def test_load_all_configs():
     with mock.patch(
-        'paasta_tools.setup_crd.get_services_for_cluster', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.get_services_for_cluster', autospec=True,
     ) as mock_get_services_for_cluster, mock.patch(
-        'paasta_tools.setup_crd.service_configuration_lib.read_extra_service_information', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.service_configuration_lib.read_extra_service_information', autospec=True,
     ) as mock_read_info:
         mock_get_services_for_cluster.return_value = [('kurupt', 'fm'), ('mc', 'grindah')]
-        ret = setup_crd.load_all_configs(
+        ret = setup_kubernetes_cr.load_all_configs(
             cluster='westeros-prod',
             file_prefix='thing',
             soa_dir='/nail/soa',
@@ -83,13 +87,13 @@ def test_load_all_configs():
 
 def test_setup_custom_resources():
     with mock.patch(
-        'paasta_tools.setup_crd.list_custom_resources', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.list_custom_resources', autospec=True,
     ) as mock_list_cr, mock.patch(
-        'paasta_tools.setup_crd.reconcile_kubernetes_resource', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.reconcile_kubernetes_resource', autospec=True,
     ) as mock_reconcile_kubernetes_resource:
         mock_client = mock.Mock()
         mock_kind = mock.Mock()
-        assert setup_crd.setup_custom_resources(
+        assert setup_kubernetes_cr.setup_custom_resources(
             kube_client=mock_client,
             kind=mock_kind,
             version='v1',
@@ -97,7 +101,7 @@ def test_setup_custom_resources():
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, False]
-        assert not setup_crd.setup_custom_resources(
+        assert not setup_kubernetes_cr.setup_custom_resources(
             kube_client=mock_client,
             kind=mock_kind,
             version='v1',
@@ -105,7 +109,7 @@ def test_setup_custom_resources():
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, True]
-        assert setup_crd.setup_custom_resources(
+        assert setup_kubernetes_cr.setup_custom_resources(
             kube_client=mock_client,
             kind=mock_kind,
             version='v1',
@@ -133,7 +137,7 @@ def test_setup_custom_resources():
 
 def test_format_custom_resource():
     with mock.patch(
-        'paasta_tools.setup_crd.get_config_hash', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.get_config_hash', autospec=True,
     ) as mock_get_config_hash:
         expected = {
             'apiVersion': 'yelp.com/v1',
@@ -148,7 +152,7 @@ def test_format_custom_resource():
             },
             'spec': {'dummy': 'conf'},
         }
-        assert setup_crd.format_custom_resource(
+        assert setup_kubernetes_cr.format_custom_resource(
             instance_config={'dummy': 'conf'},
             service='kurupt_fm',
             instance='radio_station',
@@ -159,11 +163,11 @@ def test_format_custom_resource():
 
 def test_reconcile_kubernetes_resource():
     with mock.patch(
-        'paasta_tools.setup_crd.format_custom_resource', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.format_custom_resource', autospec=True,
     ) as mock_format_custom_resource, mock.patch(
-        'paasta_tools.setup_crd.create_custom_resource', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.create_custom_resource', autospec=True,
     ) as mock_create_custom_resource, mock.patch(
-        'paasta_tools.setup_crd.update_custom_resource', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.update_custom_resource', autospec=True,
     ) as mock_update_custom_resource:
         mock_kind = mock.Mock(singular='flinkcluster')
         mock_custom_resources = [
@@ -176,7 +180,7 @@ def test_reconcile_kubernetes_resource():
         ]
         mock_client = mock.Mock()
         # no instances, do nothing
-        assert setup_crd.reconcile_kubernetes_resource(
+        assert setup_kubernetes_cr.reconcile_kubernetes_resource(
             kube_client=mock_client,
             service='mc',
             instance_configs={},
@@ -195,7 +199,7 @@ def test_reconcile_kubernetes_resource():
                 },
             },
         }
-        assert setup_crd.reconcile_kubernetes_resource(
+        assert setup_kubernetes_cr.reconcile_kubernetes_resource(
             kube_client=mock_client,
             service='kurupt',
             instance_configs={'fm': {'some': 'config'}},
@@ -214,7 +218,7 @@ def test_reconcile_kubernetes_resource():
                 },
             },
         }
-        assert setup_crd.reconcile_kubernetes_resource(
+        assert setup_kubernetes_cr.reconcile_kubernetes_resource(
             kube_client=mock_client,
             service='kurupt',
             instance_configs={'fm': {'some': 'config'}},
@@ -232,7 +236,7 @@ def test_reconcile_kubernetes_resource():
         )
 
         # instance not exist, create
-        assert setup_crd.reconcile_kubernetes_resource(
+        assert setup_kubernetes_cr.reconcile_kubernetes_resource(
             kube_client=mock_client,
             service='mc',
             instance_configs={'grindah': {'some': 'conf'}},
@@ -249,7 +253,7 @@ def test_reconcile_kubernetes_resource():
 
         # instance not exist, create but error with k8s
         mock_create_custom_resource.side_effect = Exception
-        assert not setup_crd.reconcile_kubernetes_resource(
+        assert not setup_kubernetes_cr.reconcile_kubernetes_resource(
             kube_client=mock_client,
             service='mc',
             instance_configs={'grindah': {'some': 'conf'}},
