@@ -1573,6 +1573,7 @@ class KubeCustomResourceDict(TypedDict, total=False):
     version: str
     file_prefix: str
     kube_kind: KubeKindDict
+    group: str
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
