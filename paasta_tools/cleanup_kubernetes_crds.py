@@ -93,12 +93,12 @@ def cleanup_kube_crd(
         dry_run: bool = False,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="paasta_service",
+        label_selector="yelp.com/paasta_service",
     )
 
     success = True
     for crd in existing_crds.items:
-        service = crd.metadata.labels['paasta_service']
+        service = crd.metadata.labels['yelp.com/paasta_service']
         if not service:
             log.error(
                 f"CRD {crd.metadata.name} has empty paasta_service label",
