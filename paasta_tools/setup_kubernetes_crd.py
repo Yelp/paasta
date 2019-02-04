@@ -100,7 +100,7 @@ def setup_kube_crd(
     success = True
     for service in services:
         crd_config = service_configuration_lib.read_extra_service_information(
-            service, f'kubernetes-crd-{cluster}', soa_dir=soa_dir,
+            service, f'crd-{cluster}', soa_dir=soa_dir,
         )
         if not crd_config:
             log.info("nothing to deploy")
