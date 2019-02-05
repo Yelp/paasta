@@ -41,6 +41,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
 
@@ -49,15 +50,15 @@ class CustomResource(NamedTuple):
     file_prefix: str
     version: str
     kube_kind: KubeKind
+    group: str
 
 
-CUSTOM_RESOURCES = [
-    CustomResource(
-        file_prefix='flinkcluster',
-        version='v1alpha1',
-        kube_kind=KubeKind(singular='FlinkCluster', plural='flinkclusters'),
-    ),
-]
+def load_custom_resources(system_paasta_config: SystemPaastaConfig) -> Sequence[CustomResource]:
+    custom_resources = []
+    for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
+        kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
+        custom_resources.append(CustomResource(kube_kind=kube_kind, **custom_resource_dict))
+    return custom_resources
 
 
 def parse_args() -> argparse.Namespace:
@@ -88,7 +89,7 @@ def main() -> None:
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
         soa_dir=soa_dir,
-        cluster=load_system_paasta_config().get_cluster(),
+        system_paasta_config=load_system_paasta_config(),
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -96,10 +97,12 @@ def main() -> None:
 def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
-    cluster: str,
+    system_paasta_config: SystemPaastaConfig,
 ) -> bool:
+    cluster = system_paasta_config.get_cluster()
+    custom_resources = load_custom_resources(system_paasta_config)
     results = []
-    for custom_resource in CUSTOM_RESOURCES:
+    for custom_resource in custom_resources:
         ensure_namespace(
             kube_client=kube_client,
             namespace=f'paasta-{custom_resource.kube_kind.plural}',
@@ -115,6 +118,7 @@ def setup_all_custom_resources(
                 kind=custom_resource.kube_kind,
                 config_dicts=config_dicts,
                 version=custom_resource.version,
+                group=custom_resource.group,
             ),
         )
     return all(results) if results else True
@@ -140,6 +144,7 @@ def setup_custom_resources(
     kind: KubeKind,
     version: str,
     config_dicts: Mapping[str, Mapping[str, Any]],
+    group: str,
 ) -> bool:
     succeded = True
     if config_dicts:
@@ -147,6 +152,7 @@ def setup_custom_resources(
             kube_client=kube_client,
             kind=kind,
             version=version,
+            group=group,
         )
     for service, config in config_dicts.items():
         if not reconcile_kubernetes_resource(
@@ -156,6 +162,7 @@ def setup_custom_resources(
             kind=kind,
             custom_resources=crs,
             version=version,
+            group=group,
         ):
             succeded = False
     return succeded
@@ -167,11 +174,12 @@ def format_custom_resource(
     instance: str,
     kind: str,
     version: str,
+    group: str,
 ) -> Mapping[str, Any]:
     sanitised_service = service.replace('_', '--')
     sanitised_instance = instance.replace('_', '--')
     resource: Mapping[str, Any] = {
-        'apiVersion': f'yelp.com/{version}',
+        'apiVersion': f'{group}/{version}',
         'kind': kind,
         'metadata': {
             'name': f'{sanitised_service}-{sanitised_instance}',
@@ -196,6 +204,7 @@ def reconcile_kubernetes_resource(
     custom_resources: Sequence[KubeCustomResource],
     kind: KubeKind,
     version: str,
+    group: str,
 ) -> bool:
 
     results = []
@@ -206,6 +215,7 @@ def reconcile_kubernetes_resource(
             instance=instance,
             kind=kind.singular,
             version=version,
+            group=group,
         )
         desired_resource = KubeCustomResource(
             service=service,
@@ -222,6 +232,7 @@ def reconcile_kubernetes_resource(
                     version=version,
                     kind=kind,
                     formatted_resource=formatted_resource,
+                    group=group,
                 )
             elif desired_resource not in custom_resources:
                 sanitised_service = service.replace('_', '--')
@@ -233,6 +244,7 @@ def reconcile_kubernetes_resource(
                     version=version,
                     kind=kind,
                     formatted_resource=formatted_resource,
+                    group=group,
                 )
             else:
                 log.info(f"{desired_resource} is up to date, no action taken")

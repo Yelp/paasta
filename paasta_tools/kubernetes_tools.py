@@ -905,9 +905,10 @@ def create_custom_resource(
     formatted_resource: Mapping[str, Any],
     version: str,
     kind: KubeKind,
+    group: str,
 ) -> None:
     return kube_client.custom.create_namespaced_custom_object(
-        group='yelp.com',
+        group=group,
         version=version,
         namespace=f'paasta-{kind.plural}',
         plural=kind.plural,
@@ -921,10 +922,11 @@ def update_custom_resource(
     version: str,
     name: str,
     kind: KubeKind,
+    group: str,
 ) -> None:
     co = kube_client.custom.get_namespaced_custom_object(
         name=name,
-        group='yelp.com',
+        group=group,
         version=version,
         namespace=f'paasta-{kind.plural}',
         plural=kind.plural,
@@ -932,7 +934,7 @@ def update_custom_resource(
     formatted_resource['metadata']['resourceVersion'] = co['metadata']['resourceVersion']
     return kube_client.custom.replace_namespaced_custom_object(
         name=name,
-        group='yelp.com',
+        group=group,
         version=version,
         namespace=f'paasta-{kind.plural}',
         plural=kind.plural,
@@ -944,10 +946,11 @@ def list_custom_resources(
     kind: KubeKind,
     version: str,
     kube_client: KubeClient,
+    group: str,
     label_selector: str = '',
 ) -> Sequence[KubeCustomResource]:
     crs = kube_client.custom.list_namespaced_custom_object(
-        group='yelp.com',
+        group=group,
         version=version,
         label_selector=label_selector,
         plural=kind.plural,

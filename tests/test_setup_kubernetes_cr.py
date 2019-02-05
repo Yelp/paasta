@@ -19,6 +19,22 @@ from paasta_tools import setup_kubernetes_cr
 from paasta_tools.kubernetes_tools import KubeCustomResource
 
 
+def test_load_custom_resources():
+    mock_resources = [{
+        'version': 'v1',
+        'kube_kind': {'plural': 'FlinkClusters', 'singular': 'flinkcluster'},
+        'file_prefix': 'flinkcluster',
+        'group': 'yelp.com',
+    }]
+    mock_config = mock.Mock(get_kubernetes_custom_resources=mock.Mock(return_value=mock_resources))
+    assert setup_kubernetes_cr.load_custom_resources(mock_config) == [setup_kubernetes_cr.CustomResource(
+        version='v1',
+        kube_kind=setup_kubernetes_cr.KubeKind(plural='FlinkClusters', singular='flinkcluster'),
+        file_prefix='flinkcluster',
+        group='yelp.com',
+    )]
+
+
 def test_main():
     with mock.patch(
         'paasta_tools.setup_kubernetes_cr.KubeClient', autospec=True,
@@ -43,24 +59,29 @@ def test_setup_all_custom_resources():
         'paasta_tools.setup_kubernetes_cr.load_all_configs', autospec=True,
     ), mock.patch(
         'paasta_tools.setup_kubernetes_cr.setup_custom_resources', autospec=True,
-    ) as mock_setup:
-        setup_kubernetes_cr.CUSTOM_RESOURCES = [
+    ) as mock_setup, mock.patch(
+        'paasta_tools.setup_kubernetes_cr.load_custom_resources', autospec=True,
+    ) as mock_load_custom_resources:
+        mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
+        mock_load_custom_resources.return_value = [
             mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters'),
         ]
         mock_setup.side_effect = [True, False]
         mock_client = mock.Mock()
-        assert not setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
+        assert not setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', mock_system_config)
 
-        setup_kubernetes_cr.CUSTOM_RESOURCES = [
+        mock_load_custom_resources.return_value = [
             mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters'),
         ]
         mock_setup.side_effect = [True, True]
         mock_client = mock.Mock()
-        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
+        mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
+        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', mock_system_config)
 
-        setup_kubernetes_cr.CUSTOM_RESOURCES = []
+        mock_load_custom_resources.return_value = []
         mock_client = mock.Mock()
-        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', 'westeros-prod')
+        mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
+        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', mock_system_config)
 
 
 def test_load_all_configs():
@@ -98,6 +119,7 @@ def test_setup_custom_resources():
             kind=mock_kind,
             version='v1',
             config_dicts={},
+            group='yelp.com',
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, False]
@@ -106,6 +128,7 @@ def test_setup_custom_resources():
             kind=mock_kind,
             version='v1',
             config_dicts={'kurupt': 'something', 'mc': 'another'},
+            group='yelp.com',
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, True]
@@ -114,6 +137,7 @@ def test_setup_custom_resources():
             kind=mock_kind,
             version='v1',
             config_dicts={'kurupt': 'something', 'mc': 'another'},
+            group='yelp.com',
         )
         mock_reconcile_kubernetes_resource.assert_has_calls([
             mock.call(
@@ -123,6 +147,7 @@ def test_setup_custom_resources():
                 kind=mock_kind,
                 custom_resources=mock_list_cr.return_value,
                 version='v1',
+                group='yelp.com',
             ),
             mock.call(
                 kube_client=mock_client,
@@ -131,6 +156,7 @@ def test_setup_custom_resources():
                 kind=mock_kind,
                 custom_resources=mock_list_cr.return_value,
                 version='v1',
+                group='yelp.com',
             ),
         ])
 
@@ -158,6 +184,7 @@ def test_format_custom_resource():
             instance='radio_station',
             kind='flinkcluster',
             version='v1',
+            group='yelp.com',
         ) == expected
 
 
@@ -187,6 +214,7 @@ def test_reconcile_kubernetes_resource():
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
+            group='yelp.com',
         )
         assert not mock_create_custom_resource.called
         assert not mock_update_custom_resource.called
@@ -206,6 +234,7 @@ def test_reconcile_kubernetes_resource():
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
+            group='yelp.com',
         )
         assert not mock_create_custom_resource.called
         assert not mock_update_custom_resource.called
@@ -225,6 +254,7 @@ def test_reconcile_kubernetes_resource():
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
+            group='yelp.com',
         )
         assert not mock_create_custom_resource.called
         mock_update_custom_resource.assert_called_with(
@@ -233,6 +263,7 @@ def test_reconcile_kubernetes_resource():
             version='v1',
             kind=mock_kind,
             formatted_resource=mock_format_custom_resource.return_value,
+            group='yelp.com',
         )
 
         # instance not exist, create
@@ -243,12 +274,14 @@ def test_reconcile_kubernetes_resource():
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
+            group='yelp.com',
         )
         mock_create_custom_resource.assert_called_with(
             kube_client=mock_client,
             version='v1',
             kind=mock_kind,
             formatted_resource=mock_format_custom_resource.return_value,
+            group='yelp.com',
         )
 
         # instance not exist, create but error with k8s
@@ -260,10 +293,12 @@ def test_reconcile_kubernetes_resource():
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
+            group='yelp.com',
         )
         mock_create_custom_resource.assert_called_with(
             kube_client=mock_client,
             version='v1',
             kind=mock_kind,
             formatted_resource=mock_format_custom_resource.return_value,
+            group='yelp.com',
         )

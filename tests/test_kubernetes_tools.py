@@ -1190,7 +1190,13 @@ def test_update_deployment():
 def test_create_custom_resource():
     mock_client = mock.Mock()
     formatted_resource = mock.Mock()
-    create_custom_resource(mock_client, formatted_resource, version='v1', kind=mock.Mock(plural='someclusters'))
+    create_custom_resource(
+        kube_client=mock_client,
+        formatted_resource=formatted_resource,
+        version='v1',
+        kind=mock.Mock(plural='someclusters'),
+        group='yelp.com',
+    )
     mock_client.custom.create_namespaced_custom_object.assert_called_with(
         namespace='paasta-someclusters',
         body=formatted_resource,
@@ -1210,6 +1216,7 @@ def test_update_custom_resource():
         version='v1',
         kind=mock.Mock(plural='someclusters'),
         name='grindah',
+        group='yelp.com',
     )
     mock_client.custom.replace_namespaced_custom_object.assert_called_with(
         namespace='paasta-someclusters',
@@ -1249,6 +1256,7 @@ def test_list_custom_resources():
         kind=mock.Mock(plural='someclusters'),
         version='v1',
         kube_client=mock_client,
+        group='yelp.com',
     ) == expected
 
 
