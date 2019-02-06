@@ -651,6 +651,7 @@ jobs:
           cluster: paasta-cluster-1
           cpus: 0.5
           mem: 100
+          disk: 500
           pool: custom
 """
     mock_get_file_contents.return_value = tron_content
