@@ -32,12 +32,17 @@
         "executor": {"enum": ["ssh", "paasta"]},
         "cpus": {
           "type": "number",
-          "minumum": 0,
+          "minimum": 0,
           "exclusiveMinimum": true
         },
         "mem": {
           "type": "number",
-          "minumum": 32,
+          "minimum": 32,
+          "exclusiveMinimum": true
+        },
+        "disk": {
+          "type": "number",
+          "minimum": 0,
           "exclusiveMinimum": true
         },
         "constraints": {
