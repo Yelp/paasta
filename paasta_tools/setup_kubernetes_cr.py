@@ -22,6 +22,7 @@ Command line options:
 """
 import argparse
 import logging
+import os
 import sys
 from typing import Any
 from typing import Mapping
@@ -39,7 +40,6 @@ from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -126,11 +126,7 @@ def setup_all_custom_resources(
 
 def load_all_configs(cluster: str, file_prefix: str, soa_dir: str) -> Mapping[str, Mapping[str, Any]]:
     config_dicts = {}
-    for service, _ in get_services_for_cluster(
-        cluster=cluster,
-        instance_type=file_prefix,
-        soa_dir=soa_dir,
-    ):
+    for service in os.listdir(soa_dir):
         config_dicts[service] = service_configuration_lib.read_extra_service_information(
             service,
             f"{file_prefix}-{cluster}",
