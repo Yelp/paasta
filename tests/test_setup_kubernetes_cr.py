@@ -86,11 +86,11 @@ def test_setup_all_custom_resources():
 
 def test_load_all_configs():
     with mock.patch(
-        'paasta_tools.setup_kubernetes_cr.get_services_for_cluster', autospec=True,
-    ) as mock_get_services_for_cluster, mock.patch(
         'paasta_tools.setup_kubernetes_cr.service_configuration_lib.read_extra_service_information', autospec=True,
-    ) as mock_read_info:
-        mock_get_services_for_cluster.return_value = [('kurupt', 'fm'), ('mc', 'grindah')]
+    ) as mock_read_info, mock.patch(
+        'os.listdir', autospec=True,
+    ) as mock_oslist:
+        mock_oslist.return_value = ['kurupt', 'mc']
         ret = setup_kubernetes_cr.load_all_configs(
             cluster='westeros-prod',
             file_prefix='thing',
