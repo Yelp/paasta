@@ -171,9 +171,9 @@ def test_format_custom_resource():
             'metadata': {
                 'name': 'kurupt--fm-radio--station',
                 'labels': {
-                    'paasta_service': 'kurupt_fm',
-                    'paasta_instance': 'radio_station',
-                    'paasta_config_sha': mock_get_config_hash.return_value,
+                    'yelp.com/paasta_service': 'kurupt_fm',
+                    'yelp.com/paasta_instance': 'radio_station',
+                    'yelp.com/paasta_config_sha': mock_get_config_hash.return_value,
                 },
             },
             'spec': {'dummy': 'conf'},
@@ -223,7 +223,7 @@ def test_reconcile_kubernetes_resource():
         mock_format_custom_resource.return_value = {
             'metadata': {
                 'labels': {
-                    'paasta_config_sha': 'conf123',
+                    'yelp.com/paasta_config_sha': 'conf123',
                 },
             },
         }
@@ -243,7 +243,7 @@ def test_reconcile_kubernetes_resource():
         mock_format_custom_resource.return_value = {
             'metadata': {
                 'labels': {
-                    'paasta_config_sha': 'conf456',
+                    'yelp.com/paasta_config_sha': 'conf456',
                 },
             },
         }
