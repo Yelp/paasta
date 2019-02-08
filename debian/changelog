@@ -1,3 +1,11 @@
+paasta-tools (0.83.4) xenial; urgency=medium
+
+  * 0.83.4 tagged with 'make release'
+    Commit: Merge pull request #2126 from Yelp/fix-setup-cr  Fix labels
+    in setup_kubernetes_cr
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 08 Feb 2019 03:26:17 -0800
+
 paasta-tools (0.83.3) xenial; urgency=medium
 
   * 0.83.3 tagged with 'make release'
