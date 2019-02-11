@@ -362,7 +362,7 @@ def test_get_latest_marked_sha_bad(mock_list_remote_refs):
 
 
 @patch('paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs', autospec=True)
-def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs):
+def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs, capsys):
     test_error_message = 'Git error'
     mock_list_remote_refs.side_effect = LSRemoteException(test_error_message)
     assert validate_git_sha_is_latest(

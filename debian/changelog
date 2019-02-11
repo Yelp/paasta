@@ -1,3 +1,12 @@
+paasta-tools (0.83.6) xenial; urgency=medium
+
+  * 0.83.6 tagged with 'make release'
+    Commit: Merge pull request #2130 from
+    Yelp/raise_security_check_timeout  raise `paasta security-check`
+    timeout
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 11 Feb 2019 15:49:26 -0800
+
 paasta-tools (0.83.5) xenial; urgency=medium
 
   * 0.83.5 tagged with 'make release'
