@@ -419,7 +419,7 @@ def send_replication_event_if_under_replication(
             "\n"
             "Reasons this might be happening:\n"
             "\n"
-            "  The service may simply unhealthy. There also may not be enough resources\n"
+            "  The service may simply be unhealthy. There also may not be enough resources\n"
             "  in the cluster to support the requested instance count.\n"
             "\n"
             "Things you can do:\n"
