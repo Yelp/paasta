@@ -1023,6 +1023,20 @@ def test_get_kubernetes_services_running_here_for_nerve():
             },
         )]
 
+        mock_load_system_config.return_value = mock.Mock(
+            get_cluster=mock.Mock(return_value='brentford'),
+            get_register_k8s_pods=mock.Mock(return_value=True),
+            get_kubernetes_use_hacheck_sidecar=mock.Mock(return_value=False),
+        )
+        ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
+        assert ret == [(
+            'kurupt.fm', {
+                'name': 'fm',
+                'service_ip': '10.1.1.1',
+                'port': 8888,
+            },
+        )]
+
         def mock_load_namespace_side(service, namespace, soa_dir):
             if namespace != 'kurupt':
                 raise Exception
