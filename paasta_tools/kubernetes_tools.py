@@ -837,7 +837,8 @@ def get_kubernetes_services_running_here_for_nerve(
                     continue
                 nerve_dict['port'] = kubernetes_service.port
                 nerve_dict['service_ip'] = kubernetes_service.pod_ip
-                nerve_dict['hacheck_ip'] = kubernetes_service.pod_ip
+                if system_paasta_config.get_kubernetes_use_hacheck_sidecar():
+                    nerve_dict['hacheck_ip'] = kubernetes_service.pod_ip
                 nerve_list.append((registration, nerve_dict))
         except (KeyError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up

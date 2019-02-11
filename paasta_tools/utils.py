@@ -1632,6 +1632,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     slack: Dict[str, str]
     maintenance_resource_reservation_enabled: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
+    kubernetes_use_hacheck_sidecar: bool
     hacheck_sidecar_image_url: str
     enable_nerve_readiness_check: bool
     register_k8s_pods: bool
@@ -2043,6 +2044,9 @@ class SystemPaastaConfig:
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
         """List of custom resources that should be synced by setup_kubernetes_cr """
         return self.config_dict.get('kubernetes_custom_resources', [])
+
+    def get_kubernetes_use_hacheck_sidecar(self) -> bool:
+        return self.config_dict.get('kubernetes_use_hacheck_sidecar', True)
 
     def get_register_marathon_services(self) -> bool:
         """Enable registration of marathon services in nerve"""
