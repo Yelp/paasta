@@ -1,3 +1,11 @@
+paasta-tools (0.83.5) xenial; urgency=medium
+
+  * 0.83.5 tagged with 'make release'
+    Commit: Merge pull request #2127 from Yelp/optional-hacheck-sidecar
+    Make using hacheck sidecars optional
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 11 Feb 2019 04:24:36 -0800
+
 paasta-tools (0.83.4) xenial; urgency=medium
 
   * 0.83.4 tagged with 'make release'
