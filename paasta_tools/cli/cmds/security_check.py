@@ -51,7 +51,7 @@ def perform_security_check(args):
 
     command = f"{security_check_command} {args.service} {args.commit}"
 
-    ret_code, output = _run(command, timeout=300, stream=True)
+    ret_code, output = _run(command, timeout=3600, stream=True)
     if ret_code != 0:
         paasta_print(
             "The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
