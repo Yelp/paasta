@@ -30,6 +30,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.mesos_tools import get_mesos_leader
 
 
 def add_subparser(
@@ -171,6 +172,7 @@ def print_cluster_status(
     )
 
     paasta_print("Cluster: %s" % cluster)
+    paasta_print("Mesos leader: %s" % get_mesos_leader())
     paasta_print(get_cluster_dashboards(cluster))
     paasta_print(output)
     paasta_print()
