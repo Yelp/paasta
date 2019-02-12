@@ -41,6 +41,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import PodStatus
+from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
@@ -969,7 +970,7 @@ def run_healthchecks_with_param(
 def assert_marathon_apps(
     clients: Sequence[MarathonClient],
 ) -> HealthCheckResult:
-    num_apps = [len(c.list_apps()) for c in clients]
+    num_apps = [len(get_all_marathon_apps(c)) for c in clients]
     if sum(num_apps) < 1:
         return HealthCheckResult(
             message="CRITICAL: No marathon apps running",
