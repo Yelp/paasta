@@ -43,6 +43,7 @@ from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState
+from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import is_mesos_available
 from paasta_tools.metrics import metastatus_lib
@@ -408,6 +409,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
     healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
 
     paasta_print(f"Master paasta_tools version: {__version__}")
+    paasta_print("Mesos leader: %s" % get_mesos_leader())
     metastatus_lib.print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     if args.verbose > 1 and mesos_available:
         print_with_indent('Resources Grouped by %s' % ", ".join(args.groupings), 2)
