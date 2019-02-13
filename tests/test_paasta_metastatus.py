@@ -44,6 +44,9 @@ def test_main_no_marathon_servers():
         'paasta_tools.metrics.metastatus_lib.get_marathon_status',
         autospec=True,
         return_value=([HealthCheckResult(message='fake_output', healthy=True)]),
+    ), patch(
+        'paasta_tools.paasta_metastatus.get_mesos_leader', autospec=True,
+        return_value='localhost',
     ):
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
@@ -76,6 +79,9 @@ def test_main_no_chronos_config():
         'paasta_tools.metrics.metastatus_lib.get_marathon_status',
         autospec=True,
         return_value=([HealthCheckResult(message='fake_output', healthy=True)]),
+    ), patch(
+        'paasta_tools.paasta_metastatus.get_mesos_leader', autospec=True,
+        return_value='localhost',
     ):
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
