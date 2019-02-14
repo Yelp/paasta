@@ -1,3 +1,10 @@
+paasta-tools (0.83.8) xenial; urgency=medium
+
+  * 0.83.8 tagged with 'make release'
+    Commit: Released 0.83.7 via make release
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 13 Feb 2019 16:44:31 -0800
+
 paasta-tools (0.83.7) xenial; urgency=medium
 
   * 0.83.7 tagged with 'make release'
