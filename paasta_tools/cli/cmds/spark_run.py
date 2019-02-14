@@ -416,6 +416,8 @@ def get_spark_config(
         'spark.executorEnv.PAASTA_SERVICE': args.service,
         'spark.executorEnv.PAASTA_INSTANCE': '{}_{}'.format(args.instance, get_username()),
         'spark.executorEnv.PAASTA_CLUSTER': args.cluster,
+        'spark.executorEnv.AWS_ACCESS_KEY_ID': 'AKIAIRTL7VSIISFTRGYQ',
+        'spark.executorEnv.AWS_SECRET_ACCESS_KEY': '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',
         'spark.mesos.executor.docker.parameters': 'label=paasta_service={},label=paasta_instance={}_{}'.format(
             args.service, args.instance, get_username(),
         ),

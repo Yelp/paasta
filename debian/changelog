@@ -1,3 +1,11 @@
+paasta-tools (0.83.7) xenial; urgency=medium
+
+  * 0.83.7 tagged with 'make release'
+    Commit: Merge pull request #2131 from Yelp/PAASTA-9049  added mesos
+    leader to metastatus command output
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 13 Feb 2019 16:08:59 -0800
+
 paasta-tools (0.83.6) xenial; urgency=medium
 
   * 0.83.6 tagged with 'make release'
