@@ -1093,6 +1093,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 'name': 'fm',
                 'service_ip': '10.1.1.1',
                 'port': 8888,
+                'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
             },
         )]
 

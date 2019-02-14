@@ -21,6 +21,7 @@ import datetime
 import json
 import logging
 import os
+import socket
 import sys
 from collections import defaultdict
 from math import ceil
@@ -1081,6 +1082,18 @@ def get_marathon_services_running_here_for_nerve(
             return []
         if not system_paasta_config.get_register_marathon_services():
             return []
+    # We try to get the hosts IP here so that we can pass it to Nerve
+    # Nerve then sends it as X-Nerve-Check-IP to hacheck. HAProxy also
+    # sends a header to hacheck with the backends IP. If we want to cache
+    # for haproxy + nerve under the same key (and hence reduce number of
+    # total healthchecks) then we need the hosts IP.
+    try:
+        host_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        # BUT the show really must go on. if we can't get the hosts IP
+        # then hacheck will have to cache two healthchecks per service
+        # but atleast we won't fail to register services.
+        host_ip = '127.0.0.1'
     # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()
     nerve_list = []
@@ -1103,6 +1116,7 @@ def get_marathon_services_running_here_for_nerve(
                 nerve_dict['port'] = port
                 nerve_dict['paasta_instance'] = instance
                 nerve_dict['deploy_group'] = marathon_service_config.get_deploy_group()
+                nerve_dict['extra_healthcheck_headers'] = {'X-Nerve-Check-IP': host_ip}
                 nerve_list.append((registration, nerve_dict))
         except (KeyError, NoConfigurationForServiceError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
