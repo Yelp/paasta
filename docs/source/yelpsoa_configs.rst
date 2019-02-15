@@ -581,9 +581,7 @@ Each Tron **action** of a job MAY specify the following:
 
   * ``command``: The command to run. If the action is configured with ``executor: paasta``,
     then the command should be something available in the docker container (it should NOT
-    start with ``paasta local-run``). For best results, prefix the command with
-    ``exec dumb-init`` (See the
-    `dumb-init docs <https://github.com/Yelp/dumb-init#dumb-init>`_ for more information)
+    start with ``paasta local-run``).
 
 ``adhoc-[clustername].yaml``
 -------------------------------
