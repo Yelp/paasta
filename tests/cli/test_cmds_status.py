@@ -584,7 +584,7 @@ def test_status_calls_sergeants(
         instance_whitelist={'fi': mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
         verbose=False,
-        use_api_endpoint=False,
+        use_api_endpoint=True,
     )
 
 
