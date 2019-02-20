@@ -1,3 +1,11 @@
+paasta-tools (0.83.9) xenial; urgency=medium
+
+  * 0.83.9 tagged with 'make release'
+    Commit: Merge pull request #2114 from Yelp/u/kawaiwan/tron-
+    monitoring-support  Expose tron monitoring info to paasta
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Wed, 20 Feb 2019 10:04:39 -0800
+
 paasta-tools (0.83.8) xenial; urgency=medium
 
   * 0.83.8 tagged with 'make release'
