@@ -38,6 +38,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 
+from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
 from typing import Optional
 from typing import Dict
@@ -256,7 +257,13 @@ class TronJobConfig:
         return self.config_dict.get('schedule')
 
     def get_monitoring(self):
-        return self.config_dict.get('monitoring')
+        srv_monitoring = dict(monitoring_tools.read_monitoring_config(
+            self.service,
+            soa_dir=self.soa_dir,
+        ))
+        tron_monitoring = self.config_dict.get('monitoring', {})
+        srv_monitoring.update(tron_monitoring)
+        return srv_monitoring
 
     def get_queueing(self):
         return self.config_dict.get('queueing')
@@ -316,6 +323,7 @@ class TronJobConfig:
                 )
         else:
             branch_dict = None
+        action_dict['monitoring'] = self.get_monitoring()
 
         return TronActionConfig(
             service=action_service,
