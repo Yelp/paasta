@@ -71,6 +71,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
 
@@ -2464,6 +2465,11 @@ def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> C
         else:
             instance_list.append((service, instance))
     return instance_list
+
+
+def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
+    service_configuration = read_service_configuration(service, soa_dir)
+    return service_configuration.get('deploy', {}).get('pipeline', [])
 
 
 def get_service_instance_list_no_cache(
