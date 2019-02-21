@@ -8,7 +8,7 @@ paasta push-to-registry --force -s hello-world -c `git rev-parse HEAD`
 paasta mark-for-deployment \
   --git-url root@git:dockercloud-hello-world \
   --commit `git rev-parse HEAD` \
-  --clusterinstance testcluster.everything \
+  --deploy-group testcluster.everything \
   --service hello-world
 
 python /work/paasta_tools/contrib/create_dynamodb_table.py http://dynamodb:8000 taskproc_events_testcluster
