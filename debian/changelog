@@ -1,3 +1,11 @@
+paasta-tools (0.83.10) xenial; urgency=medium
+
+  * 0.83.10 tagged with 'make release'
+    Commit: Merge pull request #2136 from Yelp/u/kawaiwan/filter-non-
+    tron-monitoring  Filter non-tron monitoring keys
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 21 Feb 2019 16:52:29 -0800
+
 paasta-tools (0.83.9) xenial; urgency=medium
 
   * 0.83.9 tagged with 'make release'
