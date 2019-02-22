@@ -100,9 +100,25 @@ def setup_all_custom_resources(
     system_paasta_config: SystemPaastaConfig,
 ) -> bool:
     cluster = system_paasta_config.get_cluster()
+    cluster_crds = {
+        crd.spec.names.kind
+        for crd in
+        kube_client.apiextensions.list_custom_resource_definition(
+            label_selector="yelp.com/paasta_service",
+        ).items
+    }
+    log.debug(f"CRDs found: {cluster_crds}")
     custom_resources = load_custom_resources(system_paasta_config)
     results = []
     for custom_resource in custom_resources:
+        if custom_resource.kube_kind.singular not in cluster_crds:
+            # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
+            # and not `crd.names.singular`
+            log.warning(
+                f"CRD {custom_resource.kube_kind.singular} "
+                f"not found in {cluster}",
+            )
+            continue
         ensure_namespace(
             kube_client=kube_client,
             namespace=f'paasta-{custom_resource.kube_kind.plural}',
