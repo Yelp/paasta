@@ -450,12 +450,17 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert errors == ["Invalid team name: invalid_team. Do you mean one of these: ['valid_team']"]
 
-    @pytest.mark.parametrize('tronfig_monitoring', [{'team': 'tronfig_team'}, {}])
+    @pytest.mark.parametrize(
+        'tronfig_monitoring', [
+            {'team': 'tronfig_team'},
+            {'non_tron_key': True},
+        ],
+    )
     def test_get_monitoring(self, tronfig_monitoring):
         job_dict = {'monitoring': tronfig_monitoring}
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake_cluster')
         assert job_config.get_monitoring() == {
-            'team': ('tronfig_team' if tronfig_monitoring else 'default_team'),
+            'team': ('tronfig_team' if 'team' in tronfig_monitoring else 'default_team'),
         }
 
 

@@ -13,7 +13,9 @@
 import datetime
 import difflib
 import glob
+import json
 import os
+import pkgutil
 import re
 import subprocess
 from string import Formatter
@@ -46,6 +48,11 @@ from typing import Any
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
+VALID_MONITORING_KEYS = set(
+    json.loads(
+        pkgutil.get_data('paasta_tools.cli', 'schemas/tron_schema.json').decode(),
+    )['definitions']['job']['properties']['monitoring']['properties'].keys(),
+)
 
 
 class TronNotConfigured(Exception):
@@ -263,6 +270,12 @@ class TronJobConfig:
         ))
         tron_monitoring = self.config_dict.get('monitoring', {})
         srv_monitoring.update(tron_monitoring)
+        # filter out non-tron monitoring keys
+        srv_monitoring = {
+            k: v
+            for k, v in srv_monitoring.items()
+            if k in VALID_MONITORING_KEYS
+        }
         return srv_monitoring
 
     def get_queueing(self):
