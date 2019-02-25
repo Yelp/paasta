@@ -33,7 +33,9 @@ from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
+from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -61,6 +63,10 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 HTTP_ONLY_INSTANCE_CONFIG = [KubernetesDeploymentConfig]
+SSH_ONLY_INSTANCE_CONFIG = [
+    ChronosJobConfig,
+    AdhocJobConfig,
+]
 
 
 def add_subparser(
@@ -380,6 +386,10 @@ def report_status_for_cluster(
         instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
         in HTTP_ONLY_INSTANCE_CONFIG
     ]
+    ssh_only_instances = [
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
+        in SSH_ONLY_INSTANCE_CONFIG
+    ]
 
     for namespace in deploy_pipeline:
         cluster_in_pipeline, instance = namespace.split('.')
@@ -399,7 +409,6 @@ def report_status_for_cluster(
             output.append('  instance: %s' % PaastaColors.red(instance))
             output.append('    Git sha:    None (not deployed yet)')
 
-    ssh_instances = [i for i in deployed_instances if i not in http_only_instances]
     api_return_code = 0
     ssh_return_code = 0
     if len(deployed_instances) > 0:
@@ -418,9 +427,13 @@ def report_status_for_cluster(
             ]
             if any(return_codes):
                 api_return_code = 1
-        if not use_api_endpoint and ssh_instances or not http_only_instances:
+        if not use_api_endpoint or ssh_only_instances:
             ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
-                'status', cluster, service, ','.join(ssh_instances),
+                'status', cluster, service, ','.join(
+                    deployed_instance
+                    for deployed_instance in deployed_instances
+                    if (deployed_instance in ssh_only_instances or not use_api_endpoint)
+                ),
                 system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
             )
