@@ -30,6 +30,7 @@ from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools import chronos_tools
+from paasta_tools import flinkcluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
@@ -120,6 +121,23 @@ def adhoc_instance_status(
 ) -> Mapping[str, Any]:
     cstatus: Dict[str, Any] = {}
     return cstatus
+
+
+def flinkcluster_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    status: Mapping[str, Any] = {}
+    client = settings.kubernetes_client
+    if client is not None:
+        status = flinkcluster_tools.get_flinkcluster_config(
+            kube_client=client,
+            service=service,
+            instance=instance,
+        )
+    return status
 
 
 def kubernetes_instance_status(
@@ -240,21 +258,29 @@ def instance_status(request):
     instance_status['instance'] = instance
 
     try:
-        actual_deployments = get_actual_deployments(service, settings.soa_dir)
+        instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    version = get_deployment_version(actual_deployments, settings.cluster, instance)
-    # exit if the deployment key is not found
-    if not version:
-        error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
-        raise ApiFailure(error_message, 404)
+    if instance_type != 'flinkcluster':
+        try:
+            actual_deployments = get_actual_deployments(service, settings.soa_dir)
+        except Exception:
+            error_message = traceback.format_exc()
+            raise ApiFailure(error_message, 500)
 
-    instance_status['git_sha'] = version
+        version = get_deployment_version(actual_deployments, settings.cluster, instance)
+        # exit if the deployment key is not found
+        if not version:
+            error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+            raise ApiFailure(error_message, 404)
+
+        instance_status['git_sha'] = version
+    else:
+        instance_status['git_sha'] = ''
 
     try:
-        instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
         if instance_type == 'marathon':
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
@@ -263,6 +289,8 @@ def instance_status(request):
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'kubernetes':
             instance_status['kubernetes'] = kubernetes_instance_status(instance_status, service, instance, verbose)
+        elif instance_type == 'flinkcluster':
+            instance_status['flinkcluster'] = flinkcluster_instance_status(instance_status, service, instance, verbose)
         else:
             error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
             raise ApiFailure(error_message, 404)

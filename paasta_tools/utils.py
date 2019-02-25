@@ -108,7 +108,15 @@ DEFAULT_CPU_BURST_ADD = 1
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
+INSTANCE_TYPES = (
+    'marathon',
+    'chronos',
+    'paasta_native',
+    'adhoc',
+    'kubernetes',
+    'tron',
+    'flinkcluster',
+)
 
 
 class TimeCacheEntry(TypedDict):

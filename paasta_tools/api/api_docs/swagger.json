@@ -572,6 +572,10 @@
         "chronos": {
           "$ref": "#/definitions/InstanceStatusChronos",
           "description": "Chronos specifid instance status"
+        },
+        "flinkcluster": {
+          "$ref": "#/definitions/InstanceStatusFlinkCluster",
+          "description": "Flink instance status"
         }
       }
     },
@@ -802,6 +806,9 @@
         "command",
         "last_status"
       ]
+    },
+    "InstanceStatusFlinkCluster": {
+      "type": "object"
     },
     "InstanceTasks": {
       "type": "array",

@@ -42,6 +42,7 @@ from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.flinkcluster_tools import load_flinkcluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.tron_tools import load_tron_instance_config
@@ -860,6 +861,8 @@ def get_instance_config(
         instance_config_load_function = load_kubernetes_service_config
     elif instance_type == 'tron':
         instance_config_load_function = load_tron_instance_config
+    elif instance_type == 'flinkcluster':
+        instance_config_load_function = load_flinkcluster_instance_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
@@ -1037,7 +1040,7 @@ def get_instance_configs_for_service(
         soa_dir=soa_dir,
     ):
         if type_filter is None:
-            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron']
+            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron', 'flinkcluster']
         if 'marathon' in type_filter:
             for _, instance in get_service_instance_list(
                 service=service,
@@ -1102,6 +1105,20 @@ def get_instance_configs_for_service(
                 soa_dir=soa_dir,
             ):
                 yield load_tron_instance_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'flinkcluster' in type_filter:
+            for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='flinkcluster',
+                soa_dir=soa_dir,
+            ):
+                yield load_flinkcluster_instance_config(
                     service=service,
                     instance=instance,
                     cluster=cluster,
