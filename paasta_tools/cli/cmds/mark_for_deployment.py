@@ -32,6 +32,7 @@ from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
 
+from paasta_tools import automatic_rollbacks
 from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
@@ -218,7 +219,7 @@ def report_waiting_aborted(service, deploy_group):
 
 
 class SlackDeployNotifier:
-    def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url):
+    def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url, auto_rollback=False):
         self.sc = get_slack_client()
         self.service = service
         self.deploy_info = deploy_info
@@ -229,6 +230,7 @@ class SlackDeployNotifier:
         self.git_url = git_url
         self.authors = self.get_authors_to_be_notified()
         self.url_message = self.get_url_message()
+        self.auto_rollback = auto_rollback
 
     def get_url_message(self):
         build_url = os.environ.get('BUILD_URL')
@@ -266,7 +268,7 @@ class SlackDeployNotifier:
                 return step.get(notify_type, step.get('slack_notify', False))
         return False
 
-    def _notify_with_thread(self, notify_type, channels, initial_message, *followups):
+    def _notify_with_thread(self, notify_type, channels, initial_message, initial_blocks=None, followups=[]):
         """Start a new thread with `initial_message`, then add any followups.
 
         This helps keep extra detail just a click away, without disrupting the
@@ -274,7 +276,7 @@ class SlackDeployNotifier:
         """
         if self.deploy_group_is_set_to_notify(notify_type):
             for channel in channels:
-                resp, = self.sc.post(channels=[channel], message=initial_message)
+                resp, = self.sc.post(channels=[channel], message=initial_message, blocks=initial_blocks)
 
                 # If we got an error from Slack, fall back to posting it without a thread.
                 thread_ts = resp['message']['ts'] if resp and resp['ok'] else None
@@ -287,48 +289,55 @@ class SlackDeployNotifier:
     def notify_after_mark(self, ret):
         if ret == 0:
             if self.old_commit is not None and self.commit != self.old_commit:
+                message = (
+                    f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.\n"
+                    f"{self.authors}"
+                )
+                if self.auto_rollback:
+                    blocks = automatic_rollbacks.get_slack_blocks_for_initial_deployment(message)
+                    message = None
+                else:
+                    blocks = None
                 self._notify_with_thread(
-                    'notify_after_mark',
-                    self.channels,
-                    (
-                        f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.\n"
-                        f"{self.authors}"
-                    ),
-                    (
+                    notify_type='notify_after_mark',
+                    channels=self.channels,
+                    initial_message=message,
+                    initial_blocks=blocks,
+                    followups=[(
                         f"{self.url_message}\n"
                         "\n"
                         "Roll it back at any time with:\n"
                         f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                         f"--commit {self.old_commit}`"
-                    ),
+                    )],
                 )
         else:
             if self.old_commit is not None and self.commit != self.old_commit:
                 self._notify_with_thread(
-                    'notify_after_mark',
-                    self.channels,
-                    (
+                    notify_type='notify_after_mark',
+                    channels=self.channels,
+                    initial_message=(
                         f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.\n"  # noqa: E501
                         f"{self.authors}"
                     ),
-                    self.url_message,
+                    followups=[self.url_message],
                 )
 
     def notify_after_good_deploy(self):
         if self.old_commit is not None and self.commit != self.old_commit:
             self._notify_with_thread(
-                'notify_after_good_deploy',
-                self.channels,
-                (
+                notify_type='notify_after_good_deploy',
+                channels=self.channels,
+                initial_message=(
                     f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.\n"
                     f"{self.authors}"
                 ),
-                (
+                followups=[(
                     f"{self.url_message}\n"
                     "If you need to roll back, run:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                     f"--commit {self.old_commit}`"
-                ),
+                )],
             )
 
     def notify_after_auto_rollback(self):
@@ -338,23 +347,27 @@ class SlackDeployNotifier:
                 f"Auto-rolling back to {self.old_commit}\n"
                 f"{self.url_message}\n"
             )
-            self._notify_with_thread('notify_after_auto_rollback', self.channels, message)
+            self._notify_with_thread(
+                notify_type='notify_after_auto_rollback',
+                channels=self.channels,
+                initial_message=message,
+            )
 
     def notify_after_abort(self):
         if self.old_commit is not None and self.commit != self.old_commit:
             self._notify_with_thread(
-                'notify_after_abort',
-                self.channels,
-                (
+                notify_type='notify_after_abort',
+                channels=self.channels,
+                initial_message=(
                     f"*{self.service}* - Deployment of {self.commit[:12]} to {self.deploy_group} *aborted*, "
                     "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy.\n"
                     f"{self.authors}"
                 ),
-                (
+                followups=[(
                     f"{self.url_message}\n"
                     "If you need to roll back, run:\n"
                     f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"  # noqa: E501
-                ),
+                )],
             )
 
 
@@ -413,6 +426,7 @@ def paasta_mark_for_deployment(args):
     slack_notifier = SlackDeployNotifier(
         deploy_info=deploy_info, service=service,
         deploy_group=deploy_group, commit=commit, old_commit=old_git_sha, git_url=args.git_url,
+        auto_rollback=args.auto_rollback,
     )
 
     ret = mark_for_deployment(
