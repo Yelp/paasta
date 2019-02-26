@@ -491,7 +491,10 @@ def report_status_for_cluster(
                     verbose=verbose,
                 )
                 for deployed_instance in deployed_instances
-                if (deployed_instance in http_only_instances or use_api_endpoint)
+                if (
+                    deployed_instance in http_only_instances or
+                    deployed_instance not in ssh_only_instances and use_api_endpoint
+                )
             ]
             if any(return_codes):
                 api_return_code = 1
@@ -500,7 +503,10 @@ def report_status_for_cluster(
                 'status', cluster, service, ','.join(
                     deployed_instance
                     for deployed_instance in deployed_instances
-                    if (deployed_instance in ssh_only_instances or not use_api_endpoint)
+                    if (
+                        deployed_instance in ssh_only_instances or
+                        deployed_instance not in http_only_instances and not use_api_endpoint
+                    )
                 ),
                 system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
