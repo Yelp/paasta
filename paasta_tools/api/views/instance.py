@@ -43,6 +43,7 @@ from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.paasta_serviceinit import get_deployment_version
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
 log = logging.getLogger(__name__)
@@ -259,6 +260,9 @@ def instance_status(request):
 
     try:
         instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
+    except NoConfigurationForServiceError:
+        error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+        raise ApiFailure(error_message, 404)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
