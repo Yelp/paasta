@@ -348,6 +348,18 @@ def print_flinkcluster_status(
         output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
+    output.append(
+        "    Jobs:"
+        f" {status.overview['jobs-running']} running,"
+        f" {status.overview['jobs-finished']} finished,"
+        f" {status.overview['jobs-failed']} failed,"
+        f" {status.overview['jobs-cancelled']} cancelled",
+    )
+    output.append(
+        "   "
+        f" {status.overview['taskmanagers']} taskmanagers,"
+        f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available",
+    )
 
     output.append(f"    Jobs:")
     if verbose:
