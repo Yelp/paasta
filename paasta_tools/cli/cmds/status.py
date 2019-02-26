@@ -17,6 +17,7 @@ import difflib
 import os
 import sys
 from collections import defaultdict
+from datetime import datetime
 from distutils.util import strtobool
 from typing import Callable
 from typing import DefaultDict
@@ -29,6 +30,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 
+import humanize
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
@@ -41,6 +43,7 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
+from paasta_tools.flinkcluster_tools import FlinkClusterConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -51,6 +54,7 @@ from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
@@ -62,7 +66,10 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
-HTTP_ONLY_INSTANCE_CONFIG = [KubernetesDeploymentConfig]
+HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
+    FlinkClusterConfig,
+    KubernetesDeploymentConfig,
+]
 SSH_ONLY_INSTANCE_CONFIG = [
     ChronosJobConfig,
     AdhocJobConfig,
@@ -225,12 +232,15 @@ def paasta_status_on_api_endpoint(
         return exc.status_code
 
     output.append('    instance: %s' % PaastaColors.blue(instance))
-    output.append('    Git sha:    %s (desired)' % status.git_sha)
+    if status.git_sha != '':
+        output.append('    Git sha:    %s (desired)' % status.git_sha)
 
     if status.marathon is not None:
         return print_marathon_status(service, instance, output, status.marathon)
     elif status.kubernetes is not None:
         return print_kubernetes_status(service, instance, output, status.kubernetes)
+    elif status.flinkcluster is not None:
+        return print_flinkcluster_status(service, instance, output, status.flinkcluster, verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
@@ -327,6 +337,60 @@ def status_kubernetes_job_human(
         )
 
 
+def print_flinkcluster_status(
+    service: str,
+    instance: str,
+    output: List[str],
+    status,
+    verbose: int,
+) -> int:
+    if verbose:
+        output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
+    else:
+        output.append(f"    Flink version: {status.config['flink-version']}")
+    output.append(
+        "    Jobs:"
+        f" {status.overview['jobs-running']} running,"
+        f" {status.overview['jobs-finished']} finished,"
+        f" {status.overview['jobs-failed']} failed,"
+        f" {status.overview['jobs-cancelled']} cancelled",
+    )
+    output.append(
+        "   "
+        f" {status.overview['taskmanagers']} taskmanagers,"
+        f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available",
+    )
+
+    output.append(f"    Jobs:")
+    if verbose:
+        output.append(f"      Job Name                         State       Job ID                           Started")
+    else:
+        output.append(f"      Job Name                         State       Started")
+    for job in status.jobs:
+        job_id = job['jid']
+        if verbose:
+            fmt = "      {job_name: <32.32} {state: <11} {job_id} {start_time}"
+        else:
+            fmt = "      {job_name: <32.32} {state: <11} {start_time}"
+        start_time = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(job['start-time']) // 1000))
+        output.append(fmt.format(
+            job_id=job_id,
+            job_name=job['name'].split('.', 2)[2],
+            state=job['state'],
+            start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
+        ))
+        if job_id in status.exceptions:
+            exceptions = status.exceptions[job_id]
+            root_exception = exceptions['root-exception']
+            if root_exception is not None:
+                output.append(f"        Exception: {root_exception}")
+                ts = exceptions['timestamp']
+                if ts is not None:
+                    exc_ts = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(ts) // 1000))
+                    output.append(f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})")
+    return 0
+
+
 def print_kubernetes_status(
     service: str,
     instance: str,
@@ -402,6 +466,10 @@ def report_status_for_cluster(
 
         # Case: service deployed to cluster.instance
         if namespace in actual_deployments:
+            deployed_instances.append(instance)
+
+        # Case: flinkcluster instances don't use `deployments.json`
+        elif instance_whitelist.get(instance) == FlinkClusterConfig:
             deployed_instances.append(instance)
 
         # Case: service NOT deployed to cluster.instance
