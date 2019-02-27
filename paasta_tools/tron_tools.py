@@ -390,12 +390,15 @@ class TronJobConfig:
         return checks_passed, msgs
 
     def check_deploy_group(self) -> Tuple[bool, str]:
-        deploy_group = self.get_deploy_group()
-        if deploy_group is not None:
+        deploy_groups = [action.get_deploy_group() for action in self.get_actions()]
+        deploy_groups.append(self.get_deploy_group())
+        check_deploy_groups = [deploy_group for deploy_group in deploy_groups if deploy_group is not None]
+        if len(check_deploy_groups) > 0:
             pipeline_steps = [step['step'] for step in get_pipeline_config(self.service, self.soa_dir)]
             pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
-            if deploy_group not in pipeline_deploy_groups:
-                return False, f'deploy_group {deploy_group} is not in deploy.yaml'
+            error_groups = [d for d in check_deploy_groups if d not in pipeline_deploy_groups]
+            if len(error_groups) > 0:
+                return False, f'deploy_group {error_groups} is not in deploy.yaml'
         return True, ''
 
     def validate(self) -> List[str]:

@@ -438,6 +438,49 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
+    @mock.patch('paasta_tools.tron_tools.get_pipeline_config', autospec=True)
+    def test_validate_invalid_action_deploy_group(self, mock_pipeline_config):
+        job_dict = {
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': {
+                'first': {
+                    'command': 'echo first',
+                    'deploy_group': 'invalid_deploy_group',
+                },
+            },
+        }
+        mock_pipeline_config.return_value = [{'step': 'deploy_group_1'}, {'step': 'deploy_group_2'}]
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch('paasta_tools.tron_tools.get_pipeline_config', autospec=True)
+    def test_validate_action_valid_deploy_group(self, mock_pipeline_config):
+        job_dict = {
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'deploy_group': 'deploy_group_1',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': {
+                'first': {
+                    'command': 'echo first',
+                    'deploy_group': 'deploy_group_2',
+                },
+            },
+        }
+        mock_pipeline_config.return_value = [{'step': 'deploy_group_1'}, {'step': 'deploy_group_2'}]
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
+        errors = job_config.validate()
+        assert len(errors) == 0
+
     def test_validate_monitoring(self):
         job_dict = {
             'node': 'batch_server',
