@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright 2015-2018 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,6 +129,7 @@ def test_setup_custom_resources():
             version='v1',
             config_dicts={},
             group='yelp.com',
+            cluster='mycluster',
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, False]
@@ -139,6 +139,7 @@ def test_setup_custom_resources():
             version='v1',
             config_dicts={'kurupt': 'something', 'mc': 'another'},
             group='yelp.com',
+            cluster='mycluster',
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, True]
@@ -148,12 +149,14 @@ def test_setup_custom_resources():
             version='v1',
             config_dicts={'kurupt': 'something', 'mc': 'another'},
             group='yelp.com',
+            cluster='mycluster',
         )
         mock_reconcile_kubernetes_resource.assert_has_calls([
             mock.call(
                 kube_client=mock_client,
                 service='kurupt',
                 instance_configs='something',
+                cluster='mycluster',
                 kind=mock_kind,
                 custom_resources=mock_list_cr.return_value,
                 version='v1',
@@ -163,6 +166,7 @@ def test_setup_custom_resources():
                 kube_client=mock_client,
                 service='mc',
                 instance_configs='another',
+                cluster='mycluster',
                 kind=mock_kind,
                 custom_resources=mock_list_cr.return_value,
                 version='v1',
@@ -183,6 +187,7 @@ def test_format_custom_resource():
                 'labels': {
                     'yelp.com/paasta_service': 'kurupt_fm',
                     'yelp.com/paasta_instance': 'radio_station',
+                    'yelp.com/paasta_cluster': 'mycluster',
                     'yelp.com/paasta_config_sha': mock_get_config_hash.return_value,
                 },
             },
@@ -192,6 +197,7 @@ def test_format_custom_resource():
             instance_config={'dummy': 'conf'},
             service='kurupt_fm',
             instance='radio_station',
+            cluster='mycluster',
             kind='flinkcluster',
             version='v1',
             group='yelp.com',
@@ -221,6 +227,7 @@ def test_reconcile_kubernetes_resource():
             kube_client=mock_client,
             service='mc',
             instance_configs={},
+            cluster='mycluster',
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
@@ -241,6 +248,7 @@ def test_reconcile_kubernetes_resource():
             kube_client=mock_client,
             service='kurupt',
             instance_configs={'fm': {'some': 'config'}},
+            cluster='cluster',
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
@@ -261,6 +269,7 @@ def test_reconcile_kubernetes_resource():
             kube_client=mock_client,
             service='kurupt',
             instance_configs={'fm': {'some': 'config'}},
+            cluster='mycluster',
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
@@ -281,6 +290,7 @@ def test_reconcile_kubernetes_resource():
             kube_client=mock_client,
             service='mc',
             instance_configs={'grindah': {'some': 'conf'}},
+            cluster='mycluster',
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',
@@ -300,6 +310,7 @@ def test_reconcile_kubernetes_resource():
             kube_client=mock_client,
             service='mc',
             instance_configs={'grindah': {'some': 'conf'}},
+            cluster='mycluster',
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version='v1',

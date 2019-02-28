@@ -135,6 +135,7 @@ def setup_all_custom_resources(
                 config_dicts=config_dicts,
                 version=custom_resource.version,
                 group=custom_resource.group,
+                cluster=cluster,
             ),
         )
     return all(results) if results else True
@@ -157,6 +158,7 @@ def setup_custom_resources(
     version: str,
     config_dicts: Mapping[str, Mapping[str, Any]],
     group: str,
+    cluster: str,
 ) -> bool:
     succeded = True
     if config_dicts:
@@ -175,6 +177,7 @@ def setup_custom_resources(
             custom_resources=crs,
             version=version,
             group=group,
+            cluster=cluster,
         ):
             succeded = False
     return succeded
@@ -184,6 +187,7 @@ def format_custom_resource(
     instance_config: Mapping[str, Any],
     service: str,
     instance: str,
+    cluster: str,
     kind: str,
     version: str,
     group: str,
@@ -198,6 +202,7 @@ def format_custom_resource(
             'labels': {
                 'yelp.com/paasta_service': service,
                 'yelp.com/paasta_instance': instance,
+                'yelp.com/paasta_cluster': cluster,
             },
         },
         'spec': instance_config,
@@ -217,6 +222,7 @@ def reconcile_kubernetes_resource(
     kind: KubeKind,
     version: str,
     group: str,
+    cluster: str,
 ) -> bool:
 
     results = []
@@ -225,6 +231,7 @@ def reconcile_kubernetes_resource(
             instance_config=config,
             service=service,
             instance=instance,
+            cluster=cluster,
             kind=kind.singular,
             version=version,
             group=group,
