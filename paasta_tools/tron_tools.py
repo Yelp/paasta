@@ -224,15 +224,28 @@ class TronActionConfig(InstanceConfig):
     def get_nerve_namespace(self) -> None:
         return None
 
+    def check_deploy_group(self) -> Tuple[bool, str]:
+        deploy_group = self.get_deploy_group()
+        if deploy_group is not None:
+            pipeline_steps = [step['step'] for step in get_pipeline_config(self.service, self.soa_dir)]
+            pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
+            if deploy_group not in pipeline_deploy_groups:
+                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
+        return True, ''
+
     def validate(self) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs = super().validate()
-
+        name = self.get_instance()
+        msgs: List[str] = []
         if error_msgs:
-            name = self.get_instance()
-            return [f'{name}: {msg}' for msg in error_msgs]
-        else:
-            return []
+            msgs += [f'{name}: {msg}' for msg in error_msgs]
+
+        check_pass, check_msg = self.check_deploy_group()
+        if check_pass is False:
+            msgs.append(f'{name}: {check_msg}')
+
+        return msgs
 
 
 class TronJobConfig:
@@ -389,21 +402,9 @@ class TronJobConfig:
                 msgs.extend(action_msgs)
         return checks_passed, msgs
 
-    def check_deploy_group(self) -> Tuple[bool, str]:
-        deploy_groups = [action.get_deploy_group() for action in self.get_actions()]
-        deploy_groups.append(self.get_deploy_group())
-        check_deploy_groups = [deploy_group for deploy_group in deploy_groups if deploy_group is not None]
-        if len(check_deploy_groups) > 0:
-            pipeline_steps = [step['step'] for step in get_pipeline_config(self.service, self.soa_dir)]
-            pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
-            error_groups = [d for d in check_deploy_groups if d not in pipeline_deploy_groups]
-            if len(error_groups) > 0:
-                return False, f'deploy_group {error_groups} is not in deploy.yaml'
-        return True, ''
-
     def validate(self) -> List[str]:
         _, error_msgs = self.check_actions()
-        checks = ['check_monitoring', 'check_deploy_group']
+        checks = ['check_monitoring']
         for check in checks:
             check_passed, check_msg = getattr(self, check)()
             if not check_passed:
