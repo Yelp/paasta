@@ -727,7 +727,7 @@ def paasta_status(
     if 'USE_API_ENDPOINT' in os.environ:
         use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
     else:
-        use_api_endpoint = True
+        use_api_endpoint = False
 
     return_codes = [0]
     tasks = []
