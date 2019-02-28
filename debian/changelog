@@ -1,3 +1,10 @@
+paasta-tools (0.83.11) xenial; urgency=medium
+
+  * 0.83.11 tagged with 'make release'
+    Commit: Merge branch "u/robj/add-paasta-cluster-label"
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 28 Feb 2019 04:33:01 -0800
+
 paasta-tools (0.83.10) xenial; urgency=medium
 
   * 0.83.10 tagged with 'make release'
