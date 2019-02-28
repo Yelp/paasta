@@ -1,3 +1,11 @@
+paasta-tools (0.83.12) xenial; urgency=medium
+
+  * 0.83.12 tagged with 'make release'
+    Commit: Merge pull request #2148 from Yelp/no_api_by_default  Revert
+    "Merge pull request #2134 from Yelp/paasta-status-use-http-api…
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 28 Feb 2019 10:55:39 -0800
+
 paasta-tools (0.83.11) xenial; urgency=medium
 
   * 0.83.11 tagged with 'make release'
