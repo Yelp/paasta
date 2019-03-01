@@ -279,9 +279,7 @@ instance MAY have:
     Parsing the Marathon config file will fail if both args and cmd are
     specified [#note]_.
 
-  * ``monitoring``: A dictionary of values that configure overrides for
-    monitoring parameters that will take precedence over what is in
-    `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
   * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for valid options and how they work
 
@@ -492,7 +490,7 @@ Each job configuration MAY specify the following options:
     which disable the old versions but allows them to finish their current run.
     If unspecified, defaults to ``graceful``.
 
-  * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
   * ``deploy_group``: Same as ``deploy_group`` for marathon-\*.yaml.
 
@@ -544,7 +542,6 @@ Example Job
             cpus: .5
             mem: 100
 
-
 PaaSTA-Specific Options
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -559,6 +556,8 @@ Each Tron **job** configuration MAY specify the following options:
     This setting picks the default service for the whole job, but ``service`` may
     also be set on a per-action basis. Tron jobs may be composed of multiple actions
     that use commands from multiple different services.
+
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
 Each Tron **action** of a job MAY specify the following:
 
@@ -852,11 +851,12 @@ Defaults for a *team* can be set globally with the global Sensu configuration.
 ``team`` is the only mandatory key, but overrides can be set for the entire
 service with ``monitoring.yaml``.
 
-Additionally these settings can be overridden on a *per-instance* basis. For
-example a ``canary`` instance can be set with ``page: false`` and ``team:
-devs``, while the ``main`` instance can bet set to ``page: true`` and ``team:
-ops``, and the ``dailyadsjob`` instance can be set with ``ticket: true`` and
-``team: ads``. See the Examples section for more examples.
+Additionally these settings can be overridden on a *per-instance* basis via the
+`monitoring` option. For example a ``canary`` instance can be set with
+``page: false`` and ``team: devs``, while the ``main`` instance can bet set to
+``page: true`` and ``team: ops``, and the ``dailyadsjob`` instance can be set
+with ``ticket: true`` and ``team: ads``. See the Examples section for more
+examples.
 
 Here is a list of options that PaaSTA will pass through:
 
@@ -976,6 +976,17 @@ A marathon service that overrides options on different instances (canary)::
         page: false
         ticket: true
 
+A tron job that pages for a specific job in a service::
+
+  # monitoring.yaml
+  team: midend
+  page: false
+
+  # tron-prod.yaml
+  jobs:
+    foo:
+      monitoring:
+        page: true
 
 ``service.yaml``
 ----------------
