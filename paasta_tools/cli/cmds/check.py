@@ -17,8 +17,6 @@ passes all the markers required to be considered paasta ready."""
 import os
 import re
 
-from service_configuration_lib import read_service_configuration
-
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
@@ -35,6 +33,7 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import get_pipeline_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import is_deploy_step
@@ -42,11 +41,6 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
-
-
-def get_pipeline_config(service, soa_dir):
-    service_configuration = read_service_configuration(service, soa_dir)
-    return service_configuration.get('deploy', {}).get('pipeline', [])
 
 
 def add_subparser(subparsers):

@@ -316,7 +316,7 @@ def test_check_smartstack_check_missing_port(
 
 
 @patch(
-    'paasta_tools.cli.cmds.check.'
+    'paasta_tools.utils.'
     'read_service_configuration', autospec=True,
 )
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
