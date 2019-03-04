@@ -709,14 +709,14 @@ def build_and_push_docker_image(args):
         service=args.service,
         soa_dir=args.yelpsoa_config_root,
     )
-    if cook_return is not 0:
+    if cook_return != 0:
         return None
 
     docker_url = f'{args.docker_registry}/{docker_tag}'
     command = f'docker tag {docker_tag} {docker_url}'
     paasta_print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
-    if retcode is not 0:
+    if retcode != 0:
         return None
 
     if args.docker_registry != DEFAULT_SPARK_DOCKER_REGISTRY:
@@ -726,7 +726,7 @@ def build_and_push_docker_image(args):
 
     paasta_print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=True)
-    if retcode is not 0:
+    if retcode != 0:
         return None
 
     return docker_url

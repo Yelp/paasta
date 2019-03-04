@@ -30,7 +30,7 @@ import a_sync
 from humanize import naturalsize
 from kubernetes.client import V1Node
 from mypy_extensions import TypedDict
-from typing_extensions import Counter as _Counter  # noqa
+from typing_extensions import Counter as _Counter
 
 from paasta_tools import chronos_tools
 from paasta_tools.kubernetes_tools import get_all_nodes

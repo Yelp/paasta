@@ -772,9 +772,9 @@ def run_on_master(
         cmd_parts.append(
             # send process to background and capture it's pid
             '& p=$!; ' +
-            # noqa: W504 wait for stdin with timeout in a loop, exit when original process finished
+            # wait for stdin with timeout in a loop, exit when original process finished
             'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
-            # noqa: W504 kill original process if loop finished (something on stdin)
+            # kill original process if loop finished (something on stdin)
             'kill $p; wait',
         )
         stdin = subprocess.PIPE
@@ -911,7 +911,7 @@ def validate_given_deploy_groups(
         lists and those only in args_deploy_groups
     """
     invalid_deploy_groups: Set[str]
-    if len(args_deploy_groups) is 0:
+    if len(args_deploy_groups) == 0:
         valid_deploy_groups = set(all_deploy_groups)
         invalid_deploy_groups = set()
     else:

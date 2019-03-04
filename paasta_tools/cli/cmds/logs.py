@@ -24,10 +24,10 @@ from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
 from time import sleep
-from typing import Any  # noqa
-from typing import Dict  # noqa
-from typing import List  # noqa
-from typing import Set  # noqa
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
 
 import isodate
 import pytz
