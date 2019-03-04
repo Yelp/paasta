@@ -8,7 +8,7 @@ from typing import AsyncIterable
 from typing import Awaitable
 from typing import Callable
 from typing import DefaultDict
-from typing import Dict  # noqa: imported for typing
+from typing import Dict
 from typing import List
 from typing import TypeVar
 

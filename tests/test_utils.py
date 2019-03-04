@@ -17,8 +17,8 @@ import os
 import stat
 import sys
 import time
-from typing import Dict  # noqa
-from typing import List  # noqa
+from typing import Dict
+from typing import List
 
 import mock
 import pytest

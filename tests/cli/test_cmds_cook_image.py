@@ -33,7 +33,7 @@ def test_run_success(
 
     args = mock.MagicMock()
     args.service = 'fake_service'
-    assert paasta_cook_image(args) is 0
+    assert paasta_cook_image(args) == 0
 
     mock_log_audit.assert_called_once_with(
         action='cook-image',

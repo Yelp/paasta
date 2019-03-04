@@ -52,7 +52,7 @@ def test_itest_success(
     mock_docker_image.return_value = True
     mock_run.return_value = (0, 'Yeeehaaa')
     args = MagicMock()
-    assert paasta_itest(args) is 0
+    assert paasta_itest(args) == 0
 
 
 @patch('paasta_tools.cli.cmds.itest.validate_service_name', autospec=True)
@@ -73,5 +73,5 @@ def test_itest_works_when_service_name_starts_with_services_dash(
     args = MagicMock()
     args.service = 'services-fake_service'
     args.commit = 'unused'
-    assert paasta_itest(args) is 0
+    assert paasta_itest(args) == 0
     mock_build_docker_tag.assert_called_once_with('fake_service', 'unused')
