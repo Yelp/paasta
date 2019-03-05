@@ -42,6 +42,7 @@ setup(
         'paasta_tools/am_i_mesos_leader.py',
         'paasta_tools/autoscale_all_services.py',
         'paasta_tools/check_marathon_services_replication.py',
+        'paasta_tools/check_kubernetes_api.py',
         'paasta_tools/check_kubernetes_services_replication.py',
         'paasta_tools/check_oom_events.py',
         'paasta_tools/cleanup_marathon_jobs.py',

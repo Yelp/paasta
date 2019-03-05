@@ -5,6 +5,7 @@ opt/venvs/paasta-tools/bin/check_chronos_has_jobs.py usr/bin/check_chronos_has_j
 opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
+opt/venvs/paasta-tools/bin/check_kubernetes_api.py usr/bin/check_kubernetes_api
 opt/venvs/paasta-tools/bin/check_kubernetes_services_replication.py usr/bin/check_kubernetes_services_replication
 opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_active_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
