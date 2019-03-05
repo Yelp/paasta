@@ -1210,7 +1210,7 @@ def format_log_line(
     validate_log_component(component)
     if not timestamp:
         timestamp = _now()
-    line = remove_ansi_escape_sequences(line)
+    line = remove_ansi_escape_sequences(line.strip())
     message = json.dumps(
         {
             'timestamp': timestamp,
