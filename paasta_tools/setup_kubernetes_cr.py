@@ -119,14 +119,16 @@ def setup_all_custom_resources(
                 f"not found in {cluster}",
             )
             continue
-        ensure_namespace(
-            kube_client=kube_client,
-            namespace=f'paasta-{custom_resource.kube_kind.plural}',
-        )
         config_dicts = load_all_configs(
             cluster=cluster,
             file_prefix=custom_resource.file_prefix,
             soa_dir=soa_dir,
+        )
+        if not config_dicts:
+            continue
+        ensure_namespace(
+            kube_client=kube_client,
+            namespace=f'paasta-{custom_resource.kube_kind.plural}',
         )
         results.append(
             setup_custom_resources(
