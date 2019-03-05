@@ -40,59 +40,46 @@ def get_slack_blocks_for_initial_deployment(message, last_action=None, status=No
     return blocks
 
 
+def get_button_element(button, is_active):
+    active_button_texts = {
+        "rollback": "Rolling Back :zombocom: (Not Impl.)",
+        "forward": "Rolling Forward :zombocom: (Not Impl.)",
+    }
+
+    inactive_button_texts = {
+        "rollback": "Roll Back :arrow_backward: (Not Impl.)",
+        "forward": "Continue Forward :arrow_forward: (Not Impl.)",
+    }
+
+    if is_active is True:
+        confirm = False
+        text = active_button_texts[button]
+    else:
+        confirm = get_confirmation_object(button)
+        text = inactive_button_texts[button]
+
+    element = {
+        "type": "button",
+        "text": {
+            "type": "plain_text",
+            "text": text,
+            "emoji": True,
+        },
+        "confirm": confirm,
+        "value": button,
+    }
+    if not confirm:
+        del element["confirm"]
+    return element
+
+
 def get_button_elements(buttons, active_button=None):
     elements = []
     for button in buttons:
-        if button == "rollback" and active_button == "rollback":
-            elements.append(
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "Rolling Back :zombocom: (Not Implemented)",
-                        "emoji": True,
-                    },
-                    "value": "rollback",
-                },
-            )
-        elif button == "rollback" and active_button != "rollback":
-            elements.append(
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "Roll Back :arrow_backward: (Not Implemented)",
-                        "emoji": True,
-                    },
-                    "value": "rollback",
-                    "confirm": get_confirmation_object(button),
-                },
-            )
-        elif button == "forward" and active_button == "forward":
-            elements.append(
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "Rolling Forward :zombocom: (Not Implemented)",
-                        "emoji": True,
-                    },
-                    "value": "forward",
-                },
-            )
-        elif button == "forward" and active_button != "forward":
-            elements.append(
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "Continue Forward :arrow_forward: (Not Implemented)",
-                        "emoji": True,
-                    },
-                    "value": "forward",
-                    "confirm": get_confirmation_object(button),
-                },
-            )
+        is_active = button == active_button
+        elements.append(
+            get_button_element(button=button, is_active=is_active),
+        )
     return elements
 
 
