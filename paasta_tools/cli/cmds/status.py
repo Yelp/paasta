@@ -43,7 +43,9 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
+from paasta_tools.flinkcluster_tools import FLINK_INGRESS_PORT
 from paasta_tools.flinkcluster_tools import FlinkClusterConfig
+from paasta_tools.flinkcluster_tools import sanitised_name
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -240,7 +242,7 @@ def paasta_status_on_api_endpoint(
     elif status.kubernetes is not None:
         return print_kubernetes_status(service, instance, output, status.kubernetes)
     elif status.flinkcluster is not None:
-        return print_flinkcluster_status(service, instance, output, status.flinkcluster, verbose)
+        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster, verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
@@ -338,6 +340,7 @@ def status_kubernetes_job_human(
 
 
 def print_flinkcluster_status(
+    cluster: str,
     service: str,
     instance: str,
     output: List[str],
@@ -369,15 +372,18 @@ def print_flinkcluster_status(
     for job in status.jobs:
         job_id = job['jid']
         if verbose:
-            fmt = "      {job_name: <32.32} {state: <11} {job_id} {start_time}"
+            fmt = """      {job_name: <32.32} {state: <11} {job_id} {start_time}
+        {dashboard_url}"""
         else:
             fmt = "      {job_name: <32.32} {state: <11} {start_time}"
         start_time = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(job['start-time']) // 1000))
+        sname = sanitised_name(service, instance)
         output.append(fmt.format(
             job_id=job_id,
             job_name=job['name'].split('.', 2)[2],
             state=job['state'],
             start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
+            dashboard_url=f'http://flink.k8s.paasta-{cluster}:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
         ))
         if job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
@@ -492,8 +498,8 @@ def report_status_for_cluster(
                 )
                 for deployed_instance in deployed_instances
                 if (
-                    deployed_instance in http_only_instances or
-                    deployed_instance not in ssh_only_instances and use_api_endpoint
+                    deployed_instance in http_only_instances
+                    or deployed_instance not in ssh_only_instances and use_api_endpoint
                 )
             ]
             if any(return_codes):
@@ -504,8 +510,8 @@ def report_status_for_cluster(
                     deployed_instance
                     for deployed_instance in deployed_instances
                     if (
-                        deployed_instance in ssh_only_instances or
-                        deployed_instance not in http_only_instances and not use_api_endpoint
+                        deployed_instance in ssh_only_instances
+                        or deployed_instance not in http_only_instances and not use_api_endpoint
                     )
                 ),
                 system_paasta_config, stream=False, verbose=verbose,

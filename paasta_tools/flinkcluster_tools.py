@@ -19,6 +19,9 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig
 
 
+FLINK_INGRESS_PORT = 31080
+
+
 class FlinkClusterConfig(InstanceConfig):
     config_filename_prefix = 'flinkcluster'
 
@@ -57,19 +60,25 @@ def load_flinkcluster_instance_config(
     )
 
 
+def sanitised_name(
+    service: str,
+    instance: str,
+) -> str:
+    sanitised_service = service.replace('_', '--')
+    sanitised_instance = instance.replace('_', '--')
+    return f'{sanitised_service}-{sanitised_instance}'
+
+
 def get_flinkcluster_config(
     kube_client: KubeClient,
     service: str,
     instance: str,
 ) -> Mapping[str, Any]:
-    sanitised_service = service.replace('_', '--')
-    sanitised_instance = instance.replace('_', '--')
-
     group = 'yelp.com'
     version = 'v1alpha1'
     namespace = 'paasta-flinkclusters'
     plural = 'flinkclusters'
-    name = f'{sanitised_service}-{sanitised_instance}'
+    name = sanitised_name(service, instance)
     co = kube_client.custom.get_namespaced_custom_object(
         name=name,
         group=group,
