@@ -50,7 +50,6 @@ def main() -> None:
         sys.exit(0)
     except Exception as exc:
         log.error(f"Error connecting to API: {exc}")
-        log.debug(exc)
         sys.exit(1)
 
 
