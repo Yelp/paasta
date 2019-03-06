@@ -190,6 +190,9 @@ def test_format_custom_resource():
                     'yelp.com/paasta_cluster': 'mycluster',
                     'yelp.com/paasta_config_sha': mock_get_config_hash.return_value,
                 },
+                'annotations': {
+                    'yelp.com/desired_state': 'running',
+                },
             },
             'spec': {'dummy': 'conf'},
         }
