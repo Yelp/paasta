@@ -71,6 +71,8 @@ specify the following options:
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
     * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
     * ``PAASTA_MONITORING_TEAM``: The team that is configured to get alerts.
+    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username
+      of the user who launched the paasta container.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
