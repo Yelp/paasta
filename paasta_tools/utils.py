@@ -2916,6 +2916,8 @@ def deep_merge_dictionaries(
             else:
                 if isinstance(value, dict) and isinstance(child, dict):
                     stack.append((value, child))
+                elif isinstance(value, list) and isinstance(child, list):
+                    result_dict[key] = value + child
                 else:
                     if allow_duplicate_keys:
                         result_dict[key] = value
