@@ -112,13 +112,18 @@ def set_flinkcluster_desired_state(
         namespace=namespace,
         plural=plural,
     )
-    co.metadata.annotations['yelp.com/desired_state'] = 'stopped'
+    if 'metadata' not in co:
+        co['metadata'] = {}
+    if 'annotations' not in co['metadata']:
+        co['metadata']['annotations'] = {}
+    co['metadata']['annotations']['yelp.com/desired_state'] = desired_state
     kube_client.custom.replace_namespaced_custom_object(
         name=name,
         group=group,
         version=version,
         namespace=namespace,
         plural=plural,
+        body=co,
     )
     status = co.get('status')
     return status

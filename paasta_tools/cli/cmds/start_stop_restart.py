@@ -117,18 +117,13 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
             instance=service_config.instance,
             desired_state=dict(start='running', stop='stopped')[desired_state],
         )
-        log_event(
+    else:
+        ref_mutator = make_mutate_refs_func(
             service_config=service_config,
+            force_bounce=force_bounce,
             desired_state=desired_state,
         )
-        return
-
-    ref_mutator = make_mutate_refs_func(
-        service_config=service_config,
-        force_bounce=force_bounce,
-        desired_state=desired_state,
-    )
-    remote_git.create_remote_refs(utils.get_git_url(service_config.get_service()), ref_mutator)
+        remote_git.create_remote_refs(utils.get_git_url(service_config.get_service()), ref_mutator)
     log_event(
         service_config=service_config,
         desired_state=desired_state,
