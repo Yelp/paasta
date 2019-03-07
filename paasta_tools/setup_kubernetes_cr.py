@@ -206,6 +206,9 @@ def format_custom_resource(
                 'yelp.com/paasta_instance': instance,
                 'yelp.com/paasta_cluster': cluster,
             },
+            'annotations': {
+                'yelp.com/desired_state': 'running',
+            },
         },
         'spec': instance_config,
     }
