@@ -69,22 +69,23 @@ def sanitised_name(
     return f'{sanitised_service}-{sanitised_instance}'
 
 
+def flinkcluster_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
+    return dict(
+        group='yelp.com',
+        version='v1alpha1',
+        namespace='paasta-flinkclusters',
+        plural='flinkclusters',
+        name=sanitised_name(service, instance),
+    )
+
+
 def get_flinkcluster_config(
     kube_client: KubeClient,
     service: str,
     instance: str,
 ) -> Mapping[str, Any]:
-    group = 'yelp.com'
-    version = 'v1alpha1'
-    namespace = 'paasta-flinkclusters'
-    plural = 'flinkclusters'
-    name = sanitised_name(service, instance)
     co = kube_client.custom.get_namespaced_custom_object(
-        name=name,
-        group=group,
-        version=version,
-        namespace=namespace,
-        plural=plural,
+        **flinkcluster_custom_object_id(service, instance),
     )
     status = co.get('status')
     return status
@@ -96,34 +97,16 @@ def set_flinkcluster_desired_state(
     instance: str,
     desired_state: str,
 ):
-    sanitised_service = service.replace('_', '--')
-    sanitised_instance = instance.replace('_', '--')
+    co_id = flinkcluster_custom_object_id(service, instance)
+    co = kube_client.custom.get_namespaced_custom_object(**co_id)
+    if co.get('status', {}).get('state') == desired_state:
+        return co['status']
 
-    group = 'yelp.com'
-    version = 'v1alpha1'
-    namespace = 'paasta-flinkclusters'
-    plural = 'flinkclusters'
-    name = f'{sanitised_service}-{sanitised_instance}'
-
-    co = kube_client.custom.get_namespaced_custom_object(
-        name=name,
-        group=group,
-        version=version,
-        namespace=namespace,
-        plural=plural,
-    )
     if 'metadata' not in co:
         co['metadata'] = {}
     if 'annotations' not in co['metadata']:
         co['metadata']['annotations'] = {}
     co['metadata']['annotations']['yelp.com/desired_state'] = desired_state
-    kube_client.custom.replace_namespaced_custom_object(
-        name=name,
-        group=group,
-        version=version,
-        namespace=namespace,
-        plural=plural,
-        body=co,
-    )
+    kube_client.custom.replace_namespaced_custom_object(**co_id, body=co)
     status = co.get('status')
     return status
