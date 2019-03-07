@@ -160,11 +160,12 @@ def print_chronos_message(desired_state):
 
 def print_flinkcluster_message(desired_state):
     if desired_state == "start":
-        # paasta_print()
-        pass
+        paasta_print("'Start' will tell Flink operator to start the cluster.")
     elif desired_state == "stop":
-        # paasta_print()
-        pass
+        paasta_print(
+            "'Stop' will put Flink cluster in stopping mode, it may"
+            "take some time before shutdown is completed.",
+        )
 
 
 def confirm_to_continue(cluster_service_instances, desired_state):
