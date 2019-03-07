@@ -88,3 +88,37 @@ def get_flinkcluster_config(
     )
     status = co.get('status')
     return status
+
+
+def set_flinkcluster_desired_state(
+    kube_client: KubeClient,
+    service: str,
+    instance: str,
+    desired_state: str,
+):
+    sanitised_service = service.replace('_', '--')
+    sanitised_instance = instance.replace('_', '--')
+
+    group = 'yelp.com'
+    version = 'v1alpha1'
+    namespace = 'paasta-flinkclusters'
+    plural = 'flinkclusters'
+    name = f'{sanitised_service}-{sanitised_instance}'
+
+    co = kube_client.custom.get_namespaced_custom_object(
+        name=name,
+        group=group,
+        version=version,
+        namespace=namespace,
+        plural=plural,
+    )
+    co.metadata.annotations['yelp.com/desired_state'] = 'stopped'
+    kube_client.custom.replace_namespaced_custom_object(
+        name=name,
+        group=group,
+        version=version,
+        namespace=namespace,
+        plural=plural,
+    )
+    status = co.get('status')
+    return status

@@ -24,7 +24,10 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.flinkcluster_tools import FlinkClusterConfig
+from paasta_tools.flinkcluster_tools import set_flinkcluster_desired_state
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import paasta_print
@@ -107,6 +110,19 @@ def log_event(service_config, desired_state):
 
 
 def issue_state_change_for_service(service_config, force_bounce, desired_state):
+    if isinstance(service_config, FlinkClusterConfig):
+        set_flinkcluster_desired_state(
+            kube_client=KubeClient(),
+            service=service_config.service,
+            instance=service_config.instance,
+            desired_state=dict(start='running', stop='stopped')[desired_state],
+        )
+        log_event(
+            service_config=service_config,
+            desired_state=desired_state,
+        )
+        return
+
     ref_mutator = make_mutate_refs_func(
         service_config=service_config,
         force_bounce=force_bounce,
@@ -145,6 +161,15 @@ def print_chronos_message(desired_state):
             "'Stop' for a Chronos job will cause the job to be disabled until the "
             "next deploy or a 'start' command is issued.",
         )
+
+
+def print_flinkcluster_message(desired_state):
+    if desired_state == "start":
+        # paasta_print()
+        pass
+    elif desired_state == "stop":
+        # paasta_print()
+        pass
 
 
 def confirm_to_continue(cluster_service_instances, desired_state):
@@ -189,7 +214,9 @@ def paasta_start_or_stop(args, desired_state):
             return 1
 
     invalid_deploy_groups = []
-    marathon_message_printed, chronos_message_printed = False, False
+    marathon_message_printed = False
+    chronos_message_printed = False
+    flinkcluster_message_printed = False
 
     if args.clusters is None or args.instances is None:
         if confirm_to_continue(pargs.items(), desired_state) is False:
@@ -223,7 +250,7 @@ def paasta_start_or_stop(args, desired_state):
                 deploy_group = service_config.get_deploy_group()
                 (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
 
-                if deploy_tag not in remote_refs:
+                if deploy_tag not in remote_refs and not isinstance(service_config, FlinkClusterConfig):
                     invalid_deploy_groups.append(deploy_group)
                 else:
                     force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
@@ -233,6 +260,9 @@ def paasta_start_or_stop(args, desired_state):
                     elif isinstance(service_config, ChronosJobConfig) and not chronos_message_printed:
                         print_chronos_message(desired_state)
                         chronos_message_printed = True
+                    elif isinstance(service_config, FlinkClusterConfig) and not flinkcluster_message_printed:
+                        print_flinkcluster_message(desired_state)
+                        flinkcluster_message_printed = True
 
                     issue_state_change_for_service(
                         service_config=service_config,
