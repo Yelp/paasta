@@ -19,6 +19,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 from distutils.util import strtobool
+from itertools import groupby
 from typing import Callable
 from typing import DefaultDict
 from typing import Dict
@@ -369,7 +370,12 @@ def print_flinkcluster_status(
         output.append(f"      Job Name                         State       Job ID                           Started")
     else:
         output.append(f"      Job Name                         State       Started")
-    for job in status.jobs:
+    # Use only the most recent jobs
+    unique_jobs = (
+        sorted(jobs, key=lambda j: -j['start-time'])[0]
+        for _, jobs in groupby(status.jobs, lambda j: j['name'])
+    )
+    for job in unique_jobs:
         job_id = job['jid']
         if verbose:
             fmt = """      {job_name: <32.32} {state: <11} {job_id} {start_time}
@@ -383,7 +389,9 @@ def print_flinkcluster_status(
             job_name=job['name'].split('.', 2)[2],
             state=job['state'],
             start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
-            dashboard_url=f'http://flink.k8s.paasta-{cluster}:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
+            dashboard_url=PaastaColors.grey(
+                f'http://flink.k8s.paasta-{cluster}:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
+            ),
         ))
         if job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
