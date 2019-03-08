@@ -352,6 +352,7 @@ def print_flinkcluster_status(
         output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
+    output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
         f" {status.overview['jobs-running']} running,"
