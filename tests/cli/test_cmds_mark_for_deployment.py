@@ -33,6 +33,7 @@ class fake_args:
     verbose = False
     auto_rollback = False
     verify_image = False
+    timeout = 10.0
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
