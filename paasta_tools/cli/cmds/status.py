@@ -374,7 +374,10 @@ def print_flinkcluster_status(
     # Use only the most recent jobs
     unique_jobs = (
         sorted(jobs, key=lambda j: -j['start-time'])[0]
-        for _, jobs in groupby(status.jobs, lambda j: j['name'])
+        for _, jobs in groupby(
+            sorted(status.jobs, key=lambda j: j['name']),
+            lambda j: j['name'],
+        )
     )
     for job in unique_jobs:
         job_id = job['jid']
