@@ -182,20 +182,9 @@ REMOTE_REFS = {}
 
 
 def get_remote_refs(service, soa_dir):
-    try:
-        if service not in REMOTE_REFS:
-            REMOTE_REFS[service] = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
-        return REMOTE_REFS[service]
-    except remote_git.LSRemoteException as e:
-        msg = (
-            "Error talking to the git server: %s\n"
-            "This PaaSTA command requires access to the git server to operate.\n"
-            "The git server may be down or not reachable from here.\n"
-            "Try again from somewhere where the git server can be reached, "
-            "like your developer environment."
-        ) % str(e)
-        paasta_print(msg)
-        sys.exit(1)
+    if service not in REMOTE_REFS:
+        REMOTE_REFS[service] = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
+    return REMOTE_REFS[service]
 
 
 def paasta_start_or_stop(args, desired_state):
@@ -250,7 +239,19 @@ def paasta_start_or_stop(args, desired_state):
                     affected_flinkclusters.append(service_config)
                     continue
 
-                remote_refs = get_remote_refs(service, soa_dir)
+                try:
+                    remote_refs = get_remote_refs(service, soa_dir)
+                except remote_git.LSRemoteException as e:
+                    msg = (
+                        "Error talking to the git server: %s\n"
+                        "This PaaSTA command requires access to the git server to operate.\n"
+                        "The git server may be down or not reachable from here.\n"
+                        "Try again from somewhere where the git server can be reached, "
+                        "like your developer environment."
+                    ) % str(e)
+                    paasta_print(msg)
+                    return 1
+
                 deploy_group = service_config.get_deploy_group()
                 (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
 
@@ -290,17 +291,18 @@ def paasta_start_or_stop(args, desired_state):
                 csi[service_config.cluster][service_config.service].append(service_config.instance)
 
             system_paasta_config = load_system_paasta_config()
-            for cluster, services_instances in csi:
-                for service, instances in services_instances:
+            for cluster, services_instances in csi.items():
+                for service, instances in services_instances.items():
                     cmd_parts = [
                         'ON_PAASTA_MASTER=1',
                         'paasta',
                         desired_state,
+                        '-c', cluster,
                         '-s', service,
                         '-i', ','.join(instances),
                     ]
                     return_val, _ = run_on_master(
-                        cluster=args.cluster,
+                        cluster=cluster,
                         system_paasta_config=system_paasta_config,
                         cmd_parts=cmd_parts,
                         graceful_exit=True,
