@@ -17,9 +17,7 @@ import difflib
 import os
 import sys
 from collections import defaultdict
-from datetime import datetime
 from distutils.util import strtobool
-from itertools import groupby
 from typing import Callable
 from typing import DefaultDict
 from typing import Dict
@@ -31,22 +29,17 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 
-import humanize
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
-from paasta_tools.adhoc_tools import AdhocJobConfig
+from paasta_tools import tron_tools
 from paasta_tools.api.client import get_paasta_api_client
-from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.flinkcluster_tools import FLINK_INGRESS_PORT
-from paasta_tools.flinkcluster_tools import FlinkClusterConfig
-from paasta_tools.flinkcluster_tools import sanitised_name
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -57,7 +50,6 @@ from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
@@ -69,14 +61,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
-HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
-    FlinkClusterConfig,
-    KubernetesDeploymentConfig,
-]
-SSH_ONLY_INSTANCE_CONFIG = [
-    ChronosJobConfig,
-    AdhocJobConfig,
-]
+HTTP_ONLY_INSTANCE_CONFIG = [KubernetesDeploymentConfig]
 
 
 def add_subparser(
@@ -235,15 +220,12 @@ def paasta_status_on_api_endpoint(
         return exc.status_code
 
     output.append('    instance: %s' % PaastaColors.blue(instance))
-    if status.git_sha != '':
-        output.append('    Git sha:    %s (desired)' % status.git_sha)
+    output.append('    Git sha:    %s (desired)' % status.git_sha)
 
     if status.marathon is not None:
         return print_marathon_status(service, instance, output, status.marathon)
     elif status.kubernetes is not None:
         return print_kubernetes_status(service, instance, output, status.kubernetes)
-    elif status.flinkcluster is not None:
-        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster, verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
@@ -340,75 +322,6 @@ def status_kubernetes_job_human(
         )
 
 
-def print_flinkcluster_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
-    status,
-    verbose: int,
-) -> int:
-    if verbose:
-        output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
-    else:
-        output.append(f"    Flink version: {status.config['flink-version']}")
-    output.append(f"    State: {status.state}")
-    output.append(
-        "    Jobs:"
-        f" {status.overview['jobs-running']} running,"
-        f" {status.overview['jobs-finished']} finished,"
-        f" {status.overview['jobs-failed']} failed,"
-        f" {status.overview['jobs-cancelled']} cancelled",
-    )
-    output.append(
-        "   "
-        f" {status.overview['taskmanagers']} taskmanagers,"
-        f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available",
-    )
-
-    output.append(f"    Jobs:")
-    if verbose:
-        output.append(f"      Job Name                         State       Job ID                           Started")
-    else:
-        output.append(f"      Job Name                         State       Started")
-    # Use only the most recent jobs
-    unique_jobs = (
-        sorted(jobs, key=lambda j: -j['start-time'])[0]
-        for _, jobs in groupby(
-            sorted(status.jobs, key=lambda j: j['name']),
-            lambda j: j['name'],
-        )
-    )
-    for job in unique_jobs:
-        job_id = job['jid']
-        if verbose:
-            fmt = """      {job_name: <32.32} {state: <11} {job_id} {start_time}
-        {dashboard_url}"""
-        else:
-            fmt = "      {job_name: <32.32} {state: <11} {start_time}"
-        start_time = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(job['start-time']) // 1000))
-        sname = sanitised_name(service, instance)
-        output.append(fmt.format(
-            job_id=job_id,
-            job_name=job['name'].split('.', 2)[2],
-            state=job['state'],
-            start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
-            dashboard_url=PaastaColors.grey(
-                f'http://flink.k8s.paasta-{cluster}:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
-            ),
-        ))
-        if job_id in status.exceptions:
-            exceptions = status.exceptions[job_id]
-            root_exception = exceptions['root-exception']
-            if root_exception is not None:
-                output.append(f"        Exception: {root_exception}")
-                ts = exceptions['timestamp']
-                if ts is not None:
-                    exc_ts = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(ts) // 1000))
-                    output.append(f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})")
-    return 0
-
-
 def print_kubernetes_status(
     service: str,
     instance: str,
@@ -448,6 +361,44 @@ def print_kubernetes_status(
     return 0
 
 
+def tron_instance_status(
+    service: str,
+    cluster: str,
+    instance: str,
+):
+    status: Dict[str, Any] = {}
+    client = tron_tools.get_tron_client_for_cluster(cluster)
+
+    short_job, action = instance.split('.')
+    job = f"{service}.{short_job}"
+
+    job_content = client.get_job_content(job=job)
+    latest_run_id = client.get_latest_job_run_id(job_content=job_content)
+    action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
+
+    job_content['url'] = client.master_url + f'/api/jobs/{job}/{latest_run_id}'
+    return job_content, action_run
+
+
+def parse_job(job_content: dict, action_run: dict, output: Sequence[str], verbose: bool) -> None:
+    # job
+    output.append("    Tron job: {}".format(action_run['job_name']))
+    if verbose:
+        output.append("      Status: {} Last_start: {}".format(job_content['status'], action_run['start_time']))
+        output.append("      Schedule: {}".format(job_content['scheduler']['type'], job_content['scheduler']['value']))
+    output.append("      DashBoard: {}".format(PaastaColors.blue(job_content['url'])))
+    #action
+    output.append("    Action: {}".format(job_content['name'].split('.')[1]))
+    output.append("      Status: {}".format(action_run['state']))
+    if verbose:
+        output.append("      Start time: {}".format(action_run['start_time']))
+    output.append("      Command: {}".format(action_run['command']))
+    if verbose:
+        output.append("      Raw Command: {}".format(action_run['raw_command']))
+        output.append("      Stdout: {}".format(action_run['stdout']))
+        output.append("      Stderr: {}".format(action_run['stderr']))
+
+
 def report_status_for_cluster(
     service: str,
     cluster: str,
@@ -461,16 +412,13 @@ def report_status_for_cluster(
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     output = ['', 'service: %s' % service, 'cluster: %s' % cluster]
+
     seen_instances = []
     deployed_instances = []
     instances = instance_whitelist.keys()
     http_only_instances = [
         instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
         in HTTP_ONLY_INSTANCE_CONFIG
-    ]
-    ssh_only_instances = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
-        in SSH_ONLY_INSTANCE_CONFIG
     ]
 
     for namespace in deploy_pipeline:
@@ -486,15 +434,12 @@ def report_status_for_cluster(
         if namespace in actual_deployments:
             deployed_instances.append(instance)
 
-        # Case: flinkcluster instances don't use `deployments.json`
-        elif instance_whitelist.get(instance) == FlinkClusterConfig:
-            deployed_instances.append(instance)
-
         # Case: service NOT deployed to cluster.instance
         else:
             output.append('  instance: %s' % PaastaColors.red(instance))
             output.append('    Git sha:    None (not deployed yet)')
 
+    ssh_instances = [i for i in deployed_instances if i not in http_only_instances]
     api_return_code = 0
     ssh_return_code = 0
     if len(deployed_instances) > 0:
@@ -509,23 +454,13 @@ def report_status_for_cluster(
                     verbose=verbose,
                 )
                 for deployed_instance in deployed_instances
-                if (
-                    deployed_instance in http_only_instances
-                    or deployed_instance not in ssh_only_instances and use_api_endpoint
-                )
+                if (deployed_instance in http_only_instances or use_api_endpoint)
             ]
             if any(return_codes):
                 api_return_code = 1
-        if not use_api_endpoint or ssh_only_instances:
+        if not use_api_endpoint and ssh_instances or not http_only_instances:
             ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
-                'status', cluster, service, ','.join(
-                    deployed_instance
-                    for deployed_instance in deployed_instances
-                    if (
-                        deployed_instance in ssh_only_instances
-                        or deployed_instance not in http_only_instances and not use_api_endpoint
-                    )
-                ),
+                'status', cluster, service, ','.join(ssh_instances),
                 system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
             )
@@ -533,6 +468,13 @@ def report_status_for_cluster(
             if status is not None:
                 for line in status.rstrip().split('\n'):
                     output.append('    %s' % line)
+
+    for name, instance in instance_whitelist.items():
+        if str(instance) == "<class 'paasta_tools.tron_tools.TronActionConfig'>":
+            seen_instances.append(instance)
+            output.append('\n    instance: %s' % PaastaColors.blue(name))
+            job_content, action_run = tron_instance_status(service, cluster, name)
+            parse_job(job_content, action_run, output, verbose)
 
     output.append(report_invalid_whitelist_values(instances, seen_instances, 'instance'))
 
@@ -752,13 +694,8 @@ def paasta_status(
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            all_flink = all(i == FlinkClusterConfig for i in instances.values())
-            actual_deployments: Mapping[str, str]
-            if all_flink:
-                actual_deployments = {}
-            else:
-                actual_deployments = get_actual_deployments(service, soa_dir)
-            if all_flink or actual_deployments:
+            actual_deployments = get_actual_deployments(service, soa_dir)
+            if actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 tasks.append((
                     report_status_for_cluster, dict(

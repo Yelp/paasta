@@ -2097,7 +2097,7 @@ class SystemPaastaConfig:
         return self.config_dict.get('slack', {}).get('token', None)
 
     def get_tron_config(self) -> dict:
-        return self.config_dict.get('tron', {})
+        return self.config_dict.get('tron_api_endpoints', {})
 
 
 def _run(

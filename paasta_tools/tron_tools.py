@@ -125,6 +125,17 @@ class StringFormatter(Formatter):
                 return Formatter.get_value(key, args, kwds)
 
 
+def get_tron_api_endpoints(cluster: str):
+    endpoints = load_system_paasta_config().config_dict.get('tron_api_endpoints', {})
+    if cluster not in endpoints.keys():
+        raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
+    return endpoints[cluster]
+
+
+def get_tron_client_for_cluster(cluster: str):
+    return TronClient(get_tron_api_endpoints(cluster))
+
+
 def parse_time_variables(
     command: str,
     parse_time: datetime.datetime = None,
