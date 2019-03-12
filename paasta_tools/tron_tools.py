@@ -127,7 +127,7 @@ class StringFormatter(Formatter):
 
 def get_tron_api_endpoints(cluster: str):
     endpoints = load_system_paasta_config().config_dict.get('tron_api_endpoints', {})
-    if cluster not in endpoints.keys():
+    if cluster not in endpoints:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
     return endpoints[cluster]
 

@@ -36,8 +36,8 @@ from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
-from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools import tron_tools
+from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
@@ -78,6 +78,7 @@ SSH_ONLY_INSTANCE_CONFIG = [
     ChronosJobConfig,
     AdhocJobConfig,
 ]
+TRON_CLIENTS = {}
 
 
 def add_subparser(
@@ -454,8 +455,8 @@ def tron_instance_status(
     cluster: str,
     instance: str,
 ):
-    status: Dict[str, Any] = {}
-    client = tron_tools.get_tron_client_for_cluster(cluster)
+    TRON_CLIENTS[cluster] = TRON_CLIENTS.get(cluster, tron_tools.get_tron_client_for_cluster(cluster))
+    client = TRON_CLIENTS[cluster]
 
     short_job, action = instance.split('.')
     job = f"{service}.{short_job}"
@@ -464,19 +465,24 @@ def tron_instance_status(
     latest_run_id = client.get_latest_job_run_id(job_content=job_content)
     action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
 
+    job_content['name'] = short_job
     job_content['url'] = client.master_url + f'/api/jobs/{job}/{latest_run_id}'
+    action_run['name'] = action
     return job_content, action_run
 
 
-def parse_job(job_content: dict, action_run: dict, output: Sequence[str], verbose: bool) -> None:
+def write_job_status(job_content: dict, output: Sequence[str], verbose: bool) -> None:
     # job
-    output.append("    Tron job: {}".format(action_run['job_name']))
+    output.append("    Tron job: {}".format(job_content['name']))
     if verbose:
-        output.append("      Status: {} Last_start: {}".format(job_content['status'], action_run['start_time']))
+        output.append("      Status: {}".format(job_content['status']))
         output.append("      Schedule: {}".format(job_content['scheduler']['type'], job_content['scheduler']['value']))
     output.append("      DashBoard: {}".format(PaastaColors.blue(job_content['url'])))
-    #action
-    output.append("    Action: {}".format(job_content['name'].split('.')[1]))
+
+
+def write_action_run_status(action_run: dict, output: Sequence[str], verbose: bool) -> None:
+    # action
+    output.append("    Action: {}".format(action_run['name']))
     output.append("      Status: {}".format(action_run['state']))
     if verbose:
         output.append("      Start time: {}".format(action_run['start_time']))
@@ -549,8 +555,8 @@ def report_status_for_cluster(
                 )
                 for deployed_instance in deployed_instances
                 if (
-                    deployed_instance in http_only_instances
-                    or deployed_instance not in ssh_only_instances and use_api_endpoint
+                    deployed_instance in http_only_instances or
+                    deployed_instance not in ssh_only_instances and use_api_endpoint
                 )
             ]
             if any(return_codes):
@@ -561,8 +567,8 @@ def report_status_for_cluster(
                     deployed_instance
                     for deployed_instance in deployed_instances
                     if (
-                        deployed_instance in ssh_only_instances
-                        or deployed_instance not in http_only_instances and not use_api_endpoint
+                        deployed_instance in ssh_only_instances or
+                        deployed_instance not in http_only_instances and not use_api_endpoint
                     )
                 ),
                 system_paasta_config, stream=False, verbose=verbose,
@@ -573,12 +579,19 @@ def report_status_for_cluster(
                 for line in status.rstrip().split('\n'):
                     output.append('    %s' % line)
 
+    jobs = {}
     for name, instance in instance_whitelist.items():
         if str(instance) == "<class 'paasta_tools.tron_tools.TronActionConfig'>":
             seen_instances.append(instance)
-            output.append('\n    instance: %s' % PaastaColors.blue(name))
             job_content, action_run = tron_instance_status(service, cluster, name)
-            parse_job(job_content, action_run, output, verbose)
+            jobs[job_content['name']] = jobs.get(job_content['name'], (job_content, []))
+            jobs[job_content['name']][1].append(action_run)
+
+    for job_name, job_and_actions in jobs.items():
+        output.append('\n')
+        write_job_status(job_and_actions[0], output, verbose)
+        for action_run in job_and_actions[1]:
+            write_action_run_status(action_run, output, verbose)
 
     output.append(report_invalid_whitelist_values(instances, seen_instances, 'instance'))
 
