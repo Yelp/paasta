@@ -294,7 +294,9 @@ class SlackDeployNotifier:
                     f"{self.authors}"
                 )
                 if self.auto_rollback:
-                    blocks = automatic_rollbacks.get_slack_blocks_for_initial_deployment(message)
+                    blocks = automatic_rollbacks.get_slack_blocks_for_initial_deployment(
+                        message, last_action="Marked for deployment", status="Waiting for deployment to start",
+                    )
                     message = None
                 else:
                     blocks = None

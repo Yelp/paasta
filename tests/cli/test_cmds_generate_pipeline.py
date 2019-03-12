@@ -15,7 +15,6 @@ from mock import ANY
 from mock import MagicMock
 from mock import patch
 
-from paasta_tools.cli.cmds.generate_pipeline import generate_pipeline
 from paasta_tools.cli.cmds.generate_pipeline import get_git_repo_for_fab_repo
 from paasta_tools.cli.cmds.generate_pipeline import paasta_generate_pipeline
 from paasta_tools.cli.utils import NoSuchService
@@ -38,89 +37,6 @@ def test_paasta_generate_pipeline_service_not_found(
     assert paasta_generate_pipeline(args) == 1
     output, _ = capfd.readouterr()
     assert output == expected_output
-
-
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
-def test_generate_pipeline_run_fails(
-        mock_print_warning,
-        mock_run,
-        mock_get_team_email_address,
-):
-    mock_get_team_email_address.return_value = 'fake_email'
-    mock_run.return_value = (1, 'Big bad wolf')
-    assert generate_pipeline('fake_service', '/fake/soa/dir') == 1
-
-
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
-def test_generate_pipeline_success(
-        mock_print_warning,
-        mock_run,
-        mock_get_team_email_address,
-):
-    mock_get_team_email_address.return_value = 'fake_email'
-    mock_run.return_value = (0, 'Everything OK')
-    assert generate_pipeline('fake_service', '/fake/soa/dir') is None
-
-
-@patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_git_repo_for_fab_repo', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
-def test_generate_pipeline_calls_the_right_commands_and_owner(
-        mock_print_warning,
-        mock_get_git_repo_for_fab_repo,
-        mock_get_team_email_address,
-        mock_run,
-):
-    mock_run.return_value = (0, 'Everything OK')
-    mock_get_team_email_address.return_value = 'fake_email@yelp.com'
-    mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
-    generate_pipeline('fake_service', '/fake/soa/dir')
-    assert mock_run.call_count == 2
-    expected_cmd1 = (
-        'fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
-        'owner=fake_email,repo=fake_repo'
-    )
-    mock_run.assert_any_call(expected_cmd1, timeout=90)
-    expected_cmd2 = (
-        'fab_repo setup_jenkins:services/fake_service,profile=paasta,'
-        'job_disabled=False,owner=fake_email,repo=fake_repo'
-    )
-    mock_run.assert_any_call(expected_cmd2, timeout=90)
-
-
-@patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_team', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.get_git_repo_for_fab_repo', autospec=True)
-@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
-def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
-        mock_print_warning,
-        mock_get_git_repo_for_fab_repo,
-        mock_get_team,
-        mock_get_team_email_address,
-        mock_run,
-):
-    mock_run.return_value = (0, 'Everything OK')
-    mock_get_team_email_address.return_value = None
-    mock_get_team.return_value = "fake_team"
-    mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
-    generate_pipeline('fake_service', '/fake/soa/dir')
-    assert mock_run.call_count == 2
-    expected_cmd1 = (
-        'fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
-        'owner=fake_team,repo=fake_repo'
-    )
-    mock_run.assert_any_call(expected_cmd1, timeout=90)
-    expected_cmd2 = (
-        'fab_repo setup_jenkins:services/fake_service,profile=paasta,'
-        'job_disabled=False,owner=fake_team,repo=fake_repo'
-    )
-    mock_run.assert_any_call(expected_cmd2, timeout=90)
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
