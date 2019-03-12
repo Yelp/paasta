@@ -98,6 +98,8 @@ class AutoscalerWatcher(PaastaWatcher):
                     self.watch_folder(child, enqueue_children=True)
 
     def run(self):
+        if not self.zk.exists(AUTOSCALING_ZK_ROOT):
+            self.zk.ensure_path(AUTOSCALING_ZK_ROOT)
         self.watchers[AUTOSCALING_ZK_ROOT] = self.watch_folder(AUTOSCALING_ZK_ROOT)
         self.is_ready = True
         while True:
