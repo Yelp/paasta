@@ -768,13 +768,14 @@ def run_on_master(
         return (err_code, str(e))
 
     if graceful_exit:
-        # signals don't travel over ssh, kill process when anything lands on stdin instead
+        # Signals don't travel over ssh, kill process when anything lands on stdin instead
+        # The procedure here is:
+        # 1. send process to background and capture it's pid
+        # 2. wait for stdin with timeout in a loop, exit when original process finished
+        # 3. kill original process if loop finished (something on stdin)
         cmd_parts.append(
-            # send process to background and capture it's pid
-            '& p=$!; '
-            # wait for stdin with timeout in a loop, exit when original process finished
-            'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; '
-            # kill original process if loop finished (something on stdin)
+            '& p=$!; ' +
+            'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
             'kill $p; wait',
         )
         stdin = subprocess.PIPE

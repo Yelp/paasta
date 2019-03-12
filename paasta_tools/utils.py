@@ -17,6 +17,7 @@ import datetime
 import difflib
 import errno
 import fcntl
+import getpass
 import glob
 import hashlib
 import io
@@ -3161,3 +3162,7 @@ def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestio
 def list_services(soa_dir: str = DEFAULT_SOA_DIR) -> Sequence[str]:
     """Returns a sorted list of all services"""
     return sorted(os.listdir(os.path.abspath(soa_dir)))
+
+
+def get_possible_launched_by_user_variable_from_env() -> str:
+    return os.getenv("SUDO_USER") or getpass.getuser()
