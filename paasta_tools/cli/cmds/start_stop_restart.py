@@ -17,6 +17,8 @@ import os
 import socket
 import sys
 from collections import defaultdict
+from typing import Dict
+from typing import List
 
 import choice
 
@@ -178,7 +180,7 @@ def confirm_to_continue(cluster_service_instances, desired_state):
     return True
 
 
-REMOTE_REFS = {}
+REMOTE_REFS: Dict[str, List[str]] = {}
 
 
 def get_remote_refs(service, soa_dir):
