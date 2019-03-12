@@ -20,6 +20,7 @@ from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -310,6 +311,7 @@ def get_spark_env(
     access_key, secret_key = get_aws_credentials(args)
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
+    spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
 
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
