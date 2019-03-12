@@ -428,30 +428,97 @@ def paasta_mark_for_deployment(args):
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
 
-    deploy_process = MarkForDeploymentProcess(
-        service=service,
-        deploy_info=deploy_info,
-        deploy_group=deploy_group,
-        commit=commit,
-        old_git_sha=old_git_sha,
-        git_url=args.git_url,
-        auto_rollback=args.auto_rollback,
-        block=args.block,
-        soa_dir=args.soa_dir,
-        timeout=args.timeout,
-    )
-    ret = deploy_process.run()
-
-    if old_git_sha is not None and old_git_sha != commit and not args.auto_rollback:
-        paasta_print()
-        paasta_print("If you wish to roll back, you can run:")
-        paasta_print()
-        paasta_print(
-            PaastaColors.bold("    paasta rollback --service {} --deploy-group {} --commit {} ".format(
-                service, deploy_group, old_git_sha,
-            )),
+    if args.auto_rollback:
+        deploy_process = MarkForDeploymentProcess(
+            service=service,
+            deploy_info=deploy_info,
+            deploy_group=deploy_group,
+            commit=commit,
+            old_git_sha=old_git_sha,
+            git_url=args.git_url,
+            auto_rollback=args.auto_rollback,
+            block=args.block,
+            soa_dir=args.soa_dir,
+            timeout=args.timeout,
         )
-    return ret
+        ret = deploy_process.run()
+
+        if old_git_sha is not None and old_git_sha != commit and not args.auto_rollback:
+            paasta_print()
+            paasta_print("If you wish to roll back, you can run:")
+            paasta_print()
+            paasta_print(
+                PaastaColors.bold("    paasta rollback --service {} --deploy-group {} --commit {} ".format(
+                    service, deploy_group, old_git_sha,
+                )),
+            )
+        return ret
+    else:
+        # TODO: delete this branch once the state machine version is well tested. It should be equivalent.
+        slack_notifier = SlackDeployNotifier(
+            deploy_info=deploy_info, service=service,
+            deploy_group=deploy_group, commit=commit, old_commit=old_git_sha, git_url=args.git_url,
+            auto_rollback=args.auto_rollback,
+        )
+
+        ret = mark_for_deployment(
+            git_url=args.git_url,
+            deploy_group=deploy_group,
+            service=service,
+            commit=commit,
+        )
+        slack_notifier.notify_after_mark(ret=ret)
+
+        if args.block and ret == 0:
+            try:
+                wait_for_deployment(
+                    service=service,
+                    deploy_group=deploy_group,
+                    git_sha=commit,
+                    soa_dir=args.soa_dir,
+                    timeout=args.timeout,
+                )
+                line = f"Deployment of {commit} for {deploy_group} complete"
+                _log(
+                    service=service,
+                    component='deploy',
+                    line=line,
+                    level='event',
+                )
+                slack_notifier.notify_after_good_deploy()
+            except (KeyboardInterrupt, TimeoutError):
+                if args.auto_rollback is True:
+                    if old_git_sha == commit:
+                        paasta_print("Error: --auto-rollback was requested, but the previous sha")
+                        paasta_print("is the same that was requested with --commit. Can't rollback")
+                        paasta_print("automatically.")
+                    else:
+                        paasta_print("Auto-Rollback requested. Marking the previous sha")
+                        paasta_print(f"({deploy_group}) for {old_git_sha} as desired.")
+                        mark_for_deployment(
+                            git_url=args.git_url,
+                            deploy_group=deploy_group,
+                            service=service,
+                            commit=old_git_sha,
+                        )
+                        slack_notifier.notify_after_auto_rollback()
+                else:
+                    report_waiting_aborted(service, deploy_group)
+                    slack_notifier.notify_after_abort()
+                ret = 1
+            except NoSuchCluster:
+                report_waiting_aborted(service, deploy_group)
+                slack_notifier.notify_after_abort()
+        if old_git_sha is not None and old_git_sha != commit and not args.auto_rollback:
+            paasta_print()
+            paasta_print("If you wish to roll back, you can run:")
+            paasta_print()
+            paasta_print(
+                PaastaColors.bold("    paasta rollback --service {} --deploy-group {} --commit {} ".format(
+                    service, deploy_group, old_git_sha,
+                )),
+            )
+        return ret
 
 
 class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
