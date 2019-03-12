@@ -151,17 +151,6 @@ class DeploymentProcess(abc.ABC):
             queued=True,
         )
 
-        for state in list(self.states()):
-            # Call e.g. on_enter_start(self.enter_start)
-            for hook_type in ['enter', 'exit']:
-                try:
-                    hook = getattr(self, f'{hook_type}_{state}')
-                except AttributeError:
-                    continue
-                else:
-                    add_hook_fn = getattr(self.machine, f'on_{hook_type}_{state}')
-                    add_hook_fn(hook)
-
     @abc.abstractmethod
     def status_code_by_state(self) -> Mapping[str, int]:
         raise NotImplementedError()

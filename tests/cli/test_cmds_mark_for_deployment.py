@@ -387,3 +387,137 @@ def test_slack_deploy_notifier_doesnt_notify_on_deploy_info_flags(mock_get_autho
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count == 0, fake_psc.post.call_args
     assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_SlackDeployNotifier,
+):
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
+        service='service',
+        block=True,
+        auto_rollback=True,
+
+        deploy_info=None,
+        deploy_group=None,
+        commit=None,
+        old_git_sha=None,
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+    )
+
+    mock_mark_for_deployment.return_value = 0
+    mock_wait_for_deployment.side_effect = Exception()
+
+    retval = mfdp.run()
+
+    assert mock_mark_for_deployment.call_count == 1
+    assert mock_wait_for_deployment.call_count == 1
+    assert retval == 1
+    assert mfdp.state == 'deploy_aborted'
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_SlackDeployNotifier,
+):
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
+        service='service',
+        block=True,
+        # For this test, auto_rollback must be True so that the deploy_cancelled trigger takes us to start_rollback
+        # instead of deploy_aborted.
+        auto_rollback=True,
+
+        deploy_info=None,
+        deploy_group=None,
+        commit=None,
+        old_git_sha=None,
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+    )
+
+    mock_mark_for_deployment.return_value = 0
+    mock_wait_for_deployment.side_effect = KeyboardInterrupt()
+
+    retval = mfdp.run()
+
+    assert mock_mark_for_deployment.call_count == 1
+    assert mock_wait_for_deployment.call_count == 1
+    assert retval == 1
+    assert mfdp.state == 'start_rollback'
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_SlackDeployNotifier,
+):
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
+        service='service',
+        block=False,
+        auto_rollback=False,
+
+        deploy_info=None,
+        deploy_group=None,
+        commit=None,
+        old_git_sha=None,
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+    )
+
+    mock_mark_for_deployment.return_value = 0
+    mock_wait_for_deployment.side_effect = Exception()
+
+    retval = mfdp.run()
+
+    assert mock_mark_for_deployment.call_count == 1
+    assert mock_wait_for_deployment.call_count == 0
+    assert retval == 0
+    assert mfdp.state == 'deploying'
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_SlackDeployNotifier,
+):
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
+        service='service',
+        block=False,  # shouldn't matter for this test
+        auto_rollback=False,  # shouldn't matter for this test
+
+        deploy_info=None,
+        deploy_group=None,
+        commit=None,
+        old_git_sha=None,
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+    )
+
+    mock_mark_for_deployment.return_value = 1
+    mock_wait_for_deployment.side_effect = Exception()
+
+    retval = mfdp.run()
+
+    assert mock_mark_for_deployment.call_count == 1
+    assert mock_wait_for_deployment.call_count == 0
+    assert retval == 1
+    assert mfdp.state == 'mfd_failed'

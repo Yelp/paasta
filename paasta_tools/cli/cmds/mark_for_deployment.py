@@ -480,6 +480,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.timeout = timeout
 
         self.mark_for_deployment_return_code = -1
+        self.wait_for_deployment_green_light = Event()
 
         self.slack_notifier = SlackDeployNotifier(
             deploy_info=deploy_info, service=service,
@@ -489,7 +490,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
         super().__init__()
 
-    def enter_start_deploy(self):
+    def on_enter_start_deploy(self):
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
             deploy_group=self.deploy_group,
@@ -575,14 +576,17 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
         return codes
 
-    def enter_deploying(self):
+    def on_enter_deploying(self):
         # if self.block is true, then deploying is a terminal state so we will promptly exit.
         # Don't bother starting the background thread in this case.
         if self.block:
             thread = Thread(target=self.do_wait_for_deployment, args=(), daemon=True)
             thread.start()
 
-    def enter_start_rollback(self):
+    def on_exit_deploying(self):
+        self.wait_for_deployment_green_light.clear()
+
+    def on_enter_start_rollback(self):
         if self.old_git_sha == self.commit:
             paasta_print("Error: --auto-rollback was requested, but the previous sha")
             paasta_print("is the same that was requested with --commit. Can't rollback")
@@ -598,12 +602,11 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             )
             self.slack_notifier.notify_after_auto_rollback()
 
-    def enter_deploy_aborted(self):
+    def on_enter_deploy_aborted(self):
         report_waiting_aborted(self.service, self.deploy_group)
         self.slack_notifier.notify_after_abort()
 
     def do_wait_for_deployment(self):
-        self.wait_for_deployment_green_light = Event()
         try:
             wait_for_deployment(
                 service=self.service,
@@ -624,7 +627,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             log.error(traceback.format_exc())
             self.trigger('deploy_aborted')
 
-    def enter_deployed(self):
+    def on_enter_deployed(self):
         line = f"Deployment of {self.commit} for {self.deploy_group} complete"
         _log(
             service=self.service,
