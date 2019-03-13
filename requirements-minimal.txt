@@ -46,7 +46,6 @@ service-configuration-lib >= 0.12.0
 slackclient >= 1.2.1
 syslogmp
 task-processing
-transitions
 typing-extensions
 tzlocal
 ujson >= 1.35
