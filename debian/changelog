@@ -1,3 +1,11 @@
+paasta-tools (0.83.13) xenial; urgency=medium
+
+  * 0.83.13 tagged with 'make release'
+    Commit: Merge pull request #2164 from Yelp/flinkcluster-start-stop-
+    on-master  Run flinkcluster start/stop on paasta master
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 13 Mar 2019 05:21:48 -0700
+
 paasta-tools (0.83.12) xenial; urgency=medium
 
   * 0.83.12 tagged with 'make release'
