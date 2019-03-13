@@ -169,6 +169,7 @@ class TestConfigureAndRunDockerContainer:
                 'PAASTA_CLUSTER': 'fake_cluster',
                 'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
                 'PAASTA_DOCKER_IMAGE': 'fake_service:fake_sha',
+                'PAASTA_LAUNCHED_BY': mock.ANY,
                 'AWS_ACCESS_KEY_ID': 'id',
                 'AWS_SECRET_ACCESS_KEY': 'secret',
                 'SPARK_USER': 'root',

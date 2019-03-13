@@ -46,6 +46,7 @@ from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -563,6 +564,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         'MESOS_CONTAINER_NAME': 'localrun-%s' % fake_taskid,
         'MESOS_TASK_ID': str(fake_taskid),
         'PAASTA_DOCKER_IMAGE': docker_image,
+        'PAASTA_LAUNCHED_BY': get_possible_launched_by_user_variable_from_env(),
     }
     if framework == 'marathon':
         env['MARATHON_PORT'] = str(port0)

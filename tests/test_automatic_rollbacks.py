@@ -11,4 +11,4 @@ def test_get_slack_blocks_for_initial_deployment_happy_path():
 def test_event_to_buttonpress_rollback():
     actual = automatic_rollbacks.event_to_buttonpress(REAL_ROLLBACK_PRESS)
     assert actual.username == 'kwa'
-    assert actual.action["value"] == 'rollback'
+    assert actual.action == 'rollback'

@@ -30,11 +30,11 @@ from email.message import EmailMessage
 from boto3.session import Session
 from pyrsistent import InvariantException
 from pyrsistent import PTypeError
-from task_processing.metrics import create_counter
-from task_processing.metrics import get_metric
-from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister
-from task_processing.runners.sync import Sync
-from task_processing.task_processor import TaskProcessor
+from task_processing.metrics import create_counter  # noreorder
+from task_processing.metrics import get_metric  # noreorder
+from task_processing.plugins.persistence.dynamodb_persistence import DynamoDBPersister  # noreorder
+from task_processing.runners.sync import Sync  # noreorder
+from task_processing.task_processor import TaskProcessor  # noreorder
 
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_list_parser
