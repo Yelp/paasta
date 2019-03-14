@@ -68,6 +68,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
+
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkClusterConfig,
     KubernetesDeploymentConfig,
@@ -242,7 +243,7 @@ def paasta_status_on_api_endpoint(
     elif status.kubernetes is not None:
         return print_kubernetes_status(service, instance, output, status.kubernetes)
     elif status.flinkcluster is not None:
-        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster, verbose)
+        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster.get('status'), verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
@@ -347,6 +348,10 @@ def print_flinkcluster_status(
     status,
     verbose: int,
 ) -> int:
+    if status is None:
+        output.append(PaastaColors.red("    Flink cluster is not available"))
+        return 1
+
     dashboard_url = get_dashboard_url(
         cluster=cluster,
         service=service,
