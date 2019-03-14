@@ -580,9 +580,9 @@ def report_status_for_cluster(
                     output.append('    %s' % line)
 
     jobs: dict = {}
-    for name, instance in instance_whitelist.items():
-        if str(instance) == "<class 'paasta_tools.tron_tools.TronActionConfig'>":
-            seen_instances.append(instance)
+    for name, tron_instance in instance_whitelist.items():
+        if str(tron_instance) == "<class 'paasta_tools.tron_tools.TronActionConfig'>":
+            seen_instances.append(tron_instance)
             job_content, action_run = tron_instance_status(service, cluster, name)
             jobs[job_content['name']] = jobs.get(job_content['name'], (job_content, []))
             jobs[job_content['name']][1].append(action_run)
