@@ -394,7 +394,7 @@ def print_flinkcluster_status(
             state=job['state'],
             start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
             dashboard_url=PaastaColors.grey(
-                f'http://flink.k8s.paasta-{cluster}:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
+                f'http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
             ),
         ))
         if job_id in status.exceptions:
