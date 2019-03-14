@@ -44,9 +44,8 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.flinkcluster_tools import FLINK_INGRESS_PORT
 from paasta_tools.flinkcluster_tools import FlinkClusterConfig
-from paasta_tools.flinkcluster_tools import sanitised_name
+from paasta_tools.flinkcluster_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -348,10 +347,16 @@ def print_flinkcluster_status(
     status,
     verbose: int,
 ) -> int:
+    dashboard_url = get_dashboard_url(
+        cluster=cluster,
+        service=service,
+        instance=instance,
+    )
     if verbose:
         output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
+    output.append(f"    URL: {dashboard_url}")
     output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
@@ -387,14 +392,13 @@ def print_flinkcluster_status(
         else:
             fmt = "      {job_name: <32.32} {state: <11} {start_time}"
         start_time = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(job['start-time']) // 1000))
-        sname = sanitised_name(service, instance)
         output.append(fmt.format(
             job_id=job_id,
             job_name=job['name'].split('.', 2)[2],
             state=job['state'],
             start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
             dashboard_url=PaastaColors.grey(
-                f'http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}/#/jobs/{job_id}',
+                f'{dashboard_url}/#/jobs/{job_id}',
             ),
         ))
         if job_id in status.exceptions:
