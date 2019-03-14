@@ -498,7 +498,15 @@ def report_status_for_cluster(
     api_return_code = 0
     ssh_return_code = 0
     if len(deployed_instances) > 0:
-        if use_api_endpoint or http_only_instances:
+        http_only_deployed_instances = [
+            deployed_instance
+            for deployed_instance in deployed_instances
+            if (
+                deployed_instance in http_only_instances
+                or deployed_instance not in ssh_only_instances and use_api_endpoint
+            )
+        ]
+        if len(http_only_deployed_instances):
             return_codes = [
                 paasta_status_on_api_endpoint(
                     cluster=cluster,
@@ -508,23 +516,23 @@ def report_status_for_cluster(
                     system_paasta_config=system_paasta_config,
                     verbose=verbose,
                 )
-                for deployed_instance in deployed_instances
-                if (
-                    deployed_instance in http_only_instances
-                    or deployed_instance not in ssh_only_instances and use_api_endpoint
-                )
+                for deployed_instance in http_only_deployed_instances
             ]
             if any(return_codes):
                 api_return_code = 1
-        if not use_api_endpoint or ssh_only_instances:
+        ssh_only_deployed_instances = [
+            deployed_instance
+            for deployed_instance in deployed_instances
+            if (
+                deployed_instance in ssh_only_instances
+                or deployed_instance not in http_only_instances and not use_api_endpoint
+            )
+        ]
+        if len(ssh_only_deployed_instances):
             ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
                 'status', cluster, service, ','.join(
                     deployed_instance
-                    for deployed_instance in deployed_instances
-                    if (
-                        deployed_instance in ssh_only_instances
-                        or deployed_instance not in http_only_instances and not use_api_endpoint
-                    )
+                    for deployed_instance in ssh_only_deployed_instances
                 ),
                 system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
