@@ -94,10 +94,14 @@ def test_log_event():
     with mock.patch(
         'paasta_tools.utils.get_username', autospec=True, return_value='fake_user',
     ), mock.patch(
+        'paasta_tools.utils.get_hostname', autospec=True, return_value='fake_fqdn',
+    ), mock.patch(
         'socket.getfqdn', autospec=True, return_value='fake_fqdn',
     ), mock.patch(
         'paasta_tools.utils._log', autospec=True,
-    ) as mock_log:
+    ) as mock_log, mock.patch(
+        'paasta_tools.utils._log_audit', autospec=True,
+    ) as mock_log_audit:
         service_config = MarathonServiceConfig(
             cluster='fake_cluster',
             instance='fake_instance',
@@ -105,7 +109,7 @@ def test_log_event():
             config_dict={'deploy_group': 'fake_deploy_group'},
             branch_dict=None,
         )
-        start_stop_restart.log_event(service_config, 'stopped')
+        start_stop_restart.log_event(service_config, 'stop')
         mock_log.assert_called_once_with(
             instance='fake_instance',
             service='fake_service',
@@ -114,8 +118,14 @@ def test_log_event():
             cluster='fake_cluster',
             line=(
                 "Issued request to change state of fake_instance (an instance of "
-                "fake_service) to 'stopped' by fake_user@fake_fqdn"
+                "fake_service) to 'stop' by fake_user@fake_fqdn"
             ),
+        )
+        mock_log_audit.assert_called_once_with(
+            action='stop',
+            instance='fake_instance',
+            service='fake_service',
+            cluster='fake_cluster',
         )
 
 
@@ -124,7 +134,7 @@ def test_log_event():
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_remote_refs', autospec=True)
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
@@ -134,7 +144,7 @@ def test_paasta_start_or_stop(
     mock_get_git_url,
     mock_get_instance_config,
     mock_instance_config,
-    mock_list_remote_refs,
+    get_remote_refs,
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
@@ -149,7 +159,7 @@ def test_paasta_start_or_stop(
     mock_get_git_url.return_value = 'fake_git_url'
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = 'some_group'
-    mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
+    get_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
@@ -217,7 +227,7 @@ def test_paasta_start_or_stop(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_remote_refs', autospec=True)
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
@@ -227,7 +237,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_get_git_url,
     mock_get_instance_config,
     mock_instance_config,
-    mock_list_remote_refs,
+    mock_get_remote_refs,
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
@@ -242,7 +252,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_get_git_url.return_value = 'fake_git_url'
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = args.deploy_group
-    mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
+    mock_get_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
@@ -276,7 +286,7 @@ def test_paasta_start_or_stop_with_deploy_group(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_remote_refs', autospec=True)
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
@@ -286,7 +296,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_git_url,
     mock_get_instance_config,
     mock_instance_config,
-    mock_list_remote_refs,
+    mock_get_remote_refs,
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
@@ -301,7 +311,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_git_url.return_value = 'fake_git_url'
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = 'some_group'
-    mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
+    mock_get_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {
@@ -358,7 +368,7 @@ def test_stop_or_start_figures_out_correct_instances(
 
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
@@ -366,7 +376,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_list_clusters,
     mock_get_git_url,
     mock_get_instance_config,
-    mock_list_remote_refs,
+    mock_get_remote_refs,
     mock_apply_args_filters,
     mock_confirm_to_continue,
     capfd,
@@ -379,9 +389,9 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_list_clusters.return_value = ['cluster1']
     mock_get_git_url.return_value = 'fake_git_url'
     mock_get_instance_config.return_value = None
-    mock_list_remote_refs.side_effect = remote_git.LSRemoteException
+    mock_get_remote_refs.side_effect = remote_git.LSRemoteException
     mock_apply_args_filters.return_value = {
-        'cluster1': {'fake_service': ['instance1']},
+        'cluster1': {'fake_service': {'instance1': mock.Mock()}},
     }
     mock_confirm_to_continue.return_value = True
 
@@ -392,11 +402,11 @@ def test_stop_or_start_handle_ls_remote_failures(
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_remote_refs', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
 def test_start_or_stop_bad_refs(
     mock_list_clusters,
-    mock_list_remote_refs,
+    mock_get_remote_refs,
     mock_get_instance_config,
     mock_apply_args_filters,
     mock_confirm_to_continue,
@@ -415,7 +425,7 @@ def test_start_or_stop_bad_refs(
         config_dict={},
         branch_dict=None,
     )
-    mock_list_remote_refs.return_value = {
+    mock_get_remote_refs.return_value = {
         "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783",
     }
     mock_apply_args_filters.return_value = {
@@ -435,7 +445,7 @@ def test_cluster_list_defaults_to_all():
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service', autospec=True)
 @mock.patch('paasta_tools.utils.format_timestamp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_latest_deployment_tag', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_remote_refs', autospec=True)
 @mock.patch('paasta_tools.utils.InstanceConfig', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
@@ -445,7 +455,7 @@ def test_stop_or_start_warn_on_multi_instance(
     mock_get_git_url,
     mock_get_instance_config,
     mock_instance_config,
-    mock_list_remote_refs,
+    get_remote_refs,
     mock_get_latest_deployment_tag,
     mock_format_timestamp,
     mock_issue_state_change_for_service,
@@ -460,7 +470,7 @@ def test_stop_or_start_warn_on_multi_instance(
     mock_get_git_url.return_value = 'fake_git_url'
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = 'some_group'
-    mock_list_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
+    get_remote_refs.return_value = ['not_a_real_tag', 'fake_tag']
     mock_get_latest_deployment_tag.return_value = ('not_a_real_tag', None)
     mock_format_timestamp.return_value = 'not_a_real_timestamp'
     mock_apply_args_filters.return_value = {

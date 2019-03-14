@@ -32,12 +32,17 @@
         "executor": {"enum": ["ssh", "paasta"]},
         "cpus": {
           "type": "number",
-          "minumum": 0,
+          "minimum": 0,
           "exclusiveMinimum": true
         },
         "mem": {
           "type": "number",
-          "minumum": 32,
+          "minimum": 32,
+          "exclusiveMinimum": true
+        },
+        "disk": {
+          "type": "number",
+          "minimum": 0,
           "exclusiveMinimum": true
         },
         "constraints": {
@@ -65,7 +70,7 @@
           "uniqueItems": true
         },
         "trigger_downstreams": {
-          "type": "object",
+          "type": ["object", "boolean"],
           "additionalProperties": {"type": "string"}
         },
         "on_upstream_rerun": {"type": "string"},
@@ -156,6 +161,12 @@
       "patternProperties": {
         ".+": {"$ref": "#definitions/job"}
       }
+    }
+  },
+  "patternProperties": {
+    "^_.*$": {
+      "type": "object",
+      "additionalProperties": true
     }
   }
 }

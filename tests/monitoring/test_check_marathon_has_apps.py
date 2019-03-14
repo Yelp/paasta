@@ -47,12 +47,15 @@ def test_marathon_jobs_no_jobs(capfd):
 
 def test_marathon_jobs_some_jobs(capfd):
     mock_client = mock.MagicMock()
-    mock_client.list_apps.return_value = ['foo', 'bar']
     with mock.patch(
         # We expect this is tested properly elsewhere
         'paasta_tools.marathon_tools.get_list_of_marathon_clients',
         autospec=True,
         return_value=[mock_client],
+    ), mock.patch(
+        'paasta_tools.metrics.metastatus_lib.get_all_marathon_apps',
+        autospec=True,
+        return_value=['foo', 'bar'],
     ):
         with pytest.raises(SystemExit) as error:
             check_marathon_apps()

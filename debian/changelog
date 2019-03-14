@@ -1,3 +1,271 @@
+paasta-tools (0.83.13) xenial; urgency=medium
+
+  * 0.83.13 tagged with 'make release'
+    Commit: Merge pull request #2164 from Yelp/flinkcluster-start-stop-
+    on-master  Run flinkcluster start/stop on paasta master
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 13 Mar 2019 05:21:48 -0700
+
+paasta-tools (0.83.12) xenial; urgency=medium
+
+  * 0.83.12 tagged with 'make release'
+    Commit: Merge pull request #2148 from Yelp/no_api_by_default  Revert
+    "Merge pull request #2134 from Yelp/paasta-status-use-http-api…
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 28 Feb 2019 10:55:39 -0800
+
+paasta-tools (0.83.11) xenial; urgency=medium
+
+  * 0.83.11 tagged with 'make release'
+    Commit: Merge branch "u/robj/add-paasta-cluster-label"
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 28 Feb 2019 04:33:01 -0800
+
+paasta-tools (0.83.10) xenial; urgency=medium
+
+  * 0.83.10 tagged with 'make release'
+    Commit: Merge pull request #2136 from Yelp/u/kawaiwan/filter-non-
+    tron-monitoring  Filter non-tron monitoring keys
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 21 Feb 2019 16:52:29 -0800
+
+paasta-tools (0.83.9) xenial; urgency=medium
+
+  * 0.83.9 tagged with 'make release'
+    Commit: Merge pull request #2114 from Yelp/u/kawaiwan/tron-
+    monitoring-support  Expose tron monitoring info to paasta
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Wed, 20 Feb 2019 10:04:39 -0800
+
+paasta-tools (0.83.8) xenial; urgency=medium
+
+  * 0.83.8 tagged with 'make release'
+    Commit: Released 0.83.7 via make release
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 13 Feb 2019 16:44:31 -0800
+
+paasta-tools (0.83.7) xenial; urgency=medium
+
+  * 0.83.7 tagged with 'make release'
+    Commit: Merge pull request #2131 from Yelp/PAASTA-9049  added mesos
+    leader to metastatus command output
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 13 Feb 2019 16:08:59 -0800
+
+paasta-tools (0.83.6) xenial; urgency=medium
+
+  * 0.83.6 tagged with 'make release'
+    Commit: Merge pull request #2130 from
+    Yelp/raise_security_check_timeout  raise `paasta security-check`
+    timeout
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 11 Feb 2019 15:49:26 -0800
+
+paasta-tools (0.83.5) xenial; urgency=medium
+
+  * 0.83.5 tagged with 'make release'
+    Commit: Merge pull request #2127 from Yelp/optional-hacheck-sidecar
+    Make using hacheck sidecars optional
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 11 Feb 2019 04:24:36 -0800
+
+paasta-tools (0.83.4) xenial; urgency=medium
+
+  * 0.83.4 tagged with 'make release'
+    Commit: Merge pull request #2126 from Yelp/fix-setup-cr  Fix labels
+    in setup_kubernetes_cr
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 08 Feb 2019 03:26:17 -0800
+
+paasta-tools (0.83.3) xenial; urgency=medium
+
+  * 0.83.3 tagged with 'make release'
+    Commit: Merge pull request #2125 from Yelp/fix-service-list-in-cr
+    List all services for setup_kubernetes_cr
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 07 Feb 2019 07:17:27 -0800
+
+paasta-tools (0.83.2) xenial; urgency=medium
+
+  * 0.83.2 tagged with 'make release'
+    Commit: Merge pull request #2121 from Yelp/config-to-sync-crs  Add
+    config for kubernetes custom resources
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 05 Feb 2019 03:39:36 -0800
+
+paasta-tools (0.83.1) xenial; urgency=medium
+
+  * 0.83.1 tagged with 'make release'
+    Commit: Merge branch "paasta_15170"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 04 Feb 2019 14:41:20 -0800
+
+paasta-tools (0.83.0) xenial; urgency=medium
+
+  * 0.83.0 tagged with 'make release'
+    Commit: Merge branch "audit-logging" of github.com:Yelp/paasta
+
+ -- Evan Krall <krall@yelp.com>  Mon, 28 Jan 2019 10:51:11 -0800
+
+paasta-tools (0.82.2) xenial; urgency=medium
+
+  * 0.82.2 tagged with 'make release'
+    Commit: Merge pull request #2093 from Yelp/make-vault-key-settable
+    Make vault key settable
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 21 Jan 2019 03:43:35 -0800
+
+paasta-tools (0.82.1) xenial; urgency=medium
+
+  * 0.82.1 tagged with 'make release'
+    Commit: Merge pull request #2103 from Yelp/drmorr/CLUSTERMAN-
+    193/fix_app_identifier_for_boost  make boost work for non-default
+    pools
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 14 Jan 2019 16:34:35 -0800
+
+paasta-tools (0.82.0) xenial; urgency=medium
+
+  * 0.82.0 tagged with 'make release'
+    Commit: Merge pull request #2047 from
+    Yelp/docker_init_all_the_things  Enable docker --init for all paasta
+    things by default
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 08 Jan 2019 13:46:56 -0800
+
+paasta-tools (0.81.28) xenial; urgency=medium
+
+  * 0.81.28 tagged with 'make release'
+    Commit: Merge pull request #2094 from Yelp/CORESERV-
+    6271_document_fault_injection  Document delay injection in
+    smartstack.yaml
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 07 Jan 2019 09:57:35 -0800
+
+paasta-tools (0.81.27) xenial; urgency=medium
+
+  * 0.81.27 tagged with 'make release'
+    Commit: Merge pull request #2090 from chriskuehl/move-authors-back-
+    above-thread  Move authors back above the thread in mark-for-
+    deployment"s Slack notifications
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 03 Jan 2019 14:00:37 -0800
+
+paasta-tools (0.81.26) xenial; urgency=medium
+
+  * 0.81.26 tagged with 'make release'
+    Commit: Merge pull request #2084 from Yelp/mypy777  More mypy
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 19 Dec 2018 13:53:01 -0800
+
+paasta-tools (0.81.25) xenial; urgency=medium
+
+  * 0.81.25 tagged with 'make release'
+    Commit: Merge pull request #2078 from Yelp/bump-vault-tools-again
+    Bump vault_tools
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 12 Dec 2018 08:02:48 -0800
+
+paasta-tools (0.81.24) xenial; urgency=medium
+
+  * 0.81.24 tagged with 'make release'
+    Commit: Merge pull request #2063 from Yelp/secrets_newline_eof  Bump
+    vault-tools to get newlines at end of secrets files
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 10 Dec 2018 05:15:10 -0800
+
+paasta-tools (0.81.23) xenial; urgency=medium
+
+  * 0.81.23 tagged with 'make release'
+    Commit: Merge pull request #2076 from
+    Yelp/docker_volumes_mesos_containerizer  Added volumes to mesos
+    containerizer marathon dict
+
+ -- Huadong Liu <hliu@yelp.com>  Fri, 07 Dec 2018 08:25:35 -0800
+
+paasta-tools (0.81.22) xenial; urgency=medium
+
+  * 0.81.22 tagged with 'make release'
+    - Add -y option for 'paasta cook-image'
+    - Make 'paasta local-run' stream docker logs while healthchecking
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 06 Dec 2018 14:20:53 -0800
+
+paasta-tools (0.81.21) xenial; urgency=medium
+
+  * 0.81.21 tagged with 'make release'
+    Commit: Merge pull request #2068 from Yelp/fix-get_all_namespaces-
+    return-type  Fix `get_all_namespaces()` return type
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 04 Dec 2018 02:29:34 -0800
+
+paasta-tools (0.81.20) xenial; urgency=medium
+
+  * 0.81.20 tagged with 'make release'
+    Commit: Merge pull request #2061 from
+    Yelp/get_native_services_running_here_for_nerve-for-non-paasta-hosts
+    Fix `get_cluster()` throws `PaastaNotConfiguredError` on non-PaaSTA
+    h…
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 28 Nov 2018 09:50:42 -0800
+
+paasta-tools (0.81.19) xenial; urgency=medium
+
+  * 0.81.19 tagged with 'make release'
+    Commit: Merge pull request #2060 from Yelp/fix-kube-healthcheck_cmd
+    Fix `healthcheck_cmd` not working for kube
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 27 Nov 2018 12:13:06 -0800
+
+paasta-tools (0.81.18) xenial; urgency=medium
+
+  * 0.81.18 tagged with 'make release'
+    Commit: Merge pull request #2059 from Yelp/fix-chronos-schema  Fix
+    chronos schema
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 27 Nov 2018 10:54:14 -0800
+
+paasta-tools (0.81.17) xenial; urgency=medium
+
+  * 0.81.17 tagged with 'make release'
+    Commit: Merge pull request #2058 from
+    Yelp/get_marathon_services_running_here_for_nerve-for-non-paasta-
+    hosts  Fix `get_cluster()` throws `PaastaNotConfiguredError` on non-
+    PaaSTA hosts
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 27 Nov 2018 08:53:26 -0800
+
+paasta-tools (0.81.16) xenial; urgency=medium
+
+  * 0.81.16 tagged with 'make release'
+    Commit: fix tron schema
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 27 Nov 2018 07:21:02 -0800
+
+paasta-tools (0.81.15) xenial; urgency=medium
+
+  * 0.81.15 tagged with 'make release'
+    Commit: Merge pull request #2056 from Yelp/fix-trusty-build  Fix
+    trusty build
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 27 Nov 2018 04:25:21 -0800
+
+paasta-tools (0.81.14) xenial; urgency=medium
+
+  * 0.81.14 tagged with 'make release'
+    Commit: Merge pull request #2052 from Yelp/kube-container_port  Use
+    `container_port` instead of hardcoded 8888 for Kubernetes
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 21 Nov 2018 06:05:00 -0800
+
+paasta-tools (0.81.13) xenial; urgency=medium
+
+  * 0.81.13 tagged with 'make release'
+    Commit: Merge pull request #2051 from Yelp/u/kawaiwan/read-logs-as-
+    str-not-bytes  Read Marathon and Chronos logs as strings not bytes
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Tue, 20 Nov 2018 11:24:53 -0800
+
 paasta-tools (0.81.12) xenial; urgency=medium
 
   * 0.81.12 tagged with 'make release'

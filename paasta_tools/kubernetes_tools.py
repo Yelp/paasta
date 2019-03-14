@@ -14,8 +14,10 @@
 """
 import copy
 import itertools
+import json
 import logging
 import math
+import os
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -104,6 +106,12 @@ YELP_ATTRIBUTE_PREFIX = 'yelp.com/'
 CONFIG_HASH_BLACKLIST = {'replicas'}
 KUBE_DEPLOY_STATEGY_MAP = {'crossover': 'RollingUpdate', 'downthenup': 'Recreate'}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
+HACHECK_POD_NAME = 'hacheck'
+
+
+class KubeKind(NamedTuple):
+    singular: str
+    plural: str
 
 
 class KubeDeployment(NamedTuple):
@@ -114,11 +122,19 @@ class KubeDeployment(NamedTuple):
     replicas: int
 
 
+class KubeCustomResource(NamedTuple):
+    service: str
+    instance: str
+    config_sha: str
+    kind: str
+
+
 class KubeService(NamedTuple):
     name: str
     instance: str
     port: int
     pod_ip: str
+    registrations: Sequence[str]
 
 
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
@@ -131,14 +147,15 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
+    service_account_name: str
 
 
 def load_kubernetes_service_config_no_cache(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> "KubernetesDeploymentConfig":
     """Read a service instance's configuration for kubernetes.
 
@@ -204,8 +221,8 @@ def load_kubernetes_service_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> "KubernetesDeploymentConfig":
     """Read a service instance's configuration for kubernetes.
 
@@ -245,7 +262,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         instance: str,
         config_dict: KubernetesDeploymentConfigDict,
         branch_dict: Optional[BranchDictV2],
-        soa_dir: str=DEFAULT_SOA_DIR,
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         super().__init__(
             cluster=cluster,
@@ -348,6 +365,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 _exec=V1ExecAction(
                     command=[
                         system_paasta_config.get_nerve_readiness_check_script(),
+                        str(self.get_container_port()),
                     ] + self.get_registrations(),
                 ),
                 initial_delay_seconds=10,
@@ -371,7 +389,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     ),
                 ),
-                name="hacheck",
+                name=HACHECK_POD_NAME,
                 env=self.get_kubernetes_environment(),
                 ports=[
                     V1ContainerPort(
@@ -434,16 +452,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             path = self.get_healthcheck_uri(service_namespace_config)
             probe.http_get = V1HTTPGetAction(
                 path=path,
-                port=8888,
+                port=self.get_container_port(),
                 scheme=mode.upper(),
             )
         elif mode == 'tcp':
             probe.tcp_socket = V1TCPSocketAction(
-                port=8888,
+                port=self.get_container_port(),
             )
         elif mode == 'cmd':
             probe._exec = V1ExecAction(
-                command=self.get_healthcheck_cmd(),
+                command=[
+                    "/bin/sh",
+                    "-c",
+                    self.get_healthcheck_cmd(),
+                ],
             )
         else:
             raise InvalidHealthcheckMode(
@@ -480,7 +502,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[
                 V1ContainerPort(
-                    container_port=8888,
+                    container_port=self.get_container_port(),
                 ),
             ],
             volume_mounts=self.get_volume_mounts(
@@ -610,9 +632,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 instance=self.get_sanitised_instance_name(),
             ),
             labels={
-                "service": self.get_service(),
-                "instance": self.get_instance(),
-                "git_sha": code_sha,
+                "yelp.com/paasta_service": self.get_service(),
+                "yelp.com/paasta_instance": self.get_instance(),
+                "yelp.com/paasta_git_sha": code_sha,
             },
         )
 
@@ -644,8 +666,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         replicas=self.get_desired_instances(),
                         selector=V1LabelSelector(
                             match_labels={
-                                "service": self.get_service(),
-                                "instance": self.get_instance(),
+                                "yelp.com/paasta_service": self.get_service(),
+                                "yelp.com/paasta_instance": self.get_instance(),
                             },
                         ),
                         template=self.get_pod_template_spec(
@@ -663,8 +685,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         replicas=self.get_desired_instances(),
                         selector=V1LabelSelector(
                             match_labels={
-                                "service": self.get_service(),
-                                "instance": self.get_instance(),
+                                "yelp.com/paasta_service": self.get_service(),
+                                "yelp.com/paasta_instance": self.get_instance(),
                             },
                         ),
                         template=self.get_pod_template_spec(
@@ -679,12 +701,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 self.sanitize_for_config_hash(complete_config),
                 force_bounce=self.get_force_bounce(),
             )
-            complete_config.metadata.labels['config_sha'] = config_hash
-            complete_config.spec.template.metadata.labels['config_sha'] = config_hash
+            complete_config.metadata.labels['yelp.com/paasta_config_sha'] = config_hash
+            complete_config.spec.template.metadata.labels['yelp.com/paasta_config_sha'] = config_hash
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
+
+    def get_kubernetes_service_account_name(self) -> Optional[str]:
+        return self.config_dict.get('service_account_name', None)
 
     def get_pod_template_spec(
         self,
@@ -699,12 +724,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
-                    "service": self.get_service(),
-                    "instance": self.get_instance(),
-                    "git_sha": code_sha,
+                    "yelp.com/paasta_service": self.get_service(),
+                    "yelp.com/paasta_instance": self.get_instance(),
+                    "yelp.com/paasta_git_sha": code_sha,
+                },
+                annotations={
+                    "smartstack_registrations": json.dumps(self.get_registrations()),
                 },
             ),
             spec=V1PodSpec(
+                service_account_name=self.get_kubernetes_service_account_name(),
                 containers=self.get_kubernetes_containers(
                     docker_volumes=docker_volumes,
                     aws_ebs_volumes=self.get_aws_ebs_volumes(),
@@ -751,14 +780,21 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
     services = []
     pods = requests.get('http://127.0.0.1:10255/pods').json()
     for pod in pods['items']:
-        if pod['status']['phase'] != 'Running' or pod['metadata']['namespace'] != 'paasta':
+        if pod['status']['phase'] != 'Running' \
+                or 'smartstack_registrations' not in pod['metadata'].get('annotations', {}):
             continue
         try:
+            port = None
+            for container in pod['spec']['containers']:
+                if container['name'] != HACHECK_POD_NAME:
+                    port = container['ports'][0]['containerPort']
+                    break
             services.append(KubeService(
-                name=pod['metadata']['labels']['service'],
-                instance=pod['metadata']['labels']['instance'],
-                port=8888,
+                name=pod['metadata']['labels']['yelp.com/paasta_service'],
+                instance=pod['metadata']['labels']['yelp.com/paasta_instance'],
+                port=port,
                 pod_ip=pod['status']['podIP'],
+                registrations=json.loads(pod['metadata']['annotations']['smartstack_registrations']),
             ))
         except KeyError as e:
             log.warning(f"Found running paasta pod but missing {e} key so not registering with nerve")
@@ -766,7 +802,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
 
 
 def get_kubernetes_services_running_here_for_nerve(
-    cluster: str,
+    cluster: Optional[str],
     soa_dir: str,
 ) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     try:
@@ -786,25 +822,25 @@ def get_kubernetes_services_running_here_for_nerve(
     nerve_list = []
     for kubernetes_service in kubernetes_services:
         try:
-            kubernetes_service_config = load_kubernetes_service_config(
-                service=kubernetes_service.name,
-                instance=kubernetes_service.instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
-            for registration in kubernetes_service_config.get_registrations():
+            for registration in kubernetes_service.registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
-                nerve_dict = load_service_namespace_config(
-                    service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
-                )
+                try:
+                    nerve_dict = load_service_namespace_config(
+                        service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
+                    )
+                except Exception as e:
+                    log.warning(str(e))
+                    log.warning(f"Could not get smartstack config for {reg_service}.{reg_namespace}, skipping")
+                    # but the show must go on!
+                    continue
                 if not nerve_dict.is_in_smartstack():
                     continue
                 nerve_dict['port'] = kubernetes_service.port
                 nerve_dict['service_ip'] = kubernetes_service.pod_ip
-                nerve_dict['hacheck_ip'] = kubernetes_service.pod_ip
+                if system_paasta_config.get_kubernetes_use_hacheck_sidecar():
+                    nerve_dict['hacheck_ip'] = kubernetes_service.pod_ip
                 nerve_list.append((registration, nerve_dict))
-        except (KeyError, NoConfigurationForServiceError):
+        except (KeyError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list
@@ -812,7 +848,9 @@ def get_kubernetes_services_running_here_for_nerve(
 
 class KubeClient:
     def __init__(self) -> None:
-        kube_config.load_kube_config(config_file=KUBE_CONFIG_PATH)
+        kube_config.load_kube_config(
+            config_file=os.environ.get('KUBECONFIG', KUBE_CONFIG_PATH),
+        )
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
             fset=_set_disrupted_pods,
@@ -820,21 +858,23 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
+        self.custom = kube_client.CustomObjectsApi()
 
 
-def ensure_paasta_namespace(kube_client: KubeClient) -> None:
+def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(
-            name="paasta",
+            name=namespace,
             labels={
-                "name": "paasta",
+                "name": namespace,
             },
         ),
     )
     namespaces = kube_client.core.list_namespace()
     namespace_names = [item.metadata.name for item in namespaces.items]
-    if 'paasta' not in namespace_names:
-        log.warning("Creating paasta namespace as it does not exist")
+    if namespace not in namespace_names:
+        log.warning(f"Creating namespace: {namespace} as it does not exist")
         kube_client.core.create_namespace(body=paasta_namespace)
 
 
@@ -852,13 +892,86 @@ def list_deployments(
     )
     return [
         KubeDeployment(
-            service=item.metadata.labels['service'],
-            instance=item.metadata.labels['instance'],
-            git_sha=item.metadata.labels['git_sha'],
-            config_sha=item.metadata.labels['config_sha'],
+            service=item.metadata.labels['yelp.com/paasta_service'],
+            instance=item.metadata.labels['yelp.com/paasta_instance'],
+            git_sha=item.metadata.labels['yelp.com/paasta_git_sha'],
+            config_sha=item.metadata.labels['yelp.com/paasta_config_sha'],
             replicas=item.spec.replicas,
         ) for item in deployments.items + stateful_sets.items
     ]
+
+
+def create_custom_resource(
+    kube_client: KubeClient,
+    formatted_resource: Mapping[str, Any],
+    version: str,
+    kind: KubeKind,
+    group: str,
+) -> None:
+    return kube_client.custom.create_namespaced_custom_object(
+        group=group,
+        version=version,
+        namespace=f'paasta-{kind.plural}',
+        plural=kind.plural,
+        body=formatted_resource,
+    )
+
+
+def update_custom_resource(
+    kube_client: KubeClient,
+    formatted_resource: Mapping[str, Any],
+    version: str,
+    name: str,
+    kind: KubeKind,
+    group: str,
+) -> None:
+    co = kube_client.custom.get_namespaced_custom_object(
+        name=name,
+        group=group,
+        version=version,
+        namespace=f'paasta-{kind.plural}',
+        plural=kind.plural,
+    )
+    formatted_resource['metadata']['resourceVersion'] = co['metadata']['resourceVersion']
+    return kube_client.custom.replace_namespaced_custom_object(
+        name=name,
+        group=group,
+        version=version,
+        namespace=f'paasta-{kind.plural}',
+        plural=kind.plural,
+        body=formatted_resource,
+    )
+
+
+def list_custom_resources(
+    kind: KubeKind,
+    version: str,
+    kube_client: KubeClient,
+    group: str,
+    label_selector: str = '',
+) -> Sequence[KubeCustomResource]:
+    crs = kube_client.custom.list_namespaced_custom_object(
+        group=group,
+        version=version,
+        label_selector=label_selector,
+        plural=kind.plural,
+        namespace=f'paasta-{kind.plural}',
+    )
+    kube_custom_resources = []
+    for cr in crs['items']:
+        try:
+            kube_custom_resources.append(
+                KubeCustomResource(
+                    service=cr['metadata']['labels']['yelp.com/paasta_service'],
+                    instance=cr['metadata']['labels']['yelp.com/paasta_instance'],
+                    config_sha=cr['metadata']['labels']['yelp.com/paasta_config_sha'],
+                    kind=cr['kind'],
+                ),
+            )
+        except KeyError:
+            log.debug(f"Ignoring custom resource that is missing paasta labels: {cr}")
+            continue
+    return kube_custom_resources
 
 
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
@@ -885,8 +998,8 @@ def pod_disruption_budget_for_service_instance(
             min_available=min_instances,
             selector=V1LabelSelector(
                 match_labels={
-                    "service": service,
-                    "instance": instance,
+                    "yelp.com/paasta_service": service,
+                    "yelp.com/paasta_instance": instance,
                 },
             ),
         ),
@@ -909,7 +1022,7 @@ def list_matching_deployments(
     instance: str,
     kube_client: KubeClient,
 ) -> Sequence[KubeDeployment]:
-    return list_deployments(kube_client, f'instance={instance},service={service}')
+    return list_deployments(kube_client, f'yelp.com/paasta_instance={instance},paasta_service={service}')
 
 
 def pods_for_service_instance(
@@ -919,7 +1032,7 @@ def pods_for_service_instance(
 ) -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(
         namespace='paasta',
-        label_selector=f'service={service},instance={instance}',
+        label_selector=f'yelp.com/paasta_service={service},paasta_instance={instance}',
     ).items
 
 
@@ -938,8 +1051,8 @@ def filter_pods_by_service_instance(
 ) -> Sequence[V1Pod]:
     return [
         pod for pod in pod_list
-        if pod.metadata.labels['service'] == service and
-        pod.metadata.labels['instance'] == instance
+        if pod.metadata.labels['yelp.com/paasta_service'] == service and
+        pod.metadata.labels['yelp.com/paasta_instance'] == instance
     ]
 
 
@@ -982,8 +1095,8 @@ def get_active_shas_for_service(
 ) -> Mapping[str, Set[str]]:
     ret: Mapping[str, Set[str]] = {'config_sha': set(), 'git_sha': set()}
     for pod in pod_list:
-        ret['config_sha'].add(pod.metadata.labels['config_sha'])
-        ret['git_sha'].add(pod.metadata.labels['git_sha'])
+        ret['config_sha'].add(pod.metadata.labels['yelp.com/paasta_config_sha'])
+        ret['git_sha'].add(pod.metadata.labels['yelp.com/paasta_git_sha'])
     return ret
 
 

@@ -20,6 +20,7 @@ from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -109,19 +110,26 @@ def add_subparser(subparsers):
         default='client',
     ).completer = lazy_choices_completer(list_instances)
 
-    # Restrict usage to norcal-devc and pnw-devc for now.
+    try:
+        system_paasta_config = load_system_paasta_config()
+        default_spark_cluster = system_paasta_config.get_spark_run_config().get('default_cluster')
+        default_spark_pool = system_paasta_config.get_spark_run_config().get('default_pool')
+    except PaastaNotConfiguredError:
+        default_spark_cluster = 'pnw-devc'
+        default_spark_pool = 'batch'
+
     list_parser.add_argument(
         '-c', '--cluster',
         help=(
             "The name of the cluster you wish to run Spark on."
         ),
-        default='norcal-devc',
+        default=default_spark_cluster,
     )
 
     list_parser.add_argument(
         '-p', '--pool',
         help="Name of the resource pool to run the Spark job.",
-        default='default',
+        default=default_spark_pool,
     )
 
     list_parser.add_argument(
@@ -140,7 +148,6 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-C', '--cmd',
         help="Run the spark-shell, pyspark, spark-submit, jupyter, or history-server command.",
-        default='pyspark',
     )
 
     list_parser.add_argument(
@@ -151,20 +158,9 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
-        '--mesos-principal',
-        help="Mesos principal (username) to run a framework on Mesos.",
-        default='spark',
-    )
-
-    list_parser.add_argument(
-        '--mesos-secret',
-        help="Mesos secret (password) to run a framework on Mesos.",
-    )
-
-    list_parser.add_argument(
         '--spark-args',
         help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html. '
-        'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
+        r'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
         'spark.executor.cores=4".',
     )
 
@@ -315,6 +311,7 @@ def get_spark_env(
     access_key, secret_key = get_aws_credentials(args)
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
+    spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
 
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
@@ -391,7 +388,7 @@ def load_aws_credentials_from_yaml(yaml_file_path):
 
 def get_spark_config(
     args,
-    container_name,
+    spark_app_name,
     spark_ui_port,
     docker_img,
     system_paasta_config,
@@ -399,6 +396,7 @@ def get_spark_config(
 ):
     # User configurable Spark options
     user_args = {
+        'spark.app.name': spark_app_name,
         'spark.cores.max': '4',
         'spark.executor.cores': '2',
         'spark.executor.memory': '4g',
@@ -416,7 +414,6 @@ def get_spark_config(
     )
     non_user_args = {
         'spark.master': 'mesos://%s' % mesos_address,
-        'spark.app.name': container_name,
         'spark.ui.port': spark_ui_port,
         'spark.executorEnv.PAASTA_SERVICE': args.service,
         'spark.executorEnv.PAASTA_INSTANCE': '{}_{}'.format(args.instance, get_username()),
@@ -426,24 +423,12 @@ def get_spark_config(
         ),
         'spark.mesos.executor.docker.volumes': ','.join(volumes),
         'spark.mesos.executor.docker.image': docker_img,
-        'spark.mesos.principal': args.mesos_principal,
-        'spark.mesos.secret': args.mesos_secret,
+        'spark.mesos.principal': 'spark',
+        'spark.mesos.secret': _load_mesos_secret(),
         # derby.system.home property defaulting to '.',
         # which requires directory permission changes.
         'spark.driver.extraJavaOptions': '-Dderby.system.home=/tmp/derby',
     }
-
-    if not args.mesos_secret:
-        try:
-            with open(DEFAULT_SPARK_MESOS_SECRET_FILE, 'r') as f:
-                mesos_secret = f.read()
-                non_user_args['spark.mesos.secret'] = mesos_secret
-        except IOError:
-            paasta_print(
-                'Cannot load mesos secret from %s' % DEFAULT_SPARK_MESOS_SECRET_FILE,
-                file=sys.stderr,
-            )
-            sys.exit(1)
 
     if not args.build and not args.image:
         non_user_args['spark.mesos.uris'] = 'file:///root/.dockercfg'
@@ -499,7 +484,22 @@ def get_spark_config(
         )
         sys.exit(1)
 
+    # Limit a container's cpu usage
+    non_user_args['spark.mesos.executor.docker.parameters'] += ',cpus={}'.format(user_args['spark.executor.cores'])
+
     return dict(non_user_args, **user_args)
+
+
+def _load_mesos_secret():
+    try:
+        with open(DEFAULT_SPARK_MESOS_SECRET_FILE, 'r') as f:
+            return f.read()
+    except IOError:
+        paasta_print(
+            'Cannot load mesos secret from %s' % DEFAULT_SPARK_MESOS_SECRET_FILE,
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 
 def create_spark_config_str(spark_config_dict):
@@ -509,7 +509,7 @@ def create_spark_config_str(spark_config_dict):
     return ' '.join(spark_config_entries)
 
 
-def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
+def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     num_executors = int(spark_config_dict['spark.cores.max']) / int(spark_config_dict['spark.executor.cores'])
     memory_per_executor = spark_memory_to_megabytes(spark_config_dict['spark.executor.memory'])
 
@@ -518,7 +518,10 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, pool):
         'mem': memory_per_executor * num_executors,
         'disk': memory_per_executor * num_executors,  # rough guess since spark does not collect this information
     }
-    dimensions = {'framework_name': spark_config_dict['spark.app.name']}
+    dimensions = {'framework_name': spark_config_dict['spark.app.name'], 'webui_url': webui_url}
+
+    constraints = parse_constraints_string(spark_config_dict['spark.mesos.constraints'])
+    pool = constraints['pool']
 
     paasta_print('Sending resource request metrics to Clusterman')
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
@@ -539,6 +542,17 @@ def get_aws_region_for_paasta_cluster(paasta_cluster):
 def spark_memory_to_megabytes(spark_memory_string):
     # expected to be in format "dg" where d is an integer
     return 1000 * int(spark_memory_string[:-1])
+
+
+def parse_constraints_string(constraints_string):
+    constraints = {}
+    for constraint in constraints_string.split(';'):
+        if constraint[-1] == '\\':
+            constraint = constraint[:-1]
+        k, v = constraint.split(':')
+        constraints[k] = v
+
+    return constraints
 
 
 def run_docker_container(
@@ -584,11 +598,15 @@ def configure_and_run_docker_container(
             )
 
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    container_name = 'paasta_spark_run_{}_{}_{}'.format(get_username(), spark_ui_port, int(time.time()))
+    spark_app_name = 'paasta_spark_run_{}'.format(get_username())
+    container_name = spark_app_name + "_" + str(spark_ui_port)
+    original_docker_cmd = args.cmd or instance_config.get_cmd()
+    if 'jupyter' not in original_docker_cmd:
+        spark_app_name = container_name
 
     spark_config_dict = get_spark_config(
         args=args,
-        container_name=container_name,
+        spark_app_name=spark_app_name,
         spark_ui_port=spark_ui_port,
         docker_img=docker_img,
         system_paasta_config=system_paasta_config,
@@ -601,11 +619,6 @@ def configure_and_run_docker_container(
     volumes.append('/etc/passwd:/etc/passwd:ro')
     volumes.append('/etc/group:/etc/group:ro')
 
-    docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
-    if docker_cmd is None:
-        paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
-        return 1
-
     environment = instance_config.get_env_dictionary()
     environment.update(
         get_spark_env(
@@ -615,14 +628,17 @@ def configure_and_run_docker_container(
         ),
     )
 
+    webui_url = f'http://{socket.getfqdn()}:{spark_ui_port}'
+
+    docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if 'history-server' in docker_cmd:
-        paasta_print('\nSpark history server URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
-    elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'jupyter']):
-        paasta_print('\nSpark monitoring URL http://%s:%d\n' % (socket.getfqdn(), spark_ui_port))
+        paasta_print(f'\nSpark history server URL {webui_url}\n')
+    elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'spark-submit']):
+        paasta_print(f'\nSpark monitoring URL {webui_url}\n')
 
     if clusterman_metrics and _should_emit_resource_requirements(docker_cmd):
         try:
-            emit_resource_requirements(spark_config_dict, args.cluster, args.pool)
+            emit_resource_requirements(spark_config_dict, args.cluster, webui_url)
         except Boto3Error as e:
             paasta_print(
                 PaastaColors.red(f'Encountered {e} while attempting to send resource requirements to Clusterman.'),
@@ -648,8 +664,6 @@ def _should_emit_resource_requirements(docker_cmd):
 
 def get_docker_cmd(args, instance_config, spark_conf_str):
     original_docker_cmd = args.cmd or instance_config.get_cmd()
-    if original_docker_cmd is None:
-        return None
 
     # Default cli options to start the jupyter notebook server.
     if original_docker_cmd == 'jupyter':
@@ -697,14 +711,14 @@ def build_and_push_docker_image(args):
         service=args.service,
         soa_dir=args.yelpsoa_config_root,
     )
-    if cook_return is not 0:
+    if cook_return != 0:
         return None
 
     docker_url = f'{args.docker_registry}/{docker_tag}'
     command = f'docker tag {docker_tag} {docker_url}'
     paasta_print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
-    if retcode is not 0:
+    if retcode != 0:
         return None
 
     if args.docker_registry != DEFAULT_SPARK_DOCKER_REGISTRY:
@@ -714,7 +728,7 @@ def build_and_push_docker_image(args):
 
     paasta_print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=True)
-    if retcode is not 0:
+    if retcode != 0:
         return None
 
     return docker_url
@@ -778,6 +792,10 @@ def paasta_spark_run(args):
             sep='\n',
             file=sys.stderr,
         )
+        return 1
+
+    if not args.cmd and not instance_config.get_cmd():
+        paasta_print("A command is required, pyspark, spark-shell, spark-submit or jupyter", file=sys.stderr)
         return 1
 
     if args.build:

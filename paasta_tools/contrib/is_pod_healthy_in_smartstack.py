@@ -23,7 +23,8 @@ synapse_port = system_paasta_config.get_synapse_port()
 synapse_host = '169.254.255.254'
 synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
 host_ip = os.environ['PAASTA_POD_IP']
-services = sys.argv[1:]
+port = sys.argv[1]
+services = sys.argv[2:]
 
 if are_services_up_on_ip_port(
     synapse_host=synapse_host,
@@ -31,7 +32,7 @@ if are_services_up_on_ip_port(
     synapse_haproxy_url_format=synapse_haproxy_url_format,
     services=services,
     host_ip=host_ip,
-    host_port=8888,
+    host_port=int(port),
 ):
     sys.exit(0)
 else:

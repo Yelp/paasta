@@ -79,7 +79,7 @@ class LSRemoteException(Exception):
 
 
 @timeout(
-    seconds=20,
+    seconds=60,
     error_message="Timed out connecting to git server, is it reachable from where you are?",
     use_signals=False,
 )

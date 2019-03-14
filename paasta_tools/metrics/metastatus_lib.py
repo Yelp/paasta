@@ -30,7 +30,7 @@ import a_sync
 from humanize import naturalsize
 from kubernetes.client import V1Node
 from mypy_extensions import TypedDict
-from typing_extensions import Counter as _Counter  # noqa
+from typing_extensions import Counter as _Counter
 
 from paasta_tools import chronos_tools
 from paasta_tools.kubernetes_tools import get_all_nodes
@@ -41,6 +41,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import PodStatus
+from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
@@ -445,7 +446,7 @@ def assert_kube_pods_running(
 
 def assert_no_duplicate_frameworks(
     state: MesosState,
-    framework_list: Sequence[str]=['marathon', 'chronos'],
+    framework_list: Sequence[str] = ['marathon', 'chronos'],
 ) -> HealthCheckResult:
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
@@ -810,7 +811,7 @@ def filter_slaves(
 def get_resource_utilization_by_grouping(
     grouping_func: _GenericNodeGroupingFunctionT,
     mesos_state: MesosState,
-    filters: Sequence[_GenericNodeFilterFunctionT]=[],
+    filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """ Given a function used to group slaves and mesos state, calculate
@@ -848,7 +849,7 @@ def get_resource_utilization_by_grouping(
 def get_resource_utilization_by_grouping_kube(
     grouping_func: _GenericNodeGroupingFunctionT,
     kube_client: KubeClient,
-    filters: Sequence[_GenericNodeFilterFunctionT]=[],
+    filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """ Given a function used to group nodes, calculate resource utilization
@@ -969,7 +970,7 @@ def run_healthchecks_with_param(
 def assert_marathon_apps(
     clients: Sequence[MarathonClient],
 ) -> HealthCheckResult:
-    num_apps = [len(c.list_apps()) for c in clients]
+    num_apps = [len(get_all_marathon_apps(c)) for c in clients]
     if sum(num_apps) < 1:
         return HealthCheckResult(
             message="CRITICAL: No marathon apps running",

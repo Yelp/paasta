@@ -1,9 +1,35 @@
 Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
-
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
+
+Each object inside of these YAML files is called an "instance" of a PaaSTA
+service. It describes a unique way to run the service, with a unique command,
+cpu and ram requirements, etc.
+
+Duplication can be reduced by using YAML `anchors and merges <https://gist.github.com/bowsersenior/979804>`_.
+PaaSTA will **not** attempt to run any definition prefixed with ``_``,
+so you are free to use them for YAML templates.
+
+Example::
+
+    _template: &template
+        env:
+            foo: bar
+
+    main:
+        <<: *template
+        cpus: 1.0
+        mem: 1000
+        command: busybox httpd
+
+    worker:
+        <<: *template
+        cpus: 0.1
+        mem: 100
+        command: python -m worker
+
 
 ``Common Settings``
 -------------------
@@ -29,6 +55,13 @@ specify the following options:
     met, other than a ``TASK_FAILED`` message. For more a more detailed read on
     how this works, see the docs on `isolation <isolation.html>`_
 
+  * ``docker_init``: Bool. If set ``false``, will disable the ``--init`` functionality
+    of Docker. Without ``--init``, it is up to the user to properly respond to
+    signals when behaving as PID #1 in a container. (See
+    `dumb-init <https://github.com/Yelp/dumb-init#why-you-need-an-init-system>`_
+    as an example of how to run a program in a container properly without
+    ``--init``) Defaults to ``true``.
+
   * ``env``: A dictionary of environment variables that will be made available
     to the container. PaaSTA additionally will inject the following variables:
 
@@ -38,6 +71,8 @@ specify the following options:
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
     * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
     * ``PAASTA_MONITORING_TEAM``: The team that is configured to get alerts.
+    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username
+      of the user who launched the paasta container.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
@@ -246,9 +281,7 @@ instance MAY have:
     Parsing the Marathon config file will fail if both args and cmd are
     specified [#note]_.
 
-  * ``monitoring``: A dictionary of values that configure overrides for
-    monitoring parameters that will take precedence over what is in
-    `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
   * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for valid options and how they work
 
@@ -297,6 +330,9 @@ for more low-level details:
 
     If not in smartstack, the default healthcheck is "None", which means
     the container is considered healthy unless it crashes.
+
+    A http healthcheck is considered healthy if it returns a 2xx or 3xx
+    response code.
 
   * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
     command is executed inside the container as a healthcheck. It must exit
@@ -456,9 +492,9 @@ Each job configuration MAY specify the following options:
     which disable the old versions but allows them to finish their current run.
     If unspecified, defaults to ``graceful``.
 
-  * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
-  * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
+  * ``deploy_group``: Same as ``deploy_group`` for marathon-\*.yaml.
 
   * ``schedule_time_zone``: The time zone name to use when scheduling the job.
     Unlike schedule, this is specified in the tz database format, not the ISO 8601 format.
@@ -474,7 +510,7 @@ Each job configuration MAY specify the following options:
           schedule_time_zone: America/Los_Angeles
 
 ``tron-[tron-clustername].yaml``
-------------------------------
+--------------------------------
 
 This file stores configuration for periodically scheduled jobs for execution on
 `Tron <https://github.com/yelp/tron>`_.
@@ -508,7 +544,6 @@ Example Job
             cpus: .5
             mem: 100
 
-
 PaaSTA-Specific Options
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -523,6 +558,8 @@ Each Tron **job** configuration MAY specify the following options:
     This setting picks the default service for the whole job, but ``service`` may
     also be set on a per-action basis. Tron jobs may be composed of multiple actions
     that use commands from multiple different services.
+
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
 Each Tron **action** of a job MAY specify the following:
 
@@ -545,9 +582,7 @@ Each Tron **action** of a job MAY specify the following:
 
   * ``command``: The command to run. If the action is configured with ``executor: paasta``,
     then the command should be something available in the docker container (it should NOT
-    start with ``paasta local-run``). For best results, prefix the command with
-    ``exec dumb-init`` (See the
-    `dumb-init docs <https://github.com/Yelp/dumb-init#dumb-init>`_ for more information)
+    start with ``paasta local-run``).
 
 ``adhoc-[clustername].yaml``
 -------------------------------
@@ -737,6 +772,36 @@ Routing and Reliability
  * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
    in milliseconds, defaults to 1000.
 
+Fault Injection
+```````````````
+
+These keys are meant to control the built-in fault and delay injection features
+of Envoy, the new proxy we are using to replace HAProxy, and thus won't work
+with the latter.
+
+**Note:** The described Fault Injection features are currently only available
+internally at Yelp.
+
+ * ``fixed_delay``: A map of locations to delays. Controls the injection of a
+   particular delay for a particular service, in a particular environment and
+   for a particular percentage of requests. From the example: ::
+
+      main:
+        proxy_port: 20028
+        timeout_server_ms: 5000
+        fixed_delay:
+          ecosystem:stagec:
+            duration_ms: 3000
+            percent: 20
+          superregion:uswest1-prod:
+            duration_ms: 1000
+            percent: 40
+
+   - ``duration_ms``: The duration of the delay in milliseconds.
+   - ``percent``: Percentage of requests (0-100) to be randomly affected by this
+     delay. Note that due to Envoy's current definition of *percentage* as an
+     integer, this cannot be specified as a floating-point number.
+
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 If you don’t care about dropping traffic you can just change ``discover`` and
@@ -788,11 +853,12 @@ Defaults for a *team* can be set globally with the global Sensu configuration.
 ``team`` is the only mandatory key, but overrides can be set for the entire
 service with ``monitoring.yaml``.
 
-Additionally these settings can be overridden on a *per-instance* basis. For
-example a ``canary`` instance can be set with ``page: false`` and ``team:
-devs``, while the ``main`` instance can bet set to ``page: true`` and ``team:
-ops``, and the ``dailyadsjob`` instance can be set with ``ticket: true`` and
-``team: ads``. See the Examples section for more examples.
+Additionally these settings can be overridden on a *per-instance* basis via the
+`monitoring` option. For example a ``canary`` instance can be set with
+``page: false`` and ``team: devs``, while the ``main`` instance can bet set to
+``page: true`` and ``team: ops``, and the ``dailyadsjob`` instance can be set
+with ``ticket: true`` and ``team: ads``. See the Examples section for more
+examples.
 
 Here is a list of options that PaaSTA will pass through:
 
@@ -821,6 +887,23 @@ Here is a list of options that PaaSTA will pass through:
 
  * ``project``: String naming the project where JIRA tickets will be created.
    Overrides the global default for the team.
+
+ * ``priority``: A JIRA ticket priority to use. This value should be a string
+   value like ``'0'``, ``'1'``, ``'3.14'``, etc. If not set, the default will
+   be the ``default_priority`` setting for the sensu team or the default
+   priority used for the JIRA project.
+
+ * ``tags``: An list of tags that are used as labels when creating a JIRA
+   ticket. Note that this list of tags does not overwrite the default values
+   added for sensu checks (tags like ``SENSU`` for example), it just adds to
+   that existing list.
+
+ * ``component``: Array of components affected by this check. These are used as
+   components when creating a JIRA ticket.
+
+ * ``description``: A description giving more context on the check or event.
+   This should be a longer expansion of information than what is included in
+   the ``tip`` option.
 
  * ``alert_after``: Time string that represents how long a a check should be
    failing before an actual alert should be fired. Currently defaults to ``2m``
@@ -895,6 +978,17 @@ A marathon service that overrides options on different instances (canary)::
         page: false
         ticket: true
 
+A tron job that pages for a specific job in a service::
+
+  # monitoring.yaml
+  team: midend
+  page: false
+
+  # tron-prod.yaml
+  jobs:
+    foo:
+      monitoring:
+        page: true
 
 ``service.yaml``
 ----------------

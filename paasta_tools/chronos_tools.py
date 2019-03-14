@@ -207,8 +207,8 @@ def load_chronos_job_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> 'ChronosJobConfig':
     general_config = service_configuration_lib.read_service_configuration(
         service,
@@ -406,7 +406,7 @@ class ChronosJobConfig(InstanceConfig):
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
     # more info: https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals
     def _check_schedule_repeat_helper(self, repeat_string):
-        pattern = re.compile('^R\d*$')
+        pattern = re.compile(r'^R\d*$')
         return pattern.match(repeat_string) is not None
 
     def check_schedule(self):
@@ -583,12 +583,6 @@ class ChronosJobConfig(InstanceConfig):
         """Currently not implemented yet, as we don't have the code
         to announce chronos tasks in nerve"""
         return None
-
-    def format_docker_parameters(self):
-        init = {'key': 'init', 'value': 'true'}
-        params = super().format_docker_parameters()
-        params.append(init)
-        return params
 
 
 def paasta_to_chronos_job_name(job_name):
@@ -1097,6 +1091,8 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_configs = {}
     for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir):
         for instance in read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir):
+            if instance.startswith('_'):  # some dependencies are templates, ignore
+                continue
             try:
                 chronos_configs[(service, instance)] = load_chronos_job_config(
                     service=service,

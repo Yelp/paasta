@@ -43,6 +43,11 @@ from paasta_tools.utils import paasta_print
 
 SCHEMA_VALID = success("Successfully validated schema")
 
+SCHEMA_ERROR = failure(
+    "Failed to load schema.",
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+)
+
 SCHEMA_INVALID = failure(
     "Failed to validate schema. More info:",
     "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
@@ -107,7 +112,12 @@ def validate_schema(file_path, file_type):
     :param file_path: path to file to validate
     :param file_type: what schema type should we validate against
     """
-    schema = get_schema(file_type)
+    try:
+        schema = get_schema(file_type)
+    except Exception as e:
+        paasta_print(f'{SCHEMA_ERROR}: {file_type}, error: {e!r}')
+        return
+
     if (schema is None):
         paasta_print(f'{SCHEMA_NOT_FOUND}: {file_path}')
         return
@@ -132,6 +142,9 @@ def validate_schema(file_path, file_type):
 
         errors = validator.iter_errors(config_file_object)
         paasta_print('  Validation Message: %s' % exceptions.best_match(errors).message)
+    except Exception as e:
+        paasta_print(f'{SCHEMA_ERROR}: {file_type}, error: {e!r}')
+        return
     else:
         paasta_print(f'{SCHEMA_VALID}: {basename}')
         return True

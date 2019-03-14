@@ -135,12 +135,12 @@ def get_boost_values(
 
 def set_boost_factor(
     zk_boost_path: str,
-    region: str='',
-    pool: str='',
-    send_clusterman_metrics: bool=False,
-    factor: float=DEFAULT_BOOST_FACTOR,
-    duration_minutes: int=DEFAULT_BOOST_DURATION,
-    override: bool=False,
+    region: str = '',
+    pool: str = '',
+    send_clusterman_metrics: bool = False,
+    factor: float = DEFAULT_BOOST_FACTOR,
+    duration_minutes: int = DEFAULT_BOOST_DURATION,
+    override: bool = False,
 ) -> bool:
     """
     Set a boost factor for a path in zk
@@ -174,7 +174,7 @@ def set_boost_factor(
 
     if clusterman_metrics and send_clusterman_metrics:
         cluster = load_system_paasta_config().get_cluster()
-        metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=region, app_identifier='default')
+        metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=region, app_identifier=pool)
         with metrics_client.get_writer(clusterman_metrics.APP_METRICS) as writer:
             metrics_key = clusterman_metrics.generate_key_with_dimensions(
                 'boost_factor',

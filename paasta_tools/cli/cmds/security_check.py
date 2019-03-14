@@ -12,10 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import pysensu_yelp
-
-from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
-from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _run
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -55,17 +51,11 @@ def perform_security_check(args):
 
     command = f"{security_check_command} {args.service} {args.commit}"
 
-    ret_code, output = _run(command, timeout=300, stream=True)
+    ret_code, output = _run(command, timeout=3600, stream=True)
     if ret_code != 0:
         paasta_print(
             "The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
             "including whitelisting safe versions of packages and docker images).",
         )
-
-    sensu_status = pysensu_yelp.Status.CRITICAL if ret_code != 0 else pysensu_yelp.Status.OK
-    send_event(
-        service=args.service, check_name='%s.security_check' % args.service,
-        overrides={'page': False, 'ticket': True}, status=sensu_status, output=output, soa_dir=DEFAULT_SOA_DIR,
-    )
 
     return ret_code

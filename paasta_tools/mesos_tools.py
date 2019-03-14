@@ -128,7 +128,7 @@ def get_mesos_leader() -> str:
         raise ValueError('Expected to receive a valid URL, got: %s' % url)
 
 
-def is_mesos_leader(hostname: str=MY_HOSTNAME) -> bool:
+def is_mesos_leader(hostname: str = MY_HOSTNAME) -> bool:
     """Check if a hostname is the current mesos leader.
 
     :param hostname: The hostname to query mesos-master on
@@ -232,7 +232,7 @@ async def get_cached_list_of_not_running_tasks_from_frameworks():
     return [task for task in filter_not_running_tasks(await get_cached_list_of_all_current_tasks())]
 
 
-def select_tasks_by_id(tasks: Collection[Task], job_id: str='') -> List[Task]:
+def select_tasks_by_id(tasks: Collection[Task], job_id: str = '') -> List[Task]:
     """Returns a list of the tasks with a given job_id.
 
     :param tasks: a list of mesos.Task.
@@ -242,7 +242,7 @@ def select_tasks_by_id(tasks: Collection[Task], job_id: str='') -> List[Task]:
     return [task for task in tasks if job_id in task['id']]
 
 
-async def get_non_running_tasks_from_frameworks(job_id: str='') -> List[Task]:
+async def get_non_running_tasks_from_frameworks(job_id: str = '') -> List[Task]:
     """ Will include tasks from active and completed frameworks
     but NOT orphaned tasks
     """
@@ -479,7 +479,7 @@ async def format_task_list(
 async def status_mesos_tasks_verbose(
     filter_string: str,
     get_short_task_id: Callable[[str], str],
-    tail_lines: int=0,
+    tail_lines: int = 0,
 ) -> str:
     """Returns detailed information about the mesos tasks for a service.
 
@@ -733,8 +733,8 @@ def get_mesos_network_for_net(net):
 
 async def get_mesos_task_count_by_slave(
     mesos_state: MesosState,
-    slaves_list: Sequence[Dict]=None,
-    pool: Optional[str]=None,
+    slaves_list: Sequence[Dict] = None,
+    pool: Optional[str] = None,
 ) -> List[Dict]:
     """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
 
@@ -879,7 +879,11 @@ def mesos_services_running_here(framework_filter, parse_service_instance_from_ex
                  if 'TASK_RUNNING' in [t['state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
+        try:
+            srv_name, srv_instance = parse_service_instance_from_executor_id(executor['id'])
+        except ValueError:
+            log.error("Failed to decode paasta service instance from {}".format(executor['id']))
+            continue
         if 'ports' in executor['resources']:
             srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         else:

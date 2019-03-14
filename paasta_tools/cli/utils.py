@@ -42,9 +42,11 @@ from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.flinkcluster_tools import load_flinkcluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.tron_tools import load_tron_instance_config
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -687,6 +689,19 @@ def execute_paasta_cluster_boost_on_remote_master(
             verbose=verbose,
         )
 
+        audit_details = {
+            'boost_action': action,
+            'pool': pool,
+            'duration': duration,
+            'override': override,
+            'boost': boost,
+        }
+        _log_audit(
+            action='cluster-boost',
+            action_details=audit_details,
+            cluster=cluster,
+        )
+
     aggregated_code = 0
     aggregated_output = ""
     for cluster in result:
@@ -753,13 +768,14 @@ def run_on_master(
         return (err_code, str(e))
 
     if graceful_exit:
-        # signals don't travel over ssh, kill process when anything lands on stdin instead
+        # Signals don't travel over ssh, kill process when anything lands on stdin instead
+        # The procedure here is:
+        # 1. send process to background and capture it's pid
+        # 2. wait for stdin with timeout in a loop, exit when original process finished
+        # 3. kill original process if loop finished (something on stdin)
         cmd_parts.append(
-            # send process to background and capture it's pid
             '& p=$!; ' +
-            # wait for stdin with timeout in a loop, exit when original process finished
             'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
-            # kill original process if loop finished (something on stdin)
             'kill $p; wait',
         )
         stdin = subprocess.PIPE
@@ -846,6 +862,8 @@ def get_instance_config(
         instance_config_load_function = load_kubernetes_service_config
     elif instance_type == 'tron':
         instance_config_load_function = load_tron_instance_config
+    elif instance_type == 'flinkcluster':
+        instance_config_load_function = load_flinkcluster_instance_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
@@ -873,10 +891,13 @@ def list_deploy_groups(
     parsed_args=None,
     **kwargs,
 ) -> Set:
-    return {config.get_deploy_group() for config in get_instance_configs_for_service(
-        service=service if service is not None else parsed_args.service or guess_service_name(),
-        soa_dir=soa_dir,
-    )}
+    return set(filter(
+        None,
+        {config.get_deploy_group() for config in get_instance_configs_for_service(
+            service=service if service is not None else parsed_args.service or guess_service_name(),
+            soa_dir=soa_dir,
+        )},
+    ))
 
 
 def validate_given_deploy_groups(
@@ -891,7 +912,7 @@ def validate_given_deploy_groups(
         lists and those only in args_deploy_groups
     """
     invalid_deploy_groups: Set[str]
-    if len(args_deploy_groups) is 0:
+    if len(args_deploy_groups) == 0:
         valid_deploy_groups = set(all_deploy_groups)
         invalid_deploy_groups = set()
     else:
@@ -1020,7 +1041,7 @@ def get_instance_configs_for_service(
         soa_dir=soa_dir,
     ):
         if type_filter is None:
-            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron']
+            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron', 'flinkcluster']
         if 'marathon' in type_filter:
             for _, instance in get_service_instance_list(
                 service=service,
@@ -1085,6 +1106,20 @@ def get_instance_configs_for_service(
                 soa_dir=soa_dir,
             ):
                 yield load_tron_instance_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'flinkcluster' in type_filter:
+            for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='flinkcluster',
+                soa_dir=soa_dir,
+            ):
+                yield load_flinkcluster_instance_config(
                     service=service,
                     instance=instance,
                     cluster=cluster,

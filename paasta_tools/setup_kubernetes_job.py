@@ -37,7 +37,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -89,7 +89,7 @@ def main() -> None:
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
 
-    ensure_paasta_namespace(kube_client)
+    ensure_namespace(kube_client, namespace='paasta')
     setup_kube_succeeded = setup_kube_deployments(
         kube_client=kube_client,
         service_instances=args.service_instance_list,
@@ -101,7 +101,7 @@ def main() -> None:
 def setup_kube_deployments(
     kube_client: KubeClient,
     service_instances: Sequence[str],
-    soa_dir: str=DEFAULT_SOA_DIR,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     succeeded = True
     if service_instances:
@@ -157,8 +157,8 @@ def reconcile_kubernetes_deployment(
     desired_deployment = KubeDeployment(
         service=service,
         instance=instance,
-        git_sha=formatted_application.metadata.labels["git_sha"],
-        config_sha=formatted_application.metadata.labels["config_sha"],
+        git_sha=formatted_application.metadata.labels["yelp.com/paasta_git_sha"],
+        config_sha=formatted_application.metadata.labels["yelp.com/paasta_config_sha"],
         replicas=formatted_application.spec.replicas,
     )
 

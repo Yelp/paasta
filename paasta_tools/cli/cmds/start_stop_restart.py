@@ -13,8 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import os
 import socket
 import sys
+from collections import defaultdict
+from typing import Dict
+from typing import List
 
 import choice
 
@@ -24,9 +28,14 @@ from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import run_on_master
+from paasta_tools.flinkcluster_tools import FlinkClusterConfig
+from paasta_tools.flinkcluster_tools import set_flinkcluster_desired_state
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
@@ -98,6 +107,13 @@ def log_event(service_config, desired_state):
         line=line,
     )
 
+    utils._log_audit(
+        action=desired_state,
+        service=service_config.get_service(),
+        cluster=service_config.get_cluster(),
+        instance=service_config.get_instance(),
+    )
+
 
 def issue_state_change_for_service(service_config, force_bounce, desired_state):
     ref_mutator = make_mutate_refs_func(
@@ -140,6 +156,16 @@ def print_chronos_message(desired_state):
         )
 
 
+def print_flinkcluster_message(desired_state):
+    if desired_state == "start":
+        paasta_print("'Start' will tell Flink operator to start the cluster.")
+    elif desired_state == "stop":
+        paasta_print(
+            "'Stop' will put Flink cluster in stopping mode, it may"
+            "take some time before shutdown is completed.",
+        )
+
+
 def confirm_to_continue(cluster_service_instances, desired_state):
     paasta_print(f'You are about to {desired_state} the following instances:')
     paasta_print("Either --instances or --clusters not specified. Asking for confirmation.")
@@ -152,6 +178,15 @@ def confirm_to_continue(cluster_service_instances, desired_state):
     if sys.stdin.isatty():
         return choice.Binary(f'Are you sure you want to {desired_state} these {i_count} instances?', False).ask()
     return True
+
+
+REMOTE_REFS: Dict[str, List[str]] = {}
+
+
+def get_remote_refs(service, soa_dir):
+    if service not in REMOTE_REFS:
+        REMOTE_REFS[service] = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
+    return REMOTE_REFS[service]
 
 
 def paasta_start_or_stop(args, desired_state):
@@ -182,7 +217,9 @@ def paasta_start_or_stop(args, desired_state):
             return 1
 
     invalid_deploy_groups = []
-    marathon_message_printed, chronos_message_printed = False, False
+    marathon_message_printed = False
+    chronos_message_printed = False
+    affected_flinkclusters = []
 
     if args.clusters is None or args.instances is None:
         if confirm_to_continue(pargs.items(), desired_state) is False:
@@ -192,19 +229,6 @@ def paasta_start_or_stop(args, desired_state):
 
     for cluster, services_instances in pargs.items():
         for service, instances in services_instances.items():
-            try:
-                remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
-            except remote_git.LSRemoteException as e:
-                msg = (
-                    "Error talking to the git server: %s\n"
-                    "This PaaSTA command requires access to the git server to operate.\n"
-                    "The git server may be down or not reachable from here.\n"
-                    "Try again from somewhere where the git server can be reached, "
-                    "like your developer environment."
-                ) % str(e)
-                paasta_print(msg)
-                return 1
-
             for instance in instances.keys():
                 service_config = get_instance_config(
                     service=service,
@@ -213,6 +237,23 @@ def paasta_start_or_stop(args, desired_state):
                     soa_dir=soa_dir,
                     load_deployments=False,
                 )
+                if isinstance(service_config, FlinkClusterConfig):
+                    affected_flinkclusters.append(service_config)
+                    continue
+
+                try:
+                    remote_refs = get_remote_refs(service, soa_dir)
+                except remote_git.LSRemoteException as e:
+                    msg = (
+                        "Error talking to the git server: %s\n"
+                        "This PaaSTA command requires access to the git server to operate.\n"
+                        "The git server may be down or not reachable from here.\n"
+                        "Try again from somewhere where the git server can be reached, "
+                        "like your developer environment."
+                    ) % str(e)
+                    paasta_print(msg)
+                    return 1
+
                 deploy_group = service_config.get_deploy_group()
                 (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
 
@@ -234,6 +275,41 @@ def paasta_start_or_stop(args, desired_state):
                     )
 
     return_val = 0
+
+    if affected_flinkclusters:
+        if os.environ.get('ON_PAASTA_MASTER'):
+            print_flinkcluster_message(desired_state)
+            kube_client = KubeClient()
+            for service_config in affected_flinkclusters:
+                set_flinkcluster_desired_state(
+                    kube_client=kube_client,
+                    service=service_config.service,
+                    instance=service_config.instance,
+                    desired_state=dict(start='running', stop='stopped')[desired_state],
+                )
+        else:
+            csi = defaultdict(lambda: defaultdict(list))
+            for service_config in affected_flinkclusters:
+                csi[service_config.cluster][service_config.service].append(service_config.instance)
+
+            system_paasta_config = load_system_paasta_config()
+            for cluster, services_instances in csi.items():
+                for service, instances in services_instances.items():
+                    cmd_parts = [
+                        'ON_PAASTA_MASTER=1',
+                        'paasta',
+                        desired_state,
+                        '-c', cluster,
+                        '-s', service,
+                        '-i', ','.join(instances),
+                    ]
+                    return_val, _ = run_on_master(
+                        cluster=cluster,
+                        system_paasta_config=system_paasta_config,
+                        cmd_parts=cmd_parts,
+                        graceful_exit=True,
+                    )
+
     if invalid_deploy_groups:
         paasta_print("No branches found for %s in %s." %
                      (", ".join(invalid_deploy_groups), remote_refs))

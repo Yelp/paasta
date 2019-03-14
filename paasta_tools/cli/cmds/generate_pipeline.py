@@ -22,7 +22,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import get_team_email_address
-from paasta_tools.utils import _run
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
@@ -59,6 +59,7 @@ def paasta_generate_pipeline(args):
         return 1
 
     generate_pipeline(service=service, soa_dir=soa_dir)
+    _log_audit(action='generate-pipeline', service=service)
 
 
 def get_git_repo_for_fab_repo(service, soa_dir):
@@ -71,11 +72,11 @@ def get_git_repo_for_fab_repo(service, soa_dir):
 
 
 def print_warning():
-    paasta_print("Warning: paasta generate-pipeline is a Yelp-specific tool and will")
-    paasta_print("not work outside Yelp.")
+    paasta_print("Warning: paasta generate-pipeline is DEPRECATED")
     paasta_print()
-    paasta_print("paasta generate-pipeline is designed only to give a starting Jenkins")
-    paasta_print("configuration that can be customized later")
+    paasta_print("Please go to y/jenkinsfile to move to a jenkinsfile")
+    paasta_print()
+    paasta_print("If you really need to run this command, manually run the commands below:")
     paasta_print()
     paasta_print("Warning: running this tool on an existing pipeline will remove any")
     paasta_print("hand-made customizations and will leave behind orphaned Jenkins jobs")
@@ -101,9 +102,4 @@ def generate_pipeline(service, soa_dir):
     ]
     print_warning()
     for cmd in cmds:
-        paasta_print("INFO: Executing %s" % cmd)
-        returncode, output = _run(cmd, timeout=90)
-        if returncode != 0:
-            paasta_print("ERROR: Failed to generate Jenkins pipeline")
-            paasta_print(output)
-            return returncode
+        paasta_print(f"Please run: `{cmd}`")

@@ -18,6 +18,7 @@ set -eu
 SCRIPTS="am_i_mesos_leader
 autoscale_all_services
 check_marathon_services_replication
+check_kubernetes_api
 check_kubernetes_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
@@ -125,8 +126,6 @@ for command in $PAASTA_COMMANDS
 do
   echo "Running 'paasta $command -h' to make sure it works"
   paasta $command -h >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
-  echo "Checking for a man page"
-  man -f paasta-$command
 done
 echo "Running 'paasta --version', it should return non-zero"
 paasta --version || (echo "paasta --version failed to execute!"; exit 1)

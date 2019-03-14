@@ -316,7 +316,7 @@ def test_check_smartstack_check_missing_port(
 
 
 @patch(
-    'paasta_tools.cli.cmds.check.'
+    'paasta_tools.utils.'
     'read_service_configuration', autospec=True,
 )
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
@@ -478,7 +478,7 @@ def test_get_deploy_groups_used_by_framework(
             config_dict={},
             branch_dict=None,
         )
-    expected = ['cluster1.instance1', 'cluster1.instance2']
+    expected = {'cluster1.instance1', 'cluster1.instance2'}
     actual = get_deploy_groups_used_by_framework('marathon', service='unused', soa_dir='/fake/path')
     assert actual == expected
 

@@ -61,9 +61,9 @@ Marathon_Dashboard = Dict[str, List[Marathon_Dashboard_Item]]
 
 def create_marathon_dashboard(
         cluster: str,
-        soa_dir: str=DEFAULT_SOA_DIR,
-        marathon_clients: MarathonClients=None,
-        system_paasta_config: SystemPaastaConfig=None,
+        soa_dir: str = DEFAULT_SOA_DIR,
+        marathon_clients: MarathonClients = None,
+        system_paasta_config: SystemPaastaConfig = None,
 ) -> Marathon_Dashboard:
     try:
         instances: List = get_services_for_cluster(
@@ -117,7 +117,7 @@ def create_marathon_dashboard(
                 shard_url: str = shard_url_to_marathon_link_dict.get(ip_url, ip_url)
                 service_info: Marathon_Dashboard_Item = {
                     'service': service,
-                    'instance': instance,
+                    'instance': marathon_service_config.get_instance(),
                     'shard_url': shard_url,
                 }
                 dashboard[cluster].append(service_info)

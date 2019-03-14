@@ -13,12 +13,10 @@ cache:
 before_cache:
   # We don't currently use any secure environment variables, but just in case, and also to avoid caches that grow forever, remove log dirs.
   - rm -rf .tox/*/log .tox/log .tox/*/local/log
-  # For some reason (because we build the manpages toxenv inside docker, maybe?), caching .tox/manpages leads to failing itest_% builds.
-  - rm -rf .tox/manpages
 python:
   - "3.6"
 env:
-  - TOXENV=py36,docs,mypy
+  - TOXENV=py36-linux,docs,mypy
   - TOXENV=general_itests
   - TOXENV=paasta_itests
   - TOXENV=example_cluster

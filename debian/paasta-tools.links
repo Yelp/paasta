@@ -5,6 +5,7 @@ opt/venvs/paasta-tools/bin/check_chronos_has_jobs.py usr/bin/check_chronos_has_j
 opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
+opt/venvs/paasta-tools/bin/check_kubernetes_api.py usr/bin/check_kubernetes_api
 opt/venvs/paasta-tools/bin/check_kubernetes_services_replication.py usr/bin/check_kubernetes_services_replication
 opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_active_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
@@ -12,6 +13,7 @@ opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
 opt/venvs/paasta-tools/bin/check_oom_events.py usr/bin/check_oom_events
 opt/venvs/paasta-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
 opt/venvs/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
+opt/venvs/paasta-tools/bin/cleanup_kubernetes_crds.py usr/bin/cleanup_kubernetes_crds
 opt/venvs/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
 opt/venvs/paasta-tools/bin/generate_all_deployments usr/bin/generate_all_deployments
 opt/venvs/paasta-tools/bin/generate_deployments_for_service.py usr/bin/generate_deployments_for_service
@@ -55,5 +57,7 @@ opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh etc/bash_completion.d/paasta.ba
 opt/venvs/paasta-tools/bin/paasta usr/bin/paasta
 opt/venvs/paasta-tools/bin/setup_marathon_job.py usr/bin/setup_marathon_job
 opt/venvs/paasta-tools/bin/setup_kubernetes_job.py usr/bin/setup_kubernetes_job
+opt/venvs/paasta-tools/bin/setup_kubernetes_crd.py usr/bin/setup_kubernetes_crd
+opt/venvs/paasta-tools/bin/setup_kubernetes_cr.py usr/bin/setup_kubernetes_cr
 opt/venvs/paasta-tools/bin/synapse_srv_namespaces_fact.py usr/bin/synapse_srv_namespaces_fact
 opt/venvs/paasta-tools/bin/paasta_update_soa_memcpu.py usr/bin/paasta_update_soa_memcpu

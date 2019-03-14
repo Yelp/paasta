@@ -118,10 +118,27 @@ class TestTronActionConfig:
             branch_dict={},
         )
         assert action_config.get_executor() == 'mesos'
-        assert {'key': 'init', 'value': 'true'} in action_config.format_docker_parameters()
 
 
 class TestTronJobConfig:
+
+    @pytest.fixture(autouse=True)
+    def mock_read_monitoring_config(self):
+        with mock.patch(
+            'paasta_tools.monitoring_tools.read_monitoring_config',
+            mock.Mock(return_value={'team': 'default_team'}),
+            autospec=None,
+        ) as f:
+            yield f
+
+    @pytest.fixture(autouse=True)
+    def mock_list_teams(self):
+        with mock.patch(
+            'paasta_tools.tron_tools.list_teams',
+            mock.Mock(return_value=['default_team', 'valid_team', 'noop']),
+            autospec=None,
+        ) as f:
+            yield f
 
     @pytest.mark.parametrize(
         'action_service,action_deploy', [
@@ -161,6 +178,7 @@ class TestTronJobConfig:
             'deploy_group': job_deploy,
             'max_runtime': '2h',
             'actions': {'normal': action_dict},
+            'monitoring': {'team': 'noop'},
         }
 
         soa_dir = '/other_dir'
@@ -183,6 +201,7 @@ class TestTronJobConfig:
             'command': 'echo first',
             'service': expected_service,
             'deploy_group': expected_deploy,
+            'monitoring': {'team': 'noop'},
         }
 
         assert action_config == tron_tools.TronActionConfig(
@@ -231,6 +250,7 @@ class TestTronJobConfig:
             'deploy_group': 'prod',
             'max_runtime': '2h',
             'actions': {'normal': action_dict},
+            'monitoring': {'team': 'noop'},
         }
         soa_dir = '/other_dir'
         cluster = 'paasta-dev'
@@ -254,6 +274,7 @@ class TestTronJobConfig:
                 'command': 'echo first',
                 'service': 'my_service',
                 'deploy_group': 'prod',
+                'monitoring': {'team': 'noop'},
             },
             branch_dict=None,
             soa_dir=soa_dir,
@@ -286,6 +307,7 @@ class TestTronJobConfig:
             'max_runtime': '2h',
             'actions': actions,
             'expected_runtime': '1h',
+            'monitoring': {'team': 'noop'},
         }
         soa_dir = '/other_dir'
         cluster = 'paasta-dev'
@@ -303,6 +325,7 @@ class TestTronJobConfig:
                 mock_get_action_config.return_value.get_action_name.return_value: mock_format_action.return_value,
             },
             'expected_runtime': '1h',
+            'monitoring': {'team': 'noop'},
         }
 
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
@@ -326,6 +349,7 @@ class TestTronJobConfig:
             'cleanup_action': {
                 'command': 'rm *',
             },
+            'monitoring': {'team': 'noop'},
         }
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'paasta-dev')
 
@@ -344,6 +368,7 @@ class TestTronJobConfig:
                 mock_get_action_config.return_value.get_action_name.return_value: mock_format_action.return_value,
             },
             'cleanup_action': mock_format_action.return_value,
+            'monitoring': {'team': 'noop'},
         }
 
     def test_validate_all_actions(self):
@@ -365,13 +390,98 @@ class TestTronJobConfig:
                 'command': 'rm *',
                 'cpus': 'also bad',
             },
+            'monitoring': {'team': 'noop'},
         }
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert len(errors) == 3
 
-    @mock.patch('paasta_tools.tron_tools.list_teams', autospec=True)
-    def test_validate_monitoring(self, mock_teams):
+    @mock.patch('paasta_tools.tron_tools.get_pipeline_config', autospec=True)
+    def test_validate_invalid_deploy_group(self, mock_pipeline_config):
+        job_dict = {
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'deploy_group': 'invalid_deploy_group',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': {
+                'first': {
+                    'command': 'echo first',
+                },
+            },
+        }
+        mock_pipeline_config.return_value = [{'step': 'deploy_group_1'}, {'step': 'deploy_group_2'}]
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch('paasta_tools.tron_tools.get_pipeline_config', autospec=True)
+    def test_validate_valid_deploy_group(self, mock_pipeline_config):
+        job_dict = {
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'deploy_group': 'deploy_group_1',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': {
+                'first': {
+                    'command': 'echo first',
+                },
+            },
+        }
+        mock_pipeline_config.return_value = [{'step': 'deploy_group_1'}, {'step': 'deploy_group_2'}]
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
+        errors = job_config.validate()
+        assert len(errors) == 0
+
+    @mock.patch('paasta_tools.tron_tools.get_pipeline_config', autospec=True)
+    def test_validate_invalid_action_deploy_group(self, mock_pipeline_config):
+        job_dict = {
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': {
+                'first': {
+                    'command': 'echo first',
+                    'deploy_group': 'invalid_deploy_group',
+                },
+            },
+        }
+        mock_pipeline_config.return_value = [{'step': 'deploy_group_1'}, {'step': 'deploy_group_2'}]
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch('paasta_tools.tron_tools.get_pipeline_config', autospec=True)
+    def test_validate_action_valid_deploy_group(self, mock_pipeline_config):
+        job_dict = {
+            'node': 'batch_server',
+            'schedule': 'daily 12:10:00',
+            'deploy_group': 'deploy_group_1',
+            'monitoring': {
+                'team': 'noop',
+                'page': True,
+            },
+            'actions': {
+                'first': {
+                    'command': 'echo first',
+                    'deploy_group': 'deploy_group_2',
+                },
+            },
+        }
+        mock_pipeline_config.return_value = [{'step': 'deploy_group_1'}, {'step': 'deploy_group_2'}]
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
+        errors = job_config.validate()
+        assert len(errors) == 0
+
+    def test_validate_monitoring(self):
         job_dict = {
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
@@ -385,13 +495,11 @@ class TestTronJobConfig:
                 },
             },
         }
-        mock_teams.return_value = ['noop']
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch('paasta_tools.tron_tools.list_teams', autospec=True)
-    def test_validate_monitoring_without_team(self, mock_teams):
+    def test_validate_monitoring_without_team(self):
         job_dict = {
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
@@ -406,10 +514,10 @@ class TestTronJobConfig:
         }
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
         errors = job_config.validate()
-        assert errors == ['Team name is required for monitoring']
+        assert errors == []
+        assert job_config.get_monitoring()['team'] == 'default_team'
 
-    @mock.patch('paasta_tools.tron_tools.list_teams', autospec=True)
-    def test_validate_monitoring_with_invalid_team(self, mock_teams):
+    def test_validate_monitoring_with_invalid_team(self):
         job_dict = {
             'node': 'batch_server',
             'schedule': 'daily 12:10:00',
@@ -423,10 +531,22 @@ class TestTronJobConfig:
                 },
             },
         }
-        mock_teams.return_value = ['valid_team', 'weird_name']
         job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
         errors = job_config.validate()
         assert errors == ["Invalid team name: invalid_team. Do you mean one of these: ['valid_team']"]
+
+    @pytest.mark.parametrize(
+        'tronfig_monitoring', [
+            {'team': 'tronfig_team'},
+            {'non_tron_key': True},
+        ],
+    )
+    def test_get_monitoring(self, tronfig_monitoring):
+        job_dict = {'monitoring': tronfig_monitoring}
+        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake_cluster')
+        assert job_config.get_monitoring() == {
+            'team': ('tronfig_team' if 'team' in tronfig_monitoring else 'default_team'),
+        }
 
 
 class TestTronTools:
@@ -535,6 +655,9 @@ class TestTronTools:
             'extra_volumes': [
                 {'containerPath': '/nail/tmp', 'hostPath': '/nail/tmp', 'mode': 'RW'},
             ],
+            'trigger_downstreams': True,
+            'triggered_by': ['foo.bar.{shortdate}'],
+            'trigger_timeout': '5m',
         }
         branch_dict = {
             'docker_image': 'my_service:paasta-123abcde',
@@ -580,6 +703,9 @@ class TestTronTools:
                     'value': 'special_pool',
                 },
             ],
+            'trigger_downstreams': True,
+            'triggered_by': ['foo.bar.{shortdate}'],
+            'trigger_timeout': '5m',
         }
         expected_docker = '{}/{}'.format('docker-registry.com:400', branch_dict['docker_image'])
         assert result['docker_image'] == expected_docker
@@ -681,6 +807,7 @@ class TestTronTools:
     @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
     def test_load_tron_service_config(self, mock_load_tron_yaml):
         mock_load_tron_yaml.return_value = {
+            '_template': {'actions': {'action1': {}}},
             'extra': 'data',
             'jobs': {
                 'job1': {
@@ -701,7 +828,7 @@ class TestTronTools:
                 soa_dir='fake',
             ),
         ]
-        assert extra_config == {'extra': 'data'}
+        assert extra_config == {'extra': 'data'}  # template filtered out
         mock_load_tron_yaml.assert_called_once_with(
             service='service',
             cluster='test-cluster',

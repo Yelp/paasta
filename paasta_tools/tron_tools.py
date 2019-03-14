@@ -13,7 +13,9 @@
 import datetime
 import difflib
 import glob
+import json
 import os
+import pkgutil
 import re
 import subprocess
 from string import Formatter
@@ -38,13 +40,21 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 
+from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.utils import get_pipeline_config
+from paasta_tools.utils import is_deploy_step
 from typing import Optional
 from typing import Dict
 from typing import Any
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
+VALID_MONITORING_KEYS = set(
+    json.loads(
+        pkgutil.get_data('paasta_tools.cli', 'schemas/tron_schema.json').decode(),
+    )['definitions']['job']['properties']['monitoring']['properties'].keys(),
+)
 
 
 class TronNotConfigured(Exception):
@@ -117,7 +127,7 @@ class StringFormatter(Formatter):
 
 def parse_time_variables(
     command: str,
-    parse_time: datetime.datetime=None,
+    parse_time: datetime.datetime = None,
 ) -> str:
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
@@ -168,12 +178,6 @@ class TronActionConfig(InstanceConfig):
     def get_executor(self):
         executor = self.config_dict.get('executor', None)
         return 'mesos' if executor == 'paasta' else executor
-
-    def format_docker_parameters(self):
-        init = {'key': 'init', 'value': 'true'}
-        params = super().format_docker_parameters()
-        params.append(init)
-        return params
 
     def get_healthcheck_mode(self, _) -> None:
         return None
@@ -227,23 +231,36 @@ class TronActionConfig(InstanceConfig):
     def get_nerve_namespace(self) -> None:
         return None
 
+    def check_deploy_group(self) -> Tuple[bool, str]:
+        deploy_group = self.get_deploy_group()
+        if deploy_group is not None:
+            pipeline_steps = [step['step'] for step in get_pipeline_config(self.service, self.soa_dir)]
+            pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
+            if deploy_group not in pipeline_deploy_groups:
+                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
+        return True, ''
+
     def validate(self) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs = super().validate()
-
+        name = self.get_instance()
+        msgs: List[str] = []
         if error_msgs:
-            name = self.get_instance()
-            return [f'{name}: {msg}' for msg in error_msgs]
-        else:
-            return []
+            msgs += [f'{name}: {msg}' for msg in error_msgs]
+
+        check_pass, check_msg = self.check_deploy_group()
+        if check_pass is False:
+            msgs.append(f'{name}: {check_msg}')
+
+        return msgs
 
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
     def __init__(
-        self, name: str, config_dict: Dict[str, Any], cluster: str, service: Optional[str]=None,
-        load_deployments: bool=True, soa_dir: str=DEFAULT_SOA_DIR,
+        self, name: str, config_dict: Dict[str, Any], cluster: str, service: Optional[str] = None,
+        load_deployments: bool = True, soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         self.name = name
         self.config_dict = config_dict
@@ -262,7 +279,19 @@ class TronJobConfig:
         return self.config_dict.get('schedule')
 
     def get_monitoring(self):
-        return self.config_dict.get('monitoring')
+        srv_monitoring = dict(monitoring_tools.read_monitoring_config(
+            self.service,
+            soa_dir=self.soa_dir,
+        ))
+        tron_monitoring = self.config_dict.get('monitoring', {})
+        srv_monitoring.update(tron_monitoring)
+        # filter out non-tron monitoring keys
+        srv_monitoring = {
+            k: v
+            for k, v in srv_monitoring.items()
+            if k in VALID_MONITORING_KEYS
+        }
+        return srv_monitoring
 
     def get_queueing(self):
         return self.config_dict.get('queueing')
@@ -322,6 +351,7 @@ class TronJobConfig:
                 )
         else:
             branch_dict = None
+        action_dict['monitoring'] = self.get_monitoring()
 
         return TronActionConfig(
             service=action_service,
@@ -387,9 +417,11 @@ class TronJobConfig:
 
     def validate(self) -> List[str]:
         _, error_msgs = self.check_actions()
-        check_passed, check_msg = self.check_monitoring()
-        if not check_passed:
-            error_msgs.append(check_msg)
+        checks = ['check_monitoring']
+        for check in checks:
+            check_passed, check_msg = getattr(self, check)()
+            if not check_passed:
+                error_msgs.append(check_msg)
         return error_msgs
 
     def __eq__(self, other):
@@ -501,8 +533,8 @@ def load_tron_instance_config(
     service: str,
     instance: str,
     cluster: str,
-    load_deployments: bool=True,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> TronActionConfig:
     jobs, _ = load_tron_service_config(
         service=service,
@@ -536,6 +568,7 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
 def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
+    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
     jobs = config.get('jobs') or []
     if isinstance(jobs, list):
@@ -593,7 +626,7 @@ def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     )
 
 
-def validate_complete_config(service: str, cluster: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
     job_configs, other_config = load_tron_service_config(
         service=service,
         cluster=cluster,
@@ -680,7 +713,7 @@ def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return namespaces
 
 
-def list_tron_clusters(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> List[str]:
+def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
     """Returns the Tron clusters a service is configured to deploy to."""
     search_re = r'/tron-([0-9a-z-_]*)\.yaml$'
     service_dir = os.path.join(soa_dir, service)

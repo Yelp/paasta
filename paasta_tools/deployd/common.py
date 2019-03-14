@@ -47,9 +47,9 @@ class ServiceInstance(BaseServiceInstance):
         watcher: str,
         cluster: str,
         bounce_by: float,
-        failures: int=0,
-        bounce_timers: Optional[BounceTimers]=None,
-        priority: Optional[int]=None,
+        failures: int = 0,
+        bounce_timers: Optional[BounceTimers] = None,
+        priority: Optional[int] = None,
     ) -> 'ServiceInstance':
         if priority is None:
             priority = get_priority(service, instance, cluster)
@@ -73,7 +73,7 @@ def get_priority(service: str, instance: str, cluster: str) -> int:
             cluster=cluster,
             soa_dir=DEFAULT_SOA_DIR,
         )
-    except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError) as e:
+    except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError):
         return 0
     return config.get_bounce_priority()
 
@@ -133,7 +133,7 @@ def rate_limit_instances(
     cluster: str,
     number_per_minute: float,
     watcher_name: str,
-    priority: Optional[float]=None,
+    priority: Optional[float] = None,
 ) -> List[ServiceInstance]:
     service_instances = []
     if not instances:

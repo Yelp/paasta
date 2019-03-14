@@ -31,6 +31,7 @@ import argparse
 import sys
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
+from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
@@ -111,9 +112,10 @@ def get_service_instances_that_need_bouncing(marathon_clients, soa_dir):
     for app_id, job_config in desired_job_configs.items():
         desired_ids_and_clients.add((app_id, marathon_clients.get_current_client_for_service(job_config)))
 
-    current_apps_with_clients = {}
-    for client in marathon_clients.get_all_clients():
-        current_apps_with_clients.update({(app.id.lstrip('/'), client): app for app in client.list_apps()})
+    current_apps_with_clients = {
+        (app.id.lstrip('/'), client): app
+        for app, client in get_marathon_apps_with_clients(marathon_clients.get_all_clients())
+    }
     actual_ids_and_clients = set(current_apps_with_clients.keys())
 
     undesired_apps_and_clients = actual_ids_and_clients.symmetric_difference(desired_ids_and_clients)

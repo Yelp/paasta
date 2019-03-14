@@ -150,6 +150,8 @@ def test_rerun_validations(test_case, capfd, system_paasta_config):
     ) as mock_get_default_execution_date, patch(
         'paasta_tools.cli.cmds.rerun.load_system_paasta_config', autospec=True,
     ) as mock_load_system_paasta_config, patch(
+        'paasta_tools.cli.cmds.rerun._log_audit', autospec=True,
+    ) as mock_log_audit, patch(
         'paasta_tools.chronos_tools.read_chronos_jobs_for_service', autospec=True,
     ) as mock_read_chronos_jobs_for_service, patch(
         'service_configuration_lib.read_services_configuration', autospec=True,
@@ -218,6 +220,17 @@ def test_rerun_validations(test_case, capfd, system_paasta_config):
                 run_all_related_jobs=bool(args.rerun_type and args.rerun_type == 'graph'),
                 force_disabled=args.force_disabled,
                 system_paasta_config=mock_load_system_paasta_config.return_value,
+            )
+
+            mock_log_audit.assert_called_once_with(
+                action='chronos-rerun',
+                action_details={
+                    'rerun_type': args.rerun_type,
+                    'execution_date': execution_date.strftime(EXECUTION_DATE_FORMAT),
+                },
+                service=args.service,
+                cluster=mock.ANY,
+                instance=args.instance,
             )
 
         # The job does use time vars interpolation. Make sure the User supplied date was used.

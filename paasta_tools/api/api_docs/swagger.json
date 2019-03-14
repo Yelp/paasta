@@ -576,6 +576,10 @@
         "tron": {
           "$ref": "#/definitions/InstanceStatusTron",
           "description": "Tron instance status"
+        },
+        "flinkcluster": {
+          "$ref": "#/definitions/InstanceStatusFlinkCluster",
+          "description": "Flink instance status"
         }
       }
     },
@@ -843,7 +847,10 @@
         }
       }
     },
-   "InstanceTasks": {
+    "InstanceStatusFlinkCluster": {
+      "type": "object"
+    },
+    "InstanceTasks": {
       "type": "array",
       "description": "List of tasks associated with instance",
       "items": {

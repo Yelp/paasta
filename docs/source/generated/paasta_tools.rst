@@ -25,10 +25,12 @@ Submodules
    paasta_tools.adhoc_tools
    paasta_tools.am_i_mesos_leader
    paasta_tools.async_utils
+   paasta_tools.automatic_rollbacks
    paasta_tools.autoscale_all_services
    paasta_tools.autoscale_cluster
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
+   paasta_tools.check_kubernetes_api
    paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
@@ -36,6 +38,7 @@ Submodules
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
    paasta_tools.cleanup_chronos_jobs
+   paasta_tools.cleanup_kubernetes_crds
    paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
    paasta_tools.cleanup_tron_namespaces
@@ -46,6 +49,7 @@ Submodules
    paasta_tools.firewall
    paasta_tools.firewall_logging
    paasta_tools.firewall_update
+   paasta_tools.flinkcluster_tools
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
@@ -79,6 +83,8 @@ Submodules
    paasta_tools.remote_git
    paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
+   paasta_tools.setup_kubernetes_cr
+   paasta_tools.setup_kubernetes_crd
    paasta_tools.setup_kubernetes_job
    paasta_tools.setup_marathon_job
    paasta_tools.setup_tron_namespace

@@ -35,10 +35,11 @@ from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import ensure_paasta_namespace
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
@@ -53,25 +54,27 @@ from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubeService
 from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
+from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def test_load_kubernetes_service_config_no_cache():
@@ -315,7 +318,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     ports=[V1ContainerPort(container_port=6666)],
                     readiness_probe=V1Probe(
                         _exec=V1ExecAction(
-                            command=['/nail/blah.sh', 'universal.credit'],
+                            command=['/nail/blah.sh', '8888', 'universal.credit'],
                         ),
                         initial_delay_seconds=10,
                         period_seconds=10,
@@ -509,7 +512,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         liveness_probe = V1Probe(
             failure_threshold=30,
             _exec=V1ExecAction(
-                command='/bin/true',
+                command=[
+                    '/bin/sh',
+                    '-c',
+                    '/bin/true',
+                ],
             ),
             initial_delay_seconds=60,
             period_seconds=10,
@@ -677,8 +684,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={
-                            'instance': mock_get_instance.return_value,
-                            'service': mock_get_service.return_value,
+                            'yelp.com/paasta_instance': mock_get_instance.return_value,
+                            'yelp.com/paasta_service': mock_get_service.return_value,
                         },
                     ),
                     strategy=mock_get_deployment_strategy_config.return_value,
@@ -686,9 +693,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
-            ret.metadata.labels.__setitem__.assert_called_with('config_sha', mock_get_config_hash.return_value)
+            ret.metadata.labels.__setitem__.assert_called_with(
+                'yelp.com/paasta_config_sha', mock_get_config_hash.return_value,
+            )
             ret.spec.template.metadata.labels.__setitem__.assert_called_with(
-                'config_sha',
+                'yelp.com/paasta_config_sha',
                 mock_get_config_hash.return_value,
             )
 
@@ -707,8 +716,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={
-                            'instance': mock_get_instance.return_value,
-                            'service': mock_get_service.return_value,
+                            'yelp.com/paasta_instance': mock_get_instance.return_value,
+                            'yelp.com/paasta_service': mock_get_service.return_value,
                         },
                     ),
                     template=mock_get_pod_template_spec.return_value,
@@ -716,9 +725,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
-            ret.metadata.labels.__setitem__.assert_called_with('config_sha', mock_get_config_hash.return_value)
+            ret.metadata.labels.__setitem__.assert_called_with(
+                'yelp.com/paasta_config_sha', mock_get_config_hash.return_value,
+            )
             ret.spec.template.metadata.labels.__setitem__.assert_called_with(
-                'config_sha',
+                'yelp.com/paasta_config_sha',
                 mock_get_config_hash.return_value,
             )
 
@@ -741,12 +752,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             assert ret == V1PodTemplateSpec(
                 metadata=V1ObjectMeta(
                     labels={
-                        'git_sha': 'aaaa123',
-                        'instance': mock_get_instance.return_value,
-                        'service': mock_get_service.return_value,
+                        'yelp.com/paasta_git_sha': 'aaaa123',
+                        'yelp.com/paasta_instance': mock_get_instance.return_value,
+                        'yelp.com/paasta_service': mock_get_service.return_value,
+                    },
+                    annotations={
+                        'smartstack_registrations': '["kurupt.fm"]',
                     },
                 ),
                 spec=V1PodSpec(
+                    service_account_name=None,
                     containers=mock_get_kubernetes_containers.return_value,
                     restart_policy='Always',
                     volumes=[],
@@ -765,9 +780,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             ret = self.deployment.get_kubernetes_metadata('aaa123')
             assert ret == V1ObjectMeta(
                 labels={
-                    'git_sha': 'aaa123',
-                    'instance': mock_get_instance.return_value,
-                    'service': mock_get_service.return_value,
+                    'yelp.com/paasta_git_sha': 'aaa123',
+                    'yelp.com/paasta_instance': mock_get_instance.return_value,
+                    'yelp.com/paasta_service': mock_get_service.return_value,
                 },
                 name='kurupt-fm',
             )
@@ -859,6 +874,19 @@ def test_get_kubernetes_services_running_here():
         mock_requests_get.return_value.json.return_value = {'items': []}
         assert get_kubernetes_services_running_here() == []
 
+        spec = {
+            'containers': [
+                {
+                    'name': 'something-something',
+                    'ports': [
+                        {
+                            'containerPort': 8888,
+                        },
+                    ],
+                },
+            ],
+        }
+
         mock_requests_get.return_value.json.return_value = {'items': [
             {
                 'status': {
@@ -868,10 +896,14 @@ def test_get_kubernetes_services_running_here():
                 'metadata': {
                     'namespace': 'paasta',
                     'labels': {
-                        'service': 'kurupt',
-                        'instance': 'fm',
+                        'yelp.com/paasta_service': 'kurupt',
+                        'yelp.com/paasta_instance': 'fm',
+                    },
+                    'annotations': {
+                        'smartstack_registrations': "[]",
                     },
                 },
+                'spec': spec,
             }, {
                 'status': {
                     'phase': 'Something',
@@ -880,10 +912,14 @@ def test_get_kubernetes_services_running_here():
                 'metadata': {
                     'namespace': 'paasta',
                     'labels': {
-                        'service': 'kurupt',
-                        'instance': 'garage',
+                        'yelp.com/paasta_service': 'kurupt',
+                        'yelp.com/paasta_instance': 'garage',
+                    },
+                    'annotations': {
+                        'smartstack_registrations': "[]",
                     },
                 },
+                'spec': spec,
             }, {
                 'status': {
                     'phase': 'Running',
@@ -891,22 +927,28 @@ def test_get_kubernetes_services_running_here():
                 'metadata': {
                     'namespace': 'paasta',
                     'labels': {
-                        'service': 'kurupt',
-                        'instance': 'grindah',
+                        'yelp.com/paasta_service': 'kurupt',
+                        'yelp.com/paasta_instance': 'grindah',
+                    },
+                    'annotations': {
+                        'smartstack_registrations': "[]",
                     },
                 },
+                'spec': spec,
             }, {
                 'status': {
                     'phase': 'Running',
                     'podIP': '10.1.1.1',
                 },
                 'metadata': {
-                    'namespace': 'kube-system',
+                    'namespace': 'paasta',
                     'labels': {
-                        'service': 'kurupt',
-                        'instance': 'beats',
+                        'yelp.com/paasta_service': 'kurupt',
+                        'yelp.com/paasta_instance': 'beats',
                     },
+                    'annotations': {},
                 },
+                'spec': spec,
             },
         ]}
         assert get_kubernetes_services_running_here() == [
@@ -915,6 +957,7 @@ def test_get_kubernetes_services_running_here():
                 instance='fm',
                 port=8888,
                 pod_ip='10.1.1.1',
+                registrations=[],
             ),
         ]
 
@@ -930,41 +973,33 @@ def test_get_kubernetes_services_running_here_for_nerve():
     ) as mock_load_system_config, mock.patch(
         'paasta_tools.kubernetes_tools.get_kubernetes_services_running_here', autospec=True,
     ) as mock_get_kubernetes_services_running_here, mock.patch(
-        'paasta_tools.kubernetes_tools.load_kubernetes_service_config', autospec=True,
-    ) as mock_load_kubernetes_service_config, mock.patch(
         'paasta_tools.kubernetes_tools.load_service_namespace_config', autospec=True,
     ) as mock_load_service_namespace:
 
+        mock_load_service_namespace.side_effect = lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
         mock_get_kubernetes_services_running_here.return_value = [
             KubeService(
                 name='kurupt',
                 instance='fm',
                 port=8888,
                 pod_ip='10.1.1.1',
+                registrations=['kurupt.fm'],
+            ),
+            KubeService(
+                name='unkurupt',
+                instance='garage',
+                port=8888,
+                pod_ip='10.1.1.1',
+                registrations=['unkurupt.garage'],
             ),
             KubeService(
                 name='kurupt',
                 instance='garage',
                 port=8888,
                 pod_ip='10.1.1.1',
+                registrations=[],
             ),
         ]
-
-        def mock_load_side_effect(
-            service,
-            instance,
-            cluster,
-            load_deployments,
-            soa_dir,
-        ):
-            return mock.Mock(get_registrations=mock.Mock(return_value=[f'{service}.{instance}']))
-
-        mock_load_kubernetes_service_config.return_value.get_registrations.side_effect = lambda a, b, c, d: [f"{a}.{b}"]
-        mock_load_kubernetes_service_config.side_effect = mock_load_side_effect
-        mock_load_service_namespace.side_effect = lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
-        mock_load_system_config.side_effect = PaastaNotConfiguredError
-        ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
-        assert ret == []
 
         mock_load_system_config.side_effect = None
         mock_load_system_config.return_value = mock.Mock(
@@ -987,24 +1022,26 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 'port': 8888,
             },
         )]
-        mock_load_kubernetes_service_config.assert_has_calls([
-            mock.call(
-                service='kurupt',
-                instance='fm',
-                cluster='brentford',
-                soa_dir='/nail/blah',
-                load_deployments=False,
-            ),
-            mock.call(
-                service='kurupt',
-                instance='garage',
-                cluster='brentford',
-                soa_dir='/nail/blah',
-                load_deployments=False,
-            ),
-        ])
 
-        mock_load_kubernetes_service_config.side_effect = NoConfigurationForServiceError
+        mock_load_system_config.return_value = mock.Mock(
+            get_cluster=mock.Mock(return_value='brentford'),
+            get_register_k8s_pods=mock.Mock(return_value=True),
+            get_kubernetes_use_hacheck_sidecar=mock.Mock(return_value=False),
+        )
+        ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
+        assert ret == [(
+            'kurupt.fm', {
+                'name': 'fm',
+                'service_ip': '10.1.1.1',
+                'port': 8888,
+            },
+        )]
+
+        def mock_load_namespace_side(service, namespace, soa_dir):
+            if namespace != 'kurupt':
+                raise Exception
+            return MockNerveDict(name=namespace)
+        mock_load_service_namespace.side_effect = mock_load_namespace_side
         ret = get_kubernetes_services_running_here_for_nerve('brentford', '/nail/blah')
         assert ret == []
 
@@ -1020,25 +1057,25 @@ def test_KubeClient():
         assert client.core == mock_kube_client.CoreV1Api()
 
 
-def test_ensure_paasta_namespace():
+def test_ensure_namespace():
     mock_metadata = mock.Mock()
     type(mock_metadata).name = 'paasta'
     mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
     mock_client = mock.Mock(core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)))
-    ensure_paasta_namespace(mock_client)
+    ensure_namespace(mock_client, namespace='paasta')
     assert not mock_client.core.create_namespace.called
 
     mock_metadata = mock.Mock()
     type(mock_metadata).name = 'kube-system'
     mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
     mock_client = mock.Mock(core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)))
-    ensure_paasta_namespace(mock_client)
+    ensure_namespace(mock_client, namespace='paasta')
     assert mock_client.core.create_namespace.called
 
     mock_client.core.create_namespace.reset_mock()
     mock_namespaces = mock.Mock(items=[])
     mock_client = mock.Mock(core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)))
-    ensure_paasta_namespace(mock_client)
+    ensure_namespace(mock_client, namespace='paasta')
     assert mock_client.core.create_namespace.called
 
 
@@ -1057,20 +1094,20 @@ def test_list_all_deployments():
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    'service': 'kurupt',
-                    'instance': 'fm',
-                    'git_sha': 'a12345',
-                    'config_sha': 'b12345',
+                    'yelp.com/paasta_service': 'kurupt',
+                    'yelp.com/paasta_instance': 'fm',
+                    'yelp.com/paasta_git_sha': 'a12345',
+                    'yelp.com/paasta_config_sha': 'b12345',
                 },
             ),
         ),
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    'service': 'kurupt',
-                    'instance': 'am',
-                    'git_sha': 'a12345',
-                    'config_sha': 'b12345',
+                    'yelp.com/paasta_service': 'kurupt',
+                    'yelp.com/paasta_instance': 'am',
+                    'yelp.com/paasta_git_sha': 'a12345',
+                    'yelp.com/paasta_config_sha': 'b12345',
                 },
             ),
         ),
@@ -1123,8 +1160,8 @@ def test_pod_disruption_budget_for_service_instance():
     assert x.metadata.namespace == "paasta"
     assert x.spec.min_available == 10
     assert x.spec.selector.match_labels == {
-        'service': 'foo',
-        'instance': 'bar',
+        'yelp.com/paasta_service': 'foo',
+        'yelp.com/paasta_instance': 'bar',
     }
 
 
@@ -1162,6 +1199,79 @@ def test_update_deployment():
         namespace='paasta',
         body=V1Deployment(api_version='some'),
     )
+
+
+def test_create_custom_resource():
+    mock_client = mock.Mock()
+    formatted_resource = mock.Mock()
+    create_custom_resource(
+        kube_client=mock_client,
+        formatted_resource=formatted_resource,
+        version='v1',
+        kind=mock.Mock(plural='someclusters'),
+        group='yelp.com',
+    )
+    mock_client.custom.create_namespaced_custom_object.assert_called_with(
+        namespace='paasta-someclusters',
+        body=formatted_resource,
+        version='v1',
+        plural='someclusters',
+        group='yelp.com',
+    )
+
+
+def test_update_custom_resource():
+    mock_get_object = mock.Mock(return_value={'metadata': {'resourceVersion': 2}})
+    mock_client = mock.Mock(custom=mock.Mock(get_namespaced_custom_object=mock_get_object))
+    mock_formatted_resource = {'metadata': {}}
+    update_custom_resource(
+        kube_client=mock_client,
+        formatted_resource=mock_formatted_resource,
+        version='v1',
+        kind=mock.Mock(plural='someclusters'),
+        name='grindah',
+        group='yelp.com',
+    )
+    mock_client.custom.replace_namespaced_custom_object.assert_called_with(
+        namespace='paasta-someclusters',
+        group='yelp.com',
+        name='grindah',
+        version='v1',
+        plural='someclusters',
+        body={'metadata': {'resourceVersion': 2}},
+    )
+
+
+def test_list_custom_resources():
+    mock_list_object = mock.Mock(return_value={
+        'items': [
+            {'some': 'nonpaasta'},
+            {
+                'kind': 'somecluster',
+                'metadata': {
+                    'labels': {
+                        'yelp.com/paasta_service': 'kurupt',
+                        'yelp.com/paasta_instance': 'fm',
+                        'yelp.com/paasta_config_sha': 'con123',
+                    },
+                },
+            },
+        ],
+    })
+
+    mock_client = mock.Mock(custom=mock.Mock(list_namespaced_custom_object=mock_list_object))
+    expected = [KubeCustomResource(
+        service='kurupt',
+        instance='fm',
+        config_sha='con123',
+        kind='somecluster',
+    )]
+    assert list_custom_resources(
+        kind=mock.Mock(plural='someclusters'),
+        version='v1',
+        kube_client=mock_client,
+        group='yelp.com',
+    ) == expected
 
 
 def test_create_stateful_set():
@@ -1276,16 +1386,16 @@ def test_pods_for_service_instance():
 def test_get_active_shas_for_service():
     mock_pod_list = [
         mock.Mock(metadata=mock.Mock(labels={
-            'config_sha': 'a123',
-            'git_sha': 'b456',
+            'yelp.com/paasta_config_sha': 'a123',
+            'yelp.com/paasta_git_sha': 'b456',
         })),
         mock.Mock(metadata=mock.Mock(labels={
-            'config_sha': 'a123!!!',
-            'git_sha': 'b456!!!',
+            'yelp.com/paasta_config_sha': 'a123!!!',
+            'yelp.com/paasta_git_sha': 'b456!!!',
         })),
         mock.Mock(metadata=mock.Mock(labels={
-            'config_sha': 'a123!!!',
-            'git_sha': 'b456!!!',
+            'yelp.com/paasta_config_sha': 'a123!!!',
+            'yelp.com/paasta_git_sha': 'b456!!!',
         })),
     ]
     assert get_active_shas_for_service(mock_pod_list) == {
@@ -1307,12 +1417,12 @@ def test_get_all_nodes():
 def test_filter_pods_for_service_instance():
     mock_pod_1 = mock.MagicMock(
         metadata=mock.MagicMock(
-            labels={'service': 'kurupt', 'instance': 'fm'},
+            labels={'yelp.com/paasta_service': 'kurupt', 'yelp.com/paasta_instance': 'fm'},
         ),
     )
     mock_pod_2 = mock.MagicMock(
         metadata=mock.MagicMock(
-            labels={'service': 'kurupt', 'instance': 'garage'},
+            labels={'yelp.com/paasta_service': 'kurupt', 'yelp.com/paasta_instance': 'garage'},
         ),
     )
     mock_pods = [mock_pod_1, mock_pod_2]

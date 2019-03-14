@@ -174,6 +174,27 @@ _main_http:
 
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_marathon_validate_understands_underscores(
+    mock_get_file_contents, capfd,
+):
+    marathon_content = """
+---
+_template: &template
+  foo: bar
+
+main:
+  cpus: 0.1
+  instances: 2
+  env:
+    <<: *template
+"""
+    mock_get_file_contents.return_value = marathon_content
+    assert validate_schema('unused_service_path.yaml', 'marathon')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
 def test_marathon_validate_schema_healthcheck_non_cmd(
     mock_get_file_contents, capfd,
 ):
@@ -630,7 +651,32 @@ jobs:
           cluster: paasta-cluster-1
           cpus: 0.5
           mem: 100
+          disk: 500
           pool: custom
+"""
+    mock_get_file_contents.return_value = tron_content
+    assert validate_schema('unused_service_path.yaml', 'tron')
+    output, _ = capfd.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents', autospec=True)
+def test_tron_validate_schema_understands_underscores(
+    mock_get_file_contents, capfd,
+):
+    tron_content = """
+_my_template: &a_template
+    actions:
+        - name: first
+          command: echo hello world
+
+jobs:
+    - name: test_job
+      node: batch_box
+      schedule:
+        type: cron
+        value: "0 7 * * 5"
+      <<: *a_template
 """
     mock_get_file_contents.return_value = tron_content
     assert validate_schema('unused_service_path.yaml', 'tron')

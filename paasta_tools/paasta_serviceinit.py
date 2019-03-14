@@ -106,7 +106,7 @@ class PaastaClients():
     _marathon: Optional[marathon_tools.MarathonClients]
     _chronos: Optional[ChronosClient]
 
-    def __init__(self, cached: bool=False) -> None:
+    def __init__(self, cached: bool = False) -> None:
         self._cached = cached
         self._marathon = None
         self._chronos = None
@@ -237,8 +237,6 @@ def main() -> None:
                         soa_dir=args.soa_dir,
                     )
                 elif instance_type == 'adhoc':
-                    if instance == 'interactive':
-                        continue
                     if command != 'status':
                         raise NotImplementedError
                     paasta_remote_run.remote_run_list_report(

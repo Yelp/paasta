@@ -29,6 +29,7 @@ from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.utils import _log
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -132,6 +133,11 @@ def paasta_push_to_registry(args):
             loglines.append('See output: %s' % output)
     else:
         loglines.append('Successfully pushed image for %s to registry' % args.commit)
+        _log_audit(
+            action='push-to-registry',
+            action_details={'commit': args.commit},
+            service=service,
+        )
     for logline in loglines:
         _log(
             service=service,

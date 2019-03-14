@@ -17,6 +17,7 @@ import json
 import os
 import socket
 import sys
+import threading
 import time
 import uuid
 from os import execlpe
@@ -35,6 +36,7 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
+from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import get_secret_provider
@@ -44,6 +46,7 @@ from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -188,6 +191,29 @@ def simulate_healthcheck_on_service(
         # silently start performing health checks until grace period ends or first check succeeds
         graceperiod_end_time = time.time() + grace_period
         after_grace_period_attempts = 0
+        healthchecking = True
+
+        def _stream_docker_logs(container_id, generator):
+            while healthchecking:
+                try:
+                    # the generator will block until another log line is available
+                    log_line = next(generator).decode("utf-8").rstrip('\n')
+                    if healthchecking:
+                        paasta_print(f'container [{container_id[:12]}]: {log_line}')
+                    else:
+                        # stop streaming at first opportunity, since generator.close()
+                        # cant be used until the container is dead
+                        break
+                except StopIteration:  # natural end of logs
+                    break
+
+        docker_logs_generator = docker_client.logs(container_id, stderr=True, stream=True)
+        threading.Thread(
+            target=_stream_docker_logs,
+            daemon=True,
+            args=(container_id, docker_logs_generator),
+        ).start()
+
         while True:
             # First inspect the container for early exits
             container_state = docker_client.inspect_container(container_id)
@@ -236,6 +262,7 @@ def simulate_healthcheck_on_service(
                 break
 
             time.sleep(interval)
+        healthchecking = False   # end docker logs stream
     else:
         paasta_print('\nPaaSTA would have healthchecked your service via\n%s' % healthcheck_link)
         healthcheck_passed = True
@@ -408,6 +435,18 @@ def add_subparser(subparsers):
         action='store_true',
         default=False,
     )
+    list_parser.add_argument(
+        '--sha',
+        help=(
+            'SHA to run instead of the currently marked-for-deployment SHA. Ignored when used with --build.'
+            ' Must be a version that exists in the registry, i.e. it has been built by Jenkins.'
+        ),
+        type=str,
+        dest='sha',
+        required=False,
+        default=None,
+    )
+
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -525,6 +564,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         'MESOS_CONTAINER_NAME': 'localrun-%s' % fake_taskid,
         'MESOS_TASK_ID': str(fake_taskid),
         'PAASTA_DOCKER_IMAGE': docker_image,
+        'PAASTA_LAUNCHED_BY': get_possible_launched_by_user_variable_from_env(),
     }
     if framework == 'marathon':
         env['MARATHON_PORT'] = str(port0)
@@ -634,7 +674,7 @@ def run_docker_container(
     docker_client,
     service,
     instance,
-    docker_hash,
+    docker_url,
     volumes,
     interactive,
     command,
@@ -718,7 +758,7 @@ def run_docker_container(
         env=environment,
         interactive=interactive,
         detach=simulate_healthcheck,
-        docker_hash=docker_hash,
+        docker_hash=docker_url,
         command=command,
         net=net,
         docker_params=docker_params,
@@ -777,17 +817,13 @@ def run_docker_container(
                 healthcheck_enabled=healthcheck,
             )
 
-        def _output_stdout_and_exit_code():
+        def _output_exit_code():
             returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
-            paasta_print('Container exited: %d)' % returncode)
-            paasta_print('Here is the stdout and stderr:\n\n')
-            paasta_print(
-                docker_client.attach(container_id, stderr=True, stream=False, logs=True),
-            )
+            paasta_print(f'Container exited: {returncode})')
 
         if healthcheck_only:
             if container_started:
-                _output_stdout_and_exit_code()
+                _output_exit_code()
                 _cleanup_container(docker_client, container_id)
             if healthcheck_mode is None:
                 paasta_print('--healthcheck-only, but no healthcheck is defined for this instance!')
@@ -803,7 +839,7 @@ def run_docker_container(
             for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
                 paasta_print(line)
         else:
-            _output_stdout_and_exit_code()
+            _output_exit_code()
             returncode = 3
 
     except KeyboardInterrupt:
@@ -849,7 +885,8 @@ def command_function_for_framework(framework, date):
 
 def configure_and_run_docker_container(
         docker_client,
-        docker_hash,
+        docker_url,
+        docker_sha,
         service,
         instance,
         cluster,
@@ -878,7 +915,7 @@ def configure_and_run_docker_container(
 
     soa_dir = args.yelpsoa_config_root
     volumes = list()
-    load_deployments = docker_hash is None or pull_image
+    load_deployments = (docker_url is None or pull_image) and not docker_sha
     interactive = args.interactive
 
     try:
@@ -907,8 +944,8 @@ def configure_and_run_docker_container(
     except NoDeploymentsAvailable:
         paasta_print(
             PaastaColors.red(
-                "Error: No deployments.json found in %(soa_dir)s/%(service)s."
-                "You can generate this by running:"
+                "Error: No deployments.json found in %(soa_dir)s/%(service)s. "
+                "You can generate this by running: "
                 "generate_deployments_for_service -d %(soa_dir)s -s %(service)s" % {
                     'soa_dir': soa_dir,
                     'service': service,
@@ -919,7 +956,15 @@ def configure_and_run_docker_container(
         )
         return 1
 
-    if docker_hash is None:
+    if docker_sha is not None:
+        instance_config.branch_dict = {
+            'git_sha': docker_sha,
+            'docker_image': build_docker_image_name(service=service, sha=docker_sha),
+            'desired_state': 'start',
+            'force_bounce': None,
+        }
+
+    if docker_url is None:
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
@@ -945,7 +990,6 @@ def configure_and_run_docker_container(
                     file=sys.stderr,
                 )
             return 1
-        docker_hash = docker_url
 
     if pull_image:
         docker_pull_image(docker_url)
@@ -982,7 +1026,7 @@ def configure_and_run_docker_container(
         docker_client=docker_client,
         service=service,
         instance=instance,
-        docker_hash=docker_hash,
+        docker_url=docker_url,
         volumes=volumes,
         interactive=interactive,
         command=command,
@@ -1051,25 +1095,31 @@ def paasta_local_run(args):
     instance = args.instance
     docker_client = get_docker_client()
 
+    docker_sha = None
+    docker_url = None
+
     if args.action == 'build':
         default_tag = 'paasta-local-run-{}-{}'.format(service, get_username())
-        tag = os.environ.get('DOCKER_TAG', default_tag)
-        os.environ['DOCKER_TAG'] = tag
+        docker_url = os.environ.get('DOCKER_TAG', default_tag)
+        os.environ['DOCKER_TAG'] = docker_url
         pull_image = False
         cook_return = paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
         if cook_return != 0:
             return cook_return
     elif args.action == 'dry_run':
         pull_image = False
-        tag = None
+        docker_url = None
+        docker_sha = args.sha
     else:
         pull_image = True
-        tag = None
+        docker_url = None
+        docker_sha = args.sha
 
     try:
         return configure_and_run_docker_container(
             docker_client=docker_client,
-            docker_hash=tag,
+            docker_url=docker_url,
+            docker_sha=docker_sha,
             service=service,
             instance=instance,
             cluster=cluster,

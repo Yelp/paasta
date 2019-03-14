@@ -24,10 +24,10 @@ from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
 from time import sleep
-from typing import Any  # noqa
-from typing import Dict  # noqa
-from typing import List  # noqa
-from typing import Set  # noqa
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Set
 
 import isodate
 import pytz
@@ -786,6 +786,9 @@ class ScribeLogReader(LogReader):
         with scribe_reader_ctx as scribe_reader:
             try:
                 for line in scribe_reader:
+                    # temporary until all log lines are strings not byte strings
+                    if isinstance(line, bytes):
+                        line = line.decode('utf-8')
                     if parser_fn:
                         line = parser_fn(line, clusters, service)
                     if filter_fn:

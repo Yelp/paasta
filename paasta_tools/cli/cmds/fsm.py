@@ -107,8 +107,8 @@ def paasta_fsm(args):
     )
 
     paasta_print(PaastaColors.yellow("               _  _(o)_(o)_  _"))
-    paasta_print(PaastaColors.red("             ._\`:_ F S M _:' \_,"))
-    paasta_print(PaastaColors.green("                 / (`---'\ `-."))
+    paasta_print(PaastaColors.red(r"             ._\`:_ F S M _:' \_,"))
+    paasta_print(PaastaColors.green(r"                 / (`---'\ `-."))
     paasta_print(PaastaColors.cyan("              ,-`  _)    (_,"))
     paasta_print("With My Noodly Appendage I Have Written Configs!")
     paasta_print()

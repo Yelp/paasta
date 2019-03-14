@@ -18,7 +18,13 @@ Once in the `paastatools` container, run the tests. The first run will take a wh
 (as it has to install the tox env), but if you don't exit the contaienr between
 runs it will be faster in the future.
 
-4. `tox -e paasta_itests_inside_container -- -i paasta-api`
+4. `tox -e paasta_itests_inside_container -- -i paasta_api`
 
-Run only, for example, the `paasta-api` itests. Just be sure to run the full tests
+Run only, for example, the `paasta_api` itests. Just be sure to run the full tests
 once before pushing, or travis might be sad.
+
+5. `tox -e paasta_itests_inside_container -- -n 'instance GET shows the marathon status of service.instance'`
+
+Run only, for example, the `instance GET shows the marathon status of service.instance`
+scenario. Just be sure to run the full tests once before pushing, or travis
+might be sad.

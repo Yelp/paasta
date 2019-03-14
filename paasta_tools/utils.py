@@ -17,6 +17,7 @@ import datetime
 import difflib
 import errno
 import fcntl
+import getpass
 import glob
 import hashlib
 import io
@@ -29,6 +30,7 @@ import queue
 import re
 import shlex
 import signal
+import socket
 import sys
 import tempfile
 import threading
@@ -70,6 +72,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
 
@@ -92,7 +95,12 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
 ANY_CLUSTER = 'N/A'
 ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
-no_escape = re.compile('\x1B\[[0-9;]*[mK]')
+no_escape = re.compile(r'\x1B\[[0-9;]*[mK]')
+
+# instead of the convention of using underscores in this scribe channel name,
+# the audit log uses dashes to prevent collisions with a service that might be
+# named 'audit_log'
+AUDIT_LOG_STREAM = 'stream_paasta-audit-log'
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
@@ -102,7 +110,15 @@ DEFAULT_CPU_BURST_ADD = 1
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-INSTANCE_TYPES = ('marathon', 'chronos', 'paasta_native', 'adhoc', 'kubernetes', 'tron')
+INSTANCE_TYPES = (
+    'marathon',
+    'chronos',
+    'paasta_native',
+    'adhoc',
+    'kubernetes',
+    'tron',
+    'flinkcluster',
+)
 
 
 class TimeCacheEntry(TypedDict):
@@ -114,7 +130,7 @@ _CacheRetT = TypeVar('_CacheRetT')
 
 
 class time_cache:
-    def __init__(self, ttl: float=0) -> None:
+    def __init__(self, ttl: float = 0) -> None:
         self.configs: Dict[Tuple, TimeCacheEntry] = {}
         self.ttl = ttl
 
@@ -196,6 +212,7 @@ class InstanceConfigDict(TypedDict, total=False):
     ulimit: Dict[str, Dict[str, Any]]
     cap_add: List
     env: Dict[str, str]
+    docker_init: bool
     monitoring: Dict[str, str]
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
@@ -255,7 +272,7 @@ class InstanceConfig:
 
     def __init__(
         self, cluster: str, instance: str, service: str, config_dict: InstanceConfigDict,
-        branch_dict: Optional[BranchDictV2], soa_dir: str=DEFAULT_SOA_DIR,
+        branch_dict: Optional[BranchDictV2], soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         self.config_dict = config_dict
         self.branch_dict = branch_dict
@@ -399,7 +416,20 @@ class InstanceConfig:
         for value in self.config_dict.get('cap_add', []):
             yield {"key": "cap-add", "value": f"{value}"}
 
-    def format_docker_parameters(self, with_labels: bool=True) -> List[DockerParameter]:
+    def get_cap_drop(self) -> Iterable[DockerParameter]:
+        """Generates --cap-drop options to be passed to docker by default, which
+        makes them not able to perform special privilege escalation stuff
+        https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
+        """
+        caps = [
+            "SETPCAP", "MKNOD", "AUDIT_WRITE", "CHOWN", "NET_RAW", "DAC_OVERRIDE",
+            "FOWNER", "FSETID", "KILL", "SETGID", "SETUID", "NET_BIND_SERVICE",
+            "SYS_CHROOT", "SETFCAP",
+        ]
+        for cap in caps:
+            yield {"key": "cap-drop", "value": cap}
+
+    def format_docker_parameters(self, with_labels: bool = True) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
@@ -424,9 +454,17 @@ class InstanceConfig:
                 ])
         parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
+        parameters.extend(self.get_docker_init())
+        parameters.extend(self.get_cap_drop())
         return parameters
 
-    def get_disk(self, default: float=1024) -> float:
+    def get_docker_init(self) -> Iterable[DockerParameter]:
+        if self.config_dict.get('docker_init', True) is True:
+            return [{'key': 'init', 'value': 'true'}]
+        else:
+            return []
+
+    def get_disk(self, default: float = 1024) -> float:
         """Gets the  amount of disk space required from the service's configuration.
 
         Defaults to 1024 (1G) if no value is specified in the config.
@@ -995,7 +1033,7 @@ def validate_log_component(component: str) -> bool:
         raise NoSuchLogComponent
 
 
-def get_git_url(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> str:
+def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
     if this is called with the string 'test', the returned
@@ -1013,8 +1051,8 @@ def get_git_url(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> str:
 
 def get_service_docker_registry(
     service: str,
-    soa_dir: str=DEFAULT_SOA_DIR,
-    system_config: Optional['SystemPaastaConfig']=None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    system_config: Optional['SystemPaastaConfig'] = None,
 ) -> str:
     if service is None:
         raise NotImplementedError('"None" is not a valid service')
@@ -1056,9 +1094,21 @@ class LogWriter:
         service: str,
         line: str,
         component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
+        level: str = DEFAULT_LOGLEVEL,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        raise NotImplementedError()
+
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
     ) -> None:
         raise NotImplementedError()
 
@@ -1095,9 +1145,9 @@ def _log(
     service: str,
     line: str,
     component: str,
-    level: str=DEFAULT_LOGLEVEL,
-    cluster: str=ANY_CLUSTER,
-    instance: str=ANY_INSTANCE,
+    level: str = DEFAULT_LOGLEVEL,
+    cluster: str = ANY_CLUSTER,
+    instance: str = ANY_INSTANCE,
 ) -> None:
     if _log_writer is None:
         configure_log()
@@ -1106,6 +1156,30 @@ def _log(
         line=line,
         component=component,
         level=level,
+        cluster=cluster,
+        instance=instance,
+    )
+
+
+def _log_audit(
+    action: str,
+    action_details: dict = None,
+    service: str = None,
+    cluster: str = ANY_CLUSTER,
+    instance: str = ANY_INSTANCE,
+) -> None:
+    if _log_writer is None:
+        configure_log()
+
+    user = get_username()
+    host = get_hostname()
+
+    return _log_writer.log_audit(
+        user=user,
+        host=host,
+        action=action,
+        action_details=action_details,
+        service=service,
         cluster=cluster,
         instance=instance,
     )
@@ -1127,7 +1201,7 @@ def format_log_line(
     instance: str,
     component: str,
     line: str,
-    timestamp: str=None,
+    timestamp: str = None,
 ) -> str:
     """Accepts a string 'line'.
 
@@ -1152,7 +1226,48 @@ def format_log_line(
     return message
 
 
-def get_log_name_for_service(service: str, prefix: str=None) -> str:
+def format_audit_log_line(
+    cluster: str,
+    instance: str,
+    user: str,
+    host: str,
+    action: str,
+    action_details: dict = None,
+    service: str = None,
+    timestamp: str = None,
+) -> str:
+    """Accepts:
+
+        * a string 'user' describing the user that initiated the action
+        * a string 'host' describing the server where the user initiated the action
+        * a string 'action' describing an action performed by paasta_tools
+        * a dict 'action_details' optional information about the action
+
+    Returns an appropriately-formatted dictionary which can be serialized to
+    JSON for logging and which contains details about an action performed on
+    a service/instance.
+    """
+    if not timestamp:
+        timestamp = _now()
+    if not action_details:
+        action_details = {}
+
+    message = json.dumps(
+        {
+            'timestamp': timestamp,
+            'cluster': cluster,
+            'service': service,
+            'instance': instance,
+            'user': user,
+            'host': host,
+            'action': action,
+            'action_details': action_details,
+        }, sort_keys=True,
+    )
+    return message
+
+
+def get_log_name_for_service(service: str, prefix: str = None) -> str:
     if prefix:
         return f'stream_paasta_{prefix}_{service}'
     return 'stream_paasta_%s' % service
@@ -1162,9 +1277,9 @@ def get_log_name_for_service(service: str, prefix: str=None) -> str:
 class ScribeLogWriter(LogWriter):
     def __init__(
         self,
-        scribe_host: str='169.254.255.254',
-        scribe_port: int=1463,
-        scribe_disable: bool=False,
+        scribe_host: str = '169.254.255.254',
+        scribe_port: int = 1463,
+        scribe_disable: bool = False,
         **kwargs: Any,
     ) -> None:
         self.clog = __import__('clog')
@@ -1175,9 +1290,9 @@ class ScribeLogWriter(LogWriter):
         service: str,
         line: str,
         component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
+        level: str = DEFAULT_LOGLEVEL,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
     ) -> None:
         """This expects someone (currently the paasta cli main()) to have already
         configured the log object. We'll just write things to it.
@@ -1190,6 +1305,28 @@ class ScribeLogWriter(LogWriter):
             raise NoSuchLogLevel
         log_name = get_log_name_for_service(service)
         formatted_line = format_log_line(level, cluster, service, instance, component, line)
+        self.clog.log_line(log_name, formatted_line)
+
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        log_name = AUDIT_LOG_STREAM
+        formatted_line = format_audit_log_line(
+            user=user,
+            host=host,
+            action=action,
+            action_details=action_details,
+            service=service,
+            cluster=cluster,
+            instance=instance,
+        )
         self.clog.log_line(log_name, formatted_line)
 
 
@@ -1206,9 +1343,21 @@ class NullLogWriter(LogWriter):
         service: str,
         line: str,
         component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
+        level: str = DEFAULT_LOGLEVEL,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        pass
+
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
     ) -> None:
         pass
 
@@ -1226,14 +1375,14 @@ class FileLogWriter(LogWriter):
     def __init__(
         self,
         path_format: str,
-        mode: str='a+',
-        line_delimeter: str='\n',
-        flock: bool=False,
+        mode: str = 'a+',
+        line_delimiter: str = '\n',
+        flock: bool = False,
     ) -> None:
         self.path_format = path_format
         self.mode = mode
         self.flock = flock
-        self.line_delimeter = line_delimeter
+        self.line_delimiter = line_delimiter
 
     def maybe_flock(self, fd: _AnyIO) -> ContextManager:
         if self.flock:
@@ -1251,38 +1400,64 @@ class FileLogWriter(LogWriter):
             instance=instance,
         )
 
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str=DEFAULT_LOGLEVEL,
-        cluster: str=ANY_CLUSTER,
-        instance: str=ANY_INSTANCE,
-    ) -> None:
-        path = self.format_path(service, component, level, cluster, instance)
-
+    def _log_message(self, path: str, message: str) -> None:
         # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
         # and on Linux, writes to O_APPEND files with a single write syscall are atomic.
         #
         # https://docs.python.org/2/library/io.html#io.FileIO
         # http://article.gmane.org/gmane.linux.kernel/43445
 
-        to_write = "{}{}".format(
-            format_log_line(level, cluster, service, instance, component, line),
-            self.line_delimeter,
-        )
-
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:
                 with self.maybe_flock(f):
-                    # remove type ignore comment below once https://github.com/python/typeshed/pull/1541 is merged.
-                    f.write(to_write.encode('UTF-8'))  # type: ignore
+                    f.write(message.encode('UTF-8'))
         except IOError as e:
             paasta_print(
-                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), to_write),
+                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), message),
                 file=sys.stderr,
             )
+
+    def log(
+        self,
+        service: str,
+        line: str,
+        component: str,
+        level: str = DEFAULT_LOGLEVEL,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        path = self.format_path(service, component, level, cluster, instance)
+        to_write = "{}{}".format(
+            format_log_line(level, cluster, service, instance, component, line),
+            self.line_delimiter,
+        )
+
+        self._log_message(path, to_write)
+
+    def log_audit(
+        self,
+        user: str,
+        host: str,
+        action: str,
+        action_details: dict = None,
+        service: str = None,
+        cluster: str = ANY_CLUSTER,
+        instance: str = ANY_INSTANCE,
+    ) -> None:
+        path = self.format_path(AUDIT_LOG_STREAM, '', '', cluster, instance)
+        formatted_line = format_audit_log_line(
+            user=user,
+            host=host,
+            action=action,
+            action_details=action_details,
+            service=service,
+            cluster=cluster,
+            instance=instance,
+        )
+
+        to_write = f"{formatted_line}{self.line_delimiter}"
+
+        self._log_message(path, to_write)
 
 
 @contextlib.contextmanager
@@ -1295,7 +1470,7 @@ def flock(fd: _AnyIO) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def timed_flock(fd: _AnyIO, seconds: int=1) -> Iterator[None]:
+def timed_flock(fd: _AnyIO, seconds: int = 1) -> Iterator[None]:
     """ Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
     raise a TimeoutError if `seconds` elapses before the flock can be obtained
     """
@@ -1386,12 +1561,29 @@ class RemoteRunConfig(TypedDict, total=False):
     default_role: str
 
 
+class SparkRunConfig(TypedDict, total=False):
+    default_cluster: str
+    default_pool: str
+
+
 class PaastaNativeConfig(TypedDict, total=False):
     principal: str
     secret: str
 
 
 ExpectedSlaveAttributes = List[Dict[str, Any]]
+
+
+class KubeKindDict(TypedDict, total=False):
+    singular: str
+    plural: str
+
+
+class KubeCustomResourceDict(TypedDict, total=False):
+    version: str
+    file_prefix: str
+    kube_kind: KubeKindDict
+    group: str
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
@@ -1423,6 +1615,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     previous_marathon_servers: List[MarathonConfigDict]
     local_run_config: LocalRunConfig
     remote_run_config: RemoteRunConfig
+    spark_run_config: SparkRunConfig
     paasta_native: PaastaNativeConfig
     mesos_config: Dict
     monitoring_config: Dict
@@ -1448,6 +1641,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     secret_provider: str
     slack: Dict[str, str]
     maintenance_resource_reservation_enabled: bool
+    kubernetes_custom_resources: List[KubeCustomResourceDict]
+    kubernetes_use_hacheck_sidecar: bool
     hacheck_sidecar_image_url: str
     enable_nerve_readiness_check: bool
     register_k8s_pods: bool
@@ -1457,7 +1652,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron: Dict
 
 
-def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
+def load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
     """
     Reads Paasta configs in specified directory in lexicographical order and deep merges
     the dictionaries (last file wins).
@@ -1475,7 +1670,7 @@ def load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'Sy
         raise PaastaNotConfiguredError(f"Could not load system paasta config file {e.filename}: {e.strerror}")
 
 
-def optionally_load_system_paasta_config(path: str=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
+def optionally_load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
     """
     Tries to load the system paasta config, but will return an empty configuration if not available,
     without raising.
@@ -1753,6 +1948,12 @@ class SystemPaastaConfig:
         :returns: The remote-run system_paasta_config dictionary"""
         return self.config_dict.get('remote_run_config', {})
 
+    def get_spark_run_config(self) -> SparkRunConfig:
+        """Get the spark-run config
+
+        :returns: The spark-run system_paasta_config dictionary"""
+        return self.config_dict.get('spark_run_config', {})
+
     def get_paasta_native_config(self) -> PaastaNativeConfig:
         return self.config_dict.get('paasta_native', {})
 
@@ -1850,6 +2051,13 @@ class SystemPaastaConfig:
         """Enable registration of k8s services in nerve"""
         return self.config_dict.get('register_k8s_pods', False)
 
+    def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
+        """List of custom resources that should be synced by setup_kubernetes_cr """
+        return self.config_dict.get('kubernetes_custom_resources', [])
+
+    def get_kubernetes_use_hacheck_sidecar(self) -> bool:
+        return self.config_dict.get('kubernetes_use_hacheck_sidecar', True)
+
     def get_register_marathon_services(self) -> bool:
         """Enable registration of marathon services in nerve"""
         return self.config_dict.get('register_marathon_services', True)
@@ -1895,13 +2103,13 @@ class SystemPaastaConfig:
 
 def _run(
     command: Union[str, List[str]],
-    env: Mapping[str, str]=os.environ,
-    timeout: float=None,
-    log: bool=False,
-    stream: bool=False,
-    stdin: Any=None,
-    stdin_interrupt: bool=False,
-    popen_kwargs: Dict={},
+    env: Mapping[str, str] = os.environ,
+    timeout: float = None,
+    log: bool = False,
+    stream: bool = False,
+    stdin: Any = None,
+    stdin_interrupt: bool = False,
+    popen_kwargs: Dict = {},
     **kwargs: Any,
 ) -> Tuple[int, str]:
     """Given a command, run it. Return a tuple of the return code and any
@@ -2039,9 +2247,9 @@ class InvalidJobNameError(Exception):
 def compose_job_id(
     name: str,
     instance: str,
-    git_hash: Optional[str]=None,
-    config_hash: Optional[str]=None,
-    spacer: str=SPACER,
+    git_hash: Optional[str] = None,
+    config_hash: Optional[str] = None,
+    spacer: str = SPACER,
 ) -> str:
     """Compose a job/app id by concatenating its name, instance, git hash, and config hash.
 
@@ -2066,7 +2274,7 @@ def compose_job_id(
     return composed
 
 
-def decompose_job_id(job_id: str, spacer: str=SPACER) -> Tuple[str, str, str, str]:
+def decompose_job_id(job_id: str, spacer: str = SPACER) -> Tuple[str, str, str, str]:
     """Break a composed job id into its constituent (service name, instance,
     git hash, config hash) by splitting with ``spacer``.
 
@@ -2154,10 +2362,17 @@ def get_username() -> str:
     return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
+def get_hostname() -> str:
+    """Returns the fully-qualified domain name of the server this code is
+    running on.
+    """
+    return socket.getfqdn()
+
+
 def get_soa_cluster_deploy_files(
-    service: str=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
-    instance_type: str=None,
+    service: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    instance_type: str = None,
 ) -> Iterator[Tuple[str, str]]:
     if service is None:
         service = '*'
@@ -2181,7 +2396,7 @@ def get_soa_cluster_deploy_files(
             print(f"Error opening {yaml_file}: {err}")
 
 
-def list_clusters(service: str=None, soa_dir: str=DEFAULT_SOA_DIR, instance_type: str=None) -> List[str]:
+def list_clusters(service: str = None, soa_dir: str = DEFAULT_SOA_DIR, instance_type: str = None) -> List[str]:
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
@@ -2202,10 +2417,10 @@ def list_clusters(service: str=None, soa_dir: str=DEFAULT_SOA_DIR, instance_type
 
 def list_all_instances_for_service(
     service: str,
-    clusters: Iterable[str]=None,
-    instance_type: str=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
-    cache: bool=True,
+    clusters: Iterable[str] = None,
+    instance_type: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    cache: bool = True,
 ) -> Set[str]:
     instances = set()
     if not clusters:
@@ -2261,11 +2476,16 @@ def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> C
     return instance_list
 
 
+def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
+    service_configuration = read_service_configuration(service, soa_dir)
+    return service_configuration.get('deploy', {}).get('pipeline', [])
+
+
 def get_service_instance_list_no_cache(
     service: str,
-    cluster: Optional[str]=None,
-    instance_type: str=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    cluster: Optional[str] = None,
+    instance_type: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> List[Tuple[str, str]]:
     """Enumerate the instances defined for a service as a list of tuples.
 
@@ -2287,7 +2507,7 @@ def get_service_instance_list_no_cache(
     instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
         conf_file = f"{srv_instance_type}-{cluster}"
-        log.info(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
+        log.debug(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
         if srv_instance_type == 'tron':
             instance_list.extend(
                 get_tron_instance_list_from_yaml(
@@ -2307,9 +2527,9 @@ def get_service_instance_list_no_cache(
 @time_cache(ttl=5)
 def get_service_instance_list(
     service: str,
-    cluster: Optional[str]=None,
-    instance_type: str=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    cluster: Optional[str] = None,
+    instance_type: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> List[Tuple[str, str]]:
     """Enumerate the instances defined for a service as a list of tuples.
 
@@ -2328,9 +2548,9 @@ def get_service_instance_list(
 
 
 def get_services_for_cluster(
-    cluster: str=None,
-    instance_type: str=None,
-    soa_dir: str=DEFAULT_SOA_DIR,
+    cluster: str = None,
+    instance_type: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> List[Tuple[str, str]]:
     """Retrieve all services and instances defined to run in a cluster.
 
@@ -2385,7 +2605,7 @@ class TimeoutError(Exception):
 class Timeout:
     # From http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
 
-    def __init__(self, seconds: int=1, error_message: str='Timeout') -> None:
+    def __init__(self, seconds: int = 1, error_message: str = 'Timeout') -> None:
         self.seconds = seconds
         self.error_message = error_message
 
@@ -2401,7 +2621,7 @@ class Timeout:
         signal.signal(signal.SIGALRM, self.old_handler)
 
 
-def print_with_indent(line: str, indent: int=2) -> None:
+def print_with_indent(line: str, indent: int = 2) -> None:
     """Print a line with a given indent level"""
     paasta_print(" " * indent + line)
 
@@ -2410,7 +2630,7 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJsonV1':
+def load_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> 'DeploymentsJsonV1':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
@@ -2420,7 +2640,7 @@ def load_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'Deploy
         raise NoDeploymentsAvailable(e)
 
 
-def load_v2_deployments_json(service: str, soa_dir: str=DEFAULT_SOA_DIR) -> 'DeploymentsJsonV2':
+def load_v2_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> 'DeploymentsJsonV2':
     deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
@@ -2523,7 +2743,7 @@ def parse_timestamp(tstamp: str) -> datetime.datetime:
     return datetime.datetime.strptime(tstamp, '%Y%m%dT%H%M%S')
 
 
-def format_timestamp(dt: datetime.datetime=None) -> str:
+def format_timestamp(dt: datetime.datetime = None) -> str:
     if dt is None:
         dt = datetime.datetime.utcnow()
     return dt.strftime('%Y%m%dT%H%M%S')
@@ -2547,7 +2767,7 @@ class NoDockerImageError(Exception):
     pass
 
 
-def get_config_hash(config: Any, force_bounce: str=None) -> str:
+def get_config_hash(config: Any, force_bounce: str = None) -> str:
     """Create an MD5 hash of the configuration dictionary to be sent to
     Marathon. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
@@ -2634,7 +2854,7 @@ def terminal_len(text: str) -> int:
     return len(remove_ansi_escape_sequences(text))
 
 
-def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int=2) -> List[str]:
+def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int = 2) -> List[str]:
     """Formats a table for use on the command line.
 
     :param rows: List of rows, each of which can either be a tuple of strings containing the row's values, or a string
@@ -2680,7 +2900,7 @@ class DuplicateKeyError(Exception):
 def deep_merge_dictionaries(
     overrides: _DeepMergeT,
     defaults: _DeepMergeT,
-    allow_duplicate_keys: bool=True,
+    allow_duplicate_keys: bool = True,
 ) -> _DeepMergeT:
     """
     Merges two dictionaries.
@@ -2752,7 +2972,7 @@ _UseRequestsCacheFuncT = TypeVar('_UseRequestsCacheFuncT', bound=Callable)
 
 def use_requests_cache(
     cache_name: str,
-    backend: str='memory',
+    backend: str = 'memory',
     **kwargs: Any,
 ) -> Callable[[_UseRequestsCacheFuncT], _UseRequestsCacheFuncT]:
     def wrap(fun: _UseRequestsCacheFuncT) -> _UseRequestsCacheFuncT:
@@ -2859,9 +3079,9 @@ _TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')
 
 
 def timeout(
-    seconds: int=10,
-    error_message: str=os.strerror(errno.ETIME),
-    use_signals: bool=True,
+    seconds: int = 10,
+    error_message: str = os.strerror(errno.ETIME),
+    use_signals: bool = True,
 ) -> Callable[[Callable[..., _TimeoutFuncRetType]], Callable[..., _TimeoutFuncRetType]]:
     if use_signals:
         def decorate(func: Callable[..., _TimeoutFuncRetType]) -> Callable[..., _TimeoutFuncRetType]:
@@ -2939,6 +3159,10 @@ def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestio
         return ""
 
 
-def list_services(soa_dir: str=DEFAULT_SOA_DIR) -> Sequence[str]:
+def list_services(soa_dir: str = DEFAULT_SOA_DIR) -> Sequence[str]:
     """Returns a sorted list of all services"""
     return sorted(os.listdir(os.path.abspath(soa_dir)))
+
+
+def get_possible_launched_by_user_variable_from_env() -> str:
+    return os.getenv("SUDO_USER") or getpass.getuser()

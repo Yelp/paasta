@@ -21,5 +21,5 @@ cd dockercloud-hello-world
 /work/example_cluster/tests/start-new-service.sh
 try_and_retry /work/example_cluster/tests/check-status.sh
 try_and_retry /work/example_cluster/tests/check-api-k8s.sh
-paasta stop -s hello-world -c testcluster
+paasta stop -s hello-world -c testcluster -i main
 sleep 30

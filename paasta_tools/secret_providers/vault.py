@@ -32,9 +32,9 @@ class SecretProvider(BaseSecretProvider):
         soa_dir: str,
         service_name: str,
         cluster_names: List[str],
-        vault_cluster_config: Dict[str, str]={},
-        vault_auth_method: str='ldap',
-        vault_token_file: str='/root/.vault-token',
+        vault_cluster_config: Dict[str, str] = {},
+        vault_auth_method: str = 'ldap',
+        vault_token_file: str = '/root/.vault-token',
         **kwargs: Any,
     ) -> None:
         super().__init__(soa_dir, service_name, cluster_names)
@@ -83,7 +83,12 @@ class SecretProvider(BaseSecretProvider):
             )
             raise
 
-    def write_secret(self, action: str, secret_name: str, plaintext: bytes) -> None:
+    def write_secret(
+        self,
+        action: str,
+        secret_name: str,
+        plaintext: bytes,
+    ) -> None:
         with TempGpgKeyring(overwrite=True):
             ecosystems = self.get_vault_ecosystems_for_clusters()
             if 'VAULT_TOKEN_OVERRIDE' not in os.environ:
@@ -106,6 +111,7 @@ class SecretProvider(BaseSecretProvider):
                     soa_dir=self.soa_dir,
                     plaintext=plaintext,
                     service_name=self.service_name,
+                    transit_key=self.encryption_key,
                 )
 
     def decrypt_secret(self, secret_name: str) -> str:

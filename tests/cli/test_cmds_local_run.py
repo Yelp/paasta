@@ -344,7 +344,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     mock_run_docker_container.return_value = 0
 
     fake_service = 'fake_service'
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     args = mock.MagicMock()
     args.cmd = ''
     args.service = fake_service
@@ -366,7 +366,8 @@ def test_configure_and_run_command_uses_cmd_from_config(
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
-        docker_hash=docker_hash,
+        docker_url=docker_url,
+        docker_sha=None,
         service=fake_service,
         instance='fake_instance',
         cluster='fake_cluster',
@@ -379,7 +380,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         service=fake_service,
         instance=args.instance,
         framework='marathon',
-        docker_hash=docker_hash,
+        docker_url=docker_url,
         volumes=[],
         interactive=args.interactive,
         command=mock_get_instance_config.return_value.get_cmd.return_value,
@@ -410,7 +411,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     mock_run_docker_container.return_value = 0
 
     fake_service = 'fake_service'
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     args = mock.MagicMock()
     args.cmd = None
     args.service = fake_service
@@ -426,7 +427,8 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
-        docker_hash=docker_hash,
+        docker_url=docker_url,
+        docker_sha=None,
         service=fake_service,
         instance='fake_instance',
         cluster='fake_cluster',
@@ -444,7 +446,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         service=fake_service,
         instance=args.instance,
         framework='marathon',
-        docker_hash=docker_hash,
+        docker_url=docker_url,
         volumes=[],
         interactive=args.interactive,
         command='bash',
@@ -497,7 +499,8 @@ def test_configure_and_run_pulls_image_when_asked(
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
-        docker_hash=None,
+        docker_url=None,
+        docker_sha=None,
         service=fake_service,
         instance='fake_instance',
         cluster='fake_cluster',
@@ -517,7 +520,7 @@ def test_configure_and_run_pulls_image_when_asked(
         service=fake_service,
         instance=args.instance,
         framework='marathon',
-        docker_hash='fake_registry/fake_image',
+        docker_url='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
         command='bash',
@@ -566,7 +569,8 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         mock_get_default_interactive_config.return_value = mock_config
         return_code = configure_and_run_docker_container(
             docker_client=mock_docker_client,
-            docker_hash='fake_hash',
+            docker_url='fake_hash',
+            docker_sha=None,
             service='fake_service',
             instance=None,
             cluster='fake_cluster',
@@ -584,7 +588,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             service='fake_service',
             instance='interactive',
             framework='adhoc',
-            docker_hash='fake_hash',
+            docker_url='fake_hash',
             volumes=[],
             interactive=True,
             command='bash',
@@ -599,6 +603,61 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             secret_provider_kwargs=mock_secret_provider_kwargs,
             skip_secrets=False,
         )
+
+
+def test_configure_and_run_docker_container_respects_docker_sha(
+    system_paasta_config,
+):
+    with mock.patch(
+        'paasta_tools.cli.cmds.local_run.sys.stdin', autospec=True,
+    ) as mock_stdin, mock.patch(
+        'paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True,
+    ) as mock_validate_service_instance, mock.patch(
+        'paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True, return_value=0,
+    ) as mock_run_docker_container, mock.patch(
+        'paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True,
+    ) as mock_get_default_interactive_config, mock.patch(
+        'paasta_tools.utils.get_service_docker_registry', autospec=True, return_value='fake_registry',
+    ):
+        mock_stdin.isatty.return_value = True
+        mock_validate_service_instance.return_value = 'adhoc'
+        mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+
+        args = mock.MagicMock()
+        args.cmd = None
+        args.service = 'fake_service'
+        args.healthcheck = False
+        args.healthcheck_only = False
+        args.user_port = None
+        args.interactive = False
+        args.dry_run_json_dict = False
+        args.vault_auth_method = 'ldap'
+        args.vault_token_file = '/blah/token'
+        args.skip_secrets = False
+
+        fake_config = AdhocJobConfig(
+            service='fake_service',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict=None,
+            soa_dir='fake_soa_dir',
+        )
+
+        mock_get_default_interactive_config.return_value = fake_config
+        return_code = configure_and_run_docker_container(
+            docker_client=mock_docker_client,
+            docker_url=None,
+            docker_sha='abcdefg',
+            service='fake_service',
+            instance='fake_instance',
+            cluster='fake_cluster',
+            args=args,
+            system_paasta_config=system_paasta_config,
+        )
+        expected = 'fake_registry/services-fake_service:paasta-abcdefg'
+        assert mock_run_docker_container.call_args[1]['docker_url'] == expected
+        assert return_code == 0
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
@@ -665,19 +724,19 @@ def test_get_docker_run_cmd_without_additional_args():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = False
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = None
     net = 'bridge'
     docker_params = []
     detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
-    assert actual[-1] == docker_hash
+    assert actual[-1] == docker_url
 
 
 def test_get_docker_run_cmd_with_env_vars():
@@ -688,14 +747,14 @@ def test_get_docker_run_cmd_with_env_vars():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {'foo': 'bar', 'baz': 'qux', 'x': ' with spaces'}
     interactive = False
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = None
     net = 'bridge'
     docker_params = []
     detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert actual[actual.index('foo') - 1] == '--env'
     assert actual[actual.index('baz') - 1] == '--env'
@@ -709,14 +768,14 @@ def test_get_docker_run_cmd_interactive_false():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = False
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
     detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert '--memory=%dm' % memory in actual
     assert any(['--publish=%s' % chosen_port in arg for arg in actual])
@@ -724,7 +783,7 @@ def test_get_docker_run_cmd_interactive_false():
     assert all(['--volume=%s' % volume in actual for volume in volumes])
     assert '--interactive=true' not in actual
     assert '--tty=true' not in actual
-    assert docker_hash in actual
+    assert docker_url in actual
     assert command in ' '.join(actual)
 
 
@@ -736,14 +795,14 @@ def test_get_docker_run_cmd_interactive_true():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = True
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = []
     detach = False
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert '--interactive=true' in actual
     assert '--detach' not in actual
@@ -757,7 +816,7 @@ def test_get_docker_run_docker_params():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = False
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'bridge'
     docker_params = [
@@ -768,7 +827,7 @@ def test_get_docker_run_docker_params():
     detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert '--memory-swap=555m' in actual
     assert '--cpu-period=200000' in actual
@@ -783,14 +842,14 @@ def test_get_docker_run_cmd_host_networking():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = True
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = 'IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT'
     net = 'host'
     docker_params = []
     detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert '--net=host' in actual
 
@@ -804,14 +863,14 @@ def test_get_docker_run_cmd_quote_cmd():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = True
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = 'make test'
     net = 'host'
     docker_params = []
     detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert actual[-3:] == ['sh', '-c', 'make test']
 
@@ -825,14 +884,14 @@ def test_get_docker_run_cmd_quote_list():
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     env = {}
     interactive = True
-    docker_hash = '8' * 40
+    docker_url = '8' * 40
     command = ['zsh', '-c', 'make test']
     net = 'host'
     docker_params = []
     detach = True
     actual = get_docker_run_cmd(
         memory, chosen_port, container_port, container_name, volumes, env,
-        interactive, docker_hash, command, net, docker_params, detach,
+        interactive, docker_url, command, net, docker_params, detach,
     )
     assert actual[-3:] == ['zsh', '-c', 'make test']
 
@@ -898,7 +957,7 @@ def test_run_docker_container_non_interactive_no_healthcheck(
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
-        docker_hash='fake_hash',
+        docker_url='fake_hash',
         volumes=[],
         interactive=False,
         command='fake_command',
@@ -944,7 +1003,7 @@ def test_run_docker_container_interactive(
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
-        docker_hash='fake_hash',
+        docker_url='fake_hash',
         volumes=[],
         interactive=True,
         command='fake_command',
@@ -1003,7 +1062,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
-        docker_hash='fake_hash',
+        docker_url='fake_hash',
         volumes=[],
         interactive=False,
         command='fake_command',
@@ -1051,7 +1110,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
             docker_client=mock_docker_client,
             service='fake_service',
             instance='fake_instance',
-            docker_hash='fake_hash',
+            docker_url='fake_hash',
             volumes=[],
             interactive=False,
             command='fake_command',
@@ -1099,7 +1158,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
             docker_client=mock_docker_client,
             service='fake_service',
             instance='fake_instance',
-            docker_hash='fake_hash',
+            docker_url='fake_hash',
             volumes=[],
             interactive=False,
             command='fake_command',
@@ -1155,7 +1214,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
             docker_client=mock_docker_client,
             service='fake_service',
             instance='fake_instance',
-            docker_hash='fake_hash',
+            docker_url='fake_hash',
             volumes=[],
             interactive=False,
             command='fake_command',
@@ -1209,7 +1268,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
             docker_client=mock_docker_client,
             service='fake_service',
             instance='fake_instance',
-            docker_hash='fake_hash',
+            docker_url='fake_hash',
             volumes=[],
             interactive=False,
             command='fake_command',
@@ -1222,7 +1281,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 1
-    assert ATTACH_OUTPUT in capfd.readouterr()[0]
+    assert ATTACH_OUTPUT not in capfd.readouterr()[0]  # streamed by docker lgos thread instead
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
@@ -1254,7 +1313,7 @@ def test_run_docker_container_with_user_specified_port(
         docker_client=mock_docker_client,
         service='fake_service',
         instance='fake_instance',
-        docker_hash='fake_hash',
+        docker_url='fake_hash',
         volumes=[],
         interactive=False,
         command='fake_command',
@@ -1603,7 +1662,8 @@ def test_volumes_are_deduped(mock_exists):
 
         configure_and_run_docker_container(
             docker_client=mock.Mock(),
-            docker_hash='12345',
+            docker_url='12345',
+            docker_sha=None,
             service='service',
             instance='instance',
             cluster='cluster',
@@ -1655,7 +1715,8 @@ def test_missing_volumes_skipped(mock_exists):
 
         configure_and_run_docker_container(
             docker_client=mock.Mock(),
-            docker_hash='12345',
+            docker_url='12345',
+            docker_sha=None,
             service='service',
             instance='instance',
             cluster='cluster',

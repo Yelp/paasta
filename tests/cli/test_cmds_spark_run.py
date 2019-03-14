@@ -63,7 +63,9 @@ def test_get_docker_run_cmd(
 
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.find_mesos_leader', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run._load_mesos_secret', autospec=True)
 def test_get_spark_config(
+    mock_load_mesos_secret,
     mock_find_mesos_leader,
 ):
     mock_find_mesos_leader.return_value = 'fake_leader'
@@ -72,7 +74,7 @@ def test_get_spark_config(
 
     spark_conf = get_spark_config(
         args=args,
-        container_name='fake_name',
+        spark_app_name='fake_name',
         spark_ui_port=123,
         docker_img='fake-registry/fake-service',
         system_paasta_config=SystemPaastaConfig(
@@ -137,7 +139,6 @@ class TestConfigureAndRunDockerContainer:
         mock_create_spark_config_str.return_value = '--conf spark.app.name=fake_app'
         mock_run_docker_container.return_value = 0
         mock_get_aws_credentials.return_value = ('id', 'secret')
-        mock_time.return_value = 1138
 
         args = mock.MagicMock()
         args.cluster = 'fake_cluster'
@@ -154,7 +155,7 @@ class TestConfigureAndRunDockerContainer:
 
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
-            container_name='paasta_spark_run_fake_user_123_1138',
+            container_name='paasta_spark_run_fake_user_123',
             volumes=[
                 '/h1:/c1:ro',
                 '/h2:/c2:ro',
@@ -168,6 +169,7 @@ class TestConfigureAndRunDockerContainer:
                 'PAASTA_CLUSTER': 'fake_cluster',
                 'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
                 'PAASTA_DOCKER_IMAGE': 'fake_service:fake_sha',
+                'PAASTA_LAUNCHED_BY': mock.ANY,
                 'AWS_ACCESS_KEY_ID': 'id',
                 'AWS_SECRET_ACCESS_KEY': 'secret',
                 'SPARK_USER': 'root',
@@ -255,6 +257,7 @@ def test_emit_resource_requirements(tmpdir):
         'spark.cores.max': '4',
         'spark.executor.memory': '4g',
         'spark.app.name': 'paasta_spark_run_johndoe_2_3',
+        'spark.mesos.constraints': 'pool:cool-pool\\;other:value',
     }
 
     clusterman_yaml_contents = {
@@ -280,10 +283,10 @@ def test_emit_resource_requirements(tmpdir):
         'time.time', return_value=1234, autospec=True,
     ):
         mock_clusterman_metrics.generate_key_with_dimensions.side_effect = lambda name, dims: (
-            f'{name}|framework_name={dims["framework_name"]}'
+            f'{name}|framework_name={dims["framework_name"]},webui_url={dims["webui_url"]}'
         )
 
-        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'cool-pool')
+        emit_resource_requirements(spark_config_dict, 'anywhere-prod', 'http://spark.yelp')
 
         mock_clusterman_metrics.ClustermanMetricsBotoClient.assert_called_once_with(
             region_name='us-north-14',
@@ -292,7 +295,9 @@ def test_emit_resource_requirements(tmpdir):
         metrics_writer = mock_clusterman_metrics.ClustermanMetricsBotoClient.return_value.\
             get_writer.return_value.__enter__.return_value
 
-        metric_key_template = 'requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3'
+        metric_key_template = (
+            'requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp'
+        )
         metrics_writer.send.assert_has_calls(
             [
                 mock.call((metric_key_template.format(resource='cpus'), 1234, 4)),

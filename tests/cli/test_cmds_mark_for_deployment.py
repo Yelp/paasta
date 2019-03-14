@@ -55,8 +55,9 @@ def test_paasta_mark_for_deployment_acts_like_main(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log_audit', autospec=True)
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
-def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log):
+def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log_audit, mock__log):
     actual = mark_for_deployment.mark_for_deployment(
         git_url='fake_git_url',
         deploy_group='fake_deploy_group',
@@ -69,11 +70,17 @@ def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log):
         ref_mutator=ANY,
         force=True,
     )
+    mock__log_audit.assert_called_once_with(
+        action='mark-for-deployment',
+        action_details={'deploy_group': 'fake_deploy_group', 'commit': 'fake_commit'},
+        service='fake_service',
+    )
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log_audit', autospec=True)
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
-def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
+def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock__log):
     mock_create_remote_refs.side_effect = Exception('something bad')
     with patch('time.sleep', autospec=True):
         actual = mark_for_deployment.mark_for_deployment(
@@ -84,6 +91,7 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
         )
     assert actual == 1
     assert mock_create_remote_refs.call_count == 3
+    assert not mock__log_audit.called
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -220,6 +228,37 @@ def test_slack_deploy_notifier(mock_get_authors, mock_client):
         clear=True,
     ):
         assert sdn.get_url_message() == '<https://www.yelp.com/consoleFull|Jenkins Job>'
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
+def test_slack_deploy_notifier_with_auto_rollbacks(mock_get_authors, mock_client):
+    fake_psc = mock.create_autospec(PaastaSlackClient)
+    fake_psc.post.return_value = [{'ok': True, 'message': {'ts': 1234}}]
+    mock_client.return_value = fake_psc
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
+    sdn = mark_for_deployment.SlackDeployNotifier(
+        service='testservice',
+        deploy_info={
+            'pipeline':
+            [
+                {'step': 'test_deploy_group', 'slack_notify': True, },
+            ],
+            'slack_channels': ['#webcore', '#webcore2'],
+        },
+        deploy_group='test_deploy_group',
+        commit='newcommit',
+        old_commit='oldcommit',
+        git_url="foo",
+        auto_rollback=True,
+    )
+    assert sdn.notify_after_mark(ret=1) is None
+    assert sdn.notify_after_mark(ret=0) is None
+    assert sdn.notify_after_good_deploy() is None
+    assert sdn.notify_after_auto_rollback() is None
+    assert sdn.notify_after_abort() is None
+    assert fake_psc.post.call_count > 0, fake_psc.post.call_args
+    assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)

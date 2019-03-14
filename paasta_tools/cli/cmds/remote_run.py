@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 import re
 from shlex import quote
 
@@ -20,7 +21,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import run_on_master
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
@@ -29,7 +29,85 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_start_args_to_parser(parser):
+ARG_DEFAULTS = dict(
+    common=dict(
+        service=None,
+        instance=None,
+        cluster=None,  # load from system paasta config later
+        verbose=False,
+    ),
+    start=dict(
+        cmd=None,
+        detach=False,
+        staging_timeout=240.0,
+        instances=1,
+        docker_image=None,
+        dry_run=False,
+        constraint=[],
+        notification_email=None,
+        retries=0,
+    ),
+    stop=dict(run_id=None, framework_id=None),
+    list=dict(),
+)
+
+
+def get_system_paasta_config():
+    try:
+        return load_system_paasta_config()
+    except PaastaNotConfiguredError:
+        paasta_print(
+            PaastaColors.yellow(
+                "Warning: Couldn't load config files from '/etc/paasta'. This "
+                "indicates PaaSTA is not configured locally on this host, and "
+                "remote-run may not behave the same way it would behave on a "
+                "server configured for PaaSTA.",
+            ),
+            sep='\n',
+        )
+        return SystemPaastaConfig(
+            {"volumes": []},
+            '/etc/paasta',
+        )
+
+
+def add_common_args_to_parser(parser):
+    parser.add_argument(
+        '-s', '--service',
+        help='The name of the service you wish to inspect. Required.',
+        required=True,
+    ).completer = lazy_choices_completer(list_services)
+    parser.add_argument(
+        '-i', '--instance',
+        help=(
+            "Simulate a docker run for a particular instance of the "
+            "service, like 'main' or 'canary'. Required."
+        ),
+        required=True,
+    ).completer = lazy_choices_completer(list_instances)
+    parser.add_argument(
+        '-c', '--cluster',
+        help=(
+            'The name of the cluster you wish to run your task on. '
+            'If omitted, uses the default cluster defined in the paasta '
+            f'remote-run configs.'
+        ),
+        default=ARG_DEFAULTS['common']['cluster'],
+    ).completer = lazy_choices_completer(list_clusters)
+    parser.add_argument(
+        '-v', '--verbose',
+        help='Show more output',
+        action='store_true',
+        default=ARG_DEFAULTS['common']['verbose'],
+    )
+
+
+def add_start_parser(subparser):
+    parser = subparser.add_parser(
+        'start',
+        help="Start task subcommand",
+    )
+    add_common_args_to_parser(parser)
     parser.add_argument(
         '-C', '--cmd',
         help=(
@@ -37,101 +115,115 @@ def add_start_args_to_parser(parser):
             '"bash". By default will use the command or args specified by the '
             'soa-configs or what was specified in the Dockerfile'
         ),
-        required=False,
-        default=None,
-    )
+        default=ARG_DEFAULTS['start']['cmd'],
+    ),
     parser.add_argument(
         '-D', '--detach',
         help='Launch in background',
         action='store_true',
-        required=False,
-        default=False,
+        default=ARG_DEFAULTS['start']['detach'],
     )
+    default_staging_timeout = ARG_DEFAULTS['start']['staging_timeout']
     parser.add_argument(
         '-t', '--staging-timeout',
-        help='A timeout for the task to be launching before killed',
-        required=False,
-        default=240,
+        help=(
+            'A timeout in seconds for the task to be launching before killed. '
+            f'Default: {default_staging_timeout}s'
+        ),
+        default=ARG_DEFAULTS['start']['staging_timeout'],
         type=float,
     )
     parser.add_argument(
         '-j', '--instances',
         help='Number of copies of the task to launch',
-        required=False,
-        default=None,
+        default=ARG_DEFAULTS['start']['instances'],
         type=int,
     )
     parser.add_argument(
         '--docker-image',
-        help='Docker image to use. Defaults to using the deployed docker image',
-        required=False,
-        default=None,
-    )
-
-
-def add_common_args_to_parser(parser):
-    parser.add_argument(
-        '-s', '--service',
-        help='The name of the service you wish to inspect',
-    ).completer = lazy_choices_completer(list_services)
-    parser.add_argument(
-        '-c', '--cluster',
         help=(
-            'The name of the cluster you wish to run your task on. '
-            'If omitted, uses the default cluster defined in the paasta'
-            'remote-run configs'
+            'URL of docker image to use. '
+            'Defaults to using the deployed docker image.'
         ),
-        default=None,
-    ).completer = lazy_choices_completer(list_clusters)
-    parser.add_argument(
-        '-y', '--yelpsoa-config-root',
-        dest='yelpsoa_config_root',
-        help='A directory from which yelpsoa-configs should be read from',
-        default=DEFAULT_SOA_DIR,
-    )
-    parser.add_argument(
-        '-v', '--verbose',
-        help='Show more output',
-        action='store_true',
-        required=False,
-        default=False,
-    )
-    parser.add_argument(
-        '--debug',
-        help='Show debug output',
-        action='store_true',
-        required=False,
-        default=False,
+        default=ARG_DEFAULTS['start']['docker_image'],
     )
     parser.add_argument(
         '-R', '--run-id',
-        help='Identifier to assign/refer to individual task runs',
-        action='store',
-        required=False,
-        default=None,
+        help='ID of task to stop',
+        default=ARG_DEFAULTS['stop']['run_id'],
     )
     parser.add_argument(
         '-d', '--dry-run',
-        help='Don\'t launch the task',
-        action='store_true',
-        required=False,
-        default=False,
-    )
-    parser.add_argument(
-        '--aws-region',
-        choices=['us-east-1', 'us-west-1', 'us-west-2'],
-        help='aws region of the dynamodb state table',
-        default=None,
-    )
-    parser.add_argument(
-        '-i', '--instance',
         help=(
-            "Simulate a docker run for a particular instance of the "
-            "service, like 'main' or 'canary'"
+            'Don\'t launch the task. '
+            'Instead output task that would have been launched'
         ),
-        required=False,
-        default=None,
-    ).completer = lazy_choices_completer(list_instances)
+        action='store_true',
+        default=ARG_DEFAULTS['start']['dry_run'],
+    )
+    parser.add_argument(
+        '-X', '--constraint',
+        help='Constraint option, format: <attr>,OP[,<value>], OP can be one '
+        'of the following: EQUALS matches attribute value exactly, LIKE and '
+        'UNLIKE match on regular expression, MAX_PER constrains number of '
+        'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
+        action='append',
+        default=ARG_DEFAULTS['start']['constraint'],
+    )
+    default_email = os.environ.get('EMAIL', None)
+    parser.add_argument(
+        '-E', '--notification-email',
+        help=(
+            'Email address to send remote-run notifications to. '
+            'A notification will be sent when a task either succeeds or fails. '
+            'Defaults to env variable $EMAIL: '
+        ) + (default_email if default_email else '(currently not set)'),
+        default=default_email,
+    )
+    default_retries = ARG_DEFAULTS['start']['retries']
+    parser.add_argument(
+        '-r', '--retries',
+        help=(
+            'Number of times to retry if task fails at launch or at runtime. '
+            f'Default: {default_retries}'
+        ),
+        type=int,
+        default=default_retries,
+    )
+    return parser
+
+
+def add_stop_parser(subparser):
+    parser = subparser.add_parser(
+        'stop',
+        help="Stop task subcommand",
+    )
+    add_common_args_to_parser(parser)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '-R', '--run-id',
+        help='ID of task to stop',
+        default=ARG_DEFAULTS['stop']['run_id'],
+    )
+    group.add_argument(
+        '-F', '--framework-id',
+        help=(
+            'ID of framework to stop. Must belong to remote-run of selected '
+            'service instance.'
+        ),
+        type=str,
+        default=ARG_DEFAULTS['stop']['framework_id'],
+    )
+    return parser
+
+
+def add_list_parser(subparser):
+    parser = subparser.add_parser(
+        'list',
+        help="List tasks subcommand",
+    )
+    add_common_args_to_parser(parser)
+    return parser
 
 
 def add_subparser(subparsers):
@@ -149,127 +241,63 @@ def add_subparser(subparsers):
             "authentication."
         ),
     )
-
     main_subs = main_parser.add_subparsers(
         dest='action',
         help='Subcommands of remote-run',
     )
-
-    start_parser = main_subs.add_parser(
-        'start',
-        help="Start task subcommand",
-    )
-    add_start_args_to_parser(start_parser)
-    add_common_args_to_parser(start_parser)
-    start_parser.add_argument(
-        '-X', '--constraint',
-        help='Constraint option, format: <attr>,OP[,<value>], OP can be one '
-        'of the following: EQUALS matches attribute value exactly, LIKE and '
-        'UNLIKE match on regular expression, MAX_PER constrains number of '
-        'tasks per attribute value, UNIQUE is the same as MAX_PER,1',
-        required=False,
-        action='append',
-        default=[],
-    )
-
-    stop_parser = main_subs.add_parser(
-        'stop',
-        help="Stop task subcommand",
-    )
-    add_common_args_to_parser(stop_parser)
-    stop_parser.add_argument(
-        '-F', '--framework-id',
-        help='ID of framework to stop. Must belong to remote-run of selected'
-        'service instance.',
-        required=False,
-        default=None,
-    )
-
-    list_parser = main_subs.add_parser(
-        'list',
-        help="List tasks subcommand",
-    )
-    add_common_args_to_parser(list_parser)
-
+    add_start_parser(main_subs)
+    add_stop_parser(main_subs)
+    add_list_parser(main_subs)
     main_parser.set_defaults(command=paasta_remote_run)
 
 
-def paasta_remote_run(args):
-    try:
-        system_paasta_config = load_system_paasta_config()
-    except PaastaNotConfiguredError:
-        paasta_print(
-            PaastaColors.yellow(
-                "Warning: Couldn't load config files from '/etc/paasta'. This "
-                "indicates PaaSTA is not configured locally on this host, and "
-                "remote-run may not behave the same way it would behave on a "
-                "server configured for PaaSTA.",
-            ),
-            sep='\n',
-        )
-        system_paasta_config = SystemPaastaConfig(
-            {"volumes": []},
-            '/etc/paasta',
-        )
+def split_constraints(constraints):
+    return [c.split(',', 2) for c in constraints]
 
+
+def create_remote_run_command(args):
     cmd_parts = ['/usr/bin/paasta_remote_run', args.action]
-    args_vars = vars(args)
-    args_keys = {
-        'service': None,
-        'yelpsoa_config_root': DEFAULT_SOA_DIR,
-        'cmd': None,
-        'verbose': False,
-        'debug': False,
-        'dry_run': False,
-        'staging_timeout': None,
-        'detach': False,
-        'run_id': None,
-        'framework_id': None,
-        'instances': None,
-        'instance': None,
-        'docker_image': None,
-    }
+    arg_vars = vars(args)
+    arg_defaults = dict(ARG_DEFAULTS[args.action])  # copy dict
+    arg_defaults.update(ARG_DEFAULTS['common'])
+    arg_defaults.pop('constraint')  # needs conversion to json
 
-    # copy relevant arguments into cmd_parts
-    for key in args_vars:
-        # skip args we don't know about
-        if key not in args_keys:
+    for k in arg_vars.keys():
+        if k not in arg_defaults:  # skip keys we don't know about
             continue
-
-        value = args_vars[key]
-
-        # skip args that have default value
-        if value == args_keys[key]:
+        v = arg_vars[k]
+        if v == arg_defaults[k]:  # skip values that have default value
             continue
+        k = re.sub(r'_', '-', k)
+        if isinstance(v, bool) and v:
+            cmd_parts.append(f'--{k}')
+        else:
+            cmd_parts.extend([f'--{k}', quote(str(v))])
 
-        arg_key = re.sub(r'_', '-', key)
+    # constraint, convert to json
+    if len(arg_vars['constraint']) > 0:
+        constraints = split_constraints(arg_vars['constraint'])
+        cmd_parts.extend(['--constraints-json', quote(json.dumps(constraints))])
 
-        if isinstance(value, bool) and value:
-            cmd_parts.append('--%s' % arg_key)
-        elif not isinstance(value, bool):
-            cmd_parts.extend(['--%s' % arg_key, quote(str(value))])
+    return cmd_parts
 
-    constraints = [x.split(',', 2) for x in args_vars.get('constraint', [])]
-    if len(constraints) > 0:
-        cmd_parts.extend(
-            ['--constraints-json', quote(json.dumps(constraints))],
-        )
+
+def paasta_remote_run(args):
+    system_paasta_config = get_system_paasta_config()
 
     if not args.cluster:
         default_cluster = system_paasta_config.get_remote_run_config().get('default_cluster')
-        if not default_cluster and not args.cluster:
-            paasta_print(PaastaColors.red("Error: no cluster specified and no default cluster available"))
+        if not default_cluster:
+            paasta_print(PaastaColors.red(
+                "Error: no cluster specified and no default cluster available",
+            ))
             return 1
-        cluster = default_cluster
-    else:
-        cluster = args.cluster
+        args.cluster = default_cluster
 
-    cmd_parts.extend(
-        ['--cluster', quote(cluster)],
-    )
+    cmd_parts = create_remote_run_command(args)
     graceful_exit = (args.action == 'start' and not args.detach)
     return_code, status = run_on_master(
-        cluster=cluster,
+        cluster=args.cluster,
         system_paasta_config=system_paasta_config,
         cmd_parts=cmd_parts,
         graceful_exit=graceful_exit,

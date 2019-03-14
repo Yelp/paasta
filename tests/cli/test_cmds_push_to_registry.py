@@ -37,7 +37,9 @@ def test_build_command(mock_build_docker_tag):
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log_audit', autospec=True)
 def test_push_to_registry_run_fail(
+    mock_log_audit,
     mock_log,
     mock_run,
     mock_validate_service_name,
@@ -49,6 +51,7 @@ def test_push_to_registry_run_fail(
     mock_run.return_value = (1, 'Bad')
     args = MagicMock()
     assert paasta_push_to_registry(args) == 1
+    assert not mock_log_audit.called
 
 
 @patch('paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry', autospec=True)
@@ -56,7 +59,9 @@ def test_push_to_registry_run_fail(
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log_audit', autospec=True)
 def test_push_to_registry_success(
+    mock_log_audit,
     mock_log,
     mock_run,
     mock_validate_service_name,
@@ -70,6 +75,11 @@ def test_push_to_registry_success(
     assert paasta_push_to_registry(args) == 0
     assert mock_build_command.called
     assert mock_run.called
+    mock_log_audit.assert_called_once_with(
+        action='push-to-registry',
+        action_details={'commit': 'abcd' * 10},
+        service='foo',
+    )
 
 
 @patch('paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry', autospec=True)
@@ -77,7 +87,9 @@ def test_push_to_registry_success(
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log_audit', autospec=True)
 def test_push_to_registry_force(
+    mock_log_audit,
     mock_log,
     mock_run,
     mock_validate_service_name,
@@ -98,6 +110,11 @@ def test_push_to_registry_force(
         service='foo',
         timeout=3600,
     )
+    mock_log_audit.assert_called_once_with(
+        action='push-to-registry',
+        action_details={'commit': 'abcd' * 10},
+        service='foo',
+    )
 
 
 @patch('paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry', autospec=True)
@@ -105,7 +122,9 @@ def test_push_to_registry_force(
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log_audit', autospec=True)
 def test_push_to_registry_does_not_override_existing_image(
+    mock_log_audit,
     mock_log,
     mock_run,
     mock_validate_service_name,
@@ -118,6 +137,7 @@ def test_push_to_registry_does_not_override_existing_image(
     assert paasta_push_to_registry(args) == 0
     assert not mock_build_command.called
     assert not mock_run.called
+    assert not mock_log_audit.called
 
 
 @patch('paasta_tools.utils.load_system_paasta_config', autospec=True)
@@ -126,7 +146,9 @@ def test_push_to_registry_does_not_override_existing_image(
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log_audit', autospec=True)
 def test_push_to_registry_does_not_override_when_cant_check_status(
+    mock_log_audit,
     mock_log,
     mock_run,
     mock_validate_service_name,
@@ -140,15 +162,18 @@ def test_push_to_registry_does_not_override_when_cant_check_status(
     assert paasta_push_to_registry(args) == 1
     assert not mock_build_command.called
     assert not mock_run.called
+    assert not mock_log_audit.called
 
 
 @patch('paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log_audit', autospec=True)
 @patch('paasta_tools.cli.cmds.push_to_registry.build_command', autospec=True)
 def test_push_to_registry_works_when_service_name_starts_with_services_dash(
     mock_build_command,
+    mock_log_audit,
     mock_log,
     mock_run,
     mock_validate_service_name,
@@ -159,6 +184,11 @@ def test_push_to_registry_works_when_service_name_starts_with_services_dash(
     mock_is_docker_image_already_in_registry.return_value = False
     assert paasta_push_to_registry(args) == 0
     mock_build_command.assert_called_once_with('foo', 'abcd' * 10)
+    mock_log_audit.assert_called_once_with(
+        action='push-to-registry',
+        action_details={'commit': 'abcd' * 10},
+        service='foo',
+    )
 
 
 @patch('paasta_tools.cli.cmds.push_to_registry.get_service_docker_registry', autospec=True)

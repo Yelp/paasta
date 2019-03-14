@@ -8,7 +8,7 @@ from typing import AsyncIterable
 from typing import Awaitable
 from typing import Callable
 from typing import DefaultDict
-from typing import Dict  # noqa: imported for typing
+from typing import Dict
 from typing import List
 from typing import TypeVar
 
@@ -17,7 +17,7 @@ T = TypeVar('T')
 
 
 def async_ttl_cache(
-    ttl: float=300,
+    ttl: float = 300,
     cleanup_self: bool = False,
 ) -> Callable[
     [Callable[..., Awaitable[T]]],  # wrapped
@@ -78,7 +78,7 @@ async def aiter_to_list(
 
 
 def async_timeout(
-    seconds: int=10,
+    seconds: int = 10,
 ) -> Callable[
     [Callable[..., Awaitable[T]]],  # wrapped
     Callable[..., Awaitable[T]],  # inner

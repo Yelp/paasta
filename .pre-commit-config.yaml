@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.0.0
+    rev: v2.1.0
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
@@ -13,23 +13,25 @@ repos:
     -   id: name-tests-test
         args: [--django]
     -   id: requirements-txt-fixer
-    -   id: flake8
-        args: ['--ignore=E701,E704']
-        exclude: ^docs/source/conf.py$
     -   id: fix-encoding-pragma
         args: [--remove]
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.7
+    hooks:
+    -   id: flake8
+        exclude: ^docs/source/conf.py$
 -   repo: https://github.com/asottile/reorder_python_imports
-    rev: v1.3.2
+    rev: v1.4.0
     hooks:
     -   id: reorder-python-imports
         args: [--py3-plus]
 -   repo: https://github.com/asottile/pyupgrade
-    rev: v1.8.0
+    rev: v1.12.0
     hooks:
     -   id: pyupgrade
         args: [--py36-plus]
 -   repo: https://github.com/asottile/add-trailing-comma
-    rev: v0.7.1
+    rev: v0.8.0
     hooks:
     -   id: add-trailing-comma
         args: [--py36-plus]
@@ -40,7 +42,7 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: .*tests/.*|.*yelp/testing/.*|\.pre-commit-config\.yaml
 -   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.3.1
+    rev: v1.4.3
     hooks:
     -   id: autopep8
 -   repo: local

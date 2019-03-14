@@ -188,7 +188,7 @@ def edit_soa_configs(filename, instance, cpu):
 
     instdict = data[instance]
     instdict['cpus'] = cpu
-    out = yaml.round_trip_dump(data, width=10000)
+    out = yaml.round_trip_dump(data, width=120)
 
     with open(filename, 'w') as fi:
         fi.write(out)

@@ -46,6 +46,7 @@ def monitoring_defaults(key):
         'ticket': False,
         'project': None,
         'realert_every': -1,
+        'tags': [],
     }
     return defaults.get(key, None)
 
@@ -109,6 +110,22 @@ def get_ticket(overrides, service, soa_dir=DEFAULT_SOA_DIR):
 
 def get_project(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value('project', overrides, service, soa_dir)
+
+
+def get_priority(overrides, service, soa_dir=DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('priority', overrides, service, soa_dir)
+
+
+def get_tags(overrides, service, soa_dir=DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('tags', overrides, service, soa_dir)
+
+
+def get_component(overrides, service, soa_dir=DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('component', overrides, service, soa_dir)
+
+
+def get_description(overrides, service, soa_dir=DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('description', overrides, service, soa_dir)
 
 
 def __get_monitoring_config_value(
@@ -186,36 +203,41 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
     if not team:
         return
 
-    runbook = overrides.get('runbook', 'http://y/paasta-troubleshooting')
     system_paasta_config = load_system_paasta_config()
     if cluster is None:
         try:
             cluster = system_paasta_config.get_cluster()
         except PaastaNotConfiguredError:
             cluster = 'localhost'
+
     result_dict = {
+        'name': check_name,
+        'runbook': overrides.get('runbook', 'http://y/paasta-troubleshooting'),
+        'status': status,
+        'output': output,
+        'team': team,
+        'page': get_page(overrides, service, soa_dir),
         'tip': get_tip(overrides, service, soa_dir),
         'notification_email': get_notification_email(overrides, service, soa_dir),
+        'check_every': overrides.get('check_every', '1m'),
+        'realert_every': overrides.get('realert_every', monitoring_defaults('realert_every')),
+        'alert_after': overrides.get('alert_after', '5m'),
         'irc_channels': get_irc_channels(overrides, service, soa_dir),
         'slack_channels': get_slack_channels(overrides, service, soa_dir),
         'ticket': get_ticket(overrides, service, soa_dir),
         'project': get_project(overrides, service, soa_dir),
-        'page': get_page(overrides, service, soa_dir),
-        'alert_after': overrides.get('alert_after', '5m'),
-        'check_every': overrides.get('check_every', '1m'),
-        'realert_every': overrides.get('realert_every', monitoring_defaults('realert_every')),
+        'priority': get_priority(overrides, service, soa_dir),
         'source': 'paasta-%s' % cluster,
+        'tags': get_tags(overrides, service, soa_dir),
         'ttl': ttl,
+        'sensu_host': system_paasta_config.get_sensu_host(),
+        'sensu_port': system_paasta_config.get_sensu_port(),
+        'component': get_component(overrides, service, soa_dir),
+        'description': get_description(overrides, service, soa_dir),
     }
 
-    sensu_host = system_paasta_config.get_sensu_host()
-    sensu_port = system_paasta_config.get_sensu_port()
-
-    if sensu_host is not None:
-        pysensu_yelp.send_event(
-            check_name, runbook, status, output, team, sensu_host=sensu_host, sensu_port=sensu_port,
-            **result_dict,
-        )
+    if result_dict.get('sensu_host'):
+        pysensu_yelp.send_event(**result_dict)
 
 
 def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR):
@@ -397,7 +419,7 @@ def send_replication_event_if_under_replication(
             "\n"
             "Reasons this might be happening:\n"
             "\n"
-            "  The service may simply unhealthy. There also may not be enough resources\n"
+            "  The service may simply be unhealthy. There also may not be enough resources\n"
             "  in the cluster to support the requested instance count.\n"
             "\n"
             "Things you can do:\n"

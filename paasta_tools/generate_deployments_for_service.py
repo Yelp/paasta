@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
+r"""
 Creates a deployments.json file in the specified SOA configuration directory.
 This file contains a dictionary of k/v pairs representing a map between remote
 deploy groups of a service's Git repository and the current SHA at the tip of that deploy group.
@@ -129,7 +129,7 @@ def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[
     most_recent_dtime = None
     most_recent_ref = None
     most_recent_sha = None
-    pattern = re.compile('^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$' % deploy_group)
+    pattern = re.compile(r'^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$' % deploy_group)
 
     for ref_name, sha in refs.items():
         match = pattern.match(ref_name)
@@ -268,7 +268,7 @@ def generate_deployments_for_service(service: str, soa_dir: str) -> None:
     try:
         with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as oldf:
             old_deployments_dict = json.load(oldf)
-    except (IOError, ValueError) as e:
+    except (IOError, ValueError):
         old_deployments_dict = {}
     mappings, v2_mappings = get_deploy_group_mappings(
         soa_dir=soa_dir,

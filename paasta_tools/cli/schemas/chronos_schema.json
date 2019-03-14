@@ -3,154 +3,167 @@
     "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#chronos-clustername-yaml",
     "type": "object",
     "minProperties": 1,
-    "additionalProperties": {
-        "type": "object",
-        "additionalProperties": false,
-        "minProperties": 1,
-        "properties": {
-            "schedule": {
-                "type": "string"
-            },
-            "cmd": {
-                "type": "string"
-            },
-            "args": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-            "epsilon": {
-                "type": "string"
-            },
-            "retries": {
-                "type": "integer",
-                "default": 2
-            },
-            "deploy_group": {
-                "type": "string"
-            },
-            "schedule_time_zone": {
-                "type": "string"
-            },
-            "disabled": {
-                "type": "boolean",
-                "default": false
-            },
-            "cpus": {
-                "type": "number",
-                "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 0.25
-            },
-            "mem": {
-                "type": "number",
-                "minimum": 32,
-                "exclusiveMinimum": true,
-                "default": 1024
-            },
-            "disk": {
-                "type": "number",
-                "minimum": 0,
-                "exclusiveMinimum": true,
-                "default": 1024
-            },
-            "bounce_method": {
-                "enum": [ "graceful" ],
-                "default": "graceful"
-            },
-            "monitoring": {
-                "type": "object",
-                "properties": {
-                    "team": {
-                        "type": "string"
-                    },
-                    "page": {
-                        "type": "boolean"
-                    }
-                },
-                "additionalProperties": true
-            },
-            "env": {
-                "type": "object",
-                "additionalProperties": { "type": "string" }
-            },
-            "deploy_whitelist": {
-                "type": "array"
-            },
-            "deploy_blacklist": {
-                "type": "array"
-            },
-            "extra_volumes": {
-                "type": "array",
-                "items": {
-                    "type": "object"
-                },
-                "uniqueItems": true
-            },
-            "constraints": {
-                "type": "array",
-                "items": {
-                    "type": "array"
-                },
-                "uniqueItems": true
-            },
-            "extra_constraints": {
-                "type": "array",
-                "items": {
-                    "type": "array"
-                },
-                "uniqueItems": true
-            },
-            "net": {
-                "type": "string"
-            },
-            "pool": {
-                "type": "string"
-            },
-            "parents": {
-                "oneOf": [
-                    { "$ref": "#/definitions/jobName" },
-                    {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/jobName"
-                        },
-                        "uniqueItems": true
-                    }
-                ]
-            },
-            "cfs_period_us": {
-                "type": "integer",
-                "minimum": "1000",
-                "maximum": "1000000",
-                "exclusiveMinimum": false
-            },
-            "cpu_burst_add": {
-                "type": "number",
-                "minimum": 0.0,
-                "exclusiveMinimum": false
-            },
-            "dependencies_reference": {
-                "type": "string"
-            },
-            "extra_docker_args": {
-                "type": "object",
-                "additionalProperties": { "type": "string" }
-            },
-            "security": {
-                "type": "object",
-                "properties": {
-                    "outbound_firewall": {
-                        "enum": ["block", "monitor"]
-                    }
-                }
-            }
+    "additionalProperties": false,
+    "patternProperties": {
+        "^_.*$": {
+            "type": "object",
+            "additionalProperties": true
         },
-        "oneOf": [
-            {"required": ["schedule"]},
-            {"required": ["parents"]}
-        ]
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+                "schedule": {
+                    "type": "string"
+                },
+                "cmd": {
+                    "type": "string"
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "epsilon": {
+                    "type": "string"
+                },
+                "retries": {
+                    "type": "integer",
+                    "default": 2
+                },
+                "deploy_group": {
+                    "type": "string"
+                },
+                "schedule_time_zone": {
+                    "type": "string"
+                },
+                "disabled": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 0.25
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "bounce_method": {
+                    "enum": [ "graceful" ],
+                    "default": "graceful"
+                },
+                "monitoring": {
+                    "type": "object",
+                    "properties": {
+                        "team": {
+                            "type": "string"
+                        },
+                        "page": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "deploy_whitelist": {
+                    "type": "array"
+                },
+                "deploy_blacklist": {
+                    "type": "array"
+                },
+                "extra_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "extra_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "net": {
+                    "type": "string"
+                },
+                "pool": {
+                    "type": "string"
+                },
+                "parents": {
+                    "oneOf": [
+                        { "$ref": "#/definitions/jobName" },
+                        {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/jobName"
+                            },
+                            "uniqueItems": true
+                        }
+                    ]
+                },
+                "cfs_period_us": {
+                    "type": "integer",
+                    "minimum": "1000",
+                    "maximum": "1000000",
+                    "exclusiveMinimum": false
+                },
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "exclusiveMinimum": false
+                },
+                "dependencies_reference": {
+                    "type": "string"
+                },
+                "extra_docker_args": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "security": {
+                    "type": "object",
+                    "properties": {
+                        "outbound_firewall": {
+                            "enum": ["block", "monitor"]
+                        }
+                    }
+                }
+            },
+            "oneOf": [
+                {"required": ["schedule"]},
+                {"required": ["parents"]}
+            ]
+        }
     },
     "definitions": {
         "jobName": {

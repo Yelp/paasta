@@ -30,7 +30,7 @@ class PaastaSlackClient(SlackClient):
             self.sc = SlackClient(token)
         self.token = token
 
-    def post(self, channels, message, *, thread_ts=None):
+    def post(self, channels, message=None, blocks=None, thread_ts=None):
         responses = []
         if self.token is not None:
             for channel in channels:
@@ -39,6 +39,7 @@ class PaastaSlackClient(SlackClient):
                     "chat.postMessage",
                     channel=channel,
                     text=message,
+                    blocks=blocks,
                     thread_ts=thread_ts,
                 )
                 if response["ok"] is not True:

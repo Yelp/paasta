@@ -16,6 +16,7 @@ import inspect
 import re
 
 import mock
+import pytest
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeStatus
 from kubernetes.client import V1Pod
@@ -241,9 +242,18 @@ def test_duplicate_frameworks_not_checked():
     assert ok
 
 
-def test_ok_marathon_apps():
-    client = Mock()
-    client.list_apps.return_value = [
+@pytest.fixture
+def mock_get_all_marathon_apps():
+    with patch(
+        'paasta_tools.metrics.metastatus_lib.get_all_marathon_apps',
+        autospec=True,
+    ) as mock_get_all_marathon_apps:
+        yield mock_get_all_marathon_apps
+
+
+def test_ok_marathon_apps(mock_get_all_marathon_apps):
+    client = mock.Mock()
+    mock_get_all_marathon_apps.return_value = [
         "MarathonApp::1",
         "MarathonApp::2",
     ]
@@ -252,9 +262,9 @@ def test_ok_marathon_apps():
     assert ok
 
 
-def test_no_marathon_apps():
+def test_no_marathon_apps(mock_get_all_marathon_apps):
     client = mock.Mock()
-    client.list_apps.return_value = []
+    mock_get_all_marathon_apps.return_value = []
     output, ok = metastatus_lib.assert_marathon_apps([client])
     assert "CRITICAL: No marathon apps running" in output
     assert not ok
@@ -377,9 +387,9 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
 
 
-def test_get_marathon_status():
+def test_get_marathon_status(mock_get_all_marathon_apps):
     client = Mock()
-    client.list_apps.return_value = [
+    mock_get_all_marathon_apps.return_value = [
         "MarathonApp::1",
         "MarathonApp::2",
     ]
