@@ -78,7 +78,7 @@ SSH_ONLY_INSTANCE_CONFIG = [
     ChronosJobConfig,
     AdhocJobConfig,
 ]
-TRON_CLIENTS = {}
+TRON_CLIENTS: dict = {}
 
 
 def add_subparser(
@@ -471,7 +471,7 @@ def tron_instance_status(
     return job_content, action_run
 
 
-def write_job_status(job_content: dict, output: Sequence[str], verbose: bool) -> None:
+def write_job_status(job_content: dict, output: List[str], verbose: int) -> None:
     # job
     output.append("    Tron job: {}".format(job_content['name']))
     if verbose:
@@ -480,7 +480,7 @@ def write_job_status(job_content: dict, output: Sequence[str], verbose: bool) ->
     output.append("      DashBoard: {}".format(PaastaColors.blue(job_content['url'])))
 
 
-def write_action_run_status(action_run: dict, output: Sequence[str], verbose: bool) -> None:
+def write_action_run_status(action_run: dict, output: List[str], verbose: int) -> None:
     # action
     output.append("    Action: {}".format(action_run['name']))
     output.append("      Status: {}".format(action_run['state']))
@@ -579,7 +579,7 @@ def report_status_for_cluster(
                 for line in status.rstrip().split('\n'):
                     output.append('    %s' % line)
 
-    jobs = {}
+    jobs: dict = {}
     for name, instance in instance_whitelist.items():
         if str(instance) == "<class 'paasta_tools.tron_tools.TronActionConfig'>":
             seen_instances.append(instance)
