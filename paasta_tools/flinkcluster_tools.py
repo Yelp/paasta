@@ -110,3 +110,12 @@ def set_flinkcluster_desired_state(
     kube_client.custom.replace_namespaced_custom_object(**co_id, body=co)
     status = co.get('status')
     return status
+
+
+def get_dashboard_url(
+    cluster: str,
+    service: str,
+    instance: str,
+) -> str:
+    sname = sanitised_name(service, instance)
+    return f'http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}'
