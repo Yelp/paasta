@@ -13,6 +13,9 @@
 from typing import Any
 from typing import List
 from typing import Mapping
+from typing import Optional
+
+from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -83,12 +86,18 @@ def get_flinkcluster_config(
     kube_client: KubeClient,
     service: str,
     instance: str,
-) -> Mapping[str, Any]:
-    co = kube_client.custom.get_namespaced_custom_object(
-        **flinkcluster_custom_object_id(service, instance),
-    )
-    status = co.get('status')
-    return status
+) -> Optional[Mapping[str, Any]]:
+    try:
+        co = kube_client.custom.get_namespaced_custom_object(
+            **flinkcluster_custom_object_id(service, instance),
+        )
+        status = co.get('status')
+        return status
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
 
 
 def set_flinkcluster_desired_state(
