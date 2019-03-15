@@ -349,7 +349,7 @@ def print_flinkcluster_status(
     verbose: int,
 ) -> int:
     if status is None:
-        output.append(PaastaColors.red("    Flink cluster is not available"))
+        output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
     dashboard_url = get_dashboard_url(
