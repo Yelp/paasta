@@ -361,7 +361,7 @@ def print_flinkcluster_status(
         output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
-    output.append(f"    URL: {dashboard_url}")
+    output.append(f"    URL: {dashboard_url}/")
     output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
