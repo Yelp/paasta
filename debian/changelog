@@ -1,3 +1,10 @@
+paasta-tools (0.83.14) xenial; urgency=medium
+
+  * 0.83.14 tagged with 'make release'
+    Commit: yet
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 15 Mar 2019 07:23:57 -0700
+
 paasta-tools (0.83.13) xenial; urgency=medium
 
   * 0.83.13 tagged with 'make release'
