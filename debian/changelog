@@ -1,3 +1,11 @@
+paasta-tools (0.83.16) xenial; urgency=medium
+
+  * 0.83.16 tagged with 'make release'
+    Commit: Merge pull request #2172 from Yelp/add_spark_memory_overhead
+    fix spark memory calculation
+
+ -- Stuart Elston <selston@yelp.com>  Fri, 15 Mar 2019 10:45:04 -0700
+
 paasta-tools (0.83.15) xenial; urgency=medium
 
   * 0.83.15 tagged with 'make release'
