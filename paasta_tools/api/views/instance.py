@@ -37,17 +37,17 @@ from paasta_tools import marathon_tools
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
+from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
+from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
-# from paasta_tools.cli.cmds.status import get_actual_deployments
-# from paasta_tools.paasta_serviceinit import get_deployment_version
 log = logging.getLogger(__name__)
 
 
@@ -302,22 +302,22 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    # if instance_type != 'flinkcluster':
-    #     try:
-    #         actual_deployments = get_actual_deployments(service, settings.soa_dir)
-    #     except Exception:
-    #         error_message = traceback.format_exc()
-    #         raise ApiFailure(error_message, 500)
+    if instance_type != 'flinkcluster' and instance_type != 'tron':
+        try:
+            actual_deployments = get_actual_deployments(service, settings.soa_dir)
+        except Exception:
+            error_message = traceback.format_exc()
+            raise ApiFailure(error_message, 500)
 
-    #     version = get_deployment_version(actual_deployments, settings.cluster, instance)
-    #     # exit if the deployment key is not found
-    #     if not version:
-    #         error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
-    #         raise ApiFailure(error_message, 404)
+        version = get_deployment_version(actual_deployments, settings.cluster, instance)
+        # exit if the deployment key is not found
+        if not version:
+            error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+            raise ApiFailure(error_message, 404)
 
-    #     instance_status['git_sha'] = version
-    # else:
-    #     instance_status['git_sha'] = ''
+        instance_status['git_sha'] = version
+    else:
+        instance_status['git_sha'] = ''
 
     try:
         if instance_type == 'marathon':
