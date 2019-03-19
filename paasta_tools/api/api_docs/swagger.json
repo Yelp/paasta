@@ -813,16 +813,41 @@
     },
     "InstanceStatusTron": {
       "type": "object",
+      "required": [ "job_name", "job_url"],
       "properties": {
-        "state": {
+        "job_name": {
           "type": "string",
           "description": "State of a Tron action or job"
         },
-        "command": {
+        "job_status": {
           "type": "string",
           "description": "The command for the action"
         },
-        "raw_command": {
+        "job_schedule": {
+          "type": "string",
+          "description": "The command for the action"
+        },
+        "job_url": {
+          "type": "string",
+          "description": "The command for the action"
+        },
+        "action_name": {
+          "type": "string",
+          "description": "The command for the action"
+        },
+        "action_state": {
+          "type": "string",
+          "description": "The command for the action"
+        },
+        "action_raw_command": {
+          "type": "string",
+          "description": "The raw command for the action"
+        },
+        "action_command": {
+          "type": "string",
+          "description": "The raw command for the action"
+        },
+        "action_start_time": {
           "type": "string",
           "description": "The raw command for the action"
         },
@@ -830,20 +855,13 @@
           "type": "string",
           "description": "The stdout for the action"
         },
-        "stderr": {
+        "action_stderr": {
           "type": "string",
           "description": "The stderr command for the action"
         },
-        "last_status": {
-          "type": "object",
-          "properties": {
-            "result": {
-              "type": "string"
-            },
-            "time": {
-              "type": "string"
-            }
-          }
+        "action_stdout": {
+          "type": "string",
+          "description": "The stderr command for the action"
         }
       }
     },

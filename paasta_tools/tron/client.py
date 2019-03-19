@@ -110,8 +110,10 @@ class TronClient:
         response = self._get('/api')
         return response.get('namespaces', [])
 
-    def get_latest_job_run_id(self, job):
-        job_content = self._get(f"/api/jobs/{job}/")
+    def get_job_content(self, job):
+        return self._get(f"/api/jobs/{job}/")
+
+    def get_latest_job_run_id(self, job_content):
         job_runs = sorted(
             job_content.get('runs', []),
             key=lambda k: (k['end_time'] is None, k['end_time'], k['run_time']),

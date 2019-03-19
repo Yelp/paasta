@@ -723,3 +723,14 @@ def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str
         if cluster_re_match is not None:
             clusters.append(cluster_re_match.group(1))
     return clusters
+
+
+def get_tron_api_endpoints(cluster: str):
+    endpoints = load_system_paasta_config().config_dict.get('tron_api_endpoints', {})
+    if cluster not in endpoints:
+        raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
+    return endpoints[cluster]
+
+
+def get_tron_client_for_cluster(cluster: str):
+    return TronClient(get_tron_api_endpoints(cluster))

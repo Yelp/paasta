@@ -36,17 +36,17 @@ from paasta_tools import marathon_tools
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
+# from paasta_tools.cli.cmds.status import get_actual_deployments
+# from paasta_tools.paasta_serviceinit import get_deployment_version
 log = logging.getLogger(__name__)
 
 
@@ -122,17 +122,29 @@ def tron_instance_status(
     verbose: bool,
 ) -> Mapping[str, Any]:
     status: Dict[str, Any] = {}
-    client = tron_tools.get_tron_client()
+    client = tron_tools.get_tron_client_for_cluster(settings.cluster)
     short_job, action = instance.split('.')
     job = f"{service}.{short_job}"
 
-    latest_run_id = client.get_latest_job_run_id(job=job)
+    job_content = client.get_job_content(job=job)
+    latest_run_id = client.get_latest_job_run_id(job_content=job_content)
     action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
-    status["state"] = action_run["state"]
-    status["command"] = action_run["command"]
-    status["raw_command"] = action_run["raw_command"]
-    status["stdout"] = action_run["stdout"]
-    status["stderr"] = action_run["stderr"]
+
+    # job info
+    status['job_name'] = short_job
+    if verbose:
+        status['job_status'] = job_content['status']
+        status['job_schedule'] = '{}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
+    status['job_url'] = client.master_url + f'/api/jobs/{job}/{latest_run_id}'
+
+    status['action_name'] = action or ''
+    status['action_state'] = action_run['state'] if action_run['state'] else ''
+    if verbose:
+        status['action_start_time'] = action_run['start_time'] if action_run['start_time'] else ''
+        status['action_raw_command'] = action_run['raw_command'] if action_run['raw_command'] else ''
+        status['action_stdout'] = action_run['stdout'] if action_run['stdout'] else ''
+        status['action_stderr'] = action_run['stderr'] if action_run['stdout'] else ''
+    status['action_command'] = action_run['command'] if action_run['command'] else ''
     return status
 
 
@@ -289,22 +301,22 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type != 'flinkcluster':
-        try:
-            actual_deployments = get_actual_deployments(service, settings.soa_dir)
-        except Exception:
-            error_message = traceback.format_exc()
-            raise ApiFailure(error_message, 500)
+    # if instance_type != 'flinkcluster':
+    #     try:
+    #         actual_deployments = get_actual_deployments(service, settings.soa_dir)
+    #     except Exception:
+    #         error_message = traceback.format_exc()
+    #         raise ApiFailure(error_message, 500)
 
-        version = get_deployment_version(actual_deployments, settings.cluster, instance)
-        # exit if the deployment key is not found
-        if not version:
-            error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
-            raise ApiFailure(error_message, 404)
+    #     version = get_deployment_version(actual_deployments, settings.cluster, instance)
+    #     # exit if the deployment key is not found
+    #     if not version:
+    #         error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+    #         raise ApiFailure(error_message, 404)
 
-        instance_status['git_sha'] = version
-    else:
-        instance_status['git_sha'] = ''
+    #     instance_status['git_sha'] = version
+    # else:
+    #     instance_status['git_sha'] = ''
 
     try:
         if instance_type == 'marathon':
