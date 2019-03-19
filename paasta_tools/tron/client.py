@@ -111,7 +111,7 @@ class TronClient:
         return response.get('namespaces', [])
 
     def get_job_content(self, job: str) -> dict:
-        return self._get(f"/api/jobs/{job}/?num_runs=1")
+        return self._get(f"/api/jobs/{job}/")
 
     def get_latest_job_run_id(self, job_content: dict) -> str:
         job_runs = sorted(
