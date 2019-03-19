@@ -1,7 +1,15 @@
+import abc
+import asyncio
 import json
 import logging
+from typing import Collection
+from typing import Iterator
+from typing import Mapping
+from typing import TYPE_CHECKING
 
 import requests
+import transitions.extensions
+from mypy_extensions import TypedDict
 
 from paasta_tools.slack import get_slack_client
 try:
@@ -163,3 +171,70 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     sc = get_slack_client()
     watch_for_slack_webhooks(sc)
+
+
+class TransitionDefinition(TypedDict):
+    trigger: str
+    source: str
+    dest: str
+
+
+class DeploymentProcess(abc.ABC):
+    if TYPE_CHECKING:
+        # These attributes need to be defined in this `if TYPE_CHECKING` block, because if they exist at runtime then
+        # transitions will refuse to overwrite them.
+        state: str
+
+        def trigger(self, *args, **kwargs):
+            ...
+
+    def __init__(
+        self,
+    ):
+
+        self.event_loop = asyncio.get_event_loop()
+        self.finished_event = asyncio.Event(loop=self.event_loop)
+
+        self.machine = transitions.extensions.LockedMachine(
+            model=self,
+            states=list(self.states()),
+            transitions=list(self.valid_transitions()),
+            initial=self.start_state(),
+            after_state_change=self.after_state_change,
+            queued=True,
+        )
+
+    @abc.abstractmethod
+    def status_code_by_state(self) -> Mapping[str, int]:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def states(self) -> Collection['str']:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def valid_transitions(self) -> Iterator[TransitionDefinition]:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def start_transition(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def start_state(self):
+        raise NotImplementedError()
+
+    def finish(self):
+        self.finished_event.set()
+
+    def run(self):
+        return self.event_loop.run_until_complete(self.run_async())
+
+    async def run_async(self) -> int:
+        self.trigger(self.start_transition())
+        await self.finished_event.wait()
+        return self.status_code_by_state().get(self.state, 3)
+
+    def after_state_change(self):
+        if self.state in self.status_code_by_state():
+            self.event_loop.call_soon_threadsafe(self.finished_event.set)

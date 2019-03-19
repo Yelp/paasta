@@ -511,7 +511,10 @@ def create_spark_config_str(spark_config_dict):
 
 def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     num_executors = int(spark_config_dict['spark.cores.max']) / int(spark_config_dict['spark.executor.cores'])
-    memory_per_executor = spark_memory_to_megabytes(spark_config_dict['spark.executor.memory'])
+    memory_per_executor = calculate_memory_per_executor(
+        spark_config_dict['spark.executor.memory'],
+        spark_config_dict.get('spark.mesos.executor.memoryOverhead'),
+    )
 
     desired_resources = {
         'cpus': int(spark_config_dict['spark.cores.max']),
@@ -539,9 +542,18 @@ def get_aws_region_for_paasta_cluster(paasta_cluster):
         return clusterman_yaml['mesos_clusters'][paasta_cluster]['aws_region']
 
 
-def spark_memory_to_megabytes(spark_memory_string):
+def calculate_memory_per_executor(spark_memory_string, memory_overhead):
     # expected to be in format "dg" where d is an integer
-    return 1000 * int(spark_memory_string[:-1])
+    base_memory_per_executor = 1024 * int(spark_memory_string[:-1])
+
+    # by default, spark adds an overhead of 10% of the executor memory, with
+    # a minimum of 384mb
+    if memory_overhead is None:
+        memory_overhead = max(384, int(0.1 * base_memory_per_executor))
+    else:
+        memory_overhead = int(memory_overhead)
+
+    return base_memory_per_executor + memory_overhead
 
 
 def parse_constraints_string(constraints_string):

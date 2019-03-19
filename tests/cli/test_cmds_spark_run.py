@@ -256,6 +256,7 @@ def test_emit_resource_requirements(tmpdir):
         'spark.executor.cores': '2',
         'spark.cores.max': '4',
         'spark.executor.memory': '4g',
+        'spark.mesos.executor.memoryOverhead': '555',
         'spark.app.name': 'paasta_spark_run_johndoe_2_3',
         'spark.mesos.constraints': 'pool:cool-pool\\;other:value',
     }
@@ -298,11 +299,14 @@ def test_emit_resource_requirements(tmpdir):
         metric_key_template = (
             'requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp'
         )
+
+        expected_memory_request = (4 * 1024 + 555) * 2
+
         metrics_writer.send.assert_has_calls(
             [
                 mock.call((metric_key_template.format(resource='cpus'), 1234, 4)),
-                mock.call((metric_key_template.format(resource='mem'), 1234, 8000)),
-                mock.call((metric_key_template.format(resource='disk'), 1234, 8000)),
+                mock.call((metric_key_template.format(resource='mem'), 1234, expected_memory_request)),
+                mock.call((metric_key_template.format(resource='disk'), 1234, expected_memory_request)),
             ],
             any_order=True,
         )

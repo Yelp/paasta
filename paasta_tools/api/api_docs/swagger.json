@@ -578,8 +578,13 @@
           "description": "Tron instance status"
         },
         "flinkcluster": {
-          "$ref": "#/definitions/InstanceStatusFlinkCluster",
-          "description": "Flink instance status"
+          "type": "object",
+          "properties": {
+            "status": {
+              "$ref": "#/definitions/InstanceStatusFlinkCluster"
+            }
+          },
+          "description": "Nullable Flink instance status"
         }
       }
     },
@@ -866,7 +871,8 @@
       }
     },
     "InstanceStatusFlinkCluster": {
-      "type": "object"
+      "type": "object",
+      "description": "Flink instance status"
     },
     "InstanceTasks": {
       "type": "array",

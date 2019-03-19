@@ -21,6 +21,7 @@ from typing import Any
 from typing import Dict
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
 from typing import Sequence
 
 import a_sync
@@ -163,8 +164,8 @@ def flinkcluster_instance_status(
     service: str,
     instance: str,
     verbose: bool,
-) -> Mapping[str, Any]:
-    status: Mapping[str, Any] = {}
+) -> Optional[Mapping[str, Any]]:
+    status: Optional[Mapping[str, Any]] = None
     client = settings.kubernetes_client
     if client is not None:
         status = flinkcluster_tools.get_flinkcluster_config(
@@ -330,7 +331,11 @@ def instance_status(request):
         elif instance_type == 'tron':
             instance_status['tron'] = tron_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'flinkcluster':
-            instance_status['flinkcluster'] = flinkcluster_instance_status(instance_status, service, instance, verbose)
+            status = flinkcluster_instance_status(instance_status, service, instance, verbose)
+            if status is not None:
+                instance_status['flinkcluster'] = {'status': status}
+            else:
+                instance_status['flinkcluster'] = {}
         else:
             error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
             raise ApiFailure(error_message, 404)
