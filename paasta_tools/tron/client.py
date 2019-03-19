@@ -110,10 +110,10 @@ class TronClient:
         response = self._get('/api')
         return response.get('namespaces', [])
 
-    def get_job_content(self, job):
-        return self._get(f"/api/jobs/{job}/")
+    def get_job_content(self, job: str) -> dict:
+        return self._get(f"/api/jobs/{job}/?num_runs=1")
 
-    def get_latest_job_run_id(self, job_content):
+    def get_latest_job_run_id(self, job_content: dict) -> str:
         job_runs = sorted(
             job_content.get('runs', []),
             key=lambda k: (k['end_time'] is None, k['end_time'], k['run_time']),
@@ -121,5 +121,5 @@ class TronClient:
         )
         return job_runs[0]["run_num"]
 
-    def get_action_run(self, job, action, run_id):
+    def get_action_run(self, job: str, action: str, run_id: str) -> dict:
         return self._get(f"/api/jobs/{job}/{run_id}/{action}?include_stderr=1&include_stdout=1&num_lines=10")

@@ -725,7 +725,7 @@ def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str
     return clusters
 
 
-def get_tron_api_endpoints(cluster: str):
+def get_tron_api_endpoint(cluster: str):
     endpoints = load_system_paasta_config().config_dict.get('tron_api_endpoints', {})
     if cluster not in endpoints:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
@@ -733,4 +733,4 @@ def get_tron_api_endpoints(cluster: str):
 
 
 def get_tron_client_for_cluster(cluster: str):
-    return TronClient(get_tron_api_endpoints(cluster))
+    return TronClient(get_tron_api_endpoint(cluster))
