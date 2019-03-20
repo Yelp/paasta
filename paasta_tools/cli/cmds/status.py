@@ -355,6 +355,13 @@ def print_flinkcluster_status(
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
+    if status.state != "running":
+        output.append("    State: {state}".format(
+            state=PaastaColors.yellow(status.state),
+        ))
+        output.append(f"    No other information available in non-running state")
+        return 0
+
     dashboard_url = get_dashboard_url(
         cluster=cluster,
         service=service,
