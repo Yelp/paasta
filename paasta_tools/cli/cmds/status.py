@@ -55,6 +55,7 @@ from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -68,6 +69,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
+
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkClusterConfig,
     KubernetesDeploymentConfig,
@@ -241,8 +243,10 @@ def paasta_status_on_api_endpoint(
         return print_marathon_status(service, instance, output, status.marathon)
     elif status.kubernetes is not None:
         return print_kubernetes_status(service, instance, output, status.kubernetes)
+    elif status.tron is not None:
+        return print_tron_status(service, instance, output, status.tron, verbose)
     elif status.flinkcluster is not None:
-        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster, verbose)
+        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster.get('status'), verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
@@ -347,6 +351,10 @@ def print_flinkcluster_status(
     status,
     verbose: int,
 ) -> int:
+    if status is None:
+        output.append(PaastaColors.red("    Flink cluster is not available yet"))
+        return 1
+
     dashboard_url = get_dashboard_url(
         cluster=cluster,
         service=service,
@@ -356,7 +364,7 @@ def print_flinkcluster_status(
         output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
-    output.append(f"    URL: {dashboard_url}")
+    output.append(f"    URL: {dashboard_url}/")
     output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
@@ -452,6 +460,33 @@ def print_kubernetes_status(
     return 0
 
 
+def print_tron_status(
+    service: str,
+    instance: str,
+    output: List[str],
+    tron_status,
+    verbose: int = 0,
+) -> int:
+    output.append(f"    Tron job: {tron_status.job_name}")
+    if verbose:
+        output.append(f"      Status: {tron_status.job_status}")
+        output.append(f"      Schedule: {tron_status.job_schedule}")
+    output.append("      DashBoard: {}".format(PaastaColors.blue(tron_status.job_url)))
+
+    output.append(f"    Action: {tron_status.action_name}")
+    output.append(f"      Status: {tron_status.action_state}")
+    if verbose:
+        output.append(f"      Start time: {tron_status.action_start_time}")
+    output.append(f"      Command: {tron_status.action_command}")
+    if verbose:
+        output.append(f"      Raw Command: {tron_status.action_raw_command}")
+        output.append(f"      Stdout: {tron_status.action_stdout}")
+        output.append(f"      Stderr: {tron_status.action_stderr}")
+    output.append('\n')
+
+    return 0
+
+
 def report_status_for_cluster(
     service: str,
     cluster: str,
@@ -475,6 +510,11 @@ def report_status_for_cluster(
     ssh_only_instances = [
         instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
         in SSH_ONLY_INSTANCE_CONFIG
+    ]
+
+    tron_jobs = [
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
+        == TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
@@ -502,7 +542,15 @@ def report_status_for_cluster(
     api_return_code = 0
     ssh_return_code = 0
     if len(deployed_instances) > 0:
-        if use_api_endpoint or http_only_instances:
+        http_only_deployed_instances = [
+            deployed_instance
+            for deployed_instance in deployed_instances
+            if (
+                deployed_instance in http_only_instances
+                or deployed_instance not in ssh_only_instances and use_api_endpoint
+            )
+        ]
+        if len(http_only_deployed_instances):
             return_codes = [
                 paasta_status_on_api_endpoint(
                     cluster=cluster,
@@ -512,23 +560,23 @@ def report_status_for_cluster(
                     system_paasta_config=system_paasta_config,
                     verbose=verbose,
                 )
-                for deployed_instance in deployed_instances
-                if (
-                    deployed_instance in http_only_instances
-                    or deployed_instance not in ssh_only_instances and use_api_endpoint
-                )
+                for deployed_instance in http_only_deployed_instances
             ]
             if any(return_codes):
                 api_return_code = 1
-        if not use_api_endpoint or ssh_only_instances:
+        ssh_only_deployed_instances = [
+            deployed_instance
+            for deployed_instance in deployed_instances
+            if (
+                deployed_instance in ssh_only_instances
+                or deployed_instance not in http_only_instances and not use_api_endpoint
+            )
+        ]
+        if len(ssh_only_deployed_instances):
             ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
                 'status', cluster, service, ','.join(
                     deployed_instance
-                    for deployed_instance in deployed_instances
-                    if (
-                        deployed_instance in ssh_only_instances
-                        or deployed_instance not in http_only_instances and not use_api_endpoint
-                    )
+                    for deployed_instance in ssh_only_deployed_instances
                 ),
                 system_paasta_config, stream=False, verbose=verbose,
                 ignore_ssh_output=True,
@@ -537,6 +585,20 @@ def report_status_for_cluster(
             if status is not None:
                 for line in status.rstrip().split('\n'):
                     output.append('    %s' % line)
+
+    if len(tron_jobs) > 0:
+        return_codes = [
+            paasta_status_on_api_endpoint(
+                cluster=cluster,
+                service=service,
+                instance=tron_job,
+                output=output,
+                system_paasta_config=system_paasta_config,
+                verbose=verbose,
+            )
+            for tron_job in tron_jobs
+        ]
+        seen_instances.extend(tron_jobs)
 
     output.append(report_invalid_whitelist_values(instances, seen_instances, 'instance'))
 
