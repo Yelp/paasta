@@ -133,19 +133,25 @@ def tron_instance_status(
 
     # job info
     status['job_name'] = short_job
-    if verbose:
-        status['job_status'] = job_content['status']
-        status['job_schedule'] = '{}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
+    status['job_status'] = job_content['status']
+    status['job_schedule'] = '{} {}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
     status['job_url'] = client.master_url + f'/api/jobs/{job}/{latest_run_id}'
 
-    status['action_name'] = action or ''
-    status['action_state'] = action_run['state'] if action_run['state'] else ''
-    if verbose:
-        status['action_start_time'] = action_run['start_time'] if action_run['start_time'] else ''
-        status['action_raw_command'] = action_run['raw_command'] if action_run['raw_command'] else ''
-        status['action_stdout'] = action_run['stdout'] if action_run['stdout'] else ''
-        status['action_stderr'] = action_run['stderr'] if action_run['stdout'] else ''
-    status['action_command'] = action_run['command'] if action_run['command'] else ''
+    if action:
+        status['action_name'] = action
+    if action_run['state']:
+        status['action_state'] = action_run['state']
+    if action_run['start_time']:
+        status['action_start_time'] = action_run['start_time']
+    if action_run['raw_command']:
+        status['action_raw_command'] = action_run['raw_command']
+    if action_run['stdout']:
+        status['action_stdout'] = action_run['stdout']
+    if action_run['stdout']:
+        status['action_stderr'] = action_run['stderr']
+    if action_run['command']:
+        status['action_command'] = action_run['command']
+
     return status
 
 
