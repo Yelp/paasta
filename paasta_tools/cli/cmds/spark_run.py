@@ -607,6 +607,7 @@ def configure_and_run_docker_container(
                 PaastaColors.yellow(
                     "Warning: Path %s does not exist on this host. Skipping this binding." % volume['hostPath'],
                 ),
+                file=sys.stderr,
             )
 
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
