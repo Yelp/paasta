@@ -1,13 +1,11 @@
 import logging
-import os
 import time
-from functools import reduce
 from typing import Dict
 from typing import List
 from typing import Set
 from typing import Tuple
 
-import pyinotify
+import inotify
 from kazoo.protocol.states import EventType
 from kazoo.recipe.watchers import ChildrenWatch
 from kazoo.recipe.watchers import DataWatch
@@ -110,55 +108,145 @@ class SoaFileWatcher(PaastaWatcher):
 
     def __init__(self, inbox_q, cluster, config, **kwargs):
         super().__init__(inbox_q, cluster, config)
-        self.wm = pyinotify.WatchManager()
-        self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
-        self.notifier = pyinotify.Notifier(
-            watch_manager=self.wm,
-            default_proc_fun=YelpSoaEventHandler(filewatcher=self),
+        self.marathon_clients = get_marathon_clients_from_config()
+
+    def get_service_name_from_event(self, event):
+        """Get service_name from the file inotify event,
+        returns None if it is not an event we're interested in"""
+        starts_with = ['marathon-', 'deployments.json']
+        if any([event.name.startswith(x) for x in starts_with]):
+            service_name = event.path.split('/')[-1]
+        elif event.name.endswith('.json') and event.path.split('/')[-1] == 'secrets':
+            # this is needed because we put the secrets json files in a
+            # subdirectory so the service name would be "secrets" otherwise
+            service_name = event.path.split('/')[-2]
+        else:
+            service_name = None
+        return service_name
+
+    def process_event(self, event):
+        self.log.debug(event)
+        service_name = self.get_service_name_from_event(event)
+        if service_name:
+            self.log.info(f"Change of {event.name} in {event.path}")
+            self.bounce_service(service_name)
+
+    def bounce_service(self, service_name):
+        self.log.info(f"Checking if any instances for {service_name} need bouncing")
+        instances = list_all_instances_for_service(
+            service=service_name,
+            clusters=[self.filewatcher.cluster],
+            instance_type='marathon',
+            cache=False,
         )
+        self.log.debug(instances)
+        service_instances = [(service_name, instance) for instance in instances]
+        service_instances = get_service_instances_needing_update(
+            self.marathon_clients,
+            service_instances,
+            self.filewatcher.cluster,
+        )
+        for service, instance in service_instances:
+            self.log.info(f"{service}.{instance} has a new marathon app ID, and so needs bouncing")
+        service_instances_to_queue = [
+            # https://github.com/python/mypy/issues/2852
+            ServiceInstance(  # type: ignore
+                service=service,
+                instance=instance,
+                cluster=self.filewatcher.cluster,
+                bounce_by=int(time.time()),
+                watcher=type(self).__name__,
+                bounce_timers=None,
+                failures=0,
+            )
+            for service, instance in service_instances
+        ]
+        for service_instance in service_instances_to_queue:
+            self.filewatcher.inbox_q.put(service_instance)
 
     @property
     def mask(self):
+        mask = inotify.constants.IN_ALL_EVENTS
         boring_flags = ['IN_CLOSE_NOWRITE', 'IN_OPEN', 'IN_ACCESS', 'IN_ATTRIB']
-        return reduce(
-            lambda x, y: x | y,
-            [v for k, v in pyinotify.EventsCodes.OP_FLAGS.items() if k not in boring_flags],
-        )
+        for flag in boring_flags:
+            mask = mask - inotify.constants.boring_flag
+        return mask
 
     def run(self):
-        self.notifier.loop(callback=self.startup_checker)
-
-    def startup_checker(self, obj):
-        self.is_ready = True
+        i = inotify.adapters.InotifyTree(path=DEFAULT_SOA_DIR, mask=self.mask)
+        for event in i.event_gen():
+            self.process_event(event)
 
 
 class PublicConfigFileWatcher(PaastaWatcher):
 
     def __init__(self, inbox_q, cluster, config, **kwargs):
         super().__init__(inbox_q, cluster, config)
-        self.wm = pyinotify.WatchManager()
-        self.wm.add_watch(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, self.mask, rec=True)
-        self.notifier = pyinotify.Notifier(
-            watch_manager=self.wm,
-            default_proc_fun=PublicConfigEventHandler(filewatcher=self),
-        )
+        self.public_config = load_system_paasta_config()
+        self.marathon_clients = get_marathon_clients_from_config()
 
     @property
     def mask(self):
+        mask = inotify.constants.IN_ALL_EVENTS
         boring_flags = ['IN_CLOSE_NOWRITE', 'IN_OPEN', 'IN_ACCESS', 'IN_ATTRIB']
-        return reduce(
-            lambda x, y: x | y,
-            [v for k, v in pyinotify.EventsCodes.OP_FLAGS.items() if k not in boring_flags],
-        )
+        for flag in boring_flags:
+            mask = mask - inotify.constants.boring_flag
+        return mask
 
     def run(self):
-        self.notifier.loop(callback=self.startup_checker)
+        i = inotify.adapters.InotifyTree(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, mask=self.mask)
+        for event in i.event_gen():
+            self.process_event(event)
 
-    def startup_checker(self, obj):
-        self.is_ready = True
+    @property
+    def log(self):
+        name = '.'.join([__name__, type(self).__name__])
+        return logging.getLogger(name)
+
+    def filter_event(self, event):
+        if event.name.endswith('.json') or event.maskname == 'IN_CREATE|IN_ISDIR':
+            return event
+
+    def process_event(self, event):
+        self.log.debug(event)
+        event = self.filter_event(event)
+        if event:
+            self.log.debug("Public config changed on disk, loading new config")
+            try:
+                new_config = load_system_paasta_config()
+            except ValueError:
+                self.log.error("Couldn't load public config, the JSON is invalid!")
+                return
+            service_instances: List[Tuple[str, str]] = []
+            if new_config != self.public_config:
+                self.log.info("Public config has changed, now checking if it affects any services config shas")
+                self.public_config = new_config
+                all_service_instances = get_services_for_cluster(
+                    cluster=self.public_config.get_cluster(),
+                    instance_type='marathon',
+                    soa_dir=DEFAULT_SOA_DIR,
+                )
+                service_instances = get_service_instances_needing_update(
+                    self.marathon_clients,
+                    all_service_instances,
+                    self.public_config.get_cluster(),
+                )
+            if service_instances:
+                self.log.info("Found config change affecting {} service instances, "
+                              "now doing a staggered bounce".format(len(service_instances)))
+                bounce_rate = self.public_config.get_deployd_big_bounce_rate()
+                for service_instance in rate_limit_instances(
+                    instances=service_instances,
+                    cluster=self.public_config.get_cluster(),
+                    number_per_minute=bounce_rate,
+                    watcher_name=type(self).__name__,
+                    priority=99,
+                ):
+                    self.filewatcher.inbox_q.put(service_instance)
 
 
 class MaintenanceWatcher(PaastaWatcher):
+
     def __init__(self, inbox_q, cluster, config, **kwargs):
         super().__init__(inbox_q, cluster, config)
         self.draining: Set[str] = set()
@@ -220,140 +308,3 @@ class MaintenanceWatcher(PaastaWatcher):
                     failures=0,
                 ))
         return service_instances
-
-
-class PublicConfigEventHandler(pyinotify.ProcessEvent):
-
-    def my_init(self, filewatcher):
-        self.filewatcher = filewatcher
-        self.public_config = load_system_paasta_config()
-        self.marathon_clients = get_marathon_clients_from_config()
-
-    @property
-    def log(self):
-        name = '.'.join([__name__, type(self).__name__])
-        return logging.getLogger(name)
-
-    def filter_event(self, event):
-        if event.name.endswith('.json') or event.maskname == 'IN_CREATE|IN_ISDIR':
-            return event
-
-    def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
-            self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
-
-    def process_default(self, event):
-        self.log.debug(event)
-        self.watch_new_folder(event)
-        event = self.filter_event(event)
-        if event:
-            self.log.debug("Public config changed on disk, loading new config")
-            try:
-                new_config = load_system_paasta_config()
-            except ValueError:
-                self.log.error("Couldn't load public config, the JSON is invalid!")
-                return
-            service_instances: List[Tuple[str, str]] = []
-            if new_config != self.public_config:
-                self.log.info("Public config has changed, now checking if it affects any services config shas")
-                self.public_config = new_config
-                all_service_instances = get_services_for_cluster(
-                    cluster=self.public_config.get_cluster(),
-                    instance_type='marathon',
-                    soa_dir=DEFAULT_SOA_DIR,
-                )
-                service_instances = get_service_instances_needing_update(
-                    self.marathon_clients,
-                    all_service_instances,
-                    self.public_config.get_cluster(),
-                )
-            if service_instances:
-                self.log.info("Found config change affecting {} service instances, "
-                              "now doing a staggered bounce".format(len(service_instances)))
-                bounce_rate = self.public_config.get_deployd_big_bounce_rate()
-                for service_instance in rate_limit_instances(
-                    instances=service_instances,
-                    cluster=self.public_config.get_cluster(),
-                    number_per_minute=bounce_rate,
-                    watcher_name=type(self).__name__,
-                    priority=99,
-                ):
-                    self.filewatcher.inbox_q.put(service_instance)
-
-
-class YelpSoaEventHandler(pyinotify.ProcessEvent):
-
-    def my_init(self, filewatcher):
-        self.filewatcher = filewatcher
-        self.marathon_clients = get_marathon_clients_from_config()
-
-    @property
-    def log(self):
-        name = '.'.join([__name__, type(self).__name__])
-        return logging.getLogger(name)
-
-    def get_service_name_from_event(self, event):
-        """Get service_name from the file inotify event,
-        returns None if it is not an event we're interested in"""
-        starts_with = ['marathon-', 'deployments.json']
-        if any([event.name.startswith(x) for x in starts_with]):
-            service_name = event.path.split('/')[-1]
-        elif event.name.endswith('.json') and event.path.split('/')[-1] == 'secrets':
-            # this is needed because we put the secrets json files in a
-            # subdirectory so the service name would be "secrets" otherwise
-            service_name = event.path.split('/')[-2]
-        else:
-            service_name = None
-        return service_name
-
-    def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
-            self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
-            try:
-                file_names = os.listdir(event.pathname)
-            except OSError:
-                return
-            if any(['marathon-' in file_name for file_name in file_names]):
-                self.log.info(f"New folder with marathon files: {event.name}")
-                self.bounce_service(event.name)
-
-    def process_default(self, event):
-        self.log.debug(event)
-        self.watch_new_folder(event)
-        service_name = self.get_service_name_from_event(event)
-        if service_name:
-            self.log.info(f"Change of {event.name} in {event.path}")
-            self.bounce_service(service_name)
-
-    def bounce_service(self, service_name):
-        self.log.info(f"Checking if any instances for {service_name} need bouncing")
-        instances = list_all_instances_for_service(
-            service=service_name,
-            clusters=[self.filewatcher.cluster],
-            instance_type='marathon',
-            cache=False,
-        )
-        self.log.debug(instances)
-        service_instances = [(service_name, instance) for instance in instances]
-        service_instances = get_service_instances_needing_update(
-            self.marathon_clients,
-            service_instances,
-            self.filewatcher.cluster,
-        )
-        for service, instance in service_instances:
-            self.log.info(f"{service}.{instance} has a new marathon app ID, and so needs bouncing")
-        service_instances_to_queue = [
-            # https://github.com/python/mypy/issues/2852
-            ServiceInstance(  # type: ignore
-                service=service,
-                instance=instance,
-                cluster=self.filewatcher.cluster,
-                bounce_by=int(time.time()),
-                watcher=type(self).__name__,
-                bounce_timers=None,
-                failures=0,
-            )
-            for service, instance in service_instances
-        ]
-        for service_instance in service_instances_to_queue:
-            self.filewatcher.inbox_q.put(service_instance)

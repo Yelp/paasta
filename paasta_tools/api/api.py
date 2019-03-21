@@ -108,7 +108,6 @@ def setup_paasta_api():
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    # pyinotify is a better solution than turning off file caching completely
     service_configuration_lib.disable_yaml_cache()
 
     settings.system_paasta_config = load_system_paasta_config()
