@@ -10,7 +10,7 @@ class TestQueueMetrics(unittest.TestCase):
     def setUp(self):
         mock_metrics_provider = mock.Mock()
         self.mock_gauge = mock.Mock()
-        self.mock_inbox = mock.Mock(inbox_q=mock.Mock(), to_bounce={})
+        self.mock_inbox = mock.Mock(instances_that_need_to_be_bounced_in_the_future=mock.Mock(), to_bounce={})
         self.mock_bounce_q = mock.Mock()
         mock_create_gauge = mock.Mock(return_value=self.mock_gauge)
         mock_metrics_provider.create_gauge = mock_create_gauge

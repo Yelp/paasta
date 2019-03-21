@@ -43,16 +43,16 @@ from paasta_tools.deployd.watchers import MaintenanceWatcher  # noqa
 
 class TestPaastaWatcher(unittest.TestCase):
     def test_init(self):
-        mock_inbox_q = mock.Mock()
-        PaastaWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
+        mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
+        PaastaWatcher(mock_instances_that_need_to_be_bounced_in_the_future, 'westeros-prod', config=mock.Mock())
 
 
 class TestAutoscalerWatcher(unittest.TestCase):
     def setUp(self):
         self.mock_zk = mock.Mock()
-        self.mock_inbox_q = mock.Mock()
+        self.mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
         self.watcher = AutoscalerWatcher(
-            self.mock_inbox_q,
+            self.mock_instances_that_need_to_be_bounced_in_the_future,
             "westeros-prod",
             zookeeper_client=self.mock_zk,
             config=mock.Mock(),
@@ -149,7 +149,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 type=mock_event_other,
                 path='/autoscaling/service/instance/instances',
             )
-            assert not self.mock_inbox_q.put.called
+            assert not self.mock_instances_that_need_to_be_bounced_in_the_future.put.called
 
             mock_event_created = mock_event_type.CREATED
             mock_event = mock.Mock(
@@ -157,7 +157,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 path='/autoscaling/service/instance/instances',
             )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
-            self.mock_inbox_q.put.assert_called_with(BaseServiceInstance(
+            self.mock_instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(BaseServiceInstance(
                 service='service',
                 instance='instance',
                 bounce_by=1,
@@ -173,7 +173,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 path='/autoscaling/service/instance/instances',
             )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
-            self.mock_inbox_q.put.assert_called_with(BaseServiceInstance(
+            self.mock_instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(BaseServiceInstance(
                 service='service',
                 instance='instance',
                 bounce_by=1,
@@ -228,7 +228,7 @@ class LoopBreak(Exception):
 
 class TestSoaFileWatcher(unittest.TestCase):
     def setUp(self):
-        mock_inbox_q = mock.Mock()
+        mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
         with mock.patch(
             'paasta_tools.deployd.watchers.pyinotify.WatchManager', autospec=True,
         ), mock.patch(
@@ -240,7 +240,9 @@ class TestSoaFileWatcher(unittest.TestCase):
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
-            self.watcher = SoaFileWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
+            self.watcher = SoaFileWatcher(
+                mock_instances_that_need_to_be_bounced_in_the_future, 'westeros-prod', config=mock.Mock(),
+            )
             assert mock_notifier_class.called
 
     def test_mask(self):
@@ -262,7 +264,7 @@ class TestSoaFileWatcher(unittest.TestCase):
 
 class TestPublicConfigWatcher(unittest.TestCase):
     def setUp(self):
-        mock_inbox_q = mock.Mock()
+        mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
         with mock.patch(
             'paasta_tools.deployd.watchers.pyinotify.WatchManager', autospec=True,
         ), mock.patch(
@@ -274,7 +276,9 @@ class TestPublicConfigWatcher(unittest.TestCase):
         ):
             self.mock_notifier = mock.Mock()
             mock_notifier_class.return_value = self.mock_notifier
-            self.watcher = PublicConfigFileWatcher(mock_inbox_q, 'westeros-prod', config=mock.Mock())
+            self.watcher = PublicConfigFileWatcher(
+                mock_instances_that_need_to_be_bounced_in_the_future, 'westeros-prod', config=mock.Mock(),
+            )
             assert mock_notifier_class.called
 
     def test_mask(self):
@@ -296,13 +300,15 @@ class TestPublicConfigWatcher(unittest.TestCase):
 
 class TestMaintenanceWatcher(unittest.TestCase):
     def setUp(self):
-        self.mock_inbox_q = mock.Mock()
+        self.mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
         self.mock_marathon_client = mock.Mock()
         mock_config = mock.Mock(get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20))
         with mock.patch(
             'paasta_tools.deployd.watchers.get_marathon_clients_from_config', autospec=True,
         ):
-            self.watcher = MaintenanceWatcher(self.mock_inbox_q, "westeros-prod", config=mock_config)
+            self.watcher = MaintenanceWatcher(
+                self.mock_instances_that_need_to_be_bounced_in_the_future, "westeros-prod", config=mock_config,
+            )
 
     def test_get_new_draining_hosts(self):
         with mock.patch(
@@ -354,7 +360,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
                 mock.call('si1'),
                 mock.call('si2'),
             ]
-            self.mock_inbox_q.put.assert_has_calls(calls)
+            self.mock_instances_that_need_to_be_bounced_in_the_future.put.assert_has_calls(calls)
 
     def test_get_at_risk_service_instances(self):
         with mock.patch(
@@ -472,7 +478,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             assert not mock_get_services_for_cluster.called
             assert not mock_get_service_instances_needing_update.called
             assert not mock_rate_limit_instances.called
-            assert not self.mock_filewatcher.inbox_q.put.called
+            assert not self.mock_filewatcher.instances_that_need_to_be_bounced_in_the_future.put.called
 
             mock_load_system_config.return_value = mock.Mock(get_cluster=mock.Mock())
             mock_get_service_instances_needing_update.return_value = []
@@ -481,7 +487,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             assert mock_get_services_for_cluster.called
             assert mock_get_service_instances_needing_update.called
             assert not mock_rate_limit_instances.called
-            assert not self.mock_filewatcher.inbox_q.put.called
+            assert not self.mock_filewatcher.instances_that_need_to_be_bounced_in_the_future.put.called
 
             mock_load_system_config.return_value = mock.Mock(get_deployd_big_bounce_rate=mock.Mock())
             mock_si = mock.Mock()
@@ -492,7 +498,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             assert mock_get_services_for_cluster.called
             assert mock_get_service_instances_needing_update.called
             assert mock_rate_limit_instances.called
-            self.mock_filewatcher.inbox_q.put.assert_called_with(mock_si)
+            self.mock_filewatcher.instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(mock_si)
 
 
 class TestYelpSoaEventHandler(unittest.TestCase):
@@ -621,5 +627,5 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                 priority=0,
                 failures=0,
             )
-            self.mock_filewatcher.inbox_q.put.assert_called_with(expected_si)
-            assert self.mock_filewatcher.inbox_q.put.call_count == 1
+            self.mock_filewatcher.instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(expected_si)
+            assert self.mock_filewatcher.instances_that_need_to_be_bounced_in_the_future.put.call_count == 1
