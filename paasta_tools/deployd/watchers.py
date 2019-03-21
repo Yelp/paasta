@@ -64,8 +64,7 @@ class AutoscalerWatcher(PaastaWatcher):
 
     def _enqueue_service_instance(self, path):
         service, instance = path.split('/')[-3:-1]
-        self.log.info("Number of instances changed or autoscaling enabled for first time"
-                      " for {}.{}".format(service, instance))
+        self.log.info(f"Number of instances changed for {service}.{instance} by the autoscaler.")
         # https://github.com/python/mypy/issues/2852
         service_instance = ServiceInstance(  # type: ignore
             service=service,
@@ -79,13 +78,13 @@ class AutoscalerWatcher(PaastaWatcher):
         self.inbox_q.put(service_instance)
 
     def watch_node(self, path, enqueue=False):
-        self.log.info(f"Adding node watch on {path}")
+        self.log.info(f"Adding zk node watch on {path}")
         DataWatch(self.zk, path, func=self.process_node_event, send_event=True)
         if enqueue:
             self._enqueue_service_instance(path)
 
     def process_node_event(self, data, stat, event):
-        self.log.debug(f"Node change: {event}")
+        self.log.debug(f"zk node change: {event}")
         if event and (event.type == EventType.CREATED or event.type == EventType.CHANGED):
             self._enqueue_service_instance(event.path)
 
@@ -247,7 +246,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
         self.watch_new_folder(event)
         event = self.filter_event(event)
         if event:
-            self.log.debug("Public config changed on disk, loading new config")
+            self.log.debug("Public config changed on disk, loading new config.")
             try:
                 new_config = load_system_paasta_config()
             except ValueError:
@@ -255,7 +254,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 return
             service_instances: List[Tuple[str, str]] = []
             if new_config != self.public_config:
-                self.log.info("Public config has changed, now checking if it affects any services config shas")
+                self.log.info("Public config has changed, now checking if it affects any services config shas.")
                 self.public_config = new_config
                 all_service_instances = get_services_for_cluster(
                     cluster=self.public_config.get_cluster(),
@@ -268,8 +267,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     self.public_config.get_cluster(),
                 )
             if service_instances:
-                self.log.info("Found config change affecting {} service instances, "
-                              "now doing a staggered bounce".format(len(service_instances)))
+                self.log.info(f"{len(service_instances)} service instances affected. Doing a staggered bounce.")
                 bounce_rate = self.public_config.get_deployd_big_bounce_rate()
                 for service_instance in rate_limit_instances(
                     instances=service_instances,
@@ -314,7 +312,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             except OSError:
                 return
             if any(['marathon-' in file_name for file_name in file_names]):
-                self.log.info(f"New folder with marathon files: {event.name}")
+                self.log.info(f"New folder with marathon files: {event.name}.")
                 self.bounce_service(event.name)
 
     def process_default(self, event):
@@ -322,11 +320,11 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         self.watch_new_folder(event)
         service_name = self.get_service_name_from_event(event)
         if service_name:
-            self.log.info(f"Change of {event.name} in {event.path}")
+            self.log.info(f"Looking for things to bounce for {service_name} because {event.path}/{event.name} changed.")
             self.bounce_service(service_name)
 
     def bounce_service(self, service_name):
-        self.log.info(f"Checking if any instances for {service_name} need bouncing")
+        self.log.info(f"Checking if any marathon instances of {service_name} need bouncing.")
         instances = list_all_instances_for_service(
             service=service_name,
             clusters=[self.filewatcher.cluster],
@@ -341,7 +339,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             self.filewatcher.cluster,
         )
         for service, instance in service_instances:
-            self.log.info(f"{service}.{instance} has a new marathon app ID, and so needs bouncing")
+            self.log.info(f"{service}.{instance} has a new marathon app ID. Enqueuing it to be bounced.")
         service_instances_to_queue = [
             # https://github.com/python/mypy/issues/2852
             ServiceInstance(  # type: ignore
