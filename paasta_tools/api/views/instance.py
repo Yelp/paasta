@@ -123,7 +123,7 @@ def tron_instance_status(
     verbose: bool,
 ) -> Mapping[str, Any]:
     status: Dict[str, Any] = {}
-    client = tron_tools.get_tron_client_for_cluster(settings.cluster)
+    client = tron_tools.get_tron_client()
     short_job, action = instance.split('.')
     job = f"{service}.{short_job}"
 
@@ -135,7 +135,7 @@ def tron_instance_status(
     status['job_name'] = short_job
     status['job_status'] = job_content['status']
     status['job_schedule'] = '{} {}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
-    status['job_url'] = client.master_url + f'/api/jobs/{job}/{latest_run_id}'
+    status['job_url'] = client.get_tron_dashboard_for_cluster(settings.cluster) + f'/web/#jobs/{instance}'
 
     if action:
         status['action_name'] = action

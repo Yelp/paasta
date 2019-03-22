@@ -822,51 +822,47 @@
       "properties": {
         "job_name": {
           "type": "string",
-          "description": "State of a Tron action or job"
+          "description": "The name of this job"
         },
         "job_status": {
           "type": "string",
-          "description": "The command for the action"
+          "description": "The status of the job"
         },
         "job_schedule": {
           "type": "string",
-          "description": "The command for the action"
+          "description": "The job schedule of the job"
         },
         "job_url": {
           "type": "string",
-          "description": "The command for the action"
+          "description": "The dashboard url of the job"
         },
         "action_name": {
           "type": "string",
-          "description": "The command for the action"
+          "description": "The name of the action"
         },
         "action_state": {
           "type": "string",
-          "description": "The command for the action"
+          "description": "The state of the action"
         },
         "action_raw_command": {
           "type": "string",
-          "description": "The raw command for the action"
+          "description": "The raw command of the action"
         },
         "action_command": {
           "type": "string",
-          "description": "The raw command for the action"
+          "description": "The command of the action"
         },
         "action_start_time": {
           "type": "string",
-          "description": "The raw command for the action"
-        },
-        "stdout": {
-          "type": "string",
-          "description": "The stdout for the action"
+          "description": "The start time of the action"
         },
         "action_stderr": {
           "type": "string",
-          "description": "The stderr command for the action"
+          "description": "The stderr command of the action"
         },
         "action_stdout": {
           "type": "string",
-          "description": "The stderr command for the action"
+          "description": "The stdout command of the action"
         }
       }
     },

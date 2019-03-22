@@ -116,7 +116,7 @@ class TronClient:
     def get_latest_job_run_id(self, job_content: dict) -> str:
         job_runs = sorted(
             job_content.get('runs', []),
-            key=lambda k: (k['end_time'] is None, k['end_time'], k['run_time']),
+            key=lambda k: (k['state'] != 'scheduled', k['run_num']),
             reverse=True,
         )
         return job_runs[0]["run_num"]

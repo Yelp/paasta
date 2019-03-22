@@ -1649,7 +1649,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     register_marathon_services: bool
     register_native_services: bool
     nerve_readiness_check_script: str
-    tron_api_endpoints: Dict
 
 
 def load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
@@ -2098,7 +2097,7 @@ class SystemPaastaConfig:
         return self.config_dict.get('slack', {}).get('token', None)
 
     def get_tron_config(self) -> dict:
-        return self.config_dict.get('tron_api_endpoints', {})
+        return self.config_dict.get('tron', {})
 
 
 def _run(
