@@ -1649,6 +1649,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     register_marathon_services: bool
     register_native_services: bool
     nerve_readiness_check_script: str
+    tron: str
 
 
 def load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
