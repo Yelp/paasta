@@ -2,6 +2,9 @@ import abc
 import asyncio
 import json
 import logging
+from multiprocessing import Process
+from multiprocessing import Queue
+from queue import Empty
 from typing import Collection
 from typing import Iterator
 from typing import Mapping
@@ -148,23 +151,45 @@ def is_relevant_event(event):
     return True
 
 
+def get_slack_events():
+    if scribereader is None:
+        return
+
+    def scribe_tail(queue):
+        host_and_port = scribereader.get_env_scribe_host(SCRIBE_ENV, True)
+        host = host_and_port['host']
+        port = host_and_port['port']
+        tailer = scribereader.get_stream_tailer(SLACK_WEBHOOK_STREAM, host, port)
+        for line in tailer:
+            queue.put(line)
+
+    # Tailing scribe is not thread-safe, therefore we must use a Multiprocess-Queue-based
+    # approach, with paasta logs as prior art.
+    queue = Queue()
+    kw = {'queue': queue}
+    process = Process(target=scribe_tail, kwargs=kw)
+    process.start()
+    while True:
+        try:
+            line = queue.get(block=True, timeout=0.1)
+            event = parse_webhook_event_json(line)
+            if is_relevant_event(event):
+                yield line
+        except Empty:
+            pass
+
+
 def watch_for_slack_webhooks(sc):
-    host_and_port = scribereader.get_env_scribe_host(SCRIBE_ENV, True)
-    host = host_and_port['host']
-    port = host_and_port['port']
-    tailer = scribereader.get_stream_tailer(SLACK_WEBHOOK_STREAM, host, port)
-    for line in tailer:
-        event = parse_webhook_event_json(line)
-        if is_relevant_event(event):
-            buttonpress = event_to_buttonpress(event)
-            followup_message = f"Got it. {buttonpress.username} pressed {buttonpress.action}"
-            sc.post(channels=[buttonpress.channel], message=followup_message, thread_ts=buttonpress.thread_ts)
-            action = buttonpress.action
-            blocks = get_slack_blocks_for_initial_deployment(
-                message="New Message", last_action=action, status=f"Taking action on the {action} button",
-                active_button=action,
-            )
-            buttonpress.update(blocks)
+    for event in get_slack_events():
+        buttonpress = event_to_buttonpress(event)
+        followup_message = f"Got it. {buttonpress.username} pressed {buttonpress.action}"
+        sc.post(channels=[buttonpress.channel], message=followup_message, thread_ts=buttonpress.thread_ts)
+        action = buttonpress.action
+        blocks = get_slack_blocks_for_initial_deployment(
+            message="New Message", last_action=action, status=f"Taking action on the {action} button",
+            active_button=action,
+        )
+        buttonpress.update(blocks)
 
 
 if __name__ == '__main__':

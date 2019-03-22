@@ -567,10 +567,13 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             commit=self.commit,
         )
         self.slack_notifier.notify_after_mark(ret=self.mark_for_deployment_return_code)
+        thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
+        thread.start()
         if self.mark_for_deployment_return_code != 0:
             log.debug("triggering mfd_failed")
             self.trigger('mfd_failed')
         else:
+            log.debug("triggering mfd_succeeded")
             self.trigger('mfd_succeeded')
 
     def states(self) -> Collection[str]:
@@ -706,6 +709,11 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         )
         self.slack_notifier.notify_after_good_deploy()
 
+    def listen_for_slack_events(self):
+        log.debug("Listening for slack events...")
+        for event in automatic_rollbacks.get_slack_events():
+            log.debug(f"Got slack event: {event}")
+
 
 class ClusterData:
     """An auxiliary data transfer class.
@@ -831,8 +839,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                           cluster_data.cluster,
                       ))
         elif (
-            long_running_status.expected_instance_count == 0 or
-            long_running_status.desired_state == 'stop'
+            long_running_status.expected_instance_count == 0
+            or long_running_status.desired_state == 'stop'
         ):
             log.debug("{}.{} in {} is marked as stopped. Marked as deployed."
                       .format(

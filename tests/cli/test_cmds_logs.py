@@ -434,9 +434,9 @@ def test_scribe_tail_log_everything():
         # multiprocessing.Queue (this was not the case with Queue.Queue). It
         # failed 8/10 times with a get_nowait() vs 0/10 times with a 0.1s
         # timeout.
-        first_line = queue.get(True, 0.1)
+        first_line = queue.get(block=True, timeout=0.1)
         assert 'level: first. component: build.' in first_line
-        second_line = queue.get(True, 0.1)
+        second_line = queue.get(block=True, queue=0.1)
         assert 'level: second. component: deploy.' in second_line
 
 
