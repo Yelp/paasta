@@ -1002,6 +1002,7 @@ def configure_and_run_docker_container(
                 PaastaColors.yellow(
                     "Warning: Path %s does not exist on this host. Skipping this binding." % volume['hostPath'],
                 ),
+                file=sys.stderr,
             )
 
     if interactive is True and args.cmd is None:
