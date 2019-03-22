@@ -135,7 +135,7 @@ def tron_instance_status(
     status['job_name'] = short_job
     status['job_status'] = job_content['status']
     status['job_schedule'] = '{} {}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
-    status['job_url'] = client.get_tron_dashboard_for_cluster(settings.cluster) + f'/web/#jobs/{instance}'
+    status['job_url'] = client.get_tron_dashboard_for_cluster(settings.cluster) + f'/#jobs/{instance}'
 
     if action:
         status['action_name'] = action
