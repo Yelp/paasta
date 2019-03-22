@@ -85,7 +85,7 @@ def test_get_spark_config(
     )
 
     assert spark_conf['spark.master'] == 'mesos://fake_leader:5050'
-    assert 'spark.master=mesos://fake_leader:5050' in create_spark_config_str(spark_conf)
+    assert 'spark.master=mesos://fake_leader:5050' in create_spark_config_str(spark_conf, is_mrjob=False)
 
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials', autospec=True)
@@ -93,7 +93,6 @@ def test_get_spark_config(
 @mock.patch('paasta_tools.cli.cmds.spark_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_username', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_spark_config', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.spark_run.create_spark_config_str', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.run_docker_container', autospec=True)
 @mock.patch('time.time', autospec=True)
 class TestConfigureAndRunDockerContainer:
@@ -123,11 +122,18 @@ class TestConfigureAndRunDockerContainer:
         'fake_dir',
     )
 
+    @pytest.fixture
+    def mock_create_spark_config_str(self):
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.create_spark_config_str',
+            autospec=True,
+        ) as _mock_create_spark_config_str:
+            yield _mock_create_spark_config_str
+
     def test_configure_and_run_docker_container(
         self,
         mock_time,
         mock_run_docker_container,
-        mock_create_spark_config_str,
         mock_get_spark_config,
         mock_get_username,
         mock_pick_random_port,
@@ -136,7 +142,7 @@ class TestConfigureAndRunDockerContainer:
     ):
         mock_pick_random_port.return_value = 123
         mock_get_username.return_value = 'fake_user'
-        mock_create_spark_config_str.return_value = '--conf spark.app.name=fake_app'
+        mock_get_spark_config.return_value = {'spark.app.name': 'fake_app'}
         mock_run_docker_container.return_value = 0
         mock_get_aws_credentials.return_value = ('id', 'secret')
 
@@ -145,6 +151,7 @@ class TestConfigureAndRunDockerContainer:
         args.cmd = 'pyspark'
         args.work_dir = '/fake_dir:/spark_driver'
         args.dry_run = True
+        args.mrjob = False
 
         retcode = configure_and_run_docker_container(
             args=args,
@@ -180,16 +187,49 @@ class TestConfigureAndRunDockerContainer:
             dry_run=True,
         )
 
-    def test_suppress_clusterman_metrics_errors(
+    def test_configure_and_run_docker_container_mrjob(
         self,
         mock_time,
         mock_run_docker_container,
-        mock_create_spark_config_str,
         mock_get_spark_config,
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
         mock_get_aws_credentials,
+    ):
+        mock_get_aws_credentials.return_value = ('id', 'secret')
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
+        ) as mock_emit_resource_requirements, mock.patch(
+            'paasta_tools.cli.cmds.spark_run.clusterman_metrics', autospec=True,
+        ):
+            mock_get_spark_config.return_value = {'spark.cores.max': 5, 'spark.master': 'mesos://spark.master'}
+            args = mock.MagicMock(cmd='python mrjob_wrapper.py', mrjob=True)
+
+            configure_and_run_docker_container(
+                args=args,
+                docker_img='fake-registry/fake-service',
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+            )
+
+            args, kwargs = mock_run_docker_container.call_args
+            assert kwargs['docker_cmd'] == (
+                'python mrjob_wrapper.py --spark-master=mesos://spark.master --jobconf spark.cores.max=5'
+            )
+
+            assert mock_emit_resource_requirements.called
+
+    def test_suppress_clusterman_metrics_errors(
+        self,
+        mock_time,
+        mock_run_docker_container,
+        mock_get_spark_config,
+        mock_get_username,
+        mock_pick_random_port,
+        mock_os_path_exists,
+        mock_get_aws_credentials,
+        mock_create_spark_config_str,
     ):
         mock_get_aws_credentials.return_value = ('id', 'secret')
 
@@ -226,12 +266,12 @@ class TestConfigureAndRunDockerContainer:
         self,
         mock_time,
         mock_run_docker_container,
-        mock_create_spark_config_str,
         mock_get_spark_config,
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
         mock_get_aws_credentials,
+        mock_create_spark_config_str,
     ):
         mock_get_aws_credentials.return_value = ('id', 'secret')
         with mock.patch(
@@ -240,7 +280,7 @@ class TestConfigureAndRunDockerContainer:
             'paasta_tools.cli.cmds.spark_run.clusterman_metrics', autospec=True,
         ):
             mock_create_spark_config_str.return_value = '--conf spark.cores.max=5'
-            args = mock.MagicMock(cmd='bash')
+            args = mock.MagicMock(cmd='bash', mrjob=False)
 
             configure_and_run_docker_container(
                 args=args,
@@ -313,7 +353,7 @@ def test_emit_resource_requirements(tmpdir):
 
 
 def test_get_docker_cmd_add_spark_conf_str():
-    args = mock.Mock(cmd='pyspark -v')
+    args = mock.Mock(cmd='pyspark -v', mrjob=False)
     instance_config = None
     spark_conf_str = '--conf spark.app.name=fake_app'
 
@@ -322,11 +362,20 @@ def test_get_docker_cmd_add_spark_conf_str():
 
 
 def test_get_docker_cmd_other_cmd():
-    args = mock.Mock(cmd='bash')
+    args = mock.Mock(cmd='bash', mrjob=False)
     instance_config = None
     spark_conf_str = '--conf spark.app.name=fake_app'
 
     assert get_docker_cmd(args, instance_config, spark_conf_str) == 'bash'
+
+
+def test_get_docker_cmd_mrjob():
+    args = mock.Mock(cmd='python mrjob_wrapper.py', mrjob=True)
+    instance_config = None
+    spark_conf_str = '--jobconf spark.app.name=fake_app'
+
+    expected_cmd = 'python mrjob_wrapper.py --jobconf spark.app.name=fake_app'
+    assert get_docker_cmd(args, instance_config, spark_conf_str) == expected_cmd
 
 
 def test_load_aws_credentials_from_yaml(tmpdir):

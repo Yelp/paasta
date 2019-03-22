@@ -164,6 +164,13 @@ def add_subparser(subparsers):
         'spark.executor.cores=4".',
     )
 
+    list_parser.add_argument(
+        '--mrjob',
+        help='Pass Spark arguments to invoked command in the format expected by mrjobs',
+        action='store_true',
+        default=False,
+    )
+
     if clusterman_metrics:
         list_parser.add_argument(
             '--suppress-clusterman-metrics-errors',
@@ -502,10 +509,16 @@ def _load_mesos_secret():
         sys.exit(1)
 
 
-def create_spark_config_str(spark_config_dict):
+def create_spark_config_str(spark_config_dict, is_mrjob):
+    conf_option = '--jobconf' if is_mrjob else '--conf'
     spark_config_entries = list()
+
+    if is_mrjob:
+        spark_master = spark_config_dict.pop('spark.master')
+        spark_config_entries.append(f'--spark-master={spark_master}')
+
     for opt, val in spark_config_dict.items():
-        spark_config_entries.append(f'--conf {opt}={val}')
+        spark_config_entries.append(f'{conf_option} {opt}={val}')
     return ' '.join(spark_config_entries)
 
 
@@ -625,7 +638,7 @@ def configure_and_run_docker_container(
         system_paasta_config=system_paasta_config,
         volumes=volumes,
     )
-    spark_conf_str = create_spark_config_str(spark_config_dict)
+    spark_conf_str = create_spark_config_str(spark_config_dict, is_mrjob=args.mrjob)
 
     # Spark client specific volumes
     volumes.append('%s:rw' % args.work_dir)
@@ -649,7 +662,7 @@ def configure_and_run_docker_container(
     elif any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'spark-submit']):
         paasta_print(f'\nSpark monitoring URL {webui_url}\n')
 
-    if clusterman_metrics and _should_emit_resource_requirements(docker_cmd):
+    if clusterman_metrics and _should_emit_resource_requirements(docker_cmd, args.mrjob):
         try:
             emit_resource_requirements(spark_config_dict, args.cluster, webui_url)
         except Boto3Error as e:
@@ -671,15 +684,17 @@ def configure_and_run_docker_container(
     )
 
 
-def _should_emit_resource_requirements(docker_cmd):
-    return any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'spark-submit'])
+def _should_emit_resource_requirements(docker_cmd, is_mrjob):
+    return is_mrjob or any(c in docker_cmd for c in ['pyspark', 'spark-shell', 'spark-submit'])
 
 
 def get_docker_cmd(args, instance_config, spark_conf_str):
     original_docker_cmd = args.cmd or instance_config.get_cmd()
 
+    if args.mrjob:
+        return original_docker_cmd + ' ' + spark_conf_str
     # Default cli options to start the jupyter notebook server.
-    if original_docker_cmd == 'jupyter':
+    elif original_docker_cmd == 'jupyter':
         cull_opts = '--MappingKernelManager.cull_idle_timeout=%s ' % args.cull_idle_timeout
         if args.not_cull_connected is False:
             cull_opts += '--MappingKernelManager.cull_connected=True '
