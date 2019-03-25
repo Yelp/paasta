@@ -137,7 +137,7 @@ def set_boost_factor(
     zk_boost_path: str,
     region: str = '',
     pool: str = '',
-    send_clusterman_metrics: bool = False,
+    send_clusterman_metrics: bool = True,
     factor: float = DEFAULT_BOOST_FACTOR,
     duration_minutes: int = DEFAULT_BOOST_DURATION,
     override: bool = False,
