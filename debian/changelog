@@ -1,3 +1,11 @@
+paasta-tools (0.83.17) xenial; urgency=medium
+
+  * 0.83.17 tagged with 'make release'
+    Commit: Merge pull request #2181 from
+    Yelp/run_mrjob_on_spark_on_paasta  add spark-run option for mrjobs
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 25 Mar 2019 10:25:05 -0700
+
 paasta-tools (0.83.16) xenial; urgency=medium
 
   * 0.83.16 tagged with 'make release'
