@@ -478,11 +478,11 @@ def print_tron_status(
     if verbose:
         output.append(f"      Start time: {tron_status.action_start_time}")
     output.append(f"      Command: {tron_status.action_command}")
-    if verbose:
+    if verbose > 1:
         output.append(f"      Raw Command: {tron_status.action_raw_command}")
+        output.append('\n')
         output.append(f"      Stdout: {tron_status.action_stdout}")
         output.append(f"      Stderr: {tron_status.action_stderr}")
-    output.append('\n')
 
     return 0
 

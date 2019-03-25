@@ -37,6 +37,7 @@ from paasta_tools.cli.cmds.status import verify_instances
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.tron_tools import TronActionConfig
 
 
 def make_fake_instance_conf(cluster, service, instance, deploy_group=None, team=None, registrations=()):
@@ -366,7 +367,9 @@ def test_cluster_status_serviceinit_and_api_method(
     output = '\n'.join(str(line) for line in output)
     assert expected_output in output
 
-    instance_whitelist: Dict[str, Any] = {'a_instance': None, 'b_instance': KubernetesDeploymentConfig}
+    instance_whitelist: Dict[str, Any] = {
+        'a_instance': None, 'b_instance': KubernetesDeploymentConfig, 'tron_job.tron_action': TronActionConfig,
+    }
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
         'a_cluster.b_instance': 'another_sha',
@@ -382,7 +385,7 @@ def test_cluster_status_serviceinit_and_api_method(
         verbose=False,
     )
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 2
-    assert mock_paasta_status_on_api_endpoint.call_count == 1
+    assert mock_paasta_status_on_api_endpoint.call_count == 2
 
 
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
