@@ -2097,7 +2097,7 @@ class SystemPaastaConfig:
         none available """
         return self.config_dict.get('slack', {}).get('token', None)
 
-    def get_tron_config(self) -> dict:
+    def get_tron_config(self) -> Union[str, Any]:
         return self.config_dict.get('tron', {})
 
 
