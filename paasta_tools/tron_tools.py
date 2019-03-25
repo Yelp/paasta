@@ -726,7 +726,7 @@ def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str
 
 
 def get_tron_dashboard_for_cluster(cluster: str):
-    dashboards = load_system_paasta_config().config_dict['dashboard_links'][cluster]
+    dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
     if 'Tron' not in dashboards:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
     return dashboards['Tron']

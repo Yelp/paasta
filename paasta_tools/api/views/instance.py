@@ -147,7 +147,7 @@ def tron_instance_status(
         status['action_raw_command'] = action_run['raw_command']
     if action_run['stdout']:
         status['action_stdout'] = action_run['stdout']
-    if action_run['stdout']:
+    if action_run['stderr']:
         status['action_stderr'] = action_run['stderr']
     if action_run['command']:
         status['action_command'] = action_run['command']
@@ -308,6 +308,7 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
+    print(instance_type)
     if instance_type != 'flinkcluster' and instance_type != 'tron':
         try:
             actual_deployments = get_actual_deployments(service, settings.soa_dir)
