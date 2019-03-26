@@ -478,7 +478,7 @@ def print_tron_status(
     if verbose:
         output.append(f"      Status: {tron_status.job_status}")
         output.append(f"      Schedule: {tron_status.job_schedule}")
-    output.append("      DashBoard: {}".format(PaastaColors.blue(tron_status.job_url)))
+    output.append("      Dashboard: {}".format(PaastaColors.blue(tron_status.job_url)))
 
     output.append(f"    Action: {tron_status.action_name}")
     output.append(f"      Status: {tron_status.action_state}")
