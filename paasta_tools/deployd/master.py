@@ -58,12 +58,12 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
 
 
 class Inbox(PaastaThread):
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, bounce_q):
+    def __init__(self, instances_that_need_to_be_bounced_in_the_future, instances_that_need_to_be_bounced_asap):
         super().__init__()
         self.daemon = True
         self.name = "Inbox"
         self.instances_that_need_to_be_bounced_in_the_future = instances_that_need_to_be_bounced_in_the_future
-        self.bounce_q = bounce_q
+        self.instances_that_need_to_be_bounced_asap = instances_that_need_to_be_bounced_asap
         self.to_bounce = {}
 
     def run(self):
@@ -106,7 +106,7 @@ class Inbox(PaastaThread):
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
                 bounced.append(service_instance_key)
-                self.bounce_q.put(service_instance.priority, service_instance)
+                self.instances_that_need_to_be_bounced_asap.put(service_instance.priority, service_instance)
         for service_instance_key in bounced:
             self.to_bounce.pop(service_instance_key)
         # TODO: if the bounceq is empty we could probably start adding SIs from
@@ -131,10 +131,12 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
-        self.bounce_q = DedupedPriorityQueue("BounceQueue")
+        self.instances_that_need_to_be_bounced_asap = DedupedPriorityQueue("instances_that_need_to_be_bounced_asap")
         self.instances_that_need_to_be_bounced_in_the_future = PaastaQueue("instances_that_need_to_be_bounced_in_the_future")  # noqa: E501
         self.control = PaastaQueue("ControlQueue")
-        self.inbox = Inbox(self.instances_that_need_to_be_bounced_in_the_future, self.bounce_q)
+        self.inbox = Inbox(
+            self.instances_that_need_to_be_bounced_in_the_future, self.instances_that_need_to_be_bounced_asap,
+        )
         self.marathon_clients = get_marathon_clients_from_config()
 
     def setup_logging(self):
@@ -179,7 +181,10 @@ class DeployDaemon(PaastaThread):
         self.metrics = get_metrics_interface('paasta.deployd')
         leader_counter = self.metrics.create_counter("leader_elections", paasta_cluster=self.config.get_cluster())
         leader_counter.count()
-        QueueMetrics(self.inbox, self.bounce_q, self.config.get_cluster(), self.metrics).start()
+        QueueMetrics(
+            self.inbox, self.instances_that_need_to_be_bounced_asap,
+            self.config.get_cluster(), self.metrics,
+        ).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
@@ -226,7 +231,7 @@ class DeployDaemon(PaastaThread):
             worker_no = len(self.workers) + 1
             worker = PaastaDeployWorker(
                 worker_no, self.instances_that_need_to_be_bounced_in_the_future,
-                self.bounce_q,
+                self.instances_that_need_to_be_bounced_asap,
                 self.config, self.metrics,
             )
             worker.start()
@@ -239,7 +244,8 @@ class DeployDaemon(PaastaThread):
         self.workers = []
         for i in range(self.config.get_deployd_number_workers()):
             worker = PaastaDeployWorker(
-                i, self.instances_that_need_to_be_bounced_in_the_future, self.bounce_q, self.config, self.metrics,
+                i, self.instances_that_need_to_be_bounced_in_the_future,
+                self.instances_that_need_to_be_bounced_asap, self.config, self.metrics,
             )
             worker.start()
             self.workers.append(worker)

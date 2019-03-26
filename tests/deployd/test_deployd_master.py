@@ -89,9 +89,12 @@ class TestDedupedPriorityQueue(unittest.TestCase):
 
 class TestInbox(unittest.TestCase):
     def setUp(self):
-        self.mock_bounce_q = mock.Mock()
+        self.mock_instances_that_need_to_be_bounced_asap = mock.Mock()
         self.mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
-        self.inbox = Inbox(self.mock_instances_that_need_to_be_bounced_in_the_future, self.mock_bounce_q)
+        self.inbox = Inbox(
+            self.mock_instances_that_need_to_be_bounced_in_the_future,
+            self.mock_instances_that_need_to_be_bounced_asap,
+        )
 
     def test_run(self):
         with mock.patch(
@@ -167,8 +170,10 @@ class TestInbox(unittest.TestCase):
                 'universe.c138': mock_service_instance_2,
             }
             self.inbox.process_to_bounce()
-            self.mock_bounce_q.put.assert_called_with(mock_service_instance_1.priority, mock_service_instance_1)
-            assert self.mock_bounce_q.put.call_count == 1
+            self.mock_instances_that_need_to_be_bounced_asap.put.assert_called_with(
+                mock_service_instance_1.priority, mock_service_instance_1,
+            )
+            assert self.mock_instances_that_need_to_be_bounced_asap.put.call_count == 1
 
     def tearDown(self):
         self.inbox.to_bounce = {}
@@ -238,7 +243,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert self.deployd.is_leader
             mock_q_metrics.assert_called_with(
                 self.deployd.inbox,
-                self.deployd.bounce_q,
+                self.deployd.instances_that_need_to_be_bounced_asap,
                 'westeros-prod',
                 mock_get_metrics_interface.return_value,
             )
