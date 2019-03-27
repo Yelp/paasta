@@ -53,6 +53,11 @@ def parse_paasta_api_args():
         dest="soa_dir",
         help="define a different soa config directory",
     )
+    parser.add_argument(
+        '-c', '--cluster',
+        dest='cluster',
+        help="specify a cluster. If no empty, the cluster from /etc/paasta is used",
+    )
     args = parser.parse_args()
     return args
 
@@ -112,7 +117,10 @@ def setup_paasta_api():
     service_configuration_lib.disable_yaml_cache()
 
     settings.system_paasta_config = load_system_paasta_config()
-    settings.cluster = settings.system_paasta_config.get_cluster()
+    if os.environ.get("PAASTA_API_CLUSTER"):
+        settings.cluster = os.environ.get("PAASTA_API_CLUSTER")
+    else:
+        settings.cluster = settings.system_paasta_config.get_cluster()
 
     settings.marathon_clients = marathon_tools.get_marathon_clients(
         marathon_tools.get_marathon_servers(settings.system_paasta_config),
@@ -147,6 +155,9 @@ def main(argv=None):
 
     if args.soa_dir:
         os.environ["PAASTA_API_SOA_DIR"] = args.soa_dir
+
+    if args.cluster:
+        os.environ["PAASTA_API_CLUSTER"] = args.cluster
 
     os.execlp(
         os.path.join(sys.exec_prefix, "bin", "gunicorn"),

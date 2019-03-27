@@ -34,6 +34,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import flinkcluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
+from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -113,6 +114,45 @@ def chronos_instance_status(
     cstatus['last_status']['time'] = last_time
 
     return cstatus
+
+
+def tron_instance_status(
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: bool,
+) -> Mapping[str, Any]:
+    status: Dict[str, Any] = {}
+    client = tron_tools.get_tron_client()
+    short_job, action = instance.split('.')
+    job = f"{service}.{short_job}"
+
+    job_content = client.get_job_content(job=job)
+    latest_run_id = client.get_latest_job_run_id(job_content=job_content)
+    action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
+
+    # job info
+    status['job_name'] = short_job
+    status['job_status'] = job_content['status']
+    status['job_schedule'] = '{} {}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
+    status['job_url'] = tron_tools.get_tron_dashboard_for_cluster(settings.cluster) + f'#job/{job}'
+
+    if action:
+        status['action_name'] = action
+    if action_run['state']:
+        status['action_state'] = action_run['state']
+    if action_run['start_time']:
+        status['action_start_time'] = action_run['start_time']
+    if action_run['raw_command']:
+        status['action_raw_command'] = action_run['raw_command']
+    if action_run['stdout']:
+        status['action_stdout'] = '\n'.join(action_run['stdout'])
+    if action_run['stderr']:
+        status['action_stderr'] = '\n'.join(action_run['stderr'])
+    if action_run['command']:
+        status['action_command'] = action_run['command']
+
+    return status
 
 
 def adhoc_instance_status(
@@ -268,7 +308,8 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type != 'flinkcluster':
+    print(instance_type)
+    if instance_type != 'flinkcluster' and instance_type != 'tron':
         try:
             actual_deployments = get_actual_deployments(service, settings.soa_dir)
         except Exception:
@@ -294,6 +335,8 @@ def instance_status(request):
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'kubernetes':
             instance_status['kubernetes'] = kubernetes_instance_status(instance_status, service, instance, verbose)
+        elif instance_type == 'tron':
+            instance_status['tron'] = tron_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'flinkcluster':
             status = flinkcluster_instance_status(instance_status, service, instance, verbose)
             if status is not None:

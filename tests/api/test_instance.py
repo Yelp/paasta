@@ -327,3 +327,50 @@ def test_add_slave_info():
         'slave': {'some': 'thing'},
     }
     assert instance.add_slave_info(mock_task)._Task__items == expected
+
+
+@mock.patch('paasta_tools.api.views.instance.tron_tools.get_tron_dashboard_for_cluster', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.tron_tools.TronClient', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.tron_tools.get_tron_client', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
+def test_tron_instance_status(
+    mock_validate_service_instance,
+    mock_get_tron_client,
+    mock_tron_client,
+    mock_get_tron_dashboard_for_cluster,
+):
+    settings.cluster = 'fake_cluster'
+    mock_validate_service_instance.return_value = 'tron'
+    mock_client = mock_tron_client('fake_url')
+    mock_get_tron_client.return_value = mock_client
+    mock_client.get_job_content.return_value = {
+        'status': 'fake_status',
+        'scheduler': {
+            'type': 'daily',
+            'value': '1 2 3',
+        },
+    }
+    mock_client.get_action_run.return_value = {
+        'state': 'fake_state',
+        'start_time': 'fake_start_time',
+        'raw_command': 'fake_raw_command',
+        'command': 'fake_command',
+        'stdout': 'fake_stdout',
+        'stderr': 'fake_stderr',
+    }
+    mock_get_tron_dashboard_for_cluster.return_value = 'http://fake_url/'
+
+    request = testing.DummyRequest()
+    request.swagger_data = {'service': 'fake_service', 'instance': 'fake_job.fake_action'}
+    response = instance.instance_status(request)
+    assert response['tron']['job_name'] == 'fake_job'
+    assert response['tron']['job_status'] == 'fake_status'
+    assert response['tron']['job_schedule'] == 'daily 1 2 3'
+    assert response['tron']['job_url'] == 'http://fake_url/#jobs/fake_service.fake_job'
+    assert response['tron']['action_name'] == 'fake_action'
+    assert response['tron']['action_state'] == 'fake_state'
+    assert response['tron']['action_raw_command'] == 'fake_raw_command'
+    assert response['tron']['action_command'] == 'fake_command'
+    assert response['tron']['action_start_time'] == 'fake_start_time'
+    assert response['tron']['action_stdout'] == 'fake_stdout'
+    assert response['tron']['action_stderr'] == 'fake_stderr'

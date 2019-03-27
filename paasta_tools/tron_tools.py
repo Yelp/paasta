@@ -723,3 +723,10 @@ def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str
         if cluster_re_match is not None:
             clusters.append(cluster_re_match.group(1))
     return clusters
+
+
+def get_tron_dashboard_for_cluster(cluster: str):
+    dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
+    if 'Tron' not in dashboards:
+        raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
+    return dashboards['Tron']
