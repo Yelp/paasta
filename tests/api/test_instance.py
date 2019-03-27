@@ -352,7 +352,7 @@ def test_tron_instance_status(
     }
     mock_client.get_action_run.return_value = {
         'state': 'fake_state',
-        'start_time': 'fake_state_time',
+        'start_time': 'fake_start_time',
         'raw_command': 'fake_raw_command',
         'command': 'fake_command',
         'stdout': 'fake_stdout',
@@ -363,5 +363,14 @@ def test_tron_instance_status(
     request = testing.DummyRequest()
     request.swagger_data = {'service': 'fake_service', 'instance': 'fake_job.fake_action'}
     response = instance.instance_status(request)
-    assert response['tron']['action_command'] == 'fake_command'
     assert response['tron']['job_name'] == 'fake_job'
+    assert response['tron']['job_status'] == 'fake_status'
+    assert response['tron']['job_schedule'] == 'daily 1 2 3'
+    assert response['tron']['job_url'] == 'http://fake_url/#jobs/fake_service.fake_job'
+    assert response['tron']['action_name'] == 'fake_action'
+    assert response['tron']['action_state'] == 'fake_state'
+    assert response['tron']['action_raw_command'] == 'fake_raw_command'
+    assert response['tron']['action_command'] == 'fake_command'
+    assert response['tron']['action_start_time'] == 'fake_start_time'
+    assert response['tron']['action_stdout'] == 'fake_stdout'
+    assert response['tron']['action_stderr'] == 'fake_stderr'
