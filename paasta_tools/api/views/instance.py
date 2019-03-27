@@ -135,7 +135,7 @@ def tron_instance_status(
     status['job_name'] = short_job
     status['job_status'] = job_content['status']
     status['job_schedule'] = '{} {}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
-    status['job_url'] = tron_tools.get_tron_dashboard_for_cluster(settings.cluster) + f'#jobs/{job}'
+    status['job_url'] = tron_tools.get_tron_dashboard_for_cluster(settings.cluster) + f'#job/{job}'
 
     if action:
         status['action_name'] = action
@@ -146,9 +146,9 @@ def tron_instance_status(
     if action_run['raw_command']:
         status['action_raw_command'] = action_run['raw_command']
     if action_run['stdout']:
-        status['action_stdout'] = action_run['stdout']
+        status['action_stdout'] = '\n'.join(action_run['stdout'])
     if action_run['stderr']:
-        status['action_stderr'] = action_run['stderr']
+        status['action_stderr'] = '\n'.join(action_run['stderr'])
     if action_run['command']:
         status['action_command'] = action_run['command']
 
