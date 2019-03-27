@@ -55,6 +55,7 @@ from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -242,6 +243,8 @@ def paasta_status_on_api_endpoint(
         return print_marathon_status(service, instance, output, status.marathon)
     elif status.kubernetes is not None:
         return print_kubernetes_status(service, instance, output, status.kubernetes)
+    elif status.tron is not None:
+        return print_tron_status(service, instance, output, status.tron, verbose)
     elif status.flinkcluster is not None:
         return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster.get('status'), verbose)
     else:
@@ -464,6 +467,32 @@ def print_kubernetes_status(
     return 0
 
 
+def print_tron_status(
+    service: str,
+    instance: str,
+    output: List[str],
+    tron_status,
+    verbose: int = 0,
+) -> int:
+    output.append(f"    Tron job: {tron_status.job_name}")
+    if verbose:
+        output.append(f"      Status: {tron_status.job_status}")
+        output.append(f"      Schedule: {tron_status.job_schedule}")
+    output.append("      Dashboard: {}".format(PaastaColors.blue(tron_status.job_url)))
+
+    output.append(f"    Action: {tron_status.action_name}")
+    output.append(f"      Status: {tron_status.action_state}")
+    if verbose:
+        output.append(f"      Start time: {tron_status.action_start_time}")
+    output.append(f"      Command: {tron_status.action_command}")
+    if verbose > 1:
+        output.append(f"      Raw Command: {tron_status.action_raw_command}")
+        output.append(f"      Stdout: \n{tron_status.action_stdout}")
+        output.append(f"      Stderr: \n{tron_status.action_stderr}")
+
+    return 0
+
+
 def report_status_for_cluster(
     service: str,
     cluster: str,
@@ -487,6 +516,11 @@ def report_status_for_cluster(
     ssh_only_instances = [
         instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
         in SSH_ONLY_INSTANCE_CONFIG
+    ]
+
+    tron_jobs = [
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
+        == TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
@@ -557,6 +591,20 @@ def report_status_for_cluster(
             if status is not None:
                 for line in status.rstrip().split('\n'):
                     output.append('    %s' % line)
+
+    if len(tron_jobs) > 0:
+        return_codes = [
+            paasta_status_on_api_endpoint(
+                cluster=cluster,
+                service=service,
+                instance=tron_job,
+                output=output,
+                system_paasta_config=system_paasta_config,
+                verbose=verbose,
+            )
+            for tron_job in tron_jobs
+        ]
+        seen_instances.extend(tron_jobs)
 
     output.append(report_invalid_whitelist_values(instances, seen_instances, 'instance'))
 
