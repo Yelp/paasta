@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import re
 import sys
 
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -48,9 +49,7 @@ def add_subparser(subparsers):
         help="The name of the secret to create/update, "
              "this is the name you will reference in your "
              "services marathon/chronos yaml files and should "
-             "be unique per service. Please prefix with "
-             "PAASTA_SECRET_ if you are going to use the "
-             "yelp_servlib client library.",
+             "be unique per service.",
     )
 
     # Must choose valid service or act on a shared secret
@@ -93,6 +92,12 @@ def add_subparser(subparsers):
     secret_parser.set_defaults(command=paasta_secret)
 
 
+def secret_name_for_env(secret_name):
+    secret_name = secret_name.upper()
+    valid_parts = re.findall(r'[a-zA-Z0-9_]+', secret_name)
+    return '_'.join(valid_parts)
+
+
 def print_paasta_helper(secret_path, secret_name, is_shared):
     print(
         "\nYou have successfully encrypted your new secret and it\n"
@@ -111,7 +116,7 @@ def print_paasta_helper(secret_path, secret_name, is_shared):
         "specified. The PAASTA_SECRET_ prefix is optional but necessary\n"
         "for the yelp_servlib client library".format(
             secret_path,
-            secret_name.upper(),
+            secret_name_for_env(secret_name),
             'SHARED_' if is_shared else '',
             secret_name,
         ),

@@ -26,6 +26,11 @@ def test_add_subparser():
     )
 
 
+def test_secret_name_for_env():
+    assert secret.secret_name_for_env('test-secret2') == 'TEST_SECRET2'
+    assert secret.secret_name_for_env('test.secret.foo') == 'TEST_SECRET_FOO'
+
+
 def test_print_paasta_helper():
     secret.print_paasta_helper('/blah/what', 'keepithidden', False)
     secret.print_paasta_helper('/blah/what', 'keepithidden', True)
