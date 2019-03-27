@@ -487,9 +487,8 @@ def print_tron_status(
     output.append(f"      Command: {tron_status.action_command}")
     if verbose > 1:
         output.append(f"      Raw Command: {tron_status.action_raw_command}")
-        output.append('\n')
-        output.append(f"      Stdout: {tron_status.action_stdout}")
-        output.append(f"      Stderr: {tron_status.action_stderr}")
+        output.append(f"      Stdout: \n{tron_status.action_stdout}")
+        output.append(f"      Stderr: \n{tron_status.action_stderr}")
 
     return 0
 
