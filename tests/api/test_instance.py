@@ -355,8 +355,8 @@ def test_tron_instance_status(
         'start_time': 'fake_start_time',
         'raw_command': 'fake_raw_command',
         'command': 'fake_command',
-        'stdout': 'fake_stdout',
-        'stderr': 'fake_stderr',
+        'stdout': ['fake_stdout'],
+        'stderr': ['fake_stderr'],
     }
     mock_get_tron_dashboard_for_cluster.return_value = 'http://fake_url/'
 
@@ -366,7 +366,7 @@ def test_tron_instance_status(
     assert response['tron']['job_name'] == 'fake_job'
     assert response['tron']['job_status'] == 'fake_status'
     assert response['tron']['job_schedule'] == 'daily 1 2 3'
-    assert response['tron']['job_url'] == 'http://fake_url/#jobs/fake_service.fake_job'
+    assert response['tron']['job_url'] == 'http://fake_url/#job/fake_service.fake_job'
     assert response['tron']['action_name'] == 'fake_action'
     assert response['tron']['action_state'] == 'fake_state'
     assert response['tron']['action_raw_command'] == 'fake_raw_command'
