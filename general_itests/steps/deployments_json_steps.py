@@ -74,6 +74,7 @@ def step_paasta_mark_for_deployments_when(context):
         soa_dir='fake_soa_configs',
         block=False,
         verify_image=False,
+        auto_rollback=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(
