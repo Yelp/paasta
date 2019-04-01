@@ -172,5 +172,58 @@ def test_set_boost_factor_with_active_boost_override():
         )
 
 
+@freeze_time(TEST_CURRENT_TIME)
 def test_clear_boost():
-    pass
+    fake_region = 'westeros-1'
+    fake_pool = 'default'
+    base_path = load_boost.get_zk_cluster_boost_path(fake_region, fake_pool)
+
+    with patch_zk_client() as mock_zk_client:
+        load_boost.clear_boost(base_path, region=fake_region, pool=fake_pool)
+
+    expected_end_time = float(TEST_CURRENT_TIME.timestamp())
+
+    assert mock_zk_client.set.call_args_list == [
+        mock.call(
+            base_path + '/end_time',
+            str(expected_end_time).encode('utf-8'),
+        ),
+        mock.call(
+            base_path + '/factor',
+            '1'.encode('utf-8'),
+        ),
+        mock.call(
+            base_path + '/expected_load',
+            '0'.encode('utf-8'),
+        ),
+    ]
+
+
+@mock.patch('paasta_tools.autoscaling.load_boost.clusterman_metrics', autospec=True)
+@mock.patch('paasta_tools.autoscaling.load_boost.load_system_paasta_config', autospec=True)
+@freeze_time(TEST_CURRENT_TIME)
+def test_send_clusterman_metrics(mock_load_system_paasta_config, mock_clusterman_metrics):
+    fake_region = 'westeros-1'
+    fake_pool = 'default'
+    base_path = load_boost.get_zk_cluster_boost_path(fake_region, fake_pool)
+
+    mock_load_system_paasta_config.return_value.get_cluster.return_value = 'westeros-prod'
+    mock_clusterman_metrics.generate_key_with_dimensions = lambda key, dims: f'{key}|{dims}'
+    mock_writer = mock_clusterman_metrics.ClustermanMetricsBotoClient().get_writer().__enter__()
+
+    with patch_zk_client():
+        load_boost.set_boost_factor(
+            zk_boost_path=base_path,
+            region=fake_region,
+            pool=fake_pool,
+            factor=1.3,
+            duration_minutes=10,
+        )
+
+    expected_metrics_dimensions = {'cluster': 'westeros-prod', 'pool': 'default'}
+    expected_metrics_key = f'boost_factor|{expected_metrics_dimensions}'
+
+    assert mock_writer.send.call_args_list == [
+        mock.call((expected_metrics_key, TEST_CURRENT_TIME.timestamp(), 1.3)),
+        mock.call((expected_metrics_key, TEST_CURRENT_TIME.timestamp() + 10 * 60, 1.0)),
+    ]

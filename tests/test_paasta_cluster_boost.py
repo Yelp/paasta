@@ -149,7 +149,6 @@ def test_paasta_cluster_boost():
             zk_boost_path=mock_get_zk_cluster_boost_path.return_value,
             region='useast1-dev',
             pool='default',
-            send_clusterman_metrics=True,
             factor=1.0,
             duration_minutes=20,
             override=False,
@@ -165,4 +164,6 @@ def test_paasta_cluster_boost():
         )
         mock_clear_boost.assert_called_with(
             zk_boost_path=mock_get_zk_cluster_boost_path.return_value,
+            region='useast1-dev',
+            pool='default',
         )
