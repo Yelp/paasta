@@ -14,7 +14,6 @@ import requests
 import transitions.extensions
 from mypy_extensions import TypedDict
 
-from paasta_tools.slack import get_slack_client
 try:
     from scribereader import scribereader
 except ImportError:
@@ -25,7 +24,21 @@ SCRIBE_ENV = 'uswest1-prod'
 log = logging.getLogger(__name__)
 
 
-def get_slack_blocks_for_initial_deployment(message, last_action=None, status=None, active_button=None):
+def get_slack_blocks_for_deployment(
+    message,
+    last_action=None,
+    status=None,
+    progress=None,
+    active_button=None,
+    available_buttons=["rollback", "forward"],
+    from_sha=None,
+    to_sha=None,
+):
+
+    button_elements = get_button_elements(
+        available_buttons, active_button=active_button,
+        from_sha=from_sha, to_sha=to_sha,
+    )
     blocks = [
         {
             "type": "section",
@@ -39,27 +52,28 @@ def get_slack_blocks_for_initial_deployment(message, last_action=None, status=No
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"Status: {status}\nLast action: {last_action}",
+                "text": f"State machine: `{status}`\nProgress: {progress}\nLast operator action: {last_action}",
             },
         },
-        {
+    ]
+    if button_elements != []:
+        blocks.append({
             "type": "actions",
             "block_id": "deployment_actions",
-            "elements": get_button_elements(["rollback", "forward"], active_button=active_button),
-        },
-    ]
+            "elements": button_elements,
+        })
     return blocks
 
 
-def get_button_element(button, is_active):
+def get_button_element(button, is_active, from_sha, to_sha):
     active_button_texts = {
-        "rollback": "Rolling Back :zombocom: (Not Impl.)",
-        "forward": "Rolling Forward :zombocom: (Not Impl.)",
+        "rollback": f"Rolling Back to {from_sha[:8]} :zombocom:",
+        "forward": f"Rolling Forward to {to_sha[:8]} :zombocom:",
     }
 
     inactive_button_texts = {
-        "rollback": "Roll Back :arrow_backward: (Not Impl.)",
-        "forward": "Continue Forward :arrow_forward: (Not Impl.)",
+        "rollback": f"Roll Back to {from_sha[:8]} :arrow_backward:",
+        "forward": f"Continue Forward to {to_sha[:8]} :arrow_forward:",
     }
 
     if is_active is True:
@@ -84,12 +98,12 @@ def get_button_element(button, is_active):
     return element
 
 
-def get_button_elements(buttons, active_button=None):
+def get_button_elements(buttons, active_button=None, from_sha=None, to_sha=None):
     elements = []
     for button in buttons:
         is_active = button == active_button
         elements.append(
-            get_button_element(button=button, is_active=is_active),
+            get_button_element(button=button, is_active=is_active, from_sha=from_sha, to_sha=to_sha),
         )
     return elements
 
@@ -122,7 +136,7 @@ class ButtonPress():
         self.response_url = event["response_url"]
         # TODO: Handle multiple actions?
         self.action = event["actions"][0]["value"]
-        self.thread_ts = event["container"]["thread_ts"]
+        self.thread_ts = event["container"].get("thread_ts", None)
         self.channel = event["channel"]["name"]
 
     def __repr__(self):
@@ -153,6 +167,7 @@ def is_relevant_event(event):
 
 def get_slack_events():
     if scribereader is None:
+        logging.error("Scribereader unavailable. Not tailing slack events.")
         return
 
     def scribe_tail(queue):
@@ -167,35 +182,16 @@ def get_slack_events():
     # approach, with paasta logs as prior art.
     queue = Queue()
     kw = {'queue': queue}
-    process = Process(target=scribe_tail, kwargs=kw)
+    process = Process(target=scribe_tail, daemon=True, kwargs=kw)
     process.start()
     while True:
         try:
             line = queue.get(block=True, timeout=0.1)
             event = parse_webhook_event_json(line)
             if is_relevant_event(event):
-                yield line
+                yield event
         except Empty:
             pass
-
-
-def watch_for_slack_webhooks(sc):
-    for event in get_slack_events():
-        buttonpress = event_to_buttonpress(event)
-        followup_message = f"Got it. {buttonpress.username} pressed {buttonpress.action}"
-        sc.post(channels=[buttonpress.channel], message=followup_message, thread_ts=buttonpress.thread_ts)
-        action = buttonpress.action
-        blocks = get_slack_blocks_for_initial_deployment(
-            message="New Message", last_action=action, status=f"Taking action on the {action} button",
-            active_button=action,
-        )
-        buttonpress.update(blocks)
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    sc = get_slack_client()
-    watch_for_slack_webhooks(sc)
 
 
 class TransitionDefinition(TypedDict):

@@ -96,41 +96,6 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock_
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
-def test_paasta_mark_for_deployment_with_good_rollback(
-    mock_get_currently_deployed_sha,
-    mock_wait_for_deployment,
-    mock_mark_for_deployment,
-    mock_validate_service_name,
-):
-    class fake_args_rollback(fake_args):
-        auto_rollback = True
-        block = True
-        timeout = 600
-
-    mock_mark_for_deployment.return_value = 0
-    mock_wait_for_deployment.side_effect = TimeoutError
-    mock_get_currently_deployed_sha.return_value = "old-sha"
-    with patch('time.sleep', autospec=True):
-        assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
-    mock_mark_for_deployment.assert_any_call(
-        service='test_service',
-        deploy_group='test_deploy_group',
-        commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
-        git_url='git://false.repo/services/test_services',
-    )
-    mock_mark_for_deployment.assert_any_call(
-        service='test_service',
-        deploy_group='test_deploy_group',
-        commit='old-sha',
-        git_url='git://false.repo/services/test_services',
-    )
-    mock_mark_for_deployment.call_count = 2
-
-
-@patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
 def test_paasta_mark_for_deployment_when_verify_image_fails(
@@ -167,15 +132,17 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     )
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
-def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
+def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_currently_deployed_sha,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_validate_service_name,
+    mock_get_slack_client,
 ):
     class fake_args_rollback(fake_args):
         auto_rollback = True
@@ -184,14 +151,23 @@ def test_paasta_mark_for_deployment_with_skips_rollback_when_same_sha(
 
     mock_mark_for_deployment.return_value = 0
     mock_wait_for_deployment.side_effect = TimeoutError
-    mock_get_currently_deployed_sha.return_value = "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
-    assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
-    mock_mark_for_deployment.assert_called_once_with(
+    mock_get_currently_deployed_sha.return_value = "old-sha"
+    with patch('time.sleep', autospec=True):
+        assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
+    print(mock_mark_for_deployment.mock_calls)
+    mock_mark_for_deployment.assert_any_call(
         service='test_service',
         deploy_group='test_deploy_group',
         commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
         git_url='git://false.repo/services/test_services',
     )
+    mock_mark_for_deployment.assert_any_call(
+        service='test_service',
+        deploy_group='test_deploy_group',
+        commit='old-sha',
+        git_url='git://false.repo/services/test_services',
+    )
+    assert mock_mark_for_deployment.call_count == 2
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
@@ -389,13 +365,13 @@ def test_slack_deploy_notifier_doesnt_notify_on_deploy_info_flags(mock_get_autho
     assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
-    mock_SlackDeployNotifier,
+    mock_get_slack_client,
 ):
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
@@ -404,8 +380,8 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 
         deploy_info=None,
         deploy_group=None,
-        commit=None,
-        old_git_sha=None,
+        commit='abc123432u49',
+        old_git_sha='abc123455',
         git_url=None,
         soa_dir=None,
         timeout=None,
@@ -422,13 +398,15 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     assert mfdp.state == 'deploy_aborted'
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('time.sleep', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
-    mock_SlackDeployNotifier,
+    mock_get_slack_client,
+    mock_sleep,
 ):
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
@@ -439,8 +417,8 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 
         deploy_info=None,
         deploy_group=None,
-        commit=None,
-        old_git_sha=None,
+        commit='abc123512',
+        old_git_sha='asgdser23',
         git_url=None,
         soa_dir=None,
         timeout=None,
@@ -451,19 +429,23 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 
     retval = mfdp.run()
 
-    assert mock_mark_for_deployment.call_count == 1
+    assert mock_mark_for_deployment.call_count == 2
     assert mock_wait_for_deployment.call_count == 1
     assert retval == 1
     assert mfdp.state == 'start_rollback'
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.Thread', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.automatic_rollbacks.get_slack_events', autospec=True)
 def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
+    mock_get_slack_events,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
-    mock_SlackDeployNotifier,
+    mock_get_slack_client,
+    mock_Thread,
 ):
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
@@ -472,8 +454,8 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
 
         deploy_info=None,
         deploy_group=None,
-        commit=None,
-        old_git_sha=None,
+        commit='abc123456789',
+        old_git_sha='oldsha1234',
         git_url=None,
         soa_dir=None,
         timeout=None,
@@ -490,13 +472,13 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
     assert mfdp.state == 'deploying'
 
 
-@patch('paasta_tools.cli.cmds.mark_for_deployment.SlackDeployNotifier', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
-    mock_SlackDeployNotifier,
+    mock_get_slack_client,
 ):
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
@@ -505,8 +487,8 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
 
         deploy_info=None,
         deploy_group=None,
-        commit=None,
-        old_git_sha=None,
+        commit='asbjkslerj',
+        old_git_sha='abscerwerr',
         git_url=None,
         soa_dir=None,
         timeout=None,
