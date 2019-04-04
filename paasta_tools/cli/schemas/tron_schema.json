@@ -35,6 +35,10 @@
           "minimum": 0,
           "exclusiveMinimum": true
         },
+	"cap_add": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
         "mem": {
           "type": "number",
           "minimum": 32,
