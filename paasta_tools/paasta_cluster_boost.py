@@ -118,7 +118,6 @@ def paasta_cluster_boost(
                 zk_boost_path=zk_boost_path,
                 region=region,
                 pool=pool,
-                send_clusterman_metrics=True,
                 factor=boost,
                 duration_minutes=duration,
                 override=override,
@@ -130,7 +129,11 @@ def paasta_cluster_boost(
             pass
 
         elif action == 'clear':
-            if not load_boost.clear_boost(zk_boost_path):
+            if not load_boost.clear_boost(
+                zk_boost_path,
+                region=region,
+                pool=pool,
+            ):
                 paasta_print('ERROR: Failed to clear the boost for pool {}, region {}.')
                 return False
 

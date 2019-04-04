@@ -221,9 +221,17 @@ def set_boost_factor(
         )
 
 
-def clear_boost(zk_boost_path) -> bool:
+def clear_boost(
+    zk_boost_path: str,
+    region: str = '',
+    pool: str = '',
+    send_clusterman_metrics: bool = True,
+) -> bool:
     return set_boost_factor(
         zk_boost_path,
+        region=region,
+        pool=pool,
+        send_clusterman_metrics=send_clusterman_metrics,
         factor=1,
         duration_minutes=0,
         override=True,
