@@ -1,3 +1,11 @@
+paasta-tools (0.83.18) xenial; urgency=medium
+
+  * 0.83.18 tagged with 'make release'
+    Commit: Merge pull request #2194 from Yelp/SEC-11038-add-cap_add-
+    property  adding cap_add to tron_schema
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 04 Apr 2019 15:48:08 -0700
+
 paasta-tools (0.83.17) xenial; urgency=medium
 
   * 0.83.17 tagged with 'make release'
