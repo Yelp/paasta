@@ -134,7 +134,8 @@
               },
               "description": {"type": "string"},
               "alert_after": {"type": "string"},
-              "check_that_every_day_has_a_successful_run": {"type": "boolean"}
+              "check_that_every_day_has_a_successful_run": {"type": "boolean"},
+              "priority": {"type": "string"}
             },
             "additionalProperties": false
         },
