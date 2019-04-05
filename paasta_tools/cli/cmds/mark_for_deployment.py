@@ -29,6 +29,7 @@ from threading import Event
 from threading import Thread
 from typing import Collection
 from typing import Iterator
+from typing import List
 from typing import Mapping
 from typing import Optional
 
@@ -535,6 +536,9 @@ class Progress():
 
 
 class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
+    rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
+    rollforward_states = ['start_deploy', 'deploying', 'deployed']
+
     def __init__(
         self,
         service,
@@ -567,7 +571,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.slack_ts = None
         self.slack_channel = "#test"
         self.slack_channel_id = None
-        self.available_buttons = []
         self.last_action = None
 
         super().__init__()
@@ -605,7 +608,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             last_action=self.last_action,
             status=self.state,
             active_button=self.get_active_button(),
-            available_buttons=self.available_buttons,
+            available_buttons=self.get_available_buttons(),
             from_sha=self.old_git_sha,
             to_sha=self.commit,
         )
@@ -636,8 +639,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             service=self.service,
             commit=self.commit,
         )
-        if self.old_git_sha != self.commit:
-            self.available_buttons = ["rollback"]
         self.update_slack_thread(f"mark-for-deployment finished with exit code {self.mark_for_deployment_return_code}")
         if self.mark_for_deployment_return_code != 0:
             self.trigger('mfd_failed')
@@ -699,29 +700,26 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             'trigger': 'deploy_cancelled',
         }
 
-        rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
-        rollforward_states = ['start_deploy', 'deploying', 'deployed']
-
         yield {
-            'source': rollforward_states,
+            'source': self.rollforward_states,
             'dest': 'start_rollback',
             'trigger': 'rollback_button_clicked',
         }
         yield {
-            'source': rollback_states,
+            'source': self.rollback_states,
             'dest': None,  # this makes it an "internal transition", effectively a noop.
             'trigger': 'rollback_button_clicked',
         }
 
         yield {
-            'source': rollback_states,
+            'source': self.rollback_states,
             'dest': 'start_deploy',
             'trigger': 'rollforward_button_clicked',
         }
         yield {
-            'source': rollforward_states,
+            'source': self.rollforward_states,
             'dest': None,  # this makes it an "internal transition", effectively a noop.
-            'trigger': 'rollback_button_clicked',
+            'trigger': 'rollforward_button_clicked',
         }
 
         yield {
@@ -753,6 +751,21 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
     def is_terminal_state(self, state: str) -> bool:
         return (state in self.status_code_by_state())
 
+    def get_available_buttons(self) -> List[str]:
+        buttons = []
+
+        if self.is_terminal_state(self.state):
+            # If we're about to exit, always clear the buttons, since once we exit the buttons will stop working.
+            return []
+
+        if self.old_git_sha != self.commit:
+            if self.state in self.rollback_states:
+                buttons.append("forward")
+            if self.state in self.rollforward_states:
+                buttons.append("rollback")
+
+        return buttons
+
     def get_active_button(self) -> Optional[str]:
         return {
             'start_deploy': 'forward',
@@ -764,7 +777,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         }.get(self.state)
 
     def on_enter_mfd_failed(self):
-        self.available_buttons = []
         self.update_slack_status(f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output.")  # noqa E501
 
     def on_enter_deploying(self):
@@ -780,7 +792,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.update_slack_thread("Finished waiting for the deployment")
 
     def on_enter_start_rollback(self):
-        self.available_buttons = ["forward"]
         self.update_slack_status(f"Rolling back ({self.deploy_group}) to {self.old_git_sha}")
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
@@ -796,7 +807,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             self.trigger('mfd_succeeded')
 
     def on_enter_rolling_back(self):
-        self.available_buttons = ["forward"]
         self.update_slack()
         if self.block:
             thread = Thread(target=self.do_wait_for_deployment, args=(self.old_git_sha,), daemon=True)
@@ -808,7 +818,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def on_enter_deploy_errored(self):
         report_waiting_aborted(self.service, self.deploy_group)
-        self.available_buttons = []
         self.update_slack_status(f"Deploy aborted, but it will still try to converge.")
         self.send_manual_rollback_instructions()
 
@@ -835,7 +844,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             self.trigger('deploy_errored')
 
     def on_enter_deployed(self):
-        self.available_buttons = []
         self.update_slack_status(f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}")
         line = f"Deployment of {self.commit[:8]} for {self.deploy_group} complete"
         _log(
@@ -855,6 +863,8 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             self.last_action = buttonpress.action
             if buttonpress.action == "rollback":
                 self.trigger('rollback_button_clicked')
+            if buttonpress.action == "forward":
+                self.trigger('rollforward_button_clicked')
 
     def send_manual_rollback_instructions(self):
         if self.old_git_sha != self.commit:
