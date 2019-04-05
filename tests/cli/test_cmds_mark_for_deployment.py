@@ -20,10 +20,9 @@ from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.slack import PaastaSlackClient
-from paasta_tools.utils import TimeoutError
 
 
-class fake_args:
+class FakeArgs:
     deploy_group = 'test_deploy_group'
     service = 'test_service'
     git_url = 'git://false.repo/services/test_services'
@@ -45,7 +44,7 @@ def test_paasta_mark_for_deployment_acts_like_main(
     mock_validate_service_name,
 ):
     mock_mark_for_deployment.return_value = 42
-    assert mark_for_deployment.paasta_mark_for_deployment(fake_args) == 42
+    assert mark_for_deployment.paasta_mark_for_deployment(FakeArgs) == 42
     mock_mark_for_deployment.assert_called_once_with(
         service='test_service',
         deploy_group='test_deploy_group',
@@ -103,12 +102,12 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
 ):
-    class fake_args_rollback(fake_args):
+    class FakeArgsRollback(FakeArgs):
         verify_image = True
 
     mock_is_docker_image_already_in_registry.return_value = False
     with raises(ValueError):
-        mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback)
+        mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -119,12 +118,12 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
 ):
-    class fake_args_rollback(fake_args):
+    class FakeArgsRollback(FakeArgs):
         verify_image = True
 
-    mock_is_docker_image_already_in_registry.return_value = True
-    with patch('time.sleep', autospec=True):
-        mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback)
+    mock_is_docker_image_already_in_registry.return_value = False
+    with raises(ValueError):
+        mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
     mock_is_docker_image_already_in_registry.assert_called_with(
         'test_service',
         'fake_soa_dir',
@@ -135,25 +134,36 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
 def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_currently_deployed_sha,
-    mock_wait_for_deployment,
+    mock_do_wait_for_deployment,
     mock_mark_for_deployment,
     mock_validate_service_name,
     mock_get_slack_client,
 ):
-    class fake_args_rollback(fake_args):
+    class FakeArgsRollback(FakeArgs):
         auto_rollback = True
         block = True
         timeout = 600
 
     mock_mark_for_deployment.return_value = 0
-    mock_wait_for_deployment.side_effect = TimeoutError
+
+    def do_wait_for_deployment_side_effect(self, target_commit):
+        if target_commit == FakeArgs.commit:
+            self.trigger('rollback_button_clicked')
+        else:
+            self.trigger('deploy_finished')
+
+    mock_do_wait_for_deployment.side_effect = do_wait_for_deployment_side_effect
+
     mock_get_currently_deployed_sha.return_value = "old-sha"
-    with patch('time.sleep', autospec=True):
-        assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
+    with patch(
+        'paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack',
+        autospec=True,
+    ):
+        assert mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback) == 1
     print(mock_mark_for_deployment.mock_calls)
     mock_mark_for_deployment.assert_any_call(
         service='test_service',
@@ -168,6 +178,16 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         git_url='git://false.repo/services/test_services',
     )
     assert mock_mark_for_deployment.call_count == 2
+
+    mock_do_wait_for_deployment.assert_any_call(
+        mock.ANY,
+        target_commit='d670460b4b4aece5915caf5c68d12f560a9fe3e4',
+    )
+    mock_do_wait_for_deployment.assert_any_call(
+        mock.ANY,
+        target_commit='old-sha',
+    )
+    assert mock_do_wait_for_deployment.call_count == 2
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
@@ -394,11 +414,11 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 
     assert mock_mark_for_deployment.call_count == 1
     assert mock_wait_for_deployment.call_count == 1
-    assert retval == 1
-    assert mfdp.state == 'deploy_aborted'
+    assert mfdp.state == 'deploy_errored'
+    assert retval == 2
 
 
-@patch('time.sleep', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
@@ -406,13 +426,13 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
-    mock_sleep,
+    mock_periodically_update_slack,
 ):
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
         block=True,
         # For this test, auto_rollback must be True so that the deploy_cancelled trigger takes us to start_rollback
-        # instead of deploy_aborted.
+        # instead of deploy_errored.
         auto_rollback=True,
 
         deploy_info=None,
@@ -429,10 +449,9 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 
     retval = mfdp.run()
 
-    assert mock_mark_for_deployment.call_count == 2
-    assert mock_wait_for_deployment.call_count == 1
+    assert mock_mark_for_deployment.call_count == 1
     assert retval == 1
-    assert mfdp.state == 'start_rollback'
+    assert mfdp.state == 'deploy_cancelled'
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.Thread', autospec=True)
