@@ -15,8 +15,12 @@ def find_open_ports():
 
 
 def main():
+
+    print('-------------------------------------------------------')
+    print('Please run echo $$PAASTA_SYSTEM_CONFIG_DIR to continue')
     print("Please set environment variable PAASTA_TEST_CLUSTER to the cluster you want to use.")
     print("This is necessary for tron jobs")
+    print('-------------------------------------------------------')
     cluster = os.environ.get('PAASTA_TEST_CLUSTER', 'norcal-devc')
     config_path = 'fake_config'
 

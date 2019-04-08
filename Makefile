@@ -31,9 +31,6 @@ test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
 api: .paasta/bin/activate
-	@echo '-------------------------------------------------------'
-	@echo 'Please run echo $$PAASTA_SYSTEM_CONFIG_DIR to continue'
-	@echo '-------------------------------------------------------'
 	python3.6 ./example_cluster/setup_fake_config.py
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
