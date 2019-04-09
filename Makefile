@@ -30,8 +30,12 @@ docs: .paasta/bin/activate
 test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
-api: .paasta/bin/activate
-	python3.6 ./example_cluster/setup_fake_config.py
+dev-api: .paasta/bin/activate
+	if [ ! -d .tox/py36-linux ] ; \
+	then \
+		.paasta/bin/tox -i $(PIP_INDEX_URL); \
+	fi;
+	.tox/py36-linux/bin/python -m paasta_tools.run-paasta-api-in-dev-mode
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
 	test -d .paasta/bin/activate || virtualenv -p python3.6 .paasta
