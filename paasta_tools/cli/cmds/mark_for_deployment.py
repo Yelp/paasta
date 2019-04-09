@@ -789,7 +789,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def on_exit_deploying(self):
         self.wait_for_deployment_green_light.clear()
-        self.update_slack_thread("Finished waiting for the deployment")
 
     def on_enter_start_rollback(self):
         self.update_slack_status(f"Rolling back ({self.deploy_group}) to {self.old_git_sha}")
@@ -814,7 +813,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def on_exit_rolling_back(self):
         self.wait_for_deployment_green_light.clear()
-        self.update_slack_thread("Finished waiting for the deployment")
 
     def on_enter_deploy_errored(self):
         report_waiting_aborted(self.service, self.deploy_group)
@@ -823,6 +821,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def do_wait_for_deployment(self, target_commit: str):
         try:
+            self.wait_for_deployment_green_light.set()
             wait_for_deployment(
                 service=self.service,
                 deploy_group=self.deploy_group,
@@ -833,9 +832,13 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
                 progress=self.progress,
             )
             self.trigger('deploy_finished')
+            self.update_slack_thread(f"Finished waiting for deployment of {target_commit}")
 
         except (KeyboardInterrupt, TimeoutError):
-            self.trigger('deploy_cancelled')
+            if self.wait_for_deployment_green_light.is_set():
+                # When we manually trigger a rollback, we clear the green_light, which causes wait_for_deployment to
+                # raise KeyboardInterrupt. Don't trigger deploy_cancelled in this case.
+                self.trigger('deploy_cancelled')
         except NoSuchCluster:
             self.trigger('deploy_errored')
         except Exception:
@@ -875,6 +878,10 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             )
             self.update_slack_thread(message)
             paasta_print(message)
+
+    def after_state_change(self):
+        self.update_slack()
+        super().after_state_change()
 
 
 class ClusterData:
