@@ -31,7 +31,7 @@ test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
 dev-api: .paasta/bin/activate
-	if [ ! -d .tox/py36-linux ] ; \
+	@if [ ! -d .tox/py36-linux ] ; \
 	then \
 		.paasta/bin/tox -i $(PIP_INDEX_URL); \
 	fi;
