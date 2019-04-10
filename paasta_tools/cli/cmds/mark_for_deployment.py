@@ -783,7 +783,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.update_slack_status(f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output.")  # noqa E501
 
     def on_enter_deploying(self):
-        self.update_slack()
         # if self.block is False, then deploying is a terminal state so we will promptly exit.
         # Don't bother starting the background thread in this case.
         if self.block:
@@ -809,7 +808,6 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             self.trigger('mfd_succeeded')
 
     def on_enter_rolling_back(self):
-        self.update_slack()
         if self.block:
             thread = Thread(target=self.do_wait_for_deployment, args=(self.old_git_sha,), daemon=True)
             thread.start()
