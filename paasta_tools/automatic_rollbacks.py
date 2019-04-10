@@ -9,6 +9,7 @@ from typing import Collection
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
@@ -77,6 +78,8 @@ def get_button_element(button, is_active, from_sha, to_sha):
     inactive_button_texts = {
         "rollback": f"Roll Back to {from_sha[:8]} :arrow_backward:",
         "forward": f"Continue Forward to {to_sha[:8]} :arrow_forward:",
+        "complete": f"Complete deploy to {to_sha[:8]} :white_check_mark:",
+        "abandon": f"Abandon deploy, staying on {from_sha[:8]} :x:",
     }
 
     if is_active is True:
@@ -212,6 +215,8 @@ class DeploymentProcess(abc.ABC):
         def trigger(self, *args, **kwargs):
             ...
 
+    run_timeout: Optional[float] = None  # in normal operation, this will be None, but this lets tests set a max time.
+
     def __init__(
         self,
     ):
@@ -256,7 +261,7 @@ class DeploymentProcess(abc.ABC):
 
     async def run_async(self) -> int:
         self.trigger(self.start_transition())
-        await self.finished_event.wait()
+        await asyncio.wait_for(self.finished_event.wait(), timeout=self.run_timeout)
         return self.status_code_by_state().get(self.state, 3)
 
     def after_state_change(self):

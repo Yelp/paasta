@@ -131,6 +131,7 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     )
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.run_timeout', new=1.0, autospec=False)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
@@ -158,10 +159,18 @@ def test_paasta_mark_for_deployment_with_good_rollback(
 
     mock_do_wait_for_deployment.side_effect = do_wait_for_deployment_side_effect
 
+    def on_enter_rolled_back_side_effect(self):
+        self.trigger('abandon_button_clicked')
+
     mock_get_currently_deployed_sha.return_value = "old-sha"
     with patch(
         'paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack',
         autospec=True,
+    ), patch(
+        'paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.on_enter_rolled_back',
+        autospec=True,
+        wraps=mark_for_deployment.MarkForDeploymentProcess.on_enter_rolled_back,
+        side_effect=on_enter_rolled_back_side_effect,
     ):
         assert mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback) == 1
     print(mock_mark_for_deployment.mock_calls)
