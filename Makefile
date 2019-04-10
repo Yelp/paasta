@@ -30,11 +30,10 @@ docs: .paasta/bin/activate
 test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
-dev-api: .paasta/bin/activate
-	@if [ ! -d .tox/py36-linux ] ; \
-	then \
-		.paasta/bin/tox -i $(PIP_INDEX_URL); \
-	fi;
+.tox/py36-linux: .paasta/bin/activate
+	.paasta/bin/tox -i $(PIP_INDEX_URL)
+
+dev-api: .tox/py36-linux
 	.tox/py36-linux/bin/python -m paasta_tools.run-paasta-api-in-dev-mode
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
