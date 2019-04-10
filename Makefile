@@ -30,6 +30,12 @@ docs: .paasta/bin/activate
 test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
+.tox/py36-linux: .paasta/bin/activate
+	.paasta/bin/tox -i $(PIP_INDEX_URL)
+
+dev-api: .tox/py36-linux
+	.tox/py36-linux/bin/python -m paasta_tools.run-paasta-api-in-dev-mode
+
 .paasta/bin/activate: requirements.txt requirements-dev.txt
 	test -d .paasta/bin/activate || virtualenv -p python3.6 .paasta
 	.paasta/bin/pip install -U \
