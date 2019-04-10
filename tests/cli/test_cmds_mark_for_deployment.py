@@ -217,7 +217,6 @@ def test_slack_deploy_notifier(mock_get_authors, mock_client):
     assert sdn.notify_after_auto_rollback() is None
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count > 0, fake_psc.post.call_args
-    assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
 
     with mock.patch.dict(
         os.environ,
@@ -255,7 +254,6 @@ def test_slack_deploy_notifier_with_auto_rollbacks(mock_get_authors, mock_client
     assert sdn.notify_after_auto_rollback() is None
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count > 0, fake_psc.post.call_args
-    assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
@@ -311,7 +309,6 @@ def test_slack_deploy_notifier_doesnt_notify_on_same_commit(mock_get_authors, mo
     assert sdn.notify_after_auto_rollback() is None
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count == 0, fake_psc.post.call_args
-    assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
@@ -346,7 +343,6 @@ def test_slack_deploy_notifier_notifies_on_deploy_info_flags(mock_get_authors, m
     assert sdn.notify_after_auto_rollback() is None
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count > 0, fake_psc.post.call_args
-    assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
     assert "Jenkins" or "Run by" in sdn.get_url_message()
 
 
@@ -382,10 +378,10 @@ def test_slack_deploy_notifier_doesnt_notify_on_deploy_info_flags(mock_get_autho
     assert sdn.notify_after_auto_rollback() is None
     assert sdn.notify_after_abort() is None
     assert fake_psc.post.call_count == 0, fake_psc.post.call_args
-    assert sdn.get_authors_to_be_notified() == "Authors: <@fakeuser1>, <@fakeuser2>"
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
@@ -393,8 +389,10 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
+    mock_get_authors,
     mock_periodically_update_slack,
 ):
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
         block=True,
@@ -421,6 +419,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
@@ -428,8 +427,10 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
+    mock_get_authors,
     mock_periodically_update_slack,
 ):
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
         block=True,
@@ -456,6 +457,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     assert mfdp.state == 'deploy_cancelled'
 
 
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.Thread', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
@@ -467,7 +469,9 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
     mock_mark_for_deployment,
     mock_get_slack_client,
     mock_Thread,
+    mock_get_authors,
 ):
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
         block=False,
@@ -494,6 +498,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
@@ -501,8 +506,10 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
+    mock_get_authors,
     mock_periodically_update_slack,
 ):
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service='service',
         block=False,  # shouldn't matter for this test

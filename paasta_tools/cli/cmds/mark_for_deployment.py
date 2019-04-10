@@ -223,6 +223,21 @@ def report_waiting_aborted(service, deploy_group):
     paasta_print()
 
 
+def get_authors_to_be_notified(git_url, from_sha, to_sha):
+    ret, authors = remote_git.get_authors(
+        git_url=git_url, from_sha=from_sha, to_sha=to_sha,
+    )
+    if ret == 0:
+        if authors == "":
+            return ""
+        else:
+            slacky_authors = ", ".join([f"<@{a}>" for a in authors.split()])
+            log.debug(f"Authors: {slacky_authors}")
+            return f"Authors: {slacky_authors}"
+    else:
+        return f"(Could not get authors: {authors})"
+
+
 class SlackDeployNotifier:
     def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url, auto_rollback=False):
         self.sc = get_slack_client()
@@ -233,7 +248,7 @@ class SlackDeployNotifier:
         self.commit = commit
         self.old_commit = self.lookup_production_deploy_group_sha() or old_commit
         self.git_url = git_url
-        self.authors = self.get_authors_to_be_notified()
+        self.authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_commit, to_sha=self.commit)
         self.url_message = self.get_url_message()
         self.auto_rollback = auto_rollback
 
@@ -251,20 +266,6 @@ class SlackDeployNotifier:
             return None
         else:
             return get_currently_deployed_sha(service=self.service, deploy_group=prod_deploy_group)
-
-    def get_authors_to_be_notified(self):
-        ret, authors = remote_git.get_authors(
-            git_url=self.git_url, from_sha=self.old_commit, to_sha=self.commit,
-        )
-        if ret == 0:
-            if authors == "":
-                return ""
-            else:
-                slacky_authors = ", ".join([f"<@{a}>" for a in authors.split()])
-                log.debug(f"Authors: {slacky_authors}")
-                return f"Authors: {slacky_authors}"
-        else:
-            return f"(Could not get authors: {authors})"
 
     def deploy_group_is_set_to_notify(self, notify_type):
         for step in self.deploy_info.get('pipeline', []):
@@ -600,6 +601,8 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.slack_channel_id = resp['channel']
         if resp["ok"] is not True:
             log.error("Posting to slack failed: {}".format(resp["error"]))
+        authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
+        self.update_slack_thread(authors)
 
     def update_slack(self):
         blocks = automatic_rollbacks.get_slack_blocks_for_deployment(
