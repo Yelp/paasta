@@ -23,6 +23,7 @@ import socket
 import sys
 import time
 import traceback
+from collections import defaultdict
 from queue import Empty
 from queue import Queue
 from threading import Event
@@ -564,7 +565,9 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.soa_dir = soa_dir
         self.timeout = timeout
         self.mark_for_deployment_return_code = -1
-        self.wait_for_deployment_green_light = Event()
+        # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
+        # and quickly launch wait_for_deployment for another commit without causing a race condition.
+        self.wait_for_deployment_green_lights = defaultdict(Event)
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
@@ -790,7 +793,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             thread.start()
 
     def on_exit_deploying(self):
-        self.wait_for_deployment_green_light.clear()
+        self.wait_for_deployment_green_lights[self.commit].clear()
 
     def on_enter_start_rollback(self):
         self.update_slack_status(f"Rolling back ({self.deploy_group}) to {self.old_git_sha}")
@@ -813,7 +816,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             thread.start()
 
     def on_exit_rolling_back(self):
-        self.wait_for_deployment_green_light.clear()
+        self.wait_for_deployment_green_lights[self.old_git_sha].clear()
 
     def on_enter_deploy_errored(self):
         report_waiting_aborted(self.service, self.deploy_group)
@@ -822,21 +825,21 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def do_wait_for_deployment(self, target_commit: str):
         try:
-            self.wait_for_deployment_green_light.set()
+            self.wait_for_deployment_green_lights[target_commit].set()
             wait_for_deployment(
                 service=self.service,
                 deploy_group=self.deploy_group,
                 git_sha=target_commit,
                 soa_dir=self.soa_dir,
                 timeout=self.timeout,
-                green_light=self.wait_for_deployment_green_light,
+                green_light=self.wait_for_deployment_green_lights[target_commit],
                 progress=self.progress,
             )
             self.trigger('deploy_finished')
             self.update_slack_thread(f"Finished waiting for deployment of {target_commit}")
 
         except (KeyboardInterrupt, TimeoutError):
-            if self.wait_for_deployment_green_light.is_set():
+            if self.wait_for_deployment_green_lights[target_commit].is_set():
                 # When we manually trigger a rollback, we clear the green_light, which causes wait_for_deployment to
                 # raise KeyboardInterrupt. Don't trigger deploy_cancelled in this case.
                 self.trigger('deploy_cancelled')
