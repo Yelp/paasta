@@ -81,6 +81,7 @@ Submodules
    paasta_tools.paasta_service_config_loader
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
+   paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
    paasta_tools.setup_kubernetes_cr

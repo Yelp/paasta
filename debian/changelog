@@ -1,3 +1,10 @@
+paasta-tools (0.83.19) xenial; urgency=medium
+
+  * 0.83.19 tagged with 'make release'
+    Commit: Merge branch "more_states"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 11 Apr 2019 14:43:51 -0700
+
 paasta-tools (0.83.18) xenial; urgency=medium
 
   * 0.83.18 tagged with 'make release'
