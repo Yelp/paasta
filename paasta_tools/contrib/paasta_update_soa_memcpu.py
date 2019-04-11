@@ -215,7 +215,7 @@ def create_jira_ticket(serv, creds, description):
         }
         tick = jira_cli.create_issue(fields=jira_ticket)
     except Exception:
-        jira_ticket['project'] = {'key': 'PERF'}
+        jira_ticket['project'] = {'key': 'PEOBS'}
         jira_ticket['labels'].append(serv['service'])
         tick = jira_cli.create_issue(fields=jira_ticket)
     return tick.key
@@ -240,9 +240,9 @@ def main(argv=None):
         serv['state'] = provisioned_state
         ticket_desc = (
             "This ticket and CR have been auto-generated to help keep PaaSTA right-sized."
-            "\nPERF will review this CR and give a shipit. Then an ops deputy from your team can merge"
+            "\nPEOBS will review this CR and give a shipit. Then an ops deputy from your team can merge"
             " if these values look good for your service after review."
-            "\nOpen an issue with any concerns and someone from PERF will respond."
+            "\nOpen an issue with any concerns and someone from PEOBS will respond."
             "\nWe suspect that {s}.{i} in {c} may have been {o}-provisioned"
             " during the 1 week prior to {d}. It initially had {x} cpus, but based on the below dashboard,"
             " we recommend {y} cpus."
@@ -251,7 +251,7 @@ def main(argv=None):
             "\n- Estimated monthly excess cost: ${m}"
             "\n\nFor more information and sizing examples for larger services:"
             "\n- Runbook: https://y.yelpcorp.com/rb-provisioning-alert"
-            "\n- Alert owner: team-perf@yelp.com"
+            "\n- Alert owner: pe-observability@yelp.com"
         ).format(
             s=serv['service'],
             c=serv['cluster'],
