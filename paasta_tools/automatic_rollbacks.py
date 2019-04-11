@@ -7,8 +7,11 @@ from multiprocessing import Queue
 from queue import Empty
 from typing import Collection
 from typing import Iterator
+from typing import List
 from typing import Mapping
+from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import Union
 
 import requests
 import transitions.extensions
@@ -196,8 +199,8 @@ def get_slack_events():
 
 class TransitionDefinition(TypedDict):
     trigger: str
-    source: str
-    dest: str
+    source: Union[str, List[str], Tuple[str, ...]]
+    dest: Union[str, List[str], Tuple[str, ...]]
 
 
 class DeploymentProcess(abc.ABC):
