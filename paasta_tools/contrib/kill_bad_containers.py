@@ -51,6 +51,12 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
             print(targets_seen[target])
             dport2 = target_rule_to_dport(targets_seen[target])
             container2 = get_container_from_dport(dport2, docker_client)
+            if container1 is None or container2 is None:
+                print("Error: there is only one container here and we couldn't determine the other:")
+                print(f"container1: {container1}")
+                print(f"container2: {container2}")
+                print("This script currently doesn't understand this situation and manual intervention is required")
+                return 1
             if container1["Id"] == container2["Id"]:
                 print("The same container is getting traffic for both ports!")
                 print(container1)
