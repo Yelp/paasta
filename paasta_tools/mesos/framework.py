@@ -25,6 +25,12 @@ class Framework:
     def __str__(self):
         return f"{self.name}:{self.id}"
 
+    def get(self, name, default=None):
+        try:
+            return self[name]
+        except KeyError:
+            return default
+
     @property
     def id(self):
         return self['id']
