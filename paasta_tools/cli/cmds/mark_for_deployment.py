@@ -861,17 +861,23 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         )
         self.send_manual_rollback_instructions()
 
+    def is_relevant_buttonpress(self, buttonpress):
+        return self.slack_ts == buttonpress.thread_ts
+
     def listen_for_slack_events(self):
         log.debug("Listening for slack events...")
         for event in automatic_rollbacks.get_slack_events():
             log.debug(f"Got slack event: {event}")
             buttonpress = automatic_rollbacks.event_to_buttonpress(event)
-            self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
-            self.last_action = buttonpress.action
-            if buttonpress.action == "rollback":
-                self.trigger('rollback_button_clicked')
-            if buttonpress.action == "forward":
-                self.trigger('rollforward_button_clicked')
+            if self.is_relevant_buttonpress(buttonpress):
+                self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
+                self.last_action = buttonpress.action
+                if buttonpress.action == "rollback":
+                    self.trigger('rollback_button_clicked')
+                if buttonpress.action == "forward":
+                    self.trigger('rollforward_button_clicked')
+            else:
+                log.debug("But it was not relevant to this instance of mark-for-deployment")
 
     def send_manual_rollback_instructions(self):
         if self.old_git_sha != self.commit:
