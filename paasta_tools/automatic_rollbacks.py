@@ -1,7 +1,9 @@
 import abc
 import asyncio
+import datetime
 import json
 import logging
+import time
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
@@ -80,6 +82,7 @@ def get_button_element(button, is_active, from_sha, to_sha):
         "forward": f"Continue Forward to {to_sha[:8]} :arrow_forward:",
         "complete": f"Complete deploy to {to_sha[:8]} :white_check_mark:",
         "abandon": f"Abandon deploy, staying on {from_sha[:8]} :x:",
+        "snooze": f"Reset countdown",
     }
 
     if is_active is True:
@@ -230,6 +233,7 @@ class DeploymentProcess(abc.ABC):
             transitions=list(self.valid_transitions()),
             initial=self.start_state(),
             after_state_change=self.after_state_change,
+            before_state_change=self.before_state_change,
             queued=True,
         )
 
@@ -267,3 +271,33 @@ class DeploymentProcess(abc.ABC):
     def after_state_change(self):
         if self.state in self.status_code_by_state():
             self.event_loop.call_soon_threadsafe(self.finished_event.set)
+
+    def start_timer(self, timeout, trigger, message_verb):
+        self.cancel_timer()
+
+        timer_start = time.time()
+        timer_end = timer_start + timeout
+        formatted_time = datetime.datetime.fromtimestamp(timer_end)
+
+        self.update_slack_thread(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
+
+        def times_up():
+            self.update_slack_thread(f"Time's up, will now {message_verb}.")
+            self.trigger(trigger)
+
+        def schedule_callback():
+            """Unfortunately, call_at is not threadsafe, and there's no call_at_threadsafe, so we need to schedule the
+            call to call_at with call_soon_threadsafe."""
+            self.timer_handle = self.event_loop.call_later(timeout, times_up)
+
+        self.event_loop.call_soon_threadsafe(schedule_callback)
+
+    def cancel_timer(self):
+        try:
+            handle = self.timer_handle
+        except AttributeError:
+            return
+        handle.cancel()
+
+    def before_state_change(self):
+        self.cancel_timer()

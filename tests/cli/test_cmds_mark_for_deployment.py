@@ -33,6 +33,8 @@ class FakeArgs:
     auto_rollback = False
     verify_image = False
     timeout = 10.0
+    auto_certify_delay = 1.0
+    auto_abandon_delay = 1.0
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -414,6 +416,8 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         git_url=None,
         soa_dir=None,
         timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -454,6 +458,8 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         git_url=None,
         soa_dir=None,
         timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -493,6 +499,8 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         git_url=None,
         soa_dir=None,
         timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -531,6 +539,8 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         git_url=None,
         soa_dir=None,
         timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 1

@@ -163,6 +163,20 @@ def add_subparser(subparsers):
         default=0,
         help="Print out more output.",
     )
+    list_parser.add_argument(
+        '--auto-certify-delay',
+        dest='auto_certify_delay',
+        type=int,
+        default=600,
+        help="After a deploy finishes, wait this many seconds before automatically certifying.",
+    )
+    list_parser.add_argument(
+        '--auto-abandon-delay',
+        dest='auto_abandon_delay',
+        type=int,
+        default=600,
+        help="After a rollback finishes, wait this many seconds before automatically abandoning.",
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -440,6 +454,8 @@ def paasta_mark_for_deployment(args):
             block=args.block,
             soa_dir=args.soa_dir,
             timeout=args.timeout,
+            auto_certify_delay=args.auto_certify_delay,
+            auto_abandon_delay=args.auto_abandon_delay,
         )
         ret = deploy_process.run()
         return ret
@@ -554,6 +570,8 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         block,
         soa_dir,
         timeout,
+        auto_certify_delay,
+        auto_abandon_delay,
     ):
         self.service = service
         self.deploy_info = deploy_info
@@ -577,6 +595,8 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.slack_channel = "#test"
         self.slack_channel_id = None
         self.last_action = None
+        self.auto_certify_delay = auto_certify_delay
+        self.auto_abandon_delay = auto_abandon_delay
 
         super().__init__()
         self.send_initial_slack_message()
@@ -747,9 +767,24 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             'trigger': 'complete_button_clicked',
         }
         yield {
+            'source': 'deployed',
+            'dest': 'complete',
+            'trigger': 'auto_certify',
+        }
+        yield {
+            'source': ['deployed', 'rolled_back'],
+            'dest': '=',  # re-enter the same state.
+            'trigger': 'snooze_button_clicked',
+        }
+        yield {
             'source': 'rolled_back',
             'dest': 'abandon',
             'trigger': 'abandon_button_clicked',
+        }
+        yield {
+            'source': 'rolled_back',
+            'dest': 'abandon',
+            'trigger': 'auto_abandon',
         }
 
     def status_code_by_state(self) -> Mapping[str, int]:
@@ -785,8 +820,10 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
         if self.state == 'deployed':
             buttons.append('complete')
+            buttons.append('snooze')
         if self.state == 'rolled_back':
             buttons.append('abandon')
+            buttons.append('snooze')
 
         return buttons
 
@@ -853,8 +890,8 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
                 green_light=self.wait_for_deployment_green_lights[target_commit],
                 progress=self.progress,
             )
-            self.trigger('deploy_finished')
             self.update_slack_thread(f"Finished waiting for deployment of {target_commit}")
+            self.trigger('deploy_finished')
 
         except (KeyboardInterrupt, TimeoutError):
             if self.wait_for_deployment_green_lights[target_commit].is_set():
@@ -877,6 +914,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             line=line,
             level='event',
         )
+        self.start_timer(self.auto_abandon_delay, 'auto_abandon', 'abandon')
 
     def on_enter_deployed(self):
         self.update_slack_status(f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}")
@@ -888,6 +926,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             level='event',
         )
         self.send_manual_rollback_instructions()
+        self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
 
     def listen_for_slack_events(self):
         log.debug("Listening for slack events...")
