@@ -106,10 +106,10 @@ def test_get_matching_framework_info(mock_guess_service, mock_get_spark_properti
 
 @mock.patch('paasta_tools.check_spark_jobs.list_services', autospec=True)
 @mock.patch('paasta_tools.check_spark_jobs.get_matching_framework_info', autospec=True)
-@mock.patch('paasta_tools.check_spark_jobs.notify_framework_owners', autospec=True)
+@mock.patch('paasta_tools.check_spark_jobs.update_check_status', autospec=True)
 @pytest.mark.parametrize('no_notify', [(True,), (False,)])
-def test_report_spark_jobs(mock_notify, mock_get_info, mock_list_services, no_notify):
-    mock_list_services.return_value = ['service1', 'service2']
+def test_report_spark_jobs(mock_check, mock_get_info, mock_list_services, no_notify):
+    mock_list_services.return_value = ['service1', 'service2', 'other_service']
     mock_get_info.return_value = [
         {
             'id': 'uuid1',
@@ -147,9 +147,10 @@ def test_report_spark_jobs(mock_notify, mock_get_info, mock_list_services, no_no
     check_spark_jobs.report_spark_jobs(1, no_notify)
     assert mock_get_info.call_args_list == [mock.call(min_hours=1)]
     if no_notify:
-        assert mock_notify.call_count == 0
+        assert mock_check.call_count == 0
     else:
-        assert mock_notify.call_args_list == [
-            mock.call('service1', mock.ANY),
-            mock.call('service2', mock.ANY),
+        assert mock_check.call_args_list == [
+            mock.call('service1', mock.ANY, 1),
+            mock.call('service2', mock.ANY, 1),
+            mock.call('other_service', mock.ANY, 0),
         ]

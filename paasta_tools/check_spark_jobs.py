@@ -3,6 +3,7 @@ import datetime
 import logging
 from collections import defaultdict
 
+import pysensu_yelp
 import requests
 
 from paasta_tools import mesos_tools
@@ -128,7 +129,7 @@ def get_messages_by_service(results):
     }
 
 
-def notify_framework_owners(service, output):
+def update_check_status(service, output, status):
     overrides = {
         'page': False,
         'alert_after': 0,
@@ -139,7 +140,7 @@ def notify_framework_owners(service, output):
         service=service,
         check_name=f'long_running_spark_jobs.{service}',
         overrides=overrides,
-        status=1,
+        status=status,
         output=output,
         soa_dir=DEFAULT_SOA_DIR,
     )
@@ -150,21 +151,25 @@ def report_spark_jobs(min_hours, no_notify):
         min_hours=min_hours,
     )
     messages_by_service = get_messages_by_service(results)
-
     valid_services = set(list_services())
+
     messages_for_unknown_services = []
     for service, message in messages_by_service.items():
         if service in valid_services:
             print(f'{message}\n')
-            if not no_notify:
-                notify_framework_owners(service, message)
         else:
             messages_for_unknown_services.append(message)
-
     print('\nINVALID SERVICES')
     print('----------------')
     print('The following frameworks are associated with services that are not configured in PaaSTA.\n')
     print('\n\n'.join(messages_for_unknown_services))
+
+    if not no_notify:
+        for service in valid_services:
+            if service in messages_by_service:
+                update_check_status(service, message, pysensu_yelp.Status.WARNING)
+            else:
+                update_check_status(service, 'No long running spark jobs', pysensu_yelp.Status.OK)
 
 
 def main():
