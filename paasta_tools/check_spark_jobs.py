@@ -42,8 +42,10 @@ def get_time_running(framework):
 
 def get_spark_properties(framework):
     webui_url = framework.get('webui_url')
-    env_endpoint = f'{webui_url}/api/v1/applications/{framework.id}/environment'
+    if not webui_url:
+        return None
 
+    env_endpoint = f'{webui_url}/api/v1/applications/{framework.id}/environment'
     try:
         response = requests.get(env_endpoint, timeout=5)
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -56,8 +58,8 @@ def get_spark_properties(framework):
 
     try:
         return response.json()['sparkProperties']
-    except (ValueError, KeyError) as e:
-        logger.warning(f'Unable to get sparkProperties for {framework.id}: {e!r}')
+    except (ValueError, KeyError):
+        logger.warning(f'Unable to get sparkProperties for {framework.id}: got response {response.text}')
         return None
 
 
@@ -149,15 +151,20 @@ def report_spark_jobs(min_hours, no_notify):
     )
     messages_by_service = get_messages_by_service(results)
 
-    print('\n\n'.join(messages_by_service.values()))
-
-    if not no_notify:
-        valid_services = set(list_services())
-        for service, message in messages_by_service.items():
-            if service in valid_services:
+    valid_services = set(list_services())
+    messages_for_unknown_services = []
+    for service, message in messages_by_service.items():
+        if service in valid_services:
+            print(f'{message}\n')
+            if not no_notify:
                 notify_framework_owners(service, message)
-            else:
-                print(f'Did not notify for invalid service: {service}')
+        else:
+            messages_for_unknown_services.append(message)
+
+    print('\nINVALID SERVICES')
+    print('----------------')
+    print('The following frameworks are associated with services that are not configured in PaaSTA.\n')
+    print('\n\n'.join(messages_for_unknown_services))
 
 
 def main():
