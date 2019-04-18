@@ -34,6 +34,7 @@ Submodules
    paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
+   paasta_tools.check_spark_jobs
    paasta_tools.chronos_rerun
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
