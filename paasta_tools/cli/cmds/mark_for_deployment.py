@@ -379,6 +379,18 @@ def get_deploy_info(service, soa_dir):
     return read_deploy(file_path)
 
 
+def print_rollback_cmd(old_git_sha, commit, auto_rollback, service, deploy_group):
+    if old_git_sha is not None and old_git_sha != commit and not auto_rollback:
+        paasta_print()
+        paasta_print("If you wish to roll back, you can run:")
+        paasta_print()
+        paasta_print(
+            PaastaColors.bold("    paasta rollback --service {} --deploy-group {} --commit {} ".format(
+                service, deploy_group, old_git_sha,
+            )),
+        )
+
+
 def paasta_mark_for_deployment(args):
     """Wrapping mark_for_deployment"""
     if args.verbose:
@@ -457,7 +469,7 @@ def paasta_mark_for_deployment(args):
             commit=commit,
         )
         slack_notifier.notify_after_mark(ret=ret)
-
+        print_rollback_cmd(old_git_sha, commit, args.auto_rollback, service, deploy_group)
         if args.block and ret == 0:
             try:
                 wait_for_deployment(
@@ -498,15 +510,7 @@ def paasta_mark_for_deployment(args):
             except NoSuchCluster:
                 report_waiting_aborted(service, deploy_group)
                 slack_notifier.notify_after_abort()
-        if old_git_sha is not None and old_git_sha != commit and not args.auto_rollback:
-            paasta_print()
-            paasta_print("If you wish to roll back, you can run:")
-            paasta_print()
-            paasta_print(
-                PaastaColors.bold("    paasta rollback --service {} --deploy-group {} --commit {} ".format(
-                    service, deploy_group, old_git_sha,
-                )),
-            )
+        print_rollback_cmd(old_git_sha, commit, args.auto_rollback, service, deploy_group)
         return ret
 
 
