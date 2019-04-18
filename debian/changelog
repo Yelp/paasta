@@ -1,3 +1,18 @@
+paasta-tools (0.84.0) xenial; urgency=medium
+
+  * 0.84.0 tagged with 'make release'
+    Commit: Merge branch "drmorr/PAASTA-
+    15371/move_rollback_command_earlier"
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 18 Apr 2019 10:50:45 -0700
+
+paasta-tools (0.83.19) xenial; urgency=medium
+
+  * 0.83.19 tagged with 'make release'
+    Commit: Merge branch "more_states"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 11 Apr 2019 14:43:51 -0700
+
 paasta-tools (0.83.18) xenial; urgency=medium
 
   * 0.83.18 tagged with 'make release'

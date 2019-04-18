@@ -16,6 +16,7 @@ tags
 venv
 .bash_history
 .lesshst
+etc_paasta_for_development/
 
 # Generated debian artifacts
 debian/paasta-tools/
@@ -32,3 +33,4 @@ paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/bintray.json
 .mypy_cache/
 debian/.debhelper
+example_cluster/paasta/docker_registry.json

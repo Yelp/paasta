@@ -474,7 +474,7 @@ def get_docker_run_cmd(
         cmd.append('--volume=%s' % volume)
     if interactive:
         cmd.append('--interactive=true')
-        if sys.stdout.isatty():
+        if sys.stdin.isatty():
             cmd.append('--tty=true')
     else:
         if detach:

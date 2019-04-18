@@ -34,6 +34,7 @@ Submodules
    paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
+   paasta_tools.check_spark_jobs
    paasta_tools.chronos_rerun
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
@@ -81,6 +82,7 @@ Submodules
    paasta_tools.paasta_service_config_loader
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
+   paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.secret_tools
    paasta_tools.setup_chronos_job
    paasta_tools.setup_kubernetes_cr
