@@ -135,6 +135,7 @@ def update_check_status(service, output, status):
         'alert_after': 0,
         'tip': 'Ask the user to check the job UI and terminate the job if appropriate.',
         'runbook': 'http://y/spark-debug',
+        'ticket': True,
     }
     send_event(
         service=service,
