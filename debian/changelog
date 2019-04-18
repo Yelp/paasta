@@ -1,3 +1,11 @@
+paasta-tools (0.84.1) xenial; urgency=medium
+
+  * 0.84.1 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    even_more_states
+
+ -- Evan Krall <krall@yelp.com>  Thu, 18 Apr 2019 13:19:48 -0700
+
 paasta-tools (0.84.0) xenial; urgency=medium
 
   * 0.84.0 tagged with 'make release'
