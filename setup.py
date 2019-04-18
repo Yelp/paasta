@@ -45,6 +45,7 @@ setup(
         'paasta_tools/check_kubernetes_api.py',
         'paasta_tools/check_kubernetes_services_replication.py',
         'paasta_tools/check_oom_events.py',
+        'paasta_tools/check_spark_jobs.py',
         'paasta_tools/cleanup_marathon_jobs.py',
         'paasta_tools/cleanup_kubernetes_crds.py',
         'paasta_tools/paasta_deploy_chronos_jobs',
