@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import argparse
 import datetime
 import logging
@@ -160,10 +161,11 @@ def report_spark_jobs(min_hours, no_notify):
             print(f'{message}\n')
         else:
             messages_for_unknown_services.append(message)
-    print('\nINVALID SERVICES')
-    print('----------------')
-    print('The following frameworks are associated with services that are not configured in PaaSTA.\n')
-    print('\n\n'.join(messages_for_unknown_services))
+    if messages_for_unknown_services:
+        print('\nINVALID SERVICES')
+        print('----------------')
+        print('The following frameworks are associated with services that are not configured in PaaSTA.\n')
+        print('\n\n'.join(messages_for_unknown_services))
 
     if not no_notify:
         for service in valid_services:
