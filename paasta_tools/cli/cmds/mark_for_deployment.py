@@ -596,7 +596,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.progress = Progress()
         self.slack_client = get_slack_client()
         self.slack_ts = None
-        self.slack_channel = "#test"
+        self.slack_channel = self.get_slack_channel()
         self.slack_channel_id = None
         self.last_action = None
         self.auto_certify_delay = auto_certify_delay
@@ -608,6 +608,15 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         slack_thread.start()
         timer_thread = Thread(target=self.periodically_update_slack, args=(), daemon=True)
         timer_thread.start()
+
+    def get_slack_channel(self) -> str:
+        """ Safely get some slack channel to post to. Defaults to ``#test``.
+        Currently only uses the first slack channel available, and doesn't support
+        multi-channel notifications. """
+        try:
+            return self.deploy_info.get('slack_channels', ["#test"])[0]
+        except (IndexError, AttributeError):
+            return "#test"
 
     def periodically_update_slack(self):
         while self.state not in self.status_code_by_state():
