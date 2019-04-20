@@ -16,6 +16,7 @@
 PaaSTA service instance status/start/stop etc.
 """
 import logging
+import re
 import traceback
 from typing import Any
 from typing import Dict
@@ -34,6 +35,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import flinkcluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
+from paasta_tools import paasta_remote_run
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -161,8 +163,16 @@ def adhoc_instance_status(
     instance: str,
     verbose: bool,
 ) -> Mapping[str, Any]:
-    cstatus: Dict[str, Any] = {}
-    return cstatus
+    status = []
+    # Get result
+    filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
+    filtered.sort(key=lambda x: x.name)
+    for f in filtered:
+        launch_time, run_id = re.match(
+            r'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
+        ).groups()
+        status.append({'launch time': launch_time, 'run id': run_id, 'framework id': f.id})
+    return status
 
 
 def flinkcluster_instance_status(
