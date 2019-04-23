@@ -623,8 +623,12 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             self.update_slack()
             time.sleep(20)
 
+    def deployment_name(self) -> str:
+        return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
+
     def send_initial_slack_message(self):
         blocks = automatic_rollbacks.get_slack_blocks_for_deployment(
+            deployment_name=self.deployment_name(),
             message=self.human_readable_status,
             last_action=None,
             status='Uninitialized',
@@ -643,6 +647,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def update_slack(self):
         blocks = automatic_rollbacks.get_slack_blocks_for_deployment(
+            deployment_name=self.deployment_name(),
             message=self.human_readable_status,
             progress=self.progress.human_readable(),
             last_action=self.last_action,

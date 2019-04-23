@@ -4,8 +4,9 @@ REAL_ROLLBACK_PRESS = {'type': 'block_actions', 'team': {'id': 'T0289TLJY', 'dom
 
 
 def test_get_slack_blocks_for_deployment_happy_path():
-    blocks = automatic_rollbacks.get_slack_blocks_for_deployment("test", from_sha='from_sha', to_sha='to_sha')
-    assert blocks[0]["text"]["text"] == "test"
+    blocks = automatic_rollbacks.get_slack_blocks_for_deployment("test1", "test2", from_sha='from_sha', to_sha='to_sha')
+    assert blocks[0]["text"]["text"] == "test1"
+    assert blocks[1]["text"]["text"] == "test2"
 
 
 def test_event_to_buttonpress_rollback():
