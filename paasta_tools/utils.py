@@ -1902,11 +1902,6 @@ class SystemPaastaConfig:
         :returns A bool"""
         return self.config_dict.get('maintenance_resource_reservation_enabled', True)
 
-    def get_filter_bogus_mesos_cputime_enabled(self) -> bool:
-        """ Filters out mesos cputime values if they are greater than
-        10 times what was allocated to a task"""
-        return self.config_dict.get('filter_bogus_mesos_cputime_enabled', False)
-
     def get_cluster_boost_enabled(self) -> bool:
         """ Enable the cluster boost. Note that the boost only applies to the CPUs.
         If the boost is toggled on here but not configured, it will be transparent.
