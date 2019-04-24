@@ -158,6 +158,12 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
     return deploy_status
 
 
+def humanize_autoscaling_info(autoscaling_info):
+    autoscaling_info_dict = autoscaling_info._asdict()
+    autoscaling_info_dict['current_utilization'] = '{:.1f}%'.format(autoscaling_info.current_utilization * 100)
+    return [str(value) for value in autoscaling_info_dict.values()]
+
+
 def status_marathon_job(
     service: str,
     instance: str,
@@ -185,7 +191,7 @@ def status_marathon_job(
         if autoscaling_info:
             all_output.append("  Autoscaling Info:")
             headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
-            table = [headers, autoscaling_info]
+            table = [headers, humanize_autoscaling_info(autoscaling_info)]
             all_output.append('\n'.join(["    %s" % line for line in format_table(table)]))
 
     deploy_status_for_desired_app = 'Waiting for bounce'
