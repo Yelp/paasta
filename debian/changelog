@@ -1,3 +1,10 @@
+paasta-tools (0.84.3) xenial; urgency=medium
+
+  * 0.84.3 tagged with 'make release'
+    Commit: Merge branch "slack_service_name"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 24 Apr 2019 13:45:28 -0700
+
 paasta-tools (0.84.2) xenial; urgency=medium
 
   * 0.84.2 tagged with 'make release'
