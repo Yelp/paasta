@@ -17,7 +17,9 @@ import difflib
 import os
 import sys
 from collections import defaultdict
+from collections import OrderedDict
 from datetime import datetime
+from datetime import timedelta
 from distutils.util import strtobool
 from itertools import groupby
 from typing import Callable
@@ -50,6 +52,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
 from paasta_tools.marathon_serviceinit import desired_state_human
+from paasta_tools.marathon_serviceinit import haproxy_backend_report
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
@@ -59,6 +62,7 @@ from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import format_table
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
@@ -230,7 +234,7 @@ def paasta_status_on_api_endpoint(
         exit(1)
 
     try:
-        status = client.service.status_instance(service=service, instance=instance).result()
+        status = client.service.status_instance(service=service, instance=instance, verbose=bool(verbose)).result()
     except HTTPError as exc:
         paasta_print(exc.response.text)
         return exc.status_code
@@ -297,31 +301,268 @@ def print_marathon_status(
         marathon_status.desired_state,
         marathon_status.expected_instance_count,
     )
-    output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
+    output.append(f'    Desired state:      {bouncing_status} and {desired_state}')
 
-    status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
-    if status != MarathonDeployStatus.NotRunning:
-        if status == MarathonDeployStatus.Delayed:
-            deploy_status = marathon_app_deploy_status_human(status, marathon_status.backoff_seconds)
-        else:
-            deploy_status = marathon_app_deploy_status_human(status)
-    else:
-        deploy_status = 'NotRunning'
-
-    output.append(
-        "    {}".format(
-            status_marathon_job_human(
-                service=service,
-                instance=instance,
-                deploy_status=deploy_status,
-                desired_app_id=marathon_status.app_id,
-                app_count=marathon_status.app_count,
-                running_instances=marathon_status.running_instance_count,
-                normal_instance_count=marathon_status.expected_instance_count,
-            ),
-        ),
+    job_status_human = status_marathon_job_human(
+        service=service,
+        instance=instance,
+        deploy_status=marathon_status.deploy_status,
+        desired_app_id=marathon_status.desired_app_id,
+        app_count=marathon_status.app_count,
+        running_instances=marathon_status.running_instance_count,
+        normal_instance_count=marathon_status.expected_instance_count,
     )
+    output.append(f'    {job_status_human}')
+
+    if marathon_status.autoscaling_info:
+        autoscaling_info_table = create_autoscaling_info_table(marathon_status.autoscaling_info)
+        output.extend([f'      {line}' for line in autoscaling_info_table])
+
+    for app_status in marathon_status.app_statuses:
+        app_status_human = marathon_app_status_human(marathon_status.desired_app_id, app_status)
+        output.extend([f'      {line}' for line in app_status_human])
+
+    mesos_status_human = marathon_mesos_status_human(
+        marathon_status.mesos.task_count or 0,
+        marathon_status.expected_instance_count,
+        marathon_status.mesos.running_tasks,
+        marathon_status.mesos.non_running_tasks,
+    )
+    output.extend([f'    {line}' for line in mesos_status_human])
+
+    smartstack_status_human = marathon_smartstack_status_human(
+        marathon_status.smartstack.registration,
+        marathon_status.smartstack.expected_backends_per_location,
+        marathon_status.smartstack.locations,
+    )
+    output.extend([f'    {line}' for line in smartstack_status_human])
+
     return 0
+
+
+autoscaling_fields_to_headers = OrderedDict(
+    current_instances='Current instances',
+    max_instances='Max instances',
+    min_instances='Min instances',
+    current_utilization='Current utilization',
+    target_instances='Target instances',
+)
+
+
+def create_autoscaling_info_table(autoscaling_info):
+    output = ['Autoscaling Info:']
+    autoscaling_info.current_utilization = '{:.1f}%'.format(autoscaling_info.current_utilization * 100)
+    headers = list(autoscaling_fields_to_headers.values())
+    row = [str(getattr(autoscaling_info, field)) for field in autoscaling_fields_to_headers]
+    table = [f'  {line}' for line in format_table([headers, row])]
+    output.extend(table)
+    return output
+
+
+def marathon_mesos_status_human(task_count, expected_instance_count, running_tasks, non_running_tasks):
+    output = []
+    output.append(marathon_mesos_status_summary(task_count, expected_instance_count))
+
+    output.append('  Running Tasks:')
+    running_tasks_table = create_mesos_running_tasks_table(running_tasks)
+    output.extend([f'    {line}' for line in running_tasks_table])
+
+    output.append(PaastaColors.grey('  Non-running Tasks:'))
+    non_running_tasks_table = create_mesos_non_running_tasks_table(non_running_tasks)
+    output.extend([f'    {line}' for line in non_running_tasks_table])
+
+    return output
+
+
+def create_mesos_running_tasks_table(running_tasks):
+    rows = []
+    table_header = ['Mesos Task ID', 'Host deployed to', 'Ram', 'CPU', 'Deployed at what localtime']
+    rows.append(table_header)
+    for task in running_tasks:
+        mem_percent = 100 * task.rss / task.mem_limit
+        mem_string = '%d/%dMB' % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
+        if mem_percent > 90:
+            mem_string = PaastaColors.red(mem_string)
+
+        # The total time a task has been allocated is the total time the task has
+        # been running multiplied by the "shares" a task has.
+        # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
+        allocated_seconds = task.cpu_shares * task.duration_seconds
+        if allocated_seconds == 0:
+            cpu_string = "Undef"
+        else:
+            cpu_percent = round(100 * (task.cpu_used_seconds / allocated_seconds), 1)
+            cpu_string = '%s%%' % cpu_percent
+            if cpu_percent > 90:
+                cpu_string = PaastaColors.red(cpu_string)
+
+        deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
+        deployed_at_string = "{} ({})".format(
+            deployed_at.strftime("%Y-%m-%dT%H:%M"),
+            humanize.naturaltime(deployed_at),
+        )
+
+        rows.append([
+            task.id,
+            task.hostname,
+            mem_string,
+            cpu_string,
+            deployed_at_string,
+        ])
+        if task.tail_lines:
+            for stdstream in ('stdout', 'stderr'):
+                rows.append(PaastaColors.blue(f'{stdstream} tail for {task.id}'))
+                rows.extend(f'  {line}' for line in getattr(task.tail_lines, stdstream, []))
+
+    return format_table(rows)
+
+
+def create_mesos_non_running_tasks_table(non_running_tasks):
+    rows = []
+    table_header = ["Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Status"]
+    rows.append(table_header)
+
+    for task in non_running_tasks:
+        deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
+        deployed_at_string = "{} ({})".format(
+            deployed_at.strftime("%Y-%m-%dT%H:%M"),
+            humanize.naturaltime(deployed_at),
+        )
+
+        rows.append([task.id, task.hostname, deployed_at_string, task.state])
+
+    table = format_table(rows)
+    return [PaastaColors.grey(formatted_row) for formatted_row in table]
+
+
+def marathon_mesos_status_summary(mesos_task_count, expected_instance_count) -> str:
+    if mesos_task_count >= expected_instance_count:
+        status = PaastaColors.green("Healthy")
+        count_str = PaastaColors.green("(%d/%d)" % (mesos_task_count, expected_instance_count))
+    elif mesos_task_count == 0:
+        status = PaastaColors.red("Critical")
+        count_str = PaastaColors.red("(%d/%d)" % (mesos_task_count, expected_instance_count))
+    else:
+        status = PaastaColors.yellow("Warning")
+        count_str = PaastaColors.yellow("(%d/%d)" % (mesos_task_count, expected_instance_count))
+    running_string = PaastaColors.bold('TASK_RUNNING')
+    return f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
+
+
+def marathon_app_status_human(
+    app_id,
+    app_status,
+) -> List[str]:
+    output = []
+
+    if app_status.dashboard_url:
+        output.append(f'Dashboard: {PaastaColors.blue(app_status.dashboard_url)}')
+    else:
+        output.append(f'App ID: {PaastaColors.blue(app_id)}')
+
+    output.append('  ' + ' '.join([
+        f'{app_status.tasks_running} running,',
+        f'{app_status.tasks_healthy} healthy,',
+        f'{app_status.tasks_staged} staged',
+        f'out of {app_status.tasks_total}',
+    ]))
+
+    create_datetime = datetime.fromtimestamp(app_status.create_timestamp)
+    output.append(
+        '  App created: {} ({})'.format(create_datetime, humanize.naturaltime(create_datetime)),
+    )
+
+    deploy_status = MarathonDeployStatus.fromstring(app_status.deploy_status)
+    deploy_status_human = marathon_app_deploy_status_human(deploy_status, app_status.backoff_seconds)
+    output.append(f'  Status: {deploy_status_human}')
+
+    if app_status.tasks:
+        output.append('  Tasks:')
+        tasks_table = format_marathon_task_table(app_status.tasks)
+        output.extend([f'    {line}' for line in tasks_table])
+
+    if app_status.unused_offer_reason_counts is not None:
+        output.append('  Possibly stalled for:')
+        output.extend([
+            f'    {reason}: {count}'
+            for reason, count in app_status.unused_offer_reason_counts.items()
+        ])
+
+    return output
+
+
+def format_marathon_task_table(tasks):
+    rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
+    for task in tasks:
+        local_deployed_datetime = datetime_from_utc_to_local(
+            datetime.fromtimestamp(task.deployed_timestamp),
+        )
+        if task.host is not None:
+            hostname = f"{task.host}:{task.port}"
+        else:
+            hostname = "Unknown"
+
+        if task.is_healthy is None:
+            health_check_status = PaastaColors.grey("N/A")
+        elif task.is_healthy:
+            health_check_status = PaastaColors.green("Healthy")
+        else:
+            health_check_status = PaastaColors.red("Unhealthy")
+
+        rows.append((
+            task.id,
+            hostname,
+            '{} ({})'.format(
+                local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
+                humanize.naturaltime(local_deployed_datetime),
+            ),
+            health_check_status,
+        ))
+
+    return format_table(rows)
+
+
+def marathon_smartstack_status_human(
+    registration,
+    expected_backends_per_location,
+    locations,
+) -> str:
+    if len(locations) == 0:
+        return f'Smartstack: ERROR - {registration} is NOT in smartstack at all!'
+
+    output = ['Smartstack:']
+    output.append(f'  Haproxy Service Name: {registration}')
+    output.append(f'  Backends:')
+    for location in locations:
+        backend_status = haproxy_backend_report(
+            expected_backends_per_location,
+            location.running_backends_count,
+        )
+        output.append(f'    {location.name} - {backend_status}')
+
+    if location.backends:
+        output.extend(build_smartstack_backends_table(location.backends))
+
+    return output
+
+
+def build_smartstack_backends_table(backends):
+    rows = [('      Name', 'LastCheck', 'LastChange', 'Status')]
+    for backend in backends:
+        if backend.status == 'UP':
+            status = PaastaColors.default(backend.status)
+        elif backend.status in ('DOWN', 'MAINT'):
+            status = PaastaColors.red(backend.status)
+        else:
+            status = PaastaColors.yellow(backend.status)
+
+        rows.append((
+            f'      {backend.hostname}:{backend.port}',
+            f'{backend.check_status}/{backend.check_code} in {backend.check_duration}ms',
+            humanize.naturaltime(timedelta(seconds=backend.last_change)),
+            status,
+        ))
+    return format_table(rows)
 
 
 def kubernetes_app_deploy_status_human(status, backoff_seconds=None):

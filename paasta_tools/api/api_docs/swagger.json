@@ -600,7 +600,7 @@
       "properties": {
         "desired_state": {
           "type": "string",
-          "description": "Desired state of a service, for both Marathon and Chronos",
+          "description": "Desired state of a service, for both Marathon",
           "enum": [
             "start",
             "stop"
@@ -611,7 +611,7 @@
           "format": "int32",
           "description": "The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing)"
         },
-        "app_id": {
+        "desired_app_id": {
           "type": "string",
           "description": "ID of the desired version of a service instance"
         },
@@ -652,6 +652,25 @@
           "format": "int32",
           "description": "The number of desired instances of the service"
         },
+        "autoscaling_info": {
+          "$ref": "#/definitions/MarathonAutoscalingInfo",
+          "description": "Autoscaling information for the service"
+        },
+        "app_statuses": {
+          "type": "array",
+          "description": "Statuses of each app of the service",
+          "items": {
+            "$ref": "#/definitions/MarathonAppStatus"
+          }
+        },
+        "mesos": {
+          "$ref": "#/definitions/MarathonMesosStatus",
+          "description": "Status of the service in Mesos"
+        },
+        "smartstack": {
+          "$ref": "#/definitions/SmartstackStatus",
+          "description": "Status of the service in smartstack"
+        },
         "error_message": {
           "type": "string",
           "description": "Error message when a marathon job ID cannot be found"
@@ -662,6 +681,315 @@
         "app_count",
         "bounce_method"
       ]
+    },
+    "MarathonMesosStatus": {
+      "type": "object",
+      "properties": {
+        "running_task_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of running Mesos tasks associated to this service"
+        },
+        "running_tasks": {
+          "type": "array",
+          "description": "Currently running tasks associated to this service",
+          "items": {
+            "$ref": "#/definitions/MarathonMesosRunningTask"
+          }
+        },
+        "non_running_tasks": {
+          "type": "array",
+          "description": "Non-running tasks associated to this service",
+          "items": {
+            "$ref": "#/definitions/MarathonMesosNonrunningTask"
+          }
+        }
+      }
+    },
+    "MarathonMesosRunningTask": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the task in Mesos"
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Name of the Mesos agent on which this task is running"
+        },
+        "mem_limit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The maximum amount of memory the task is allowed to use"
+        },
+        "rss": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The tasks's resident set size"
+        },
+        "cpu_shares": {
+          "type": "number",
+          "format": "float",
+          "description": "The portion of a CPU that the task can use"
+        },
+        "cpu_used_seconds" :{
+          "type": "number",
+          "format": "float",
+          "description": "The number of seconds of CPU time the task has used"
+        },
+        "duration_seconds": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The duration over which the task has been running in seconds"
+        },
+        "deployed_timestamp": {
+          "type": "number",
+          "format": "float",
+          "description": "The unix timestamp at which the task was deployed"
+        },
+        "tail_lines": {
+          "$ref": "#/definitions/MesosTaskTailLines",
+          "description": "Stdout and stderr tail of the task"
+        }
+      }
+    },
+    "MarathonMesosNonrunningTask": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the task in Mesos"
+        },
+        "hostname": {
+          "type": "string",
+          "description": "Name of the Mesos agent on which this task is running"
+        },
+        "deployed_timestamp": {
+          "type": "number",
+          "format": "float",
+          "description": "The unix timestamp at which the task was deployed"
+        },
+        "state": {
+          "type": "string",
+          "description": "The current state of the task"
+        },
+        "tail_lines": {
+          "$ref": "#/definitions/MesosTaskTailLines",
+          "description": "Stdout and stderr tail of the task"
+        }
+      }
+    },
+    "MesosTaskTailLines": {
+      "type": "object",
+      "properties": {
+        "stdout": {
+          "type": "array",
+          "description": "The requested number of lines from the task's stdout",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stderr": {
+          "type": "array",
+          "description": "The requested number of lines from the task's stderr",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "MarathonAutoscalingInfo": {
+      "type": "object",
+      "properties": {
+        "current_instances": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of instances of the service currently running"
+        },
+        "max_instances": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The maximum number of instances that the autoscaler will scale to"
+        },
+        "min_instances": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The minimum number of instances that the autoscaler will scale to"
+        },
+        "current_utilization": {
+          "type": "number",
+          "format": "float",
+          "description": ""
+        },
+        "target_instances": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The autoscaler's current target number of instances of this service to run"
+        }
+      }
+    },
+    "MarathonAppStatus": {
+      "type": "object",
+      "properties": {
+        "tasks_running": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number running tasks for this app"
+        },
+        "tasks_healthy": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of healthy tasks for this app"
+        },
+        "tasks_staged": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of staged tasks for this app"
+        },
+        "tasks_total": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Total number of tasks for this app"
+        },
+        "create_timestamp": {
+          "type": "number",
+          "format": "float",
+          "description": "Unix timestamp when this app was created"
+        },
+        "deploy_status": {
+          "type": "string",
+          "description": "Deploy status of this app"
+        },
+        "dashboard_url": {
+          "type": "string",
+          "description": "Marathon dashboard URL for this app"
+        },
+        "backoff_seconds": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Backoff in seconds before launching next task"
+        },
+        "unused_offer_reason_counts": {
+          "type": "object",
+          "description": "Mapping of reason offer was refused to the number of times that type of refusal was seen"
+        },
+        "tasks": {
+          "type": "array",
+          "description": "Tasks associated to this app",
+          "items": {
+            "$ref": "#/definitions/MarathonTask"
+          }
+        }
+      }
+    },
+    "MarathonTask": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID of the task in Mesos"
+        },
+        "host": {
+          "type": "string",
+          "description": "Name of the host on which the task is running"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port on which the task is listening"
+        },
+        "deployed_timestamp": {
+          "type": "number",
+          "format": "float",
+          "description": "Time at which the task was deployed"
+        },
+        "is_healthy": {
+          "type": "boolean",
+          "description": "Whether Marathon thinks the task is healthy"
+        }
+      }
+    },
+    "SmartstackStatus": {
+      "type": "object",
+      "properties": {
+        "registration": {
+          "type": "string",
+          "description": "Registration name of the service in Smartstack"
+        },
+        "expected_backends_per_location": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of backends expected to be present in each location"
+        },
+        "locations": {
+          "type": "array",
+          "description": "Locations the service is deployed",
+          "items": {
+            "$ref": "#/definitions/SmartstackLocation"
+          }
+        }
+      }
+    },
+    "SmartstackLocation": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the location"
+        },
+        "running_backends_count": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Number of running backends for the service in this location"
+        },
+        "backends": {
+          "type": "array",
+          "description": "Smartstack backends running in this location",
+          "items": {
+            "$ref": "#/definitions/SmartstackBackend"
+          }
+        }
+      }
+    },
+    "SmartstackBackend": {
+      "type": "object",
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "description": "Name of the host on which the backend is running"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port number on which the backend responds"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the backend in HAProxy"
+        },
+        "check_status": {
+          "type": "string",
+          "description": "Status of last health check of the backend"
+        },
+        "check_code": {
+          "type": "string",
+          "description": "Check code reported by HAProxy"
+        },
+        "check_duration": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Duration in ms of the last health check performed by HAProxy"
+        },
+        "last_change": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Seconds since last change in backend status"
+        },
+        "has_associated_task": {
+          "type": "boolean",
+          "description": "Whether this backend has an associated task running"
+        }
+      }
     },
     "InstanceStatusKubernetes": {
       "type": "object",
