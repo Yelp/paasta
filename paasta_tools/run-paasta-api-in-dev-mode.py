@@ -11,7 +11,7 @@ def main():
     print("Please set environment variable PAASTA_TEST_CLUSTER to the cluster you want to use.")
     print("This is necessary for tron jobs")
     print('-------------------------------------------------------')
-    cluster = os.environ.get('PAASTA_TEST_CLUSTER', 'norcal-devc')
+    cluster = os.environ.get('PAASTA_TEST_CLUSTER', 'mesosstage')
     config_path = 'etc_paasta_for_development'
 
     copy_tree('/etc/paasta', os.path.join(os.getcwd(), config_path))
