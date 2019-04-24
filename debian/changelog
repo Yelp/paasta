@@ -1,3 +1,34 @@
+paasta-tools (0.84.3) xenial; urgency=medium
+
+  * 0.84.3 tagged with 'make release'
+    Commit: Merge branch "slack_service_name"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 24 Apr 2019 13:45:28 -0700
+
+paasta-tools (0.84.2) xenial; urgency=medium
+
+  * 0.84.2 tagged with 'make release'
+    Commit: Merge pull request #2207 from Yelp/spark-fixups  Fixups to
+    check_spark_jobs
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 18 Apr 2019 15:58:55 -0700
+
+paasta-tools (0.84.1) xenial; urgency=medium
+
+  * 0.84.1 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    even_more_states
+
+ -- Evan Krall <krall@yelp.com>  Thu, 18 Apr 2019 13:19:48 -0700
+
+paasta-tools (0.84.0) xenial; urgency=medium
+
+  * 0.84.0 tagged with 'make release'
+    Commit: Merge branch "drmorr/PAASTA-
+    15371/move_rollback_command_earlier"
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 18 Apr 2019 10:50:45 -0700
+
 paasta-tools (0.83.19) xenial; urgency=medium
 
   * 0.83.19 tagged with 'make release'

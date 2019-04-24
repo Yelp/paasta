@@ -1,7 +1,9 @@
 import abc
 import asyncio
+import datetime
 import json
 import logging
+import time
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
@@ -9,6 +11,7 @@ from typing import Collection
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
@@ -28,6 +31,7 @@ log = logging.getLogger(__name__)
 
 
 def get_slack_blocks_for_deployment(
+    deployment_name: str,
     message,
     last_action=None,
     status=None,
@@ -47,10 +51,16 @@ def get_slack_blocks_for_deployment(
             "type": "section",
             "text": {
                 "type": "mrkdwn",
+                "text": f"{deployment_name}",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
                 "text": message,
             },
         },
-        {"type": "divider"},
         {
             "type": "section",
             "text": {
@@ -77,6 +87,9 @@ def get_button_element(button, is_active, from_sha, to_sha):
     inactive_button_texts = {
         "rollback": f"Roll Back to {from_sha[:8]} :arrow_backward:",
         "forward": f"Continue Forward to {to_sha[:8]} :arrow_forward:",
+        "complete": f"Complete deploy to {to_sha[:8]} :white_check_mark:",
+        "abandon": f"Abandon deploy, staying on {from_sha[:8]} :x:",
+        "snooze": f"Reset countdown",
     }
 
     if is_active is True:
@@ -212,6 +225,8 @@ class DeploymentProcess(abc.ABC):
         def trigger(self, *args, **kwargs):
             ...
 
+    run_timeout: Optional[float] = None  # in normal operation, this will be None, but this lets tests set a max time.
+
     def __init__(
         self,
     ):
@@ -225,6 +240,7 @@ class DeploymentProcess(abc.ABC):
             transitions=list(self.valid_transitions()),
             initial=self.start_state(),
             after_state_change=self.after_state_change,
+            before_state_change=self.before_state_change,
             queued=True,
         )
 
@@ -256,9 +272,39 @@ class DeploymentProcess(abc.ABC):
 
     async def run_async(self) -> int:
         self.trigger(self.start_transition())
-        await self.finished_event.wait()
+        await asyncio.wait_for(self.finished_event.wait(), timeout=self.run_timeout)
         return self.status_code_by_state().get(self.state, 3)
 
     def after_state_change(self):
         if self.state in self.status_code_by_state():
             self.event_loop.call_soon_threadsafe(self.finished_event.set)
+
+    def start_timer(self, timeout, trigger, message_verb):
+        self.cancel_timer()
+
+        timer_start = time.time()
+        timer_end = timer_start + timeout
+        formatted_time = datetime.datetime.fromtimestamp(timer_end)
+
+        self.update_slack_thread(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
+
+        def times_up():
+            self.update_slack_thread(f"Time's up, will now {message_verb}.")
+            self.trigger(trigger)
+
+        def schedule_callback():
+            """Unfortunately, call_at is not threadsafe, and there's no call_at_threadsafe, so we need to schedule the
+            call to call_at with call_soon_threadsafe."""
+            self.timer_handle = self.event_loop.call_later(timeout, times_up)
+
+        self.event_loop.call_soon_threadsafe(schedule_callback)
+
+    def cancel_timer(self):
+        try:
+            handle = self.timer_handle
+        except AttributeError:
+            return
+        handle.cancel()
+
+    def before_state_change(self):
+        self.cancel_timer()
