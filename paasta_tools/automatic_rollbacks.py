@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 
 
 def get_slack_blocks_for_deployment(
+    deployment_name: str,
     message,
     last_action=None,
     status=None,
@@ -50,10 +51,16 @@ def get_slack_blocks_for_deployment(
             "type": "section",
             "text": {
                 "type": "mrkdwn",
+                "text": f"{deployment_name}",
+            },
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
                 "text": message,
             },
         },
-        {"type": "divider"},
         {
             "type": "section",
             "text": {

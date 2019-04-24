@@ -1,3 +1,11 @@
+paasta-tools (0.84.2) xenial; urgency=medium
+
+  * 0.84.2 tagged with 'make release'
+    Commit: Merge pull request #2207 from Yelp/spark-fixups  Fixups to
+    check_spark_jobs
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 18 Apr 2019 15:58:55 -0700
+
 paasta-tools (0.84.1) xenial; urgency=medium
 
   * 0.84.1 tagged with 'make release'
