@@ -25,8 +25,8 @@ from paasta_tools.utils import InstanceConfig
 FLINK_INGRESS_PORT = 31080
 
 
-class FlinkClusterConfig(InstanceConfig):
-    config_filename_prefix = 'flinkcluster'
+class FlinkConfig(InstanceConfig):
+    config_filename_prefix = 'flink'
 
     def __init__(self, service, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
         super().__init__(
@@ -49,14 +49,14 @@ class FlinkClusterConfig(InstanceConfig):
             return []
 
 
-def load_flinkcluster_instance_config(
+def load_flink_instance_config(
     service: str,
     instance: str,
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> FlinkClusterConfig:
-    return FlinkClusterConfig(
+) -> FlinkConfig:
+    return FlinkConfig(
         service=service,
         instance=instance,
         cluster=cluster,
@@ -72,24 +72,24 @@ def sanitised_name(
     return f'{sanitised_service}-{sanitised_instance}'
 
 
-def flinkcluster_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
+def flink_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group='yelp.com',
         version='v1alpha1',
-        namespace='paasta-flinkclusters',
-        plural='flinkclusters',
+        namespace='paasta-flink',
+        plural='flinks',
         name=sanitised_name(service, instance),
     )
 
 
-def get_flinkcluster_config(
+def get_flink_config(
     kube_client: KubeClient,
     service: str,
     instance: str,
 ) -> Optional[Mapping[str, Any]]:
     try:
         co = kube_client.custom.get_namespaced_custom_object(
-            **flinkcluster_custom_object_id(service, instance),
+            **flink_custom_object_id(service, instance),
         )
         status = co.get('status')
         return status
@@ -100,13 +100,13 @@ def get_flinkcluster_config(
             raise
 
 
-def set_flinkcluster_desired_state(
+def set_flink_desired_state(
     kube_client: KubeClient,
     service: str,
     instance: str,
     desired_state: str,
 ):
-    co_id = flinkcluster_custom_object_id(service, instance)
+    co_id = flink_custom_object_id(service, instance)
     co = kube_client.custom.get_namespaced_custom_object(**co_id)
     if co.get('status', {}).get('state') == desired_state:
         return co['status']

@@ -821,7 +821,7 @@ def test_get_service_instance_list():
         read_extra_info_patch.assert_any_call(fake_name, 'paasta_native-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'kubernetes-16floz', soa_dir=fake_dir)
         read_extra_info_patch.assert_any_call(fake_name, 'tron-16floz', soa_dir=fake_dir)
-        read_extra_info_patch.assert_any_call(fake_name, 'flinkcluster-16floz', soa_dir=fake_dir)
+        read_extra_info_patch.assert_any_call(fake_name, 'flink-16floz', soa_dir=fake_dir)
         assert read_extra_info_patch.call_count == 7
         assert sorted(expected) == sorted(actual)
 
@@ -1954,7 +1954,7 @@ def test_validate_service_instance_invalid():
     mock_adhoc_instances = [('service1', 'interactive')]
     mock_k8s_instances = [('service1', 'k8s')]
     mock_tron_instances = [('service1', 'job.action')]
-    mock_flinkcluster_instances = [('service1', 'flink')]
+    mock_flink_instances = [('service1', 'flink')]
     my_service = 'service1'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
@@ -1969,7 +1969,7 @@ def test_validate_service_instance_invalid():
             mock_adhoc_instances,
             mock_k8s_instances,
             mock_tron_instances,
-            mock_flinkcluster_instances,
+            mock_flink_instances,
         ],
     ):
         with raises(utils.NoConfigurationForServiceError, match='Did you mean one of: main3, main2, main1?'):

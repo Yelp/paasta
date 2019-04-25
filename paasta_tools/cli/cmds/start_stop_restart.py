@@ -29,8 +29,8 @@ from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import run_on_master
-from paasta_tools.flinkcluster_tools import FlinkClusterConfig
-from paasta_tools.flinkcluster_tools import set_flinkcluster_desired_state
+from paasta_tools.flink_tools import FlinkConfig
+from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -156,7 +156,7 @@ def print_chronos_message(desired_state):
         )
 
 
-def print_flinkcluster_message(desired_state):
+def print_flink_message(desired_state):
     if desired_state == "start":
         paasta_print("'Start' will tell Flink operator to start the cluster.")
     elif desired_state == "stop":
@@ -219,7 +219,7 @@ def paasta_start_or_stop(args, desired_state):
     invalid_deploy_groups = []
     marathon_message_printed = False
     chronos_message_printed = False
-    affected_flinkclusters = []
+    affected_flinks = []
 
     if args.clusters is None or args.instances is None:
         if confirm_to_continue(pargs.items(), desired_state) is False:
@@ -237,8 +237,8 @@ def paasta_start_or_stop(args, desired_state):
                     soa_dir=soa_dir,
                     load_deployments=False,
                 )
-                if isinstance(service_config, FlinkClusterConfig):
-                    affected_flinkclusters.append(service_config)
+                if isinstance(service_config, FlinkConfig):
+                    affected_flinks.append(service_config)
                     continue
 
                 try:
@@ -276,12 +276,12 @@ def paasta_start_or_stop(args, desired_state):
 
     return_val = 0
 
-    if affected_flinkclusters:
+    if affected_flinks:
         if os.environ.get('ON_PAASTA_MASTER'):
-            print_flinkcluster_message(desired_state)
+            print_flink_message(desired_state)
             kube_client = KubeClient()
-            for service_config in affected_flinkclusters:
-                set_flinkcluster_desired_state(
+            for service_config in affected_flinks:
+                set_flink_desired_state(
                     kube_client=kube_client,
                     service=service_config.service,
                     instance=service_config.instance,
@@ -289,7 +289,7 @@ def paasta_start_or_stop(args, desired_state):
                 )
         else:
             csi = defaultdict(lambda: defaultdict(list))
-            for service_config in affected_flinkclusters:
+            for service_config in affected_flinks:
                 csi[service_config.cluster][service_config.service].append(service_config.instance)
 
             system_paasta_config = load_system_paasta_config()

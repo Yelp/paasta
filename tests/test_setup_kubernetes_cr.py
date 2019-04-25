@@ -21,15 +21,15 @@ from paasta_tools.kubernetes_tools import KubeCustomResource
 def test_load_custom_resources():
     mock_resources = [{
         'version': 'v1',
-        'kube_kind': {'plural': 'FlinkClusters', 'singular': 'flinkcluster'},
-        'file_prefix': 'flinkcluster',
+        'kube_kind': {'plural': 'Flinks', 'singular': 'flink'},
+        'file_prefix': 'flink',
         'group': 'yelp.com',
     }]
     mock_config = mock.Mock(get_kubernetes_custom_resources=mock.Mock(return_value=mock_resources))
     assert setup_kubernetes_cr.load_custom_resources(mock_config) == [setup_kubernetes_cr.CustomResource(
         version='v1',
-        kube_kind=setup_kubernetes_cr.KubeKind(plural='FlinkClusters', singular='flinkcluster'),
-        file_prefix='flinkcluster',
+        kube_kind=setup_kubernetes_cr.KubeKind(plural='Flinks', singular='flink'),
+        file_prefix='flink',
         group='yelp.com',
     )]
 
@@ -63,14 +63,14 @@ def test_setup_all_custom_resources():
     ) as mock_load_custom_resources:
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         mock_load_custom_resources.return_value = [
-            mock.Mock(kube_kind=mock.Mock(plural='flinkclusters', singular='FlinkCluster')),
+            mock.Mock(kube_kind=mock.Mock(plural='flinks', singular='Flink')),
             mock.Mock(kube_kind=mock.Mock(plural='cassandraclusters', singular='CassandraCluster')),
         ]
         mock_setup.side_effect = [True, False]
 
         mock_client = mock.Mock()
         flink_mock = mock.Mock()
-        flink_mock.spec.names.kind = 'FlinkCluster'
+        flink_mock.spec.names.kind = 'Flink'
         cassandra_mock = mock.Mock()
         cassandra_mock.spec.names.kind = 'CassandraCluster'
         mock_client.apiextensions.list_custom_resource_definition.return_value.items = [
@@ -82,7 +82,7 @@ def test_setup_all_custom_resources():
         )
 
         mock_load_custom_resources.return_value = [
-            mock.Mock(plural='flinkclusters'), mock.Mock(plural='cassandraclusters'),
+            mock.Mock(plural='flinks'), mock.Mock(plural='cassandraclusters'),
         ]
         mock_setup.side_effect = [True, True]
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
@@ -181,7 +181,7 @@ def test_format_custom_resource():
     ) as mock_get_config_hash:
         expected = {
             'apiVersion': 'yelp.com/v1',
-            'kind': 'flinkcluster',
+            'kind': 'flink',
             'metadata': {
                 'name': 'kurupt--fm-radio--station',
                 'labels': {
@@ -201,7 +201,7 @@ def test_format_custom_resource():
             service='kurupt_fm',
             instance='radio_station',
             cluster='mycluster',
-            kind='flinkcluster',
+            kind='flink',
             version='v1',
             group='yelp.com',
         ) == expected
@@ -215,13 +215,13 @@ def test_reconcile_kubernetes_resource():
     ) as mock_create_custom_resource, mock.patch(
         'paasta_tools.setup_kubernetes_cr.update_custom_resource', autospec=True,
     ) as mock_update_custom_resource:
-        mock_kind = mock.Mock(singular='flinkcluster')
+        mock_kind = mock.Mock(singular='flink')
         mock_custom_resources = [
             KubeCustomResource(
                 service='kurupt',
                 instance='fm',
                 config_sha='conf123',
-                kind='flinkcluster',
+                kind='flink',
             ),
         ]
         mock_client = mock.Mock()
