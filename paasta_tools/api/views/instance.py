@@ -20,6 +20,7 @@ import re
 import traceback
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
@@ -162,7 +163,7 @@ def adhoc_instance_status(
     service: str,
     instance: str,
     verbose: bool,
-) -> Mapping[str, Any]:
+) -> List[Dict[str, Any]]:
     status = []
     # Get result
     filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
@@ -171,7 +172,7 @@ def adhoc_instance_status(
         launch_time, run_id = re.match(
             r'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
         ).groups()
-        status.append({'launch time': launch_time, 'run id': run_id, 'framework id': f.id})
+        status.append({'launch_time': launch_time, 'run_id': run_id, 'framework_id': f.id})
     return status
 
 

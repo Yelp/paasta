@@ -265,7 +265,7 @@ def print_adhoc_status(
     output.append(f"    Job: {instance}")
     for run in status:
         output.append("Launch time: %s, run id: %s, framework id: %s" %
-                      (run['launch time'], run['run id'], run['framework id']))
+                      (run['launch_time'], run['run_id'], run['framework_id']))
     if status:
         output.append(
             (

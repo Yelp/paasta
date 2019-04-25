@@ -895,15 +895,15 @@
         "type": "object",
         "description": "A single run",
         "properties": {
-           "launch time": {
+           "launch_time": {
               "type": "string",
               "description": "when the job was launched"
            },
-           "run id": {
+           "run_id": {
               "type": "string",
               "description": "id of the single run"
            },
-           "framework id": {
+           "framework_id": {
               "type": "string",
               "description": "framework id"
            }
