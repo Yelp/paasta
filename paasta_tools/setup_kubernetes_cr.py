@@ -24,6 +24,7 @@ import argparse
 import logging
 import os
 import sys
+import yaml
 from typing import Any
 from typing import Mapping
 from typing import NamedTuple
@@ -53,6 +54,38 @@ class CustomResource(NamedTuple):
     group: str
 
 
+class StdoutKubeClient:
+    """Replace all destructive operations in Kubernetes APIs with
+    writing out YAML to stdout."""
+
+    class StdoutWrapper:
+        def __init__(self, target):
+            self.target = target
+
+        def __getattr__(self, attr):
+            if attr.startswith('create') or attr.startswith('replace'):
+                return self.yaml_dump
+            return getattr(self.target, attr)
+
+        def yaml_dump(self, **kwargs):
+            body = kwargs.get('body')
+            if not body:
+                return
+            yaml.safe_dump(
+                body,
+                sys.stdout,
+                indent=4,
+                explicit_start=True,
+            )
+
+    def __init__(self, kube_client: KubeClient):
+        self.deployments = StdoutWrapper(kube_client.deployments)
+        self.core = StdoutWrapper(kube_client.core)
+        self.policy = StdoutWrapper(kube_client.policy)
+        self.apiextensions = StdoutWrapper(kube_client.apiextensions)
+        self.custom = StdoutWrapper(kube_client.custom)
+
+
 def load_custom_resources(system_paasta_config: SystemPaastaConfig) -> Sequence[CustomResource]:
     custom_resources = []
     for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
@@ -72,6 +105,22 @@ def parse_args() -> argparse.Namespace:
         '-v', '--verbose', action='store_true',
         dest="verbose", default=False,
     )
+    parser.add_argument(
+        '-s', '--service', default=None,
+        help="Service to setup CRs for"
+    )
+    parser.add_argument(
+        '-i', '--instance', default=None,
+        help="Service instance to setup CR for"
+    )
+    parser.add_argument(
+        '-o', '--output-to-std', default=False,
+        help="Output kubernetes configuration instead of applying it"
+    )
+    parser.add_argument(
+        '-c', '--cluster', default=None,
+        help="Cluster to setup CRs for"
+    )
     args = parser.parse_args()
     return args
 
@@ -85,11 +134,17 @@ def main() -> None:
         logging.basicConfig(level=logging.INFO)
 
     kube_client = KubeClient()
+    if args.output_to_std:
+        kube_client = StdoutKubeClient(kube_client)
 
+    cluster = args.cluster or system_paasta_config.get_cluster()
+    system_paasta_config = load_system_paasta_config()
+    custom_resources = load_custom_resources(system_paasta_config)
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
         soa_dir=soa_dir,
-        system_paasta_config=load_system_paasta_config(),
+        cluster=cluster,
+        custom_resources=custom_resources,
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -97,9 +152,9 @@ def main() -> None:
 def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
-    system_paasta_config: SystemPaastaConfig,
+    cluster: str,
+    custom_resources: str,
 ) -> bool:
-    cluster = system_paasta_config.get_cluster()
     cluster_crds = {
         crd.spec.names.kind
         for crd in
@@ -108,7 +163,6 @@ def setup_all_custom_resources(
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")
-    custom_resources = load_custom_resources(system_paasta_config)
     results = []
     for custom_resource in custom_resources:
         if custom_resource.kube_kind.singular not in cluster_crds:
