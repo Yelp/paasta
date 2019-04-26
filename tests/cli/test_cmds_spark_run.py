@@ -43,6 +43,7 @@ def test_get_docker_run_cmd(
     env = {'k1': 'v1', 'k2': 'v2'}
     docker_img = 'fake-registry/fake-service'
     docker_cmd = 'pyspark'
+    nvidia = False
 
     actual = get_docker_run_cmd(
         container_name,
@@ -50,6 +51,7 @@ def test_get_docker_run_cmd(
         env,
         docker_img,
         docker_cmd,
+        nvidia,
     )
 
     assert actual[5:] == [
@@ -152,6 +154,7 @@ class TestConfigureAndRunDockerContainer:
         args.work_dir = '/fake_dir:/spark_driver'
         args.dry_run = True
         args.mrjob = False
+        args.nvidia = False
 
         retcode = configure_and_run_docker_container(
             args=args,
@@ -185,6 +188,7 @@ class TestConfigureAndRunDockerContainer:
             docker_img='fake-registry/fake-service',
             docker_cmd='pyspark --conf spark.app.name=fake_app',
             dry_run=True,
+            nvidia=False,
         )
 
     def test_configure_and_run_docker_container_mrjob(
