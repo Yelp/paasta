@@ -165,7 +165,6 @@ def adhoc_instance_status(
     verbose: bool,
 ) -> List[Dict[str, Any]]:
     status = []
-    # Get result
     filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
