@@ -43,6 +43,7 @@ def test_get_docker_run_cmd(
     env = {'k1': 'v1', 'k2': 'v2'}
     docker_img = 'fake-registry/fake-service'
     docker_cmd = 'pyspark'
+    nvidia = False
 
     actual = get_docker_run_cmd(
         container_name,
@@ -50,6 +51,7 @@ def test_get_docker_run_cmd(
         env,
         docker_img,
         docker_cmd,
+        nvidia,
     )
 
     assert actual[5:] == [
@@ -152,6 +154,7 @@ class TestConfigureAndRunDockerContainer:
         args.work_dir = '/fake_dir:/spark_driver'
         args.dry_run = True
         args.mrjob = False
+        args.nvidia = False
 
         retcode = configure_and_run_docker_container(
             args=args,
@@ -185,7 +188,38 @@ class TestConfigureAndRunDockerContainer:
             docker_img='fake-registry/fake-service',
             docker_cmd='pyspark --conf spark.app.name=fake_app',
             dry_run=True,
+            nvidia=False,
         )
+
+    def test_configure_and_run_docker_container_nvidia(
+        self,
+        mock_time,
+        mock_run_docker_container,
+        mock_get_spark_config,
+        mock_get_username,
+        mock_pick_random_port,
+        mock_os_path_exists,
+        mock_get_aws_credentials,
+    ):
+        mock_get_aws_credentials.return_value = ('id', 'secret')
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
+        ) as mock_emit_resource_requirements, mock.patch(
+            'paasta_tools.cli.cmds.spark_run.clusterman_metrics', autospec=True,
+        ):
+            mock_get_spark_config.return_value = {'spark.cores.max': 5, 'spark.master': 'mesos://spark.master'}
+            args = mock.MagicMock(cmd='pyspark', nvidia=True)
+
+            configure_and_run_docker_container(
+                args=args,
+                docker_img='fake-registry/fake-service',
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+            )
+
+            args, kwargs = mock_run_docker_container.call_args
+            assert kwargs['nvidia']
+            assert mock_emit_resource_requirements.called
 
     def test_configure_and_run_docker_container_mrjob(
         self,

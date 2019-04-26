@@ -165,6 +165,13 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
+        '--nvidia',
+        help='Use nvidia docker runtime for Spark driver process (requires GPU)',
+        action='store_true',
+        default=False,
+    )
+
+    list_parser.add_argument(
         '--mrjob',
         help='Pass Spark arguments to invoked command in the format expected by mrjobs',
         action='store_true',
@@ -277,6 +284,7 @@ def get_docker_run_cmd(
     env,
     docker_img,
     docker_cmd,
+    nvidia,
 ):
     cmd = ['paasta_docker_wrapper', 'run']
     cmd.append('--rm')
@@ -299,6 +307,10 @@ def get_docker_run_cmd(
             cmd.append(k)
         else:
             cmd.append(f'{k}={v}')
+    if nvidia:
+        cmd.append('--env')
+        cmd.append('NVIDIA_VISIBLE_DEVICES=all')
+        cmd.append('--runtime=nvidia')
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     cmd.append('%s' % docker_img)
@@ -587,6 +599,7 @@ def run_docker_container(
     docker_img,
     docker_cmd,
     dry_run,
+    nvidia,
 ):
     docker_run_args = dict(
         container_name=container_name,
@@ -594,6 +607,7 @@ def run_docker_container(
         env=environment,
         docker_img=docker_img,
         docker_cmd=docker_cmd,
+        nvidia=nvidia,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
 
@@ -681,6 +695,7 @@ def configure_and_run_docker_container(
         docker_img=docker_img,
         docker_cmd=docker_cmd,
         dry_run=args.dry_run,
+        nvidia=args.nvidia,
     )
 
 
