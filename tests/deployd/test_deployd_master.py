@@ -89,11 +89,11 @@ class TestDedupedPriorityQueue(unittest.TestCase):
 
 class TestInbox(unittest.TestCase):
     def setUp(self):
-        self.mock_instances_that_need_to_be_bounced_asap = mock.Mock()
-        self.mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
+        self.mock_instances_to_bounce_now = mock.Mock()
+        self.mock_instances_to_bounce_later = mock.Mock()
         self.inbox = Inbox(
-            self.mock_instances_that_need_to_be_bounced_in_the_future,
-            self.mock_instances_that_need_to_be_bounced_asap,
+            self.mock_instances_to_bounce_later,
+            self.mock_instances_to_bounce_now,
         )
 
     def test_run(self):
@@ -106,8 +106,8 @@ class TestInbox(unittest.TestCase):
             assert mock_process.called
 
     def test_process_inbox(self):
-        self.mock_instances_that_need_to_be_bounced_in_the_future.get.side_effect = Empty
-        self.mock_instances_that_need_to_be_bounced_in_the_future.empty.return_value = True
+        self.mock_instances_to_bounce_later.get.side_effect = Empty
+        self.mock_instances_to_bounce_later.empty.return_value = True
         self.inbox.to_bounce = {}
         with mock.patch(
             'paasta_tools.deployd.master.Inbox.process_service_instance', autospec=True,
@@ -117,20 +117,20 @@ class TestInbox(unittest.TestCase):
             'time.sleep', autospec=True,
         ):
             self.inbox.process_inbox()
-            self.mock_instances_that_need_to_be_bounced_in_the_future.get.assert_called_with(block=False)
+            self.mock_instances_to_bounce_later.get.assert_called_with(block=False)
             assert not mock_process_service_instance.called
             assert not mock_process_to_bounce.called
 
             mock_si = mock.Mock()
-            self.mock_instances_that_need_to_be_bounced_in_the_future.get.side_effect = None
-            self.mock_instances_that_need_to_be_bounced_in_the_future.get.return_value = mock_si
-            self.mock_instances_that_need_to_be_bounced_in_the_future.empty.return_value = False
+            self.mock_instances_to_bounce_later.get.side_effect = None
+            self.mock_instances_to_bounce_later.get.return_value = mock_si
+            self.mock_instances_to_bounce_later.empty.return_value = False
             self.inbox.process_inbox()
             mock_process_service_instance.assert_called_with(self.inbox, mock_si)
             assert not mock_process_to_bounce.called
 
             self.inbox.to_bounce = {'service.instance': mock_si}
-            self.mock_instances_that_need_to_be_bounced_in_the_future.empty.return_value = True
+            self.mock_instances_to_bounce_later.empty.return_value = True
             self.inbox.process_inbox()
             mock_process_service_instance.assert_called_with(self.inbox, mock_si)
             assert mock_process_to_bounce.called
@@ -170,10 +170,10 @@ class TestInbox(unittest.TestCase):
                 'universe.c138': mock_service_instance_2,
             }
             self.inbox.process_to_bounce()
-            self.mock_instances_that_need_to_be_bounced_asap.put.assert_called_with(
+            self.mock_instances_to_bounce_now.put.assert_called_with(
                 mock_service_instance_1.priority, mock_service_instance_1,
             )
-            assert self.mock_instances_that_need_to_be_bounced_asap.put.call_count == 1
+            assert self.mock_instances_to_bounce_now.put.call_count == 1
 
     def tearDown(self):
         self.inbox.to_bounce = {}
@@ -218,7 +218,7 @@ class TestDeployDaemon(unittest.TestCase):
     def test_bounce(self):
         mock_si = mock.Mock()
         self.deployd.bounce(mock_si)
-        self.deployd.instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(mock_si)
+        self.deployd.instances_to_bounce_later.put.assert_called_with(mock_si)
 
     def test_startup(self):
         assert not hasattr(self.deployd, 'is_leader')
@@ -243,7 +243,6 @@ class TestDeployDaemon(unittest.TestCase):
             assert self.deployd.is_leader
             mock_q_metrics.assert_called_with(
                 self.deployd.inbox,
-                self.deployd.instances_that_need_to_be_bounced_asap,
                 'westeros-prod',
                 mock_get_metrics_interface.return_value,
             )
@@ -410,7 +409,7 @@ class TestDeployDaemon(unittest.TestCase):
                     failures=0,
                 )),
             ]
-            self.deployd.instances_that_need_to_be_bounced_in_the_future.put.assert_has_calls(calls, any_order=True)
+            self.deployd.instances_to_bounce_later.put.assert_has_calls(calls, any_order=True)
 
     def test_start_watchers(self):
         class FakeWatchers:  # pragma: no cover

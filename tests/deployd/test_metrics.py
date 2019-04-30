@@ -10,13 +10,12 @@ class TestQueueMetrics(unittest.TestCase):
     def setUp(self):
         mock_metrics_provider = mock.Mock()
         self.mock_gauge = mock.Mock()
-        self.mock_inbox = mock.Mock(instances_that_need_to_be_bounced_in_the_future=mock.Mock(), to_bounce={})
-        self.mock_instances_that_need_to_be_bounced_asap = mock.Mock()
+        self.mock_inbox = mock.Mock(instances_to_bounce_later=mock.Mock(), to_bounce={})
+        self.mock_instances_to_bounce_now = mock.Mock()
         mock_create_gauge = mock.Mock(return_value=self.mock_gauge)
         mock_metrics_provider.create_gauge = mock_create_gauge
         self.metrics = metrics.QueueMetrics(
-            self.mock_inbox, self.mock_instances_that_need_to_be_bounced_asap,
-            "mock-cluster", mock_metrics_provider,
+            self.mock_inbox, "mock-cluster", mock_metrics_provider,
         )
 
     def test_run(self):

@@ -16,16 +16,16 @@ class PaastaDeployWorker(PaastaThread):
     def __init__(
         self,
         worker_number,
-        instances_that_need_to_be_bounced_in_the_future,
-        instances_that_need_to_be_bounced_asap,
+        instances_to_bounce_later,
+        instances_to_bounce_now,
         config,
         metrics_provider,
     ):
         super().__init__()
         self.daemon = True
         self.name = f"Worker{worker_number}"
-        self.instances_that_need_to_be_bounced_in_the_future = instances_that_need_to_be_bounced_in_the_future
-        self.instances_that_need_to_be_bounced_asap = instances_that_need_to_be_bounced_asap
+        self.instances_to_bounce_later = instances_to_bounce_later
+        self.instances_to_bounce_now = instances_to_bounce_now
         self.metrics = metrics_provider
         self.config = config
         self.cluster = self.config.get_cluster()
@@ -70,7 +70,7 @@ class PaastaDeployWorker(PaastaThread):
     def run(self):
         self.log.info(f"{self.name} starting up")
         while True:
-            service_instance = self.instances_that_need_to_be_bounced_asap.get()
+            service_instance = self.instances_to_bounce_now.get()
             try:
                 bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(service_instance)
             except Exception as e:
@@ -98,7 +98,7 @@ class PaastaDeployWorker(PaastaThread):
                     priority=service_instance.priority,
                     failures=failures,
                 )
-                self.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+                self.instances_to_bounce_later.put(service_instance)
             time.sleep(0.1)
 
     def process_service_instance(self, service_instance):
