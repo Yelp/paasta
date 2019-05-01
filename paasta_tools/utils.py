@@ -2476,6 +2476,11 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
     return service_configuration.get('deploy', {}).get('pipeline', [])
 
 
+def get_pipeline_deploy_groups(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
+    pipeline_steps = [step['step'] for step in get_pipeline_config(service, soa_dir)]
+    return [step for step in pipeline_steps if is_deploy_step(step)]
+
+
 def get_service_instance_list_no_cache(
     service: str,
     cluster: Optional[str] = None,
