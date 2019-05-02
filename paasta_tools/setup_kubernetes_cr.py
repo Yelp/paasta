@@ -79,11 +79,11 @@ class StdoutKubeClient:
             )
 
     def __init__(self, kube_client: KubeClient):
-        self.deployments = StdoutWrapper(kube_client.deployments)
-        self.core = StdoutWrapper(kube_client.core)
-        self.policy = StdoutWrapper(kube_client.policy)
-        self.apiextensions = StdoutWrapper(kube_client.apiextensions)
-        self.custom = StdoutWrapper(kube_client.custom)
+        self.deployments = StdoutKubeClient.StdoutWrapper(kube_client.deployments)
+        self.core = StdoutKubeClient.StdoutWrapper(kube_client.core)
+        self.policy = StdoutKubeClient.StdoutWrapper(kube_client.policy)
+        self.apiextensions = StdoutKubeClient.StdoutWrapper(kube_client.apiextensions)
+        self.custom = StdoutKubeClient.StdoutWrapper(kube_client.custom)
 
 
 def load_custom_resources(system_paasta_config: SystemPaastaConfig) -> Sequence[CustomResource]:
@@ -114,7 +114,7 @@ def parse_args() -> argparse.Namespace:
         help="Service instance to setup CR for"
     )
     parser.add_argument(
-        '-o', '--output-to-std', default=False,
+        '-D', '--dry-run', action='store_true', default=False,
         help="Output kubernetes configuration instead of applying it"
     )
     parser.add_argument(
@@ -134,7 +134,7 @@ def main() -> None:
         logging.basicConfig(level=logging.INFO)
 
     kube_client = KubeClient()
-    if args.output_to_std:
+    if args.dry_run:
         kube_client = StdoutKubeClient(kube_client)
 
     cluster = args.cluster or system_paasta_config.get_cluster()
@@ -145,6 +145,8 @@ def main() -> None:
         soa_dir=soa_dir,
         cluster=cluster,
         custom_resources=custom_resources,
+        service=args.service,
+        instance=args.instance,
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -153,7 +155,9 @@ def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
     cluster: str,
-    custom_resources: str,
+    custom_resources: Sequence[KubeCustomResource],
+    service: str = None,
+    instance: str = None,
 ) -> bool:
     cluster_crds = {
         crd.spec.names.kind
@@ -192,6 +196,8 @@ def setup_all_custom_resources(
                 version=custom_resource.version,
                 group=custom_resource.group,
                 cluster=cluster,
+                service=service,
+                instance=instance,
             ),
         )
     return all(results) if results else True
@@ -215,6 +221,8 @@ def setup_custom_resources(
     config_dicts: Mapping[str, Mapping[str, Any]],
     group: str,
     cluster: str,
+    service: str = None,
+    instance: str = None,
 ) -> bool:
     succeded = True
     if config_dicts:
@@ -224,10 +232,13 @@ def setup_custom_resources(
             version=version,
             group=group,
         )
-    for service, config in config_dicts.items():
+    for svc, config in config_dicts.items():
+        if service is not None and service != svc:
+            continue
         if not reconcile_kubernetes_resource(
             kube_client=kube_client,
-            service=service,
+            service=svc,
+            instance=instance,
             instance_configs=config,
             kind=kind,
             custom_resources=crs,
@@ -282,14 +293,17 @@ def reconcile_kubernetes_resource(
     version: str,
     group: str,
     cluster: str,
+    instance: str = None,
 ) -> bool:
 
     results = []
-    for instance, config in instance_configs.items():
+    for inst, config in instance_configs.items():
+        if instance is not None and instance != inst:
+            continue
         formatted_resource = format_custom_resource(
             instance_config=config,
             service=service,
-            instance=instance,
+            instance=inst,
             cluster=cluster,
             kind=kind.singular,
             version=version,
@@ -297,13 +311,13 @@ def reconcile_kubernetes_resource(
         )
         desired_resource = KubeCustomResource(
             service=service,
-            instance=instance,
+            instance=inst,
             config_sha=formatted_resource['metadata']['labels']['yelp.com/paasta_config_sha'],
             kind=kind.singular,
         )
 
         try:
-            if not (service, instance, kind.singular) in [(c.service, c.instance, c.kind) for c in custom_resources]:
+            if not (service, inst, kind.singular) in [(c.service, c.instance, c.kind) for c in custom_resources]:
                 log.info(f"{desired_resource} does not exist so creating")
                 create_custom_resource(
                     kube_client=kube_client,
@@ -314,7 +328,7 @@ def reconcile_kubernetes_resource(
                 )
             elif desired_resource not in custom_resources:
                 sanitised_service = service.replace('_', '--')
-                sanitised_instance = instance.replace('_', '--')
+                sanitised_instance = inst.replace('_', '--')
                 log.info(f"{desired_resource} exists but config_sha doesn't match")
                 update_custom_resource(
                     kube_client=kube_client,
