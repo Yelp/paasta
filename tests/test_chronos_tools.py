@@ -14,6 +14,7 @@
 import copy
 
 import mock
+import pytest
 from mock import Mock
 from pytest import raises
 
@@ -30,6 +31,15 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 class TestChronosTools:
+
+    @pytest.fixture(autouse=True)
+    def mock_read_monitoring_config(self):
+        with mock.patch(
+            'paasta_tools.utils.get_pipeline_deploy_groups',
+            mock.Mock(return_value=['fake_deploy_group']),
+            autospec=None,
+        ) as f:
+            yield f
 
     fake_service = 'test-service'
     fake_instance = 'fake-instance'
@@ -51,6 +61,7 @@ class TestChronosTools:
         'data': {},
         'dependencies': {},
         'deploy': {},
+        'deploy_group': 'fake_deploy_group',
         'lb_extras': {},
         'port': None,
         'smartstack': {},
@@ -91,6 +102,7 @@ class TestChronosTools:
         'dependencies': {},
         'data': {},
         'port': None,
+        'deploy_group': 'fake_deploy_group_for_invalid',
     }
 
     fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(
@@ -350,6 +362,7 @@ class TestChronosTools:
             'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
             'schedule_time_zone': 'Zulu',
             'monitoring': {},
+            'deploy_group': 'fake_deploy_group',
         }
         fake_docker_url = 'fake_docker_image_url'
         fake_docker_volumes = ['fake_docker_volume']
@@ -1095,6 +1108,7 @@ class TestChronosTools:
                 'cpus': fake_cpus,
                 'cfs_period_us': fake_period,
                 'cpu_burst_add': fake_burst,
+                'deploy_group': 'fake_deploy_group',
             },
             branch_dict=None,
         )
@@ -1172,6 +1186,7 @@ class TestChronosTools:
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
                 'net': 'host',
+                'deploy_group': 'fake_deploy_group',
             },
             branch_dict=None,
         )
@@ -1197,6 +1212,7 @@ class TestChronosTools:
                 'cmd': fake_command,
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
+                'deploy_group': 'fake_deploy_group',
             },
             branch_dict=None,
         )

@@ -499,6 +499,7 @@ class ChronosJobConfig(InstanceConfig):
             'dependencies_reference': self.check_dependencies_reference,
             'parents': self.check_parents,
             'cmd': self.check_cmd,
+            'deploy_group': self.check_deploy_group,
         }
         supported_params_without_checks = ['description', 'owner', 'disabled']
         if param in check_methods:

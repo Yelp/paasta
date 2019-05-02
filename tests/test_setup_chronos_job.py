@@ -15,6 +15,7 @@
 import copy
 
 import mock
+import pytest
 from pysensu_yelp import Status
 from pytest import raises
 
@@ -26,6 +27,15 @@ from paasta_tools.utils import NoDeploymentsAvailable
 
 
 class TestSetupChronosJob:
+
+    @pytest.fixture(autouse=True)
+    def mock_read_monitoring_config(self):
+        with mock.patch(
+            'paasta_tools.utils.get_pipeline_deploy_groups',
+            mock.Mock(return_value=['fake_deploy_group']),
+            autospec=None,
+        ) as f:
+            yield f
 
     fake_docker_image = 'test_docker:1.0'
     fake_client = mock.MagicMock()
@@ -48,6 +58,7 @@ class TestSetupChronosJob:
         'disabled': 'true',
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
+        'deploy_group': 'fake_deploy_group',
     }
     fake_branch_dict = {
         'docker_image': f'paasta-{fake_service}-{fake_cluster}',
