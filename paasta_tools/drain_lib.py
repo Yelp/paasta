@@ -165,7 +165,7 @@ class HacheckDrainMethod(DrainMethod):
         service: str,
         instance: str,
         registrations: List[str],
-        delay: float = 240,
+        delay: float = 600,
         hacheck_port: int = 6666,
         expiration: float = 0,
         **kwargs: Dict,
