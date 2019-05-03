@@ -31,10 +31,10 @@ from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 class PaastaWatcher(PaastaThread):
 
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, cluster, config):
+    def __init__(self, instances_to_bounce_later, cluster, config):
         super().__init__()
         self.daemon = True
-        self.instances_that_need_to_be_bounced_in_the_future = instances_that_need_to_be_bounced_in_the_future
+        self.instances_to_bounce_later = instances_to_bounce_later
         self.cluster = cluster
         self.config = config
         self.is_ready = False
@@ -42,8 +42,8 @@ class PaastaWatcher(PaastaThread):
 
 class AutoscalerWatcher(PaastaWatcher):
 
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, cluster, config, **kwargs):
-        super().__init__(instances_that_need_to_be_bounced_in_the_future, cluster, config)
+    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce_later, cluster, config)
         self.zk = kwargs.pop('zookeeper_client')
         self.watchers: Dict[str, PaastaWatcher] = {}
 
@@ -75,7 +75,7 @@ class AutoscalerWatcher(PaastaWatcher):
             watcher=type(self).__name__,
             failures=0,
         )
-        self.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+        self.instances_to_bounce_later.put(service_instance)
 
     def watch_node(self, path, enqueue=False):
         self.log.info(f"Adding zk node watch on {path}")
@@ -107,8 +107,8 @@ class AutoscalerWatcher(PaastaWatcher):
 
 class SoaFileWatcher(PaastaWatcher):
 
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, cluster, config, **kwargs):
-        super().__init__(instances_that_need_to_be_bounced_in_the_future, cluster, config)
+    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce_later, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(
@@ -133,8 +133,8 @@ class SoaFileWatcher(PaastaWatcher):
 
 class PublicConfigFileWatcher(PaastaWatcher):
 
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, cluster, config, **kwargs):
-        super().__init__(instances_that_need_to_be_bounced_in_the_future, cluster, config)
+    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce_later, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(
@@ -158,8 +158,8 @@ class PublicConfigFileWatcher(PaastaWatcher):
 
 
 class MaintenanceWatcher(PaastaWatcher):
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, cluster, config, **kwargs):
-        super().__init__(instances_that_need_to_be_bounced_in_the_future, cluster, config)
+    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce_later, cluster, config)
         self.draining: Set[str] = set()
         self.marathon_clients = get_marathon_clients_from_config()
 
@@ -186,7 +186,7 @@ class MaintenanceWatcher(PaastaWatcher):
                 self.log.info(f"Found new draining hosts: {new_draining_hosts}")
                 service_instances = self.get_at_risk_service_instances(new_draining_hosts)
             for service_instance in service_instances:
-                self.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+                self.instances_to_bounce_later.put(service_instance)
             time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts) -> List[ServiceInstance]:
@@ -276,7 +276,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     watcher_name=type(self).__name__,
                     priority=99,
                 ):
-                    self.filewatcher.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+                    self.filewatcher.instances_to_bounce_later.put(service_instance)
 
 
 class YelpSoaEventHandler(pyinotify.ProcessEvent):
@@ -354,4 +354,4 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             for service, instance in service_instances
         ]
         for service_instance in service_instances_to_queue:
-            self.filewatcher.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+            self.filewatcher.instances_to_bounce_later.put(service_instance)

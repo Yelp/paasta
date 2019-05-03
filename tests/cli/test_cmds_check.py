@@ -483,71 +483,42 @@ def test_get_deploy_groups_used_by_framework(
     assert actual == expected
 
 
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_deploy_groups', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_deploy_groups_used_by_framework', autospec=True)
 def test_marathon_deployments_check_good(
     mock_get_deploy_groups_used_by_framework,
-    mock_get_pipeline_config,
+    mock_get_pipeline_deploy_groups,
     capfd,
 ):
-    mock_get_pipeline_config.return_value = [
-        {'step': 'itest', },
-        {'step': 'performance-check', },
-        {'step': 'push-to-registry', },
-        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'step': 'hab.main', },
-    ]
-    mock_get_deploy_groups_used_by_framework.return_value = [
-        'hab.canary',
-        'hab.main',
-    ]
+    mock_get_pipeline_deploy_groups.return_value = ['hab.canary', 'hab.main']
+    mock_get_deploy_groups_used_by_framework.return_value = ['hab.canary', 'hab.main']
     actual = deployments_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
 
 
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_deploy_groups', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_deploy_groups_used_by_framework', autospec=True)
 def test_marathon_deployments_deploy_but_not_marathon(
     mock_get_deploy_groups_used_by_framework,
-    mock_get_pipeline_config,
+    mock_get_pipeline_deploy_groups,
     capfd,
 ):
-    mock_get_pipeline_config.return_value = [
-        {'step': 'itest', },
-        {'step': 'performance-check', },
-        {'step': 'push-to-registry', },
-        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'step': 'hab.main', },
-        {'step': 'hab.EXTRA', },
-    ]
-    mock_get_deploy_groups_used_by_framework.return_value = [
-        'hab.canary',
-        'hab.main',
-    ]
+    mock_get_pipeline_deploy_groups.return_value = ['hab.canary', 'hab.main', 'hab.EXTRA']
+    mock_get_deploy_groups_used_by_framework.return_value = ['hab.canary', 'hab.main']
     actual = deployments_check(service='fake_service', soa_dir='/fake/service')
     assert actual is False
     assert 'EXTRA' in capfd.readouterr()[0]
 
 
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
+@patch('paasta_tools.cli.cmds.check.get_pipeline_deploy_groups', autospec=True)
 @patch('paasta_tools.cli.cmds.check.get_deploy_groups_used_by_framework', autospec=True)
 def test_marathon_deployments_marathon_but_not_deploy(
     mock_get_deploy_groups_used_by_framework,
-    mock_get_pipeline_config,
+    mock_get_pipeline_deploy_groups,
     capfd,
 ):
-    mock_get_pipeline_config.return_value = [
-        {'step': 'itest', },
-        {'step': 'performance-check', },
-        {'step': 'push-to-registry', },
-        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'step': 'hab.main', },
-    ]
-    mock_get_deploy_groups_used_by_framework.return_value = [
-        'hab.canary',
-        'hab.main',
-        'hab.BOGUS',
-    ]
+    mock_get_pipeline_deploy_groups.return_value = ['hab.canary', 'hab.main']
+    mock_get_deploy_groups_used_by_framework.return_value = ['hab.canary', 'hab.main', 'hab.BOGUS']
     actual = deployments_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
     assert 'BOGUS' in capfd.readouterr()[0]

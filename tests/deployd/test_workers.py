@@ -12,8 +12,8 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 
 class TestPaastaDeployWorker(unittest.TestCase):
     def setUp(self):
-        self.mock_instances_that_need_to_be_bounced_in_the_future = mock.Mock()
-        self.mock_instances_that_need_to_be_bounced_asap = mock.Mock()
+        self.mock_instances_to_bounce_later = mock.Mock()
+        self.mock_instances_to_bounce_now = mock.Mock()
         self.mock_metrics = mock.Mock()
         mock_config = mock.Mock(
             get_cluster=mock.Mock(return_value='westeros-prod'),
@@ -24,8 +24,8 @@ class TestPaastaDeployWorker(unittest.TestCase):
         ):
             self.worker = PaastaDeployWorker(
                 1,
-                self.mock_instances_that_need_to_be_bounced_in_the_future,
-                self.mock_instances_that_need_to_be_bounced_asap,
+                self.mock_instances_to_bounce_later,
+                self.mock_instances_to_bounce_now,
                 mock_config,
                 self.mock_metrics,
             )
@@ -97,11 +97,11 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 priority=0,
             )
-            self.mock_instances_that_need_to_be_bounced_asap.get.return_value = mock_si
+            self.mock_instances_to_bounce_now.get.return_value = mock_si
             with raises(LoopBreak):
                 self.worker.run()
             mock_process_service_instance.assert_called_with(self.worker, mock_si)
-            assert not self.mock_instances_that_need_to_be_bounced_in_the_future.put.called
+            assert not self.mock_instances_to_bounce_later.put.called
 
             mock_bounce_results = BounceResults(
                 bounce_again_in_seconds=60,
@@ -121,7 +121,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             with raises(LoopBreak):
                 self.worker.run()
             mock_process_service_instance.assert_called_with(self.worker, mock_si)
-            self.mock_instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(mock_queued_si)
+            self.mock_instances_to_bounce_later.put.assert_called_with(mock_queued_si)
 
             mock_si = mock.Mock(
                 service='universe',
@@ -129,7 +129,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 priority=0,
             )
-            self.mock_instances_that_need_to_be_bounced_asap.get.return_value = mock_si
+            self.mock_instances_to_bounce_now.get.return_value = mock_si
             mock_process_service_instance.side_effect = Exception
             mock_queued_si = BaseServiceInstance(
                 service='universe',
@@ -143,7 +143,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             with raises(LoopBreak):
                 self.worker.run()
             mock_process_service_instance.assert_called_with(self.worker, mock_si)
-            self.mock_instances_that_need_to_be_bounced_in_the_future.put.assert_called_with(mock_queued_si)
+            self.mock_instances_to_bounce_later.put.assert_called_with(mock_queued_si)
 
     def test_process_service_instance(self):
         mock_client = mock.Mock()

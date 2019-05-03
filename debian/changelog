@@ -1,3 +1,15 @@
+paasta-tools (0.84.4) xenial; urgency=medium
+
+  * 0.84.4 tagged with 'make release'
+    Commit: Merge pull request #2213 from
+    Yelp/u/bronek/spark_enable_nvidia_runtime  Add --nvidia command line
+    option to spark-run
+
+  * Commit: Merge pull request #2209 from Yelp/oom_events_sfx  Send oom
+    events to sfx as they happen
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 26 Apr 2019 11:59:12 -0700
+
 paasta-tools (0.84.3) xenial; urgency=medium
 
   * 0.84.3 tagged with 'make release'

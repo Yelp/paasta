@@ -46,6 +46,15 @@ from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import load_system_paasta_config
 
 
+try:
+    import yelp_meteorite
+except ImportError:
+    # Sorry to any non-yelpers but you won't
+    # get metrics emitted as our metrics lib
+    # is currently not open source
+    yelp_meteorite = None
+
+
 LogLine = namedtuple(
     'LogLine', [
         'timestamp', 'hostname', 'container_id',
@@ -107,6 +116,18 @@ def log_to_paasta(log_line):
     )
 
 
+def send_sfx_event(service, instance, cluster):
+    if yelp_meteorite:
+        yelp_meteorite.events.emit_event(
+            'paasta.service.oom_events',
+            dimensions={
+                'paasta_cluster': cluster,
+                'paasta_instance': instance,
+                'paasta_service': service,
+            },
+        )
+
+
 def main():
     scribe_logger = ScribeLogger(host='169.254.255.254', port=1463, retry_interval=5)
     cluster = load_system_paasta_config().get_cluster()
@@ -117,17 +138,20 @@ def main():
         except (APIError):
             continue
         env_vars = get_container_env_as_dict(docker_inspect)
+        service = env_vars.get('PAASTA_SERVICE', 'unknown')
+        instance = env_vars.get('PAASTA_INSTANCE', 'unknown')
         log_line = LogLine(
             timestamp=timestamp,
             hostname=hostname,
             container_id=container_id,
             cluster=cluster,
-            service=env_vars.get('PAASTA_SERVICE', 'unknown'),
-            instance=env_vars.get('PAASTA_INSTANCE', 'unknown'),
+            service=service,
+            instance=instance,
             process_name=process_name,
         )
         log_to_scribe(scribe_logger, log_line)
         log_to_paasta(log_line)
+        send_sfx_event(service, instance, cluster)
 
 
 if __name__ == "__main__":
