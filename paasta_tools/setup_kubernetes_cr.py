@@ -59,7 +59,7 @@ class StdoutKubeClient:
     writing out YAML to stdout."""
 
     class StdoutWrapper:
-        def __init__(self, target):
+        def __init__(self, target) -> None:
             self.target = target
 
         def __getattr__(self, attr):
@@ -78,7 +78,7 @@ class StdoutKubeClient:
                 explicit_start=True,
             )
 
-    def __init__(self, kube_client: KubeClient):
+    def __init__(self, kube_client) -> None:
         self.deployments = StdoutKubeClient.StdoutWrapper(kube_client.deployments)
         self.core = StdoutKubeClient.StdoutWrapper(kube_client.core)
         self.policy = StdoutKubeClient.StdoutWrapper(kube_client.policy)
@@ -133,12 +133,12 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.INFO)
 
-    kube_client = KubeClient()
+    kube_client: Any = KubeClient()
     if args.dry_run:
         kube_client = StdoutKubeClient(kube_client)
 
-    cluster = args.cluster or system_paasta_config.get_cluster()
     system_paasta_config = load_system_paasta_config()
+    cluster = args.cluster or system_paasta_config.get_cluster()
     custom_resources = load_custom_resources(system_paasta_config)
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
@@ -155,7 +155,7 @@ def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
     cluster: str,
-    custom_resources: Sequence[KubeCustomResource],
+    custom_resources: Sequence[CustomResource],
     service: str = None,
     instance: str = None,
 ) -> bool:
