@@ -24,13 +24,13 @@ import argparse
 import logging
 import os
 import sys
-import yaml
 from typing import Any
 from typing import Mapping
 from typing import NamedTuple
 from typing import Sequence
 
 import service_configuration_lib
+import yaml
 
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -107,19 +107,19 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         '-s', '--service', default=None,
-        help="Service to setup CRs for"
+        help="Service to setup CRs for",
     )
     parser.add_argument(
         '-i', '--instance', default=None,
-        help="Service instance to setup CR for"
+        help="Service instance to setup CR for",
     )
     parser.add_argument(
         '-D', '--dry-run', action='store_true', default=False,
-        help="Output kubernetes configuration instead of applying it"
+        help="Output kubernetes configuration instead of applying it",
     )
     parser.add_argument(
         '-c', '--cluster', default=None,
-        help="Cluster to setup CRs for"
+        help="Cluster to setup CRs for",
     )
     args = parser.parse_args()
     return args
