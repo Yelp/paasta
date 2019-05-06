@@ -25,7 +25,7 @@ RUN apt-get update > /dev/null && \
 RUN git clone git://github.com/Yelp/hacheck
 WORKDIR /hacheck
 
-RUN virtualenv --python=python2.7 venv && venv/bin/pip install -e .
+RUN virtualenv --python=python2.7 venv && venv/bin/pip install -r requirements.txt && venv/bin/pip install -e .
 
 RUN echo 'allow_remote_spool_changes: yes' > /etc/hacheck.yaml
 
