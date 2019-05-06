@@ -1199,35 +1199,6 @@ class TestChronosTools:
             )
             assert result['container']['network'] == 'HOST'
 
-    def test_format_chronos_job_dict_invalid_param(self):
-        fake_service = 'test_service'
-        fake_job_name = 'test_job'
-        fake_command = 'echo foo >> /tmp/test_service_log'
-        fake_schedule = 'fake_bad_schedule'
-        invalid_config = chronos_tools.ChronosJobConfig(
-            service=fake_service,
-            cluster='',
-            instance=fake_job_name,
-            config_dict={
-                'cmd': fake_command,
-                'schedule': fake_schedule,
-                'epsilon': 'PT60S',
-                'deploy_group': 'fake_deploy_group',
-            },
-            branch_dict=None,
-        )
-        with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            invalid_config.format_chronos_job_dict(
-                docker_url='',
-                docker_volumes=[],
-                docker_cfg_location={},
-                constraints=[],
-            )
-        assert (
-            'The specified schedule "%s" is neither a valid '
-            'cron schedule nor a valid ISO 8601 schedule' % fake_schedule
-        ) in str(exc.value)
-
     def test_list_job_names(self):
         fake_name = 'vegetables'
         fake_job_1 = 'carrot'
