@@ -91,7 +91,7 @@ class TronClient:
         )
 
         if skip_if_unchanged:
-            if yaml.load(new_config) == yaml.load(current_config['config']):
+            if yaml.safe_load(new_config) == yaml.safe_load(current_config['config']):
                 log.debug('No change in config, skipping update.')
                 return
 
