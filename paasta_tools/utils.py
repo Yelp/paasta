@@ -117,7 +117,7 @@ INSTANCE_TYPES = (
     'adhoc',
     'kubernetes',
     'tron',
-    'flinkcluster',
+    'flink',
 )
 
 
@@ -271,8 +271,12 @@ class InstanceConfig:
     config_filename_prefix: str
 
     def __init__(
-        self, cluster: str, instance: str, service: str, config_dict: InstanceConfigDict,
-        branch_dict: Optional[BranchDictV2], soa_dir: str = DEFAULT_SOA_DIR,
+        self, cluster: str,
+        instance: str,
+        service: str,
+        config_dict: InstanceConfigDict,
+        branch_dict: Optional[BranchDictV2],
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         self.config_dict = config_dict
         self.branch_dict = branch_dict
