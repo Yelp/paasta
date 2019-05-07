@@ -1,3 +1,11 @@
+paasta-tools (0.84.6) xenial; urgency=medium
+
+  * 0.84.6 tagged with 'make release'
+    Commit: Merge pull request #2215 from
+    analogue/spatel/flinkcluster_to_flink  Rename flinkcluster to flink
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 07 May 2019 03:03:18 -0700
+
 paasta-tools (0.84.5) xenial; urgency=medium
 
   * 0.84.5 tagged with 'make release'
