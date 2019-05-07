@@ -40,7 +40,7 @@ idna-ssl==1.0.1
 inotify==0.2.8
 ipaddress==1.0.22
 isodate==0.5.1
-Jinja2==2.10
+Jinja2==2.10.1
 jinja2-time==0.1.0
 jmespath==0.9.3
 jsonref==0.1
@@ -74,7 +74,7 @@ python-iptables==0.11.0
 python-utils==2.0.1
 pytimeparse==1.1.5
 pytz==2016.10
-PyYAML==3.12
+pyyaml==5.1
 repoze.lru==0.6
 requests==2.21.0
 requests-cache==0.4.10
@@ -102,7 +102,7 @@ typing==3.6.2
 typing-extensions==3.6.2.1
 tzlocal==1.2
 ujson==1.35
-urllib3==1.22
+urllib3==1.24.3
 utaw==0.2.0
 venusian==1.1.0
 webcolors==1.7
