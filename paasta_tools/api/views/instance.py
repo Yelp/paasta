@@ -31,7 +31,7 @@ from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools import chronos_tools
-from paasta_tools import flinkcluster_tools
+from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import tron_tools
@@ -165,7 +165,7 @@ def adhoc_instance_status(
     return cstatus
 
 
-def flinkcluster_instance_status(
+def flink_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
@@ -174,7 +174,7 @@ def flinkcluster_instance_status(
     status: Optional[Mapping[str, Any]] = None
     client = settings.kubernetes_client
     if client is not None:
-        status = flinkcluster_tools.get_flinkcluster_config(
+        status = flink_tools.get_flink_config(
             kube_client=client,
             service=service,
             instance=instance,
@@ -309,7 +309,7 @@ def instance_status(request):
         raise ApiFailure(error_message, 500)
 
     print(instance_type)
-    if instance_type != 'flinkcluster' and instance_type != 'tron':
+    if instance_type != 'flink' and instance_type != 'tron':
         try:
             actual_deployments = get_actual_deployments(service, settings.soa_dir)
         except Exception:
@@ -337,12 +337,12 @@ def instance_status(request):
             instance_status['kubernetes'] = kubernetes_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'tron':
             instance_status['tron'] = tron_instance_status(instance_status, service, instance, verbose)
-        elif instance_type == 'flinkcluster':
-            status = flinkcluster_instance_status(instance_status, service, instance, verbose)
+        elif instance_type == 'flink':
+            status = flink_instance_status(instance_status, service, instance, verbose)
             if status is not None:
-                instance_status['flinkcluster'] = {'status': status}
+                instance_status['flink'] = {'status': status}
             else:
-                instance_status['flinkcluster'] = {}
+                instance_status['flink'] = {}
         else:
             error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
             raise ApiFailure(error_message, 404)

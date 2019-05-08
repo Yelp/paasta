@@ -28,7 +28,8 @@ RUN apt-get update > /dev/null && \
     apt-get clean
 
 RUN apt-get update > /dev/null && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install \
+        -y --no-install-recommends --allow-unauthenticated \
         lsb-release \
         chronos=2.5.0-yelp32-1.ubuntu1604 \
         rsyslog \

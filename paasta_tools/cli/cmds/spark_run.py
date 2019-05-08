@@ -555,6 +555,23 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
     metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier=pool)
 
+    estimated_cost = clusterman_metrics.util.costs.estimate_cost_per_hour(
+        cluster=paasta_cluster,
+        pool=pool,
+        cpus=desired_resources['cpus'],
+        mem=desired_resources['mem'],
+    )
+    message = 'Resource request ({} cpus and {} MB memory total) is estimated to cost ${} per hour'.format(
+        desired_resources['cpus'],
+        desired_resources['mem'],
+        estimated_cost,
+    )
+    if clusterman_metrics.util.costs.should_warn(estimated_cost):
+        message = 'WARNING: ' + message
+        paasta_print(PaastaColors.red(message))
+    else:
+        paasta_print(message)
+
     with metrics_client.get_writer(clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True) as writer:
         for resource, desired_quantity in desired_resources.items():
             metric_key = clusterman_metrics.generate_key_with_dimensions(f'requested_{resource}', dimensions)
