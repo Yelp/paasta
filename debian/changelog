@@ -1,3 +1,12 @@
+paasta-tools (0.84.7) xenial; urgency=medium
+
+  * 0.84.7 tagged with 'make release'
+    Commit: Merge pull request #2223 from Yelp/PAASTA-15217_harder  Make
+    kill_bad_containers kill both containers for good measure when dupes
+    are detected
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 08 May 2019 16:32:53 -0700
+
 paasta-tools (0.84.6) xenial; urgency=medium
 
   * 0.84.6 tagged with 'make release'
