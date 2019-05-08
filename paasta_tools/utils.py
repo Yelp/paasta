@@ -690,6 +690,7 @@ class InstanceConfig:
             'mem': self.check_mem,
             'security': self.check_security,
             'dependencies_reference': self.check_dependencies_reference,
+            'deploy_group': self.check_deploy_group,
         }
         check_method = check_methods.get(param)
         if check_method is not None:
@@ -699,11 +700,19 @@ class InstanceConfig:
 
     def validate(self) -> List[str]:
         error_msgs = []
-        for param in ['cpus', 'mem', 'security', 'dependencies_reference']:
+        for param in ['cpus', 'mem', 'security', 'dependencies_reference', 'deploy_group']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
         return error_msgs
+
+    def check_deploy_group(self) -> Tuple[bool, str]:
+        deploy_group = self.get_deploy_group()
+        if deploy_group is not None:
+            pipeline_deploy_groups = get_pipeline_deploy_groups(service=self.service, soa_dir=self.soa_dir)
+            if deploy_group not in pipeline_deploy_groups:
+                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
+        return True, ''
 
     def get_extra_volumes(self) -> List[DockerVolume]:
         """Extra volumes are a specially formatted list of dictionaries that should

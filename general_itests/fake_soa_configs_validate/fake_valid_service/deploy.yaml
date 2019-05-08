@@ -1,0 +1,3 @@
+---
+pipeline:
+- step: test_deploy_group

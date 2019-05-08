@@ -396,7 +396,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 3
 
-    @mock.patch('paasta_tools.tron_tools.get_pipeline_deploy_groups', autospec=True)
+    @mock.patch('paasta_tools.utils.get_pipeline_deploy_groups', autospec=True)
     def test_validate_invalid_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             'node': 'batch_server',
@@ -417,7 +417,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 1
 
-    @mock.patch('paasta_tools.tron_tools.get_pipeline_deploy_groups', autospec=True)
+    @mock.patch('paasta_tools.utils.get_pipeline_deploy_groups', autospec=True)
     def test_validate_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             'node': 'batch_server',
@@ -438,7 +438,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch('paasta_tools.tron_tools.get_pipeline_deploy_groups', autospec=True)
+    @mock.patch('paasta_tools.utils.get_pipeline_deploy_groups', autospec=True)
     def test_validate_invalid_action_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             'node': 'batch_server',
@@ -459,7 +459,7 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 1
 
-    @mock.patch('paasta_tools.tron_tools.get_pipeline_deploy_groups', autospec=True)
+    @mock.patch('paasta_tools.utils.get_pipeline_deploy_groups', autospec=True)
     def test_validate_action_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             'node': 'batch_server',
