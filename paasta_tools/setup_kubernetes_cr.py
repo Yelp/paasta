@@ -71,6 +71,11 @@ class StdoutKubeClient:
             body = kwargs.get('body')
             if not body:
                 return
+            ns = kwargs.get('namespace')
+            if ns:
+                if 'metadata' not in body:
+                    body['metadata'] = {}
+                body['metadata']['namespace'] = ns
             yaml.safe_dump(
                 body,
                 sys.stdout,
