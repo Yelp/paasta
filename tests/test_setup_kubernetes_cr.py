@@ -62,23 +62,24 @@ def test_setup_all_custom_resources():
         'paasta_tools.setup_kubernetes_cr.load_custom_resources', autospec=True,
     ) as mock_load_custom_resources:
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
-        mock_load_custom_resources.return_value = [
-            mock.Mock(kube_kind=mock.Mock(plural='flinks', singular='Flink')),
-            mock.Mock(kube_kind=mock.Mock(plural='cassandraclusters', singular='CassandraCluster')),
-        ]
         mock_setup.side_effect = [True, False]
 
         mock_client = mock.Mock()
-        flink_mock = mock.Mock()
-        flink_mock.spec.names.kind = 'Flink'
-        cassandra_mock = mock.Mock()
-        cassandra_mock.spec.names.kind = 'CassandraCluster'
-        mock_client.apiextensions.list_custom_resource_definition.return_value.items = [
-            flink_mock, cassandra_mock,
+        flink_crd = mock.Mock()
+        flink_crd.spec.names = mock.Mock(plural='flinkclusters', kind='FlinkCluster')
+        cassandra_crd = mock.Mock()
+        cassandra_crd.spec.names = mock.Mock(plural='cassandraclusters', kind='CassandraCluster')
+        mock_client.apiextensions.list_custom_resource_definition.return_value = mock.Mock(
+            items=[flink_crd, cassandra_crd],
+        )
+
+        custom_resources = [
+            mock.Mock(kube_kind=mock.Mock(plural='flinkclusters', singular='FlinkCluster')),
+            mock.Mock(kube_kind=mock.Mock(plural='cassandraclusters', singular='CassandraCluster')),
         ]
 
         assert not setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config,
+            mock_client, '/nail/soa', mock_system_config, custom_resources=custom_resources,
         )
 
         mock_load_custom_resources.return_value = [
@@ -86,11 +87,15 @@ def test_setup_all_custom_resources():
         ]
         mock_setup.side_effect = [True, True]
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
-        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', mock_system_config)
+        assert setup_kubernetes_cr.setup_all_custom_resources(
+            mock_client, '/nail/soa', mock_system_config, custom_resources=custom_resources,
+        )
 
         mock_load_custom_resources.return_value = []
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
-        assert setup_kubernetes_cr.setup_all_custom_resources(mock_client, '/nail/soa', mock_system_config)
+        assert setup_kubernetes_cr.setup_all_custom_resources(
+            mock_client, '/nail/soa', mock_system_config, custom_resources=[],
+        )
 
 
 def test_load_all_configs():
@@ -157,6 +162,7 @@ def test_setup_custom_resources():
                 service='kurupt',
                 instance_configs='something',
                 cluster='mycluster',
+                instance=None,
                 kind=mock_kind,
                 custom_resources=mock_list_cr.return_value,
                 version='v1',
@@ -167,6 +173,7 @@ def test_setup_custom_resources():
                 service='mc',
                 instance_configs='another',
                 cluster='mycluster',
+                instance=None,
                 kind=mock_kind,
                 custom_resources=mock_list_cr.return_value,
                 version='v1',
