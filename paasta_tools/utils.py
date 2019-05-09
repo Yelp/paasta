@@ -117,7 +117,7 @@ INSTANCE_TYPES = (
     'adhoc',
     'kubernetes',
     'tron',
-    'flinkcluster',
+    'flink',
 )
 
 
@@ -271,8 +271,12 @@ class InstanceConfig:
     config_filename_prefix: str
 
     def __init__(
-        self, cluster: str, instance: str, service: str, config_dict: InstanceConfigDict,
-        branch_dict: Optional[BranchDictV2], soa_dir: str = DEFAULT_SOA_DIR,
+        self, cluster: str,
+        instance: str,
+        service: str,
+        config_dict: InstanceConfigDict,
+        branch_dict: Optional[BranchDictV2],
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         self.config_dict = config_dict
         self.branch_dict = branch_dict
@@ -686,6 +690,7 @@ class InstanceConfig:
             'mem': self.check_mem,
             'security': self.check_security,
             'dependencies_reference': self.check_dependencies_reference,
+            'deploy_group': self.check_deploy_group,
         }
         check_method = check_methods.get(param)
         if check_method is not None:
@@ -695,11 +700,19 @@ class InstanceConfig:
 
     def validate(self) -> List[str]:
         error_msgs = []
-        for param in ['cpus', 'mem', 'security', 'dependencies_reference']:
+        for param in ['cpus', 'mem', 'security', 'dependencies_reference', 'deploy_group']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
         return error_msgs
+
+    def check_deploy_group(self) -> Tuple[bool, str]:
+        deploy_group = self.get_deploy_group()
+        if deploy_group is not None:
+            pipeline_deploy_groups = get_pipeline_deploy_groups(service=self.service, soa_dir=self.soa_dir)
+            if deploy_group not in pipeline_deploy_groups:
+                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
+        return True, ''
 
     def get_extra_volumes(self) -> List[DockerVolume]:
         """Extra volumes are a specially formatted list of dictionaries that should
@@ -1902,11 +1915,6 @@ class SystemPaastaConfig:
         :returns A bool"""
         return self.config_dict.get('maintenance_resource_reservation_enabled', True)
 
-    def get_filter_bogus_mesos_cputime_enabled(self) -> bool:
-        """ Filters out mesos cputime values if they are greater than
-        10 times what was allocated to a task"""
-        return self.config_dict.get('filter_bogus_mesos_cputime_enabled', False)
-
     def get_cluster_boost_enabled(self) -> bool:
         """ Enable the cluster boost. Note that the boost only applies to the CPUs.
         If the boost is toggled on here but not configured, it will be transparent.
@@ -2479,6 +2487,11 @@ def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> C
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get('deploy', {}).get('pipeline', [])
+
+
+def get_pipeline_deploy_groups(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
+    pipeline_steps = [step['step'] for step in get_pipeline_config(service, soa_dir)]
+    return [step for step in pipeline_steps if is_deploy_step(step)]
 
 
 def get_service_instance_list_no_cache(

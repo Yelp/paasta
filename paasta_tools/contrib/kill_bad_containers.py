@@ -69,10 +69,12 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
                 print("These are two different containers, which means we have duplicate ips:")
                 print(container1)
                 print(container2)
-                print("Not sure which to kill, picking the first one")
+                print("Not sure which to kill, killing both")
                 docker_client.kill(container1["Id"])
-                print("Deleting the iptables rule for that container")
+                docker_client.kill(container2["Id"])
+                print("Deleting the both iptables rules for good measure")
                 chain.delete_rule(iptables_rule)
+                chain.delete_rule(raw_rules_seen[target])
 
 
 def main():

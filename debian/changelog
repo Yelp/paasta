@@ -1,3 +1,48 @@
+paasta-tools (0.84.8) xenial; urgency=medium
+
+  * 0.84.8 tagged with 'make release'
+    Commit: Merge branch "PAASTA_15442_max_hostname_length" of
+    github.com:ealter/paasta
+
+ -- Evan Krall <krall@yelp.com>  Thu, 09 May 2019 15:48:12 -0700
+
+paasta-tools (0.84.7) xenial; urgency=medium
+
+  * 0.84.7 tagged with 'make release'
+    Commit: Merge pull request #2223 from Yelp/PAASTA-15217_harder  Make
+    kill_bad_containers kill both containers for good measure when dupes
+    are detected
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 08 May 2019 16:32:53 -0700
+
+paasta-tools (0.84.6) xenial; urgency=medium
+
+  * 0.84.6 tagged with 'make release'
+    Commit: Merge pull request #2215 from
+    analogue/spatel/flinkcluster_to_flink  Rename flinkcluster to flink
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 07 May 2019 03:03:18 -0700
+
+paasta-tools (0.84.5) xenial; urgency=medium
+
+  * 0.84.5 tagged with 'make release'
+    Commit: Merge pull request #2216 from Yelp/PAASTA-11102  Dry out
+    git_pipeline_deploy_groups
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 03 May 2019 13:15:42 -0700
+
+paasta-tools (0.84.4) xenial; urgency=medium
+
+  * 0.84.4 tagged with 'make release'
+    Commit: Merge pull request #2213 from
+    Yelp/u/bronek/spark_enable_nvidia_runtime  Add --nvidia command line
+    option to spark-run
+
+  * Commit: Merge pull request #2209 from Yelp/oom_events_sfx  Send oom
+    events to sfx as they happen
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 26 Apr 2019 11:59:12 -0700
+
 paasta-tools (0.84.3) xenial; urgency=medium
 
   * 0.84.3 tagged with 'make release'

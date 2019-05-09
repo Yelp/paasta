@@ -1,5 +1,5 @@
 --extra-index-url=https://pypi.yelpcorp.com/simple
-clusterman_metrics==2.0.0
+clusterman_metrics==2.2.0
 crypto_lib==4.0.0
 scribereader==0.2.6
 vault-tools==0.7.25

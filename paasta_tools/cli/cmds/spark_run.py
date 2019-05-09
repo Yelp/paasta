@@ -165,6 +165,13 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
+        '--nvidia',
+        help='Use nvidia docker runtime for Spark driver process (requires GPU)',
+        action='store_true',
+        default=False,
+    )
+
+    list_parser.add_argument(
         '--mrjob',
         help='Pass Spark arguments to invoked command in the format expected by mrjobs',
         action='store_true',
@@ -277,6 +284,7 @@ def get_docker_run_cmd(
     env,
     docker_img,
     docker_cmd,
+    nvidia,
 ):
     cmd = ['paasta_docker_wrapper', 'run']
     cmd.append('--rm')
@@ -299,6 +307,10 @@ def get_docker_run_cmd(
             cmd.append(k)
         else:
             cmd.append(f'{k}={v}')
+    if nvidia:
+        cmd.append('--env')
+        cmd.append('NVIDIA_VISIBLE_DEVICES=all')
+        cmd.append('--runtime=nvidia')
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     cmd.append('%s' % docker_img)
@@ -543,6 +555,23 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
     metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(region_name=aws_region, app_identifier=pool)
 
+    estimated_cost = clusterman_metrics.util.costs.estimate_cost_per_hour(
+        cluster=paasta_cluster,
+        pool=pool,
+        cpus=desired_resources['cpus'],
+        mem=desired_resources['mem'],
+    )
+    message = 'Resource request ({} cpus and {} MB memory total) is estimated to cost ${} per hour'.format(
+        desired_resources['cpus'],
+        desired_resources['mem'],
+        estimated_cost,
+    )
+    if clusterman_metrics.util.costs.should_warn(estimated_cost):
+        message = 'WARNING: ' + message
+        paasta_print(PaastaColors.red(message))
+    else:
+        paasta_print(message)
+
     with metrics_client.get_writer(clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True) as writer:
         for resource, desired_quantity in desired_resources.items():
             metric_key = clusterman_metrics.generate_key_with_dimensions(f'requested_{resource}', dimensions)
@@ -587,6 +616,7 @@ def run_docker_container(
     docker_img,
     docker_cmd,
     dry_run,
+    nvidia,
 ):
     docker_run_args = dict(
         container_name=container_name,
@@ -594,6 +624,7 @@ def run_docker_container(
         env=environment,
         docker_img=docker_img,
         docker_cmd=docker_cmd,
+        nvidia=nvidia,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
 
@@ -681,6 +712,7 @@ def configure_and_run_docker_container(
         docker_img=docker_img,
         docker_cmd=docker_cmd,
         dry_run=args.dry_run,
+        nvidia=args.nvidia,
     )
 
 

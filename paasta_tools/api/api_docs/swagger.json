@@ -581,11 +581,11 @@
           "$ref": "#/definitions/InstanceStatusAdhoc",
           "description": "Adhoc instance status"
         },
-        "flinkcluster": {
+        "flink": {
           "type": "object",
           "properties": {
             "status": {
-              "$ref": "#/definitions/InstanceStatusFlinkCluster"
+              "$ref": "#/definitions/InstanceStatusFlink"
             }
           },
           "description": "Nullable Flink instance status"
@@ -870,7 +870,7 @@
         }
       }
     },
-    "InstanceStatusFlinkCluster": {
+    "InstanceStatusFlink": {
       "type": "object",
       "description": "Flink instance status"
     },

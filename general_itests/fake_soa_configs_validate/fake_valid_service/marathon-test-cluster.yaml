@@ -1,8 +1,9 @@
 ---
 main:
-    cpus: .1
-    mem: 100
-    disk: 200.0
-    instances: 1
-    env:
-      FOO: BAR
+  cpus: .1
+  mem: 100
+  disk: 200.0
+  instances: 1
+  env:
+    FOO: BAR
+  deploy_group: fake_deploy_group

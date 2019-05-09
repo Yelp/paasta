@@ -499,6 +499,7 @@ class ChronosJobConfig(InstanceConfig):
             'dependencies_reference': self.check_dependencies_reference,
             'parents': self.check_parents,
             'cmd': self.check_cmd,
+            'deploy_group': self.check_deploy_group,
         }
         supported_params_without_checks = ['description', 'owner', 'disabled']
         if param in check_methods:
@@ -509,10 +510,6 @@ class ChronosJobConfig(InstanceConfig):
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
     def format_chronos_job_dict(self, docker_url, docker_volumes, docker_cfg_location, constraints):
-        valid, error_msgs = self.validate()
-        if not valid:
-            raise InvalidChronosConfigError("\n".join(error_msgs))
-
         net = get_mesos_network_for_net(self.get_net())
         command = parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd()
 

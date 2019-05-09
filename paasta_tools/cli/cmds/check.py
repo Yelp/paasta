@@ -34,9 +34,9 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_pipeline_config
+from paasta_tools.utils import get_pipeline_deploy_groups
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPES
-from paasta_tools.utils import is_deploy_step
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
@@ -79,7 +79,7 @@ def deploy_check(service_path):
 
 
 def deploy_has_security_check(service, soa_dir):
-    pipeline = get_pipeline_config(service, soa_dir)
+    pipeline = get_pipeline_config(service=service, soa_dir=soa_dir)
     steps = [step['step'] for step in pipeline]
     if 'security-check' in steps:
         paasta_print(PaastaCheckMessages.DEPLOY_SECURITY_FOUND)
@@ -90,7 +90,7 @@ def deploy_has_security_check(service, soa_dir):
 
 
 def deploy_has_performance_check(service, soa_dir):
-    pipeline = get_pipeline_config(service, soa_dir)
+    pipeline = get_pipeline_config(service=service, soa_dir=soa_dir)
     steps = [step['step'] for step in pipeline]
     if 'performance-check' in steps:
         paasta_print(PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND)
@@ -235,8 +235,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
 def deployments_check(service, soa_dir):
     """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
-    pipeline_steps = [step['step'] for step in get_pipeline_config(service, soa_dir)]
-    pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
+    pipeline_deploy_groups = get_pipeline_deploy_groups(service=service, soa_dir=soa_dir)
 
     framework_deploy_groups = {}
     in_deploy_not_frameworks = set(pipeline_deploy_groups)

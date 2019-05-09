@@ -50,7 +50,7 @@ Submodules
    paasta_tools.firewall
    paasta_tools.firewall_logging
    paasta_tools.firewall_update
-   paasta_tools.flinkcluster_tools
+   paasta_tools.flink_tools
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml

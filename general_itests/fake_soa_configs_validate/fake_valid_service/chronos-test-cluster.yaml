@@ -4,3 +4,4 @@ chronos_job:
   mem: 100
   disk: 250.2
   schedule: 'R/2015-08-14T10:00:00+00:00/PT10M'
+  deploy_group: test_deploy_group

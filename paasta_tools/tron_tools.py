@@ -42,8 +42,6 @@ from paasta_tools.utils import paasta_print
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
-from paasta_tools.utils import get_pipeline_config
-from paasta_tools.utils import is_deploy_step
 from typing import Optional
 from typing import Dict
 from typing import Any
@@ -230,29 +228,6 @@ class TronActionConfig(InstanceConfig):
 
     def get_nerve_namespace(self) -> None:
         return None
-
-    def check_deploy_group(self) -> Tuple[bool, str]:
-        deploy_group = self.get_deploy_group()
-        if deploy_group is not None:
-            pipeline_steps = [step['step'] for step in get_pipeline_config(self.service, self.soa_dir)]
-            pipeline_deploy_groups = [step for step in pipeline_steps if is_deploy_step(step)]
-            if deploy_group not in pipeline_deploy_groups:
-                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
-        return True, ''
-
-    def validate(self) -> List[str]:
-        # Use InstanceConfig to validate shared config keys like cpus and mem
-        error_msgs = super().validate()
-        name = self.get_instance()
-        msgs: List[str] = []
-        if error_msgs:
-            msgs += [f'{name}: {msg}' for msg in error_msgs]
-
-        check_pass, check_msg = self.check_deploy_group()
-        if check_pass is False:
-            msgs.append(f'{name}: {check_msg}')
-
-        return msgs
 
 
 class TronJobConfig:

@@ -58,12 +58,12 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
 
 
 class Inbox(PaastaThread):
-    def __init__(self, instances_that_need_to_be_bounced_in_the_future, instances_that_need_to_be_bounced_asap):
+    def __init__(self, instances_to_bounce_later, instances_to_bounce_now):
         super().__init__()
         self.daemon = True
         self.name = "Inbox"
-        self.instances_that_need_to_be_bounced_in_the_future = instances_that_need_to_be_bounced_in_the_future
-        self.instances_that_need_to_be_bounced_asap = instances_that_need_to_be_bounced_asap
+        self.instances_to_bounce_later = instances_to_bounce_later
+        self.instances_to_bounce_now = instances_to_bounce_now
         self.to_bounce = {}
 
     def run(self):
@@ -72,7 +72,7 @@ class Inbox(PaastaThread):
 
     def process_inbox(self):
         try:
-            service_instance = self.instances_that_need_to_be_bounced_in_the_future.get(block=False)
+            service_instance = self.instances_to_bounce_later.get(block=False)
         except Empty:
             service_instance = None
         if service_instance:
@@ -82,7 +82,7 @@ class Inbox(PaastaThread):
                                service_instance.instance,
                            ))
             self.process_service_instance(service_instance)
-        if self.instances_that_need_to_be_bounced_in_the_future.empty() and self.to_bounce:
+        if self.instances_to_bounce_later.empty() and self.to_bounce:
             self.process_to_bounce()
         time.sleep(0.1)
 
@@ -106,7 +106,7 @@ class Inbox(PaastaThread):
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
                 bounced.append(service_instance_key)
-                self.instances_that_need_to_be_bounced_asap.put(service_instance.priority, service_instance)
+                self.instances_to_bounce_now.put(service_instance.priority, service_instance)
         for service_instance_key in bounced:
             self.to_bounce.pop(service_instance_key)
         # TODO: if the bounceq is empty we could probably start adding SIs from
@@ -131,11 +131,11 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
-        self.instances_that_need_to_be_bounced_asap = DedupedPriorityQueue("instances_that_need_to_be_bounced_asap")
-        self.instances_that_need_to_be_bounced_in_the_future = PaastaQueue("instances_that_need_to_be_bounced_in_the_future")  # noqa: E501
+        self.instances_to_bounce_now = DedupedPriorityQueue("instances_to_bounce_now")
+        self.instances_to_bounce_later = PaastaQueue("instances_to_bounce_later")  # noqa: E501
         self.control = PaastaQueue("ControlQueue")
         self.inbox = Inbox(
-            self.instances_that_need_to_be_bounced_in_the_future, self.instances_that_need_to_be_bounced_asap,
+            self.instances_to_bounce_later, self.instances_to_bounce_now,
         )
         self.marathon_clients = get_marathon_clients_from_config()
 
@@ -163,7 +163,7 @@ class DeployDaemon(PaastaThread):
             self.log.info("Leadership given up, exiting...")
 
     def bounce(self, service_instance):
-        self.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+        self.instances_to_bounce_later.put(service_instance)
 
     @property
     def watcher_threads_enabled(self):
@@ -182,8 +182,7 @@ class DeployDaemon(PaastaThread):
         leader_counter = self.metrics.create_counter("leader_elections", paasta_cluster=self.config.get_cluster())
         leader_counter.count()
         QueueMetrics(
-            self.inbox, self.instances_that_need_to_be_bounced_asap,
-            self.config.get_cluster(), self.metrics,
+            inbox=self.inbox, cluster=self.config.get_cluster(), metrics_provider=self.metrics,
         ).start()
         self.inbox.start()
         self.log.info("Starting all watcher threads")
@@ -230,8 +229,8 @@ class DeployDaemon(PaastaThread):
             self.log.error("Detected a dead worker, starting a replacement thread")
             worker_no = len(self.workers) + 1
             worker = PaastaDeployWorker(
-                worker_no, self.instances_that_need_to_be_bounced_in_the_future,
-                self.instances_that_need_to_be_bounced_asap,
+                worker_no, self.instances_to_bounce_later,
+                self.instances_to_bounce_now,
                 self.config, self.metrics,
             )
             worker.start()
@@ -244,8 +243,8 @@ class DeployDaemon(PaastaThread):
         self.workers = []
         for i in range(self.config.get_deployd_number_workers()):
             worker = PaastaDeployWorker(
-                i, self.instances_that_need_to_be_bounced_in_the_future,
-                self.instances_that_need_to_be_bounced_asap, self.config, self.metrics,
+                i, self.instances_to_bounce_later,
+                self.instances_to_bounce_now, self.config, self.metrics,
             )
             worker.start()
             self.workers.append(worker)
@@ -264,7 +263,7 @@ class DeployDaemon(PaastaThread):
             priority=99,
         )
         for service_instance in instances_to_add:
-            self.instances_that_need_to_be_bounced_in_the_future.put(service_instance)
+            self.instances_to_bounce_later.put(service_instance)
 
     def prioritise_bouncing_services(self):
         service_instances = get_service_instances_that_need_bouncing(
@@ -274,7 +273,7 @@ class DeployDaemon(PaastaThread):
         for service_instance in service_instances:
             self.log.info(f"Prioritising {service_instance} to be bounced immediately")
             service, instance = service_instance.split('.')
-            self.instances_that_need_to_be_bounced_in_the_future.put(ServiceInstance(
+            self.instances_to_bounce_later.put(ServiceInstance(
                 service=service,
                 instance=instance,
                 cluster=self.config.get_cluster(),
@@ -288,7 +287,7 @@ class DeployDaemon(PaastaThread):
         """ should block until all threads happy"""
         self.watcher_threads = [
             watcher(
-                instances_that_need_to_be_bounced_in_the_future=self.instances_that_need_to_be_bounced_in_the_future,
+                instances_to_bounce_later=self.instances_to_bounce_later,
                 cluster=self.config.get_cluster(),
                 zookeeper_client=self.zk,
                 config=self.config,

@@ -53,7 +53,7 @@ opt/venvs/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
 opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/paasta_setup_chronos_job
 opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/setup_chronos_job
 opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron_namespace
-opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh etc/bash_completion.d/paasta.bash
+opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh usr/share/bash-completion/completions/paasta
 opt/venvs/paasta-tools/bin/paasta usr/bin/paasta
 opt/venvs/paasta-tools/bin/setup_marathon_job.py usr/bin/setup_marathon_job
 opt/venvs/paasta-tools/bin/setup_kubernetes_job.py usr/bin/setup_kubernetes_job

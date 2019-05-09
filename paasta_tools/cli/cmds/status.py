@@ -44,8 +44,8 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.flinkcluster_tools import FlinkClusterConfig
-from paasta_tools.flinkcluster_tools import get_dashboard_url
+from paasta_tools.flink_tools import FlinkConfig
+from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -71,7 +71,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
-    FlinkClusterConfig,
+    FlinkConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
@@ -245,10 +245,10 @@ def paasta_status_on_api_endpoint(
         return print_kubernetes_status(service, instance, output, status.kubernetes)
     elif status.tron is not None:
         return print_tron_status(service, instance, output, status.tron, verbose)
-    elif status.flinkcluster is not None:
-        return print_flinkcluster_status(cluster, service, instance, output, status.flinkcluster.get('status'), verbose)
     elif status.adhoc is not None:
         return print_adhoc_status(cluster, service, instance, output, status.adhoc, verbose)
+    elif status.flink is not None:
+        return print_flink_status(cluster, service, instance, output, status.flink.get('status'), verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
@@ -370,7 +370,7 @@ def status_kubernetes_job_human(
         )
 
 
-def print_flinkcluster_status(
+def print_flink_status(
     cluster: str,
     service: str,
     instance: str,
@@ -563,8 +563,8 @@ def report_status_for_cluster(
         if namespace in actual_deployments:
             deployed_instances.append(instance)
 
-        # Case: flinkcluster instances don't use `deployments.json`
-        elif instance_whitelist.get(instance) == FlinkClusterConfig:
+        # Case: flink instances don't use `deployments.json`
+        elif instance_whitelist.get(instance) == FlinkConfig:
             deployed_instances.append(instance)
 
         # Case: service NOT deployed to cluster.instance
@@ -851,7 +851,7 @@ def paasta_status(
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            all_flink = all(i == FlinkClusterConfig for i in instances.values())
+            all_flink = all(i == FlinkConfig for i in instances.values())
             actual_deployments: Mapping[str, str]
             if all_flink:
                 actual_deployments = {}

@@ -201,10 +201,12 @@ def paasta_secret(args):
 
         print_paasta_helper(secret_path, args.secret_name, args.shared)
     elif args.action == "decrypt":
-        print(decrypt_secret(
-            secret_provider=secret_provider,
-            secret_name=args.secret_name,
-        ))
+        print(
+            decrypt_secret(
+                secret_provider=secret_provider,
+                secret_name=args.secret_name,
+            ), end='',
+        )
     else:
         print("Unknown action")
         sys.exit(1)
