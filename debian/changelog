@@ -1,3 +1,11 @@
+paasta-tools (0.84.8) xenial; urgency=medium
+
+  * 0.84.8 tagged with 'make release'
+    Commit: Merge branch "PAASTA_15442_max_hostname_length" of
+    github.com:ealter/paasta
+
+ -- Evan Krall <krall@yelp.com>  Thu, 09 May 2019 15:48:12 -0700
+
 paasta-tools (0.84.7) xenial; urgency=medium
 
   * 0.84.7 tagged with 'make release'
