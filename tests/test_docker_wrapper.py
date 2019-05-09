@@ -238,8 +238,8 @@ class TestGenerateHostname:
             'reallllllllllllllylooooooooooooooong',
             'reallyreallylongidsssssssssssssssssssssssss',
         )
-        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidssssssss'
-        assert len(hostname) == 63
+        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongidsssss'
+        assert len(hostname) == 60
 
     def test_symbols(self):
         hostname = docker_wrapper.generate_hostname(
@@ -253,10 +253,10 @@ class TestGenerateHostname:
 
         hostname = docker_wrapper.generate_hostname(
             'reallllllllllllllylooooooooooooooong',
-            'reallyreallylongid012345--abc',
+            'reallyreallylongid0123--abc',
         )
-        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongid012345'
-        assert len(hostname) == 61
+        assert hostname == 'reallllllllllllllylooooooooooooooong-reallyreallylongid0123'
+        assert len(hostname) == 59
 
 
 @pytest.mark.parametrize(
@@ -315,7 +315,7 @@ class TestMain:
             'docker',
             'docker',
             'run',
-            '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
+            '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-fe',
             '--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:',
         )]
 
@@ -334,7 +334,7 @@ class TestMain:
             'docker',
             'docker',
             'run',
-            '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-feeds',
+            '--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-fe',
             '--env=mesos_task_id',
         )]
 
