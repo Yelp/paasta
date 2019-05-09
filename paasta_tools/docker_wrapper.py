@@ -29,7 +29,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 
 LOCK_DIRECTORY = '/var/lib/paasta/mac-address'
 ENV_MATCH_RE = re.compile(r'^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$')
-MAX_HOSTNAME_LENGTH = 63
+MAX_HOSTNAME_LENGTH = 60
 
 
 def parse_env_args(args):
@@ -141,7 +141,7 @@ def generate_hostname(fqdn, mesos_task_id):
     hostname = host_hostname + '-' + task_id
 
     # hostnames can only contain alphanumerics and dashes and must be no more
-    # than 63 characters
+    # than 60 characters
     hostname = re.sub('[^a-zA-Z0-9-]+', '-', hostname)[:MAX_HOSTNAME_LENGTH]
 
     # hostnames can also not end with dashes as per RFC952
