@@ -117,7 +117,7 @@ INSTANCE_TYPES = (
     'adhoc',
     'kubernetes',
     'tron',
-    'flink',
+    'flinkcluster',
 )
 
 

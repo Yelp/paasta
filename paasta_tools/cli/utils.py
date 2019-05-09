@@ -862,7 +862,7 @@ def get_instance_config(
         instance_config_load_function = load_kubernetes_service_config
     elif instance_type == 'tron':
         instance_config_load_function = load_tron_instance_config
-    elif instance_type == 'flink':
+    elif instance_type == 'flinkcluster':
         instance_config_load_function = load_flink_instance_config
     else:
         raise NotImplementedError(
