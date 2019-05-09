@@ -38,6 +38,7 @@ opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/paasta_deploy_chro
 opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/paasta_deploy_tron_jobs
 opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd
 opt/venvs/paasta-tools/bin/paasta_docker_wrapper usr/bin/paasta_docker_wrapper
+opt/venvs/paasta-tools/bin/paasta_dump_locally_running_services usr/bin/paasta_dump_locally_running_services
 opt/venvs/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
 opt/venvs/paasta-tools/bin/paasta_firewall_logging usr/bin/paasta_firewall_logging
 opt/venvs/paasta-tools/bin/paasta_firewall_update usr/bin/paasta_firewall_update
