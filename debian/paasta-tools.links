@@ -50,6 +50,7 @@ opt/venvs/paasta-tools/bin/paasta_maintenance.py usr/bin/paasta_maintenance
 opt/venvs/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus
 opt/venvs/paasta-tools/bin/paasta_oom_logger usr/bin/paasta_oom_logger
 opt/venvs/paasta-tools/bin/paasta_remote_run.py usr/bin/paasta_remote_run
+opt/venvs/paasta-tools/bin/paasta_secrets_sync.py usr/bin/paasta_secrets_sync
 opt/venvs/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
 opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/paasta_setup_chronos_job
 opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/setup_chronos_job
