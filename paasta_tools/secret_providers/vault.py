@@ -140,3 +140,26 @@ class SecretProvider(BaseSecretProvider):
             cache_dir=None,
             context=self.service_name,
         ).decode('utf-8')
+
+    def decrypt_secret_raw(self, secret_name: str) -> bytes:
+        ecosystem = self.get_vault_ecosystems_for_clusters()[0]
+        secret_path = os.path.join(
+            self.secret_dir,
+            f"{secret_name}.json",
+        )
+        if not hasattr(self, 'client'):
+            self.client = get_vault_client(
+                ecosystem=ecosystem,
+                num_uses=1,
+                vault_auth_method=self.vault_auth_method,
+                vault_token_file=self.vault_token_file,
+            )
+        return get_plaintext(
+            client=self.client,
+            path=secret_path,
+            env=ecosystem,
+            cache_enabled=False,
+            cache_key=None,
+            cache_dir=None,
+            context=self.service_name,
+        )

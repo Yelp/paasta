@@ -183,3 +183,33 @@ def test_decrypt_secret():
             cache_dir=None,
             context='universe',
         )
+
+
+def test_decrypt_secret_raw():
+    with mock.patch(
+        'paasta_tools.secret_providers.vault.get_vault_client', autospec=False,
+    ) as mock_get_vault_client, mock.patch(
+        'paasta_tools.secret_providers.vault.get_plaintext', autospec=False,
+    ) as mock_get_plaintext, mock.patch(
+        'paasta_tools.secret_providers.vault.getpass', autospec=True,
+    ):
+        mock_get_plaintext.return_value = b'SECRETSQUIRREL'
+        sp = SecretProvider(
+            soa_dir='/nail/blah',
+            service_name='universe',
+            cluster_names=['mesosstage', ],
+            vault_auth_method='ldap',
+            vault_token_file='/nail/blah',
+            vault_cluster_config={'mesosstage': 'devc'},
+        )
+        assert sp.decrypt_secret_raw('mysecret') == b'SECRETSQUIRREL'
+        assert mock_get_vault_client.called
+        mock_get_plaintext.assert_called_with(
+            client=mock_get_vault_client.return_value,
+            path='/nail/blah/universe/secrets/mysecret.json',
+            env='devc',
+            cache_enabled=False,
+            cache_key=None,
+            cache_dir=None,
+            context='universe',
+        )

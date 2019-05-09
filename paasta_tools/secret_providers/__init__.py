@@ -31,6 +31,9 @@ class BaseSecretProvider:
     def decrypt_secret(self, secret_name: str) -> str:
         raise NotImplementedError
 
+    def decrypt_secret_raw(self, secret_name: str) -> bytes:
+        raise NotImplementedError
+
 
 class SecretProvider(BaseSecretProvider):
     pass
