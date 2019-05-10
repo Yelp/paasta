@@ -51,13 +51,17 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
             print(targets_seen[target])
             dport2 = target_rule_to_dport(targets_seen[target])
             container2 = get_container_from_dport(dport2, docker_client)
-            if container1 is None or container2 is None:
-                print("Error: there is only one container here and we couldn't determine the other:")
-                print(f"container1: {container1}")
-                print(f"container2: {container2}")
-                print("This script currently doesn't understand this situation and manual intervention is required")
-                return 1
-            if container1["Id"] == container2["Id"]:
+            if container1 is None:
+                print("We have a duplicate iptables rule going to a container1, but no container1!")
+                print(rule)
+                print("Deleting this rule")
+                chain.delete_rule(iptables_rule)
+            elif container2 is None:
+                print("We have a iptables rule going to a container2, but no container2!")
+                print(targets_seen[target])
+                print("Deleting this rule")
+                chain.delete_rule(raw_rules_seen[target])
+            elif container1["Id"] == container2["Id"]:
                 print("The same container is getting traffic for both ports!")
                 print(container1)
                 print("Killing the container")
@@ -65,7 +69,7 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
                 print("Deleting both iptables rules")
                 chain.delete_rule(iptables_rule)
                 chain.delete_rule(raw_rules_seen[target])
-            else:
+            elif container1["Id"] != container2["Id"]:
                 print("These are two different containers, which means we have duplicate ips:")
                 print(container1)
                 print(container2)
@@ -75,6 +79,9 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
                 print("Deleting the both iptables rules for good measure")
                 chain.delete_rule(iptables_rule)
                 chain.delete_rule(raw_rules_seen[target])
+            else:
+                print("Something unexpected went wrong. Exiting 1")
+                sys.exit(1)
 
 
 def main():
