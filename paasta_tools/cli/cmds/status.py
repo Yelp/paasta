@@ -73,10 +73,10 @@ from paasta_tools.utils import SystemPaastaConfig
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkConfig,
     KubernetesDeploymentConfig,
+    AdhocJobConfig,
 ]
 SSH_ONLY_INSTANCE_CONFIG = [
     ChronosJobConfig,
-    AdhocJobConfig,
 ]
 
 
@@ -245,11 +245,38 @@ def paasta_status_on_api_endpoint(
         return print_kubernetes_status(service, instance, output, status.kubernetes)
     elif status.tron is not None:
         return print_tron_status(service, instance, output, status.tron, verbose)
+    elif status.adhoc is not None:
+        return print_adhoc_status(cluster, service, instance, output, status.adhoc, verbose)
     elif status.flink is not None:
         return print_flink_status(cluster, service, instance, output, status.flink.get('status'), verbose)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
+
+
+def print_adhoc_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    status,
+    verbose: int = 0,
+) -> int:
+    output.append(f"    Job: {instance}")
+    for run in status:
+        output.append("Launch time: %s, run id: %s, framework id: %s" %
+                      (run['launch_time'], run['run_id'], run['framework_id']))
+    if status:
+        output.append(
+            (
+                "    Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
+                "    | -F <framework id>]` to stop."
+            ).format(service, cluster, instance),
+        )
+    else:
+        output.append("    Nothing found.")
+
+    return 0
 
 
 def print_marathon_status(
@@ -519,8 +546,8 @@ def report_status_for_cluster(
     ]
 
     tron_jobs = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
-        == TronActionConfig
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class ==
+        TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
@@ -552,8 +579,8 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance in http_only_instances
-                or deployed_instance not in ssh_only_instances and use_api_endpoint
+                deployed_instance in http_only_instances or
+                deployed_instance not in ssh_only_instances and use_api_endpoint
             )
         ]
         if len(http_only_deployed_instances):
@@ -574,8 +601,8 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance in ssh_only_instances
-                or deployed_instance not in http_only_instances and not use_api_endpoint
+                deployed_instance in ssh_only_instances or
+                deployed_instance not in http_only_instances and not use_api_endpoint
             )
         ]
         if len(ssh_only_deployed_instances):

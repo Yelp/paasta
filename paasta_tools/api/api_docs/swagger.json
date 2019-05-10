@@ -577,6 +577,10 @@
           "$ref": "#/definitions/InstanceStatusTron",
           "description": "Tron instance status"
         },
+        "adhoc": {
+          "$ref": "#/definitions/InstanceStatusAdhoc",
+          "description": "Adhoc instance status"
+        },
         "flink": {
           "type": "object",
           "properties": {
@@ -879,6 +883,31 @@
     },
     "InstanceTask": {
       "type": "object"
+    },
+    "InstanceStatusAdhoc": {
+      "type": "array",
+      "description": "List of runs associated with job",
+      "items": {
+        "$ref": "#/definitions/AdhocLaunchHistory"
+      }
+    },
+    "AdhocLaunchHistory": {
+        "type": "object",
+        "description": "A single run",
+        "properties": {
+           "launch_time": {
+              "type": "string",
+              "description": "when the job was launched"
+           },
+           "run_id": {
+              "type": "string",
+              "description": "id of the single run"
+           },
+           "framework_id": {
+              "type": "string",
+              "description": "framework id"
+           }
+        }
     },
     "MarathonDashboard": {
       "type": "object",

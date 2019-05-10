@@ -7,7 +7,7 @@ from paasta_tools.cli.utils import pick_random_port
 
 def main():
     print('-------------------------------------------------------')
-    print('Please run echo $$PAASTA_SYSTEM_CONFIG_DIR to continue')
+    print('Please run export PAASTA_SYSTEM_CONFIG_DIR=etc_paasta_for_development to continue')
     print("Please set environment variable PAASTA_TEST_CLUSTER to the cluster you want to use.")
     print("This is necessary for tron jobs")
     print('-------------------------------------------------------')
