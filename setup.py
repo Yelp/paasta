@@ -101,6 +101,7 @@ setup(
             'paasta_firewall_logging=paasta_tools.firewall_logging:main',
             'paasta_oom_logger=paasta_tools.oom_logger:main',
             'paasta_broadcast_log=paasta_tools.marathon_tools:broadcast_log_all_services_running_here_from_stdin',
+            'paasta_dump_locally_running_services=paasta_tools.dump_locally_running_services:main',
         ],
         'paste.app_factory': [
             'paasta-api-config=paasta_tools.api.api:make_app',
