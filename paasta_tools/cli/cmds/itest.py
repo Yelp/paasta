@@ -53,6 +53,12 @@ def add_subparser(subparsers):
         help='A directory from which soa-configs should be read from',
         default=DEFAULT_SOA_DIR,
     ).completer = lazy_choices_completer(list_services)
+    list_parser.add_argument(
+        '--timeout',
+        dest='timeout',
+        help='How many seconds before this command times out',
+        default=3600,
+    )
     list_parser.set_defaults(command=paasta_itest)
 
 
@@ -79,7 +85,7 @@ def paasta_itest(args):
     returncode, output = _run(
         cmd,
         env=run_env,
-        timeout=3600,
+        timeout=args.timeout,
         log=True,
         component='build',
         service=service,
