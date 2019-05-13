@@ -1607,6 +1607,9 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster: str
     dashboard_links: Dict[str, Dict[str, str]]
     api_endpoints: Dict[str, str]
+    api_ca_certificates: Dict[str, str]
+    default_api_ca_certificate: str
+    enable_client_cert_auth: bool
     fsm_template: str
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -1785,6 +1788,22 @@ class SystemPaastaConfig:
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict['api_endpoints']
+
+    def get_api_ca_certificates(self) -> Mapping[str, str]:
+        """ A mapping of cluster name to CA certificate for validating API server identity """
+        return self.config_dict.get('api_ca_certificates', {})
+
+    def get_default_api_ca_certificate(self) -> str:
+        """ A default CA certificate to fall back to if there is not a cluster mapped in
+        get_api_ca_certificates
+        """
+        return self.config_dict.get('default_api_ca_certificate', '/etc/paasta/pki/ca.crt')
+
+    def get_enable_client_cert_auth(self) -> bool:
+        """
+        If enabled present a client certificate from ~/.paasta/pki/<cluster>.crt and ~/.paasta/pki/<cluster>.key
+        """
+        return self.config_dict.get('enable_client_cert_auth', True)
 
     def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)

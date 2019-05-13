@@ -3,7 +3,7 @@ aiohttp >= 3.2.1
 argcomplete >= 0.8.1
 boto3
 botocore
-bravado >= 8.4.0
+bravado >= 10.2.0
 choice >= 0.1
 chronos-python >= 1.2.0
 cookiecutter >= 1.4.0
