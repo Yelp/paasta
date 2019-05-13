@@ -1,3 +1,11 @@
+paasta-tools (0.84.9) xenial; urgency=medium
+
+  * 0.84.9 tagged with 'make release'
+    Commit: Merge pull request #2235 from Yelp/kill_bad_iptables  Make
+    kill_bad_containers clean up orphaned iptables rules
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 13 May 2019 14:44:21 -0700
+
 paasta-tools (0.84.8) xenial; urgency=medium
 
   * 0.84.8 tagged with 'make release'

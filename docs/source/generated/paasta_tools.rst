@@ -47,6 +47,7 @@ Submodules
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
    paasta_tools.drain_lib
+   paasta_tools.dump_locally_running_services
    paasta_tools.firewall
    paasta_tools.firewall_logging
    paasta_tools.firewall_update
