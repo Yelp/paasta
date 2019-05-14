@@ -1600,69 +1600,70 @@ class KubeCustomResourceDict(TypedDict, total=False):
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
-    auto_hostname_unique_size: int
-    zookeeper: str
-    docker_registry: str
-    volumes: List[DockerVolume]
-    cluster: str
-    dashboard_links: Dict[str, Dict[str, str]]
     api_endpoints: Dict[str, str]
-    fsm_template: str
-    log_reader: LogReaderConfig
-    log_writer: LogWriterConfig
-    deployd_metrics_provider: str
-    metrics_provider: str
-    deployd_worker_failure_backoff_factor: int
-    deployd_maintenance_polling_frequency: int
-    sensu_host: str
-    sensu_port: int
-    dockercfg_location: str
-    synapse_port: int
-    synapse_host: str
-    synapse_haproxy_url_format: str
-    cluster_autoscaling_resources: IdToClusterAutoscalingResourcesDict
-    resource_pool_settings: PoolToResourcePoolSettingsDict
-    cluster_fqdn_format: str
+    auto_hostname_unique_size: int
     chronos_config: ChronosConfig
-    marathon_servers: List[MarathonConfigDict]
-    previous_marathon_servers: List[MarathonConfigDict]
-    local_run_config: LocalRunConfig
-    remote_run_config: RemoteRunConfig
-    spark_run_config: SparkRunConfig
-    paasta_native: PaastaNativeConfig
-    mesos_config: Dict
-    monitoring_config: Dict
-    deploy_blacklist: UnsafeDeployBlacklist
-    deploy_whitelist: UnsafeDeployWhitelist
-    expected_slave_attributes: ExpectedSlaveAttributes
-    security_check_command: str
-    deployd_number_workers: int
-    deployd_big_bounce_rate: float
-    deployd_startup_bounce_rate: float
-    deployd_log_level: str
-    deployd_startup_oracle_enabled: bool
-    cluster_autoscaling_draining_enabled: bool
+    cluster: str
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
-    use_mesos_healthchecks: bool
-    taskproc: Dict
-    disabled_watchers: List
-    vault_environment: str
+    cluster_autoscaling_draining_enabled: bool
+    cluster_autoscaling_resources: IdToClusterAutoscalingResourcesDict
     cluster_boost_enabled: bool
+    cluster_fqdn_format: str
+    clusters: Sequence[str]
+    dashboard_links: Dict[str, Dict[str, str]]
+    deploy_blacklist: UnsafeDeployBlacklist
+    deploy_whitelist: UnsafeDeployWhitelist
+    deployd_big_bounce_rate: float
+    deployd_log_level: str
+    deployd_maintenance_polling_frequency: int
+    deployd_metrics_provider: str
+    deployd_number_workers: int
+    deployd_startup_bounce_rate: float
+    deployd_startup_oracle_enabled: bool
+    deployd_worker_failure_backoff_factor: int
+    disabled_watchers: List
+    docker_registry: str
+    dockercfg_location: str
+    enable_nerve_readiness_check: bool
+    expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
-    vault_cluster_map: Dict
-    secret_provider: str
-    slack: Dict[str, str]
-    maintenance_resource_reservation_enabled: bool
+    fsm_template: str
+    hacheck_sidecar_image_url: str
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
-    hacheck_sidecar_image_url: str
-    enable_nerve_readiness_check: bool
+    local_run_config: LocalRunConfig
+    log_reader: LogReaderConfig
+    log_writer: LogWriterConfig
+    maintenance_resource_reservation_enabled: bool
+    marathon_servers: List[MarathonConfigDict]
+    mesos_config: Dict
+    metrics_provider: str
+    monitoring_config: Dict
+    nerve_readiness_check_script: str
+    paasta_native: PaastaNativeConfig
+    previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
-    nerve_readiness_check_script: str
+    remote_run_config: RemoteRunConfig
+    resource_pool_settings: PoolToResourcePoolSettingsDict
+    secret_provider: str
+    security_check_command: str
+    sensu_host: str
+    sensu_port: int
+    slack: Dict[str, str]
+    spark_run_config: SparkRunConfig
+    synapse_haproxy_url_format: str
+    synapse_host: str
+    synapse_port: int
+    taskproc: Dict
     tron: Dict
+    use_mesos_healthchecks: bool
+    vault_cluster_map: Dict
+    vault_environment: str
+    volumes: List[DockerVolume]
+    zookeeper: str
 
 
 def load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
@@ -2108,6 +2109,9 @@ class SystemPaastaConfig:
     def get_tron_config(self) -> dict:
         return self.config_dict.get('tron', {})
 
+    def get_clusters(self) -> Sequence[str]:
+        return self.config_dict.get('clusters', [])
+
 
 def _run(
     command: Union[str, List[str]],
@@ -2386,12 +2390,14 @@ def get_soa_cluster_deploy_files(
         service = '*'
     service_path = os.path.join(soa_dir, service)
 
+    valid_clusters = '|'.join(load_system_paasta_config().get_clusters())
+
     if instance_type in INSTANCE_TYPES:
         instance_types = instance_type
     else:
         instance_types = '|'.join(INSTANCE_TYPES)
 
-    search_re = r'/.*/(' + instance_types + r')-([0-9a-z-_]*)\.yaml$'
+    search_re = r'/.*/(' + instance_types + r')-(' + valid_clusters + r')\.yaml$'
 
     for yaml_file in glob.glob('%s/*.yaml' % service_path):
         try:

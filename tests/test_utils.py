@@ -707,12 +707,20 @@ def test_missing_cluster_configs_are_ignored():
         '/nail/etc/services/service1/marathon-cluster1.yaml',
         '/nail/etc/services/service2/chronos-cluster2.yaml',
     ]
+    fake_system_paasta_config = utils.SystemPaastaConfig(
+        {
+            'clusters': ['cluster1', 'cluster2'],
+        }, fake_soa_dir,
+    )
     expected = []
     with mock.patch(
         'os.path.join', autospec=True, return_value='%s/*' % fake_soa_dir,
     ) as mock_join_path, mock.patch(
         'glob.glob', autospec=True, return_value=fake_cluster_configs,
-    ) as mock_glob:
+    ) as mock_glob, mock.patch(
+        'paasta_tools.utils.load_system_paasta_config',
+        return_value=fake_system_paasta_config, autospec=True,
+    ):
         actual = utils.list_clusters(soa_dir=fake_soa_dir)
         assert actual == expected
         mock_join_path.assert_called_once_with(fake_soa_dir, '*')
@@ -757,6 +765,11 @@ def test_list_clusters_ignores_bogus_clusters():
         '/nail/etc/services/service1/chronos-cluster2.yaml',
         '/nail/etc/services/service1/chronos-SHARED.yaml',
     ]
+    fake_system_paasta_config = utils.SystemPaastaConfig(
+        {
+            'clusters': ['cluster1', 'cluster2'],
+        }, fake_soa_dir,
+    )
     expected = ['cluster1', 'cluster2']
     with mock.patch(
         'os.path.join', autospec=True, return_value=f'{fake_soa_dir}/{fake_service}',
@@ -764,8 +777,12 @@ def test_list_clusters_ignores_bogus_clusters():
         'glob.glob', autospec=True, return_value=fake_cluster_configs,
     ), mock.patch(
         'builtins.open', autospec=None, path=mock.mock_open(read_data="fakedata"),
+    ), mock.patch(
+        'paasta_tools.utils.load_system_paasta_config',
+        return_value=fake_system_paasta_config, autospec=True,
     ):
         actual = utils.list_clusters(service=fake_service)
+
         assert actual == expected
 
 
