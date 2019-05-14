@@ -56,7 +56,7 @@ setup(
         'paasta_tools/generate_services_file.py',
         'paasta_tools/generate_services_yaml.py',
         'paasta_tools/get_mesos_leader.py',
-        'paasta_tools/kubernetes/paasta_secrets_sync.py',
+        'paasta_tools/kubernetes_scripts/paasta_secrets_sync.py',
         'paasta_tools/list_marathon_service_instances.py',
         'paasta_tools/marathon_dashboard.py',
         'paasta_tools/monitoring/check_capacity.py',
