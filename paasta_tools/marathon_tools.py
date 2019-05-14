@@ -1103,6 +1103,8 @@ def get_marathon_services_running_here_for_nerve(
                 if not nerve_dict.is_in_smartstack():
                     continue
                 nerve_dict['port'] = port
+                nerve_dict['paasta_instance'] = instance
+                nerve_dict['deploy_group'] = marathon_service_config.get_deploy_group()
                 nerve_list.append((registration, nerve_dict))
         except (KeyError, NoConfigurationForServiceError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
