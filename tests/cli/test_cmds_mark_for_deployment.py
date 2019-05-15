@@ -40,11 +40,14 @@ class FakeArgs:
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups', autospec=True)
 def test_paasta_mark_for_deployment_acts_like_main(
+    mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
     mock_mark_for_deployment,
     mock_validate_service_name,
 ):
+    mock_list_deploy_groups.return_value = ['test_deploy_group']
     mock_mark_for_deployment.return_value = 42
     assert mark_for_deployment.paasta_mark_for_deployment(FakeArgs) == 42
     mock_mark_for_deployment.assert_called_once_with(
@@ -99,7 +102,9 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock_
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups', autospec=True)
 def test_paasta_mark_for_deployment_when_verify_image_fails(
+    mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
     mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
@@ -107,6 +112,7 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     class FakeArgsRollback(FakeArgs):
         verify_image = True
 
+    mock_list_deploy_groups.return_value = ['test_deploy_groups']
     mock_is_docker_image_already_in_registry.return_value = False
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
@@ -115,7 +121,9 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups', autospec=True)
 def test_paasta_mark_for_deployment_when_verify_image_succeeds(
+    mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
     mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
@@ -123,6 +131,7 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     class FakeArgsRollback(FakeArgs):
         verify_image = True
 
+    mock_list_deploy_groups.return_value = ['test_deploy_groups']
     mock_is_docker_image_already_in_registry.return_value = False
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
@@ -139,7 +148,9 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups', autospec=True)
 def test_paasta_mark_for_deployment_with_good_rollback(
+    mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
     mock_do_wait_for_deployment,
     mock_mark_for_deployment,
@@ -151,6 +162,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         block = True
         timeout = 600
 
+    mock_list_deploy_groups.return_value = ['test_deploy_groups']
     mock_mark_for_deployment.return_value = 0
 
     def do_wait_for_deployment_side_effect(self, target_commit):

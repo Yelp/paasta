@@ -8,4 +8,4 @@ test_instance_2:
    cpus: 0.1
    ram: 250
    disk: 256.7
-   deploy_group: test_cluster.test_instance
+   deploy_group: test-cluster.test_instance
