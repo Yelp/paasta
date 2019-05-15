@@ -489,7 +489,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
-@patch('paasta_tools.cli.cmds.mark_for_deployment.automatic_rollbacks.get_slack_events', autospec=True)
+@patch('paasta_tools.automatic_rollbacks.slack.get_slack_events', autospec=True)
 def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
     mock_get_slack_events,
     mock_wait_for_deployment,

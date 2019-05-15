@@ -40,9 +40,11 @@ from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
 
-from paasta_tools import automatic_rollbacks
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.automatic_rollbacks import slack as arb_slack
+from paasta_tools.automatic_rollbacks import state_machine
+from paasta_tools.automatic_rollbacks.slo import watch_slos_for_service
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -558,7 +560,7 @@ class Progress():
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
+class MarkForDeploymentProcess(state_machine.DeploymentProcess):
     rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
     rollforward_states = ['start_deploy', 'deploying', 'deployed']
 
@@ -601,8 +603,10 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.last_action = None
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
+        self.slo_watchers = []
 
         super().__init__()
+        self.start_slo_watcher_threads()
         self.send_initial_slack_message()
         slack_thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
         slack_thread.start()
@@ -627,7 +631,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
 
     def send_initial_slack_message(self):
-        blocks = automatic_rollbacks.get_slack_blocks_for_deployment(
+        blocks = arb_slack.get_slack_blocks_for_deployment(
             deployment_name=self.deployment_name(),
             message=self.human_readable_status,
             last_action=None,
@@ -636,6 +640,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             available_buttons=[],
             from_sha=self.old_git_sha,
             to_sha=self.commit,
+            slo_watchers=self.slo_watchers,
         )
         resp = self.slack_client.post_single(blocks=blocks, channel=self.slack_channel)
         self.slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
@@ -646,7 +651,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
         self.update_slack_thread(authors)
 
     def update_slack(self):
-        blocks = automatic_rollbacks.get_slack_blocks_for_deployment(
+        blocks = arb_slack.get_slack_blocks_for_deployment(
             deployment_name=self.deployment_name(),
             message=self.human_readable_status,
             progress=self.progress.human_readable(),
@@ -656,6 +661,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
             available_buttons=self.get_available_buttons(),
             from_sha=self.old_git_sha,
             to_sha=self.commit,
+            slo_watchers=self.slo_watchers,
         )
         resp = self.slack_client.sc.api_call(
             "chat.update",
@@ -713,7 +719,7 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
     def start_transition(self) -> str:
         return "start_deploy"
 
-    def valid_transitions(self) -> Iterator[automatic_rollbacks.TransitionDefinition]:
+    def valid_transitions(self) -> Iterator[state_machine.TransitionDefinition]:
         yield {
             'source': '_begin',
             'dest': 'start_deploy',
@@ -951,9 +957,9 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
 
     def listen_for_slack_events(self):
         log.debug("Listening for slack events...")
-        for event in automatic_rollbacks.get_slack_events():
+        for event in arb_slack.get_slack_events():
             log.debug(f"Got slack event: {event}")
-            buttonpress = automatic_rollbacks.event_to_buttonpress(event)
+            buttonpress = arb_slack.event_to_buttonpress(event)
             if self.is_relevant_buttonpress(buttonpress):
                 self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
                 self.last_action = buttonpress.action
@@ -978,6 +984,23 @@ class MarkForDeploymentProcess(automatic_rollbacks.DeploymentProcess):
     def after_state_change(self):
         self.update_slack()
         super().after_state_change()
+
+    def individual_slo_callback(self, label, bad):
+        if bad:
+            message = f"SLO started failing: {label}"
+        else:
+            message = f"SLO stopped failing: {label}"
+        self.update_slack_thread(message)
+
+    def all_slos_callback(self, bad):
+        self.update_slack()
+
+    def start_slo_watcher_threads(self):
+        _, self.slo_watchers = watch_slos_for_service(
+            service=self.service,
+            individual_slo_callback=self.individual_slo_callback,
+            all_slos_callback=self.all_slos_callback,
+        )
 
 
 class ClusterData:
@@ -1104,8 +1127,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                           cluster_data.cluster,
                       ))
         elif (
-            long_running_status.expected_instance_count == 0 or
-            long_running_status.desired_state == 'stop'
+            long_running_status.expected_instance_count == 0
+            or long_running_status.desired_state == 'stop'
         ):
             log.debug("{}.{} in {} is marked as stopped. Marked as deployed."
                       .format(

@@ -60,9 +60,11 @@ PasteDeploy==1.5.2
 ply==3.4
 poyo==0.4.0
 progressbar2==3.10.1
+protobuf==3.7.1
 py==1.5.2
 pyasn1==0.4.2
 pyasn1-modules==0.2.1
+pyformance==0.4
 pymesos==0.3.9
 pyramid==1.8.4
 pyramid-swagger==2.4.1
@@ -89,9 +91,11 @@ s3transfer==0.1.13
 sensu-plugin==0.3.1
 service-configuration-lib==0.12.0
 setuptools==39.0.1
+signalfx==1.0.17
 simplejson==3.10.0
 six==1.11.0
 slackclient==1.2.1
+sseclient-py==1.7
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2
@@ -110,6 +114,7 @@ webcolors==1.7
 WebOb==1.7.4
 websocket-client==0.44.0
 whichcraft==0.4.0
+ws4py==0.5.1
 wsgicors==0.7.0
 yarl==1.1.1
 yelp-clog==2.12.1
