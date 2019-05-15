@@ -1,3 +1,10 @@
+paasta-tools (0.84.10) xenial; urgency=medium
+
+  * 0.84.10 tagged with 'make release'
+    Commit: Merge branch "u/robj/use-system-paasta-config-clusters"
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 15 May 2019 11:08:49 -0700
+
 paasta-tools (0.84.9) xenial; urgency=medium
 
   * 0.84.9 tagged with 'make release'
