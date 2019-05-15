@@ -22,6 +22,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from bravado.client import SwaggerClient
+from bravado.requests_client import RequestsClient
 
 import paasta_tools.api
 from paasta_tools.utils import load_system_paasta_config
@@ -65,10 +66,39 @@ def get_paasta_api_client(
         spec_dict = json.load(f)
     # replace localhost in swagger.json with actual api server
     spec_dict['host'] = api_server
+    spec_dict['schemes'] = [parsed.scheme]
 
     # sometimes we want the status code
+    requests_client = PaastaRequestsClient(
+        scheme=parsed.scheme,
+        cluster=cluster,
+        system_paasta_config=system_paasta_config,
+    )
     if http_res:
         config = {'also_return_response': True}
-        return SwaggerClient.from_spec(spec_dict=spec_dict, config=config)
+        return SwaggerClient.from_spec(spec_dict=spec_dict, config=config, http_client=requests_client)
     else:
-        return SwaggerClient.from_spec(spec_dict=spec_dict)
+        return SwaggerClient.from_spec(spec_dict=spec_dict, http_client=requests_client)
+
+
+class PaastaRequestsClient(RequestsClient):
+    def __init__(
+        self,
+        scheme: str,
+        cluster: str,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> None:
+        if scheme == 'https':
+            if system_paasta_config.get_enable_client_cert_auth():
+                paasta_dir = os.path.expanduser('~/.paasta/pki')
+                ssl_cert = (f'{paasta_dir}/{cluster}.crt', f'{paasta_dir}/{cluster}.key')
+            else:
+                ssl_cert = None
+            super().__init__(ssl_verify=True, ssl_cert=ssl_cert)
+            ca_cert_path = system_paasta_config.get_api_ca_certificates().get(
+                cluster,
+                system_paasta_config.get_default_api_ca_certificate(),
+            )
+            self.session.verify = ca_cert_path
+        else:
+            super().__init__()
