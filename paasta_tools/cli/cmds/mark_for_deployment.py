@@ -989,7 +989,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         if bad:
             message = f"SLO started failing: {label}"
         else:
-            message = f"SLO stopped failing: {label}"
+            message = f"SLO is now OK: {label}"
         self.update_slack_thread(message)
 
     def all_slos_callback(self, bad):
