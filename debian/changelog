@@ -1,3 +1,11 @@
+paasta-tools (0.84.11) xenial; urgency=medium
+
+  * 0.84.11 tagged with 'make release'
+    Commit: Merge pull request #2241 from Yelp/u/robj/fix-another-broken-
+    flink-reference  fix broken namespace reference
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 16 May 2019 05:48:48 -0700
+
 paasta-tools (0.84.10) xenial; urgency=medium
 
   * 0.84.10 tagged with 'make release'
