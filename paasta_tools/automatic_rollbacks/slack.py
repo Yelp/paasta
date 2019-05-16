@@ -71,7 +71,7 @@ def get_slack_blocks_for_deployment(
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": ":ok_hand: All SLOs are currently passing.",
+                    "text": f":ok_hand: All {len(slo_watchers)} SLOs are currently passing.",
                 },
             })
     else:

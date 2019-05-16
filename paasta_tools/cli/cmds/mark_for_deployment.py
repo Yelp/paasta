@@ -985,21 +985,22 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         self.update_slack()
         super().after_state_change()
 
-    def individual_slo_callback(self, label, bad):
+    def individual_slo_callback(self, label: str, bad: bool) -> None:
         if bad:
             message = f"SLO started failing: {label}"
         else:
             message = f"SLO is now OK: {label}"
         self.update_slack_thread(message)
 
-    def all_slos_callback(self, bad):
+    def all_slos_callback(self, bad: bool) -> None:
         self.update_slack()
 
-    def start_slo_watcher_threads(self):
+    def start_slo_watcher_threads(self) -> None:
         _, self.slo_watchers = watch_slos_for_service(
             service=self.service,
             individual_slo_callback=self.individual_slo_callback,
             all_slos_callback=self.all_slos_callback,
+            sfx_api_token=load_system_paasta_config().get_monitoring_config()['signalfx_api_key'],
         )
 
 

@@ -3,6 +3,12 @@ import os
 import textwrap
 import threading
 import time
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import pytimeparse
 try:
@@ -36,7 +42,14 @@ def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR):
 
 
 class SLODemultiplexer:
-    def __init__(self, sink, individual_slo_callback, all_slos_callback, start_timestamp=None, max_duration=300):
+    def __init__(
+        self,
+        sink,
+        individual_slo_callback: Callable[[str, bool], None],
+        all_slos_callback: Callable[[bool], None],
+        start_timestamp: Optional[float] = None,
+        max_duration: float = 300,
+    ) -> None:
         self.sink = sink
         self.individual_slo_callback = individual_slo_callback
         self.all_slos_callback = all_slos_callback
@@ -46,7 +59,7 @@ class SLODemultiplexer:
         else:
             self.start_timestamp = start_timestamp
 
-        self.slo_watchers_by_label = {}
+        self.slo_watchers_by_label: Dict[str, 'SLOWatcher'] = {}
         for slo in sink.slos:
             label = sink._get_detector_label(slo)
             watcher = SLOWatcher(slo, self.watcher_callback, self.start_timestamp, label, max_duration=max_duration)
@@ -59,7 +72,7 @@ class SLODemultiplexer:
         watcher = self.slo_watchers_by_label[slo_label]
         watcher.process_datapoint(props, datapoint, timestamp)
 
-    def watcher_callback(self, watcher):
+    def watcher_callback(self, watcher: 'SLOWatcher') -> None:
         old_failing = self.failing
         new_failing = any(watcher.failing for watcher in self.slo_watchers_by_label.values())
         self.individual_slo_callback(watcher.label, watcher.failing)
@@ -119,7 +132,12 @@ class SLOWatcher:
         return (bad_datapoints / len(self.window)) >= 1. - self.slo.config.percent_of_duration / 100.
 
 
-def watch_slos_for_service(service, individual_slo_callback, all_slos_callback):
+def watch_slos_for_service(
+    service: str,
+    individual_slo_callback: Callable[[str, bool], Any],
+    all_slos_callback: Callable[[bool], Any],
+    sfx_api_token: str,
+) -> Tuple[List[threading.Thread], List[SLODemultiplexer]]:
     threads = []
     watchers = []
 
@@ -135,6 +153,7 @@ def watch_slos_for_service(service, individual_slo_callback, all_slos_callback):
                 query,
                 lookback_seconds=30,
                 callback=watcher.process_datapoint,
+                sfx_api_token=sfx_api_token,
             ),
             daemon=True,
         )

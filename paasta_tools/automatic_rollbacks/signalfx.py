@@ -13,14 +13,11 @@ def _convert_sfx_timestamp(ts: int) -> float:
     return float(ts) / 1000
 
 
-def tail_signalfx(query: str, lookback_seconds: float, callback: Callable) -> None:
+def tail_signalfx(query: str, lookback_seconds: float, callback: Callable, sfx_api_token: str) -> None:
     if lookback_seconds > 0:
         start_timestamp_milliseconds = (time.time() - lookback_seconds) * 1000
     else:
         start_timestamp_milliseconds = None
-
-    with open('/nail/home/krall/.signalfx_token') as f:
-        sfx_api_token = f.read().strip()
 
     with SignalFx().signalflow(sfx_api_token) as flow:
         tsid_metadata_map = {}
