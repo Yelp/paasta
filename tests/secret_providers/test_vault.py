@@ -213,3 +213,23 @@ def test_decrypt_secret_raw():
             cache_dir=None,
             context='universe',
         )
+
+
+def test_get_secret_signature_from_data():
+    with mock.patch(
+        'paasta_tools.secret_providers.vault.get_vault_client', autospec=False,
+    ), mock.patch(
+        'paasta_tools.secret_providers.vault.get_plaintext', autospec=False,
+    ), mock.patch(
+        'paasta_tools.secret_providers.vault.getpass', autospec=True,
+    ):
+        sp = SecretProvider(
+            soa_dir='/nail/blah',
+            service_name='universe',
+            cluster_names=['mesosstage', ],
+            vault_auth_method='ldap',
+            vault_token_file='/nail/blah',
+            vault_cluster_config={'mesosstage': 'devc'},
+        )
+        assert not sp.get_secret_signature_from_data({'environments': {'devc': {}}})
+        assert sp.get_secret_signature_from_data({'environments': {'devc': {'signature': 'abc'}}}) == 'abc'

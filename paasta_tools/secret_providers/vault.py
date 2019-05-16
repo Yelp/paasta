@@ -3,6 +3,8 @@ import os
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Mapping
+from typing import Optional
 
 try:
     from vault_tools.client.jsonsecret import get_plaintext
@@ -163,3 +165,13 @@ class SecretProvider(BaseSecretProvider):
             cache_dir=None,
             context=self.service_name,
         )
+
+    def get_secret_signature_from_data(
+        self,
+        data: Mapping[str, Any],
+    ) -> Optional[str]:
+        ecosystem = self.get_vault_ecosystems_for_clusters()[0]
+        if data['environments'][ecosystem]:
+            return data['environments'][ecosystem]['signature']
+        else:
+            return None

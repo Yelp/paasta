@@ -449,7 +449,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ))
         for k, v in shared_secret_env_vars.items():
-            service = SHARED_SECRET_SERVICE
+            service = sanitise_service_name(SHARED_SECRET_SERVICE)
             secret = get_secret_name_from_ref(v)
             ret.append(V1EnvVar(
                 name=k,
@@ -853,8 +853,8 @@ def get_kubernetes_secret_hashes(
         for value in to_get_hash:
             hashes[value] = get_kubernetes_secret_signature(
                 kube_client=kube_client,
-                secret=get_secret_name_from_ref(v),
-                service=SHARED_SECRET_SERVICE if is_shared_secret(v) else service,
+                secret=get_secret_name_from_ref(value),
+                service=SHARED_SECRET_SERVICE if is_shared_secret(value) else service,
             )
     return hashes
 
@@ -1383,7 +1383,9 @@ def get_kubernetes_secret_signature(
         )
     except ApiException as e:
         if e.status == 404:
-            signature = None
+            return None
+        else:
+            raise
     if not signature:
         return None
     else:
