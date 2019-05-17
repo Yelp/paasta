@@ -843,33 +843,6 @@ class TestTronTools:
         jc, _ = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
         assert jc == []
 
-    @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
-    def test_load_tron_service_config_jobs_list(self, mock_load_yaml):
-        job_1 = {'name': 'job_1'}
-        config_dict = {
-            'jobs': [job_1],
-        }
-        mock_load_yaml.return_value = config_dict
-        soa_dir = '/other/services'
-
-        job_configs, extra_config = tron_tools.load_tron_service_config(
-            service='foo',
-            cluster='dev',
-            load_deployments=True,
-            soa_dir=soa_dir,
-        )
-        assert extra_config == {}
-        assert job_configs == [
-            tron_tools.TronJobConfig(
-                name='job_1',
-                config_dict=job_1,
-                cluster='dev',
-                load_deployments=True,
-                service='foo',
-                soa_dir=soa_dir,
-            ),
-        ]
-
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)

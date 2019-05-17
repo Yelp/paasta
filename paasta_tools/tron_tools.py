@@ -545,29 +545,17 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
     config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
     extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    jobs = config.get('jobs') or []
-    if isinstance(jobs, list):
-        job_configs = [
-            TronJobConfig(
-                name=job.get('name'),
-                service=service,
-                cluster=cluster,
-                config_dict=job,
-                load_deployments=load_deployments,
-                soa_dir=soa_dir,
-            ) for job in jobs
-        ]
-    else:
-        job_configs = [
-            TronJobConfig(
-                name=name,
-                service=service,
-                cluster=cluster,
-                config_dict=job,
-                load_deployments=load_deployments,
-                soa_dir=soa_dir,
-            ) for name, job in jobs.items()
-        ]
+    jobs = config.get('jobs') or {}
+    job_configs = [
+        TronJobConfig(
+            name=name,
+            service=service,
+            cluster=cluster,
+            config_dict=job,
+            load_deployments=load_deployments,
+            soa_dir=soa_dir,
+        ) for name, job in jobs.items()
+    ]
     return job_configs, extra_config
 
 
