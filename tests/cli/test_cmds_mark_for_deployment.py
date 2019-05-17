@@ -149,7 +149,9 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.do_wait_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 def test_paasta_mark_for_deployment_with_good_rollback(
+    mock_load_system_paasta_config,
     mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
     mock_do_wait_for_deployment,
@@ -408,7 +410,9 @@ def test_slack_deploy_notifier_doesnt_notify_on_deploy_info_flags(mock_get_autho
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
+    mock_load_system_paasta_config,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
@@ -448,7 +452,9 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
+    mock_load_system_paasta_config,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
@@ -490,7 +496,9 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 @patch('paasta_tools.automatic_rollbacks.slack.get_slack_events', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
+    mock_load_system_paasta_config,
     mock_get_slack_events,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
@@ -531,7 +539,9 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
+    mock_load_system_paasta_config,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
     mock_get_slack_client,
