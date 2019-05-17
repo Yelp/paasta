@@ -33,10 +33,10 @@ predictable bouncing behavior is desired.
 Read more in the next section for exact details and differences amongst these
 bounce method.
 
-Note that in **no case** will PaaSTA "revert code or config" back to previous
-versions after a failed bounce. While some bounce methods have some protection
-against failure situations, PaaSTA will never undo the intent implied by a change.
-Addressing this problem should be done at at a layer *above PaaSTA*.
+Note that only in the case of ``paasta mark-for-deployoment --auto-rollback``
+will PaaSTA revert code back to previous versions after a failed
+bounce. In any other case, PaaSTA will continue to try to move forward forever
+until the bounce proceeds, always trying to converge on the desired state.
 
 
 Bounce Methods
@@ -152,10 +152,33 @@ Valid options are:
 * ``check_haproxy``: Whether to check the local haproxy to make sure this task
   has been registered and discovered.
 
+Understanding How ``bounce_margin_factor`` Affects Bouncing
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``bounce_margin_factor`` setting in marathon yaml files controls how aggressive the bounce is in the face of failures.
+It only applies to the ``crossover`` bounce method.
+
+With the default setting (1.0) the ``crossover`` bounce will begin by draining and killing old copies of the code once new copies are health to replace them.
+For example, if ``instances: 10`` and ``bounce_margin_factor: 1.0`` (default), PaaSTA will not begin draining a single copy of the old 10 until at least one new copy of the service is healthy.
+If 10 new copies of the service are up, then it will being draining the old 10 copies right away.
+If only one new copy of the service comes up, then the bounce will only drain one old copy as it gets replaced.
+
+The ``bounce_margin_factor`` adjusts how aggressive this procedure is.
+With the example of ``instances: 10`` and a ``bounce_margin_factor: 0.5`` (50%), then PaaSTA will preemptively being to drain and kill 5 copies of the old service to make room for the next 10 copies.
+The setting effectively gives PaaSTA permission to allow the service to dip below the set level of replication for bounce purposes.
+
+The setting is most effective in situations where there are resource constraints.
+If the service is small and running in a large pool with plenty of headroom, a ``bounce_margin_factor`` is not necessary.
+For a large service in a small pool where there is no headroom, a ``bounce_margin_factor`` is essential, as we need to give PaaSTA permission to make room for the new copies of the service.
+
 Chronos Bouncing
 ^^^^^^^^^^^^^^^^
 
-Almost all of the topics described above don't really apply to Chronos Jobs.
-
 In PaaSTA Chronos jobs are simply configured to use new code or config **on the
+next execution of the job**. In progress jobs are not adjusted or killed.
+
+Tron Bouncing
+^^^^^^^^^^^^^
+
+In PaaSTA Tron jobs are simply configured to use new code or config **on the
 next execution of the job**. In progress jobs are not adjusted or killed.

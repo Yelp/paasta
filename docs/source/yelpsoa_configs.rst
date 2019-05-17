@@ -254,6 +254,7 @@ instance MAY have:
     0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).
     This allows bounces to proceed in the face of a percentage of failures.
     It doesn’t affect any other bounce method but crossover.
+    See `the bounce docs <bouncing.html>`_ for a more detailed description.
 
   * ``bounce_priority``: an integer priority that informs paasta-deployd which service
     instances should take priority over each other. The default priority is 0 and higher numbers
