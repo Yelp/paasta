@@ -15,6 +15,7 @@
 import json
 import os
 import pkgutil
+from collections import Counter
 from glob import glob
 
 import yaml
@@ -34,6 +35,7 @@ from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import validate_complete_config
+from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -91,6 +93,19 @@ def invalid_tron_namespace(cluster, output, filename):
 
 def valid_tron_namespace(cluster, filename):
     return success(f'{filename} is valid.')
+
+
+def duplicate_instance_names_message(service, cluster, instance_names):
+    instance_name_list = "\n\t".join(instance_names)
+    message = (
+        f"Service {service} uses the following duplicate instance names for "
+        f"cluster {cluster}:\n\t{instance_name_list}\n"
+    )
+    return failure(message, "https://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
+
+
+def no_duplicate_instance_names_message(service, cluster):
+    return success(f"All {service}'s instance names in cluster {cluster} are unique")
 
 
 def get_schema(file_type):
@@ -325,6 +340,30 @@ def validate_chronos(service_path):
     return returncode
 
 
+def validate_unique_instance_names(service_path):
+    """Check that the service does not use the same instance name more than once"""
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    check_passed = True
+
+    for cluster in list_clusters(service, soa_dir):
+        service_instances = get_service_instance_list(service=service, cluster=cluster, soa_dir=soa_dir)
+        instance_names = [service_instance[1] for service_instance in service_instances]
+        instance_name_to_count = Counter(instance_names)
+        duplicate_instance_names = [
+            instance_name for instance_name, count in instance_name_to_count.items()
+            if count > 1
+        ]
+        if duplicate_instance_names:
+            check_passed = False
+            paasta_print(duplicate_instance_names_message(
+                service, cluster, duplicate_instance_names,
+            ))
+        else:
+            paasta_print(no_duplicate_instance_names_message(service, cluster))
+
+    return check_passed
+
+
 def paasta_validate_soa_configs(service_path):
     """Analyze the service in service_path to determine if the conf files are valid
 
@@ -342,6 +381,9 @@ def paasta_validate_soa_configs(service_path):
         returncode = False
 
     if not validate_tron(service_path):
+        returncode = False
+
+    if not validate_unique_instance_names(service_path):
         returncode = False
 
     return returncode
