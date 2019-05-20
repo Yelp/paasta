@@ -20,7 +20,10 @@ def get_container_info_from_task(task):
 
 
 def get_paasta_service_instance_from_task(task):
-    docker_params = task['container'].get('docker', {}).get('parameters', [])
+    try:
+        docker_params = task['container'].get('docker', {}).get('parameters', [])
+    except KeyError:
+        return None, None
     service, instance = None, None
     for param in docker_params:
         if param['key'] == 'label':
