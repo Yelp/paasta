@@ -781,6 +781,7 @@ class TestMarathonTools:
             'PAASTA_SERVICE': 'can_you_dig_it',
             'PAASTA_DEPLOY_GROUP': 'fake_cluster.yes_i_can',
             'PAASTA_DOCKER_IMAGE': 'dockervania_from_konami',
+            'PAASTA_INSTANCE_TYPE': 'marathon',
         }
         fake_cpus = .42
         fake_disk = 1234.5

@@ -506,6 +506,9 @@ class InstanceConfig:
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('cmd', None)
 
+    def get_instance_type(self) -> Optional[str]:
+        return getattr(self, 'config_filename_prefix', None)
+
     def get_env_dictionary(self) -> Dict[str, str]:
         """A dictionary of key/value pairs that represent environment variables
         to be injected to the container environment"""
@@ -519,6 +522,9 @@ class InstanceConfig:
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
+        instance_type = self.get_instance_type()
+        if instance_type:
+            env["PAASTA_INSTANCE_TYPE"] = instance_type
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
         return {str(k): str(v) for (k, v) in env.items()}

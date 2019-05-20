@@ -177,6 +177,7 @@ class TestConfigureAndRunDockerContainer:
                 'PAASTA_SERVICE': 'fake_service',
                 'PAASTA_INSTANCE': 'fake_instance',
                 'PAASTA_CLUSTER': 'fake_cluster',
+                'PAASTA_INSTANCE_TYPE': 'spark',
                 'PAASTA_DEPLOY_GROUP': 'fake_cluster.fake_instance',
                 'PAASTA_DOCKER_IMAGE': 'fake_service:fake_sha',
                 'PAASTA_LAUNCHED_BY': mock.ANY,
