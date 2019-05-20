@@ -76,7 +76,7 @@ def flink_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group='yelp.com',
         version='v1alpha1',
-        namespace='paasta-flink',
+        namespace='paasta-flinks',
         plural='flinks',
         name=sanitised_name(service, instance),
     )
