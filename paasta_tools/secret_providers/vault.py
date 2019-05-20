@@ -11,6 +11,7 @@ try:
     from vault_tools.paasta_secret import get_vault_client
     from vault_tools.gpg import TempGpgKeyring
     from vault_tools.paasta_secret import encrypt_secret
+    import hvac
 except ImportError:
     def get_plaintext(*args: Any, **kwargs: Any) -> bytes:
         return b"No plain text available without vault_tools"
@@ -37,25 +38,37 @@ class SecretProvider(BaseSecretProvider):
         vault_cluster_config: Dict[str, str] = {},
         vault_auth_method: str = 'ldap',
         vault_token_file: str = '/root/.vault-token',
+        vault_num_uses: int = 1,
         **kwargs: Any,
     ) -> None:
         super().__init__(soa_dir, service_name, cluster_names)
         self.vault_cluster_config = vault_cluster_config
         self.vault_auth_method = vault_auth_method
         self.vault_token_file = vault_token_file
+        self.ecosystems = self.get_vault_ecosystems_for_clusters()
+        self.clients: Mapping[str, hvac.Client] = {}
+        if vault_auth_method == 'ldap':
+            username = getpass.getuser()
+            password = getpass.getpass("Please enter your LDAP password to auth with Vault\n")
+        else:
+            username = None
+            password = None
+        for ecosystem in self.ecosystems:
+            self.clients[ecosystem] = get_vault_client(
+                ecosystem=ecosystem,
+                num_uses=vault_num_uses,
+                vault_auth_method=self.vault_auth_method,
+                vault_token_file=self.vault_token_file,
+                username=username,
+                password=password,
+            )
 
     def decrypt_environment(
         self,
         environment: Dict[str, str],
         **kwargs: Any,
     ) -> Dict[str, str]:
-        self.ecosystem = self.get_vault_ecosystems_for_clusters()[0]
-        self.client = get_vault_client(
-            ecosystem=self.ecosystem,
-            num_uses=len(environment),
-            vault_auth_method=self.vault_auth_method,
-            vault_token_file=self.vault_token_file,
-        )
+        client = self.clients[self.ecosystems[0]]
         secret_environment = {}
         for k, v in environment.items():
             secret_name = get_secret_name_from_ref(v)
@@ -64,8 +77,8 @@ class SecretProvider(BaseSecretProvider):
                 f"{secret_name}.json",
             )
             secret = get_plaintext(
-                client=self.client,
-                env=self.ecosystem,
+                client=client,
+                env=self.ecosystems[0],
                 path=secret_path,
                 cache_enabled=False,
                 cache_dir=None,
@@ -92,19 +105,8 @@ class SecretProvider(BaseSecretProvider):
         plaintext: bytes,
     ) -> None:
         with TempGpgKeyring(overwrite=True):
-            ecosystems = self.get_vault_ecosystems_for_clusters()
-            if 'VAULT_TOKEN_OVERRIDE' not in os.environ:
-                username = getpass.getuser()
-                password = getpass.getpass("Please enter your LDAP password to auth with Vault\n")
-            else:
-                username = None
-                password = None
-            for ecosystem in ecosystems:
-                client = get_vault_client(
-                    ecosystem=ecosystem,
-                    username=username,
-                    password=password,
-                )
+            for ecosystem in self.ecosystems:
+                client = self.clients[ecosystem]
                 encrypt_secret(
                     client=client,
                     action=action,
@@ -117,18 +119,7 @@ class SecretProvider(BaseSecretProvider):
                 )
 
     def decrypt_secret(self, secret_name: str) -> str:
-        ecosystem = self.get_vault_ecosystems_for_clusters()[0]
-        if 'VAULT_TOKEN_OVERRIDE' not in os.environ:
-            username = getpass.getuser()
-            password = getpass.getpass("Please enter your LDAP password to auth with Vault\n")
-        else:
-            username = None
-            password = None
-        client = get_vault_client(
-            ecosystem=ecosystem,
-            username=username,
-            password=password,
-        )
+        client = self.clients[self.ecosystems[0]]
         secret_path = os.path.join(
             self.secret_dir,
             f"{secret_name}.json",
@@ -136,7 +127,7 @@ class SecretProvider(BaseSecretProvider):
         return get_plaintext(
             client=client,
             path=secret_path,
-            env=ecosystem,
+            env=self.ecosystems[0],
             cache_enabled=False,
             cache_key=None,
             cache_dir=None,
@@ -144,22 +135,15 @@ class SecretProvider(BaseSecretProvider):
         ).decode('utf-8')
 
     def decrypt_secret_raw(self, secret_name: str) -> bytes:
-        ecosystem = self.get_vault_ecosystems_for_clusters()[0]
+        client = self.clients[self.ecosystems[0]]
         secret_path = os.path.join(
             self.secret_dir,
             f"{secret_name}.json",
         )
-        if not hasattr(self, 'client'):
-            self.client = get_vault_client(
-                ecosystem=ecosystem,
-                num_uses=1,
-                vault_auth_method=self.vault_auth_method,
-                vault_token_file=self.vault_token_file,
-            )
         return get_plaintext(
-            client=self.client,
+            client=client,
             path=secret_path,
-            env=ecosystem,
+            env=self.ecosystems[0],
             cache_enabled=False,
             cache_key=None,
             cache_dir=None,
@@ -170,7 +154,7 @@ class SecretProvider(BaseSecretProvider):
         self,
         data: Mapping[str, Any],
     ) -> Optional[str]:
-        ecosystem = self.get_vault_ecosystems_for_clusters()[0]
+        ecosystem = self.ecosystems[0]
         if data['environments'][ecosystem]:
             return data['environments'][ecosystem]['signature']
         else:
