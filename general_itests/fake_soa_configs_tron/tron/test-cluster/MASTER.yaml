@@ -7,11 +7,11 @@ notification_options:
     smtp_host: localhost
 
 jobs:
-  -   name: "masterjob"
-      node: "pool"
-      schedule: "7th of month at 11:00"
-      actions:
-          -   name: "master_action1"
-              command:  '/bin/true'
-          -   name: 'master_action2'
-              command: '/bin/true'
+  "masterjob":
+    node: "pool"
+    schedule: "7th of month at 11:00"
+    actions:
+        -   name: "master_action1"
+            command:  '/bin/true'
+        -   name: 'master_action2'
+            command: '/bin/true'
