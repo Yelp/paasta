@@ -31,8 +31,10 @@ from paasta_tools.cli.cmds.validate import valid_chronos_instance
 from paasta_tools.cli.cmds.validate import validate_chronos
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_tron
+from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 
 
+@patch('paasta_tools.cli.cmds.validate.validate_unique_instance_names', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.validate_all_schemas', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.validate_chronos', autospec=True)
 @patch('paasta_tools.cli.cmds.validate.validate_tron', autospec=True)
@@ -44,6 +46,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_tron,
     mock_validate_chronos,
     mock_validate_all_schemas,
+    mock_validate_unique_instance_names,
 ):
     # Ensure each check in 'paasta_validate' is called
 
@@ -52,6 +55,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_all_schemas.return_value = True
     mock_validate_chronos.return_value = True
     mock_validate_tron.return_value = True
+    mock_validate_unique_instance_names.return_value = True
 
     args = mock.MagicMock()
     args.service = None
@@ -62,6 +66,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_all_schemas.called
     assert mock_validate_chronos.called
     assert mock_validate_tron.called
+    assert mock_validate_unique_instance_names.called
 
 
 def test_get_service_path_unknown(capfd):
@@ -853,3 +858,39 @@ def test_check_service_path_good(
     mock_glob.return_value = True
     service_path = 'fake/path'
     assert check_service_path(service_path)
+
+
+@patch('paasta_tools.cli.cmds.validate.get_service_instance_list', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_clusters', autospec=True)
+def test_validate_unique_service_name_success(
+    mock_list_clusters,
+    mock_get_service_instance_list,
+):
+    service_name = 'service_1'
+    mock_list_clusters.return_value = ['cluster_1']
+    mock_get_service_instance_list.return_value = [
+        (service_name, 'instance_1'),
+        (service_name, 'instance_2'),
+        (service_name, 'instance_3'),
+    ]
+    assert validate_unique_instance_names(f'soa/{service_name}')
+
+
+@patch('paasta_tools.cli.cmds.validate.get_service_instance_list', autospec=True)
+@patch('paasta_tools.cli.cmds.validate.list_clusters', autospec=True)
+def test_validate_unique_service_name_failure(
+    mock_list_clusters,
+    mock_get_service_instance_list,
+    capfd,
+):
+    service_name = 'service_1'
+    mock_list_clusters.return_value = ['cluster_1']
+    mock_get_service_instance_list.return_value = [
+        (service_name, 'instance_1'),
+        (service_name, 'instance_2'),
+        (service_name, 'instance_1'),
+    ]
+    assert not validate_unique_instance_names(f'soa/{service_name}')
+
+    output, _ = capfd.readouterr()
+    assert 'instance_1' in output
