@@ -1,3 +1,11 @@
+paasta-tools (0.84.14) xenial; urgency=medium
+
+  * 0.84.14 tagged with 'make release'
+    Commit: Merge pull request #2244 from Yelp/u/qui/PAASTA-15427-
+    container-optional  Mesos task does not always have container info
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 20 May 2019 18:07:52 -0700
+
 paasta-tools (0.84.13) xenial; urgency=medium
 
   * 0.84.13 tagged with 'make release'
