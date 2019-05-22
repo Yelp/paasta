@@ -1,3 +1,11 @@
+paasta-tools (0.84.15) xenial; urgency=medium
+
+  * 0.84.15 tagged with 'make release'
+    Commit: Merge pull request #2230 from Yelp/kubernetes-secrets
+    Kubernetes secrets
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 22 May 2019 06:48:30 -0700
+
 paasta-tools (0.84.14) xenial; urgency=medium
 
   * 0.84.14 tagged with 'make release'
