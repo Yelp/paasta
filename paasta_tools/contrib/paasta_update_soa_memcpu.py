@@ -37,7 +37,7 @@ def parse_args(argv):
     )
     parser.add_argument(
         '-m', '--manual',
-        help='Do not automatically publish the review',
+        help='Do not publish a review',
         action='store_true',
         dest='manual_rb',
         default=False,
@@ -158,22 +158,22 @@ def get_reviewers(filename):
     return recent_authors
 
 
-def review(filename, description, provisioned_state, manual_rb):
+def review(filename, summary, description, manual_rb):
     all_reviewers = get_reviewers(filename).union(get_reviewers_in_group('right-sizer'))
     reviewers_arg = ' '.join(all_reviewers)
     if manual_rb:
         subprocess.check_call((
             'review-branch',
-            f'--summary=automatically updating {filename} for {provisioned_state}provisioned cpu',
-            f'--description="{description}"',
+            f'--summary={summary}',
+            f'--description={description}',
             '--reviewers', reviewers_arg,
             '--server', 'https://reviewboard.yelpcorp.com',
         ))
     else:
         subprocess.check_call((
             'review-branch',
-            f'--summary=automatically updating {filename} for {provisioned_state}provisioned cpu',
-            f'--description="{description}"',
+            f'--summary={summary}',
+            f'--description={description}',
             '-p',
             '--reviewers', reviewers_arg,
             '--server', 'https://reviewboard.yelpcorp.com',
@@ -266,6 +266,7 @@ def main(argv=None):
             service_param=_get_dashboard_qs_param('paasta_service', serv['service']),
             instance_param=_get_dashboard_qs_param('paasta_instance', serv['instance']),
         )
+        summary = f"Rightsizing {serv['service']}.{serv['instance']} in {serv['cluster']} to make it not have {provisioned_state}-provisioned cpu"  # noqa: E501
         branch = ''
         if args.no_tick:
             branch = 'rightsize-{}'.format(int(time.time()))
@@ -277,7 +278,7 @@ def main(argv=None):
             edit_soa_configs(filename, serv['instance'], cpus)
             try:
                 commit(filename, serv)
-                review(filename, ticket_desc, provisioned_state, args.manual_rb)
+                review(filename, summary, ticket_desc, args.manual_rb)
             except Exception:
                 print((
                     "\nUnable to push changes to {f}. Check if {f} conforms to"
