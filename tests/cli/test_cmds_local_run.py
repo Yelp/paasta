@@ -1765,7 +1765,7 @@ def test_decrypt_secret_environment_variables(
         secret_provider_name='vault',
         soa_dir='/nail/blah',
         cluster_name='mesosstage',
-        secret_provider_kwargs={'some': 'config'},
+        secret_provider_kwargs={'some': 'config', 'vault_num_uses': 2},
     )
     assert mock_decrypt_for_service.call_args_list == [
         mock.call(

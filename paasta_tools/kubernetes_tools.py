@@ -12,6 +12,7 @@
 # limitations under the License.
 """
 """
+import base64
 import copy
 import itertools
 import json
@@ -39,6 +40,7 @@ from kubernetes.client import models
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
+from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1Deployment
@@ -64,6 +66,8 @@ from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1Secret
+from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
@@ -78,6 +82,11 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.secret_providers import BaseSecretProvider
+from paasta_tools.secret_tools import get_secret_name_from_ref
+from paasta_tools.secret_tools import is_secret_ref
+from paasta_tools.secret_tools import is_shared_secret
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
@@ -401,8 +410,58 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return sidecars
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
-        user_env = [V1EnvVar(name=name, value=value) for name, value in self.get_env().items()]
+        secret_env_vars = {}
+        shared_secret_env_vars = {}
+        for k, v in self.get_env().items():
+            if is_secret_ref(v):
+                if is_shared_secret(v):
+                    shared_secret_env_vars[k] = v
+                else:
+                    secret_env_vars[k] = v
+
+        user_env = [
+            V1EnvVar(name=name, value=value) for name, value in self.get_env().items()
+            if name not in list(secret_env_vars.keys()) + list(shared_secret_env_vars.keys())
+        ]
+        user_env += self.get_kubernetes_secret_env_vars(
+            secret_env_vars=secret_env_vars,
+            shared_secret_env_vars=shared_secret_env_vars,
+        )
         return user_env + self.get_kubernetes_environment()  # type: ignore
+
+    def get_kubernetes_secret_env_vars(
+        self,
+        secret_env_vars: Mapping[str, str],
+        shared_secret_env_vars: Mapping[str, str],
+    ) -> Sequence[V1EnvVar]:
+        ret = []
+        for k, v in secret_env_vars.items():
+            service = self.get_sanitised_service_name()
+            secret = get_secret_name_from_ref(v)
+            ret.append(V1EnvVar(
+                name=k,
+                value_from=V1EnvVarSource(
+                    secret_key_ref=V1SecretKeySelector(
+                        name=f'paasta-secret-{service}-{secret}',
+                        key=secret,
+                        optional=False,
+                    ),
+                ),
+            ))
+        for k, v in shared_secret_env_vars.items():
+            service = sanitise_service_name(SHARED_SECRET_SERVICE)
+            secret = get_secret_name_from_ref(v)
+            ret.append(V1EnvVar(
+                name=k,
+                value_from=V1EnvVarSource(
+                    secret_key_ref=V1SecretKeySelector(
+                        name=f'paasta-secret-{service}-{secret}',
+                        key=secret,
+                        optional=False,
+                    ),
+                ),
+            ))
+        return ret
 
     def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
         kubernetes_env = [
@@ -585,7 +644,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_sanitised_service_name(self) -> str:
-        return self.get_service().replace('_', '--')
+        return sanitise_service_name(self.get_service())
 
     def get_sanitised_instance_name(self) -> str:
         return self.get_instance().replace('_', '--')
@@ -770,10 +829,34 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for key, value in spec.items()
             if key not in CONFIG_HASH_BLACKLIST
         }
+        ahash['paasta_secrets'] = get_kubernetes_secret_hashes(
+            service=self.get_service(),
+            environment_variables=self.get_env(),
+        )
         return ahash
 
     def get_bounce_margin_factor(self) -> float:
         return self.config_dict.get('bounce_margin_factor', 1.0)
+
+
+def get_kubernetes_secret_hashes(
+    environment_variables: Mapping[str, str],
+    service: str,
+) -> Mapping[str, str]:
+    hashes = {}
+    to_get_hash = []
+    for v in environment_variables.values():
+        if is_secret_ref(v):
+            to_get_hash.append(v)
+    if to_get_hash:
+        kube_client = KubeClient()
+        for value in to_get_hash:
+            hashes[value] = get_kubernetes_secret_signature(
+                kube_client=kube_client,
+                secret=get_secret_name_from_ref(value),
+                service=SHARED_SECRET_SERVICE if is_shared_secret(value) else service,
+            )
+    return hashes
 
 
 def get_kubernetes_services_running_here() -> Sequence[KubeService]:
@@ -1246,3 +1329,109 @@ class KubernetesDeployStatus:
 
 def is_kubernetes_available() -> bool:
     return Path(KUBE_CONFIG_PATH).exists()
+
+
+def create_secret(
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_provider: BaseSecretProvider,
+) -> None:
+    service = sanitise_service_name(service)
+    kube_client.core.create_namespaced_secret(
+        namespace="paasta",
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=f"paasta-secret-{service}-{secret}",
+                labels={"yelp.com/paasta_service": service},
+            ),
+            data={secret: base64.b64encode(secret_provider.decrypt_secret_raw(secret)).decode('utf-8')},
+        ),
+    )
+
+
+def update_secret(
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_provider: BaseSecretProvider,
+) -> None:
+    service = sanitise_service_name(service)
+    kube_client.core.replace_namespaced_secret(
+        name=f"paasta-secret-{service}-{secret}",
+        namespace="paasta",
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=f"paasta-secret-{service}-{secret}",
+                labels={"yelp.com/paasta_service": service},
+            ),
+            data={secret: base64.b64encode(secret_provider.decrypt_secret_raw(secret)).decode('utf-8')},
+        ),
+    )
+
+
+def get_kubernetes_secret_signature(
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+) -> Optional[str]:
+    service = sanitise_service_name(service)
+    try:
+        signature = kube_client.core.read_namespaced_config_map(
+            name=f"paasta-secret-{service}-{secret}-signature",
+            namespace="paasta",
+        )
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
+    if not signature:
+        return None
+    else:
+        return signature.data['signature']
+
+
+def update_kubernetes_secret_signature(
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+) -> None:
+    service = sanitise_service_name(service)
+    kube_client.core.replace_namespaced_config_map(
+        name=f"paasta-secret-{service}-{secret}-signature",
+        namespace="paasta",
+        body=V1ConfigMap(
+            metadata=V1ObjectMeta(
+                name=f"paasta-secret-{service}-{secret}-signature",
+                labels={"yelp.com/paasta_service": service},
+            ),
+            data={'signature': secret_signature},
+        ),
+    )
+
+
+def create_kubernetes_secret_signature(
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+) -> None:
+    service = sanitise_service_name(service)
+    kube_client.core.create_namespaced_config_map(
+        namespace="paasta",
+        body=V1ConfigMap(
+            metadata=V1ObjectMeta(
+                name=f"paasta-secret-{service}-{secret}-signature",
+                labels={"yelp.com/paasta_service": service},
+            ),
+            data={'signature': secret_signature},
+        ),
+    )
+
+
+def sanitise_service_name(
+    service: str,
+) -> str:
+    return service.replace('_', '--')

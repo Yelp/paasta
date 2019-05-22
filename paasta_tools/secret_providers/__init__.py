@@ -2,6 +2,8 @@ import os
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Mapping
+from typing import Optional
 
 from service_configuration_lib import read_service_configuration
 
@@ -29,6 +31,12 @@ class BaseSecretProvider:
         raise NotImplementedError
 
     def decrypt_secret(self, secret_name: str) -> str:
+        raise NotImplementedError
+
+    def decrypt_secret_raw(self, secret_name: str) -> bytes:
+        raise NotImplementedError
+
+    def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:
         raise NotImplementedError
 
 

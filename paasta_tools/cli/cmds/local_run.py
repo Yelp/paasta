@@ -625,6 +625,8 @@ def decrypt_secret_environment_variables(
         'cluster_name': cluster_name,
         'secret_provider_kwargs': secret_provider_kwargs,
     }
+    secret_provider_kwargs['vault_num_uses'] = len(service_secret_env) + len(shared_secret_env)
+
     try:
         decrypted_secrets.update(
             decrypt_secret_environment_for_service(
