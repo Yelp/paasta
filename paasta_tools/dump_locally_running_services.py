@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./paasta_dump_locally_running_services.pp [options]
+Usage: ./paasta_dump_locally_running_services.py [options]
 
 Outputs a JSON-encoded list of services that are running on this host along
 with the host port that each service is listening on.
