@@ -285,7 +285,7 @@ def format_custom_resource(
     config_hash = get_config_hash(
         instance_config,
     )
-    resource['metadata']['labels']['yelp.com/paasta_config_sha'] = config_hash
+    resource['metadata']['annotations']['yelp.com/paasta_config_sha'] = config_hash
     return resource
 
 
@@ -317,7 +317,7 @@ def reconcile_kubernetes_resource(
         desired_resource = KubeCustomResource(
             service=service,
             instance=inst,
-            config_sha=formatted_resource['metadata']['labels']['yelp.com/paasta_config_sha'],
+            config_sha=formatted_resource['metadata']['annotations']['yelp.com/paasta_config_sha'],
             kind=kind.singular,
         )
 

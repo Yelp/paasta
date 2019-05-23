@@ -195,10 +195,10 @@ def test_format_custom_resource():
                     'yelp.com/paasta_service': 'kurupt_fm',
                     'yelp.com/paasta_instance': 'radio_station',
                     'yelp.com/paasta_cluster': 'mycluster',
-                    'yelp.com/paasta_config_sha': mock_get_config_hash.return_value,
                 },
                 'annotations': {
                     'yelp.com/desired_state': 'running',
+                    'yelp.com/paasta_config_sha': mock_get_config_hash.return_value,
                 },
             },
             'spec': {'dummy': 'conf'},
@@ -249,7 +249,7 @@ def test_reconcile_kubernetes_resource():
         # instance up to date, do nothing
         mock_format_custom_resource.return_value = {
             'metadata': {
-                'labels': {
+                'annotations': {
                     'yelp.com/paasta_config_sha': 'conf123',
                 },
             },
@@ -270,7 +270,7 @@ def test_reconcile_kubernetes_resource():
         # instance diff config, update
         mock_format_custom_resource.return_value = {
             'metadata': {
-                'labels': {
+                'annotations': {
                     'yelp.com/paasta_config_sha': 'conf456',
                 },
             },
