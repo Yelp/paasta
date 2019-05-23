@@ -511,7 +511,7 @@ def load_tron_instance_config(
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> TronActionConfig:
-    jobs, _ = load_tron_service_config(
+    jobs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=load_deployments,
@@ -534,18 +534,19 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
         soa_dir=soa_dir,
     )
     if not config:
-        config = service_configuration_lib._read_yaml_file(os.path.join(tronfig_folder, f"{service}.yaml"))
-    if not config:
         raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
     return config
+
+
+def extract_jobs_from_tron_yaml(config):
+    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
+    return config.get('jobs') or config or {}
 
 
 def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
-    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
-    extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    jobs = config.get('jobs') or {}
+    jobs = extract_jobs_from_tron_yaml(config)
     job_configs = [
         TronJobConfig(
             name=name,
@@ -556,14 +557,14 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
             soa_dir=soa_dir,
         ) for name, job in jobs.items()
     ]
-    return job_configs, extra_config
+    return job_configs
 
 
 def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     """Generate a namespace configuration file for Tron, for a service."""
     system_paasta_config = load_system_paasta_config()
 
-    job_configs, other_config = load_tron_service_config(
+    job_configs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=True,
@@ -590,18 +591,12 @@ def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 
 
 def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
-    job_configs, other_config = load_tron_service_config(
+    job_configs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=False,
         soa_dir=soa_dir,
     )
-
-    if service != MASTER_NAMESPACE and other_config:
-        other_keys = list(other_config.keys())
-        return [
-            f'Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}',
-        ]
 
     # PaaSTA-specific validation
     for job_config in job_configs:
@@ -609,18 +604,10 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
         if check_msgs:
             return check_msgs
 
-    # Use Tronfig on generated config from PaaSTA to validate the rest
-    other_config['jobs'] = {
-        job_config.get_name(): format_tron_job_dict(job_config)
-        for job_config in job_configs
-    }
-
-    complete_config = yaml.dump(other_config, Dumper=Dumper)
-
     master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
     proc = subprocess.run(
         ['tronfig', '-', '-V', '-n', service, '-m', master_config_path],
-        input=complete_config,
+        input=job_configs,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         encoding='utf-8',

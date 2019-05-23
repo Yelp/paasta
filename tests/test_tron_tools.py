@@ -808,14 +808,13 @@ class TestTronTools:
     def test_load_tron_service_config(self, mock_load_tron_yaml):
         mock_load_tron_yaml.return_value = {
             '_template': {'actions': {'action1': {}}},
-            'extra': 'data',
             'jobs': {
                 'job1': {
                     'actions': {'action1': {}},
                 },
             },
         }
-        job_configs, extra_config = tron_tools.load_tron_service_config(
+        job_configs = tron_tools.load_tron_service_config(
             service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
         )
         assert job_configs == [
@@ -828,7 +827,33 @@ class TestTronTools:
                 soa_dir='fake',
             ),
         ]
-        assert extra_config == {'extra': 'data'}  # template filtered out
+        mock_load_tron_yaml.assert_called_once_with(
+            service='service',
+            cluster='test-cluster',
+            soa_dir='fake',
+        )
+
+    @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
+    def test_load_tron_service_config_doesnt_need_a_jobs_keyword(self, mock_load_tron_yaml):
+        mock_load_tron_yaml.return_value = {
+            '_template': {'actions': {'action1': {}}},
+            'job1': {
+                'actions': {'action1': {}},
+            },
+        }
+        job_configs = tron_tools.load_tron_service_config(
+            service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
+        )
+        assert job_configs == [
+            tron_tools.TronJobConfig(
+                name='job1',
+                service='service',
+                cluster='test-cluster',
+                config_dict={'actions': {'action1': {}}},
+                load_deployments=False,
+                soa_dir='fake',
+            ),
+        ]
         mock_load_tron_yaml.assert_called_once_with(
             service='service',
             cluster='test-cluster',
@@ -865,10 +890,7 @@ class TestTronTools:
             'my_config_value': [1, 2],
         }
         mock_format_master_config.return_value = other_config
-        mock_tron_service_config.return_value = (
-            [job_config],
-            other_config,
-        )
+        mock_tron_service_config.return_value = {job_config}
         soa_dir = '/testing/services'
         cluster = 'fake-cluster'
 
@@ -916,7 +938,7 @@ class TestTronTools:
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = 'my_job'
         job_config.validate = mock.Mock(return_value=['some error'])
-        mock_load_config.return_value = ([job_config], {})
+        mock_load_config.return_value = {job_config}
 
         result = tron_tools.validate_complete_config(
             'a_service',
@@ -940,7 +962,7 @@ class TestTronTools:
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = 'my_job'
         job_config.validate = mock.Mock(return_value=[])
-        mock_load_config.return_value = ([job_config], {})
+        mock_load_config.return_value = {job_config}
         mock_format_job.return_value = {}
         mock_run.return_value = mock.Mock(
             returncode=1,
@@ -970,7 +992,7 @@ class TestTronTools:
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = 'my_job'
         job_config.validate = mock.Mock(return_value=[])
-        mock_load_config.return_value = ([job_config], {})
+        mock_load_config.return_value = {job_config}
         mock_format_job.return_value = {}
         mock_run.return_value = mock.Mock(
             returncode=0,
@@ -987,34 +1009,6 @@ class TestTronTools:
         assert mock_format_job.call_count == 1
         assert mock_run.call_count == 1
         assert not result
-
-    @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.format_tron_job_dict', autospec=True)
-    @mock.patch('subprocess.run', autospec=True)
-    @pytest.mark.parametrize('namespace,valid', [('MASTER', True), ('bob', False)])
-    def test_validate_complete_config_non_job_keys(
-        self,
-        mock_run,
-        mock_format_job,
-        mock_load_config,
-        namespace,
-        valid,
-    ):
-        job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
-        job_config.get_name.return_value = 'my_job'
-        job_config.validate = mock.Mock(return_value=[])
-        mock_load_config.return_value = ([job_config], {'time_zone': 'US/Pacific'})
-        mock_format_job.return_value = {}
-
-        result = tron_tools.validate_complete_config(
-            namespace,
-            'a-cluster',
-        )
-
-        assert mock_load_config.call_count == 1
-        if not valid:
-            assert len(result) == 1
-            assert 'time_zone' in result[0]
 
     @mock.patch('os.walk', autospec=True)
     @mock.patch('os.listdir', autospec=True)
