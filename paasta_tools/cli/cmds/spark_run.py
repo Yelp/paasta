@@ -331,6 +331,7 @@ def get_spark_env(
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
     spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
+    spark_env['PAASTA_INSTANCE_TYPE'] = 'spark'
 
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
@@ -437,6 +438,7 @@ def get_spark_config(
         'spark.executorEnv.PAASTA_SERVICE': args.service,
         'spark.executorEnv.PAASTA_INSTANCE': '{}_{}'.format(args.instance, get_username()),
         'spark.executorEnv.PAASTA_CLUSTER': args.cluster,
+        'spark.executorEnv.PAASTA_INSTANCE_TYPE': 'spark',
         'spark.mesos.executor.docker.parameters': 'label=paasta_service={},label=paasta_instance={}_{}'.format(
             args.service, args.instance, get_username(),
         ),
