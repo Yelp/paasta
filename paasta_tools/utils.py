@@ -87,6 +87,7 @@ DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
+    'itest-and-push-to-registry',
     'security-check',
     'performance-check',
     'push-to-registry',

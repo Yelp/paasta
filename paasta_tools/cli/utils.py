@@ -198,13 +198,6 @@ class PaastaCheckMessages:
 
     ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
 
-    YAML_MISSING = failure(
-        "No marathon.yaml or chronos.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[superregion].yaml, chronos-[superregion].yaml or adhoc-[superregion].yaml "
-        "and run `paasta generate-pipeline`.\n  "
-        "More info:", "http://y/yelpsoa-configs",
-    )
-
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
         "No Makefile available. Please make a Makefile that responds\n"
