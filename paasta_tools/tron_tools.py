@@ -527,7 +527,6 @@ def load_tron_instance_config(
 
 
 def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
-    tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
     config = service_configuration_lib.read_extra_service_information(
         service_name=service,
         extra_info=f'tron-{cluster}',
@@ -540,6 +539,8 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
 
 def extract_jobs_from_tron_yaml(config):
     config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
+    if 'jobs' in config and config.get('jobs') is None:
+        return {}
     return config.get('jobs') or config or {}
 
 
@@ -560,31 +561,35 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
     return job_configs
 
 
+def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
+    system_paasta_config = load_system_paasta_config()
+    config = service_configuration_lib.read_extra_service_information(
+        service_name='tron',
+        extra_info=f'{cluster}/MASTER.yaml',
+        soa_dir=soa_dir,
+    )
+    return format_master_config(
+        config,
+        system_paasta_config.get_volumes(),
+        system_paasta_config.get_dockercfg_location(),
+    )
+
+
 def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     """Generate a namespace configuration file for Tron, for a service."""
-    system_paasta_config = load_system_paasta_config()
-
     job_configs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=True,
         soa_dir=soa_dir,
     )
-
-    if service == MASTER_NAMESPACE:
-        other_config = format_master_config(
-            other_config,
-            system_paasta_config.get_volumes(),
-            system_paasta_config.get_dockercfg_location(),
-        )
-
-    other_config['jobs'] = {
+    preproccessed_config = {}
+    preproccessed_config['jobs'] = {
         job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
     }
-
     return yaml.dump(
-        other_config,
+        preproccessed_config,
         Dumper=Dumper,
         default_flow_style=False,
     )
@@ -605,9 +610,19 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
             return check_msgs
 
     master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
+
+    preproccessed_config = {}
+    # Use Tronfig on generated config from PaaSTA to validate the rest
+    preproccessed_config['jobs'] = {
+        job_config.get_name(): format_tron_job_dict(job_config)
+        for job_config in job_configs
+    }
+
+    complete_config = yaml.dump(preproccessed_config, Dumper=Dumper)
+
     proc = subprocess.run(
         ['tronfig', '-', '-V', '-n', service, '-m', master_config_path],
-        input=job_configs,
+        input=complete_config,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         encoding='utf-8',
@@ -641,26 +656,11 @@ def _get_tron_namespaces_from_tron_dir(cluster, soa_dir):
     return namespaces
 
 
-class ConflictingNamespacesError(RuntimeError):
-    pass
-
-
 def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get all the namespaces that are configured in a particular Tron cluster."""
     if not cluster:
         cluster = load_tron_config().get_cluster_name()
-
-    namespaces1 = set(_get_tron_namespaces_from_service_dir(cluster, soa_dir))
-    namespaces2 = set(_get_tron_namespaces_from_tron_dir(cluster, soa_dir))
-
-    if namespaces1.intersection(namespaces2):
-        raise ConflictingNamespacesError(
-            "namespaces found in both service/*/tron and service/tron/*: {}".
-            format(namespaces1.intersection(namespaces2)),
-        )
-
-    namespaces = list(namespaces1.union(namespaces2))
-    return namespaces
+    return _get_tron_namespaces_from_service_dir(cluster, soa_dir)
 
 
 def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
