@@ -1,3 +1,11 @@
+paasta-tools (0.84.16) xenial; urgency=medium
+
+  * 0.84.16 tagged with 'make release'
+    Commit: Merge pull request #2245 from Yelp/PAASTA-15425-task-type
+    Add instance type as env variable
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 23 May 2019 17:07:59 -0700
+
 paasta-tools (0.84.15) xenial; urgency=medium
 
   * 0.84.15 tagged with 'make release'
