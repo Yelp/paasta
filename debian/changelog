@@ -1,3 +1,10 @@
+paasta-tools (0.84.17) xenial; urgency=medium
+
+  * 0.84.17 tagged with 'make release'
+    Commit: Merge branch "dont_crash_when_no_slos"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 28 May 2019 13:23:14 -0700
+
 paasta-tools (0.84.16) xenial; urgency=medium
 
   * 0.84.16 tagged with 'make release'
