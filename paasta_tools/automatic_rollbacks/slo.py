@@ -33,6 +33,8 @@ def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR):
     with tempfile.TemporaryDirectory() as temp_dir:
         SFDCS = make_signalform_detector_composite_sink(output_directory=temp_dir)
         sources = [YelpSoaConfigsSource(file) for file in slo_files]
+        if not sources:
+            return   # SFDCS instantiation crashes with IndexError if sources is an empty list.
         composite_sink = SFDCS(service=service, sources=sources)
 
         for sink in composite_sink.sinks():
