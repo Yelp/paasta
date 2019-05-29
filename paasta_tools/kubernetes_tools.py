@@ -473,6 +473,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 ),
             ),
+            V1EnvVar(
+                # this is used by some functions of operator-sdk
+                # it uses this environment variable to get the pods
+                name='POD_NAME',
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(
+                        field_path='metadata.name',
+                    ),
+                ),
+            ),
         ]
         return kubernetes_env
 
