@@ -179,6 +179,13 @@ def add_subparser(subparsers):
         default=600,
         help="After a rollback finishes, wait this many seconds before automatically abandoning.",
     )
+    list_parser.add_argument(
+        '--auto-rollback-delay',
+        dest='auto_rollback_delay',
+        type=int,
+        default=30,
+        help="After noticing an SLO failure, wait this many seconds before automatically rolling back.",
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -470,6 +477,7 @@ def paasta_mark_for_deployment(args):
             timeout=args.timeout,
             auto_certify_delay=args.auto_certify_delay,
             auto_abandon_delay=args.auto_abandon_delay,
+            auto_rollback_delay=args.auto_rollback_delay,
         )
         ret = deploy_process.run()
         return ret
@@ -578,6 +586,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         timeout,
         auto_certify_delay,
         auto_abandon_delay,
+        auto_rollback_delay,
     ):
         self.service = service
         self.deploy_info = deploy_info
@@ -603,6 +612,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         self.last_action = None
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
+        self.auto_rollback_delay = auto_rollback_delay
         self.slo_watchers = []
 
         super().__init__()
@@ -700,15 +710,19 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
     def states(self) -> Collection[str]:
         return [
             "_begin",
+
             "start_deploy",
             "deploying",
             "deployed",
+
             "mfd_failed",
             "deploy_errored",
             "deploy_cancelled",
+
             "start_rollback",
             "rolling_back",
             "rolled_back",
+
             "abandon",
             "complete",
         ]
@@ -762,6 +776,16 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'dest': None,  # this makes it an "internal transition", effectively a noop.
             'trigger': 'rollback_button_clicked',
         }
+        yield {
+            'source': self.rollforward_states,
+            'dest': 'start_rollback',
+            'trigger': 'rollback_slo_failure',
+        }
+        yield {
+            'source': self.rollback_states,
+            'dest': None,  # this makes it an "internal transition", effectively a noop.
+            'trigger': 'rollback_slo_failure',
+        }
 
         yield {
             'source': self.rollback_states,
@@ -796,12 +820,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'trigger': 'auto_certify',
         }
         yield {
-            'source': ['deployed', 'rolled_back'],
-            'dest': '=',  # re-enter the same state.
-            'trigger': 'snooze_button_clicked',
-        }
-        yield {
-            'source': 'rolled_back',
+            'source': ['rolled_back', 'rolling_back'],
             'dest': 'abandon',
             'trigger': 'abandon_button_clicked',
         }
@@ -810,6 +829,52 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'dest': 'abandon',
             'trigger': 'auto_abandon',
         }
+
+        yield {
+            'source': '*',
+            'dest': None,  # Don't actually change state, just call the before function.
+            'trigger': 'enable_auto_rollbacks_button_clicked',
+            'unless': [self.auto_rollbacks_enabled],
+            'before': self.enable_auto_rollbacks,
+        }
+        yield {
+            'source': '*',
+            'dest': None,  # Don't actually change state, just call the before function.
+            'trigger': 'disable_auto_rollbacks_button_clicked',
+            'conditions': [self.any_slo_failing, self.auto_rollbacks_enabled],
+            'before': self.disable_auto_rollbacks,
+        }
+        yield {
+            'source': '*',
+            'dest': None,
+            'trigger': 'slos_started_failing',
+            'conditions': [self.auto_rollbacks_enabled],
+            'before': self.start_auto_rollback_countdown,
+        }
+        yield {
+            'source': '*',
+            'dest': None,
+            'trigger': 'slos_stopped_failing',
+            'before': self.cancel_auto_rollback_countdown,
+        }
+        yield {
+            'source': '*',
+            'dest': None,
+            'trigger': 'snooze_button_clicked',
+            'before': self.restart_timer,
+            'conditions': [self.is_timer_running],
+        }
+
+    def disable_auto_rollbacks(self):
+        self.cancel_auto_rollback_countdown()
+        self.auto_rollback = False
+
+    def enable_auto_rollbacks(self):
+        self.auto_rollback = True
+
+    def auto_rollbacks_enabled(self) -> bool:
+        """This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.auto_rollback
 
     def status_code_by_state(self) -> Mapping[str, int]:
         codes = {
@@ -836,18 +901,18 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             # If we're about to exit, always clear the buttons, since once we exit the buttons will stop working.
             return []
 
-        if self.old_git_sha != self.commit:
-            if self.state in self.rollback_states:
-                buttons.append("forward")
-            if self.state in self.rollforward_states:
-                buttons.append("rollback")
-
-        if self.state == 'deployed':
-            buttons.append('complete')
-            buttons.append('snooze')
-        if self.state == 'rolled_back':
-            buttons.append('abandon')
-            buttons.append('snooze')
+        for trigger in self.machine.get_triggers(self.state):
+            suffix = '_button_clicked'
+            if trigger.endswith(suffix):
+                if all(
+                    cond.target == self.machine.resolve_callable(
+                        cond.func,
+                        transitions.EventData(self.state, self, self.machine, self, args=(), kwargs={}),
+                    )()
+                    for transition in self.machine.get_transitions(source=self.state, trigger=trigger)
+                    for cond in transition.conditions
+                ):
+                    buttons.append(trigger[:-len(suffix)])
 
         return buttons
 
@@ -950,7 +1015,8 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             level='event',
         )
         self.send_manual_rollback_instructions()
-        self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
+        if not self.any_slo_failing():
+            self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
 
     def is_relevant_buttonpress(self, buttonpress):
         return self.slack_ts == buttonpress.thread_ts
@@ -985,6 +1051,9 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         self.update_slack()
         super().after_state_change()
 
+    def any_slo_failing(self) -> bool:
+        return self.auto_rollback and any(w.failing for w in self.slo_watchers)
+
     def individual_slo_callback(self, label: str, bad: bool) -> None:
         if bad:
             message = f"SLO started failing: {label}"
@@ -993,7 +1062,18 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         self.update_slack_thread(message)
 
     def all_slos_callback(self, bad: bool) -> None:
+        if bad:
+            self.trigger('slos_started_failing')
+        else:
+            self.trigger('slos_stopped_failing')
+
         self.update_slack()
+
+    def start_auto_rollback_countdown(self) -> None:
+        self.start_timer(self.auto_rollback_delay, 'rollback_slo_failure', "automatically roll back")
+
+    def cancel_auto_rollback_countdown(self) -> None:
+        self.cancel_timer('rollback_slo_failure')
 
     def start_slo_watcher_threads(self) -> None:
         _, self.slo_watchers = watch_slos_for_service(
@@ -1002,6 +1082,9 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             all_slos_callback=self.all_slos_callback,
             sfx_api_token=load_system_paasta_config().get_monitoring_config()['signalfx_api_key'],
         )
+
+    def timer_started(self) -> None:
+        self.update_slack()
 
 
 class ClusterData:

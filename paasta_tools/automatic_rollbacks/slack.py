@@ -59,29 +59,37 @@ def get_slack_blocks_for_deployment(
     if slo_watchers is not None and len(slo_watchers) > 0:
         num_failing = len([w for w in slo_watchers if w.failing])
         if num_failing > 0:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing",
-                },
-            })
+            slo_text = f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing"
         else:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f":ok_hand: All {len(slo_watchers)} SLOs are currently passing.",
-                },
-            })
+
+            num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
+            num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
+            slo_text_components = []
+            if num_unknown > 0:
+                slo_text_components.append(f":thinking_face: {num_unknown} SLOs are missing data. ")
+            if num_bad_before_mark > 0:
+                slo_text_components.append(
+                    f":grimacing: {num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
+                )
+
+            remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
+
+            if remaining == len(slo_watchers):
+                slo_text = f":ok_hand: All {len(slo_watchers)} SLOs are currently passing."
+            else:
+                if remaining > 0:
+                    slo_text_components.append(f"The remaining {remaining} SLOs are currently passing.")
+                slo_text = ' '.join(slo_text_components)
     else:
-        blocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "No SLOs defined for this service.",
-            },
-        })
+        slo_text = "No SLOs defined for this service."
+
+    blocks.append({
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": slo_text,
+        },
+    })
 
     if button_elements != []:
         blocks.append({
@@ -104,6 +112,8 @@ def get_button_element(button, is_active, from_sha, to_sha):
         "complete": f"Complete deploy to {to_sha[:8]} :white_check_mark:",
         "abandon": f"Abandon deploy, staying on {from_sha[:8]} :x:",
         "snooze": f"Reset countdown",
+        "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
+        "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
     }
 
     if is_active is True:

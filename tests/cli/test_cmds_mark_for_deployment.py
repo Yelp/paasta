@@ -35,6 +35,7 @@ class FakeArgs:
     timeout = 10.0
     auto_certify_delay = 1.0
     auto_abandon_delay = 1.0
+    auto_rollback_delay = 1.0
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -189,7 +190,6 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         side_effect=on_enter_rolled_back_side_effect,
     ):
         assert mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback) == 1
-    print(mock_mark_for_deployment.mock_calls)
     mock_mark_for_deployment.assert_any_call(
         service='test_service',
         deploy_group='test_deploy_group',
@@ -434,6 +434,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         timeout=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
+        auto_rollback_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -478,6 +479,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         timeout=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
+        auto_rollback_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -521,6 +523,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         timeout=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
+        auto_rollback_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 0
@@ -563,6 +566,7 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         timeout=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
+        auto_rollback_delay=1,
     )
 
     mock_mark_for_deployment.return_value = 1

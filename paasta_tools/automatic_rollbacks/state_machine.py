@@ -2,6 +2,7 @@ import abc
 import asyncio
 import datetime
 import time
+from typing import Callable
 from typing import Collection
 from typing import Iterator
 from typing import List
@@ -15,10 +16,18 @@ import transitions.extensions
 from mypy_extensions import TypedDict
 
 
-class TransitionDefinition(TypedDict):
+class TransitionDefinitionBase(TypedDict):
+    """The required fields for TransitionDefinition; see
+    https://mypy.readthedocs.io/en/latest/more_types.html#mixing-required-and-non-required-items"""
     trigger: str
     source: Union[str, List[str], Tuple[str, ...]]
     dest: Union[str, List[str], Tuple[str, ...]]
+
+
+class TransitionDefinition(TransitionDefinitionBase, total=False):
+    unless: List[Union[str, Callable]]
+    conditions: List[Union[str, Callable]]
+    before: Callable
 
 
 class DeploymentProcess(abc.ABC):
@@ -38,6 +47,7 @@ class DeploymentProcess(abc.ABC):
 
         self.event_loop = asyncio.get_event_loop()
         self.finished_event = asyncio.Event(loop=self.event_loop)
+        self.timer_running = False
 
         self.machine = transitions.extensions.LockedMachine(
             model=self,
@@ -96,20 +106,51 @@ class DeploymentProcess(abc.ABC):
         def times_up():
             self.update_slack_thread(f"Time's up, will now {message_verb}.")
             self.trigger(trigger)
+            self.timer_handle = None
+            self.timer_running = False
 
         def schedule_callback():
             """Unfortunately, call_at is not threadsafe, and there's no call_at_threadsafe, so we need to schedule the
             call to call_at with call_soon_threadsafe."""
             self.timer_handle = self.event_loop.call_later(timeout, times_up)
+            self.timer_trigger = trigger  # This allows cancel_timer to selectively cancel.
+            self.timer_timeout = timeout  # saved for restart_timer
+            self.timer_message_verb = message_verb  # saved for restart_timer
+            # self.timer_started()
 
         self.event_loop.call_soon_threadsafe(schedule_callback)
+        self.timer_running = True
 
-    def cancel_timer(self):
-        try:
-            handle = self.timer_handle
-        except AttributeError:
+    def timer_started(self) -> None:
+        """Intended to be overridden by subclasses as a hook for when a timer is actually scheduled."""
+        pass
+
+    def cancel_timer(self, trigger=None):
+        """Cancel the running timer. If trigger is specified, only cancel the timer if its trigger matches."""
+        self.timer_running = False
+        handle = self.get_timer_handle()
+        if handle is None:
             return
-        handle.cancel()
+        if trigger is None or trigger == self.timer_trigger:
+            handle.cancel()
+            self.timer_handle = None
+
+    def restart_timer(self):
+        self.cancel_timer()
+        self.start_timer(
+            timeout=self.timer_timeout,
+            trigger=self.timer_trigger,
+            message_verb=self.timer_message_verb,
+        )
+
+    def is_timer_running(self) -> bool:
+        return self.timer_running
+
+    def get_timer_handle(self):
+        try:
+            return self.timer_handle
+        except AttributeError:
+            return None
 
     def before_state_change(self):
         self.cancel_timer()

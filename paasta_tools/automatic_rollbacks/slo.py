@@ -3,9 +3,11 @@ import os
 import textwrap
 import threading
 import time
+import traceback
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -25,7 +27,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.automatic_rollbacks.signalfx import tail_signalfx
 
 
-def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR):
+def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR) -> Generator:
     if not SLO_TRANSCODER_LOADED:
         return
 
@@ -46,15 +48,13 @@ def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR):
 class SLODemultiplexer:
     def __init__(
         self,
-        sink,
-        individual_slo_callback: Callable[[str, bool], None],
-        all_slos_callback: Callable[[bool], None],
+        sink: Any,
+        individual_slo_callback: Callable[['SLOWatcher'], None],
         start_timestamp: Optional[float] = None,
         max_duration: float = 300,
     ) -> None:
         self.sink = sink
         self.individual_slo_callback = individual_slo_callback
-        self.all_slos_callback = all_slos_callback
         self.max_duration = max_duration
         if start_timestamp is None:
             self.start_timestamp = time.time()
@@ -64,34 +64,30 @@ class SLODemultiplexer:
         self.slo_watchers_by_label: Dict[str, 'SLOWatcher'] = {}
         for slo in sink.slos:
             label = sink._get_detector_label(slo)
-            watcher = SLOWatcher(slo, self.watcher_callback, self.start_timestamp, label, max_duration=max_duration)
+            watcher = SLOWatcher(slo, individual_slo_callback, self.start_timestamp, label, max_duration=max_duration)
             self.slo_watchers_by_label[label] = watcher
-
-        self.failing = False
 
     def process_datapoint(self, props, datapoint, timestamp) -> None:
         slo_label = props['dimensions']['sf_metric'].rsplit('.', 1)[0]
         watcher = self.slo_watchers_by_label[slo_label]
         watcher.process_datapoint(props, datapoint, timestamp)
 
-    def watcher_callback(self, watcher: 'SLOWatcher') -> None:
-        old_failing = self.failing
-        new_failing = any(watcher.failing for watcher in self.slo_watchers_by_label.values())
-        self.individual_slo_callback(watcher.label, watcher.failing)
-
-        self.failing = new_failing
-        if new_failing == (not old_failing):
-            self.all_slos_callback(new_failing)
-
 
 class SLOWatcher:
-    def __init__(self, slo, callback, start_timestamp, label, max_duration=300):
+    def __init__(
+        self,
+        slo: Any,
+        callback: Callable[['SLOWatcher'], Any],
+        start_timestamp: float,
+        label: str,
+        max_duration: float = 300,
+    ) -> None:
         self.slo = slo
-        self.window = []
+        self.window: List[Tuple[float, float]] = []
         self.max_duration = max_duration
-        self.failing = None
-        self.bad_after_mark = None
-        self.bad_before_mark = None
+        self.failing: Optional[bool] = None
+        self.bad_after_mark: Optional[bool] = None
+        self.bad_before_mark: Optional[bool] = None
         self.callback = callback
         self.start_timestamp = start_timestamp
         self.label = label
@@ -101,20 +97,14 @@ class SLOWatcher:
         self.trim_window()
 
         if timestamp > self.start_timestamp:
-            new_bad_after_mark = self.is_window_bad()
-            new_bad_before_mark = self.bad_before_mark
+            self.bad_after_mark = self.is_window_bad()
         else:
-            new_bad_after_mark = self.bad_after_mark
-            new_bad_before_mark = self.is_window_bad()
+            self.bad_before_mark = self.is_window_bad()
 
-        new_failing = new_bad_after_mark and not new_bad_before_mark
         old_failing = self.failing
+        self.failing = self.bad_after_mark and not self.bad_before_mark
 
-        self.bad_after_mark = new_bad_after_mark
-        self.bad_before_mark = new_bad_before_mark
-        self.failing = new_failing
-
-        if new_failing == (not old_failing):
+        if self.failing == (not old_failing):
             self.callback(self)
 
     def trim_window(self) -> None:
@@ -134,33 +124,57 @@ class SLOWatcher:
         return (bad_datapoints / len(self.window)) >= 1. - self.slo.config.percent_of_duration / 100.
 
 
+def print_exceptions_wrapper(fn):
+    def inner(*args, **kwargs):
+        try:
+            fn(*args, **kwargs)
+        except Exception:
+            traceback.print_exc()
+            raise
+    return inner
+
+
 def watch_slos_for_service(
     service: str,
     individual_slo_callback: Callable[[str, bool], Any],
     all_slos_callback: Callable[[bool], Any],
     sfx_api_token: str,
-) -> Tuple[List[threading.Thread], List[SLODemultiplexer]]:
+    start_timestamp: Optional[float] = None,
+) -> Tuple[List[threading.Thread], List[SLOWatcher]]:
     threads = []
-    watchers = []
+    watchers: List[SLOWatcher] = []
+
+    failing = False
+
+    def callback_wrapper(watcher: 'SLOWatcher') -> None:
+        nonlocal failing
+        old_failing = failing
+        new_failing = any(w.failing for w in watchers)
+        individual_slo_callback(watcher.label, watcher.failing)
+
+        failing = new_failing
+
+        if new_failing == (not old_failing):
+            all_slos_callback(new_failing)
 
     for sink, query in get_slos_for_service(service):
-        watcher = SLODemultiplexer(
+        demux = SLODemultiplexer(
             sink,
-            individual_slo_callback=individual_slo_callback,
-            all_slos_callback=all_slos_callback,
+            individual_slo_callback=callback_wrapper,
+            start_timestamp=start_timestamp,
         )
         thread = threading.Thread(
-            target=functools.partial(
+            target=print_exceptions_wrapper(functools.partial(
                 tail_signalfx,
                 query,
                 lookback_seconds=30,
-                callback=watcher.process_datapoint,
+                callback=print_exceptions_wrapper(demux.process_datapoint),
                 sfx_api_token=sfx_api_token,
-            ),
+            )),
             daemon=True,
         )
         threads.append(thread)
         thread.start()
-        watchers.append(watcher)
+        watchers.extend(demux.slo_watchers_by_label.values())
 
     return threads, watchers
