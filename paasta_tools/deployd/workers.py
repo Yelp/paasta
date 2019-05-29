@@ -97,6 +97,7 @@ class PaastaDeployWorker(PaastaThread):
                     bounce_timers=bounce_timers,
                     priority=service_instance.priority,
                     failures=failures,
+                    processed_count=service_instance.processed_count + 1,
                 )
                 self.instances_to_bounce_later.put(service_instance)
             time.sleep(0.1)
@@ -129,9 +130,10 @@ class PaastaDeployWorker(PaastaThread):
                               bounce_again_in_seconds,
                           ))
         else:
-            bounce_timers.bounce_length.stop()
             self.log.info("{}.{} in steady state".format(
                 service_instance.service,
                 service_instance.instance,
             ))
+            if service_instance.processed_count > 0:
+                bounce_timers.bounce_length.stop()
         return BounceResults(bounce_again_in_seconds, return_code, bounce_timers)

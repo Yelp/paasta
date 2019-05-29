@@ -49,6 +49,7 @@ class TestDedupedPriorityQueue(unittest.TestCase):
             bounce_by=1,
             bounce_timers=None,
             failures=0,
+            processed_count=0,
         )
 
     def test_put(self):
@@ -78,6 +79,7 @@ class TestDedupedPriorityQueue(unittest.TestCase):
                 bounce_by=1,
                 bounce_timers=None,
                 failures=0,
+                processed_count=0,
             )
             self.queue.bouncing.add('universe.c137')
             mock_paasta_queue_get.return_value = self.mock_service_instance
@@ -398,6 +400,7 @@ class TestDeployDaemon(unittest.TestCase):
                     bounce_by=1,
                     bounce_timers=None,
                     failures=0,
+                    processed_count=0,
                 )),
                 mock.call(BaseServiceInstance(
                     service='universe',
@@ -407,6 +410,7 @@ class TestDeployDaemon(unittest.TestCase):
                     bounce_by=1,
                     bounce_timers=None,
                     failures=0,
+                    processed_count=0,
                 )),
             ]
             self.deployd.instances_to_bounce_later.put.assert_has_calls(calls, any_order=True)
