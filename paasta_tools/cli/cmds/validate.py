@@ -30,6 +30,7 @@ from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.chronos_tools import TMP_JOB_IDENTIFIER
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
@@ -71,16 +72,16 @@ UNKNOWN_SERVICE = "Unable to determine service to validate.\n" \
                   % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
 
 
-def invalid_chronos_instance(cluster, instance, output):
+def invalid_chronos_instances(output):
     return failure(
-        'chronos-%s.yaml has an invalid instance: %s.\n  %s\n  '
-        'More info:' % (cluster, instance, output),
+        f'{output}'
+        'More info:',
         "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#chronos-clustername-yaml",
     )
 
 
-def valid_chronos_instance(cluster, instance):
-    return success(f'chronos-{cluster}.yaml has a valid instance: {instance}.')
+def valid_chronos_instances():
+    return success(f'chronos instances are valid.')
 
 
 def invalid_tron_namespace(cluster, output, filename):
@@ -294,8 +295,9 @@ def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
     return returncode
 
 
-def validate_chronos(service_path):
-    """Check that any chronos configurations are valid"""
+def validate_chronos_dependencies(service_path):
+    """Check that any chronos configurations across a cluster with dependencies
+    references a real job elsewhere"""
     soa_dir, service = path_to_soa_dir_service(service_path)
     instance_type = 'chronos'
     chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
@@ -308,8 +310,9 @@ def validate_chronos(service_path):
             "identifier used for temporary jobs" % TMP_JOB_IDENTIFIER
         ))
         return False
+    check_msgs = []
     for cluster in list_clusters(service, soa_dir, instance_type):
-        services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
+        services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type=instance_type, soa_dir=soa_dir)
         valid_services = {f"{name}{chronos_spacer}{instance}" for name, instance in services_in_cluster}
         for instance in list_all_instances_for_service(
                 service=service, clusters=[cluster], instance_type=instance_type,
@@ -317,26 +320,51 @@ def validate_chronos(service_path):
         ):
             cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
             parents = cjc.get_parents() or []
-            checks_passed, check_msgs = cjc.validate()
 
             for parent in parents:
                 if not check_parent_format(parent):
                     continue
                 if f"{service}{chronos_spacer}{instance}" == parent:
-                    checks_passed = False
                     check_msgs.append("Job %s cannot depend on itself" % parent)
                 elif parent not in valid_services:
-                    checks_passed = False
                     check_msgs.append("Parent job %s could not be found" % parent)
 
-            # Remove duplicate check_msgs
-            unique_check_msgs = list(set(check_msgs))
+    # Remove duplicate check_msgs
+    unique_check_msgs = list(set(check_msgs))
+    returncode = len(unique_check_msgs) == 0
+    if not returncode:
+        paasta_print(invalid_chronos_instances("\n  ".join(unique_check_msgs)))
+    else:
+        paasta_print(valid_chronos_instances())
+    return returncode
 
-            if not checks_passed:
-                paasta_print(invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs)))
-                returncode = False
-            else:
-                paasta_print(valid_chronos_instance(cluster, instance))
+
+def validate_paasta_objects(service_path):
+    soa_dir, service = path_to_soa_dir_service(service_path)
+
+    returncode = True
+    messages = []
+    for cluster in list_clusters(service, soa_dir):
+        for instance in list_all_instances_for_service(
+                service=service, clusters=[cluster],
+                soa_dir=soa_dir,
+        ):
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            messages.extend(instance_config.validate())
+    returncode = len(messages) == 0
+
+    if messages:
+        errors = "\n".join(messages)
+        paasta_print(failure((f"There were failures validating {service}: {errors}"), ""))
+    else:
+        paasta_print(success(f"All PaaSTA Instances for are valid for all clusters"))
+
     return returncode
 
 
@@ -377,10 +405,13 @@ def paasta_validate_soa_configs(service_path):
     if not validate_all_schemas(service_path):
         returncode = False
 
-    if not validate_chronos(service_path):
+    if not validate_chronos_dependencies(service_path):
         returncode = False
 
     if not validate_tron(service_path):
+        returncode = False
+
+    if not validate_paasta_objects(service_path):
         returncode = False
 
     if not validate_unique_instance_names(service_path):
