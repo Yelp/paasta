@@ -462,6 +462,8 @@ def test_autoscale_marathon_instance():
         'paasta_tools.autoscaling.autoscaling_service_lib.set_instances_for_marathon_service',
         autospec=True,
     ) as mock_set_instances_for_marathon_service, mock.patch(
+        'paasta_tools.autoscaling.autoscaling_service_lib.json', autospec=True,
+    ) as mock_json, mock.patch(
         'paasta_tools.autoscaling.autoscaling_service_lib.get_service_metrics_provider', autospec=True,
         **{'return_value.return_value': 0},
     ), mock.patch(
@@ -486,6 +488,7 @@ def test_autoscale_marathon_instance():
             service='fake-service', instance='fake-instance', instance_count=2,
         )
         mock_meteorite.create_gauge.call_count == 3
+        mock_json.dumps.call_count == 1
 
 
 def test_autoscale_marathon_instance_up_to_min_instances():
@@ -976,6 +979,7 @@ def test_autoscale_services_not_healthy():
         mock_write_to_log.assert_called_with(
             config=fake_marathon_service_config,
             line="Caught Exception Couldn't find any healthy marathon tasks",
+            level='debug',
         )
 
         mock_autoscale_marathon_instance.reset_mock()
