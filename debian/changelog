@@ -1,3 +1,12 @@
+paasta-tools (0.84.19) xenial; urgency=medium
+
+  * 0.84.19 tagged with 'make release'
+    Commit: Merge pull request #2258 from Yelp/CORESERV-
+    7915_write_dg_ps_to_nerve_dict  Return deploy_group and
+    paasta_instance for marathon services
+
+ -- Yann Landry <yann@yelp.com>  Thu, 30 May 2019 16:32:44 -0700
+
 paasta-tools (0.84.18) xenial; urgency=medium
 
   * 0.84.18 tagged with 'make release'
