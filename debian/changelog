@@ -1,3 +1,11 @@
+paasta-tools (0.84.18) xenial; urgency=medium
+
+  * 0.84.18 tagged with 'make release'
+    Commit: Merge pull request #2256 from Yelp/kubecontext-env-var  use
+    KUBECONTEXT env var to load particular kubernetes config context
+
+ -- Sheng Ran <ran@yelp.com>  Thu, 30 May 2019 07:28:27 -0700
+
 paasta-tools (0.84.17) xenial; urgency=medium
 
   * 0.84.17 tagged with 'make release'
