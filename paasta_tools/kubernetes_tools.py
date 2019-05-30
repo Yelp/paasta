@@ -943,6 +943,7 @@ class KubeClient:
     def __init__(self) -> None:
         kube_config.load_kube_config(
             config_file=os.environ.get('KUBECONFIG', KUBE_CONFIG_PATH),
+            context=os.environ.get('KUBECONTEXT'),
         )
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(*args, **kwargs),
