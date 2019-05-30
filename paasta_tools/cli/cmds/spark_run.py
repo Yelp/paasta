@@ -355,6 +355,7 @@ def get_spark_env(
             args.spark_args,
             spark_ui_port,
         )
+        spark_env['SPARK_DAEMON_CLASSPATH'] = '/opt/spark/extra_jars/*'
         spark_env['SPARK_NO_DAEMONIZE'] = 'true'
 
     return spark_env

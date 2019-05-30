@@ -379,6 +379,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
     def test_get_kubernetes_environment(self):
         ret = self.deployment.get_kubernetes_environment()
         assert 'PAASTA_POD_IP' in [env.name for env in ret]
+        assert 'POD_NAME' in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
         with mock.patch(
