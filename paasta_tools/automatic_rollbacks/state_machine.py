@@ -116,14 +116,9 @@ class DeploymentProcess(abc.ABC):
             self.timer_trigger = trigger  # This allows cancel_timer to selectively cancel.
             self.timer_timeout = timeout  # saved for restart_timer
             self.timer_message_verb = message_verb  # saved for restart_timer
-            # self.timer_started()
 
         self.event_loop.call_soon_threadsafe(schedule_callback)
         self.timer_running = True
-
-    def timer_started(self) -> None:
-        """Intended to be overridden by subclasses as a hook for when a timer is actually scheduled."""
-        pass
 
     def cancel_timer(self, trigger=None):
         """Cancel the running timer. If trigger is specified, only cancel the timer if its trigger matches."""

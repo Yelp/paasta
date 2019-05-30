@@ -3,8 +3,13 @@ import logging
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
+from typing import Collection
+from typing import Dict
+from typing import List
 
 import requests
+
+from paasta_tools.automatic_rollbacks.slo import SLOWatcher
 
 try:
     from scribereader import scribereader
@@ -27,7 +32,7 @@ def get_slack_blocks_for_deployment(
     from_sha=None,
     to_sha=None,
     slo_watchers=None,
-):
+) -> List[Dict]:
 
     button_elements = get_button_elements(
         available_buttons, active_button=active_button,
@@ -56,6 +61,25 @@ def get_slack_blocks_for_deployment(
             },
         },
     ]
+
+    blocks.append({
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": get_slo_text(slo_watchers),
+        },
+    })
+
+    if button_elements != []:
+        blocks.append({
+            "type": "actions",
+            "block_id": "deployment_actions",
+            "elements": button_elements,
+        })
+    return blocks
+
+
+def get_slo_text(slo_watchers: Collection[SLOWatcher]) -> str:
     if slo_watchers is not None and len(slo_watchers) > 0:
         num_failing = len([w for w in slo_watchers if w.failing])
         if num_failing > 0:
@@ -83,21 +107,7 @@ def get_slack_blocks_for_deployment(
     else:
         slo_text = "No SLOs defined for this service."
 
-    blocks.append({
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": slo_text,
-        },
-    })
-
-    if button_elements != []:
-        blocks.append({
-            "type": "actions",
-            "block_id": "deployment_actions",
-            "elements": button_elements,
-        })
-    return blocks
+    return slo_text
 
 
 def get_button_element(button, is_active, from_sha, to_sha):

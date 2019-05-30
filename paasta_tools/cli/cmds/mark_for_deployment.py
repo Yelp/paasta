@@ -1083,9 +1083,6 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             sfx_api_token=load_system_paasta_config().get_monitoring_config()['signalfx_api_key'],
         )
 
-    def timer_started(self) -> None:
-        self.update_slack()
-
 
 class ClusterData:
     """An auxiliary data transfer class.
