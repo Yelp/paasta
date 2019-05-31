@@ -22,7 +22,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from math import ceil
 from math import floor
-from typing import Dict
 from typing import Iterator
 from typing import Mapping
 from typing import Optional
@@ -608,6 +607,7 @@ def autoscale_marathon_instance(
                 num_healthy_instances=num_healthy_instances,
                 new_instance_count=new_instance_count,
                 safe_downscaling_threshold=safe_downscaling_threshold,
+                task_data_insufficient=task_data_insufficient,
             )
             if new_instance_count != current_instances:
                 if new_instance_count < current_instances and task_data_insufficient:
@@ -644,12 +644,13 @@ def _record_autoscaling_decision(
     marathon_service_config: MarathonServiceConfig,
     autoscaling_params: AutoscalingParamsDict,
     utilization: float,
-    log_utilization_data: Dict[str, str],
+    log_utilization_data: Mapping[any, any],
     error: float,
     current_instances: int,
     num_healthy_instances: int,
     new_instance_count: int,
     safe_downscaling_threshold: int,
+    task_data_insufficient: bool,
 ) -> None:
     """
     Based on the calculations made, perform observability side effects.
@@ -670,6 +671,7 @@ def _record_autoscaling_decision(
                 num_healthy_instances=num_healthy_instances,
                 new_instance_count=new_instance_count,
                 safe_downscaling_threshold=safe_downscaling_threshold,
+                task_data_insufficient=task_data_insufficient,
             ),
         ),
         level='debug',
