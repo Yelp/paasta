@@ -598,25 +598,41 @@ def autoscale_marathon_instance(
                 num_healthy_instances=num_healthy_instances,
             )
             safe_downscaling_threshold = int(current_instances * 0.7)
-            if new_instance_count > current_instances or \
-               new_instance_count < current_instances and not task_data_insufficient:
-                set_instances_for_marathon_service(
-                    service=marathon_service_config.service,
-                    instance=marathon_service_config.instance,
-                    instance_count=new_instance_count,
-                )
             _record_autoscaling_decision(
-                marathon_service_config,
-                autoscaling_params,
-                utilization,
-                log_utilization_data,
-                error,
-                current_instances,
-                num_healthy_instances,
-                new_instance_count,
-                task_data_insufficient,
-                safe_downscaling_threshold,
+                marathon_service_config=marathon_service_config,
+                autoscaling_params=autoscaling_params,
+                utilization=utilization,
+                log_utilization_data=log_utilization_data,
+                error=error,
+                current_instances=current_instances,
+                num_healthy_instances=num_healthy_instances,
+                new_instance_count=new_instance_count,
+                safe_downscaling_threshold=safe_downscaling_threshold,
             )
+            if new_instance_count != current_instances:
+                if new_instance_count < current_instances and task_data_insufficient:
+                    write_to_log(
+                        config=marathon_service_config,
+                        line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
+                        'This can happen because tasks are delayed/waiting/unhealthy or because we are '
+                        'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
+                        'we make a decision to scale down.',
+                        level='debug',
+                    )
+                    return
+                else:
+                    set_instances_for_marathon_service(
+                        service=marathon_service_config.service,
+                        instance=marathon_service_config.instance,
+                        instance_count=new_instance_count,
+                    )
+                    write_to_log(
+                        config=marathon_service_config,
+                        line='Scaling from %d to %d instances (%s)' % (
+                            current_instances, new_instance_count, humanize_error(error),
+                        ),
+                        level='event',
+                    )
     except LockHeldException:
         log.warning("Skipping autoscaling run for {service}.{instance} because the lock is held".format(
             service=marathon_service_config.service,
@@ -633,7 +649,6 @@ def _record_autoscaling_decision(
     current_instances: int,
     num_healthy_instances: int,
     new_instance_count: int,
-    task_data_insufficient: bool,
     safe_downscaling_threshold: int,
 ) -> None:
     """
@@ -654,42 +669,11 @@ def _record_autoscaling_decision(
                 current_instances=current_instances,
                 num_healthy_instances=num_healthy_instances,
                 new_instance_count=new_instance_count,
-                task_data_insufficient=task_data_insufficient,
                 safe_downscaling_threshold=safe_downscaling_threshold,
             ),
         ),
         level='debug',
     )
-    if new_instance_count != current_instances:
-        if new_instance_count < current_instances and task_data_insufficient:
-            write_to_log(
-                config=marathon_service_config,
-                line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
-                        'This can happen because tasks are delayed/waiting/unhealthy or because we are '
-                        'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
-                        'we make a decision to scale down.',
-                level='debug',
-            )
-            return
-        if new_instance_count == safe_downscaling_threshold:
-            write_to_log(
-                config=marathon_service_config,
-                line='Autoscaler clamped: %s' % str(log_utilization_data),
-                level='debug',
-            )
-        write_to_log(
-            config=marathon_service_config,
-            line='Scaling from %d to %d instances (%s)' % (
-                current_instances, new_instance_count, humanize_error(error),
-            ),
-            level='event',
-        )
-    else:
-        write_to_log(
-            config=marathon_service_config,
-            line='Staying at %d instances (%s)' % (current_instances, humanize_error(error)),
-            level='debug',
-        )
     meteorite_dims = {
         'service_name': marathon_service_config.service,
         'decision_policy': autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
