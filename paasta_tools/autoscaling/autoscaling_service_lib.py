@@ -644,7 +644,7 @@ def _record_autoscaling_decision(
     marathon_service_config: MarathonServiceConfig,
     autoscaling_params: AutoscalingParamsDict,
     utilization: float,
-    log_utilization_data: Mapping[any, any],
+    log_utilization_data: Mapping[str, str],
     error: float,
     current_instances: int,
     num_healthy_instances: int,
