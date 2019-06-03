@@ -130,6 +130,9 @@ def sync_secrets(
         cluster_names=[cluster],
         secret_provider_kwargs=secret_provider_kwargs,
     )
+    if not os.path.isdir(secret_dir):
+        log.debug(f"No secrets dir for {service}")
+        return True
     with os.scandir(secret_dir) as secret_file_paths:
         for secret_file_path in secret_file_paths:
             if secret_file_path.path.endswith('json'):
