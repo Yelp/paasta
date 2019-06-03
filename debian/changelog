@@ -1,3 +1,11 @@
+paasta-tools (0.84.20) xenial; urgency=medium
+
+  * 0.84.20 tagged with 'make release'
+    Commit: Merge pull request #2255 from Yelp/fix-deployd-bounce-length
+    Fix deployd bounce_length timer
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 03 Jun 2019 03:34:00 -0700
+
 paasta-tools (0.84.19) xenial; urgency=medium
 
   * 0.84.19 tagged with 'make release'
