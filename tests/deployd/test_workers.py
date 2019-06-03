@@ -96,6 +96,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 failures=0,
                 priority=0,
+                processed_count=0,
             )
             self.mock_instances_to_bounce_now.get.return_value = mock_si
             with raises(LoopBreak):
@@ -117,6 +118,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 bounce_timers=mock_timers,
                 failures=1,
                 priority=0,
+                processed_count=1,
             )
             with raises(LoopBreak):
                 self.worker.run()
@@ -128,6 +130,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 failures=0,
                 priority=0,
+                processed_count=0,
             )
             self.mock_instances_to_bounce_now.get.return_value = mock_si
             mock_process_service_instance.side_effect = Exception
@@ -139,6 +142,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 bounce_timers=mock_si.bounce_timers,
                 failures=1,
                 priority=0,
+                processed_count=1,
             )
             with raises(LoopBreak):
                 self.worker.run()
@@ -165,6 +169,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 service='universe',
                 instance='c137',
                 failures=0,
+                processed_count=0,
             )
             ret = self.worker.process_service_instance(mock_si)
             expected = BounceResults(None, 0, mock_setup_timers.return_value)
@@ -180,8 +185,24 @@ class TestPaastaDeployWorker(unittest.TestCase):
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
             assert not mock_setup_timers.return_value.processed_by_worker.start.called
+            assert not mock_setup_timers.return_value.bounce_length.stop.called
+
+            mock_si = mock.Mock(
+                service='universe',
+                instance='c137',
+                failures=0,
+                processed_count=1,
+            )
+            mock_setup_timers.return_value.bounce_length.stop.reset_mock()
+            ret = self.worker.process_service_instance(mock_si)
             assert mock_setup_timers.return_value.bounce_length.stop.called
 
+            mock_si = mock.Mock(
+                service='universe',
+                instance='c137',
+                failures=0,
+                processed_count=1,
+            )
             mock_deploy_marathon_service.return_value = (0, 60)
             mock_setup_timers.return_value.bounce_length.stop.reset_mock()
             ret = self.worker.process_service_instance(mock_si)
