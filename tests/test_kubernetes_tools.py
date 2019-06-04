@@ -792,7 +792,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     containers=mock_get_kubernetes_containers.return_value,
                     restart_policy='Always',
                     volumes=[],
-                    dns_policy='Default',
                 ),
             )
 

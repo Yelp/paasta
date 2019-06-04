@@ -33,6 +33,7 @@ BaseServiceInstance = namedtuple(
         'bounce_timers',
         'failures',
         'priority',
+        'processed_count',
     ],
 )
 
@@ -50,6 +51,7 @@ class ServiceInstance(BaseServiceInstance):
         failures: int = 0,
         bounce_timers: Optional[BounceTimers] = None,
         priority: Optional[int] = None,
+        processed_count: int = 0,
     ) -> 'ServiceInstance':
         if priority is None:
             priority = get_priority(service, instance, cluster)
@@ -62,6 +64,7 @@ class ServiceInstance(BaseServiceInstance):
             failures=failures,
             bounce_timers=bounce_timers,
             priority=priority,
+            processed_count=processed_count,
         )
 
 

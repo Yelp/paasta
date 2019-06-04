@@ -492,8 +492,18 @@ class TestMarathonTools:
             long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666}),
         ]
         expected = [
-            ('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666}),
-            ('no_docstrings.dos', {'binary': 1, 'port': 2222, 'proxy_port': 6666}),
+            (
+                'no_test.uno', {
+                    'clock': 0, 'port': 1111, 'proxy_port': 6666,
+                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                },
+            ),
+            (
+                'no_docstrings.dos', {
+                    'binary': 1, 'port': 2222, 'proxy_port': 6666,
+                    'paasta_instance': 'forever_abandoned', 'deploy_group': 'a_deploy_group',
+                },
+            ),
         ]
         with mock.patch(
             'paasta_tools.marathon_tools.marathon_services_running_here',
@@ -510,6 +520,7 @@ class TestMarathonTools:
             def mock_get_registrations(*args, **kwargs):
                 return registrations.pop()
             mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
+            mock_load_marathon_service_config.return_value.get_deploy_group.return_value = 'a_deploy_group'
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             mara_srvs_here_patch.assert_called_once_with()
@@ -550,10 +561,30 @@ class TestMarathonTools:
             ('no_docstrings', 'quatro'): long_running_service_tools.ServiceNamespaceConfig({'proxy_port': 6669}),
         }
         expected = [
-            ('no_test.uno', {'port': 1111, 'proxy_port': 6666}),
-            ('no_test.dos', {'port': 1111, 'proxy_port': 6667}),
-            ('no_test.tres', {'port': 1111, 'proxy_port': 6668}),
-            ('no_docstrings.quatro', {'port': 2222, 'proxy_port': 6669}),
+            (
+                'no_test.uno', {
+                    'port': 1111, 'proxy_port': 6666,
+                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                },
+            ),
+            (
+                'no_test.dos', {
+                    'port': 1111, 'proxy_port': 6667,
+                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                },
+            ),
+            (
+                'no_test.tres', {
+                    'port': 1111, 'proxy_port': 6668,
+                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                },
+            ),
+            (
+                'no_docstrings.quatro', {
+                    'port': 2222, 'proxy_port': 6669,
+                    'paasta_instance': 'forever_abandoned', 'deploy_group': 'a_deploy_group',
+                },
+            ),
         ]
         with mock.patch(
             'paasta_tools.marathon_tools.marathon_services_running_here',
@@ -570,6 +601,7 @@ class TestMarathonTools:
             def mock_get_registrations(*args, **kwargs):
                 return namespaces.pop()
             mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
+            mock_load_marathon_service_config.return_value.get_deploy_group.return_value = 'a_deploy_group'
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             mara_srvs_here_patch.assert_called_once_with()
@@ -609,7 +641,12 @@ class TestMarathonTools:
             long_running_service_tools.ServiceNamespaceConfig({'binary': 1}),
             long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666}),
         ]
-        expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666})]
+        expected = [(
+            'no_test.uno', {
+                'clock': 0, 'port': 1111, 'proxy_port': 6666,
+                'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+            },
+        )]
         with mock.patch(
             'paasta_tools.marathon_tools.marathon_services_running_here',
             autospec=True,
@@ -625,6 +662,7 @@ class TestMarathonTools:
             def mock_get_registrations(*args, **kwargs):
                 return registrations.pop()
             mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
+            mock_load_marathon_service_config.return_value.get_deploy_group.return_value = 'a_deploy_group'
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             mara_srvs_here_patch.assert_called_once_with()

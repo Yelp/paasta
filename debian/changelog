@@ -1,3 +1,36 @@
+paasta-tools (0.84.22) xenial; urgency=medium
+
+  * 0.84.22 tagged with 'make release'
+    Commit: Merge pull request #2262 from Yelp/use-ClusterFirst-
+    DnsPolicy-for-kube-pods  Use ClusterFirst DNS policy for kube pods
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 04 Jun 2019 05:08:32 -0700
+
+paasta-tools (0.84.21) xenial; urgency=medium
+
+  * 0.84.21 tagged with 'make release'
+    Commit: Merge pull request #2261 from Yelp/fix-secrets-syncer  Fix
+    secrets syncer FileNotFoundError
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 04 Jun 2019 02:40:43 -0700
+
+paasta-tools (0.84.20) xenial; urgency=medium
+
+  * 0.84.20 tagged with 'make release'
+    Commit: Merge pull request #2255 from Yelp/fix-deployd-bounce-length
+    Fix deployd bounce_length timer
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 03 Jun 2019 03:34:00 -0700
+
+paasta-tools (0.84.19) xenial; urgency=medium
+
+  * 0.84.19 tagged with 'make release'
+    Commit: Merge pull request #2258 from Yelp/CORESERV-
+    7915_write_dg_ps_to_nerve_dict  Return deploy_group and
+    paasta_instance for marathon services
+
+ -- Yann Landry <yann@yelp.com>  Thu, 30 May 2019 16:32:44 -0700
+
 paasta-tools (0.84.18) xenial; urgency=medium
 
   * 0.84.18 tagged with 'make release'
