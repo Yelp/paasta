@@ -89,6 +89,8 @@ def test_sync_secrets():
         'paasta_tools.kubernetes.bin.paasta_secrets_sync.update_kubernetes_secret_signature', autospec=True,
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         'paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load', autospec=True,
+    ), mock.patch(
+        'os.path.isdir', autospec=True, return_value=True,
     ):
         mock_scandir.return_value.__enter__.return_value = []
         mock_client = mock.Mock()
