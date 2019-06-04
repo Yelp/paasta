@@ -814,7 +814,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     docker_volumes=docker_volumes,
                     aws_ebs_volumes=self.get_aws_ebs_volumes(),
                 ),
-                dns_policy="Default",
             ),
         )
 
