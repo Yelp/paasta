@@ -1,3 +1,10 @@
+paasta-tools (0.85.0) xenial; urgency=medium
+
+  * 0.85.0 tagged with 'make release'
+    Commit: Merge branch "slo_rollbacks"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 04 Jun 2019 10:10:14 -0700
+
 paasta-tools (0.84.22) xenial; urgency=medium
 
   * 0.84.22 tagged with 'make release'
