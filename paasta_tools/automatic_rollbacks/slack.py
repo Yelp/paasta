@@ -1,15 +1,22 @@
+import abc
 import json
 import logging
+import time
+import traceback
 from multiprocessing import Process
 from multiprocessing import Queue
 from queue import Empty
-from typing import Collection
+from threading import Thread
 from typing import Dict
 from typing import List
+from typing import Optional
 
 import requests
+import transitions
+from slackclient import SlackClient
 
-from paasta_tools.automatic_rollbacks.slo import SLOWatcher
+from paasta_tools.automatic_rollbacks.state_machine import DeploymentProcess
+
 
 try:
     from scribereader import scribereader
@@ -19,164 +26,6 @@ except ImportError:
 SLACK_WEBHOOK_STREAM = 'stream_slack_incoming_webhook'
 SCRIBE_ENV = 'uswest1-prod'
 log = logging.getLogger(__name__)
-
-
-def get_slack_blocks_for_deployment(
-    deployment_name: str,
-    message,
-    last_action=None,
-    status=None,
-    progress=None,
-    active_button=None,
-    available_buttons=["rollback", "forward"],
-    from_sha=None,
-    to_sha=None,
-    slo_watchers=None,
-) -> List[Dict]:
-
-    button_elements = get_button_elements(
-        available_buttons, active_button=active_button,
-        from_sha=from_sha, to_sha=to_sha,
-    )
-    blocks = [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"{deployment_name}",
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": message,
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"State machine: `{status}`\nProgress: {progress}\nLast operator action: {last_action}",
-            },
-        },
-    ]
-
-    blocks.append({
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": get_slo_text(slo_watchers),
-        },
-    })
-
-    if button_elements != []:
-        blocks.append({
-            "type": "actions",
-            "block_id": "deployment_actions",
-            "elements": button_elements,
-        })
-    return blocks
-
-
-def get_slo_text(slo_watchers: Collection[SLOWatcher]) -> str:
-    if slo_watchers is not None and len(slo_watchers) > 0:
-        num_failing = len([w for w in slo_watchers if w.failing])
-        if num_failing > 0:
-            slo_text = f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing"
-        else:
-
-            num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
-            num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
-            slo_text_components = []
-            if num_unknown > 0:
-                slo_text_components.append(f":thinking_face: {num_unknown} SLOs are missing data. ")
-            if num_bad_before_mark > 0:
-                slo_text_components.append(
-                    f":grimacing: {num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
-                )
-
-            remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
-
-            if remaining == len(slo_watchers):
-                slo_text = f":ok_hand: All {len(slo_watchers)} SLOs are currently passing."
-            else:
-                if remaining > 0:
-                    slo_text_components.append(f"The remaining {remaining} SLOs are currently passing.")
-                slo_text = ' '.join(slo_text_components)
-    else:
-        slo_text = "No SLOs defined for this service."
-
-    return slo_text
-
-
-def get_button_element(button, is_active, from_sha, to_sha):
-    active_button_texts = {
-        "rollback": f"Rolling Back to {from_sha[:8]} :zombocom:",
-        "forward": f"Rolling Forward to {to_sha[:8]} :zombocom:",
-    }
-
-    inactive_button_texts = {
-        "rollback": f"Roll Back to {from_sha[:8]} :arrow_backward:",
-        "forward": f"Continue Forward to {to_sha[:8]} :arrow_forward:",
-        "complete": f"Complete deploy to {to_sha[:8]} :white_check_mark:",
-        "abandon": f"Abandon deploy, staying on {from_sha[:8]} :x:",
-        "snooze": f"Reset countdown",
-        "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
-        "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
-    }
-
-    if is_active is True:
-        confirm = False
-        text = active_button_texts[button]
-    else:
-        confirm = get_confirmation_object(button)
-        text = inactive_button_texts[button]
-
-    element = {
-        "type": "button",
-        "text": {
-            "type": "plain_text",
-            "text": text,
-            "emoji": True,
-        },
-        "confirm": confirm,
-        "value": button,
-    }
-    if not confirm:
-        del element["confirm"]
-    return element
-
-
-def get_button_elements(buttons, active_button=None, from_sha=None, to_sha=None):
-    elements = []
-    for button in buttons:
-        is_active = button == active_button
-        elements.append(
-            get_button_element(button=button, is_active=is_active, from_sha=from_sha, to_sha=to_sha),
-        )
-    return elements
-
-
-def get_confirmation_object(action):
-    return {
-        "title": {
-            "type": "plain_text",
-            "text": "Are you sure?",
-        },
-        "text": {
-            "type": "mrkdwn",
-            "text": f"Did you mean to press {action}?",
-        },
-        "confirm": {
-            "type": "plain_text",
-            "text": "Yes. Do it!",
-        },
-        "deny": {
-            "type": "plain_text",
-            "text": "Stop, I've changed my mind!",
-        },
-    }
 
 
 class ButtonPress():
@@ -242,3 +91,234 @@ def get_slack_events():
                 yield event
         except Empty:
             pass
+
+
+class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
+    def __init__(self) -> None:
+        super().__init__()
+        self.human_readable_status = "Initializing..."
+        self.slack_client = self.get_slack_client()
+        self.last_action = None
+
+        slack_thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
+        slack_thread.start()
+
+        timer_thread = Thread(target=self.periodically_update_slack, args=(), daemon=True)
+        timer_thread.start()
+
+    @abc.abstractmethod
+    def get_slack_client(self) -> SlackClient:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_slack_channel(self) -> str:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_deployment_name(self) -> str:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_progress(self) -> str:
+        raise NotImplementedError()
+
+    def get_active_button(self) -> Optional[str]:
+        return None
+
+    @abc.abstractmethod
+    def get_button_element(self, button, is_active):
+        raise NotImplementedError()
+
+    def get_slack_blocks_for_deployment(self) -> List[Dict]:
+        status = getattr(self, 'state', None) or 'Uninitialized'
+        deployment_name = self.get_deployment_name()
+        message = self.human_readable_status
+        progress = self.get_progress()
+        last_action = self.last_action
+
+        button_elements = self.get_button_elements()
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"{deployment_name}",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": message,
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"State machine: `{status}`\nProgress: {progress}\nLast operator action: {last_action}",
+                },
+            },
+        ]
+
+        slo_text = self.get_slo_text()
+        if slo_text:
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": self.get_slo_text(),
+                },
+            })
+
+        if button_elements != []:
+            blocks.append({
+                "type": "actions",
+                "block_id": "deployment_actions",
+                "elements": button_elements,
+            })
+        return blocks
+
+    def get_slo_text(self) -> str:
+        slo_watchers = getattr(self, 'slo_watchers', None)
+        if slo_watchers is not None and len(slo_watchers) > 0:
+            num_failing = len([w for w in slo_watchers if w.failing])
+            if num_failing > 0:
+                slo_text = f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing"
+            else:
+
+                num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
+                num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
+                slo_text_components = []
+                if num_unknown > 0:
+                    slo_text_components.append(f":thinking_face: {num_unknown} SLOs are missing data. ")
+                if num_bad_before_mark > 0:
+                    slo_text_components.append(
+                        f":grimacing: {num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
+                    )
+
+                remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
+
+                if remaining == len(slo_watchers):
+                    slo_text = f":ok_hand: All {len(slo_watchers)} SLOs are currently passing."
+                else:
+                    if remaining > 0:
+                        slo_text_components.append(f"The remaining {remaining} SLOs are currently passing.")
+                    slo_text = ' '.join(slo_text_components)
+        else:
+            slo_text = "No SLOs defined for this service."
+
+        return slo_text
+
+    def get_button_elements(self):
+        elements = []
+        active_button = self.get_active_button()
+        for button in self.get_available_buttons():
+            is_active = button == active_button
+            elements.append(
+                self.get_button_element(button=button, is_active=is_active),
+            )
+        return elements
+
+    def get_confirmation_object(self, action):
+        return {
+            "title": {
+                "type": "plain_text",
+                "text": "Are you sure?",
+            },
+            "text": {
+                "type": "mrkdwn",
+                "text": f"Did you mean to press {action}?",
+            },
+            "confirm": {
+                "type": "plain_text",
+                "text": "Yes. Do it!",
+            },
+            "deny": {
+                "type": "plain_text",
+                "text": "Stop, I've changed my mind!",
+            },
+        }
+
+    def get_available_buttons(self) -> List[str]:
+        buttons = []
+
+        if self.is_terminal_state(self.state):
+            # If we're about to exit, always clear the buttons, since once we exit the buttons will stop working.
+            return []
+
+        for trigger in self.machine.get_triggers(self.state):
+            suffix = '_button_clicked'
+            if trigger.endswith(suffix):
+                if all(
+                    cond.target == self.machine.resolve_callable(
+                        cond.func,
+                        transitions.EventData(self.state, self, self.machine, self, args=(), kwargs={}),
+                    )()
+                    for transition in self.machine.get_transitions(source=self.state, trigger=trigger)
+                    for cond in transition.conditions
+                ):
+                    buttons.append(trigger[:-len(suffix)])
+
+        return buttons
+
+    def update_slack_thread(self, message):
+        log.debug(f"Updating slack thread with {message}")
+        resp = self.slack_client.api_call(
+            'chat.postMessage',
+            channel=self.slack_channel,
+            text=message,
+            thread_ts=self.slack_ts,
+        )
+        if resp["ok"] is not True:
+            log.error("Posting to slack failed: {}".format(resp["error"]))
+
+    def send_initial_slack_message(self):
+        blocks = self.get_slack_blocks_for_deployment()
+        resp = self.slack_client.api_call('chat.postMessage', blocks=blocks, channel=self.slack_channel)
+        self.slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
+        self.slack_channel_id = resp['channel']
+        if resp["ok"] is not True:
+            log.error("Posting to slack failed: {}".format(resp["error"]))
+
+    def update_slack(self):
+        blocks = self.get_slack_blocks_for_deployment()
+        resp = self.slack_client.api_call(
+            "chat.update",
+            channel=self.slack_channel_id,
+            blocks=blocks,
+            ts=self.slack_ts,
+        )
+        if resp["ok"] is not True:
+            log.error("Posting to slack failed: {}".format(resp["error"]))
+
+    def update_slack_status(self, message):
+        self.human_readable_status = message
+        self.update_slack()
+
+    def periodically_update_slack(self):
+        while self.state not in self.status_code_by_state():
+            self.update_slack()
+            time.sleep(20)
+
+    def is_relevant_buttonpress(self, buttonpress):
+        return self.slack_ts == buttonpress.thread_ts
+
+    def listen_for_slack_events(self):
+        log.debug("Listening for slack events...")
+        for event in get_slack_events():
+            log.debug(f"Got slack event: {event}")
+            buttonpress = event_to_buttonpress(event)
+            if self.is_relevant_buttonpress(buttonpress):
+                self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
+                self.last_action = buttonpress.action
+
+                try:
+                    self.trigger(f"{buttonpress.action}_button_clicked")
+                except (transitions.core.MachineError, AttributeError):
+                    self.update_slack_thread(f"Error: {traceback.format_exc()}")
+            else:
+                log.debug("But it was not relevant to this instance of mark-for-deployment")
+
+    def notify_users(self, message):
+        self.update_slack_thread(message)

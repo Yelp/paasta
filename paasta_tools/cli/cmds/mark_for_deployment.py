@@ -30,20 +30,19 @@ from threading import Event
 from threading import Thread
 from typing import Collection
 from typing import Iterator
-from typing import List
 from typing import Mapping
 from typing import Optional
 
 import progressbar
-import transitions
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
+from slackclient import SlackClient
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
-from paasta_tools.automatic_rollbacks import slack as arb_slack
 from paasta_tools.automatic_rollbacks import state_machine
+from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
 from paasta_tools.automatic_rollbacks.slo import watch_slos_for_service
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -568,7 +567,7 @@ class Progress():
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(state_machine.DeploymentProcess):
+class MarkForDeploymentProcess(SlackDeploymentProcess):
     rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
     rollforward_states = ['start_deploy', 'deploying', 'deployed']
 
@@ -605,7 +604,6 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
-        self.slack_client = get_slack_client()
         self.slack_ts = None
         self.slack_channel = self.get_slack_channel()
         self.slack_channel_id = None
@@ -618,10 +616,17 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         super().__init__()
         self.start_slo_watcher_threads()
         self.send_initial_slack_message()
-        slack_thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
-        slack_thread.start()
-        timer_thread = Thread(target=self.periodically_update_slack, args=(), daemon=True)
-        timer_thread.start()
+        self.ping_authors()
+
+    def get_progress(self) -> str:
+        return self.progress.human_readable()
+
+    def ping_authors(self):
+        authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
+        self.update_slack_thread(authors)
+
+    def get_slack_client(self) -> SlackClient:
+        return get_slack_client().sc
 
     def get_slack_channel(self) -> str:
         """ Safely get some slack channel to post to. Defaults to ``#test``.
@@ -632,65 +637,8 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         except (IndexError, AttributeError):
             return "#test"
 
-    def periodically_update_slack(self):
-        while self.state not in self.status_code_by_state():
-            self.update_slack()
-            time.sleep(20)
-
-    def deployment_name(self) -> str:
+    def get_deployment_name(self) -> str:
         return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
-
-    def send_initial_slack_message(self):
-        blocks = arb_slack.get_slack_blocks_for_deployment(
-            deployment_name=self.deployment_name(),
-            message=self.human_readable_status,
-            last_action=None,
-            status='Uninitialized',
-            active_button=self.get_active_button(),
-            available_buttons=[],
-            from_sha=self.old_git_sha,
-            to_sha=self.commit,
-            slo_watchers=self.slo_watchers,
-        )
-        resp = self.slack_client.post_single(blocks=blocks, channel=self.slack_channel)
-        self.slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
-        self.slack_channel_id = resp['channel']
-        if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
-        authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
-        self.update_slack_thread(authors)
-
-    def update_slack(self):
-        blocks = arb_slack.get_slack_blocks_for_deployment(
-            deployment_name=self.deployment_name(),
-            message=self.human_readable_status,
-            progress=self.progress.human_readable(),
-            last_action=self.last_action,
-            status=self.state,
-            active_button=self.get_active_button(),
-            available_buttons=self.get_available_buttons(),
-            from_sha=self.old_git_sha,
-            to_sha=self.commit,
-            slo_watchers=self.slo_watchers,
-        )
-        resp = self.slack_client.sc.api_call(
-            "chat.update",
-            channel=self.slack_channel_id,
-            blocks=blocks,
-            ts=self.slack_ts,
-        )
-        if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
-
-    def update_slack_thread(self, message):
-        log.debug(f"Updating slack thread with {message}")
-        self.slack_client.post_single(
-            channel=self.slack_channel, message=message, thread_ts=self.slack_ts,
-        )
-
-    def update_slack_status(self, message):
-        self.human_readable_status = message
-        self.update_slack()
 
     def on_enter_start_deploy(self):
         self.update_slack_status(f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}...")
@@ -761,6 +709,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'trigger': 'deploy_errored',
         }
         yield {
+
             'source': [s for s in self.states() if not self.is_terminal_state(s)],
             'dest': 'deploy_cancelled',
             'trigger': 'deploy_cancelled',
@@ -891,31 +840,6 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
 
         return codes
 
-    def is_terminal_state(self, state: str) -> bool:
-        return (state in self.status_code_by_state())
-
-    def get_available_buttons(self) -> List[str]:
-        buttons = []
-
-        if self.is_terminal_state(self.state):
-            # If we're about to exit, always clear the buttons, since once we exit the buttons will stop working.
-            return []
-
-        for trigger in self.machine.get_triggers(self.state):
-            suffix = '_button_clicked'
-            if trigger.endswith(suffix):
-                if all(
-                    cond.target == self.machine.resolve_callable(
-                        cond.func,
-                        transitions.EventData(self.state, self, self.machine, self, args=(), kwargs={}),
-                    )()
-                    for transition in self.machine.get_transitions(source=self.state, trigger=trigger)
-                    for cond in transition.conditions
-                ):
-                    buttons.append(trigger[:-len(suffix)])
-
-        return buttons
-
     def get_active_button(self) -> Optional[str]:
         return {
             'start_deploy': 'forward',
@@ -1018,25 +942,6 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         if not self.any_slo_failing():
             self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
 
-    def is_relevant_buttonpress(self, buttonpress):
-        return self.slack_ts == buttonpress.thread_ts
-
-    def listen_for_slack_events(self):
-        log.debug("Listening for slack events...")
-        for event in arb_slack.get_slack_events():
-            log.debug(f"Got slack event: {event}")
-            buttonpress = arb_slack.event_to_buttonpress(event)
-            if self.is_relevant_buttonpress(buttonpress):
-                self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
-                self.last_action = buttonpress.action
-
-                try:
-                    self.trigger(f"{buttonpress.action}_button_clicked")
-                except (transitions.core.MachineError, AttributeError):
-                    self.update_slack_thread(f"Error: {traceback.format_exc()}")
-            else:
-                log.debug("But it was not relevant to this instance of mark-for-deployment")
-
     def send_manual_rollback_instructions(self):
         if self.old_git_sha != self.commit:
             message = (
@@ -1082,6 +987,43 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             all_slos_callback=self.all_slos_callback,
             sfx_api_token=load_system_paasta_config().get_monitoring_config()['signalfx_api_key'],
         )
+
+    def get_button_element(self, button, is_active):
+        active_button_texts = {
+            "rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:",
+            "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:",
+        }
+
+        inactive_button_texts = {
+            "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
+            "forward": f"Continue Forward to {self.commit[:8]} :arrow_forward:",
+            "complete": f"Complete deploy to {self.commit[:8]} :white_check_mark:",
+            "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
+            "snooze": f"Reset countdown",
+            "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
+            "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
+        }
+
+        if is_active is True:
+            confirm = False
+            text = active_button_texts[button]
+        else:
+            confirm = self.get_confirmation_object(button)
+            text = inactive_button_texts[button]
+
+        element = {
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": text,
+                "emoji": True,
+            },
+            "confirm": confirm,
+            "value": button,
+        }
+        if not confirm:
+            del element["confirm"]
+        return element
 
 
 class ClusterData:

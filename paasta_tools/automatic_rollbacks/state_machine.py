@@ -1,6 +1,7 @@
 import abc
 import asyncio
 import datetime
+import logging
 import time
 from typing import Callable
 from typing import Collection
@@ -14,6 +15,8 @@ from typing import Union
 
 import transitions.extensions
 from mypy_extensions import TypedDict
+
+log = logging.getLogger(__name__)
 
 
 class TransitionDefinitionBase(TypedDict):
@@ -79,6 +82,9 @@ class DeploymentProcess(abc.ABC):
     def start_state(self):
         raise NotImplementedError()
 
+    def is_terminal_state(self, state: str) -> bool:
+        return (state in self.status_code_by_state())
+
     def finish(self):
         self.finished_event.set()
 
@@ -101,10 +107,10 @@ class DeploymentProcess(abc.ABC):
         timer_end = timer_start + timeout
         formatted_time = datetime.datetime.fromtimestamp(timer_end)
 
-        self.update_slack_thread(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
+        self.notify_users(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
 
         def times_up():
-            self.update_slack_thread(f"Time's up, will now {message_verb}.")
+            self.notify_users(f"Time's up, will now {message_verb}.")
             self.trigger(trigger)
             self.timer_handle = None
             self.timer_running = False
