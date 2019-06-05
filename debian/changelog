@@ -1,3 +1,18 @@
+paasta-tools (0.85.1) xenial; urgency=medium
+
+  * 0.85.1 tagged with 'make release'
+    Commit: bump to 0.85.1
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Jun 2019 16:11:50 -0700
+
+paasta-tools (0.85.0) xenial; urgency=medium
+
+  * 0.85.0 tagged with 'make release'
+    Commit: Merge pull request #2269 from Yelp/drmorr/PAASTA-
+    14200/monitor_deployd_start  emit metrics when deployd starts
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Jun 2019 16:11:16 -0700
+
 paasta-tools (0.85.0) xenial; urgency=medium
 
   * 0.85.0 tagged with 'make release'
