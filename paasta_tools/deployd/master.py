@@ -131,6 +131,7 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
+        self.metrics = get_metrics_interface('paasta.deployd')
         self.instances_to_bounce_now = DedupedPriorityQueue("instances_to_bounce_now")
         self.instances_to_bounce_later = PaastaQueue("instances_to_bounce_later")  # noqa: E501
         self.control = PaastaQueue("ControlQueue")
@@ -150,6 +151,8 @@ class DeployDaemon(PaastaThread):
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
+        startup_counter = self.metrics.create_counter('process_started', paasta_cluster=self.config.get_cluster())
+        startup_counter.count()
         with ZookeeperPool() as self.zk:
             self.election = PaastaLeaderElection(
                 self.zk,
@@ -178,7 +181,6 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
-        self.metrics = get_metrics_interface('paasta.deployd')
         leader_counter = self.metrics.create_counter("leader_elections", paasta_cluster=self.config.get_cluster())
         leader_counter.count()
         QueueMetrics(
