@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2015-2019 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import json
 import logging
 import struct
 import time
@@ -46,6 +47,7 @@ from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
+from paasta_tools.marathon_tools import AutoscalingParamsDict
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.marathon_tools import get_marathon_clients
@@ -585,68 +587,108 @@ def autoscale_marathon_instance(
                 setpoint=autoscaling_params['setpoint'],
                 current_instances=current_instances,
             )
+            num_healthy_instances = len(marathon_tasks)
             new_instance_count = get_new_instance_count(
                 utilization=utilization,
                 error=error,
                 autoscaling_params=autoscaling_params,
                 current_instances=current_instances,
                 marathon_service_config=marathon_service_config,
-                num_healthy_instances=len(marathon_tasks),
+                num_healthy_instances=num_healthy_instances,
             )
-
             safe_downscaling_threshold = int(current_instances * 0.7)
+            _record_autoscaling_decision(
+                marathon_service_config=marathon_service_config,
+                autoscaling_params=autoscaling_params,
+                utilization=utilization,
+                log_utilization_data=log_utilization_data,
+                error=error,
+                current_instances=current_instances,
+                num_healthy_instances=num_healthy_instances,
+                new_instance_count=new_instance_count,
+                safe_downscaling_threshold=safe_downscaling_threshold,
+                task_data_insufficient=task_data_insufficient,
+            )
             if new_instance_count != current_instances:
                 if new_instance_count < current_instances and task_data_insufficient:
                     write_to_log(
                         config=marathon_service_config,
                         line='Delaying scaling *down* as we found too few healthy tasks running in marathon. '
-                             'This can happen because tasks are delayed/waiting/unhealthy or because we are '
-                             'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
-                             'we make a decision to scale down.',
-                    )
-                    return
-                if new_instance_count == safe_downscaling_threshold:
-                    write_to_log(
-                        config=marathon_service_config,
-                        line='Autoscaler clamped: %s' % str(log_utilization_data),
+                        'This can happen because tasks are delayed/waiting/unhealthy or because we are '
+                        'waiting for tasks to be killed. Will wait for sufficient healthy tasks before '
+                        'we make a decision to scale down.',
                         level='debug',
                     )
-
-                write_to_log(
-                    config=marathon_service_config,
-                    line='Scaling from %d to %d instances (%s)' % (
-                        current_instances, new_instance_count, humanize_error(error),
-                    ),
-                )
-                set_instances_for_marathon_service(
-                    service=marathon_service_config.service,
-                    instance=marathon_service_config.instance,
-                    instance_count=new_instance_count,
-                )
-            else:
-                write_to_log(
-                    config=marathon_service_config,
-                    line='Staying at %d instances (%s)' % (current_instances, humanize_error(error)),
-                    level='debug',
-                )
-            meteorite_dims = {
-                'service_name': marathon_service_config.service,
-                'decision_policy': autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
-                'paasta_cluster': marathon_service_config.cluster,
-                'instance_name': marathon_service_config.instance,
-            }
-            if yelp_meteorite:
-                gauge = yelp_meteorite.create_gauge('paasta.service.instances', meteorite_dims)
-                gauge.set(new_instance_count)
-                gauge = yelp_meteorite.create_gauge('paasta.service.max_instances', meteorite_dims)
-                gauge.set(marathon_service_config.get_max_instances())
-                gauge = yelp_meteorite.create_gauge('paasta.service.min_instances', meteorite_dims)
-                gauge.set(marathon_service_config.get_min_instances())
+                    return
+                else:
+                    set_instances_for_marathon_service(
+                        service=marathon_service_config.service,
+                        instance=marathon_service_config.instance,
+                        instance_count=new_instance_count,
+                    )
+                    write_to_log(
+                        config=marathon_service_config,
+                        line='Scaling from %d to %d instances (%s)' % (
+                            current_instances, new_instance_count, humanize_error(error),
+                        ),
+                        level='event',
+                    )
     except LockHeldException:
         log.warning("Skipping autoscaling run for {service}.{instance} because the lock is held".format(
             service=marathon_service_config.service,
             instance=marathon_service_config.instance,
         ))
+
+
+def _record_autoscaling_decision(
+    marathon_service_config: MarathonServiceConfig,
+    autoscaling_params: AutoscalingParamsDict,
+    utilization: float,
+    log_utilization_data: Mapping[str, str],
+    error: float,
+    current_instances: int,
+    num_healthy_instances: int,
+    new_instance_count: int,
+    safe_downscaling_threshold: int,
+    task_data_insufficient: bool,
+) -> None:
+    """
+    Based on the calculations made, perform observability side effects.
+    Log messages, generate time series, send any alerts, etc.
+    """
+    write_to_log(
+        config=marathon_service_config,
+        line=json.dumps(
+            dict(
+                timestamp=time.time(),
+                paasta_cluster=marathon_service_config.get_cluster(),
+                paasta_service=marathon_service_config.get_service(),
+                paasta_instance=marathon_service_config.get_instance(),
+                autoscaling_params=autoscaling_params,
+                utilization=utilization,
+                error=error,
+                current_instances=current_instances,
+                num_healthy_instances=num_healthy_instances,
+                new_instance_count=new_instance_count,
+                safe_downscaling_threshold=safe_downscaling_threshold,
+                task_data_insufficient=task_data_insufficient,
+            ),
+        ),
+        level='debug',
+    )
+    meteorite_dims = {
+        'service_name': marathon_service_config.service,
+        'decision_policy': autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
+        'paasta_cluster': marathon_service_config.cluster,
+        'instance_name': marathon_service_config.instance,
+    }
+    if yelp_meteorite:
+        gauge = yelp_meteorite.create_gauge('paasta.service.instances', meteorite_dims)
+        gauge.set(new_instance_count)
+        gauge = yelp_meteorite.create_gauge('paasta.service.max_instances', meteorite_dims)
+        gauge.set(marathon_service_config.get_max_instances())
+        gauge = yelp_meteorite.create_gauge('paasta.service.min_instances', meteorite_dims)
+        gauge.set(marathon_service_config.get_min_instances())
 
 
 def humanize_error(error):
@@ -737,7 +779,11 @@ def autoscale_service_configs(
                     mesos_tasks,
                 )
             except Exception as e:
-                write_to_log(config=config, line='Caught Exception %s' % e)
+                write_to_log(
+                    config=config,
+                    line='Caught Exception %s' % e,
+                    level='debug',
+                )
 
 
 def filter_autoscaling_tasks(
