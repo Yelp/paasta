@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./cleanup_kubernetes_crds.py [options]
+Usage: ./cleanup_kubernetes_crd.py [options]
 
 Command line options:
 
