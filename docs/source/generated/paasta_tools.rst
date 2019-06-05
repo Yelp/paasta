@@ -40,7 +40,7 @@ Submodules
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
    paasta_tools.cleanup_chronos_jobs
-   paasta_tools.cleanup_kubernetes_crds
+   paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
    paasta_tools.cleanup_tron_namespaces
