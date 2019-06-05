@@ -1115,7 +1115,7 @@ def list_matching_deployments(
     instance: str,
     kube_client: KubeClient,
 ) -> Sequence[KubeDeployment]:
-    return list_deployments(kube_client, f'yelp.com/paasta_instance={instance},paasta_service={service}')
+    return list_deployments(kube_client, f'yelp.com/paasta_instance={instance},yelp.com/paasta_service={service}')
 
 
 def pods_for_service_instance(
@@ -1125,7 +1125,7 @@ def pods_for_service_instance(
 ) -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(
         namespace='paasta',
-        label_selector=f'yelp.com/paasta_service={service},paasta_instance={instance}',
+        label_selector=f'yelp.com/paasta_service={service},yelp.com/paasta_instance={instance}',
     ).items
 
 
