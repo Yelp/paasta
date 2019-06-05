@@ -43,6 +43,7 @@ from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1DeploymentStrategy
@@ -136,6 +137,8 @@ class KubeCustomResource(NamedTuple):
     instance: str
     config_sha: str
     kind: str
+    namespace: str
+    name: str
 
 
 class KubeService(NamedTuple):
@@ -144,6 +147,13 @@ class KubeService(NamedTuple):
     port: int
     pod_ip: str
     registrations: Sequence[str]
+
+
+class CustomResource(NamedTuple):
+    file_prefix: str
+    version: str
+    kube_kind: KubeKind
+    group: str
 
 
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
@@ -1059,12 +1069,32 @@ def list_custom_resources(
                     instance=cr['metadata']['labels']['yelp.com/paasta_instance'],
                     config_sha=cr['metadata']['labels']['yelp.com/paasta_config_sha'],
                     kind=cr['kind'],
+                    namespace=cr['metadata']['namespace'],
+                    name=cr['metadata']['name'],
                 ),
             )
-        except KeyError:
-            log.debug(f"Ignoring custom resource that is missing paasta labels: {cr}")
+        except KeyError as e:
+            log.debug(f"Ignoring custom resource that is missing paasta label {e}: {cr}")
             continue
     return kube_custom_resources
+
+
+def delete_custom_resource(
+    kube_client: KubeClient,
+    name: str,
+    namespace: str,
+    group: str,
+    version: str,
+    plural: str,
+) -> None:
+    return kube_client.custom.delete_namespaced_custom_object(
+        name=name,
+        namespace=namespace,
+        group=group,
+        version=version,
+        plural=plural,
+        body=V1DeleteOptions(),
+    )
 
 
 def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
@@ -1445,3 +1475,13 @@ def sanitise_service_name(
     service: str,
 ) -> str:
     return service.replace('_', '--')
+
+
+def load_custom_resources(
+    system_paasta_config: SystemPaastaConfig,
+) -> Sequence[CustomResource]:
+    custom_resources = []
+    for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
+        kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
+        custom_resources.append(CustomResource(kube_kind=kube_kind, **custom_resource_dict))
+    return custom_resources

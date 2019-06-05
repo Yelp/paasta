@@ -22,36 +22,28 @@ Command line options:
 """
 import argparse
 import logging
-import os
 import sys
 from typing import Any
 from typing import Mapping
-from typing import NamedTuple
 from typing import Sequence
 
-import service_configuration_lib
 import yaml
 
 from paasta_tools.kubernetes_tools import create_custom_resource
+from paasta_tools.kubernetes_tools import CustomResource
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_custom_resources
+from paasta_tools.kubernetes_tools import load_custom_resources
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
-
-
-class CustomResource(NamedTuple):
-    file_prefix: str
-    version: str
-    kube_kind: KubeKind
-    group: str
 
 
 class StdoutKubeClient:
@@ -89,14 +81,6 @@ class StdoutKubeClient:
         self.policy = StdoutKubeClient.StdoutWrapper(kube_client.policy)
         self.apiextensions = StdoutKubeClient.StdoutWrapper(kube_client.apiextensions)
         self.custom = StdoutKubeClient.StdoutWrapper(kube_client.custom)
-
-
-def load_custom_resources(system_paasta_config: SystemPaastaConfig) -> Sequence[CustomResource]:
-    custom_resources = []
-    for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
-        kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
-        custom_resources.append(CustomResource(kube_kind=kube_kind, **custom_resource_dict))
-    return custom_resources
 
 
 def parse_args() -> argparse.Namespace:
@@ -208,17 +192,6 @@ def setup_all_custom_resources(
     return all(results) if results else True
 
 
-def load_all_configs(cluster: str, file_prefix: str, soa_dir: str) -> Mapping[str, Mapping[str, Any]]:
-    config_dicts = {}
-    for service in os.listdir(soa_dir):
-        config_dicts[service] = service_configuration_lib.read_extra_service_information(
-            service,
-            f"{file_prefix}-{cluster}",
-            soa_dir=soa_dir,
-        )
-    return config_dicts
-
-
 def setup_custom_resources(
     kube_client: KubeClient,
     kind: KubeKind,
@@ -263,6 +236,7 @@ def format_custom_resource(
     kind: str,
     version: str,
     group: str,
+    namespace: str,
 ) -> Mapping[str, Any]:
     sanitised_service = service.replace('_', '--')
     sanitised_instance = instance.replace('_', '--')
@@ -271,6 +245,7 @@ def format_custom_resource(
         'kind': kind,
         'metadata': {
             'name': f'{sanitised_service}-{sanitised_instance}',
+            'namespace': namespace,
             'labels': {
                 'yelp.com/paasta_service': service,
                 'yelp.com/paasta_instance': instance,
@@ -313,12 +288,15 @@ def reconcile_kubernetes_resource(
             kind=kind.singular,
             version=version,
             group=group,
+            namespace=f'paasta-{kind.plural}',
         )
         desired_resource = KubeCustomResource(
             service=service,
             instance=inst,
             config_sha=formatted_resource['metadata']['labels']['yelp.com/paasta_config_sha'],
             kind=kind.singular,
+            name=formatted_resource['metadata']['name'],
+            namespace=f'paasta-{kind.plural}',
         )
 
         try:
