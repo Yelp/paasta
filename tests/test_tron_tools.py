@@ -979,7 +979,7 @@ class TestTronTools:
 
     @mock.patch('os.walk', autospec=True)
     @mock.patch('os.listdir', autospec=True)
-    def test_get_tron_namespaces_for_cluster(self, mock_ls, mock_walk):
+    def test_get_tron_namespaces(self, mock_ls, mock_walk):
         cluster_name = 'stage'
         expected_namespaces = ['app', 'foo']
         mock_walk.return_value = [
@@ -989,25 +989,11 @@ class TestTronTools:
         ]
         soa_dir = '/my_soa_dir'
 
-        namespaces = tron_tools.get_tron_namespaces_for_cluster(
+        namespaces = tron_tools.get_tron_namespaces(
             cluster=cluster_name,
             soa_dir=soa_dir,
         )
         assert sorted(expected_namespaces) == sorted(namespaces)
-
-    @mock.patch('os.walk', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
-    def test_get_tron_namespaces_for_cluster_default(self, mock_system_tron_config, mock_ls, mock_walk):
-        mock_system_tron_config.return_value.get_cluster_name.return_value = 'this-cluster'
-        mock_walk.return_value = [('/my_soa_dir/this-service', [], ['tron-this-cluster.yaml'])]
-        soa_dir = '/my_soa_dir'
-        expected_namespaces = ['this-service']
-
-        namespaces = tron_tools.get_tron_namespaces_for_cluster(
-            soa_dir=soa_dir,
-        )
-        assert namespaces == expected_namespaces
 
     @mock.patch('glob.glob', autospec=True)
     def test_list_tron_clusters(self, mock_glob):

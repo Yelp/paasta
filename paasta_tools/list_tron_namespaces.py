@@ -34,7 +34,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    namespaces = tron_tools.get_tron_namespaces_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
+    namespaces = tron_tools.get_tron_namespaces(cluster=args.cluster, soa_dir=args.soa_dir)
     paasta_print('\n'.join(namespaces))
 
 

@@ -88,7 +88,7 @@ def main():
             sys.exit(1)
 
         try:
-            services = tron_tools.get_tron_namespaces_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
+            services = tron_tools.get_tron_namespaces(cluster=args.cluster, soa_dir=args.soa_dir)
         except Exception as e:
             log.error('Failed to list tron namespaces: {error}'.format(
                 error=str(e),

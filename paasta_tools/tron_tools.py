@@ -637,30 +637,11 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
     return []
 
 
-def _get_tron_namespaces_from_service_dir(cluster, soa_dir):
+def get_tron_namespaces(cluster, soa_dir):
     tron_config_file = f'tron-{cluster}.yaml'
     config_dirs = [_dir[0] for _dir in os.walk(os.path.abspath(soa_dir)) if tron_config_file in _dir[2]]
     namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
     return namespaces
-
-
-def _get_tron_namespaces_from_tron_dir(cluster, soa_dir):
-    config_dir = os.path.join(
-        os.path.abspath(soa_dir),
-        'tron',
-        cluster,
-    )
-    namespaces = [
-        os.path.splitext(filename)[0] for filename in os.listdir(config_dir)
-    ]
-    return namespaces
-
-
-def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get all the namespaces that are configured in a particular Tron cluster."""
-    if not cluster:
-        cluster = load_tron_config().get_cluster_name()
-    return _get_tron_namespaces_from_service_dir(cluster, soa_dir)
 
 
 def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
