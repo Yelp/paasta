@@ -57,13 +57,13 @@ def test_setup_all_custom_resources():
             items=[flink_crd, cassandra_crd],
         )
 
-        custom_resources = [
+        custom_resource_definitions = [
             mock.Mock(kube_kind=mock.Mock(plural='flinkclusters', singular='FlinkCluster')),
             mock.Mock(kube_kind=mock.Mock(plural='cassandraclusters', singular='CassandraCluster')),
         ]
 
         assert not setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config, custom_resources=custom_resources,
+            mock_client, '/nail/soa', mock_system_config, custom_resource_definitions=custom_resource_definitions,
         )
 
         mock_load_custom_resources.return_value = [
@@ -72,13 +72,13 @@ def test_setup_all_custom_resources():
         mock_setup.side_effect = [True, True]
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         assert setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config, custom_resources=custom_resources,
+            mock_client, '/nail/soa', mock_system_config, custom_resource_definitions=custom_resource_definitions,
         )
 
         mock_load_custom_resources.return_value = []
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         assert setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config, custom_resources=[],
+            mock_client, '/nail/soa', mock_system_config, custom_resource_definitions=[],
         )
 
 

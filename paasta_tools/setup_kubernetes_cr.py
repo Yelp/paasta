@@ -128,12 +128,12 @@ def main() -> None:
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()
-    custom_resources = load_custom_resource_definitions(system_paasta_config)
+    custom_resource_definitions = load_custom_resource_definitions(system_paasta_config)
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
         soa_dir=soa_dir,
         cluster=cluster,
-        custom_resources=custom_resources,
+        custom_resource_definitions=custom_resource_definitions,
         service=args.service,
         instance=args.instance,
     )
@@ -144,7 +144,7 @@ def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
     cluster: str,
-    custom_resources: Sequence[CustomResourceDefinition],
+    custom_resource_definitions: Sequence[CustomResourceDefinition],
     service: str = None,
     instance: str = None,
 ) -> bool:
@@ -157,33 +157,33 @@ def setup_all_custom_resources(
     }
     log.debug(f"CRDs found: {cluster_crds}")
     results = []
-    for custom_resource in custom_resources:
-        if custom_resource.kube_kind.singular not in cluster_crds:
+    for crd in custom_resource_definitions:
+        if crd.kube_kind.singular not in cluster_crds:
             # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
             # and not `crd.names.singular`
             log.warning(
-                f"CRD {custom_resource.kube_kind.singular} "
+                f"CRD {crd.kube_kind.singular} "
                 f"not found in {cluster}",
             )
             continue
         config_dicts = load_all_configs(
             cluster=cluster,
-            file_prefix=custom_resource.file_prefix,
+            file_prefix=crd.file_prefix,
             soa_dir=soa_dir,
         )
         if not config_dicts:
             continue
         ensure_namespace(
             kube_client=kube_client,
-            namespace=f'paasta-{custom_resource.kube_kind.plural}',
+            namespace=f'paasta-{crd.kube_kind.plural}',
         )
         results.append(
             setup_custom_resources(
                 kube_client=kube_client,
-                kind=custom_resource.kube_kind,
+                kind=crd.kube_kind,
                 config_dicts=config_dicts,
-                version=custom_resource.version,
-                group=custom_resource.group,
+                version=crd.version,
+                group=crd.group,
                 cluster=cluster,
                 service=service,
                 instance=instance,
