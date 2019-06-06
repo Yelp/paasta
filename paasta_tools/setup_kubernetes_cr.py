@@ -22,36 +22,28 @@ Command line options:
 """
 import argparse
 import logging
-import os
 import sys
 from typing import Any
 from typing import Mapping
-from typing import NamedTuple
 from typing import Sequence
 
-import service_configuration_lib
 import yaml
 
 from paasta_tools.kubernetes_tools import create_custom_resource
+from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_custom_resources
+from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
-
-
-class CustomResource(NamedTuple):
-    file_prefix: str
-    version: str
-    kube_kind: KubeKind
-    group: str
 
 
 class StdoutKubeClient:
@@ -89,14 +81,6 @@ class StdoutKubeClient:
         self.policy = StdoutKubeClient.StdoutWrapper(kube_client.policy)
         self.apiextensions = StdoutKubeClient.StdoutWrapper(kube_client.apiextensions)
         self.custom = StdoutKubeClient.StdoutWrapper(kube_client.custom)
-
-
-def load_custom_resources(system_paasta_config: SystemPaastaConfig) -> Sequence[CustomResource]:
-    custom_resources = []
-    for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
-        kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
-        custom_resources.append(CustomResource(kube_kind=kube_kind, **custom_resource_dict))
-    return custom_resources
 
 
 def parse_args() -> argparse.Namespace:
@@ -144,12 +128,12 @@ def main() -> None:
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()
-    custom_resources = load_custom_resources(system_paasta_config)
+    custom_resource_definitions = load_custom_resource_definitions(system_paasta_config)
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
         soa_dir=soa_dir,
         cluster=cluster,
-        custom_resources=custom_resources,
+        custom_resource_definitions=custom_resource_definitions,
         service=args.service,
         instance=args.instance,
     )
@@ -160,7 +144,7 @@ def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
     cluster: str,
-    custom_resources: Sequence[CustomResource],
+    custom_resource_definitions: Sequence[CustomResourceDefinition],
     service: str = None,
     instance: str = None,
 ) -> bool:
@@ -173,50 +157,39 @@ def setup_all_custom_resources(
     }
     log.debug(f"CRDs found: {cluster_crds}")
     results = []
-    for custom_resource in custom_resources:
-        if custom_resource.kube_kind.singular not in cluster_crds:
+    for crd in custom_resource_definitions:
+        if crd.kube_kind.singular not in cluster_crds:
             # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
             # and not `crd.names.singular`
             log.warning(
-                f"CRD {custom_resource.kube_kind.singular} "
+                f"CRD {crd.kube_kind.singular} "
                 f"not found in {cluster}",
             )
             continue
         config_dicts = load_all_configs(
             cluster=cluster,
-            file_prefix=custom_resource.file_prefix,
+            file_prefix=crd.file_prefix,
             soa_dir=soa_dir,
         )
         if not config_dicts:
             continue
         ensure_namespace(
             kube_client=kube_client,
-            namespace=f'paasta-{custom_resource.kube_kind.plural}',
+            namespace=f'paasta-{crd.kube_kind.plural}',
         )
         results.append(
             setup_custom_resources(
                 kube_client=kube_client,
-                kind=custom_resource.kube_kind,
+                kind=crd.kube_kind,
                 config_dicts=config_dicts,
-                version=custom_resource.version,
-                group=custom_resource.group,
+                version=crd.version,
+                group=crd.group,
                 cluster=cluster,
                 service=service,
                 instance=instance,
             ),
         )
     return all(results) if results else True
-
-
-def load_all_configs(cluster: str, file_prefix: str, soa_dir: str) -> Mapping[str, Mapping[str, Any]]:
-    config_dicts = {}
-    for service in os.listdir(soa_dir):
-        config_dicts[service] = service_configuration_lib.read_extra_service_information(
-            service,
-            f"{file_prefix}-{cluster}",
-            soa_dir=soa_dir,
-        )
-    return config_dicts
 
 
 def setup_custom_resources(
@@ -263,6 +236,7 @@ def format_custom_resource(
     kind: str,
     version: str,
     group: str,
+    namespace: str,
 ) -> Mapping[str, Any]:
     sanitised_service = service.replace('_', '--')
     sanitised_instance = instance.replace('_', '--')
@@ -271,6 +245,7 @@ def format_custom_resource(
         'kind': kind,
         'metadata': {
             'name': f'{sanitised_service}-{sanitised_instance}',
+            'namespace': namespace,
             'labels': {
                 'yelp.com/paasta_service': service,
                 'yelp.com/paasta_instance': instance,
@@ -313,12 +288,15 @@ def reconcile_kubernetes_resource(
             kind=kind.singular,
             version=version,
             group=group,
+            namespace=f'paasta-{kind.plural}',
         )
         desired_resource = KubeCustomResource(
             service=service,
             instance=inst,
             config_sha=formatted_resource['metadata']['labels']['yelp.com/paasta_config_sha'],
             kind=kind.singular,
+            name=formatted_resource['metadata']['name'],
+            namespace=f'paasta-{kind.plural}',
         )
 
         try:
