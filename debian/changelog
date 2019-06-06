@@ -1,3 +1,10 @@
+paasta-tools (0.85.2) xenial; urgency=medium
+
+  * 0.85.2 tagged with 'make release'
+    Commit: Merge branch "fix_deployd_tests"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 06 Jun 2019 10:33:02 -0700
+
 paasta-tools (0.85.1) xenial; urgency=medium
 
   * 0.85.1 tagged with 'make release'
