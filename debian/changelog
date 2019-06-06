@@ -1,3 +1,11 @@
+paasta-tools (0.85.3) xenial; urgency=medium
+
+  * 0.85.3 tagged with 'make release'
+    Commit: Merge pull request #2266 from Yelp/cleanup_kubernetes_cr
+    Add cleanup_kubernetes_cr script
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 06 Jun 2019 13:21:44 -0700
+
 paasta-tools (0.85.2) xenial; urgency=medium
 
   * 0.85.2 tagged with 'make release'
