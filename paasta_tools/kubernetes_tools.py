@@ -1477,7 +1477,7 @@ def sanitise_service_name(
     return service.replace('_', '--')
 
 
-def load_custom_resources(
+def load_custom_resource_definitions(
     system_paasta_config: SystemPaastaConfig,
 ) -> Sequence[CustomResource]:
     custom_resources = []

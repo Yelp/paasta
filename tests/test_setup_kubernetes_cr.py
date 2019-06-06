@@ -43,7 +43,7 @@ def test_setup_all_custom_resources():
     ), mock.patch(
         'paasta_tools.setup_kubernetes_cr.setup_custom_resources', autospec=True,
     ) as mock_setup, mock.patch(
-        'paasta_tools.setup_kubernetes_cr.load_custom_resources', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.load_custom_resource_definitions', autospec=True,
     ) as mock_load_custom_resources:
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         mock_setup.side_effect = [True, False]

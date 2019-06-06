@@ -1775,7 +1775,7 @@ def test_load_custom_resources():
         'group': 'yelp.com',
     }]
     mock_config = mock.Mock(get_kubernetes_custom_resources=mock.Mock(return_value=mock_resources))
-    assert kubernetes_tools.load_custom_resources(mock_config) == [kubernetes_tools.CustomResource(
+    assert kubernetes_tools.load_custom_resource_definitions(mock_config) == [kubernetes_tools.CustomResource(
         version='v1',
         kube_kind=kubernetes_tools.KubeKind(plural='Flinks', singular='flink'),
         file_prefix='flink',
