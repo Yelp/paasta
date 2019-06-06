@@ -30,7 +30,7 @@ from typing import Sequence
 import yaml
 
 from paasta_tools.kubernetes_tools import create_custom_resource
-from paasta_tools.kubernetes_tools import CustomResource
+from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeCustomResource
@@ -144,7 +144,7 @@ def setup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
     cluster: str,
-    custom_resources: Sequence[CustomResource],
+    custom_resources: Sequence[CustomResourceDefinition],
     service: str = None,
     instance: str = None,
 ) -> bool:

@@ -25,7 +25,7 @@ import logging
 import sys
 from typing import Sequence
 
-from paasta_tools.kubernetes_tools import CustomResource
+from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_custom_resources
@@ -82,7 +82,7 @@ def cleanup_all_custom_resources(
     kube_client: KubeClient,
     soa_dir: str,
     cluster: str,
-    custom_resources: Sequence[CustomResource],
+    custom_resources: Sequence[CustomResourceDefinition],
 ) -> bool:
     cluster_crds = {
         crd.spec.names.kind

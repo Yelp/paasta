@@ -149,7 +149,7 @@ class KubeService(NamedTuple):
     registrations: Sequence[str]
 
 
-class CustomResource(NamedTuple):
+class CustomResourceDefinition(NamedTuple):
     file_prefix: str
     version: str
     kube_kind: KubeKind
@@ -1479,9 +1479,9 @@ def sanitise_service_name(
 
 def load_custom_resource_definitions(
     system_paasta_config: SystemPaastaConfig,
-) -> Sequence[CustomResource]:
+) -> Sequence[CustomResourceDefinition]:
     custom_resources = []
     for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
         kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
-        custom_resources.append(CustomResource(kube_kind=kube_kind, **custom_resource_dict))
+        custom_resources.append(CustomResourceDefinition(kube_kind=kube_kind, **custom_resource_dict))
     return custom_resources
