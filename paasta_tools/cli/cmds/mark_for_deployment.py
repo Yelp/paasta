@@ -766,48 +766,47 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'trigger': 'deploy_cancelled',
         }
 
-        yield {
-            'source': self.rollforward_states,
-            'dest': 'start_rollback',
-            'trigger': 'rollback_button_clicked',
-        }
-        yield {
-            'source': self.rollback_states,
-            'dest': None,  # this makes it an "internal transition", effectively a noop.
-            'trigger': 'rollback_button_clicked',
-        }
-        yield {
-            'source': self.rollforward_states,
-            'dest': 'start_rollback',
-            'trigger': 'rollback_slo_failure',
-        }
-        yield {
-            'source': self.rollback_states,
-            'dest': None,  # this makes it an "internal transition", effectively a noop.
-            'trigger': 'rollback_slo_failure',
-        }
-
-        yield {
-            'source': self.rollback_states,
-            'dest': 'start_deploy',
-            'trigger': 'forward_button_clicked',
-        }
-        yield {
-            'source': self.rollforward_states,
-            'dest': None,  # this makes it an "internal transition", effectively a noop.
-            'trigger': 'forward_button_clicked',
-        }
-
-        yield {
-            'source': 'start_rollback',
-            'dest': 'rolling_back',
-            'trigger': 'mfd_succeeded',
-        }
-        yield {
-            'source': 'rolling_back',
-            'dest': 'rolled_back',
-            'trigger': 'deploy_finished',
-        }
+        if self.old_git_sha is not None:
+            yield {
+                'source': self.rollforward_states,
+                'dest': 'start_rollback',
+                'trigger': 'rollback_button_clicked',
+            }
+            yield {
+                'source': self.rollback_states,
+                'dest': None,  # this makes it an "internal transition", effectively a noop.
+                'trigger': 'rollback_button_clicked',
+            }
+            yield {
+                'source': self.rollforward_states,
+                'dest': 'start_rollback',
+                'trigger': 'rollback_slo_failure',
+            }
+            yield {
+                'source': self.rollback_states,
+                'dest': None,  # this makes it an "internal transition", effectively a noop.
+                'trigger': 'rollback_slo_failure',
+            }
+            yield {
+                'source': self.rollback_states,
+                'dest': 'start_deploy',
+                'trigger': 'forward_button_clicked',
+            }
+            yield {
+                'source': self.rollforward_states,
+                'dest': None,  # this makes it an "internal transition", effectively a noop.
+                'trigger': 'forward_button_clicked',
+            }
+            yield {
+                'source': 'start_rollback',
+                'dest': 'rolling_back',
+                'trigger': 'mfd_succeeded',
+            }
+            yield {
+                'source': 'rolling_back',
+                'dest': 'rolled_back',
+                'trigger': 'deploy_finished',
+            }
 
         yield {
             'source': 'deployed',
