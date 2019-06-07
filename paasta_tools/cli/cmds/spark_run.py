@@ -492,7 +492,7 @@ def get_spark_config(
                 f'Warning: spark.sql.shuffle.partitions has been set to'
                 f' {num_partitions} to be equal to twice the number of '
                 f'requested cores, but you should consider setting a '
-                f'higher value if necessary.'
+                f'higher value if necessary.',
             ),
         )
 
