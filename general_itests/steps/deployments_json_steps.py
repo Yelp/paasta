@@ -89,6 +89,7 @@ def step_paasta_mark_for_deployments_when(context):
         block=False,
         verify_image=False,
         auto_rollback=False,
+        auto_certify_delay=None,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(

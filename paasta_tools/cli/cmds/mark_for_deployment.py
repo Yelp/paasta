@@ -275,137 +275,6 @@ def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
     return False
 
 
-class SlackDeployNotifier:
-    def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url, auto_rollback=False):
-        self.sc = get_slack_client()
-        self.service = service
-        self.deploy_info = deploy_info
-        self.deploy_group = deploy_group
-        self.channels = deploy_info.get('slack_channels', [])
-        self.commit = commit
-        self.old_commit = self.lookup_production_deploy_group_sha() or old_commit
-        self.git_url = git_url
-        self.authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_commit, to_sha=self.commit)
-        self.url_message = self.get_url_message()
-        self.auto_rollback = auto_rollback
-
-    def get_url_message(self):
-        build_url = os.environ.get('BUILD_URL')
-        if build_url is not None:
-            message = f"<{build_url}/consoleFull|Jenkins Job>"
-        else:
-            message = f"(Run by {getpass.getuser()} on {socket.getfqdn()})"
-        return message
-
-    def lookup_production_deploy_group_sha(self):
-        prod_deploy_group = self.deploy_info.get('production_deploy_group', None)
-        if prod_deploy_group is None:
-            return None
-        else:
-            return get_currently_deployed_sha(service=self.service, deploy_group=prod_deploy_group)
-
-    def deploy_group_is_set_to_notify(self, notify_type):
-        return deploy_group_is_set_to_notify(self.deploy_info, self.deploy_group, notify_type)
-
-    def _notify_with_thread(self, notify_type, channels, initial_message, initial_blocks=None, followups=[]):
-        """Start a new thread with `initial_message`, then add any followups.
-
-        This helps keep extra detail just a click away, without disrupting the
-        main channel with large descriptive messages.
-        """
-        if self.deploy_group_is_set_to_notify(notify_type):
-            for channel in channels:
-                resp = self.sc.post(channels=[channel], message=initial_message, blocks=initial_blocks)[0]
-
-                # If we got an error from Slack, fall back to posting it without a thread.
-                thread_ts = resp['message']['ts'] if resp and resp['ok'] else None
-
-                for followup in followups:
-                    self.sc.post(channels=[channel], message=followup, thread_ts=thread_ts)
-        else:
-            log.debug(f"{self.deploy_group}.{notify_type} isn't set to notify slack")
-
-    def notify_after_mark(self, ret):
-        if ret == 0:
-            if self.old_commit is not None and self.commit != self.old_commit:
-                message = (
-                    f"*{self.service}* - Marked *{self.commit[:12]}* for deployment on *{self.deploy_group}*.\n"
-                    f"{self.authors}"
-                )
-                blocks = None
-                self._notify_with_thread(
-                    notify_type='notify_after_mark',
-                    channels=self.channels,
-                    initial_message=message,
-                    initial_blocks=blocks,
-                    followups=[(
-                        f"{self.url_message}\n"
-                        "\n"
-                        "Roll it back at any time with:\n"
-                        f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                        f"--commit {self.old_commit}`"
-                    )],
-                )
-        else:
-            if self.old_commit is not None and self.commit != self.old_commit:
-                self._notify_with_thread(
-                    notify_type='notify_after_mark',
-                    channels=self.channels,
-                    initial_message=(
-                        f"*{self.service}* - mark-for-deployment failed on *{self.deploy_group}* for *{self.commit[:12]}*.\n"  # noqa: E501
-                        f"{self.authors}"
-                    ),
-                    followups=[self.url_message],
-                )
-
-    def notify_after_good_deploy(self):
-        if self.old_commit is not None and self.commit != self.old_commit:
-            self._notify_with_thread(
-                notify_type='notify_after_good_deploy',
-                channels=self.channels,
-                initial_message=(
-                    f"*{self.service}* - Finished deployment of *{self.commit[:12]}* on *{self.deploy_group}*.\n"
-                    f"{self.authors}"
-                ),
-                followups=[(
-                    f"{self.url_message}\n"
-                    "If you need to roll back, run:\n"
-                    f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                    f"--commit {self.old_commit}`"
-                )],
-            )
-
-    def notify_after_auto_rollback(self):
-        if self.old_commit is not None and self.commit != self.old_commit:
-            message = (
-                f"*{self.service}* - Deployment of {self.commit} for {self.deploy_group} *failed*!\n"
-                f"Auto-rolling back to {self.old_commit}\n"
-                f"{self.url_message}\n"
-            )
-            self._notify_with_thread(
-                notify_type='notify_after_auto_rollback',
-                channels=self.channels,
-                initial_message=message,
-            )
-
-    def notify_after_abort(self):
-        if self.old_commit is not None and self.commit != self.old_commit:
-            self._notify_with_thread(
-                notify_type='notify_after_abort',
-                channels=self.channels,
-                initial_message=(
-                    f"*{self.service}* - Deployment of {self.commit[:12]} to {self.deploy_group} *aborted*, "
-                    "but still marked for deployment. PaaSTA will keep trying to deploy it until it is healthy.\n"
-                    f"{self.authors}"
-                ),
-                followups=[(
-                    f"{self.url_message}\n"
-                    "If you need to roll back, run:\n"
-                    f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} --commit {self.commit}`"  # noqa: E501
-                )],
-            )
-
-
 def get_deploy_info(service, soa_dir):
     file_path = os.path.join(soa_dir, service, 'deploy.yaml')
     return read_deploy(file_path)
@@ -470,83 +339,23 @@ def paasta_mark_for_deployment(args):
             raise ValueError('Failed to find image in the registry for the following sha %s' % commit)
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-
-    if args.auto_rollback or args.block:
-        deploy_process = MarkForDeploymentProcess(
-            service=service,
-            deploy_info=deploy_info,
-            deploy_group=deploy_group,
-            commit=commit,
-            old_git_sha=old_git_sha,
-            git_url=args.git_url,
-            auto_rollback=args.auto_rollback,
-            block=args.block,
-            soa_dir=args.soa_dir,
-            timeout=args.timeout,
-            auto_certify_delay=args.auto_certify_delay,
-            auto_abandon_delay=args.auto_abandon_delay,
-            auto_rollback_delay=args.auto_rollback_delay,
-        )
-        ret = deploy_process.run()
-        return ret
-    else:
-        # TODO: delete this branch once the state machine version is well tested. It should be equivalent.
-        slack_notifier = SlackDeployNotifier(
-            deploy_info=deploy_info, service=service,
-            deploy_group=deploy_group, commit=commit, old_commit=old_git_sha, git_url=args.git_url,
-            auto_rollback=args.auto_rollback,
-        )
-
-        ret = mark_for_deployment(
-            git_url=args.git_url,
-            deploy_group=deploy_group,
-            service=service,
-            commit=commit,
-        )
-        slack_notifier.notify_after_mark(ret=ret)
-        print_rollback_cmd(old_git_sha, commit, args.auto_rollback, service, deploy_group)
-        if args.block and ret == 0:
-            try:
-                wait_for_deployment(
-                    service=service,
-                    deploy_group=deploy_group,
-                    git_sha=commit,
-                    soa_dir=args.soa_dir,
-                    timeout=args.timeout,
-                )
-                line = f"Deployment of {commit} for {deploy_group} complete"
-                _log(
-                    service=service,
-                    component='deploy',
-                    line=line,
-                    level='event',
-                )
-                slack_notifier.notify_after_good_deploy()
-            except (KeyboardInterrupt, TimeoutError):
-                if args.auto_rollback is True:
-                    if old_git_sha == commit:
-                        paasta_print("Error: --auto-rollback was requested, but the previous sha")
-                        paasta_print("is the same that was requested with --commit. Can't rollback")
-                        paasta_print("automatically.")
-                    else:
-                        paasta_print("Auto-Rollback requested. Marking the previous sha")
-                        paasta_print(f"({deploy_group}) for {old_git_sha} as desired.")
-                        mark_for_deployment(
-                            git_url=args.git_url,
-                            deploy_group=deploy_group,
-                            service=service,
-                            commit=old_git_sha,
-                        )
-                        slack_notifier.notify_after_auto_rollback()
-                else:
-                    report_waiting_aborted(service, deploy_group)
-                    slack_notifier.notify_after_abort()
-                ret = 1
-            except NoSuchCluster:
-                report_waiting_aborted(service, deploy_group)
-                slack_notifier.notify_after_abort()
-        print_rollback_cmd(old_git_sha, commit, args.auto_rollback, service, deploy_group)
-        return ret
+    deploy_process = MarkForDeploymentProcess(
+        service=service,
+        deploy_info=deploy_info,
+        deploy_group=deploy_group,
+        commit=commit,
+        old_git_sha=old_git_sha,
+        git_url=args.git_url,
+        auto_rollback=args.auto_rollback,
+        block=args.block,
+        soa_dir=args.soa_dir,
+        timeout=args.timeout,
+        auto_certify_delay=args.auto_certify_delay,
+        auto_abandon_delay=args.auto_abandon_delay,
+        auto_rollback_delay=args.auto_rollback_delay,
+    )
+    ret = deploy_process.run()
+    return ret
 
 
 class Progress():
@@ -1038,7 +847,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         super().after_state_change()
 
     def get_signalfx_api_token(self) -> str:
-        return load_system_paasta_config().get_monitoring_config()['signalfx_api_key']
+        return load_system_paasta_config().get_monitoring_config().get('signalfx_api_key', None)
 
     def get_button_text(self, button, is_active) -> str:
         active_button_texts = {
