@@ -259,8 +259,11 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         return buttons
 
     def update_slack_thread(self, message, color=None):
-        print(f"Updating slack thread with: {message}")
-
+        if self.slack_client is None:
+            print(f"Would update the slack thread with: {message}")
+            return
+        else:
+            print(f"Updating slack thread with: {message}")
         if color:
             resp = self.slack_client.api_call(
                 'chat.postMessage',
@@ -280,6 +283,8 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             log.error(f"Posting to slack failed: {resp['error']}")
 
     def send_initial_slack_message(self):
+        if self.slack_client is None:
+            return
         summary_blocks = self.get_summary_blocks_for_deployment()
         detail_blocks = self.get_detail_slack_blocks_for_deployment()
         resp = self.slack_client.api_call('chat.postMessage', blocks=summary_blocks, channel=self.slack_channel)
@@ -302,6 +307,8 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
                 log.error(f"Blocks: {detail_blocks!r}")
 
     def update_slack(self):
+        if self.slack_client is None:
+            return
         summary_blocks = self.get_summary_blocks_for_deployment()
         detail_blocks = self.get_detail_slack_blocks_for_deployment()
 
