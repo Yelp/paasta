@@ -557,15 +557,17 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
 
 def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
-    config = service_configuration_lib.read_extra_service_information(
-        service_name='tron',
-        extra_info=f'{cluster}/MASTER.yaml',
-        soa_dir=soa_dir,
-    )
-    return format_master_config(
+    tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
+    config = service_configuration_lib._read_yaml_file(os.path.join(tronfig_folder, f"MASTER.yaml"))
+    master_config = format_master_config(
         config,
         system_paasta_config.get_volumes(),
         system_paasta_config.get_dockercfg_location(),
+    )
+    return yaml.dump(
+        master_config,
+        Dumper=Dumper,
+        default_flow_style=False,
     )
 
 
