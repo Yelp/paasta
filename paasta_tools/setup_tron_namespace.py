@@ -25,6 +25,7 @@ import logging
 import sys
 
 from paasta_tools import tron_tools
+from paasta_tools.tron_tools import MASTER_NAMESPACE
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ def main():
             sys.exit(1)
 
         try:
-            services = tron_tools.get_tron_namespaces_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
+            services = tron_tools.get_tron_namespaces(cluster=args.cluster, soa_dir=args.soa_dir)
         except Exception as e:
             log.error('Failed to list tron namespaces: {error}'.format(
                 error=str(e),
@@ -106,6 +107,22 @@ def main():
     updated = []
     failed = []
     skipped = []
+
+    master_config = tron_tools.create_complete_master_config(
+        cluster=args.cluster,
+        soa_dir=args.soa_dir,
+    )
+    if args.dry_run:
+        log.info(f"Would update {MASTER_NAMESPACE} to:")
+        log.info(f"{master_config}")
+        updated.append(MASTER_NAMESPACE)
+    else:
+        if client.update_namespace(MASTER_NAMESPACE, master_config):
+            updated.append(MASTER_NAMESPACE)
+            log.debug(f'Updated {MASTER_NAMESPACE}')
+        else:
+            skipped.append(MASTER_NAMESPACE)
+            log.debug(f'Skipped {MASTER_NAMESPACE}')
 
     for service in sorted(services):
         try:

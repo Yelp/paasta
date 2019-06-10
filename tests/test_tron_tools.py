@@ -774,13 +774,11 @@ class TestTronTools:
         with pytest.raises(NoConfigurationForServiceError):
             tron_tools.load_tron_yaml('foo', 'dev', soa_dir=soa_dir)
 
-        assert mock_read_file.call_count == 1
         assert mock_read_service_info.call_count == 1
-        mock_read_file.assert_has_calls([mock.call('/other/services/tron/dev/foo.yaml')])
         mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
 
     @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
-    def test_load_tron_yaml_picks_service_dir_first(self, mock_read_extra_service_configuration):
+    def test_load_tron_yaml_picks_service_dir(self, mock_read_extra_service_configuration):
         config = "test"
         mock_read_extra_service_configuration.return_value = config
         assert config == tron_tools.load_tron_yaml(service="foo", cluster="bar", soa_dir="test")
@@ -788,34 +786,17 @@ class TestTronTools:
             service_name='foo', extra_info="tron-bar", soa_dir="test",
         )
 
-    @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
-    @mock.patch('service_configuration_lib._read_yaml_file', autospec=True)
-    def test_load_tron_yaml_falls_back_to_tron_dir(
-        self,
-        mock_read_yaml_file,
-        mock_read_extra_service_configuration,
-    ):
-        config = "test"
-        mock_read_extra_service_configuration.return_value = {}
-        mock_read_yaml_file.return_value = config
-        assert config == tron_tools.load_tron_yaml(service="foo", cluster="bar", soa_dir="test")
-        mock_read_extra_service_configuration.assert_called_once_with(
-            service_name='foo', extra_info="tron-bar", soa_dir="test",
-        )
-        mock_read_yaml_file.assert_called_once_with("test/tron/bar/foo.yaml")
-
     @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
     def test_load_tron_service_config(self, mock_load_tron_yaml):
         mock_load_tron_yaml.return_value = {
             '_template': {'actions': {'action1': {}}},
-            'extra': 'data',
             'jobs': {
                 'job1': {
                     'actions': {'action1': {}},
                 },
             },
         }
-        job_configs, extra_config = tron_tools.load_tron_service_config(
+        job_configs = tron_tools.load_tron_service_config(
             service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
         )
         assert job_configs == [
@@ -828,7 +809,6 @@ class TestTronTools:
                 soa_dir='fake',
             ),
         ]
-        assert extra_config == {'extra': 'data'}  # template filtered out
         mock_load_tron_yaml.assert_called_once_with(
             service='service',
             cluster='test-cluster',
@@ -840,20 +820,18 @@ class TestTronTools:
         mock_load_yaml.return_value = {'jobs': None}
         soa_dir = '/other/services'
 
-        jc, _ = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
+        jc = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
         assert jc == []
 
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.format_tron_job_dict', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.format_master_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.yaml.dump', autospec=True)
     @pytest.mark.parametrize('service', [MASTER_NAMESPACE, 'my_app'])
     def test_create_complete_config(
         self,
         mock_yaml_dump,
-        mock_format_master_config,
         mock_format_job,
         mock_tron_service_config,
         mock_tron_system_config,
@@ -861,14 +839,7 @@ class TestTronTools:
         service,
     ):
         job_config = tron_tools.TronJobConfig('my_job', {}, 'fake-cluster')
-        other_config = {
-            'my_config_value': [1, 2],
-        }
-        mock_format_master_config.return_value = other_config
-        mock_tron_service_config.return_value = (
-            [job_config],
-            other_config,
-        )
+        mock_tron_service_config.return_value = [job_config]
         soa_dir = '/testing/services'
         cluster = 'fake-cluster'
 
@@ -881,23 +852,14 @@ class TestTronTools:
             load_deployments=True,
             soa_dir=soa_dir,
         )
-        if service == MASTER_NAMESPACE:
-            mock_format_master_config.assert_called_once_with(
-                other_config,
-                mock_system_config.return_value.get_volumes.return_value,
-                mock_system_config.return_value.get_dockercfg_location.return_value,
-            )
-        else:
-            assert mock_format_master_config.call_count == 0
         mock_format_job.assert_called_once_with(
             job_config,
         )
-        complete_config = other_config.copy()
-        complete_config.update({
+        complete_config = {
             'jobs': {
                 'my_job': mock_format_job.return_value,
             },
-        })
+        }
         mock_yaml_dump.assert_called_once_with(
             complete_config,
             Dumper=mock.ANY,
@@ -916,7 +878,7 @@ class TestTronTools:
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = 'my_job'
         job_config.validate = mock.Mock(return_value=['some error'])
-        mock_load_config.return_value = ([job_config], {})
+        mock_load_config.return_value = [job_config]
 
         result = tron_tools.validate_complete_config(
             'a_service',
@@ -940,7 +902,7 @@ class TestTronTools:
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = 'my_job'
         job_config.validate = mock.Mock(return_value=[])
-        mock_load_config.return_value = ([job_config], {})
+        mock_load_config.return_value = [job_config]
         mock_format_job.return_value = {}
         mock_run.return_value = mock.Mock(
             returncode=1,
@@ -970,7 +932,7 @@ class TestTronTools:
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = 'my_job'
         job_config.validate = mock.Mock(return_value=[])
-        mock_load_config.return_value = ([job_config], {})
+        mock_load_config.return_value = [job_config]
         mock_format_job.return_value = {}
         mock_run.return_value = mock.Mock(
             returncode=0,
@@ -988,84 +950,23 @@ class TestTronTools:
         assert mock_run.call_count == 1
         assert not result
 
-    @mock.patch('paasta_tools.tron_tools.load_tron_service_config', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.format_tron_job_dict', autospec=True)
-    @mock.patch('subprocess.run', autospec=True)
-    @pytest.mark.parametrize('namespace,valid', [('MASTER', True), ('bob', False)])
-    def test_validate_complete_config_non_job_keys(
-        self,
-        mock_run,
-        mock_format_job,
-        mock_load_config,
-        namespace,
-        valid,
-    ):
-        job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
-        job_config.get_name.return_value = 'my_job'
-        job_config.validate = mock.Mock(return_value=[])
-        mock_load_config.return_value = ([job_config], {'time_zone': 'US/Pacific'})
-        mock_format_job.return_value = {}
-
-        result = tron_tools.validate_complete_config(
-            namespace,
-            'a-cluster',
-        )
-
-        assert mock_load_config.call_count == 1
-        if not valid:
-            assert len(result) == 1
-            assert 'time_zone' in result[0]
-
     @mock.patch('os.walk', autospec=True)
     @mock.patch('os.listdir', autospec=True)
-    def test_get_tron_namespaces_for_cluster(self, mock_ls, mock_walk):
+    def test_get_tron_namespaces(self, mock_ls, mock_walk):
         cluster_name = 'stage'
-        expected_namespaces = ['app', 'foo', 'cool']
+        expected_namespaces = ['app', 'foo']
         mock_walk.return_value = [
             ('/my_soa_dir/foo', [], ['tron-stage.yaml']),
             ('/my_soa_dir/app', [], ['tron-stage.yaml']),
             ('my_soa_dir/woo', [], ['something-else.yaml']),
         ]
-        mock_ls.return_value = ['cool.yaml']
         soa_dir = '/my_soa_dir'
 
-        namespaces = tron_tools.get_tron_namespaces_for_cluster(
+        namespaces = tron_tools.get_tron_namespaces(
             cluster=cluster_name,
             soa_dir=soa_dir,
         )
-        for expected_namespace in expected_namespaces:
-            assert expected_namespace in namespaces
-        assert len(namespaces) == 3
-
-    @mock.patch('os.walk', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
-    def test_get_tron_namespaces_for_cluster_default(self, mock_system_tron_config, mock_ls, mock_walk):
-        mock_system_tron_config.return_value.get_cluster_name.return_value = 'this-cluster'
-        mock_walk.return_value = [('/my_soa_dir/this-service', [], ['tron-this-cluster.yaml'])]
-        soa_dir = '/my_soa_dir'
-        expected_namespaces = ['this-service']
-
-        namespaces = tron_tools.get_tron_namespaces_for_cluster(
-            soa_dir=soa_dir,
-        )
-        assert namespaces == expected_namespaces
-
-    @mock.patch('os.walk', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    def test_get_tron_namespaces_for_cluster_conflict(self, mock_ls, mock_walk):
-        cluster_name = 'stage'
-        mock_walk.return_value = [
-            ('/my_soa_dir/cool', [], ['tron-stage.yaml']),
-        ]
-        mock_ls.return_value = ['cool.yaml']
-        soa_dir = '/my_soa_dir'
-
-        with pytest.raises(tron_tools.ConflictingNamespacesError):
-            tron_tools.get_tron_namespaces_for_cluster(
-                cluster=cluster_name,
-                soa_dir=soa_dir,
-            )
+        assert sorted(expected_namespaces) == sorted(namespaces)
 
     @mock.patch('glob.glob', autospec=True)
     def test_list_tron_clusters(self, mock_glob):
