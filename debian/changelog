@@ -1,3 +1,11 @@
+paasta-tools (0.85.5) xenial; urgency=medium
+
+  * 0.85.5 tagged with 'make release'
+    Commit: Merge pull request #2276 from Yelp/master_config_fix  Fix
+    master config tron yaml loading
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 10 Jun 2019 14:58:31 -0700
+
 paasta-tools (0.85.4) xenial; urgency=medium
 
   * 0.85.4 tagged with 'make release'
