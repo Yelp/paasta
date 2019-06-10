@@ -29,7 +29,7 @@ from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import run_on_master
-from paasta_tools.flink_tools import FlinkConfig
+from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.kubernetes_tools import KubeClient
@@ -237,7 +237,7 @@ def paasta_start_or_stop(args, desired_state):
                     soa_dir=soa_dir,
                     load_deployments=False,
                 )
-                if isinstance(service_config, FlinkConfig):
+                if isinstance(service_config, FlinkDeploymentConfig):
                     affected_flinks.append(service_config)
                     continue
 

@@ -1161,9 +1161,10 @@ def pods_for_service_instance(
 
 def get_all_pods(
     kube_client: KubeClient,
+    namespace: str = 'paasta',
 ) -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(
-        namespace='paasta',
+        namespace=namespace,
     ).items
 
 
