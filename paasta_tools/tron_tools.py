@@ -537,11 +537,17 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
     return config
 
 
+def extract_jobs_from_tron_yaml(config):
+    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
+    if 'jobs' in config and config.get('jobs') is None:
+        return {}
+    return config.get('jobs') or config or {}
+
+
 def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
-    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
-    jobs = config.get('jobs') or {}
+    jobs = extract_jobs_from_tron_yaml(config)
     job_configs = [
         TronJobConfig(
             name=name,
