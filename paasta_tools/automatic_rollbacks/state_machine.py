@@ -138,7 +138,7 @@ class DeploymentProcess(abc.ABC):
             self.timer_running = False
             return
         if trigger is None or trigger == self.timer_trigger:
-            self.notify_users(f"Countdown to {self.timer_message_verb} ({self.timer_trigger} == {trigger}) cancelled.")
+            self.notify_users(f"Countdown to {self.timer_message_verb} cancelled.")
             handle.cancel()
             self.timer_handle = None
             self.timer_running = False

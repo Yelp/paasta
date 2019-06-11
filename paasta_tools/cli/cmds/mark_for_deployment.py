@@ -42,8 +42,7 @@ from slackclient import SlackClient
 from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.automatic_rollbacks import state_machine
-from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
-from paasta_tools.automatic_rollbacks.slo import SLOAutoRollbacksMixin
+from paasta_tools.automatic_rollbacks.slo import SLOSlackDeploymentProcess
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -567,7 +566,7 @@ class Progress():
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(SlackDeploymentProcess, SLOAutoRollbacksMixin):
+class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
     rollforward_states = ['start_deploy', 'deploying', 'deployed']
 
@@ -614,7 +613,7 @@ class MarkForDeploymentProcess(SlackDeploymentProcess, SLOAutoRollbacksMixin):
         self.slo_watchers = []
 
         super().__init__()
-        self.start_slo_watcher_threads()
+        self.start_slo_watcher_threads(self.service)
         self.send_initial_slack_message()
         self.ping_authors()
 
@@ -825,6 +824,9 @@ class MarkForDeploymentProcess(SlackDeploymentProcess, SLOAutoRollbacksMixin):
     def auto_rollbacks_enabled(self) -> bool:
         """This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.auto_rollback
+
+    def get_auto_rollback_delay(self) -> float:
+        return self.auto_rollback_delay
 
     def already_rolling_back(self) -> bool:
         return self.state in self.rollback_states

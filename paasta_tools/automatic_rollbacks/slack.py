@@ -175,10 +175,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             },
         ]
 
-        try:
-            blocks.extend(self.get_extra_blocks_for_deployment())
-        except AttributeError:
-            pass
+        blocks.extend(self.get_extra_blocks_for_deployment())
 
         if button_elements != []:
             blocks.append({
@@ -187,6 +184,9 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
                 "elements": button_elements,
             })
         return blocks
+
+    def get_extra_blocks_for_deployment(self) -> List:
+        return []
 
     def get_button_elements(self):
         elements = []

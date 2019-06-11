@@ -26,7 +26,7 @@ import tempfile
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.automatic_rollbacks.signalfx import tail_signalfx
-from paasta_tools.automatic_rollbacks.state_machine import DeploymentProcess
+from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
 
 
 def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR) -> Generator:
@@ -182,7 +182,9 @@ def watch_slos_for_service(
     return threads, watchers
 
 
-class SLOAutoRollbacksMixin(DeploymentProcess, abc.ABC):
+class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
+    auto_rollback_delay: float
+
     def get_extra_blocks_for_deployment(self):
         blocks = []
         slo_text = self.get_slo_text()
@@ -227,9 +229,9 @@ class SLOAutoRollbacksMixin(DeploymentProcess, abc.ABC):
 
         return slo_text
 
-    def start_slo_watcher_threads(self) -> None:
+    def start_slo_watcher_threads(self, service: str) -> None:
         _, self.slo_watchers = watch_slos_for_service(
-            service=self.service,
+            service=service,
             individual_slo_callback=self.individual_slo_callback,
             all_slos_callback=self.all_slos_callback,
             sfx_api_token=self.get_signalfx_api_token(),
@@ -239,8 +241,16 @@ class SLOAutoRollbacksMixin(DeploymentProcess, abc.ABC):
     def get_signalfx_api_token(self) -> str:
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def auto_rollbacks_enabled(self) -> bool:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_auto_rollback_delay(self) -> float:
+        raise NotImplementedError()
+
     def any_slo_failing(self) -> bool:
-        return self.auto_rollback and any(w.failing for w in self.slo_watchers)
+        return self.auto_rollbacks_enabled() and any(w.failing for w in self.slo_watchers)
 
     def individual_slo_callback(self, label: str, bad: bool) -> None:
         if bad:
@@ -254,11 +264,10 @@ class SLOAutoRollbacksMixin(DeploymentProcess, abc.ABC):
             self.trigger('slos_started_failing')
         else:
             self.trigger('slos_stopped_failing')
-
         self.update_slack()
 
     def start_auto_rollback_countdown(self) -> None:
-        self.start_timer(self.auto_rollback_delay, 'rollback_slo_failure', "automatically roll back")
+        self.start_timer(self.get_auto_rollback_delay(), 'rollback_slo_failure', "automatically roll back")
 
     def cancel_auto_rollback_countdown(self) -> None:
         self.cancel_timer('rollback_slo_failure')
