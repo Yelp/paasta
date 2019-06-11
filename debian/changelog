@@ -1,3 +1,10 @@
+paasta-tools (0.85.8) xenial; urgency=medium
+
+  * 0.85.8 tagged with 'make release'
+    Commit: Merge branch "fix_no_jobs"
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 14:36:46 -0700
+
 paasta-tools (0.85.7) xenial; urgency=medium
 
   * 0.85.7 tagged with 'make release'
