@@ -51,7 +51,7 @@ def main():
     client = tron_tools.get_tron_client()
     namespaces = client.list_namespaces()
     expected_namespaces = tron_tools.get_tron_namespaces(cluster=cluster, soa_dir=args.soa_dir)
-    to_delete = set(namespaces) - set(expected_namespaces)
+    to_delete = set(namespaces) - set(expected_namespaces) - {"MASTER"}
 
     if not to_delete:
         paasta_print('No Tron namespaces to remove')
