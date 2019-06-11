@@ -126,8 +126,22 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         return None
 
     @abc.abstractmethod
-    def get_button_element(self, button, is_active):
+    def get_button_text(self, button, is_active) -> str:
         raise NotImplementedError()
+
+    def get_button_element(self, button, is_active):
+        element = {
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": self.get_button_text(button, is_active),
+                "emoji": True,
+            },
+            "value": button,
+        }
+        if not is_active:
+            element["confirm"] = self.get_confirmation_object(button)
+        return element
 
     def get_slack_blocks_for_deployment(self) -> List[Dict]:
         status = getattr(self, 'state', None) or 'Uninitialized'
@@ -161,15 +175,10 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             },
         ]
 
-        slo_text = self.get_slo_text()
-        if slo_text:
-            blocks.append({
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": self.get_slo_text(),
-                },
-            })
+        try:
+            blocks.extend(self.get_extra_blocks_for_deployment())
+        except AttributeError:
+            pass
 
         if button_elements != []:
             blocks.append({
@@ -178,37 +187,6 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
                 "elements": button_elements,
             })
         return blocks
-
-    def get_slo_text(self) -> str:
-        slo_watchers = getattr(self, 'slo_watchers', None)
-        if slo_watchers is not None and len(slo_watchers) > 0:
-            num_failing = len([w for w in slo_watchers if w.failing])
-            if num_failing > 0:
-                slo_text = f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing"
-            else:
-
-                num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
-                num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
-                slo_text_components = []
-                if num_unknown > 0:
-                    slo_text_components.append(f":thinking_face: {num_unknown} SLOs are missing data. ")
-                if num_bad_before_mark > 0:
-                    slo_text_components.append(
-                        f":grimacing: {num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
-                    )
-
-                remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
-
-                if remaining == len(slo_watchers):
-                    slo_text = f":ok_hand: All {len(slo_watchers)} SLOs are currently passing."
-                else:
-                    if remaining > 0:
-                        slo_text_components.append(f"The remaining {remaining} SLOs are currently passing.")
-                    slo_text = ' '.join(slo_text_components)
-        else:
-            slo_text = "No SLOs defined for this service."
-
-        return slo_text
 
     def get_button_elements(self):
         elements = []

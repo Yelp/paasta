@@ -43,7 +43,7 @@ from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.automatic_rollbacks import state_machine
 from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
-from paasta_tools.automatic_rollbacks.slo import watch_slos_for_service
+from paasta_tools.automatic_rollbacks.slo import SLOAutoRollbacksMixin
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -567,7 +567,7 @@ class Progress():
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(SlackDeploymentProcess):
+class MarkForDeploymentProcess(SlackDeploymentProcess, SLOAutoRollbacksMixin):
     rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
     rollforward_states = ['start_deploy', 'deploying', 'deployed']
 
@@ -798,6 +798,7 @@ class MarkForDeploymentProcess(SlackDeploymentProcess):
             'dest': None,
             'trigger': 'slos_started_failing',
             'conditions': [self.auto_rollbacks_enabled],
+            'unless': [self.already_rolling_back],
             'before': self.start_auto_rollback_countdown,
         }
         yield {
@@ -824,6 +825,9 @@ class MarkForDeploymentProcess(SlackDeploymentProcess):
     def auto_rollbacks_enabled(self) -> bool:
         """This getter exists so it can be a condition on transitions, since those need to be callables."""
         return self.auto_rollback
+
+    def already_rolling_back(self) -> bool:
+        return self.state in self.rollback_states
 
     def status_code_by_state(self) -> Mapping[str, int]:
         codes = {
@@ -939,7 +943,7 @@ class MarkForDeploymentProcess(SlackDeploymentProcess):
             level='event',
         )
         self.send_manual_rollback_instructions()
-        if not self.any_slo_failing():
+        if not (self.any_slo_failing() and self.auto_rollbacks_enabled()):
             self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
 
     def send_manual_rollback_instructions(self):
@@ -956,39 +960,10 @@ class MarkForDeploymentProcess(SlackDeploymentProcess):
         self.update_slack()
         super().after_state_change()
 
-    def any_slo_failing(self) -> bool:
-        return self.auto_rollback and any(w.failing for w in self.slo_watchers)
+    def get_signalfx_api_token(self) -> str:
+        return load_system_paasta_config().get_monitoring_config()['signalfx_api_key']
 
-    def individual_slo_callback(self, label: str, bad: bool) -> None:
-        if bad:
-            message = f"SLO started failing: {label}"
-        else:
-            message = f"SLO is now OK: {label}"
-        self.update_slack_thread(message)
-
-    def all_slos_callback(self, bad: bool) -> None:
-        if bad:
-            self.trigger('slos_started_failing')
-        else:
-            self.trigger('slos_stopped_failing')
-
-        self.update_slack()
-
-    def start_auto_rollback_countdown(self) -> None:
-        self.start_timer(self.auto_rollback_delay, 'rollback_slo_failure', "automatically roll back")
-
-    def cancel_auto_rollback_countdown(self) -> None:
-        self.cancel_timer('rollback_slo_failure')
-
-    def start_slo_watcher_threads(self) -> None:
-        _, self.slo_watchers = watch_slos_for_service(
-            service=self.service,
-            individual_slo_callback=self.individual_slo_callback,
-            all_slos_callback=self.all_slos_callback,
-            sfx_api_token=load_system_paasta_config().get_monitoring_config()['signalfx_api_key'],
-        )
-
-    def get_button_element(self, button, is_active):
+    def get_button_text(self, button, is_active) -> str:
         active_button_texts = {
             "rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:",
             "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:",
@@ -1004,26 +979,7 @@ class MarkForDeploymentProcess(SlackDeploymentProcess):
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }
 
-        if is_active is True:
-            confirm = False
-            text = active_button_texts[button]
-        else:
-            confirm = self.get_confirmation_object(button)
-            text = inactive_button_texts[button]
-
-        element = {
-            "type": "button",
-            "text": {
-                "type": "plain_text",
-                "text": text,
-                "emoji": True,
-            },
-            "confirm": confirm,
-            "value": button,
-        }
-        if not confirm:
-            del element["confirm"]
-        return element
+        return (active_button_texts if is_active else inactive_button_texts)[button]
 
 
 class ClusterData:

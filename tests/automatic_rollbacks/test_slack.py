@@ -37,7 +37,7 @@ class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
     def get_progress(self):
         return "progress%"
 
-    def get_button_element(self, button, is_active):
+    def get_button_text(self, button, is_active):
         return f"{button} {is_active}"
 
 
