@@ -816,6 +816,21 @@ class TestTronTools:
         )
 
     @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
+    def test_load_tron_service_config_empty(self, mock_load_tron_yaml):
+        mock_load_tron_yaml.return_value = {
+            "jobs": {},
+        }
+        job_configs = tron_tools.load_tron_service_config(
+            service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
+        )
+        assert job_configs == []
+        mock_load_tron_yaml.assert_called_once_with(
+            service='service',
+            cluster='test-cluster',
+            soa_dir='fake',
+        )
+
+    @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
     def test_load_tron_service_config_doesnt_need_a_jobs_keyword(self, mock_load_tron_yaml):
         mock_load_tron_yaml.return_value = {
             '_template': {'actions': {'action1': {}}},
@@ -1004,3 +1019,38 @@ class TestTronTools:
         ]
         result = tron_tools.list_tron_clusters('foo')
         assert sorted(result) == ['dev-cluster2', 'prod']
+
+
+def test_extract_jobs_from_tron_yaml_with_empty_dict():
+    assert tron_tools.extract_jobs_from_tron_yaml({}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_None():
+    assert tron_tools.extract_jobs_from_tron_yaml({"jobs": None}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_no_jobs():
+    assert tron_tools.extract_jobs_from_tron_yaml({"jobs": {}}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_just_jobs():
+    assert tron_tools.extract_jobs_from_tron_yaml({"job0": "foo"}) == {"job0": "foo"}
+
+
+def test_extract_jobs_from_tron_yaml_with_mix():
+    config = {
+        "_template": "foo",
+        "job0": "bar",
+    }
+    assert tron_tools.extract_jobs_from_tron_yaml(config) == {"job0": "bar"}
+
+
+def test_extract_jobs_from_tron_yaml_defaults_to_jobs_if_available():
+    config = {
+        "_template": "foo",
+        "job0": "bar",
+        "jobs": {
+            "job1": "baz",
+        },
+    }
+    assert tron_tools.extract_jobs_from_tron_yaml(config) == {"job1": "baz:"}

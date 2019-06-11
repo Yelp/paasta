@@ -541,6 +541,8 @@ def extract_jobs_from_tron_yaml(config):
     config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
     if 'jobs' in config and config.get('jobs') is None:
         return {}
+    if config.get('jobs') == {}:
+        return {}
     return config.get('jobs') or config or {}
 
 
