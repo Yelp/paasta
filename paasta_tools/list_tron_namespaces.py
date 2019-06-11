@@ -18,7 +18,7 @@ from paasta_tools.utils import paasta_print
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Lists Tron namespaces for a cluster.')
+    parser = argparse.ArgumentParser(description='Lists Tron namespaces for a cluster, excluding MASTER')
     parser.add_argument(
         '-c', '--cluster', dest="cluster", default=None,
         help="Use a different Tron cluster",
