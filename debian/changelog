@@ -1,3 +1,12 @@
+paasta-tools (0.85.9) xenial; urgency=medium
+
+  * 0.85.9 tagged with 'make release'
+    Commit: Merge pull request #2275 from
+    Yelp/check_flink_services_replication
+    check_flink_services_replication
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 12 Jun 2019 03:09:50 -0700
+
 paasta-tools (0.85.8) xenial; urgency=medium
 
   * 0.85.8 tagged with 'make release'
