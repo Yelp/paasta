@@ -1,3 +1,4 @@
+import abc
 import functools
 import os
 import textwrap
@@ -25,6 +26,7 @@ import tempfile
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.automatic_rollbacks.signalfx import tail_signalfx
+from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
 
 
 def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR) -> Generator:
@@ -178,3 +180,94 @@ def watch_slos_for_service(
         watchers.extend(demux.slo_watchers_by_label.values())
 
     return threads, watchers
+
+
+class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
+    auto_rollback_delay: float
+
+    def get_extra_blocks_for_deployment(self):
+        blocks = []
+        slo_text = self.get_slo_text()
+        if slo_text:
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": self.get_slo_text(),
+                },
+            })
+        return blocks
+
+    def get_slo_text(self) -> str:
+        slo_watchers = getattr(self, 'slo_watchers', None)
+        if slo_watchers is not None and len(slo_watchers) > 0:
+            num_failing = len([w for w in slo_watchers if w.failing])
+            if num_failing > 0:
+                slo_text = f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing"
+            else:
+
+                num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
+                num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
+                slo_text_components = []
+                if num_unknown > 0:
+                    slo_text_components.append(f":thinking_face: {num_unknown} SLOs are missing data. ")
+                if num_bad_before_mark > 0:
+                    slo_text_components.append(
+                        f":grimacing: {num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
+                    )
+
+                remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
+
+                if remaining == len(slo_watchers):
+                    slo_text = f":ok_hand: All {len(slo_watchers)} SLOs are currently passing."
+                else:
+                    if remaining > 0:
+                        slo_text_components.append(f"The remaining {remaining} SLOs are currently passing.")
+                    slo_text = ' '.join(slo_text_components)
+        else:
+            slo_text = "No SLOs defined for this service."
+
+        return slo_text
+
+    def start_slo_watcher_threads(self, service: str) -> None:
+        _, self.slo_watchers = watch_slos_for_service(
+            service=service,
+            individual_slo_callback=self.individual_slo_callback,
+            all_slos_callback=self.all_slos_callback,
+            sfx_api_token=self.get_signalfx_api_token(),
+        )
+
+    @abc.abstractmethod
+    def get_signalfx_api_token(self) -> str:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def auto_rollbacks_enabled(self) -> bool:
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_auto_rollback_delay(self) -> float:
+        raise NotImplementedError()
+
+    def any_slo_failing(self) -> bool:
+        return self.auto_rollbacks_enabled() and any(w.failing for w in self.slo_watchers)
+
+    def individual_slo_callback(self, label: str, bad: bool) -> None:
+        if bad:
+            message = f"SLO started failing: {label}"
+        else:
+            message = f"SLO is now OK: {label}"
+        self.notify_users(message)
+
+    def all_slos_callback(self, bad: bool) -> None:
+        if bad:
+            self.trigger('slos_started_failing')
+        else:
+            self.trigger('slos_stopped_failing')
+        self.update_slack()
+
+    def start_auto_rollback_countdown(self) -> None:
+        self.start_timer(self.get_auto_rollback_delay(), 'rollback_slo_failure', "automatically roll back")
+
+    def cancel_auto_rollback_countdown(self) -> None:
+        self.cancel_timer('rollback_slo_failure')
