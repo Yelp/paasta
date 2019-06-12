@@ -37,6 +37,7 @@ from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 from pyramid.response import Response
 from pyramid.view import view_config
+from requests.exceptions import ReadTimeout
 
 from paasta_tools import chronos_tools
 from paasta_tools import flink_tools
@@ -550,12 +551,16 @@ async def marathon_mesos_status(
 
     job_id = marathon_tools.format_job_id(service, instance)
     job_id_filter_string = f'{job_id}{marathon_tools.MESOS_TASK_SPACER}'
-    running_and_active_tasks = select_tasks_by_id(  # TODO: error handling on ReadTimeout?
-        await get_cached_list_of_running_tasks_from_frameworks(),
-        job_id=job_id_filter_string,
-    )
 
-    mesos_status['task_count'] = len(running_and_active_tasks)
+    try:
+        running_and_active_tasks = select_tasks_by_id(
+            await get_cached_list_of_running_tasks_from_frameworks(),
+            job_id=job_id_filter_string,
+        )
+    except ReadTimeout:
+        return {'error_message': 'Error: talking to Mesos timed out. It may be overloaded.'}
+
+    mesos_status['running_task_count'] = len(running_and_active_tasks)
 
     if verbose > 0:
         num_tail_lines = calculate_tail_lines(verbose)
@@ -591,7 +596,7 @@ async def marathon_mesos_status(
     return mesos_status
 
 
-# TODO: how to do this with error handling
+# TODO: how to do this with error handling -- union type for value or error message
 async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> MutableMapping[str, Any]:
     short_hostname_future = asyncio.ensure_future(get_short_hostname_from_task(task))
     mem_limit_future = asyncio.ensure_future(task.mem_limit())

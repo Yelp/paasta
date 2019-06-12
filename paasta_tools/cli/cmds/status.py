@@ -323,7 +323,8 @@ def print_marathon_status(
         output.extend([f'      {line}' for line in app_status_human])
 
     mesos_status_human = marathon_mesos_status_human(
-        marathon_status.mesos.task_count or 0,
+        marathon_status.mesos.error_message,
+        marathon_status.mesos.running_task_count or 0,
         marathon_status.expected_instance_count,
         marathon_status.mesos.running_tasks,
         marathon_status.mesos.non_running_tasks,
@@ -359,9 +360,18 @@ def create_autoscaling_info_table(autoscaling_info):
     return output
 
 
-def marathon_mesos_status_human(task_count, expected_instance_count, running_tasks, non_running_tasks):
+def marathon_mesos_status_human(
+    error_message,
+    running_task_count,
+    expected_instance_count,
+    running_tasks,
+    non_running_tasks,
+):
+    if error_message:
+        return [PaastaColors.red(error_message)]
+
     output = []
-    output.append(marathon_mesos_status_summary(task_count, expected_instance_count))
+    output.append(marathon_mesos_status_summary(running_task_count, expected_instance_count))
 
     output.append('  Running Tasks:')
     running_tasks_table = create_mesos_running_tasks_table(running_tasks)

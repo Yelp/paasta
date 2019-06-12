@@ -704,6 +704,10 @@
           "items": {
             "$ref": "#/definitions/MarathonMesosNonrunningTask"
           }
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message when Mesos tasks cannot be queried"
         }
       }
     },
