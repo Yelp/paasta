@@ -170,6 +170,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 failures=0,
                 processed_count=0,
+                bounce_by=0,
             )
             ret = self.worker.process_service_instance(mock_si)
             expected = BounceResults(None, 0, mock_setup_timers.return_value)
@@ -192,6 +193,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 failures=0,
                 processed_count=1,
+                bounce_by=0,
             )
             mock_setup_timers.return_value.bounce_length.stop.reset_mock()
             ret = self.worker.process_service_instance(mock_si)
@@ -202,6 +204,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 instance='c137',
                 failures=0,
                 processed_count=1,
+                bounce_by=0,
             )
             mock_deploy_marathon_service.return_value = (0, 60)
             mock_setup_timers.return_value.bounce_length.stop.reset_mock()

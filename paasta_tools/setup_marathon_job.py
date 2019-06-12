@@ -438,10 +438,10 @@ def get_tasks_by_state_for_app(
     async def categorize_task(task: MarathonTask) -> None:
         try:
             is_draining = await drain_method.is_draining(task)
-        except Exception:
+        except Exception as e:
             log_deploy_error(
-                f"Ignoring exception during is_draining of task {task.id}: "
-                f"{traceback.format_exc()}. Treating task as 'unhappy'.",
+                f"Ignoring {type(e).__name__} exception during is_draining of task "
+                f"{task.id} ({e.args[0]}). Treating task as 'unhappy'.",
             )
             state = 'unhappy'
         else:

@@ -73,6 +73,7 @@ def test_get_spark_config(
     mock_find_mesos_leader.return_value = 'fake_leader'
     args = mock.MagicMock()
     args.cluster = 'fake_cluster'
+    args.spark_args = 'spark.cores.max=10'
 
     spark_conf = get_spark_config(
         args=args,
@@ -88,6 +89,22 @@ def test_get_spark_config(
 
     assert spark_conf['spark.master'] == 'mesos://fake_leader:5050'
     assert 'spark.master=mesos://fake_leader:5050' in create_spark_config_str(spark_conf, is_mrjob=False)
+    assert int(spark_conf['spark.sql.shuffle.partitions']) == 20
+
+    args.spark_args = 'spark.core.max=10 spark.sql.shuffle.partitions=14'
+    spark_conf = get_spark_config(
+        args=args,
+        spark_app_name='fake_name',
+        spark_ui_port=123,
+        docker_img='fake-registry/fake-service',
+        system_paasta_config=SystemPaastaConfig(
+            {"cluster_fqdn_format": "paasta-{cluster:s}.something"},
+            'fake_dir',
+        ),
+        volumes=['v1:v1:rw', 'v2:v2:rw'],
+    )
+
+    assert int(spark_conf['spark.sql.shuffle.partitions']) == 14
 
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials', autospec=True)

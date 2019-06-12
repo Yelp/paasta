@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import datetime
 import inspect
 import logging
 import socket
@@ -6,6 +7,7 @@ import sys
 import time
 from queue import Empty
 
+import humanize
 import service_configuration_lib
 
 from paasta_tools.deployd import watchers
@@ -71,16 +73,14 @@ class Inbox(PaastaThread):
             self.process_inbox()
 
     def process_inbox(self):
+        """Takes things from the bounce_later queue, adds them to the to_bounce queue, then
+        takes things from the to_bounce queue and puts them on the bounce_now queue when they are due"""
         try:
             service_instance = self.instances_to_bounce_later.get(block=False)
         except Empty:
             service_instance = None
         if service_instance:
-            self.log.debug("Processing {}.{} to see if we need to add it "
-                           "to bounce queue".format(
-                               service_instance.service,
-                               service_instance.instance,
-                           ))
+            self.log.debug(f"Processing {service_instance.service}.{service_instance.instance} from the bounce_later queue to see if we need to bounce it now")  # noqa: E501
             self.process_service_instance(service_instance)
         if self.instances_to_bounce_later.empty() and self.to_bounce:
             self.process_to_bounce()
@@ -89,23 +89,26 @@ class Inbox(PaastaThread):
     def process_service_instance(self, service_instance):
         service_instance_key = f"{service_instance.service}.{service_instance.instance}"
         if self.should_add_to_bounce(service_instance, service_instance_key):
-            self.log.info(f"Enqueuing {service_instance} to be bounced ASAP")
             self.to_bounce[service_instance_key] = service_instance
 
     def should_add_to_bounce(self, service_instance, service_instance_key):
         if service_instance_key in self.to_bounce:
             if service_instance.bounce_by > self.to_bounce[service_instance_key].bounce_by:
-                self.log.debug(f"{service_instance} already in bounce queue with higher priority")
+                self.log.debug(f"{service_instance} already in to_bounce queue with higher priority")
                 return False
         return True
 
     def process_to_bounce(self):
         bounced = []
-        self.log.debug("Processing %d bounce queue entries..." % len(self.to_bounce.keys()))
+        self.log.debug(f"Processing {len(self.to_bounce.keys())} to_bounce queue entries...")
         for service_instance_key in self.to_bounce.keys():
             if self.to_bounce[service_instance_key].bounce_by < int(time.time()):
                 service_instance = self.to_bounce[service_instance_key]
+                human_bounce_by = humanize.naturaldelta(
+                    datetime.timedelta(seconds=(time.time() - service_instance.bounce_by)),
+                )
                 bounced.append(service_instance_key)
+                self.log.info(f"Enqueuing {service_instance.service}.{service_instance.instance} to the bounce_now queue (bounce_by {human_bounce_by} ago)")  # noqa E501
                 self.instances_to_bounce_now.put(service_instance.priority, service_instance)
         for service_instance_key in bounced:
             self.to_bounce.pop(service_instance_key)
@@ -131,6 +134,7 @@ class DeployDaemon(PaastaThread):
         service_configuration_lib.disable_yaml_cache()
         self.config = load_system_paasta_config()
         self.setup_logging()
+        self.metrics = get_metrics_interface('paasta.deployd')
         self.instances_to_bounce_now = DedupedPriorityQueue("instances_to_bounce_now")
         self.instances_to_bounce_later = PaastaQueue("instances_to_bounce_later")  # noqa: E501
         self.control = PaastaQueue("ControlQueue")
@@ -150,6 +154,8 @@ class DeployDaemon(PaastaThread):
 
     def run(self):
         self.log.info("paasta-deployd starting up...")
+        startup_counter = self.metrics.create_counter('process_started', paasta_cluster=self.config.get_cluster())
+        startup_counter.count()
         with ZookeeperPool() as self.zk:
             self.election = PaastaLeaderElection(
                 self.zk,
@@ -178,7 +184,6 @@ class DeployDaemon(PaastaThread):
     def startup(self):
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
-        self.metrics = get_metrics_interface('paasta.deployd')
         leader_counter = self.metrics.create_counter("leader_elections", paasta_cluster=self.config.get_cluster())
         leader_counter.count()
         QueueMetrics(

@@ -1,3 +1,72 @@
+paasta-tools (0.85.8) xenial; urgency=medium
+
+  * 0.85.8 tagged with 'make release'
+    Commit: Merge branch "fix_no_jobs"
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 14:36:46 -0700
+
+paasta-tools (0.85.7) xenial; urgency=medium
+
+  * 0.85.7 tagged with 'make release'
+    Commit: Merge pull request #2277 from Yelp/never_cleanup_master
+    Never try to clean up the master tron namespace
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 11:02:04 -0700
+
+paasta-tools (0.85.6) xenial; urgency=medium
+
+  * 0.85.6 tagged with 'make release'
+    Commit: Merge pull request #2272 from Yelp/no_jobs_keyword  No jobs
+    keyword
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 10:11:10 -0700
+
+paasta-tools (0.85.5) xenial; urgency=medium
+
+  * 0.85.5 tagged with 'make release'
+    Commit: Merge pull request #2276 from Yelp/master_config_fix  Fix
+    master config tron yaml loading
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 10 Jun 2019 14:58:31 -0700
+
+paasta-tools (0.85.4) xenial; urgency=medium
+
+  * 0.85.4 tagged with 'make release'
+    Commit: Merge pull request #2271 from Yelp/only_service_tron_jobs
+    Only support configuring tron jobs from service directories
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 10 Jun 2019 11:23:18 -0700
+
+paasta-tools (0.85.3) xenial; urgency=medium
+
+  * 0.85.3 tagged with 'make release'
+    Commit: Merge pull request #2266 from Yelp/cleanup_kubernetes_cr
+    Add cleanup_kubernetes_cr script
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 06 Jun 2019 13:21:44 -0700
+
+paasta-tools (0.85.2) xenial; urgency=medium
+
+  * 0.85.2 tagged with 'make release'
+    Commit: Merge branch "fix_deployd_tests"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 06 Jun 2019 10:33:02 -0700
+
+paasta-tools (0.85.1) xenial; urgency=medium
+
+  * 0.85.1 tagged with 'make release'
+    Commit: bump to 0.85.1
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Jun 2019 16:11:50 -0700
+
+paasta-tools (0.85.0) xenial; urgency=medium
+
+  * 0.85.0 tagged with 'make release'
+    Commit: Merge pull request #2269 from Yelp/drmorr/PAASTA-
+    14200/monitor_deployd_start  emit metrics when deployd starts
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Jun 2019 16:11:16 -0700
+
 paasta-tools (0.85.0) xenial; urgency=medium
 
   * 0.85.0 tagged with 'make release'

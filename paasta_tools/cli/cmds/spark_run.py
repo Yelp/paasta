@@ -482,6 +482,20 @@ def get_spark_config(
             # Update default configuration
             user_args[fields[0]] = fields[1]
 
+    if 'spark.sql.shuffle.partitions' not in user_args:
+        num_partitions = str(
+            2 * int(user_args['spark.cores.max']),
+        )
+        user_args['spark.sql.shuffle.partitions'] = num_partitions
+        paasta_print(
+            PaastaColors.yellow(
+                f'Warning: spark.sql.shuffle.partitions has been set to'
+                f' {num_partitions} to be equal to twice the number of '
+                f'requested cores, but you should consider setting a '
+                f'higher value if necessary.',
+            ),
+        )
+
     if int(user_args['spark.cores.max']) < int(user_args['spark.executor.cores']):
         paasta_print(
             PaastaColors.red(

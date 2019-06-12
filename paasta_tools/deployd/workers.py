@@ -1,5 +1,8 @@
+import datetime
 import time
 from collections import namedtuple
+
+import humanize
 
 from paasta_tools import marathon_tools
 from paasta_tools.deployd.common import BounceTimers
@@ -68,14 +71,18 @@ class PaastaDeployWorker(PaastaThread):
         )
 
     def run(self):
+        """Takes things from the to_bounce_now queue, processes them, then
+        might put them on the bounce_later queue for future processing"""
         self.log.info(f"{self.name} starting up")
         while True:
             service_instance = self.instances_to_bounce_now.get()
             try:
                 bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(service_instance)
             except Exception as e:
-                self.log.error("Worker failed to process service instance and will retry. "
-                               "Caused by exception: {}".format(e))
+                self.log.error(
+                    f"{self.name} Worker failed to process service instance and will retry. "
+                    f"Caused by exception: {format(e)}",
+                )
                 return_code = -2
                 bounce_timers = service_instance.bounce_timers
             failures = service_instance.failures
@@ -104,7 +111,8 @@ class PaastaDeployWorker(PaastaThread):
 
     def process_service_instance(self, service_instance):
         bounce_timers = self.setup_timers(service_instance)
-        self.log.info(f"{self.name} processing {service_instance.service}.{service_instance.instance}")
+        human_bounce_by = humanize.naturaldelta(datetime.timedelta(seconds=(time.time() - service_instance.bounce_by)))
+        self.log.info(f"{self.name} processing {service_instance.service}.{service_instance.instance} (bounce_by {human_bounce_by} ago)")  # noqa E501
 
         bounce_timers.setup_marathon.start()
         return_code, bounce_again_in_seconds = deploy_marathon_service(
@@ -116,24 +124,12 @@ class PaastaDeployWorker(PaastaThread):
         )
 
         bounce_timers.setup_marathon.stop()
-        self.log.info("setup marathon completed with exit code {} for {}.{}".format(
-            return_code,
-            service_instance.service,
-            service_instance.instance,
-        ))
+        self.log.info(f"{self.name} setup marathon completed with exit code {return_code} for {service_instance.service}.{service_instance.instance}")  # noqa E501
         if bounce_again_in_seconds:
             bounce_timers.processed_by_worker.start()
-            self.log.info("{}.{} not in steady state so bouncing again in {} "
-                          "seconds".format(
-                              service_instance.service,
-                              service_instance.instance,
-                              bounce_again_in_seconds,
-                          ))
+            self.log.info(f"{self.name} {service_instance.service}.{service_instance.instance} not in steady state so bouncing again in {bounce_again_in_seconds}")  # noqa E501
         else:
-            self.log.info("{}.{} in steady state".format(
-                service_instance.service,
-                service_instance.instance,
-            ))
+            self.log.info(f"{self.name} {service_instance.service}.{service_instance.instance} in steady state")
             if service_instance.processed_count > 0:
                 bounce_timers.bounce_length.stop()
         return BounceResults(bounce_again_in_seconds, return_code, bounce_timers)

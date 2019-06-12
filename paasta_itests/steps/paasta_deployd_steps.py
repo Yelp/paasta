@@ -2,6 +2,7 @@ import errno
 import fcntl
 import json
 import os
+import threading
 import time
 from subprocess import PIPE
 from subprocess import Popen
@@ -18,6 +19,7 @@ from steps.setup_steps import modify_configs
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import ZookeeperPool
 
@@ -48,6 +50,14 @@ def start_deployd(context):
         print(output.rstrip('\n'))
         if time.time() > timeout:
             raise Exception("deployd never ran")
+
+    def dont_let_stderr_buffer():
+        while True:
+            line = context.daemon.stderr.readline()
+            if not line:
+                return
+            paasta_print(f"deployd stderr: {line}")
+    threading.Thread(target=dont_let_stderr_buffer).start()
     time.sleep(5)
 
 

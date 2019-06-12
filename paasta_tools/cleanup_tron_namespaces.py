@@ -47,10 +47,11 @@ def parse_args():
 def main():
     args = parse_args()
 
+    cluster = tron_tools.load_tron_config().get_cluster_name()
     client = tron_tools.get_tron_client()
     namespaces = client.list_namespaces()
-    expected_namespaces = tron_tools.get_tron_namespaces_for_cluster(soa_dir=args.soa_dir)
-    to_delete = set(namespaces) - set(expected_namespaces)
+    expected_namespaces = tron_tools.get_tron_namespaces(cluster=cluster, soa_dir=args.soa_dir)
+    to_delete = set(namespaces) - set(expected_namespaces) - {"MASTER"}
 
     if not to_delete:
         paasta_print('No Tron namespaces to remove')
