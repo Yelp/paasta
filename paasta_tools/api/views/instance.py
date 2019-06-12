@@ -71,6 +71,7 @@ from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import HaproxyBackend
 from paasta_tools.smartstack_tools import match_backends_and_tasks
+from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import validate_service_instance
@@ -81,7 +82,7 @@ def chronos_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
 ) -> Mapping[str, Any]:
     cstatus: Dict[str, Any] = {}
     chronos_config = chronos_tools.load_chronos_config()
@@ -146,7 +147,7 @@ def tron_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
 ) -> Mapping[str, Any]:
     status: Dict[str, Any] = {}
     client = tron_tools.get_tron_client()
@@ -185,7 +186,7 @@ def adhoc_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
 ) -> List[Dict[str, Any]]:
     status = []
     filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
@@ -202,7 +203,7 @@ def flink_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
 ) -> Optional[Mapping[str, Any]]:
     status: Optional[Mapping[str, Any]] = None
     client = settings.kubernetes_client
@@ -219,7 +220,7 @@ def kubernetes_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
 ) -> Mapping[str, Any]:
     kstatus: Dict[str, Any] = {}
     job_config = kubernetes_tools.load_kubernetes_service_config(
@@ -245,11 +246,11 @@ def kubernetes_job_status(
     client: kubernetes_tools.KubeClient,
     job_config: kubernetes_tools.KubernetesDeploymentConfig,
     pod_list: Sequence[V1Pod],
-    verbose: bool,
+    verbose: int,
 ) -> None:
     app_id = job_config.get_sanitised_deployment_name()
     kstatus['app_id'] = app_id
-    if verbose is True:
+    if verbose > 0:
         kstatus['slaves'] = [
             pod.spec.node_name
             for pod in pod_list
@@ -267,7 +268,7 @@ def marathon_job_status(
     instance: str,
     job_config: marathon_tools.MarathonServiceConfig,
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
-    verbose: bool,
+    verbose: int,
 ) -> MutableMapping[str, Any]:
     job_status_fields = {'app_statuses': []}
 
@@ -291,7 +292,7 @@ def marathon_job_status(
             marathon_client,
             dashboard_links.get(marathon_client),
             deploy_status,
-            list_tasks=verbose,
+            list_tasks=verbose > 0,
         )
         job_status_fields['app_statuses'].append(app_status)
 
@@ -302,7 +303,7 @@ def marathon_job_status(
     job_status_fields['deploy_status'] = deploy_status_for_desired_app or 'Waiting for bounce'
     job_status_fields['running_instance_count'] = tasks_running
 
-    if verbose is True:
+    if verbose > 0:
         autoscaling_info = get_autoscaling_info(marathon_apps_with_clients, job_config)
         job_status_fields['autoscaling_info'] = autoscaling_info._asdict()
 
@@ -479,7 +480,7 @@ def marathon_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
 
@@ -531,7 +532,7 @@ def marathon_instance_status(
             job_config,
             service_namespace_config,
             tasks,
-            should_return_individual_backends=verbose,
+            should_return_individual_backends=verbose > 0,
         )
 
     mstatus['mesos'] = marathon_mesos_status(service, instance, verbose)
@@ -543,8 +544,7 @@ def marathon_instance_status(
 async def marathon_mesos_status(
     service: str,
     instance: str,
-    verbose: bool,
-    num_tail_lines=10,  # TODO
+    verbose: int,
 ) -> MutableMapping[str, Any]:
     mesos_status = {}
 
@@ -557,7 +557,8 @@ async def marathon_mesos_status(
 
     mesos_status['task_count'] = len(running_and_active_tasks)
 
-    if verbose:
+    if verbose > 0:
+        num_tail_lines = calculate_tail_lines(verbose)
         running_task_dict_futures = []
         for task in running_and_active_tasks:
             running_task_dict_futures.append(
@@ -690,7 +691,7 @@ async def get_tail_lines_for_mesos_task(
 def instance_status(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
-    verbose = request.swagger_data.get('verbose', False)
+    verbose = request.swagger_data.get('verbose', 0)
 
     instance_status: Dict[str, Any] = {}
     instance_status['service'] = service

@@ -234,7 +234,7 @@ def paasta_status_on_api_endpoint(
         exit(1)
 
     try:
-        status = client.service.status_instance(service=service, instance=instance, verbose=bool(verbose)).result()
+        status = client.service.status_instance(service=service, instance=instance, verbose=verbose).result()
     except HTTPError as exc:
         paasta_print(exc.response.text)
         return exc.status_code

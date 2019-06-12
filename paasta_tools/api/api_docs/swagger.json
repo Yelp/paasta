@@ -282,7 +282,8 @@
             "description": "Include verbose status information",
             "name": "verbose",
             "required": false,
-            "type": "boolean"
+            "type": "integer",
+            "format": "int32"
           }
         ]
       }
