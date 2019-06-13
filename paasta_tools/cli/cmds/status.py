@@ -389,22 +389,30 @@ def create_mesos_running_tasks_table(running_tasks):
     table_header = ['Mesos Task ID', 'Host deployed to', 'Ram', 'CPU', 'Deployed at what localtime']
     rows.append(table_header)
     for task in running_tasks:
-        mem_percent = 100 * task.rss / task.mem_limit
-        mem_string = '%d/%dMB' % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
-        if mem_percent > 90:
-            mem_string = PaastaColors.red(mem_string)
-
-        # The total time a task has been allocated is the total time the task has
-        # been running multiplied by the "shares" a task has.
-        # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
-        allocated_seconds = task.cpu_shares * task.duration_seconds
-        if allocated_seconds == 0:
-            cpu_string = "Undef"
+        # TODO: break into own method? (stuff in initial if block)
+        if task.rss.value is not None and task.mem_limit.value is not None:
+            mem_percent = 100 * task.rss.value / task.mem_limit.value
+            mem_string = '%d/%dMB' % ((task.rss.value / 1024 / 1024), (task.mem_limit.value / 1024 / 1024))
+            if mem_percent > 90:
+                mem_string = PaastaColors.red(mem_string)
         else:
-            cpu_percent = round(100 * (task.cpu_used_seconds / allocated_seconds), 1)
-            cpu_string = '%s%%' % cpu_percent
-            if cpu_percent > 90:
-                cpu_string = PaastaColors.red(cpu_string)
+            mem_string = task.mem_limit.error_message
+
+        # TODO: break into own method? (stuff in initial if block)
+        if task.cpu_shares.value is not None:
+            # The total time a task has been allocated is the total time the task has
+            # been running multiplied by the "shares" a task has.
+            # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
+            allocated_seconds = task.cpu_shares.value * task.duration_seconds
+            if allocated_seconds == 0:
+                cpu_string = "Undef"
+            else:
+                cpu_percent = round(100 * (task.cpu_used_seconds / allocated_seconds), 1)
+                cpu_string = '%s%%' % cpu_percent
+                if cpu_percent > 90:
+                    cpu_string = PaastaColors.red(cpu_string)
+        else:
+            cpu_string = task.cpu_shares.error_message
 
         deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
         deployed_at_string = "{} ({})".format(
@@ -419,10 +427,12 @@ def create_mesos_running_tasks_table(running_tasks):
             cpu_string,
             deployed_at_string,
         ])
-        if task.tail_lines:
+        if task.tail_lines.stderr or task.tail_lines.stdout:
             for stdstream in ('stdout', 'stderr'):
                 rows.append(PaastaColors.blue(f'{stdstream} tail for {task.id}'))
                 rows.extend(f'  {line}' for line in getattr(task.tail_lines, stdstream, []))
+        elif task.tail_lines.error_message is not None:
+            rows.append(PaastaColors.red(f'  {task.tail_lines.error_message}'))
 
     return format_table(rows)
 

@@ -723,18 +723,15 @@
           "description": "Name of the Mesos agent on which this task is running"
         },
         "mem_limit": {
-          "type": "integer",
-          "format": "int32",
+          "$ref": "#/definitions/IntegerAndError",
           "description": "The maximum amount of memory the task is allowed to use"
         },
         "rss": {
-          "type": "integer",
-          "format": "int32",
+          "$ref": "#/definitions/IntegerAndError",
           "description": "The tasks's resident set size"
         },
         "cpu_shares": {
-          "type": "number",
-          "format": "float",
+          "$ref": "#/definitions/FloatAndError",
           "description": "The portion of a CPU that the task can use"
         },
         "cpu_used_seconds" :{
@@ -755,6 +752,10 @@
         "tail_lines": {
           "$ref": "#/definitions/MesosTaskTailLines",
           "description": "Stdout and stderr tail of the task"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message when fetching task information fails"
         }
       }
     },
@@ -781,6 +782,10 @@
         "tail_lines": {
           "$ref": "#/definitions/MesosTaskTailLines",
           "description": "Stdout and stderr tail of the task"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message when fetching task information fails"
         }
       }
     },
@@ -800,6 +805,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Error message when fetching tail lines fails"
         }
       }
     },
@@ -1322,6 +1331,30 @@
         },
         "total": {
           "type": "number"
+        }
+      }
+    },
+    "FloatAndError": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "float"
+        },
+        "error_message": {
+          "type": "string"
+        }
+      }
+    },
+    "IntegerAndError": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "error_message": {
+          "type": "string"
         }
       }
     }

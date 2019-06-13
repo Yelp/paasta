@@ -39,6 +39,7 @@ from pyramid.response import Response
 from pyramid.view import view_config
 from requests.exceptions import ReadTimeout
 
+import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import chronos_tools
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
@@ -59,12 +60,14 @@ from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_cached_list_of_not_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
+from paasta_tools.mesos_tools import get_cpu_shares
 from paasta_tools.mesos_tools import get_first_status_timestamp
 from paasta_tools.mesos_tools import get_mesos_config
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_short_hostname_from_task
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
+from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.paasta_serviceinit import get_deployment_version
@@ -75,7 +78,9 @@ from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+
 log = logging.getLogger(__name__)
 
 
@@ -596,12 +601,22 @@ async def marathon_mesos_status(
     return mesos_status
 
 
-# TODO: how to do this with error handling -- union type for value or error message
+async def _task_result_or_error(future):
+    try:
+        return {'value': await future}
+    except (AttributeError, mesos_exceptions.SlaveDoesNotExist):
+        return {'error_message': "None"}
+    except TimeoutError:
+        return {'error_message': 'Timed Out'}
+    except Exception:
+        return {'error_message': 'Unknown'}
+
+
 async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> MutableMapping[str, Any]:
-    short_hostname_future = asyncio.ensure_future(get_short_hostname_from_task(task))
-    mem_limit_future = asyncio.ensure_future(task.mem_limit())
-    rss_future = asyncio.ensure_future(task.rss())
-    cpu_shares_future = asyncio.ensure_future(task.cpu_limit())
+    short_hostname_future = asyncio.ensure_future(results_or_unknown(get_short_hostname_from_task(task)))
+    mem_limit_future = asyncio.ensure_future(_task_result_or_error(task.mem_limit()))
+    rss_future = asyncio.ensure_future(_task_result_or_error(task.rss()))
+    cpu_shares_future = asyncio.ensure_future(_task_result_or_error(get_cpu_shares(task)))
     task_stats_future = asyncio.ensure_future(task.stats())
 
     futures = [short_hostname_future, mem_limit_future, rss_future, cpu_shares_future, task_stats_future]
@@ -616,27 +631,21 @@ async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> Mutabl
     task_stats = task_stats_future.result()
     cpu_used_seconds = task_stats.get('cpus_system_time_secs', 0.0) + task_stats.get('cpus_user_time_secs', 0.0)
 
-    task_start_time = get_first_status_timestamp(task)
-    current_time = int(datetime.datetime.now().strftime('%s'))
-    duration_seconds = current_time - round(task_start_time)
-
     task_dict = {
         'id': get_short_task_id(task['id']),
         'hostname': short_hostname_future.result(),
         'mem_limit': mem_limit_future.result(),
         'rss': rss_future.result(),
-
-        # Mesos allocates an extra .1 for executor overhead.  Subtract this to
-        # get the true number.
-        # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
-        'cpu_shares': cpu_shares_future.result() - 0.1,
+        'cpu_shares': cpu_shares_future.result(),
         'cpu_used_seconds': cpu_used_seconds,
-        'duration_seconds': duration_seconds,
         'tail_lines': tail_lines_future.result() if tail_lines_future else {},
     }
 
+    task_start_time = get_first_status_timestamp(task)
     if task_start_time is not None:
         task_dict['deployed_timestamp'] = task_start_time
+        current_time = int(datetime.datetime.now().strftime('%s'))
+        task_dict['duration_seconds'] = current_time - round(task_start_time)
 
     return task_dict
 
@@ -649,7 +658,7 @@ async def get_mesos_non_running_task_dict(task: Task, num_tail_lines: int) -> Mu
 
     task_dict = {
         'id': get_short_task_id(task['id']),
-        'hostname': await get_short_hostname_from_task(task),
+        'hostname': await results_or_unknown(get_short_hostname_from_task(task)),
         'state': task['state'],
         'tail_lines': tail_lines,
     }
@@ -668,26 +677,39 @@ async def get_tail_lines_for_mesos_task(
 ) -> MutableMapping[str, Sequence[str]]:
     tail_lines_dict: Dict[str, List[str]] = {}
     mesos_cli_config = get_mesos_config()
-    fobjs = await aiter_to_list(cluster.get_files_for_tasks(
-        task_list=[task],
-        file_list=['stdout', 'stderr'],
-        max_workers=mesos_cli_config["max_workers"],
-    ))
-    fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
 
-    for fobj in fobjs:
-        # read nlines, starting from EOF
-        tail = []
-        lines_seen = 0
+    try:
+        fobjs = await aiter_to_list(cluster.get_files_for_tasks(
+            task_list=[task],
+            file_list=['stdout', 'stderr'],
+            max_workers=mesos_cli_config["max_workers"],
+        ))
+        fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
 
-        async for line in fobj._readlines_reverse():
-            tail.append(line)
-            lines_seen += 1
-            if lines_seen >= num_tail_lines:
-                break
+        for fobj in fobjs:
+            # read nlines, starting from EOF
+            tail = []
+            lines_seen = 0
 
-        # reverse the tail, so that EOF is at the bottom again
-        tail_lines_dict[fobj.path] = tail[::-1]
+            async for line in fobj._readlines_reverse():
+                tail.append(line)
+                lines_seen += 1
+                if lines_seen >= num_tail_lines:
+                    break
+
+            # reverse the tail, so that EOF is at the bottom again
+            tail_lines_dict[fobj.path] = tail[::-1]
+    except (
+        mesos_exceptions.MasterNotAvailableException,
+        mesos_exceptions.SlaveDoesNotExist,
+        mesos_exceptions.TaskNotFoundException,
+        mesos_exceptions.FileNotFoundForTaskException,
+    ) as e:
+        short_task_id = get_short_task_id(task['id'])
+        error_name = e.__class__.__name__
+        return {'error_message': f"Couldn't read stdout/stderr for {short_task_id}, ({error_name})"}
+    except TimeoutError:
+        return {'error_message': 'Timeout'}
 
     return tail_lines_dict
 
