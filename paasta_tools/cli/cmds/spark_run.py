@@ -241,7 +241,7 @@ def add_subparser(subparsers):
     aws_group.add_argument(
         '--aws-credentials-yaml',
         help='Load aws keys from the provided yaml file. The yaml file must '
-        'have keys for aws_access_key_id and aws_secret_access_key.',
+        'have keys for aws_access_key_id, aws_secret_access_key',
     )
 
     aws_group.add_argument(
@@ -251,6 +251,12 @@ def add_subparser(subparsers):
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
         default='default',
+    )
+
+    aws_group.add_argument(
+        '--aws-region',
+        help='Specify an aws region. This will override the region found'
+             'when loading aws credentials from file.',
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -327,9 +333,10 @@ def get_spark_env(
 ):
     spark_env = {}
 
-    access_key, secret_key = get_aws_credentials(args)
+    access_key, secret_key, aws_region = get_aws_credentials_and_region(args)
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
+    spark_env['AWS_DEFAULT_REGION'] = aws_region
     spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
     spark_env['PAASTA_INSTANCE_TYPE'] = 'spark'
 
@@ -361,13 +368,17 @@ def get_spark_env(
     return spark_env
 
 
-def get_aws_credentials(args):
+def get_aws_credentials_and_region(args):
     if args.aws_credentials_yaml:
-        return load_aws_credentials_from_yaml(args.aws_credentials_yaml)
+        access_key, secret_key, region_from_file = load_aws_credentials_from_yaml(args.aws_credentials_yaml)
+        aws_region = args.aws_region or region_from_file
+        return access_key, secret_key, aws_region
     elif args.service != DEFAULT_SERVICE:
         service_credentials_path = get_service_aws_credentials_path(args.service)
         if os.path.exists(service_credentials_path):
-            return load_aws_credentials_from_yaml(service_credentials_path)
+            access_key, secret_key, region_from_file = load_aws_credentials_from_yaml(service_credentials_path)
+            aws_region = args.aws_region or region_from_file
+            return access_key, secret_key, aws_region
         else:
             paasta_print(
                 PaastaColors.yellow(
@@ -377,7 +388,10 @@ def get_aws_credentials(args):
             )
 
     creds = Session(profile=args.aws_profile).get_credentials()
-    return creds.access_key, creds.secret_key
+    region_from_session = Session(profile=args.aws_profile).region_name
+    aws_region = args.aws_region or region_from_session
+
+    return creds.access_key, creds.secret_key, aws_region
 
 
 def get_service_aws_credentials_path(service_name):
@@ -404,6 +418,7 @@ def load_aws_credentials_from_yaml(yaml_file_path):
         return (
             credentials_yaml['aws_access_key_id'],
             credentials_yaml['aws_secret_access_key'],
+            credentials_yaml['region'],
         )
 
 
@@ -908,6 +923,9 @@ def paasta_spark_run(args):
                 file=sys.stderr,
             )
             return 1
+
+    paasta_print(PaastaColors.red('lolololol'))
+    paasta_print(PaastaColors.red(os.environ['AWS_DEFAULT_REGION']))
 
     return configure_and_run_docker_container(
         args,
