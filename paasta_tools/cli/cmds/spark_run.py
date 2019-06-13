@@ -241,7 +241,7 @@ def add_subparser(subparsers):
     aws_group.add_argument(
         '--aws-credentials-yaml',
         help='Load aws keys from the provided yaml file. The yaml file must '
-        'have keys for aws_access_key_id, aws_secret_access_key',
+        'have keys for aws_access_key_id and aws_secret_access_key.',
     )
 
     aws_group.add_argument(
