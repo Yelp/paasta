@@ -26,7 +26,6 @@ PREFIX = '/smartstack/global/'
 CHUNK_SIZE = 50  # How many concurrent xinetd connections
 DEFAULT_ZK_DISCOVERY_PATH = '/nail/etc/zookeeper_discovery/infrastructure/local.yaml'
 DEFAULT_NERVE_XINETD_PORT = 8735
-DEFAULT_SERVICE_BLACKLIST_PATH = './orphan_service_blacklist.yaml'
 
 
 class ExitCode(Enum):
@@ -94,7 +93,7 @@ async def transfer_one_file(host: str, port: int = DEFAULT_NERVE_XINETD_PORT) ->
         )
         resp = await asyncio.wait_for(reader.read(), timeout=1.0)
     except (asyncio.TimeoutError, ConnectionRefusedError):
-        logger.error(f'error getting file from {host}')
+        logger.warning(f'error getting file from {host}')
         return (host, None)
 
     return (host, resp.decode())
@@ -130,8 +129,7 @@ def read_nerve_files(nerve_configs: Dict[str, Optional[str]]) -> Tuple[Set[Insta
     return instance_set, not_found_hosts
 
 
-def get_instance_data(service_blacklist_path: str) -> Tuple[Set[InstanceTuple], Set[InstanceTuple]]:
-    blacklisted_services = set(yaml.load(service_blacklist_path))
+def get_instance_data(blacklisted_services: Set[str]) -> Tuple[Set[InstanceTuple], Set[InstanceTuple]]:
     # Dump ZK
     zk_data = get_zk_data(blacklisted_services)
     zk_instance_data = read_from_zk_data(zk_data)
@@ -193,16 +191,17 @@ def check_orphans(
 
 
 def main() -> ExitCode:
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.WARNING)
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--service-blacklist-path',
-        default=DEFAULT_SERVICE_BLACKLIST_PATH,
-        help="Path to a file that contains services to ignore",
+        '--blacklisted-services',
+        default="",
+        type=str,
+        help="Comma separated list of services to ignore",
     )
     args = parser.parse_args()
 
-    zk_instance_data, nerve_instance_data = get_instance_data(args.service_blacklist_path)
+    zk_instance_data, nerve_instance_data = get_instance_data(set(args.blacklisted_services.split(',')))
 
     return check_orphans(zk_instance_data, nerve_instance_data)
 
