@@ -352,7 +352,15 @@ autoscaling_fields_to_headers = OrderedDict(
 
 def create_autoscaling_info_table(autoscaling_info):
     output = ['Autoscaling Info:']
-    autoscaling_info.current_utilization = '{:.1f}%'.format(autoscaling_info.current_utilization * 100)
+
+    if autoscaling_info.current_utilization is not None:
+        autoscaling_info.current_utilization = '{:.1f}%'.format(autoscaling_info.current_utilization * 100)
+    else:
+        autoscaling_info.current_utilization = 'Exception'
+
+    if autoscaling_info.target_instances is None:
+        autoscaling_info.target_instances = 'Exception'
+
     headers = list(autoscaling_fields_to_headers.values())
     row = [str(getattr(autoscaling_info, field)) for field in autoscaling_fields_to_headers]
     table = [f'  {line}' for line in format_table([headers, row])]

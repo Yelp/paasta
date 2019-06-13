@@ -1324,11 +1324,11 @@ def test_get_autoscaling_info():
             num_healthy_instances=1,
         )
         expected = autoscaling_service_lib.ServiceAutoscalingInfo(
-            current_instances="4",
-            max_instances="10",
-            min_instances="2",
-            current_utilization="80.1%",
-            target_instances="6",
+            current_instances=4,
+            max_instances=10,
+            min_instances=2,
+            current_utilization=0.80131,
+            target_instances=6,
         )
         assert ret == expected
 
@@ -1339,9 +1339,9 @@ def test_get_autoscaling_info():
             mock_service_config,
         )
         expected = autoscaling_service_lib.ServiceAutoscalingInfo(
-            current_instances="4",
-            max_instances="10",
-            min_instances="2",
+            current_instances=4,
+            max_instances=10,
+            min_instances=2,
             current_utilization="Exception",
             target_instances="Exception",
         )
@@ -1354,9 +1354,9 @@ def test_get_autoscaling_info():
             mock_service_config,
         )
         expected = autoscaling_service_lib.ServiceAutoscalingInfo(
-            current_instances="4",
-            max_instances="10",
-            min_instances="2",
+            current_instances=4,
+            max_instances=10,
+            min_instances=2,
             current_utilization="Exception",
             target_instances="Exception",
         )

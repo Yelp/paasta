@@ -105,11 +105,11 @@ def test_status_marathon_job_verbose():
         'paasta_tools.marathon_serviceinit.status_marathon_app', autospec=True,
     ) as mock_status_marathon_app, mock.patch(
         'paasta_tools.marathon_serviceinit.get_autoscaling_info', autospec=True, return_value=ServiceAutoscalingInfo(
-            current_instances='1',
-            max_instances='2',
-            min_instances='3',
-            current_utilization='4',
-            target_instances='5',
+            current_instances=1,
+            max_instances=2,
+            min_instances=3,
+            current_utilization=0.4,
+            target_instances=5,
         ),
     ):
         mock_get_matching_apps_with_clients.return_value = [(app, client)]

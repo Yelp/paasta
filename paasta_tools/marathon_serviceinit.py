@@ -160,7 +160,14 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
 
 def humanize_autoscaling_info(autoscaling_info):
     autoscaling_info_dict = autoscaling_info._asdict()
-    autoscaling_info_dict['current_utilization'] = '{:.1f}%'.format(autoscaling_info.current_utilization * 100)
+    if autoscaling_info_dict['current_utilization'] is not None:
+        autoscaling_info_dict['current_utilization'] = '{:.1f}%'.format(
+            autoscaling_info_dict['current_utilization'] * 100,
+        )
+    else:
+        autoscaling_info_dict['current_utilization'] = 'Exception'
+
+    autoscaling_info_dict['target_instances'] = autoscaling_info_dict.get('target_instances', 'Exception')
     return [str(value) for value in autoscaling_info_dict.values()]
 
 

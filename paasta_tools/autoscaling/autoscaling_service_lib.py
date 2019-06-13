@@ -489,10 +489,9 @@ def get_autoscaling_info(apps_with_clients, service_config):
                 num_healthy_instances=len(marathon_tasks),
             )
             # TODO: test this on a master with serviceinit
-            # current_utilization = "{:.1f}%".format(utilization * 100)
         except MetricsProviderNoDataError:
-            utilization = "Exception"
-            new_instance_count = "Exception"
+            utilization = None
+            new_instance_count = None
         return ServiceAutoscalingInfo(
             current_instances=service_config.get_instances(),
             max_instances=service_config.get_max_instances(),

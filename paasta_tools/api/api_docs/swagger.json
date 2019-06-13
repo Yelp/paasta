@@ -833,7 +833,7 @@
         "current_utilization": {
           "type": "number",
           "format": "float",
-          "description": ""
+          "description": "The current utilization of the instances' allocated resources"
         },
         "target_instances": {
           "type": "integer",
