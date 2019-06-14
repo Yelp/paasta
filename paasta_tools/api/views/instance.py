@@ -722,7 +722,7 @@ async def get_tail_lines_for_mesos_task(
 def instance_status(request):
     service = request.swagger_data.get('service')
     instance = request.swagger_data.get('instance')
-    verbose = request.swagger_data.get('verbose', 0)
+    verbose = request.swagger_data.get('verbose') or 0
 
     instance_status: Dict[str, Any] = {}
     instance_status['service'] = service
