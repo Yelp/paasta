@@ -463,7 +463,7 @@ def paasta_mark_for_deployment(args):
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
 
-    if args.auto_rollback:
+    if args.auto_rollback or args.wait_for_deployment:
         deploy_process = MarkForDeploymentProcess(
             service=service,
             deploy_info=deploy_info,
