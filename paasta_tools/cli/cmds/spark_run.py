@@ -924,9 +924,6 @@ def paasta_spark_run(args):
             )
             return 1
 
-    paasta_print(PaastaColors.red('lolololol'))
-    paasta_print(PaastaColors.red(os.environ['AWS_DEFAULT_REGION']))
-
     return configure_and_run_docker_container(
         args,
         docker_img=docker_url,
