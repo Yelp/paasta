@@ -454,6 +454,49 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 @patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
 @patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
+def test_MarkForDeployProcess_handles_first_time_deploys(
+    mock_load_system_paasta_config,
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+    mock_get_slack_client,
+    mock_get_authors,
+    mock_periodically_update_slack,
+):
+    mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
+        service='service',
+        block=True,
+        auto_rollback=True,
+
+        deploy_info=None,
+        deploy_group=None,
+        commit='abc123432u49',
+        old_git_sha=None,
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
+        auto_rollback_delay=1,
+    )
+
+    mock_mark_for_deployment.return_value = 0
+    mock_wait_for_deployment.side_effect = Exception()
+
+    retval = mfdp.run()
+
+    assert mock_mark_for_deployment.call_count == 1
+    assert mock_wait_for_deployment.call_count == 1
+    assert mfdp.state == 'deploy_errored'
+    assert retval == 2
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
+@patch('paasta_tools.remote_git.get_authors', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.get_slack_client', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config', autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     mock_load_system_paasta_config,
     mock_wait_for_deployment,
