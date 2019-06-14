@@ -20,7 +20,7 @@ from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import create_spark_config_str
 from paasta_tools.cli.cmds.spark_run import DEFAULT_SERVICE
 from paasta_tools.cli.cmds.spark_run import emit_resource_requirements
-from paasta_tools.cli.cmds.spark_run import get_aws_credentials_and_region
+from paasta_tools.cli.cmds.spark_run import get_aws_credentials
 from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_spark_config
@@ -107,7 +107,7 @@ def test_get_spark_config(
     assert int(spark_conf['spark.sql.shuffle.partitions']) == 14
 
 
-@mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials_and_region', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.os.path.exists', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_username', autospec=True)
@@ -157,15 +157,16 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
-        mock_get_aws_credentials_and_region,
+        mock_get_aws_credentials,
     ):
         mock_pick_random_port.return_value = 123
         mock_get_username.return_value = 'fake_user'
         mock_get_spark_config.return_value = {'spark.app.name': 'fake_app'}
         mock_run_docker_container.return_value = 0
-        mock_get_aws_credentials_and_region.return_value = ('id', 'secret', 'region')
+        mock_get_aws_credentials.return_value = ('id', 'secret')
 
         args = mock.MagicMock()
+        args.aws_region = 'fake_region'
         args.cluster = 'fake_cluster'
         args.cmd = 'pyspark'
         args.work_dir = '/fake_dir:/spark_driver'
@@ -200,7 +201,7 @@ class TestConfigureAndRunDockerContainer:
                 'PAASTA_LAUNCHED_BY': mock.ANY,
                 'AWS_ACCESS_KEY_ID': 'id',
                 'AWS_SECRET_ACCESS_KEY': 'secret',
-                'AWS_DEFAULT_REGION': 'region',
+                'AWS_DEFAULT_REGION': 'fake_region',
                 'SPARK_USER': 'root',
                 'SPARK_OPTS': '--conf spark.app.name=fake_app',
             },
@@ -218,9 +219,9 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
-        mock_get_aws_credentials_and_region,
+        mock_get_aws_credentials,
     ):
-        mock_get_aws_credentials_and_region.return_value = ('id', 'secret', 'region')
+        mock_get_aws_credentials.return_value = ('id', 'secret')
         with mock.patch(
             'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
         ) as mock_emit_resource_requirements, mock.patch(
@@ -248,9 +249,9 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
-        mock_get_aws_credentials_and_region,
+        mock_get_aws_credentials,
     ):
-        mock_get_aws_credentials_and_region.return_value = ('id', 'secret', 'region')
+        mock_get_aws_credentials.return_value = ('id', 'secret')
         with mock.patch(
             'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
         ) as mock_emit_resource_requirements, mock.patch(
@@ -281,10 +282,10 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
-        mock_get_aws_credentials_and_region,
+        mock_get_aws_credentials,
         mock_create_spark_config_str,
     ):
-        mock_get_aws_credentials_and_region.return_value = ('id', 'secret', 'region')
+        mock_get_aws_credentials.return_value = ('id', 'secret')
 
         with mock.patch(
             'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
@@ -323,10 +324,10 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username,
         mock_pick_random_port,
         mock_os_path_exists,
-        mock_get_aws_credentials_and_region,
+        mock_get_aws_credentials,
         mock_create_spark_config_str,
     ):
-        mock_get_aws_credentials_and_region.return_value = ('id', 'secret', 'region')
+        mock_get_aws_credentials.return_value = ('id', 'secret')
         with mock.patch(
             'paasta_tools.cli.cmds.spark_run.emit_resource_requirements', autospec=True,
         ) as mock_emit_resource_requirements, mock.patch(
@@ -434,18 +435,15 @@ def test_get_docker_cmd_mrjob():
 def test_load_aws_credentials_from_yaml(tmpdir):
     fake_access_key_id = 'fake_access_key_id'
     fake_secret_access_key = 'fake_secret_access_key'
-    fake_region = 'fake_region'
     yaml_file = tmpdir.join('test.yaml')
     yaml_file.write(
         f'aws_access_key_id: "{fake_access_key_id}"\n'
-        f'aws_secret_access_key: "{fake_secret_access_key}"\n'
-        f'region: "{fake_region}"',
+        f'aws_secret_access_key: "{fake_secret_access_key}"',
     )
 
-    aws_access_key_id, aws_secret_access_key, aws_region = load_aws_credentials_from_yaml(yaml_file)
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_yaml(yaml_file)
     assert aws_access_key_id == fake_access_key_id
     assert aws_secret_access_key == fake_secret_access_key
-    assert aws_region == fake_region
 
 
 class TestGetAwsCredentials:
@@ -455,74 +453,43 @@ class TestGetAwsCredentials:
         with mock.patch(
             'paasta_tools.cli.cmds.spark_run.load_aws_credentials_from_yaml',
             autospec=True,
-            return_value=('file_access_key', 'file_secret_key', 'file_region'),
         ) as self.mock_load_aws_credentials_from_yaml:
             yield
 
-    @pytest.mark.parametrize(
-        'args_region, expected_region',
-        [
-            ('args_region', 'args_region'),
-            (None, 'file_region'),
-        ],
-    )
-    def test_yaml_provided(self, args_region, expected_region):
-        args = mock.Mock(aws_credentials_yaml='credentials.yaml', aws_region=args_region)
-        credentials_and_region = get_aws_credentials_and_region(args)
+    def test_yaml_provided(self):
+        args = mock.Mock(aws_credentials_yaml='credentials.yaml')
+        credentials = get_aws_credentials(args)
 
         self.mock_load_aws_credentials_from_yaml.assert_called_once_with('credentials.yaml')
-        assert credentials_and_region == ('file_access_key', 'file_secret_key', expected_region)
+        assert credentials == self.mock_load_aws_credentials_from_yaml.return_value
 
     @mock.patch('paasta_tools.cli.cmds.spark_run.os', autospec=True)
     @mock.patch('paasta_tools.cli.cmds.spark_run.get_service_aws_credentials_path', autospec=True)
-    @pytest.mark.parametrize(
-        'args_region, expected_region',
-        [
-            ('args_region', 'args_region'),
-            (None, 'file_region'),
-        ],
-    )
-    def test_service_provided_no_yaml(self, mock_get_credentials_path, mock_os, args_region, expected_region):
-        args = mock.Mock(aws_credentials_yaml=None, service='service_name', aws_region=args_region)
+    def test_service_provided_no_yaml(self, mock_get_credentials_path, mock_os):
+        args = mock.Mock(aws_credentials_yaml=None, service='service_name')
         mock_os.path.exists.return_value = True
-        credentials_and_region = get_aws_credentials_and_region(args)
+        credentials = get_aws_credentials(args)
 
         mock_get_credentials_path.assert_called_once_with(args.service)
         self.mock_load_aws_credentials_from_yaml.assert_called_once_with(
             mock_get_credentials_path.return_value,
         )
-        assert credentials_and_region == ('file_access_key', 'file_secret_key', expected_region)
+        assert credentials == self.mock_load_aws_credentials_from_yaml.return_value
 
-    @mock.patch('paasta_tools.cli.cmds.spark_run.Session', autospec=True)
-    @pytest.mark.parametrize(
-        'args_region, expected_region',
-        [
-            ('args_region', 'args_region'),
-            (None, 'file_region'),
-        ],
-    )
-    def test_use_default_creds_no_region(self, mock_session, args_region, expected_region):
-        args = mock.Mock(aws_credentials_yaml=None, service=DEFAULT_SERVICE, aws_region=args_region)
-        mock_session.return_value.get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
-        mock_session.return_value.region_name = 'file_region'
-        credentials = get_aws_credentials_and_region(args)
+    @mock.patch('paasta_tools.cli.cmds.spark_run.Session.get_credentials', autospec=True)
+    def test_use_default_creds(self, mock_get_credentials):
+        args = mock.Mock(aws_credentials_yaml=None, service=DEFAULT_SERVICE)
+        mock_get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
+        credentials = get_aws_credentials(args)
 
-        assert credentials == ('id', 'secret', expected_region)
+        assert credentials == ('id', 'secret')
 
     @mock.patch('paasta_tools.cli.cmds.spark_run.os', autospec=True)
-    @mock.patch('paasta_tools.cli.cmds.spark_run.Session', autospec=True)
-    @pytest.mark.parametrize(
-        'args_region, expected_region',
-        [
-            ('args_region', 'args_region'),
-            (None, 'session_region'),
-        ],
-    )
-    def test_service_provided_fallback_to_default(self, mock_session, mock_os, args_region, expected_region):
-        args = mock.Mock(aws_credentials_yaml=None, service='service_name', aws_region=args_region)
+    @mock.patch('paasta_tools.cli.cmds.spark_run.Session.get_credentials', autospec=True)
+    def test_service_provided_fallback_to_default(self, mock_get_credentials, mock_os):
+        args = mock.Mock(aws_credentials_yaml=None, service='service_name')
         mock_os.path.exists.return_value = False
-        mock_session.return_value.get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
-        mock_session.return_value.region_name = 'session_region'
-        credentials = get_aws_credentials_and_region(args)
+        mock_get_credentials.return_value = mock.MagicMock(access_key='id', secret_key='secret')
+        credentials = get_aws_credentials(args)
 
-        assert credentials == ('id', 'secret', expected_region)
+        assert credentials == ('id', 'secret')
