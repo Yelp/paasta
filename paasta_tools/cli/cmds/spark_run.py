@@ -33,6 +33,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
+DEFAULT_AWS_REGION = 'us-west-2'
 DEFAULT_SERVICE = 'spark'
 DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
@@ -255,8 +256,9 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         '--aws-region',
-        help='Specify an aws region. This will override the region found'
-             'when loading aws credentials from file.',
+        help=f'Specify an aws region. If the region is not specified, we will'
+             f'default to using {DEFAULT_AWS_REGION}.',
+        default=DEFAULT_AWS_REGION,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -333,10 +335,10 @@ def get_spark_env(
 ):
     spark_env = {}
 
-    access_key, secret_key, aws_region = get_aws_credentials_and_region(args)
+    access_key, secret_key = get_aws_credentials(args)
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
-    spark_env['AWS_DEFAULT_REGION'] = aws_region
+    spark_env['AWS_DEFAULT_REGION'] = args.aws_region
     spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
     spark_env['PAASTA_INSTANCE_TYPE'] = 'spark'
 
@@ -368,17 +370,13 @@ def get_spark_env(
     return spark_env
 
 
-def get_aws_credentials_and_region(args):
+def get_aws_credentials(args):
     if args.aws_credentials_yaml:
-        access_key, secret_key, region_from_file = load_aws_credentials_from_yaml(args.aws_credentials_yaml)
-        aws_region = args.aws_region or region_from_file
-        return access_key, secret_key, aws_region
+        return load_aws_credentials_from_yaml(args.aws_credentials_yaml)
     elif args.service != DEFAULT_SERVICE:
         service_credentials_path = get_service_aws_credentials_path(args.service)
         if os.path.exists(service_credentials_path):
-            access_key, secret_key, region_from_file = load_aws_credentials_from_yaml(service_credentials_path)
-            aws_region = args.aws_region or region_from_file
-            return access_key, secret_key, aws_region
+            return load_aws_credentials_from_yaml(service_credentials_path)
         else:
             paasta_print(
                 PaastaColors.yellow(
@@ -388,10 +386,7 @@ def get_aws_credentials_and_region(args):
             )
 
     creds = Session(profile=args.aws_profile).get_credentials()
-    region_from_session = Session(profile=args.aws_profile).region_name
-    aws_region = args.aws_region or region_from_session
-
-    return creds.access_key, creds.secret_key, aws_region
+    return creds.access_key, creds.secret_key
 
 
 def get_service_aws_credentials_path(service_name):
@@ -418,7 +413,6 @@ def load_aws_credentials_from_yaml(yaml_file_path):
         return (
             credentials_yaml['aws_access_key_id'],
             credentials_yaml['aws_secret_access_key'],
-            credentials_yaml['region'],
         )
 
 
