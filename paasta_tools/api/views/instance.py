@@ -276,7 +276,13 @@ def marathon_job_status(
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
     verbose: int,
 ) -> MutableMapping[str, Any]:
-    job_status_fields = {'app_statuses': []}
+    job_status_fields = {
+        'app_statuses': [],
+        'app_count': len(marathon_apps_with_clients),
+        'desired_state': job_config.get_desired_state(),
+        'bounce_method': job_config.get_bounce_method(),
+        'expected_instance_count': job_config.get_instances(),
+    }
 
     try:
         desired_app_id = job_config.format_marathon_app_dict()['id']
@@ -343,9 +349,7 @@ def marathon_app_status(
 
     unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
     if unused_offers_summary is not None:
-        app_status['unused_offers'] = {
-            reason: count for reason, count in unused_offers_summary.items()
-        }
+        app_status['unused_offers'] = unused_offers_summary
 
     if dashboard_link:
         app_status['dashboard_url'] = "{}/ui/#/apps/%2F{}".format(
@@ -367,7 +371,6 @@ def build_marathon_task_dict(marathon_task: MarathonTask) -> MutableMapping[str,
         'host': marathon_task.host.split('.')[0],
         'port': marathon_task.ports[0],
         'deployed_timestamp': marathon_task.staged_at.timestamp(),
-        # 'is_healthy': is_healthy,
     }
 
     if marathon_task.health_check_results:
@@ -497,23 +500,16 @@ def marathon_instance_status(
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, settings.cluster, soa_dir=settings.soa_dir,
     )
-
     marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
         clients=settings.marathon_clients.get_all_clients_for_service(job_config),
         embed_tasks=True,
         service_name=service,
     )
-
     matching_apps_with_clients = marathon_tools.get_matching_apps_with_clients(
         service,
         instance,
         marathon_apps_with_clients,
     )
-
-    mstatus['app_count'] = len(matching_apps_with_clients)
-    mstatus['desired_state'] = job_config.get_desired_state()
-    mstatus['bounce_method'] = job_config.get_bounce_method()
-    mstatus['expected_instance_count'] = job_config.get_instances()
 
     mstatus.update(
         marathon_job_status(
