@@ -69,6 +69,7 @@ from paasta_tools.utils import TimeoutError
 
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
+DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 
 log = logging.getLogger(__name__)
 
@@ -167,8 +168,9 @@ def add_subparser(subparsers):
         '--auto-certify-delay',
         dest='auto_certify_delay',
         type=int,
-        default=600,
-        help="After a deploy finishes, wait this many seconds before automatically certifying.",
+        default=None,  # the logic for this is complicated. See MarkForDeploymentProcess.get_auto_certify_delay.
+        help="After a deploy finishes, wait this many seconds before automatically certifying."
+             f"Default {DEFAULT_AUTO_CERTIFY_DELAY} when --auto-rollback is enabled",
     )
     list_parser.add_argument(
         '--auto-abandon-delay',
@@ -461,7 +463,7 @@ def paasta_mark_for_deployment(args):
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
 
-    if args.auto_rollback:
+    if args.auto_rollback or args.block:
         deploy_process = MarkForDeploymentProcess(
             service=service,
             deploy_info=deploy_info,
@@ -593,6 +595,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.old_git_sha = old_git_sha
         self.git_url = git_url
         self.auto_rollback = auto_rollback
+        self.auto_rollbacks_ever_enabled = auto_rollback
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
@@ -819,6 +822,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def enable_auto_rollbacks(self):
         self.auto_rollback = True
+        self.auto_rollbacks_ever_enabled = True
 
     def auto_rollbacks_enabled(self) -> bool:
         """This getter exists so it can be a condition on transitions, since those need to be callables."""
@@ -826,6 +830,15 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def get_auto_rollback_delay(self) -> float:
         return self.auto_rollback_delay
+
+    def get_auto_certify_delay(self) -> float:
+        if self.auto_certify_delay is not None:
+            return self.auto_certify_delay
+        else:
+            if self.auto_rollbacks_ever_enabled:
+                return DEFAULT_AUTO_CERTIFY_DELAY
+            else:
+                return 0
 
     def already_rolling_back(self) -> bool:
         return self.state in self.rollback_states
@@ -842,6 +855,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if not self.block:
             # If we don't pass --wait-for-deployment, then exit immediately after mark-for-deployment succeeds.
             codes['deploying'] = 0
+        if self.get_auto_certify_delay() <= 0:
+            # Instead of setting a 0-second timer to move to certify, just exit 0 when the deploy finishes.
+            codes['deployed'] = 0
 
         return codes
 
@@ -945,7 +961,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         )
         self.send_manual_rollback_instructions()
         if not (self.any_slo_failing() and self.auto_rollbacks_enabled()):
-            self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
+            if self.get_auto_certify_delay() > 0:
+                self.start_timer(self.get_auto_certify_delay(), 'auto_certify', 'certify')
 
     def send_manual_rollback_instructions(self):
         if self.old_git_sha != self.commit:
