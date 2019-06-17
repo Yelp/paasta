@@ -15,8 +15,10 @@ import os
 
 import mock
 from mock import ANY
+from mock import MagicMock
 from mock import patch
 from pytest import raises
+from slackclient import SlackClient
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.slack import PaastaSlackClient
@@ -578,3 +580,99 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
     assert mock_wait_for_deployment.call_count == 0
     assert retval == 1
     assert mfdp.state == 'mfd_failed'
+
+
+class WrappedMarkForDeploymentProcess(mark_for_deployment.MarkForDeploymentProcess):
+    def __init__(self, *args, **kwargs):
+        self.trigger_history = []
+        self.state_history = []
+        super().__init__(*args, **kwargs)
+        self.orig_trigger = self.trigger
+        self.trigger = self._trigger
+
+    def _trigger(self, trigger_name):
+        self.trigger_history.append(trigger_name)
+        self.orig_trigger(trigger_name)
+
+    def get_slack_client(self):
+        fake_slack_client = mock.MagicMock(spec=SlackClient)
+        fake_slack_client.api_call.return_value = {
+            'ok': True,
+            'message': {
+                'ts': 1234531337,
+            },
+            'channel': 'FAKE CHANNEL ID',
+        }
+        return fake_slack_client
+
+    def start_timer(self, timeout, trigger, message_verb):
+        return super().start_timer(0, trigger, message_verb)
+
+    def after_state_change(self, *args, **kwargs):
+        self.state_history.append(self.state)
+        super().after_state_change(*args, **kwargs)
+
+    def start_slo_watcher_threads(self, service):
+        pass
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', return_value=0, autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
+def test_MarkForDeployProcess_happy_path(
+    mock_periodically_update_slack,
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+):
+
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+    )
+
+    mfdp.run_timeout = 1
+    assert mfdp.run() == 0
+    assert mfdp.trigger_history == ['start_deploy', 'mfd_succeeded', 'deploy_finished', 'auto_certify']
+    assert mfdp.state_history == ['start_deploy', 'deploying', 'deployed', 'complete']
+
+
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', return_value=0, autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.periodically_update_slack', autospec=True)
+def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
+    mock_periodically_update_slack,
+    mock_wait_for_deployment,
+    mock_mark_for_deployment,
+):
+
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+    )
+
+    mfdp.run_timeout = 1
+    assert mfdp.run() == 0
+    assert mfdp.trigger_history == ['start_deploy', 'mfd_succeeded', 'deploy_finished']
+    assert mfdp.state_history == ['start_deploy', 'deploying', 'deployed']
