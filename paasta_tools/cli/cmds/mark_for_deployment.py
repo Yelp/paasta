@@ -70,6 +70,7 @@ from paasta_tools.utils import TimeoutError
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
+DEFAULT_SLACK_CHANNEL = "#deploy"
 
 log = logging.getLogger(__name__)
 
@@ -631,13 +632,16 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         return get_slack_client().sc
 
     def get_slack_channel(self) -> str:
-        """ Safely get some slack channel to post to. Defaults to ``#test``.
+        """ Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
         Currently only uses the first slack channel available, and doesn't support
         multi-channel notifications. """
-        try:
-            return self.deploy_info.get('slack_channels', ["#test"])[0]
-        except (IndexError, AttributeError):
-            return "#test"
+        if self.deploy_info.get('slack_notify', True):
+            try:
+                return self.deploy_info.get('slack_channels')[0]
+            except (IndexError, AttributeError, TypeError):
+                return DEFAULT_SLACK_CHANNEL
+        else:
+            return DEFAULT_SLACK_CHANNEL
 
     def get_deployment_name(self) -> str:
         return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
