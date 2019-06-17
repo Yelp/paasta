@@ -26,7 +26,10 @@ from paasta_tools.api.views import instance
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.smartstack_tools import HaproxyBackend
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import SystemPaastaConfig
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_mesos_status', autospec=True)
@@ -125,7 +128,7 @@ def test_marathon_job_status(
         branch_dict=None,
     )
     mock_service_config.format_marathon_app_dict = lambda: {'id': 'foo'}
-    settings.system_paasta_config = mock.Mock()
+    settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
 
     mock_get_marathon_app_deploy_status.return_value = 0  # Running status
     mock_get_autoscaling_info.return_value = ServiceAutoscalingInfo(
@@ -265,6 +268,71 @@ class TestMarathonAppStatus:
             'deployed_timestamp': 1560542400,
             'is_healthy': True,
         }]
+
+
+@mock.patch('paasta_tools.api.views.instance.match_backends_and_tasks', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_backends', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace', autospec=True)
+@mock.patch('paasta_tools.api.views.instance.get_all_slaves_for_blacklist_whitelist', autospec=True)
+def test_marathon_smartstack_status(
+    mock_get_all_slaves_for_blacklist_whitelist,
+    mock_get_expected_instance_count_for_namespace,
+    mock_get_backends,
+    mock_match_backends_and_tasks,
+):
+    mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+        {'hostname': 'host1.paasta.party', 'attributes': {'region': 'us-north-3'}},
+    ]
+    mock_get_expected_instance_count_for_namespace.return_value = 2
+
+    mock_backend = HaproxyBackend(
+        status='UP',
+        svname='host1_1.2.3.4:123',
+        check_status='L7OK',
+        check_code='0',
+        check_duration='1',
+        lastchg='9876',
+    )
+    mock_task = mock.create_autospec(MarathonTask)
+    mock_match_backends_and_tasks.return_value = [(mock_backend, mock_task)]
+
+    settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
+    settings.system_paasta_config.get_deploy_blacklist.return_value = []
+    mock_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake_service',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        config_dict={'bounce_method': 'fake_bounce'},
+        branch_dict=None,
+    )
+    mock_service_namespace_config = ServiceNamespaceConfig()
+
+    smartstack_status = instance.marathon_smartstack_status(
+        'fake_service',
+        'fake_instance',
+        mock_service_config,
+        mock_service_namespace_config,
+        tasks=[mock_task],
+        should_return_individual_backends=True,
+    )
+    assert smartstack_status == {
+        'registration': 'fake_service.fake_instance',
+        'expected_backends_per_location': 2,
+        'locations': [{
+            'name': 'us-north-3',
+            'running_backends_count': 1,
+            'backends': [{
+                'hostname': 'host1',
+                'port': 123,
+                'status': 'UP',
+                'check_status': 'L7OK',
+                'check_code': '0',
+                'last_change': 9876,
+                'has_associated_task': True,
+                'check_duration': 1,
+            }],
+        }],
+    }
 
 
 @mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_config', autospec=True)
