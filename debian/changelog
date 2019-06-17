@@ -1,3 +1,10 @@
+paasta-tools (0.85.11) xenial; urgency=medium
+
+  * 0.85.11 tagged with 'make release'
+    Commit: Merge branch "cert_immedately_if_no_auto_rollbacks"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 17 Jun 2019 13:40:43 -0700
+
 paasta-tools (0.85.10) xenial; urgency=medium
 
   * 0.85.10 tagged with 'make release'
