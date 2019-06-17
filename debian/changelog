@@ -1,3 +1,12 @@
+paasta-tools (0.85.12) xenial; urgency=medium
+
+  * 0.85.12 tagged with 'make release'
+    Commit: Merge pull request #2284 from
+    Yelp/rollback_respects_no_slack_notifications  Send all slack
+    notifications for m-f-d to some channel.
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 17 Jun 2019 15:47:55 -0700
+
 paasta-tools (0.85.11) xenial; urgency=medium
 
   * 0.85.11 tagged with 'make release'
