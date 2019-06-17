@@ -426,9 +426,14 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         service='service',
         block=True,
         auto_rollback=True,
-
-        deploy_info=None,
-        deploy_group=None,
+        deploy_info={
+            'pipeline':
+            [
+                {'step': 'test_deploy_group', 'slack_notify': False, },
+            ],
+            'slack_channels': ['#test'],
+        },
+        deploy_group='test_deploy_group',
         commit='abc123432u49',
         old_git_sha='abc123455',
         git_url=None,
@@ -469,8 +474,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
         service='service',
         block=True,
         auto_rollback=True,
-
-        deploy_info=None,
+        deploy_info=MagicMock(),
         deploy_group=None,
         commit='abc123432u49',
         old_git_sha=None,
@@ -514,8 +518,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         # For this test, auto_rollback must be True so that the deploy_cancelled trigger takes us to start_rollback
         # instead of deploy_errored.
         auto_rollback=True,
-
-        deploy_info=None,
+        deploy_info=MagicMock(),
         deploy_group=None,
         commit='abc123512',
         old_git_sha='asgdser23',
@@ -558,8 +561,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         service='service',
         block=False,
         auto_rollback=False,
-
-        deploy_info=None,
+        deploy_info=MagicMock(),
         deploy_group=None,
         commit='abc123456789',
         old_git_sha='oldsha1234',
@@ -601,8 +603,7 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         service='service',
         block=False,  # shouldn't matter for this test
         auto_rollback=False,  # shouldn't matter for this test
-
-        deploy_info=None,
+        deploy_info=MagicMock(),
         deploy_group=None,
         commit='asbjkslerj',
         old_git_sha='abscerwerr',
