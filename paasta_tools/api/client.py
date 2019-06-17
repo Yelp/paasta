@@ -24,7 +24,8 @@ from urllib.parse import urlparse
 from bravado.client import SwaggerClient
 from bravado.requests_client import RequestsClient
 
-import paasta_tools.api
+import paasta_tools.api.auth_decorator
+from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -76,9 +77,10 @@ def get_paasta_api_client(
     )
     if http_res:
         config = {'also_return_response': True}
-        return SwaggerClient.from_spec(spec_dict=spec_dict, config=config, http_client=requests_client)
+        c = SwaggerClient.from_spec(spec_dict=spec_dict, config=config, http_client=requests_client)
     else:
-        return SwaggerClient.from_spec(spec_dict=spec_dict, http_client=requests_client)
+        c = SwaggerClient.from_spec(spec_dict=spec_dict, http_client=requests_client)
+    return paasta_tools.api.auth_decorator.AuthClientDecorator(c, cluster_name=cluster)
 
 
 class PaastaRequestsClient(RequestsClient):
@@ -89,16 +91,43 @@ class PaastaRequestsClient(RequestsClient):
         system_paasta_config: SystemPaastaConfig,
     ) -> None:
         if scheme == 'https':
+            ca_cert_path = None
             if system_paasta_config.get_enable_client_cert_auth():
+                ecosystem = system_paasta_config.get_vault_cluster_config()[cluster]
                 paasta_dir = os.path.expanduser('~/.paasta/pki')
-                ssl_cert = (f'{paasta_dir}/{cluster}.crt', f'{paasta_dir}/{cluster}.key')
+                if (not os.path.isfile(f'{paasta_dir}/{ecosystem}.crt')
+                        or not os.path.isfile(f'{paasta_dir}/{ecosystem}.key')
+                        or not os.path.isfile(f'{paasta_dir}/{ecosystem}_ca.crt')):
+                    renew_issue_cert(
+                        system_paasta_config=system_paasta_config,
+                        cluster=cluster,
+                    )
+                ca_cert_path = f'{paasta_dir}/{ecosystem}_ca.crt'
+                ssl_cert = (f'{paasta_dir}/{ecosystem}.crt', f'{paasta_dir}/{ecosystem}.key')
             else:
                 ssl_cert = None
             super().__init__(ssl_verify=True, ssl_cert=ssl_cert)
-            ca_cert_path = system_paasta_config.get_api_ca_certificates().get(
-                cluster,
-                system_paasta_config.get_default_api_ca_certificate(),
-            )
-            self.session.verify = ca_cert_path
+            if ca_cert_path:
+                self.session.verify = ca_cert_path
         else:
             super().__init__()
+
+
+def renew_issue_cert(
+    system_paasta_config: SystemPaastaConfig,
+    cluster: str,
+) -> None:
+    secret_provider_kwargs = {
+        'vault_cluster_config': system_paasta_config.get_vault_cluster_config(),
+    }
+    sp = get_secret_provider(
+        secret_provider_name=system_paasta_config.get_secret_provider_name(),
+        cluster_names=[cluster],
+        secret_provider_kwargs=secret_provider_kwargs,
+        soa_dir=None,
+        service_name=None,
+    )
+    sp.renew_issue_cert(
+        pki_backend=system_paasta_config.get_pki_backend(),
+        ttl=system_paasta_config.get_auth_certificate_ttl(),
+    )
