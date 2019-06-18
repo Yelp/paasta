@@ -20,8 +20,6 @@ with the host port that each service is listening on.
 
 Command line options:
 
-- -t <SERVICE_TYPE>, --service-type <SERVICE_TYPE>: Dump information about
-    this type of service. Choose from 'marathon' (default) or 'puppet'.
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
 import argparse
@@ -37,12 +35,6 @@ from paasta_tools.utils import paasta_print
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Dumps information about locally running services.')
     parser.add_argument(
-        '-t', '--service-type', dest='service_type', metavar='SERVICE_TYPE',
-        default='marathon',
-        choices=['marathon', 'puppet'],
-        help='Dump information for this type of service (default is marathon)',
-    )
-    parser.add_argument(
         '-d', '--soa-dir', dest='soa_dir', metavar='SOA_DIR',
         default=DEFAULT_SOA_DIR,
         help='define a different soa config directory',
@@ -52,20 +44,16 @@ def parse_args(argv):
 
 def main(argv=None):
     args = parse_args(argv)
-    service_type = args.service_type
     soa_dir = args.soa_dir
 
-    if service_type == 'marathon':
-        service_dump = get_marathon_services_running_here_for_nerve(
+    service_dump = (
+        get_marathon_services_running_here_for_nerve(
             cluster=None,
             soa_dir=soa_dir,
-        )
-    elif service_type == 'puppet':
-        service_dump = get_puppet_services_running_here_for_nerve(
+        ) + get_puppet_services_running_here_for_nerve(
             soa_dir=soa_dir,
         )
-    else:
-        raise ValueError(f'unknown service type: {service_type}')
+    )
 
     paasta_print(json.dumps(service_dump))
     sys.exit(0)
