@@ -2487,7 +2487,7 @@ def get_tron_instance_list_from_yaml(service: str, cluster: str, soa_dir: str) -
     return instance_list
 
 
-def get_action_names_from_job(job):
+def get_action_names_from_job(job: dict) -> Collection[str]:
     # Warning: This duplicates some logic from TronActionConfig, but can't be imported here
     # dute to circular imports
     actions = job.get('actions')
@@ -2510,7 +2510,7 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
     return config
 
 
-def extract_jobs_from_tron_yaml(config):
+def extract_jobs_from_tron_yaml(config: Dict) -> Dict[str, Any]:
     config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
     if 'jobs' in config and config.get('jobs') is None:
         return {}
