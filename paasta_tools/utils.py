@@ -2475,30 +2475,28 @@ def list_all_instances_for_service(
     return instances
 
 
-def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
+def get_tron_instance_list_from_yaml(service: str, cluster: str, soa_dir: str) -> Collection[Tuple[str, str]]:
     instance_list = []
-    tron_config_content = service_configuration_lib.read_extra_service_information(
-        service,
-        conf_file,
-        soa_dir=soa_dir,
-    )
-    jobs = tron_config_content.get('jobs', [])
-    if isinstance(jobs, list):
-        jobs = [(job['name'], job) for job in jobs]
-    else:
-        jobs = jobs.items()
-
-    for job_name, job in jobs:
-        actions = job['actions']
-        if isinstance(actions, dict):
-            action_names = list(actions.keys())
-        else:
-            action_names = [action['name'] for action in actions]
-
+    tron_config_content = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
+    jobs = extract_jobs_from_tron_yaml(config=tron_config_content)
+    for job_name, job in jobs.items():
+        action_names = get_action_names_from_job(job=job)
         for name in action_names:
             instance = f"{job_name}.{name}"
             instance_list.append((service, instance))
     return instance_list
+
+
+def get_action_names_from_job(job):
+    # Warning: This duplicates some logic from TronActionConfig, but can't be imported here
+    # dute to circular imports
+    actions = job.get('actions')
+    if isinstance(actions, dict):
+        return list(actions.keys())
+    elif actions is None:
+        return []
+    else:
+        return [action['name'] for action in actions]
 
 
 def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
@@ -2576,7 +2574,7 @@ def get_service_instance_list_no_cache(
         if srv_instance_type == 'tron':
             instance_list.extend(
                 get_tron_instance_list_from_yaml(
-                    service=service, conf_file=conf_file, soa_dir=soa_dir,
+                    service=service, cluster=cluster, soa_dir=soa_dir,
                 ),
             )
         else:
