@@ -2477,7 +2477,10 @@ def list_all_instances_for_service(
 
 def get_tron_instance_list_from_yaml(service: str, cluster: str, soa_dir: str) -> Collection[Tuple[str, str]]:
     instance_list = []
-    tron_config_content = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
+    try:
+        tron_config_content = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
+    except NoConfigurationForServiceError:
+        return []
     jobs = extract_jobs_from_tron_yaml(config=tron_config_content)
     for job_name, job in jobs.items():
         action_names = get_action_names_from_job(job=job)
