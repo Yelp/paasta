@@ -165,6 +165,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 watcher=self.watcher.__class__.__name__,
                 priority=0,
                 failures=0,
+                processed_count=0,
             ))
 
             mock_event_changed = mock_event_type.CHANGED
@@ -181,6 +182,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 watcher=self.watcher.__class__.__name__,
                 priority=0,
                 failures=0,
+                processed_count=0,
             ))
 
     def test_process_folder_event(self):
@@ -402,6 +404,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
                     priority=0,
                     bounce_timers=None,
                     failures=0,
+                    processed_count=0,
                 ),
                 BaseServiceInstance(
                     service='universe',
@@ -411,6 +414,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
                     priority=0,
                     bounce_timers=None,
                     failures=0,
+                    processed_count=0,
                 ),
             ]
             assert ret == expected
@@ -626,6 +630,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                 bounce_timers=None,
                 priority=0,
                 failures=0,
+                processed_count=0,
             )
             self.mock_filewatcher.instances_to_bounce_later.put.assert_called_with(expected_si)
             assert self.mock_filewatcher.instances_to_bounce_later.put.call_count == 1

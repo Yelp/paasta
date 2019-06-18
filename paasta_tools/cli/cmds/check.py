@@ -175,27 +175,6 @@ def git_repo_check(service, soa_dir):
         paasta_print(PaastaCheckMessages.git_repo_missing(git_url))
 
 
-def yaml_check(service_path):
-    """Check whether a marathon/chronos/adhoc yaml file exists in service directory, and
-    print success/failure message(s).
-
-    :param service_path: path to a directory containing the marathon/chronos yaml
-                         files
-    """
-    found_yaml = False
-    if is_file_in_dir('marathon*.yaml', service_path):
-        paasta_print(PaastaCheckMessages.MARATHON_YAML_FOUND)
-        found_yaml = True
-    if is_file_in_dir('chronos*.yaml', service_path):
-        paasta_print(PaastaCheckMessages.CHRONOS_YAML_FOUND)
-        found_yaml = True
-    if is_file_in_dir('adhoc*.yaml', service_path):
-        paasta_print(PaastaCheckMessages.ADHOC_YAML_FOUND)
-        found_yaml = True
-    if not found_yaml:
-        paasta_print(PaastaCheckMessages.YAML_MISSING)
-
-
 def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
     """This is a kind of funny function that gets all the instances for specified
     service and framework, and massages it into a form that matches up with what
@@ -333,7 +312,6 @@ def paasta_check(args):
     git_repo_check(service, soa_dir)
     docker_check()
     makefile_check()
-    yaml_check(service_path)
     deployments_check(service, soa_dir)
     sensu_check(service, service_path, soa_dir)
     smartstack_check(service, service_path, soa_dir)

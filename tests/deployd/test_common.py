@@ -95,6 +95,7 @@ class TestServiceInstance(unittest.TestCase):
                 failures=0,
                 bounce_timers=None,
                 priority=1,
+                processed_count=0,
             )
             assert self.service_instance == expected
 
@@ -106,6 +107,7 @@ class TestServiceInstance(unittest.TestCase):
                 failures=0,
                 bounce_timers=None,
                 priority=2,
+                processed_count=0,
             )
             # https://github.com/python/mypy/issues/2852
             assert ServiceInstance(  # type: ignore
@@ -159,6 +161,7 @@ def test_rate_limit_instances():
                 bounce_by=1,
                 bounce_timers=None,
                 failures=0,
+                processed_count=0,
             ),
             BaseServiceInstance(
                 service='universe',
@@ -168,6 +171,7 @@ def test_rate_limit_instances():
                 bounce_by=31,
                 bounce_timers=None,
                 failures=0,
+                processed_count=0,
             ),
         ]
         assert ret == expected
@@ -182,6 +186,7 @@ def test_rate_limit_instances():
                 bounce_by=1,
                 bounce_timers=None,
                 failures=0,
+                processed_count=0,
             ),
             BaseServiceInstance(
                 service='universe',
@@ -191,6 +196,7 @@ def test_rate_limit_instances():
                 bounce_by=31,
                 bounce_timers=None,
                 failures=0,
+                processed_count=0,
             ),
         ]
         assert ret == expected

@@ -2,6 +2,7 @@ from unittest import mock
 
 from paasta_tools.automatic_rollbacks.slo import SLODemultiplexer
 from paasta_tools.automatic_rollbacks.slo import SLOWatcher
+from paasta_tools.automatic_rollbacks.slo import watch_slos_for_service
 
 
 def test_SLOWatcher_window_trimming():
@@ -71,7 +72,7 @@ def test_SLOWatcher_alerting():
     callback.assert_called_once_with(watcher)
 
 
-def test_SLODemultiplexer_alerting():
+def test_SLODemultiplexer():
     slo_config = mock.Mock(duration='300s', threshold=1.0, percent_of_duration=50.0)
     good = 0.0
     bad = 2.0
@@ -85,11 +86,10 @@ def test_SLODemultiplexer_alerting():
         _get_detector_label=lambda slo: slo.label,
     )
     individual_slo_callback = mock.Mock()
-    all_slos_callback = mock.Mock()
+
     demux = SLODemultiplexer(
         sink=sink,
         individual_slo_callback=individual_slo_callback,
-        all_slos_callback=all_slos_callback,
         start_timestamp=100.0,
     )
 
@@ -116,13 +116,53 @@ def test_SLODemultiplexer_alerting():
 
     assert individual_slo_callback.call_count == 0
 
-    # Send some bad data after deployment
-    demux.process_datapoint(props={'dimensions': {'sf_metric': 'slo_1.0'}}, datapoint=bad, timestamp=200.0)
-    demux.process_datapoint(props={'dimensions': {'sf_metric': 'slo_2.0'}}, datapoint=bad, timestamp=200.0)
-    demux.process_datapoint(props={'dimensions': {'sf_metric': 'slo_3.0'}}, datapoint=bad, timestamp=200.0)
 
-    assert individual_slo_callback.call_count == 2
-    individual_slo_callback.assert_any_call('slo_1', True)
-    individual_slo_callback.assert_any_call('slo_2', True)
-    # not slo_3 because it was bad before start_timestamp.
-    assert all_slos_callback.call_count == 1
+def test_watch_slos_for_service_alerting():
+    slo_config = mock.Mock(duration='300s', threshold=1.0, percent_of_duration=50.0)
+    good = 0.0
+    bad = 2.0
+
+    sink = mock.Mock(
+        slos=[
+            mock.Mock(label='slo_1', config=slo_config),
+            mock.Mock(label='slo_2', config=slo_config),
+            mock.Mock(label='slo_3', config=slo_config),
+        ],
+        _get_detector_label=lambda slo: slo.label,
+    )
+    individual_slo_callback = mock.Mock()
+    all_slos_callback = mock.Mock()
+
+    with mock.patch(
+        'paasta_tools.automatic_rollbacks.slo.get_slos_for_service',
+        return_value=(((sink), ("fake query")),),
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.automatic_rollbacks.slo.tail_signalfx',
+        autospec=True,
+    ):
+        threads, watchers = watch_slos_for_service(
+            service='service',
+            individual_slo_callback=individual_slo_callback,
+            all_slos_callback=all_slos_callback,
+            sfx_api_token='fake',
+            start_timestamp=100.0,
+        )
+
+        for watcher in watchers:
+            watcher.process_datapoint(
+                props={'not': 'used'},
+                datapoint={
+                    'slo_1': good,
+                    'slo_2': good,
+                    'slo_3': bad,
+                }[watcher.label],
+                timestamp=0.0,
+            )
+            watcher.process_datapoint(props={'not': 'used'}, datapoint=bad, timestamp=200.0)
+
+        assert individual_slo_callback.call_count == 2
+        individual_slo_callback.assert_any_call('slo_1', True)
+        individual_slo_callback.assert_any_call('slo_2', True)
+        # not slo_3 because it was bad before start_timestamp.
+        assert all_slos_callback.call_count == 1

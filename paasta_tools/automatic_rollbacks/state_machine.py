@@ -1,7 +1,9 @@
 import abc
 import asyncio
 import datetime
+import logging
 import time
+from typing import Callable
 from typing import Collection
 from typing import Iterator
 from typing import List
@@ -14,11 +16,21 @@ from typing import Union
 import transitions.extensions
 from mypy_extensions import TypedDict
 
+log = logging.getLogger(__name__)
 
-class TransitionDefinition(TypedDict):
+
+class TransitionDefinitionBase(TypedDict):
+    """The required fields for TransitionDefinition; see
+    https://mypy.readthedocs.io/en/latest/more_types.html#mixing-required-and-non-required-items"""
     trigger: str
     source: Union[str, List[str], Tuple[str, ...]]
     dest: Union[str, List[str], Tuple[str, ...]]
+
+
+class TransitionDefinition(TransitionDefinitionBase, total=False):
+    unless: List[Union[str, Callable]]
+    conditions: List[Union[str, Callable]]
+    before: Callable
 
 
 class DeploymentProcess(abc.ABC):
@@ -38,6 +50,7 @@ class DeploymentProcess(abc.ABC):
 
         self.event_loop = asyncio.get_event_loop()
         self.finished_event = asyncio.Event(loop=self.event_loop)
+        self.timer_running = False
 
         self.machine = transitions.extensions.LockedMachine(
             model=self,
@@ -69,6 +82,14 @@ class DeploymentProcess(abc.ABC):
     def start_state(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def notify_users(self, message: str) -> None:
+        """Print a log line somewhere that users can see it, e.g. Slack."""
+        raise NotImplementedError()
+
+    def is_terminal_state(self, state: str) -> bool:
+        return (state in self.status_code_by_state())
+
     def finish(self):
         self.finished_event.set()
 
@@ -91,25 +112,55 @@ class DeploymentProcess(abc.ABC):
         timer_end = timer_start + timeout
         formatted_time = datetime.datetime.fromtimestamp(timer_end)
 
-        self.update_slack_thread(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
+        self.notify_users(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
 
         def times_up():
-            self.update_slack_thread(f"Time's up, will now {message_verb}.")
+            self.notify_users(f"Time's up, will now {message_verb}.")
             self.trigger(trigger)
+            self.timer_handle = None
+            self.timer_running = False
 
         def schedule_callback():
             """Unfortunately, call_at is not threadsafe, and there's no call_at_threadsafe, so we need to schedule the
             call to call_at with call_soon_threadsafe."""
             self.timer_handle = self.event_loop.call_later(timeout, times_up)
+            self.timer_trigger = trigger  # This allows cancel_timer to selectively cancel.
+            self.timer_timeout = timeout  # saved for restart_timer
+            self.timer_message_verb = message_verb  # saved for restart_timer
 
         self.event_loop.call_soon_threadsafe(schedule_callback)
+        self.timer_running = True
 
-    def cancel_timer(self):
-        try:
-            handle = self.timer_handle
-        except AttributeError:
+    def cancel_timer(self, trigger=None):
+        """Cancel the running timer. If trigger is specified, only cancel the timer if its trigger matches."""
+        handle = self.get_timer_handle()
+        if handle is None:
+            self.timer_running = False
             return
-        handle.cancel()
+        if trigger is None or trigger == self.timer_trigger:
+            self.notify_users(f"Countdown to {self.timer_message_verb} cancelled.")
+            handle.cancel()
+            self.timer_handle = None
+            self.timer_running = False
+            self.timer_trigger = None
+            self.timer_message_verb = None
+
+    def restart_timer(self):
+        self.cancel_timer()
+        self.start_timer(
+            timeout=self.timer_timeout,
+            trigger=self.timer_trigger,
+            message_verb=self.timer_message_verb,
+        )
+
+    def is_timer_running(self) -> bool:
+        return self.timer_running
+
+    def get_timer_handle(self):
+        try:
+            return self.timer_handle
+        except AttributeError:
+            return None
 
     def before_state_change(self):
-        self.cancel_timer()
+        pass

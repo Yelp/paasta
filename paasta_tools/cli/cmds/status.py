@@ -44,7 +44,7 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
-from paasta_tools.flink_tools import FlinkConfig
+from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
@@ -71,7 +71,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
-    FlinkConfig,
+    FlinkDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
@@ -564,7 +564,7 @@ def report_status_for_cluster(
             deployed_instances.append(instance)
 
         # Case: flink instances don't use `deployments.json`
-        elif instance_whitelist.get(instance) == FlinkConfig:
+        elif instance_whitelist.get(instance) == FlinkDeploymentConfig:
             deployed_instances.append(instance)
 
         # Case: service NOT deployed to cluster.instance
@@ -851,7 +851,7 @@ def paasta_status(
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            all_flink = all(i == FlinkConfig for i in instances.values())
+            all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
             actual_deployments: Mapping[str, str]
             if all_flink:
                 actual_deployments = {}

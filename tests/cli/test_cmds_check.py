@@ -32,7 +32,6 @@ from paasta_tools.cli.cmds.check import paasta_check
 from paasta_tools.cli.cmds.check import sensu_check
 from paasta_tools.cli.cmds.check import service_dir_check
 from paasta_tools.cli.cmds.check import smartstack_check
-from paasta_tools.cli.cmds.check import yaml_check
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
@@ -46,7 +45,6 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 @patch('paasta_tools.cli.cmds.check.deploy_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.docker_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.makefile_check', autospec=True)
-@patch('paasta_tools.cli.cmds.check.yaml_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.deployments_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.sensu_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.smartstack_check', autospec=True)
@@ -56,7 +54,6 @@ def test_check_paasta_check_calls_everything(
         mock_smartstart_check,
         mock_sensu_check,
         mock_deployments_check,
-        mock_yaml_check,
         mock_makefile_check,
         mock_docker_check,
         mock_deploy_check,
@@ -82,7 +79,6 @@ def test_check_paasta_check_calls_everything(
     assert mock_deploy_performance_check.called
     assert mock_docker_check.called
     assert mock_makefile_check.called
-    assert mock_yaml_check.called
     assert mock_sensu_check.called
     assert mock_smartstart_check.called
     assert mock_paasta_validate_soa_configs.called
@@ -164,36 +160,6 @@ def test_check_docker_check_file_not_found(mock_is_file_in_dir, capfd):
 
     output, _ = capfd.readouterr()
     assert PaastaCheckMessages.DOCKERFILE_MISSING in output
-
-
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_yaml_check_pass(mock_is_file_in_dir, capfd):
-    # marathon.yaml exists and is valid
-
-    mock_is_file_in_dir.return_value = "/fake/path"
-    expected_output = "{}\n{}\n{}\n".format(
-        PaastaCheckMessages.MARATHON_YAML_FOUND,
-        PaastaCheckMessages.CHRONOS_YAML_FOUND,
-        PaastaCheckMessages.ADHOC_YAML_FOUND,
-    )
-
-    yaml_check('path')
-
-    output, _ = capfd.readouterr()
-    assert output == expected_output
-
-
-@patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)
-def test_check_yaml_check_fail(mock_is_file_in_dir, capfd):
-    # marathon.yaml exists and is valid
-
-    mock_is_file_in_dir.return_value = False
-    expected_output = "%s\n" % PaastaCheckMessages.YAML_MISSING
-
-    yaml_check('path')
-
-    output, _ = capfd.readouterr()
-    assert output == expected_output
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir', autospec=True)

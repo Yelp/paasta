@@ -511,7 +511,7 @@ def load_tron_instance_config(
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> TronActionConfig:
-    jobs, _ = load_tron_service_config(
+    jobs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=load_deployments,
@@ -527,25 +527,29 @@ def load_tron_instance_config(
 
 
 def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
-    tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
     config = service_configuration_lib.read_extra_service_information(
         service_name=service,
         extra_info=f'tron-{cluster}',
         soa_dir=soa_dir,
     )
     if not config:
-        config = service_configuration_lib._read_yaml_file(os.path.join(tronfig_folder, f"{service}.yaml"))
-    if not config:
         raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
     return config
+
+
+def extract_jobs_from_tron_yaml(config):
+    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
+    if 'jobs' in config and config.get('jobs') is None:
+        return {}
+    if config.get('jobs') == {}:
+        return {}
+    return config.get('jobs') or config or {}
 
 
 def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Load all configured jobs for a service, and any additional config values."""
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
-    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
-    extra_config = {key: value for key, value in config.items() if key != 'jobs'}
-    jobs = config.get('jobs') or {}
+    jobs = extract_jobs_from_tron_yaml(config)
     job_configs = [
         TronJobConfig(
             name=name,
@@ -556,52 +560,52 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
             soa_dir=soa_dir,
         ) for name, job in jobs.items()
     ]
-    return job_configs, extra_config
+    return job_configs
+
+
+def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
+    system_paasta_config = load_system_paasta_config()
+    tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
+    config = service_configuration_lib._read_yaml_file(os.path.join(tronfig_folder, f"MASTER.yaml"))
+    master_config = format_master_config(
+        config,
+        system_paasta_config.get_volumes(),
+        system_paasta_config.get_dockercfg_location(),
+    )
+    return yaml.dump(
+        master_config,
+        Dumper=Dumper,
+        default_flow_style=False,
+    )
 
 
 def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     """Generate a namespace configuration file for Tron, for a service."""
-    system_paasta_config = load_system_paasta_config()
-
-    job_configs, other_config = load_tron_service_config(
+    job_configs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=True,
         soa_dir=soa_dir,
     )
-
-    if service == MASTER_NAMESPACE:
-        other_config = format_master_config(
-            other_config,
-            system_paasta_config.get_volumes(),
-            system_paasta_config.get_dockercfg_location(),
-        )
-
-    other_config['jobs'] = {
+    preproccessed_config = {}
+    preproccessed_config['jobs'] = {
         job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
     }
-
     return yaml.dump(
-        other_config,
+        preproccessed_config,
         Dumper=Dumper,
         default_flow_style=False,
     )
 
 
 def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
-    job_configs, other_config = load_tron_service_config(
+    job_configs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=False,
         soa_dir=soa_dir,
     )
-
-    if service != MASTER_NAMESPACE and other_config:
-        other_keys = list(other_config.keys())
-        return [
-            f'Non-{MASTER_NAMESPACE} namespace cannot have other config values, found {other_keys}',
-        ]
 
     # PaaSTA-specific validation
     for job_config in job_configs:
@@ -609,15 +613,17 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
         if check_msgs:
             return check_msgs
 
+    master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
+
+    preproccessed_config = {}
     # Use Tronfig on generated config from PaaSTA to validate the rest
-    other_config['jobs'] = {
+    preproccessed_config['jobs'] = {
         job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
     }
 
-    complete_config = yaml.dump(other_config, Dumper=Dumper)
+    complete_config = yaml.dump(preproccessed_config, Dumper=Dumper)
 
-    master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
     proc = subprocess.run(
         ['tronfig', '-', '-V', '-n', service, '-m', master_config_path],
         input=complete_config,
@@ -635,44 +641,10 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
     return []
 
 
-def _get_tron_namespaces_from_service_dir(cluster, soa_dir):
+def get_tron_namespaces(cluster, soa_dir):
     tron_config_file = f'tron-{cluster}.yaml'
     config_dirs = [_dir[0] for _dir in os.walk(os.path.abspath(soa_dir)) if tron_config_file in _dir[2]]
     namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
-    return namespaces
-
-
-def _get_tron_namespaces_from_tron_dir(cluster, soa_dir):
-    config_dir = os.path.join(
-        os.path.abspath(soa_dir),
-        'tron',
-        cluster,
-    )
-    namespaces = [
-        os.path.splitext(filename)[0] for filename in os.listdir(config_dir)
-    ]
-    return namespaces
-
-
-class ConflictingNamespacesError(RuntimeError):
-    pass
-
-
-def get_tron_namespaces_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get all the namespaces that are configured in a particular Tron cluster."""
-    if not cluster:
-        cluster = load_tron_config().get_cluster_name()
-
-    namespaces1 = set(_get_tron_namespaces_from_service_dir(cluster, soa_dir))
-    namespaces2 = set(_get_tron_namespaces_from_tron_dir(cluster, soa_dir))
-
-    if namespaces1.intersection(namespaces2):
-        raise ConflictingNamespacesError(
-            "namespaces found in both service/*/tron and service/tron/*: {}".
-            format(namespaces1.intersection(namespaces2)),
-        )
-
-    namespaces = list(namespaces1.union(namespaces2))
     return namespaces
 
 

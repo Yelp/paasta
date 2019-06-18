@@ -1,3 +1,167 @@
+paasta-tools (0.85.12) xenial; urgency=medium
+
+  * 0.85.12 tagged with 'make release'
+    Commit: Merge pull request #2284 from
+    Yelp/rollback_respects_no_slack_notifications  Send all slack
+    notifications for m-f-d to some channel.
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 17 Jun 2019 15:47:55 -0700
+
+paasta-tools (0.85.11) xenial; urgency=medium
+
+  * 0.85.11 tagged with 'make release'
+    Commit: Merge branch "cert_immedately_if_no_auto_rollbacks"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 17 Jun 2019 13:40:43 -0700
+
+paasta-tools (0.85.10) xenial; urgency=medium
+
+  * 0.85.10 tagged with 'make release'
+    Commit: Merge branch "reslacktor"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 12 Jun 2019 13:57:08 -0700
+
+paasta-tools (0.85.9) xenial; urgency=medium
+
+  * 0.85.9 tagged with 'make release'
+    Commit: Merge pull request #2275 from
+    Yelp/check_flink_services_replication
+    check_flink_services_replication
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 12 Jun 2019 03:09:50 -0700
+
+paasta-tools (0.85.8) xenial; urgency=medium
+
+  * 0.85.8 tagged with 'make release'
+    Commit: Merge branch "fix_no_jobs"
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 14:36:46 -0700
+
+paasta-tools (0.85.7) xenial; urgency=medium
+
+  * 0.85.7 tagged with 'make release'
+    Commit: Merge pull request #2277 from Yelp/never_cleanup_master
+    Never try to clean up the master tron namespace
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 11:02:04 -0700
+
+paasta-tools (0.85.6) xenial; urgency=medium
+
+  * 0.85.6 tagged with 'make release'
+    Commit: Merge pull request #2272 from Yelp/no_jobs_keyword  No jobs
+    keyword
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Jun 2019 10:11:10 -0700
+
+paasta-tools (0.85.5) xenial; urgency=medium
+
+  * 0.85.5 tagged with 'make release'
+    Commit: Merge pull request #2276 from Yelp/master_config_fix  Fix
+    master config tron yaml loading
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 10 Jun 2019 14:58:31 -0700
+
+paasta-tools (0.85.4) xenial; urgency=medium
+
+  * 0.85.4 tagged with 'make release'
+    Commit: Merge pull request #2271 from Yelp/only_service_tron_jobs
+    Only support configuring tron jobs from service directories
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 10 Jun 2019 11:23:18 -0700
+
+paasta-tools (0.85.3) xenial; urgency=medium
+
+  * 0.85.3 tagged with 'make release'
+    Commit: Merge pull request #2266 from Yelp/cleanup_kubernetes_cr
+    Add cleanup_kubernetes_cr script
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 06 Jun 2019 13:21:44 -0700
+
+paasta-tools (0.85.2) xenial; urgency=medium
+
+  * 0.85.2 tagged with 'make release'
+    Commit: Merge branch "fix_deployd_tests"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 06 Jun 2019 10:33:02 -0700
+
+paasta-tools (0.85.1) xenial; urgency=medium
+
+  * 0.85.1 tagged with 'make release'
+    Commit: bump to 0.85.1
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Jun 2019 16:11:50 -0700
+
+paasta-tools (0.85.0) xenial; urgency=medium
+
+  * 0.85.0 tagged with 'make release'
+    Commit: Merge pull request #2269 from Yelp/drmorr/PAASTA-
+    14200/monitor_deployd_start  emit metrics when deployd starts
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Jun 2019 16:11:16 -0700
+
+paasta-tools (0.85.0) xenial; urgency=medium
+
+  * 0.85.0 tagged with 'make release'
+    Commit: Merge branch "slo_rollbacks"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 04 Jun 2019 10:10:14 -0700
+
+paasta-tools (0.84.22) xenial; urgency=medium
+
+  * 0.84.22 tagged with 'make release'
+    Commit: Merge pull request #2262 from Yelp/use-ClusterFirst-
+    DnsPolicy-for-kube-pods  Use ClusterFirst DNS policy for kube pods
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 04 Jun 2019 05:08:32 -0700
+
+paasta-tools (0.84.21) xenial; urgency=medium
+
+  * 0.84.21 tagged with 'make release'
+    Commit: Merge pull request #2261 from Yelp/fix-secrets-syncer  Fix
+    secrets syncer FileNotFoundError
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 04 Jun 2019 02:40:43 -0700
+
+paasta-tools (0.84.20) xenial; urgency=medium
+
+  * 0.84.20 tagged with 'make release'
+    Commit: Merge pull request #2255 from Yelp/fix-deployd-bounce-length
+    Fix deployd bounce_length timer
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 03 Jun 2019 03:34:00 -0700
+
+paasta-tools (0.84.19) xenial; urgency=medium
+
+  * 0.84.19 tagged with 'make release'
+    Commit: Merge pull request #2258 from Yelp/CORESERV-
+    7915_write_dg_ps_to_nerve_dict  Return deploy_group and
+    paasta_instance for marathon services
+
+ -- Yann Landry <yann@yelp.com>  Thu, 30 May 2019 16:32:44 -0700
+
+paasta-tools (0.84.18) xenial; urgency=medium
+
+  * 0.84.18 tagged with 'make release'
+    Commit: Merge pull request #2256 from Yelp/kubecontext-env-var  use
+    KUBECONTEXT env var to load particular kubernetes config context
+
+ -- Sheng Ran <ran@yelp.com>  Thu, 30 May 2019 07:28:27 -0700
+
+paasta-tools (0.84.17) xenial; urgency=medium
+
+  * 0.84.17 tagged with 'make release'
+    Commit: Merge branch "dont_crash_when_no_slos"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 28 May 2019 13:23:14 -0700
+
+paasta-tools (0.84.16) xenial; urgency=medium
+
+  * 0.84.16 tagged with 'make release'
+    Commit: Merge pull request #2245 from Yelp/PAASTA-15425-task-type
+    Add instance type as env variable
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 23 May 2019 17:07:59 -0700
+
 paasta-tools (0.84.15) xenial; urgency=medium
 
   * 0.84.15 tagged with 'make release'

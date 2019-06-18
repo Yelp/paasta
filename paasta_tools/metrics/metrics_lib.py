@@ -75,7 +75,7 @@ class MeteoriteMetrics(BaseMetrics):
     def __init__(self, base_name: str) -> None:
         self.base_name = base_name
         if yelp_meteorite is None:
-            raise ImportError("yelp_meteorite not imported, pleast try another metrics provider")
+            raise ImportError("yelp_meteorite not imported, please try another metrics provider")
 
     def create_timer(self, name: str, **kwargs: Any) -> TimerProtocol:
         return yelp_meteorite.create_timer(self.base_name + '.' + name, kwargs)

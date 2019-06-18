@@ -30,21 +30,19 @@ from threading import Event
 from threading import Thread
 from typing import Collection
 from typing import Iterator
-from typing import List
 from typing import Mapping
 from typing import Optional
 
 import progressbar
-import transitions
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
+from slackclient import SlackClient
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
-from paasta_tools.automatic_rollbacks import slack as arb_slack
 from paasta_tools.automatic_rollbacks import state_machine
-from paasta_tools.automatic_rollbacks.slo import watch_slos_for_service
+from paasta_tools.automatic_rollbacks.slo import SLOSlackDeploymentProcess
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -71,6 +69,8 @@ from paasta_tools.utils import TimeoutError
 
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
+DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
+DEFAULT_SLACK_CHANNEL = "#deploy"
 
 log = logging.getLogger(__name__)
 
@@ -169,8 +169,9 @@ def add_subparser(subparsers):
         '--auto-certify-delay',
         dest='auto_certify_delay',
         type=int,
-        default=600,
-        help="After a deploy finishes, wait this many seconds before automatically certifying.",
+        default=None,  # the logic for this is complicated. See MarkForDeploymentProcess.get_auto_certify_delay.
+        help="After a deploy finishes, wait this many seconds before automatically certifying."
+             f"Default {DEFAULT_AUTO_CERTIFY_DELAY} when --auto-rollback is enabled",
     )
     list_parser.add_argument(
         '--auto-abandon-delay',
@@ -178,6 +179,13 @@ def add_subparser(subparsers):
         type=int,
         default=600,
         help="After a rollback finishes, wait this many seconds before automatically abandoning.",
+    )
+    list_parser.add_argument(
+        '--auto-rollback-delay',
+        dest='auto_rollback_delay',
+        type=int,
+        default=30,
+        help="After noticing an SLO failure, wait this many seconds before automatically rolling back.",
     )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
@@ -456,7 +464,7 @@ def paasta_mark_for_deployment(args):
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
 
-    if args.auto_rollback:
+    if args.auto_rollback or args.block:
         deploy_process = MarkForDeploymentProcess(
             service=service,
             deploy_info=deploy_info,
@@ -470,6 +478,7 @@ def paasta_mark_for_deployment(args):
             timeout=args.timeout,
             auto_certify_delay=args.auto_certify_delay,
             auto_abandon_delay=args.auto_abandon_delay,
+            auto_rollback_delay=args.auto_rollback_delay,
         )
         ret = deploy_process.run()
         return ret
@@ -560,7 +569,7 @@ class Progress():
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(state_machine.DeploymentProcess):
+class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ['start_rollback', 'rolling_back', 'rolled_back']
     rollforward_states = ['start_deploy', 'deploying', 'deployed']
 
@@ -578,6 +587,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         timeout,
         auto_certify_delay,
         auto_abandon_delay,
+        auto_rollback_delay,
     ):
         self.service = service
         self.deploy_info = deploy_info
@@ -586,6 +596,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         self.old_git_sha = old_git_sha
         self.git_url = git_url
         self.auto_rollback = auto_rollback
+        self.auto_rollbacks_ever_enabled = auto_rollback
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
@@ -596,91 +607,44 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
-        self.slack_client = get_slack_client()
         self.slack_ts = None
         self.slack_channel = self.get_slack_channel()
         self.slack_channel_id = None
         self.last_action = None
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
+        self.auto_rollback_delay = auto_rollback_delay
         self.slo_watchers = []
 
         super().__init__()
-        self.start_slo_watcher_threads()
+        self.start_slo_watcher_threads(self.service)
         self.send_initial_slack_message()
-        slack_thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
-        slack_thread.start()
-        timer_thread = Thread(target=self.periodically_update_slack, args=(), daemon=True)
-        timer_thread.start()
+        self.ping_authors()
 
-    def get_slack_channel(self) -> str:
-        """ Safely get some slack channel to post to. Defaults to ``#test``.
-        Currently only uses the first slack channel available, and doesn't support
-        multi-channel notifications. """
-        try:
-            return self.deploy_info.get('slack_channels', ["#test"])[0]
-        except (IndexError, AttributeError):
-            return "#test"
+    def get_progress(self) -> str:
+        return self.progress.human_readable()
 
-    def periodically_update_slack(self):
-        while self.state not in self.status_code_by_state():
-            self.update_slack()
-            time.sleep(20)
-
-    def deployment_name(self) -> str:
-        return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
-
-    def send_initial_slack_message(self):
-        blocks = arb_slack.get_slack_blocks_for_deployment(
-            deployment_name=self.deployment_name(),
-            message=self.human_readable_status,
-            last_action=None,
-            status='Uninitialized',
-            active_button=self.get_active_button(),
-            available_buttons=[],
-            from_sha=self.old_git_sha,
-            to_sha=self.commit,
-            slo_watchers=self.slo_watchers,
-        )
-        resp = self.slack_client.post_single(blocks=blocks, channel=self.slack_channel)
-        self.slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
-        self.slack_channel_id = resp['channel']
-        if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
+    def ping_authors(self):
         authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
         self.update_slack_thread(authors)
 
-    def update_slack(self):
-        blocks = arb_slack.get_slack_blocks_for_deployment(
-            deployment_name=self.deployment_name(),
-            message=self.human_readable_status,
-            progress=self.progress.human_readable(),
-            last_action=self.last_action,
-            status=self.state,
-            active_button=self.get_active_button(),
-            available_buttons=self.get_available_buttons(),
-            from_sha=self.old_git_sha,
-            to_sha=self.commit,
-            slo_watchers=self.slo_watchers,
-        )
-        resp = self.slack_client.sc.api_call(
-            "chat.update",
-            channel=self.slack_channel_id,
-            blocks=blocks,
-            ts=self.slack_ts,
-        )
-        if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
+    def get_slack_client(self) -> SlackClient:
+        return get_slack_client().sc
 
-    def update_slack_thread(self, message):
-        log.debug(f"Updating slack thread with {message}")
-        self.slack_client.post_single(
-            channel=self.slack_channel, message=message, thread_ts=self.slack_ts,
-        )
+    def get_slack_channel(self) -> str:
+        """ Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
+        Currently only uses the first slack channel available, and doesn't support
+        multi-channel notifications. """
+        if self.deploy_info.get('slack_notify', True):
+            try:
+                return self.deploy_info.get('slack_channels')[0]
+            except (IndexError, AttributeError, TypeError):
+                return DEFAULT_SLACK_CHANNEL
+        else:
+            return DEFAULT_SLACK_CHANNEL
 
-    def update_slack_status(self, message):
-        self.human_readable_status = message
-        self.update_slack()
+    def get_deployment_name(self) -> str:
+        return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
 
     def on_enter_start_deploy(self):
         self.update_slack_status(f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}...")
@@ -700,15 +664,19 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
     def states(self) -> Collection[str]:
         return [
             "_begin",
+
             "start_deploy",
             "deploying",
             "deployed",
+
             "mfd_failed",
             "deploy_errored",
             "deploy_cancelled",
+
             "start_rollback",
             "rolling_back",
             "rolled_back",
+
             "abandon",
             "complete",
         ]
@@ -747,43 +715,53 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'trigger': 'deploy_errored',
         }
         yield {
+
             'source': [s for s in self.states() if not self.is_terminal_state(s)],
             'dest': 'deploy_cancelled',
             'trigger': 'deploy_cancelled',
         }
 
-        yield {
-            'source': self.rollforward_states,
-            'dest': 'start_rollback',
-            'trigger': 'rollback_button_clicked',
-        }
-        yield {
-            'source': self.rollback_states,
-            'dest': None,  # this makes it an "internal transition", effectively a noop.
-            'trigger': 'rollback_button_clicked',
-        }
-
-        yield {
-            'source': self.rollback_states,
-            'dest': 'start_deploy',
-            'trigger': 'forward_button_clicked',
-        }
-        yield {
-            'source': self.rollforward_states,
-            'dest': None,  # this makes it an "internal transition", effectively a noop.
-            'trigger': 'forward_button_clicked',
-        }
-
-        yield {
-            'source': 'start_rollback',
-            'dest': 'rolling_back',
-            'trigger': 'mfd_succeeded',
-        }
-        yield {
-            'source': 'rolling_back',
-            'dest': 'rolled_back',
-            'trigger': 'deploy_finished',
-        }
+        if self.old_git_sha is not None:
+            yield {
+                'source': self.rollforward_states,
+                'dest': 'start_rollback',
+                'trigger': 'rollback_button_clicked',
+            }
+            yield {
+                'source': self.rollback_states,
+                'dest': None,  # this makes it an "internal transition", effectively a noop.
+                'trigger': 'rollback_button_clicked',
+            }
+            yield {
+                'source': self.rollforward_states,
+                'dest': 'start_rollback',
+                'trigger': 'rollback_slo_failure',
+            }
+            yield {
+                'source': self.rollback_states,
+                'dest': None,  # this makes it an "internal transition", effectively a noop.
+                'trigger': 'rollback_slo_failure',
+            }
+            yield {
+                'source': self.rollback_states,
+                'dest': 'start_deploy',
+                'trigger': 'forward_button_clicked',
+            }
+            yield {
+                'source': self.rollforward_states,
+                'dest': None,  # this makes it an "internal transition", effectively a noop.
+                'trigger': 'forward_button_clicked',
+            }
+            yield {
+                'source': 'start_rollback',
+                'dest': 'rolling_back',
+                'trigger': 'mfd_succeeded',
+            }
+            yield {
+                'source': 'rolling_back',
+                'dest': 'rolled_back',
+                'trigger': 'deploy_finished',
+            }
 
         yield {
             'source': 'deployed',
@@ -796,12 +774,7 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'trigger': 'auto_certify',
         }
         yield {
-            'source': ['deployed', 'rolled_back'],
-            'dest': '=',  # re-enter the same state.
-            'trigger': 'snooze_button_clicked',
-        }
-        yield {
-            'source': 'rolled_back',
+            'source': ['rolled_back', 'rolling_back'],
             'dest': 'abandon',
             'trigger': 'abandon_button_clicked',
         }
@@ -810,6 +783,69 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             'dest': 'abandon',
             'trigger': 'auto_abandon',
         }
+
+        yield {
+            'source': '*',
+            'dest': None,  # Don't actually change state, just call the before function.
+            'trigger': 'enable_auto_rollbacks_button_clicked',
+            'unless': [self.auto_rollbacks_enabled],
+            'before': self.enable_auto_rollbacks,
+        }
+        yield {
+            'source': '*',
+            'dest': None,  # Don't actually change state, just call the before function.
+            'trigger': 'disable_auto_rollbacks_button_clicked',
+            'conditions': [self.any_slo_failing, self.auto_rollbacks_enabled],
+            'before': self.disable_auto_rollbacks,
+        }
+        yield {
+            'source': '*',
+            'dest': None,
+            'trigger': 'slos_started_failing',
+            'conditions': [self.auto_rollbacks_enabled],
+            'unless': [self.already_rolling_back],
+            'before': self.start_auto_rollback_countdown,
+        }
+        yield {
+            'source': '*',
+            'dest': None,
+            'trigger': 'slos_stopped_failing',
+            'before': self.cancel_auto_rollback_countdown,
+        }
+        yield {
+            'source': '*',
+            'dest': None,
+            'trigger': 'snooze_button_clicked',
+            'before': self.restart_timer,
+            'conditions': [self.is_timer_running],
+        }
+
+    def disable_auto_rollbacks(self):
+        self.cancel_auto_rollback_countdown()
+        self.auto_rollback = False
+
+    def enable_auto_rollbacks(self):
+        self.auto_rollback = True
+        self.auto_rollbacks_ever_enabled = True
+
+    def auto_rollbacks_enabled(self) -> bool:
+        """This getter exists so it can be a condition on transitions, since those need to be callables."""
+        return self.auto_rollback
+
+    def get_auto_rollback_delay(self) -> float:
+        return self.auto_rollback_delay
+
+    def get_auto_certify_delay(self) -> float:
+        if self.auto_certify_delay is not None:
+            return self.auto_certify_delay
+        else:
+            if self.auto_rollbacks_ever_enabled:
+                return DEFAULT_AUTO_CERTIFY_DELAY
+            else:
+                return 0
+
+    def already_rolling_back(self) -> bool:
+        return self.state in self.rollback_states
 
     def status_code_by_state(self) -> Mapping[str, int]:
         codes = {
@@ -823,33 +859,11 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         if not self.block:
             # If we don't pass --wait-for-deployment, then exit immediately after mark-for-deployment succeeds.
             codes['deploying'] = 0
+        if self.get_auto_certify_delay() <= 0:
+            # Instead of setting a 0-second timer to move to certify, just exit 0 when the deploy finishes.
+            codes['deployed'] = 0
 
         return codes
-
-    def is_terminal_state(self, state: str) -> bool:
-        return (state in self.status_code_by_state())
-
-    def get_available_buttons(self) -> List[str]:
-        buttons = []
-
-        if self.is_terminal_state(self.state):
-            # If we're about to exit, always clear the buttons, since once we exit the buttons will stop working.
-            return []
-
-        if self.old_git_sha != self.commit:
-            if self.state in self.rollback_states:
-                buttons.append("forward")
-            if self.state in self.rollforward_states:
-                buttons.append("rollback")
-
-        if self.state == 'deployed':
-            buttons.append('complete')
-            buttons.append('snooze')
-        if self.state == 'rolled_back':
-            buttons.append('abandon')
-            buttons.append('snooze')
-
-        return buttons
 
     def get_active_button(self) -> Optional[str]:
         return {
@@ -950,26 +964,9 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
             level='event',
         )
         self.send_manual_rollback_instructions()
-        self.start_timer(self.auto_certify_delay, 'auto_certify', 'certify')
-
-    def is_relevant_buttonpress(self, buttonpress):
-        return self.slack_ts == buttonpress.thread_ts
-
-    def listen_for_slack_events(self):
-        log.debug("Listening for slack events...")
-        for event in arb_slack.get_slack_events():
-            log.debug(f"Got slack event: {event}")
-            buttonpress = arb_slack.event_to_buttonpress(event)
-            if self.is_relevant_buttonpress(buttonpress):
-                self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
-                self.last_action = buttonpress.action
-
-                try:
-                    self.trigger(f"{buttonpress.action}_button_clicked")
-                except (transitions.core.MachineError, AttributeError):
-                    self.update_slack_thread(f"Error: {traceback.format_exc()}")
-            else:
-                log.debug("But it was not relevant to this instance of mark-for-deployment")
+        if not (self.any_slo_failing() and self.auto_rollbacks_enabled()):
+            if self.get_auto_certify_delay() > 0:
+                self.start_timer(self.get_auto_certify_delay(), 'auto_certify', 'certify')
 
     def send_manual_rollback_instructions(self):
         if self.old_git_sha != self.commit:
@@ -985,23 +982,26 @@ class MarkForDeploymentProcess(state_machine.DeploymentProcess):
         self.update_slack()
         super().after_state_change()
 
-    def individual_slo_callback(self, label: str, bad: bool) -> None:
-        if bad:
-            message = f"SLO started failing: {label}"
-        else:
-            message = f"SLO is now OK: {label}"
-        self.update_slack_thread(message)
+    def get_signalfx_api_token(self) -> str:
+        return load_system_paasta_config().get_monitoring_config()['signalfx_api_key']
 
-    def all_slos_callback(self, bad: bool) -> None:
-        self.update_slack()
+    def get_button_text(self, button, is_active) -> str:
+        active_button_texts = {
+            "rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:",
+            "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:",
+        }
 
-    def start_slo_watcher_threads(self) -> None:
-        _, self.slo_watchers = watch_slos_for_service(
-            service=self.service,
-            individual_slo_callback=self.individual_slo_callback,
-            all_slos_callback=self.all_slos_callback,
-            sfx_api_token=load_system_paasta_config().get_monitoring_config()['signalfx_api_key'],
-        )
+        inactive_button_texts = {
+            "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
+            "forward": f"Continue Forward to {self.commit[:8]} :arrow_forward:",
+            "complete": f"Complete deploy to {self.commit[:8]} :white_check_mark:",
+            "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
+            "snooze": f"Reset countdown",
+            "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
+            "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
+        }
+
+        return (active_button_texts if is_active else inactive_button_texts)[button]
 
 
 class ClusterData:

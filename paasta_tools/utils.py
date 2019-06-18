@@ -87,6 +87,7 @@ DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
+    'itest-and-push-to-registry',
     'security-check',
     'performance-check',
     'push-to-registry',
@@ -506,6 +507,9 @@ class InstanceConfig:
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('cmd', None)
 
+    def get_instance_type(self) -> Optional[str]:
+        return getattr(self, 'config_filename_prefix', None)
+
     def get_env_dictionary(self) -> Dict[str, str]:
         """A dictionary of key/value pairs that represent environment variables
         to be injected to the container environment"""
@@ -519,6 +523,9 @@ class InstanceConfig:
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
+        instance_type = self.get_instance_type()
+        if instance_type:
+            env["PAASTA_INSTANCE_TYPE"] = instance_type
         user_env = self.config_dict.get('env', {})
         env.update(user_env)
         return {str(k): str(v) for (k, v) in env.items()}
@@ -3204,3 +3211,18 @@ def list_services(soa_dir: str = DEFAULT_SOA_DIR) -> Sequence[str]:
 
 def get_possible_launched_by_user_variable_from_env() -> str:
     return os.getenv("SUDO_USER") or getpass.getuser()
+
+
+def load_all_configs(
+    cluster: str,
+    file_prefix: str,
+    soa_dir: str,
+) -> Mapping[str, Mapping[str, Any]]:
+    config_dicts = {}
+    for service in os.listdir(soa_dir):
+        config_dicts[service] = service_configuration_lib.read_extra_service_information(
+            service,
+            f"{file_prefix}-{cluster}",
+            soa_dir=soa_dir,
+        )
+    return config_dicts

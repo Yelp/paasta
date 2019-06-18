@@ -37,6 +37,7 @@ from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client.rest import ApiException
 
+from paasta_tools import kubernetes_tools
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
@@ -379,6 +380,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
     def test_get_kubernetes_environment(self):
         ret = self.deployment.get_kubernetes_environment()
         assert 'PAASTA_POD_IP' in [env.name for env in ret]
+        assert 'POD_NAME' in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
         with mock.patch(
@@ -791,7 +793,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     containers=mock_get_kubernetes_containers.return_value,
                     restart_policy='Always',
                     volumes=[],
-                    dns_policy='Default',
                 ),
             )
 
@@ -1311,6 +1312,8 @@ def test_list_custom_resources():
                         'yelp.com/paasta_instance': 'fm',
                         'yelp.com/paasta_config_sha': 'con123',
                     },
+                    'name': 'foo',
+                    'namespace': 'bar',
                 },
             },
         ],
@@ -1322,6 +1325,8 @@ def test_list_custom_resources():
         instance='fm',
         config_sha='con123',
         kind='somecluster',
+        name='foo',
+        namespace='bar',
     )]
     assert list_custom_resources(
         kind=mock.Mock(plural='someclusters'),
@@ -1760,3 +1765,19 @@ def test_get_kubernetes_secret_hashes():
             ),
         ])
         assert hashes == {'SECRET(ref)': 'somesig', 'SHAREDSECRET(ref1)': 'somesig'}
+
+
+def test_load_custom_resources():
+    mock_resources = [{
+        'version': 'v1',
+        'kube_kind': {'plural': 'Flinks', 'singular': 'flink'},
+        'file_prefix': 'flink',
+        'group': 'yelp.com',
+    }]
+    mock_config = mock.Mock(get_kubernetes_custom_resources=mock.Mock(return_value=mock_resources))
+    assert kubernetes_tools.load_custom_resource_definitions(mock_config) == [kubernetes_tools.CustomResourceDefinition(
+        version='v1',
+        kube_kind=kubernetes_tools.KubeKind(plural='Flinks', singular='flink'),
+        file_prefix='flink',
+        group='yelp.com',
+    )]

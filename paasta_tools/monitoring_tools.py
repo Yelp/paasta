@@ -23,6 +23,7 @@ Everything in here is private, and you shouldn't worry about it.
 import json
 import logging
 import os
+from typing import Optional
 
 import pysensu_yelp
 import service_configuration_lib
@@ -400,14 +401,21 @@ def check_smartstack_replication_for_instance(
 
 def send_replication_event_if_under_replication(
     instance_config,
-    expected_count,
-    num_available,
+    expected_count: int,
+    num_available: int,
+    sub_component: Optional[str] = None,
 ):
     crit_threshold = instance_config.get_replication_crit_percentage()
-    output = (
-        'Service %s has %d out of %d expected instances available!\n' +
-        '(threshold: %d%%)'
-    ) % (instance_config.job_id, num_available, expected_count, crit_threshold)
+    if sub_component is not None:
+        output = (
+            'Service %s has %d out of %d expected instances of %s available!\n' +
+            '(threshold: %d%%)'
+        ) % (instance_config.job_id, num_available, expected_count, sub_component, crit_threshold)
+    else:
+        output = (
+            'Service %s has %d out of %d expected instances available!\n' +
+            '(threshold: %d%%)'
+        ) % (instance_config.job_id, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
     if under_replicated:
         output += (

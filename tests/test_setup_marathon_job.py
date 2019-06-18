@@ -2007,11 +2007,8 @@ class TestGetOldHappyUnhappyDrainingTasks:
             )
 
         fake_log_deploy_error.assert_any_call(
-            RegexMatcher(
-                r'Ignoring exception during is_draining of task fake_down_unhappy: Traceback \(most recent call last\):'
-                '.*Exception: ohai',
-                flags=re.DOTALL,
-            ),
+            "Ignoring Exception exception during is_draining of task "
+            "fake_down_unhappy (ohai). Treating task as 'unhappy'.",
         )
 
 

@@ -49,6 +49,7 @@ class TestDedupedPriorityQueue(unittest.TestCase):
             bounce_by=1,
             bounce_timers=None,
             failures=0,
+            processed_count=0,
         )
 
     def test_put(self):
@@ -78,6 +79,7 @@ class TestDedupedPriorityQueue(unittest.TestCase):
                 bounce_by=1,
                 bounce_timers=None,
                 failures=0,
+                processed_count=0,
             )
             self.queue.bouncing.add('universe.c137')
             mock_paasta_queue_get.return_value = self.mock_service_instance
@@ -188,6 +190,8 @@ class TestDeployDaemon(unittest.TestCase):
         ), mock.patch(
             'paasta_tools.deployd.master.Inbox', autospec=True,
         ) as self.mock_inbox, mock.patch(
+            'paasta_tools.deployd.master.get_metrics_interface', autospec=True,
+        ), mock.patch(
             'paasta_tools.deployd.master.get_marathon_clients_from_config', autospec=True,
         ), mock.patch(
             'paasta_tools.deployd.master.load_system_paasta_config', autospec=True,
@@ -226,8 +230,6 @@ class TestDeployDaemon(unittest.TestCase):
         with mock.patch(
             'paasta_tools.deployd.master.QueueMetrics', autospec=True,
         ) as mock_q_metrics, mock.patch(
-            'paasta_tools.deployd.master.get_metrics_interface', autospec=True,
-        ) as mock_get_metrics_interface, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.start_watchers', autospec=True,
         ) as mock_start_watchers, mock.patch(
             'paasta_tools.deployd.master.DeployDaemon.prioritise_bouncing_services', autospec=True,
@@ -244,7 +246,7 @@ class TestDeployDaemon(unittest.TestCase):
             mock_q_metrics.assert_called_with(
                 self.deployd.inbox,
                 'westeros-prod',
-                mock_get_metrics_interface.return_value,
+                self.deployd.metrics,
             )
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
@@ -398,6 +400,7 @@ class TestDeployDaemon(unittest.TestCase):
                     bounce_by=1,
                     bounce_timers=None,
                     failures=0,
+                    processed_count=0,
                 )),
                 mock.call(BaseServiceInstance(
                     service='universe',
@@ -407,6 +410,7 @@ class TestDeployDaemon(unittest.TestCase):
                     bounce_by=1,
                     bounce_timers=None,
                     failures=0,
+                    processed_count=0,
                 )),
             ]
             self.deployd.instances_to_bounce_later.put.assert_has_calls(calls, any_order=True)

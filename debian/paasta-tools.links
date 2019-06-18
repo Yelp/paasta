@@ -2,6 +2,7 @@ opt/venvs/paasta-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
 opt/venvs/paasta-tools/bin/autoscale_all_services.py usr/bin/autoscale_all_services
 opt/venvs/paasta-tools/bin/check_capacity.py usr/bin/check_capacity
 opt/venvs/paasta-tools/bin/check_chronos_has_jobs.py usr/bin/check_chronos_has_jobs
+opt/venvs/paasta-tools/bin/check_flink_services_replication.py usr/bin/check_flink_services_replication
 opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
@@ -13,7 +14,8 @@ opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
 opt/venvs/paasta-tools/bin/check_oom_events.py usr/bin/check_oom_events
 opt/venvs/paasta-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
 opt/venvs/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
-opt/venvs/paasta-tools/bin/cleanup_kubernetes_crds.py usr/bin/cleanup_kubernetes_crds
+opt/venvs/paasta-tools/bin/cleanup_kubernetes_cr.py usr/bin/cleanup_kubernetes_cr
+opt/venvs/paasta-tools/bin/cleanup_kubernetes_crd.py usr/bin/cleanup_kubernetes_crd
 opt/venvs/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
 opt/venvs/paasta-tools/bin/generate_all_deployments usr/bin/generate_all_deployments
 opt/venvs/paasta-tools/bin/generate_deployments_for_service.py usr/bin/generate_deployments_for_service

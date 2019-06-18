@@ -18,22 +18,6 @@ from paasta_tools import setup_kubernetes_cr
 from paasta_tools.kubernetes_tools import KubeCustomResource
 
 
-def test_load_custom_resources():
-    mock_resources = [{
-        'version': 'v1',
-        'kube_kind': {'plural': 'Flinks', 'singular': 'flink'},
-        'file_prefix': 'flink',
-        'group': 'yelp.com',
-    }]
-    mock_config = mock.Mock(get_kubernetes_custom_resources=mock.Mock(return_value=mock_resources))
-    assert setup_kubernetes_cr.load_custom_resources(mock_config) == [setup_kubernetes_cr.CustomResource(
-        version='v1',
-        kube_kind=setup_kubernetes_cr.KubeKind(plural='Flinks', singular='flink'),
-        file_prefix='flink',
-        group='yelp.com',
-    )]
-
-
 def test_main():
     with mock.patch(
         'paasta_tools.setup_kubernetes_cr.KubeClient', autospec=True,
@@ -59,7 +43,7 @@ def test_setup_all_custom_resources():
     ), mock.patch(
         'paasta_tools.setup_kubernetes_cr.setup_custom_resources', autospec=True,
     ) as mock_setup, mock.patch(
-        'paasta_tools.setup_kubernetes_cr.load_custom_resources', autospec=True,
+        'paasta_tools.setup_kubernetes_cr.load_custom_resource_definitions', autospec=True,
     ) as mock_load_custom_resources:
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         mock_setup.side_effect = [True, False]
@@ -73,13 +57,13 @@ def test_setup_all_custom_resources():
             items=[flink_crd, cassandra_crd],
         )
 
-        custom_resources = [
+        custom_resource_definitions = [
             mock.Mock(kube_kind=mock.Mock(plural='flinkclusters', singular='FlinkCluster')),
             mock.Mock(kube_kind=mock.Mock(plural='cassandraclusters', singular='CassandraCluster')),
         ]
 
         assert not setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config, custom_resources=custom_resources,
+            mock_client, '/nail/soa', mock_system_config, custom_resource_definitions=custom_resource_definitions,
         )
 
         mock_load_custom_resources.return_value = [
@@ -88,19 +72,19 @@ def test_setup_all_custom_resources():
         mock_setup.side_effect = [True, True]
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         assert setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config, custom_resources=custom_resources,
+            mock_client, '/nail/soa', mock_system_config, custom_resource_definitions=custom_resource_definitions,
         )
 
         mock_load_custom_resources.return_value = []
         mock_system_config = mock.Mock(get_cluster=mock.Mock(return_value='westeros-prod'))
         assert setup_kubernetes_cr.setup_all_custom_resources(
-            mock_client, '/nail/soa', mock_system_config, custom_resources=[],
+            mock_client, '/nail/soa', mock_system_config, custom_resource_definitions=[],
         )
 
 
 def test_load_all_configs():
     with mock.patch(
-        'paasta_tools.setup_kubernetes_cr.service_configuration_lib.read_extra_service_information', autospec=True,
+        'paasta_tools.kubernetes_tools.service_configuration_lib.read_extra_service_information', autospec=True,
     ) as mock_read_info, mock.patch(
         'os.listdir', autospec=True,
     ) as mock_oslist:
@@ -191,6 +175,7 @@ def test_format_custom_resource():
             'kind': 'flink',
             'metadata': {
                 'name': 'kurupt--fm-radio--station',
+                'namespace': 'paasta-flinks',
                 'labels': {
                     'yelp.com/paasta_service': 'kurupt_fm',
                     'yelp.com/paasta_instance': 'radio_station',
@@ -211,6 +196,7 @@ def test_format_custom_resource():
             kind='flink',
             version='v1',
             group='yelp.com',
+            namespace='paasta-flinks',
         ) == expected
 
 
@@ -222,13 +208,15 @@ def test_reconcile_kubernetes_resource():
     ) as mock_create_custom_resource, mock.patch(
         'paasta_tools.setup_kubernetes_cr.update_custom_resource', autospec=True,
     ) as mock_update_custom_resource:
-        mock_kind = mock.Mock(singular='flink')
+        mock_kind = mock.Mock(singular='flink', plural='flinks')
         mock_custom_resources = [
             KubeCustomResource(
                 service='kurupt',
                 instance='fm',
                 config_sha='conf123',
                 kind='flink',
+                name='foo',
+                namespace='paasta-flinks',
             ),
         ]
         mock_client = mock.Mock()
@@ -252,6 +240,8 @@ def test_reconcile_kubernetes_resource():
                 'labels': {
                     'yelp.com/paasta_config_sha': 'conf123',
                 },
+                'name': 'foo',
+                'namespace': 'paasta-flinks',
             },
         }
         assert setup_kubernetes_cr.reconcile_kubernetes_resource(
@@ -273,6 +263,8 @@ def test_reconcile_kubernetes_resource():
                 'labels': {
                     'yelp.com/paasta_config_sha': 'conf456',
                 },
+                'name': 'foo',
+                'namespace': 'paasta-flinks',
             },
         }
         assert setup_kubernetes_cr.reconcile_kubernetes_resource(

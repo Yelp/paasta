@@ -331,6 +331,7 @@ def get_spark_env(
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
     spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
+    spark_env['PAASTA_INSTANCE_TYPE'] = 'spark'
 
     # Run spark (and mesos framework) as root.
     spark_env['SPARK_USER'] = 'root'
@@ -354,6 +355,7 @@ def get_spark_env(
             args.spark_args,
             spark_ui_port,
         )
+        spark_env['SPARK_DAEMON_CLASSPATH'] = '/opt/spark/extra_jars/*'
         spark_env['SPARK_NO_DAEMONIZE'] = 'true'
 
     return spark_env
@@ -437,6 +439,7 @@ def get_spark_config(
         'spark.executorEnv.PAASTA_SERVICE': args.service,
         'spark.executorEnv.PAASTA_INSTANCE': '{}_{}'.format(args.instance, get_username()),
         'spark.executorEnv.PAASTA_CLUSTER': args.cluster,
+        'spark.executorEnv.PAASTA_INSTANCE_TYPE': 'spark',
         'spark.mesos.executor.docker.parameters': 'label=paasta_service={},label=paasta_instance={}_{}'.format(
             args.service, args.instance, get_username(),
         ),
@@ -478,6 +481,20 @@ def get_spark_config(
                 sys.exit(1)
             # Update default configuration
             user_args[fields[0]] = fields[1]
+
+    if 'spark.sql.shuffle.partitions' not in user_args:
+        num_partitions = str(
+            2 * int(user_args['spark.cores.max']),
+        )
+        user_args['spark.sql.shuffle.partitions'] = num_partitions
+        paasta_print(
+            PaastaColors.yellow(
+                f'Warning: spark.sql.shuffle.partitions has been set to'
+                f' {num_partitions} to be equal to twice the number of '
+                f'requested cores, but you should consider setting a '
+                f'higher value if necessary.',
+            ),
+        )
 
     if int(user_args['spark.cores.max']) < int(user_args['spark.executor.cores']):
         paasta_print(
