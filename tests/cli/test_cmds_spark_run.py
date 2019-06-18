@@ -166,6 +166,7 @@ class TestConfigureAndRunDockerContainer:
         mock_get_aws_credentials.return_value = ('id', 'secret')
 
         args = mock.MagicMock()
+        args.aws_region = 'fake_region'
         args.cluster = 'fake_cluster'
         args.cmd = 'pyspark'
         args.work_dir = '/fake_dir:/spark_driver'
@@ -200,6 +201,7 @@ class TestConfigureAndRunDockerContainer:
                 'PAASTA_LAUNCHED_BY': mock.ANY,
                 'AWS_ACCESS_KEY_ID': 'id',
                 'AWS_SECRET_ACCESS_KEY': 'secret',
+                'AWS_DEFAULT_REGION': 'fake_region',
                 'SPARK_USER': 'root',
                 'SPARK_OPTS': '--conf spark.app.name=fake_app',
             },
