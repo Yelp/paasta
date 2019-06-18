@@ -9,6 +9,7 @@ REAL_ROLLBACK_PRESS = {'type': 'block_actions', 'team': {'id': 'T0289TLJY', 'dom
 
 class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
     """A minimum-viable SlackDeploymentProcess subclass."""
+    slack_channel = 'test'
 
     def status_code_by_state(self):
         return {}
@@ -26,7 +27,15 @@ class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
         return '_begin'
 
     def get_slack_client(self):
-        return mock.Mock(spec=SlackClient)
+        mock_client = mock.Mock(spec=SlackClient)
+        mock_client.api_call.return_value = {
+            'ok': True,
+            'message': {
+                'ts': 10,
+            },
+            'channel': 'test',
+        }
+        return mock_client
 
     def get_slack_channel(self):
         raise NotImplementedError()
