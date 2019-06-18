@@ -2501,6 +2501,17 @@ def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str)
     return instance_list
 
 
+def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
+    config = service_configuration_lib.read_extra_service_information(
+        service_name=service,
+        extra_info=f'tron-{cluster}',
+        soa_dir=soa_dir,
+    )
+    if not config:
+        raise NoConfigurationForServiceError('No Tron configuration found for service %s' % service)
+    return config
+
+
 def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
     instance_list = []
     instances = service_configuration_lib.read_extra_service_information(

@@ -6,7 +6,6 @@ import pytest
 from paasta_tools import tron_tools
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -763,19 +762,6 @@ class TestTronTools:
         }
         assert result['env']['SHELL'] == '/bin/bash'
         assert isinstance(result['docker_parameters'], list)
-
-    @mock.patch('paasta_tools.tron_tools.service_configuration_lib.read_extra_service_information', autospec=True)
-    @mock.patch('paasta_tools.tron_tools.service_configuration_lib._read_yaml_file', autospec=True)
-    def test_load_tron_yaml_empty(self, mock_read_file, mock_read_service_info):
-        mock_read_file.return_value = {}
-        mock_read_service_info.return_value = {}
-        soa_dir = '/other/services'
-
-        with pytest.raises(NoConfigurationForServiceError):
-            tron_tools.load_tron_yaml('foo', 'dev', soa_dir=soa_dir)
-
-        assert mock_read_service_info.call_count == 1
-        mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
 
     @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
     def test_load_tron_yaml_picks_service_dir(self, mock_read_extra_service_configuration):

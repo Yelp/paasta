@@ -869,6 +869,20 @@ def test_get_service_instance_list_ignores_underscore():
         assert sorted(expected) == sorted(actual)
 
 
+@mock.patch('paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True)
+@mock.patch('paasta_tools.utils.service_configuration_lib._read_yaml_file', autospec=True)
+def test_load_tron_yaml_empty(mock_read_file, mock_read_service_info):
+    mock_read_file.return_value = {}
+    mock_read_service_info.return_value = {}
+    soa_dir = '/other/services'
+
+    with pytest.raises(utils.NoConfigurationForServiceError):
+        utils.load_tron_yaml('foo', 'dev', soa_dir=soa_dir)
+
+    assert mock_read_service_info.call_count == 1
+    mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
+
+
 def test_get_tron_instance_list_from_yaml_finds_actions_properly():
     fake_tron_job_config = {
         "ssh_option": "foo",
