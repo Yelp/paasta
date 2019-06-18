@@ -520,30 +520,29 @@ The documentation here is for the PaaSTA-specific options. For all other
 settings, please see the
 `canonical docs <https://tron.readthedocs.io/en/latest/jobs.html>`_.
 
-.. warning:: The PaaSTA-Tron Integration is currently in an ALPHA state. Do not use it unless directed to.
 
 Example Job
 ^^^^^^^^^^^
 
 ::
 
-  jobs:
-      - name: convert_logs
-        node: node1
-        schedule:
-          start_time: 04:00:00
-        actions:
-          - name: verify_logs_present
-            command: "ls /var/log/app/log_%(shortdate-1)s.txt"
-            executor: ssh
-          - name: convert_logs
-            requires: [verify_logs_present]
-            command: "convert_logs /var/log/app/log_%(shortdate-1)s.txt /var/log/app_converted/log_%(shortdate-1)s.txt"
-            executor: paasta
-            service: test_service
-            deploy_group: prod
-            cpus: .5
-            mem: 100
+    ---
+    convert_logs:
+      node: paasta
+      schedule:
+        start_time: 04:00:00
+      actions:
+        verify_logs_present:
+          command: "ls /var/log/app/log_%(shortdate-1)s.txt"
+          executor: ssh
+        convert_logs:
+          requires: [verify_logs_present]
+          command: "convert_logs /var/log/app/log_%(shortdate-1)s.txt /var/log/app_converted/log_%(shortdate-1)s.txt"
+          executor: paasta
+          service: test_service
+          deploy_group: prod
+          cpus: .5
+          mem: 100
 
 PaaSTA-Specific Options
 ^^^^^^^^^^^^^^^^^^^^^^^
