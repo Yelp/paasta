@@ -90,6 +90,9 @@ class DeploymentProcess(abc.ABC):
     def is_terminal_state(self, state: str) -> bool:
         return (state in self.status_code_by_state())
 
+    def is_finished(self) -> bool:
+        return self.finished_event.is_set()
+
     def finish(self):
         self.finished_event.set()
 
