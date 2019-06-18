@@ -2422,3 +2422,38 @@ def test_suggest_possibilities_one():
     expected = "FOOBAR?"
     actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOBAR", "BAZ"])
     assert expected in actual
+
+
+def test_extract_jobs_from_tron_yaml_with_empty_dict():
+    assert utils.extract_jobs_from_tron_yaml({}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_None():
+    assert utils.extract_jobs_from_tron_yaml({"jobs": None}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_no_jobs():
+    assert utils.extract_jobs_from_tron_yaml({"jobs": {}}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_just_jobs():
+    assert utils.extract_jobs_from_tron_yaml({"job0": "foo"}) == {"job0": "foo"}
+
+
+def test_extract_jobs_from_tron_yaml_with_mix():
+    config = {
+        "_template": "foo",
+        "job0": "bar",
+    }
+    assert utils.extract_jobs_from_tron_yaml(config) == {"job0": "bar"}
+
+
+def test_extract_jobs_from_tron_yaml_defaults_to_jobs_if_available():
+    config = {
+        "_template": "foo",
+        "job0": "bar",
+        "jobs": {
+            "job1": "baz",
+        },
+    }
+    assert utils.extract_jobs_from_tron_yaml(config) == {"job1": "baz"}

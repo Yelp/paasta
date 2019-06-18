@@ -2512,6 +2512,15 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
     return config
 
 
+def extract_jobs_from_tron_yaml(config):
+    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
+    if 'jobs' in config and config.get('jobs') is None:
+        return {}
+    if config.get('jobs') == {}:
+        return {}
+    return config.get('jobs') or config or {}
+
+
 def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
     instance_list = []
     instances = service_configuration_lib.read_extra_service_information(

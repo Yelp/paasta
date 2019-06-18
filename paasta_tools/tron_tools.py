@@ -40,6 +40,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import load_tron_yaml
+from paasta_tools.utils import extract_jobs_from_tron_yaml
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -525,15 +526,6 @@ def load_tron_instance_config(
                 if action.get_action_name() == requested_action:
                     return action
     raise NoConfigurationForServiceError(f"No tron configuration found for {service} {instance}")
-
-
-def extract_jobs_from_tron_yaml(config):
-    config = {key: value for key, value in config.items() if not key.startswith('_')}  # filter templates
-    if 'jobs' in config and config.get('jobs') is None:
-        return {}
-    if config.get('jobs') == {}:
-        return {}
-    return config.get('jobs') or config or {}
 
 
 def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
