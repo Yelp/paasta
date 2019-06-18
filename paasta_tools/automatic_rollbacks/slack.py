@@ -99,6 +99,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.human_readable_status = "Initializing..."
         self.slack_client = self.get_slack_client()
         self.last_action = None
+        self.send_initial_slack_message()
 
         slack_thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
         slack_thread.start()

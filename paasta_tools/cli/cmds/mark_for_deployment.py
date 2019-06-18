@@ -612,9 +612,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.auto_rollback_delay = auto_rollback_delay
         self.slo_watchers = []
 
-        super().__init__()
         self.start_slo_watcher_threads(self.service)
-        self.send_initial_slack_message()
+        # Initialize Slack threads and send the first message
+        super().__init__()
         self.ping_authors()
 
     def get_progress(self) -> str:
