@@ -33,6 +33,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
+DEFAULT_AWS_REGION = 'us-west-2'
 DEFAULT_SERVICE = 'spark'
 DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
@@ -253,6 +254,13 @@ def add_subparser(subparsers):
         default='default',
     )
 
+    aws_group.add_argument(
+        '--aws-region',
+        help=f'Specify an aws region. If the region is not specified, we will'
+             f'default to using {DEFAULT_AWS_REGION}.',
+        default=DEFAULT_AWS_REGION,
+    )
+
     jupyter_group = list_parser.add_argument_group(
         title='Jupyter kernel culling options',
         description='Idle kernels will be culled by default. Idle '
@@ -330,6 +338,7 @@ def get_spark_env(
     access_key, secret_key = get_aws_credentials(args)
     spark_env['AWS_ACCESS_KEY_ID'] = access_key
     spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
+    spark_env['AWS_DEFAULT_REGION'] = args.aws_region
     spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
     spark_env['PAASTA_INSTANCE_TYPE'] = 'spark'
 
