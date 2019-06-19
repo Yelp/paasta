@@ -41,6 +41,7 @@ from mypy_extensions import NamedArg
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
+from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -857,6 +858,8 @@ def get_instance_config(
         instance_config_load_function = load_tron_instance_config
     elif instance_type == 'flink':
         instance_config_load_function = load_flink_instance_config
+    elif instance_type == 'cassandracluster':
+        instance_config_load_function = load_cassandracluster_instance_config
     else:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
@@ -1034,7 +1037,7 @@ def get_instance_configs_for_service(
         soa_dir=soa_dir,
     ):
         if type_filter is None:
-            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron', 'flink']
+            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron', 'flink', 'cassandracluster']
         if 'marathon' in type_filter:
             for _, instance in get_service_instance_list(
                 service=service,
@@ -1113,6 +1116,20 @@ def get_instance_configs_for_service(
                 soa_dir=soa_dir,
             ):
                 yield load_flink_instance_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+        if 'cassandracluster' in type_filter:
+            for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='cassandracluster',
+                soa_dir=soa_dir,
+            ):
+                yield load_cassandracluster_instance_config(
                     service=service,
                     instance=instance,
                     cluster=cluster,

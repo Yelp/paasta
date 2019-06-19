@@ -3,6 +3,7 @@ opt/venvs/paasta-tools/bin/autoscale_all_services.py usr/bin/autoscale_all_servi
 opt/venvs/paasta-tools/bin/check_capacity.py usr/bin/check_capacity
 opt/venvs/paasta-tools/bin/check_chronos_has_jobs.py usr/bin/check_chronos_has_jobs
 opt/venvs/paasta-tools/bin/check_flink_services_replication.py usr/bin/check_flink_services_replication
+opt/venvs/paasta-tools/bin/check_cassandracluster_services_replication.py usr/bin/check_cassandracluster_services_replication
 opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication

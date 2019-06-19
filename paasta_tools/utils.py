@@ -119,6 +119,7 @@ INSTANCE_TYPES = (
     'kubernetes',
     'tron',
     'flink',
+    'cassandracluster',
 )
 
 
