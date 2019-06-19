@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import datetime
 import os
 import re
 
@@ -72,8 +71,7 @@ class Task:
         st = await self.stats()
         secs = st.get("cpus_user_time_secs", 0) + \
             st.get("cpus_system_time_secs", 0)
-        # timedelta has a resolution of .000000 while mesos only keeps .00
-        return str(datetime.timedelta(seconds=secs)).rsplit(".", 1)[0]
+        return secs
 
     async def cpu_limit(self):
         return (await self.stats()).get("cpus_limit", 0)

@@ -735,8 +735,7 @@
           "description": "The portion of a CPU that the task can use"
         },
         "cpu_used_seconds" :{
-          "type": "number",
-          "format": "float",
+          "$ref": "#/definitions/FloatAndError",
           "description": "The number of seconds of CPU time the task has used"
         },
         "duration_seconds": {

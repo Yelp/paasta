@@ -407,7 +407,7 @@ def create_mesos_running_tasks_table(running_tasks):
             mem_string = task.mem_limit.error_message
 
         # TODO: break into own method? (stuff in initial if block)
-        if task.cpu_shares.value is not None:
+        if task.cpu_shares.value is not None and task.cpu_used_seconds.value is not None:
             # The total time a task has been allocated is the total time the task has
             # been running multiplied by the "shares" a task has.
             # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
@@ -415,7 +415,7 @@ def create_mesos_running_tasks_table(running_tasks):
             if allocated_seconds == 0:
                 cpu_string = "Undef"
             else:
-                cpu_percent = round(100 * (task.cpu_used_seconds / allocated_seconds), 1)
+                cpu_percent = round(100 * (task.cpu_used_seconds.value / allocated_seconds), 1)
                 cpu_string = '%s%%' % cpu_percent
                 if cpu_percent > 90:
                     cpu_string = PaastaColors.red(cpu_string)

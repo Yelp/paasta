@@ -570,6 +570,7 @@ async def marathon_mesos_status(
     if verbose > 0:
         num_tail_lines = calculate_tail_lines(verbose)
         running_task_dict_futures = []
+
         for task in running_and_active_tasks:
             running_task_dict_futures.append(
                 asyncio.ensure_future(get_mesos_running_task_dict(task, num_tail_lines)),
@@ -617,9 +618,9 @@ async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> Mutabl
     mem_limit_future = asyncio.ensure_future(_task_result_or_error(task.mem_limit()))
     rss_future = asyncio.ensure_future(_task_result_or_error(task.rss()))
     cpu_shares_future = asyncio.ensure_future(_task_result_or_error(get_cpu_shares(task)))
-    task_stats_future = asyncio.ensure_future(task.stats())
+    cpu_time_future = asyncio.ensure_future(_task_result_or_error(task.cpu_time()))
 
-    futures = [short_hostname_future, mem_limit_future, rss_future, cpu_shares_future, task_stats_future]
+    futures = [short_hostname_future, mem_limit_future, rss_future, cpu_shares_future, cpu_time_future]
     if num_tail_lines > 0:
         tail_lines_future = asyncio.ensure_future(get_tail_lines_for_mesos_task(task, num_tail_lines))
         futures.append(tail_lines_future)
@@ -628,16 +629,13 @@ async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> Mutabl
 
     await asyncio.wait(futures)
 
-    task_stats = task_stats_future.result()
-    cpu_used_seconds = task_stats.get('cpus_system_time_secs', 0.0) + task_stats.get('cpus_user_time_secs', 0.0)
-
     task_dict = {
         'id': get_short_task_id(task['id']),
         'hostname': short_hostname_future.result(),
         'mem_limit': mem_limit_future.result(),
         'rss': rss_future.result(),
         'cpu_shares': cpu_shares_future.result(),
-        'cpu_used_seconds': cpu_used_seconds,
+        'cpu_used_seconds': cpu_time_future.result(),
         'tail_lines': tail_lines_future.result() if tail_lines_future else {},
     }
 
