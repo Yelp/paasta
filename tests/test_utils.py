@@ -869,38 +869,18 @@ def test_get_service_instance_list_ignores_underscore():
         assert sorted(expected) == sorted(actual)
 
 
-def test_get_tron_instance_list_from_yaml_finds_actions_properly():
-    fake_tron_job_config = {
-        "ssh_option": "foo",
-        "jobs": [
-            {
-                "name": "job1",
-                "actions": [
-                    {"name": "actionA"},
-                    {"name": "actionB"},
-                ],
-            },
-            {
-                "name": "job2",
-                "actions": [
-                    {"name": "actionC"},
-                    {"name": "actionD"},
-                ],
-            },
-        ],
-    }
-    expected = [
-        ("fake_service", "job1.actionA"),
-        ("fake_service", "job1.actionB"),
-        ("fake_service", "job2.actionC"),
-        ("fake_service", "job2.actionD"),
-    ]
-    with mock.patch(
-        'paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
-        return_value=fake_tron_job_config,
-    ):
-        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', conf_file='fake', soa_dir='fake_dir')
-        assert sorted(expected) == sorted(actual)
+@mock.patch('paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True)
+@mock.patch('paasta_tools.utils.service_configuration_lib._read_yaml_file', autospec=True)
+def test_load_tron_yaml_empty(mock_read_file, mock_read_service_info):
+    mock_read_file.return_value = {}
+    mock_read_service_info.return_value = {}
+    soa_dir = '/other/services'
+
+    with pytest.raises(utils.NoConfigurationForServiceError):
+        utils.load_tron_yaml('foo', 'dev', soa_dir=soa_dir)
+
+    assert mock_read_service_info.call_count == 1
+    mock_read_service_info.assert_has_calls([mock.call('foo', 'tron-dev', soa_dir)])
 
 
 def test_get_tron_instance_list_from_yaml_with_dicts():
@@ -928,10 +908,70 @@ def test_get_tron_instance_list_from_yaml_with_dicts():
         ("fake_service", "job2.actionD"),
     ]
     with mock.patch(
-        'paasta_tools.utils.service_configuration_lib.read_extra_service_information', autospec=True,
+        'paasta_tools.utils.load_tron_yaml', autospec=True,
         return_value=fake_tron_job_config,
     ):
-        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', conf_file='fake', soa_dir='fake_dir')
+        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', cluster='fake', soa_dir='fake_dir')
+        assert sorted(expected) == sorted(actual)
+
+
+def test_get_tron_instance_list_from_yaml_with_no_jobs_and_templates():
+    fake_tron_job_config = {
+        "_template": "foo",
+        "job1": {
+            "actions": {
+                "actionA": {},
+                "actionB": {},
+            },
+        },
+        "job2": {
+            "actions": {
+                "actionC": {},
+                "actionD": {},
+            },
+        },
+    }
+    expected = [
+        ("fake_service", "job1.actionA"),
+        ("fake_service", "job1.actionB"),
+        ("fake_service", "job2.actionC"),
+        ("fake_service", "job2.actionD"),
+    ]
+    with mock.patch(
+        'paasta_tools.utils.load_tron_yaml', autospec=True,
+        return_value=fake_tron_job_config,
+    ):
+        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', cluster='fake', soa_dir='fake_dir')
+        assert sorted(expected) == sorted(actual)
+
+
+def test_get_tron_instance_list_from_yaml_with_no_jobs_and_action_lists():
+    fake_tron_job_config = {
+        "_template": "foo",
+        "job1": {
+            "actions": [
+                {"name": "actionA"},
+                {"name": "actionB"},
+            ],
+        },
+        "job2": {
+            "actions": [
+                {"name": "actionC"},
+                {"name": "actionD"},
+            ],
+        },
+    }
+    expected = [
+        ("fake_service", "job1.actionA"),
+        ("fake_service", "job1.actionB"),
+        ("fake_service", "job2.actionC"),
+        ("fake_service", "job2.actionD"),
+    ]
+    with mock.patch(
+        'paasta_tools.utils.load_tron_yaml', autospec=True,
+        return_value=fake_tron_job_config,
+    ):
+        actual = utils.get_tron_instance_list_from_yaml(service='fake_service', cluster='fake', soa_dir='fake_dir')
         assert sorted(expected) == sorted(actual)
 
 
@@ -2408,3 +2448,38 @@ def test_suggest_possibilities_one():
     expected = "FOOBAR?"
     actual = utils.suggest_possibilities(word='FOO', possibilities=["FOOBAR", "BAZ"])
     assert expected in actual
+
+
+def test_extract_jobs_from_tron_yaml_with_empty_dict():
+    assert utils.extract_jobs_from_tron_yaml({}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_None():
+    assert utils.extract_jobs_from_tron_yaml({"jobs": None}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_no_jobs():
+    assert utils.extract_jobs_from_tron_yaml({"jobs": {}}) == {}
+
+
+def test_extract_jobs_from_tron_yaml_with_just_jobs():
+    assert utils.extract_jobs_from_tron_yaml({"job0": "foo"}) == {"job0": "foo"}
+
+
+def test_extract_jobs_from_tron_yaml_with_mix():
+    config = {
+        "_template": "foo",
+        "job0": "bar",
+    }
+    assert utils.extract_jobs_from_tron_yaml(config) == {"job0": "bar"}
+
+
+def test_extract_jobs_from_tron_yaml_defaults_to_jobs_if_available():
+    config = {
+        "_template": "foo",
+        "job0": "bar",
+        "jobs": {
+            "job1": "baz",
+        },
+    }
+    assert utils.extract_jobs_from_tron_yaml(config) == {"job1": "baz"}

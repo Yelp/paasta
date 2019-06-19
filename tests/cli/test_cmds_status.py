@@ -721,11 +721,13 @@ def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_grou
 @patch('paasta_tools.cli.cmds.status.list_services', autospec=True)
 @patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.status.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.status.list_all_instances_for_service', autospec=True)
 def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_group(
     mock_list_clusters,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
+    mock_list_all_instances_for_service,
 ):
     args = StatusArgs(
         service='fake_service',
@@ -740,6 +742,7 @@ def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_gro
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_list_services.return_value = ['fake_service']
+    mock_list_all_instances_for_service.return_value = []
     mock_get_instance_configs_for_service.return_value = [
         make_fake_instance_conf('cluster1', 'fake_service', 'instance1', 'other_fake_deploy_group'),
         make_fake_instance_conf('cluster1', 'fake_service', 'instance2', 'other_fake_deploy_group'),

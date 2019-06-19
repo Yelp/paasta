@@ -1,7 +1,6 @@
-jobs:
- "sample_tron_job":
-    actions:
-      - name: action1
-        command: exit 42
-      - name: action2
+sample_tron_job:
+  actions:
+    "action1":
+       command: exit 42
+    "action2":
         command: /bin/true
