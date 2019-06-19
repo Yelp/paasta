@@ -19,6 +19,7 @@ import pytest
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 from pyramid import testing
+from requests.exceptions import ReadTimeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
@@ -27,9 +28,13 @@ from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.mesos.exceptions import SlaveDoesNotExist
+from paasta_tools.mesos.slave import MesosSlave
+from paasta_tools.mesos.task import Task
 from paasta_tools.smartstack_tools import HaproxyBackend
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import TimeoutError
 
 
 @mock.patch('paasta_tools.api.views.instance.marathon_mesos_status', autospec=True)
@@ -333,6 +338,216 @@ def test_marathon_smartstack_status(
             }],
         }],
     }
+
+
+class TestMarathonMesosStatus:
+
+    @pytest.fixture
+    def mock_get_cached_list_of_running_tasks_from_frameworks(self):
+        with asynctest.patch(
+            'paasta_tools.api.views.instance.get_cached_list_of_running_tasks_from_frameworks',
+            autospec=True,
+        ) as fixture:
+            yield fixture
+
+    @pytest.fixture
+    def mock_get_cached_list_of_not_running_tasks_from_frameworks(self):
+        with asynctest.patch(
+            'paasta_tools.api.views.instance.get_cached_list_of_not_running_tasks_from_frameworks',
+            autospec=True,
+        ) as fixture:
+            yield fixture
+
+    @pytest.fixture
+    def mock_datetime(self):
+        with mock.patch('paasta_tools.api.views.instance.datetime', autospec=True) as fixture:
+            yield fixture
+
+    def test_not_verbose(self, mock_get_cached_list_of_running_tasks_from_frameworks):
+        mock_task1 = Task(master=mock.Mock(), items={'id': 'fake--service.fake--instance.1'})
+        mock_task2 = Task(master=mock.Mock(), items={'id': 'fake--service.fake--instance.2'})
+        mock_get_cached_list_of_running_tasks_from_frameworks.return_value = [mock_task1, mock_task2]
+        mesos_status = instance.marathon_mesos_status('fake_service', 'fake_instance', verbose=0)
+
+        assert mesos_status == {'running_task_count': 2}
+
+    def test_mesos_timeout(self, mock_get_cached_list_of_running_tasks_from_frameworks):
+        mock_get_cached_list_of_running_tasks_from_frameworks.side_effect = ReadTimeout
+        mesos_status = instance.marathon_mesos_status('fake_service', 'fake_instance', verbose=0)
+        assert mesos_status == {'error_message': 'Error: talking to Mesos timed out. It may be overloaded.'}
+
+    def test_verbose(
+        self,
+        mock_get_cached_list_of_running_tasks_from_frameworks,
+    ):
+        with asynctest.patch(
+            'paasta_tools.api.views.instance.get_cached_list_of_not_running_tasks_from_frameworks',
+            autospec=True,
+        ) as mock_get_cached_list_of_not_running_tasks_from_frameworks, asynctest.patch(
+            'paasta_tools.api.views.instance.get_mesos_running_task_dict',
+            autospec=True,
+        ) as mock_get_mesos_running_task_dict, asynctest.patch(
+            'paasta_tools.api.views.instance.get_mesos_non_running_task_dict',
+            autospec=True,
+        ) as mock_get_mesos_non_running_task_dict:
+            running_task_1 = Task(master=mock.Mock(), items={'id': 'fake--service.fake--instance.1'})
+            running_task_2 = Task(master=mock.Mock(), items={'id': 'fake--service.fake--instance.2'})
+            non_running_task = Task(
+                master=mock.Mock(),
+                items={
+                    'id': 'fake--service.fake--instance.3',
+                    'statuses': [{'timestamp': 1560888500}],
+                },
+            )
+
+            mock_get_cached_list_of_running_tasks_from_frameworks.return_value = [
+                running_task_1,
+                running_task_2,
+            ]
+            mock_get_cached_list_of_not_running_tasks_from_frameworks.return_value = [non_running_task]
+            mock_get_mesos_running_task_dict.side_effect = lambda task, nlines: {'id': task['id']}
+            mock_get_mesos_non_running_task_dict.side_effect = lambda task, nlines: {
+                'id': task['id'],
+                'state': 'TASK_LOST',
+            }
+
+            mesos_status = instance.marathon_mesos_status('fake_service', 'fake_instance', verbose=2)
+
+            assert mesos_status == {
+                'running_task_count': 2,
+                'running_tasks': [
+                    {'id': 'fake--service.fake--instance.1'},
+                    {'id': 'fake--service.fake--instance.2'},
+                ],
+                'non_running_tasks': [
+                    {'id': 'fake--service.fake--instance.3', 'state': 'TASK_LOST'},
+                ],
+            }
+
+            assert mock_get_mesos_running_task_dict.call_count == 2
+            mock_get_mesos_running_task_dict.assert_has_calls(
+                [mock.call(running_task_1, 10), mock.call(running_task_2, 10)],
+                any_order=True,
+            )
+            mock_get_mesos_non_running_task_dict.assert_called_once_with(non_running_task, 10)
+
+
+@pytest.mark.asyncio
+class TestGetMesosRunningTaskDict:
+
+    @pytest.fixture
+    def mock_task(self):
+        mock_slave = MesosSlave(config=mock.Mock(), items={'hostname': 'abc.def'})
+        mock_task = Task(
+            master=mock.Mock(),
+            items={
+                'id': 'fake--service.fake--instance.1',
+                'statuses': [{'timestamp': 1560888500}],
+            },
+        )
+
+        with asynctest.patch.object(
+            mock_task, 'slave', autospec=True,
+        ), asynctest.patch.object(
+            mock_task, 'stats', autospec=True,
+        ):
+            mock_task.slave.return_value = mock_slave
+            yield mock_task
+
+    @pytest.fixture(autouse=True)
+    def mock_datetime(self):
+        with asynctest.patch(
+            'paasta_tools.api.views.instance.datetime',
+            autospec=True,
+        ) as mock_datetime:
+            mock_datetime.datetime.now.return_value = datetime.datetime(2019, 6, 18, 13, 14, 0)
+            yield
+
+    async def test_get_mesos_running_task_dict(self, mock_task):
+        mock_task.stats.return_value = {
+            'cpus_system_time_secs': 1.2,
+            'cpus_user_time_secs': 0.3,
+            'mem_limit_bytes': 4,
+            'mem_rss_bytes': 5,
+            'cpus_limit': 2.2,
+        }
+        running_task_dict = await instance.get_mesos_running_task_dict(mock_task, 0)
+
+        assert running_task_dict == {
+            'id': '1',
+            'hostname': 'abc',
+            'mem_limit': {'value': 4},
+            'rss': {'value': 5},
+            'cpu_shares': {'value': 2.1},
+            'cpu_used_seconds': {'value': 1.5},
+            'deployed_timestamp': 1560888500,
+            'duration_seconds': 340,
+            'tail_lines': {},
+        }
+
+    @pytest.mark.parametrize(
+        'error_type,error_message', [
+            (AttributeError, 'None'),
+            (SlaveDoesNotExist, 'None'),
+            (TimeoutError, 'Timed Out'),
+            (Exception, 'Unknown'),
+        ],
+    )
+    async def test_error_handling(self, mock_task, error_type, error_message):
+        mock_task.stats.side_effect = error_type
+        running_task_dict = await instance.get_mesos_running_task_dict(mock_task, 0)
+
+        for field_name in ('mem_limit', 'rss', 'cpu_shares', 'cpu_used_seconds'):
+            assert running_task_dict[field_name] == {'error_message': error_message}
+
+    async def test_tail_lines(self, mock_task):
+        with asynctest.patch(
+            'paasta_tools.api.views.instance.get_tail_lines_for_mesos_task',
+        ) as mock_get_tail_lines:
+            running_task_dict = await instance.get_mesos_running_task_dict(mock_task, 10)
+
+        assert running_task_dict['tail_lines'] == mock_get_tail_lines.return_value
+        mock_get_tail_lines.assert_called_once_with(mock_task, 10)
+
+
+@pytest.mark.asyncio
+class TestGetMesosNonRunningTaskDict:
+
+    @pytest.fixture
+    def mock_task(self):
+        mock_slave = MesosSlave(config=mock.Mock(), items={'hostname': 'abc.def'})
+        mock_task = Task(
+            master=mock.Mock(),
+            items={
+                'id': 'fake--service.fake--instance.2',
+                'state': 'TASK_LOST',
+                'statuses': [{'timestamp': 1560888200}],
+            },
+        )
+        with asynctest.patch.object(
+            mock_task, 'slave', autospec=True,
+        ):
+            mock_task.slave.return_value = mock_slave
+            yield mock_task
+
+    async def test_get_mesos_non_running_task_dict(self, mock_task):
+        non_running_task_dict = await instance.get_mesos_non_running_task_dict(mock_task, 0)
+        assert non_running_task_dict == {
+            'id': '2',
+            'hostname': 'abc',
+            'state': 'TASK_LOST',
+            'tail_lines': {},
+            'deployed_timestamp': 1560888200,
+        }
+
+    async def test_tail_lines(self, mock_task):
+        with asynctest.patch(
+            'paasta_tools.api.views.instance.get_tail_lines_for_mesos_task',
+        ) as mock_get_tail_lines:
+            running_task_dict = await instance.get_mesos_non_running_task_dict(mock_task, 100)
+
+        assert running_task_dict['tail_lines'] == mock_get_tail_lines.return_value
+        mock_get_tail_lines.assert_called_once_with(mock_task, 100)
 
 
 @mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_config', autospec=True)
