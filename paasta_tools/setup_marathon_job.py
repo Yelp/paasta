@@ -441,7 +441,7 @@ def get_tasks_by_state_for_app(
         except Exception as e:
             log_deploy_error(
                 f"Ignoring {type(e).__name__} exception during is_draining of task "
-                f"{task.id} ({e.args[0]}). Treating task as 'unhappy'.",
+                f"{task.id} {e.args}. Treating task as 'unhappy'.",
             )
             state = 'unhappy'
         else:
