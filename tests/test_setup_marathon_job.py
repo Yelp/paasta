@@ -2008,7 +2008,31 @@ class TestGetOldHappyUnhappyDrainingTasks:
 
         fake_log_deploy_error.assert_any_call(
             "Ignoring Exception exception during is_draining of task "
-            "fake_down_unhappy (ohai). Treating task as 'unhappy'.",
+            "fake_down_unhappy ('ohai',). Treating task as 'unhappy'.",
+        )
+
+        def is_draining_func(*args, **kwargs):
+            raise Exception
+
+        with mock.patch(
+            'paasta_tools.bounce_lib.get_happy_tasks', side_effect=self.fake_get_happy_tasks, autospec=True,
+        ):
+            setup_marathon_job.get_tasks_by_state_for_app(
+                app=fake_app,
+                drain_method=make_fake_drain_method(
+                    is_draining_func=is_draining_func,
+                ),
+                service=fake_name,
+                nerve_ns=fake_instance,
+                bounce_health_params={},
+                system_paasta_config=system_paasta_config,
+                log_deploy_error=fake_log_deploy_error,
+                draining_hosts=[],
+            )
+
+        fake_log_deploy_error.assert_any_call(
+            "Ignoring Exception exception during is_draining of task "
+            "fake_down_unhappy (). Treating task as 'unhappy'.",
         )
 
 
