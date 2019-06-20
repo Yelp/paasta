@@ -1,3 +1,11 @@
+paasta-tools (0.85.13) xenial; urgency=medium
+
+  * 0.85.13 tagged with 'make release'
+    Commit: Merge pull request #2286 from Yelp/no_jobs_keyword_again  No
+    jobs keyword again
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 20 Jun 2019 08:30:03 -0700
+
 paasta-tools (0.85.12) xenial; urgency=medium
 
   * 0.85.12 tagged with 'make release'
