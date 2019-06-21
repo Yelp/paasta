@@ -120,7 +120,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_progress(self) -> str:
+    def get_progress(self, summary=False) -> str:
         raise NotImplementedError()
 
     def get_active_button(self) -> Optional[str]:
@@ -144,14 +144,41 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             element["confirm"] = self.get_confirmation_object(button)
         return element
 
-    def get_slack_blocks_for_deployment(self) -> List[Dict]:
+    def get_summary_blocks_for_deployment(self) -> List[Dict]:
+        deployment_name = self.get_deployment_name()
+        progress = self.get_progress(summary=True)
+        button_elements = self.get_button_elements()
+
+        summary_parts = [
+            deployment_name,
+            progress,
+        ]
+        summary_parts.extend(self.get_extra_summary_parts_for_deployment())
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": " | ".join(summary_parts),
+                },
+            },
+        ]
+        if button_elements != []:
+            blocks.append({
+                "type": "actions",
+                "block_id": "deployment_actions",
+                "elements": button_elements,
+            })
+        return blocks
+
+    def get_detail_slack_blocks_for_deployment(self) -> List[Dict]:
         status = getattr(self, 'state', None) or 'Uninitialized'
         deployment_name = self.get_deployment_name()
         message = self.human_readable_status
         progress = self.get_progress()
         last_action = self.last_action
 
-        button_elements = self.get_button_elements()
         blocks = [
             {
                 "type": "section",
@@ -177,16 +204,12 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         ]
 
         blocks.extend(self.get_extra_blocks_for_deployment())
-
-        if button_elements != []:
-            blocks.append({
-                "type": "actions",
-                "block_id": "deployment_actions",
-                "elements": button_elements,
-            })
         return blocks
 
     def get_extra_blocks_for_deployment(self) -> List:
+        return []
+
+    def get_extra_summary_parts_for_deployment(self) -> List[str]:
         return []
 
     def get_button_elements(self):
@@ -253,20 +276,42 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             log.error("Posting to slack failed: {}".format(resp["error"]))
 
     def send_initial_slack_message(self):
-        blocks = self.get_slack_blocks_for_deployment()
-        resp = self.slack_client.api_call('chat.postMessage', blocks=blocks, channel=self.slack_channel)
+        summary_blocks = self.get_summary_blocks_for_deployment()
+        detail_blocks = self.get_detail_slack_blocks_for_deployment()
+        resp = self.slack_client.api_call('chat.postMessage', blocks=summary_blocks, channel=self.slack_channel)
         self.slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
         self.slack_channel_id = resp['channel']
         if resp["ok"] is not True:
             log.error("Posting to slack failed: {}".format(resp["error"]))
 
+        resp = self.slack_client.api_call(
+            'chat.postMessage',
+            blocks=detail_blocks,
+            channel=self.slack_channel,
+            thread_ts=self.slack_ts,
+        )
+        self.detail_slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
+
+        if resp["ok"] is not True:
+            log.error("Posting detail to slack failed: {}".format(resp["error"]))
+
     def update_slack(self):
-        blocks = self.get_slack_blocks_for_deployment()
+        summary_blocks = self.get_summary_blocks_for_deployment()
+        detail_blocks = self.get_detail_slack_blocks_for_deployment()
         resp = self.slack_client.api_call(
             "chat.update",
             channel=self.slack_channel_id,
-            blocks=blocks,
+            blocks=summary_blocks,
             ts=self.slack_ts,
+        )
+        if resp["ok"] is not True:
+            log.error("Posting to slack failed: {}".format(resp["error"]))
+
+        resp = self.slack_client.api_call(
+            "chat.update",
+            channel=self.slack_channel_id,
+            blocks=detail_blocks,
+            ts=self.detail_slack_ts,
         )
         if resp["ok"] is not True:
             log.error("Posting to slack failed: {}".format(resp["error"]))

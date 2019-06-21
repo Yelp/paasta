@@ -187,47 +187,78 @@ class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
 
     def get_extra_blocks_for_deployment(self):
         blocks = []
-        slo_text = self.get_slo_text()
+        slo_text = self.get_slo_text(summary=False)
         if slo_text:
             blocks.append({
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": self.get_slo_text(),
+                    "text": slo_text,
                 },
             })
         return blocks
 
-    def get_slo_text(self) -> str:
+    def get_extra_summary_parts_for_deployment(self) -> List[str]:
+        parts = super().get_extra_summary_parts_for_deployment()
+        slo_text = self.get_slo_text(summary=True)
+        if slo_text:
+            parts.append(slo_text)
+
+        return parts
+
+    def get_slo_text(self, summary: bool) -> str:
         slo_watchers = getattr(self, 'slo_watchers', None)
         if slo_watchers is not None and len(slo_watchers) > 0:
             num_failing = len([w for w in slo_watchers if w.failing])
+
+            # Wrap emojis in this subclass so we can select only the emojis or only the detail sections.
+            class Emoji(str):
+                pass
+
             if num_failing > 0:
-                slo_text = f":alert: {num_failing} of {len(slo_watchers)} SLOs are failing"
+                slo_text_components = [
+                    Emoji(":alert:"),
+                    f"{num_failing} of {len(slo_watchers)} SLOs are failing",
+                ]
             else:
 
                 num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
                 num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
                 slo_text_components = []
                 if num_unknown > 0:
-                    slo_text_components.append(f":thinking_face: {num_unknown} SLOs are missing data. ")
+                    slo_text_components.extend([Emoji(":thinking_face:"), f"{num_unknown} SLOs are missing data. "])
                 if num_bad_before_mark > 0:
-                    slo_text_components.append(
-                        f":grimacing: {num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
-                    )
+                    slo_text_components.extend([
+                        Emoji(":grimacing:"),
+                        f"{num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
+                    ])
 
                 remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
 
                 if remaining == len(slo_watchers):
-                    slo_text = f":ok_hand: All {len(slo_watchers)} SLOs are currently passing."
+                    slo_text_components = [
+                        Emoji(":ok_hand:"),
+                        f"All {len(slo_watchers)} SLOs are currently passing.",
+                    ]
                 else:
                     if remaining > 0:
                         slo_text_components.append(f"The remaining {remaining} SLOs are currently passing.")
-                    slo_text = ' '.join(slo_text_components)
-        else:
-            slo_text = "No SLOs defined for this service."
 
-        return slo_text
+            if summary:
+                # For summary, only display emojis.
+                if self.is_terminal_state(self.state):
+                    return ' '.join([c for c in slo_text_components if isinstance(c, Emoji)])
+                else:
+                    return ''
+            else:
+                # Display all text for non-summary mode, but hide Emojis if we're in a terminal state, to prevent
+                # things like :alert: from blinking until the end of time.
+                if self.is_terminal_state(self.state):
+                    return ' '.join([c for c in slo_text_components if not isinstance(c, Emoji)])
+                else:
+                    return ' '.join(slo_text_components)
+        else:
+            return ""
 
     def start_slo_watcher_threads(self, service: str) -> None:
         _, self.slo_watchers = watch_slos_for_service(
