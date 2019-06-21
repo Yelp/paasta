@@ -53,7 +53,7 @@ class SLODemultiplexer:
         sink: Any,
         individual_slo_callback: Callable[['SLOWatcher'], None],
         start_timestamp: Optional[float] = None,
-        max_duration: float = 300,
+        max_duration: float = 3600,
     ) -> None:
         self.sink = sink
         self.individual_slo_callback = individual_slo_callback
@@ -82,7 +82,7 @@ class SLOWatcher:
         callback: Callable[['SLOWatcher'], Any],
         start_timestamp: float,
         label: str,
-        max_duration: float = 300,
+        max_duration: float,
     ) -> None:
         self.slo = slo
         self.window: List[Tuple[float, float]] = []
