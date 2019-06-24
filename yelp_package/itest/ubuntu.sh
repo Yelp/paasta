@@ -21,6 +21,7 @@ check_marathon_services_replication
 check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_replication
+check_cassandracluster_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
 cleanup_marathon_jobs
