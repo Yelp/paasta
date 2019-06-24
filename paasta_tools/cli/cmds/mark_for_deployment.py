@@ -250,6 +250,8 @@ def report_waiting_aborted(service, deploy_group):
 
 
 def get_authors_to_be_notified(git_url, from_sha, to_sha):
+    if from_sha is None:
+        return ""
     ret, authors = remote_git.get_authors(
         git_url=git_url, from_sha=from_sha, to_sha=to_sha,
     )
@@ -595,8 +597,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.commit = commit
         self.old_git_sha = old_git_sha
         self.git_url = git_url
-        self.auto_rollback = auto_rollback
-        self.auto_rollbacks_ever_enabled = auto_rollback
+        self.auto_rollback = auto_rollback and old_git_sha is not None and old_git_sha != commit
+        self.auto_rollbacks_ever_enabled = self.auto_rollback
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
@@ -698,6 +700,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         return "start_deploy"
 
     def valid_transitions(self) -> Iterator[state_machine.TransitionDefinition]:
+        rollback_is_possible = (self.old_git_sha is not None and self.old_git_sha != self.commit)
+
         yield {
             'source': '_begin',
             'dest': 'start_deploy',
@@ -731,7 +735,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             'trigger': 'deploy_cancelled',
         }
 
-        if self.old_git_sha is not None:
+        if rollback_is_possible:
             yield {
                 'source': self.rollforward_states,
                 'dest': 'start_rollback',
@@ -794,20 +798,22 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             'trigger': 'auto_abandon',
         }
 
-        yield {
-            'source': '*',
-            'dest': None,  # Don't actually change state, just call the before function.
-            'trigger': 'enable_auto_rollbacks_button_clicked',
-            'unless': [self.auto_rollbacks_enabled],
-            'before': self.enable_auto_rollbacks,
-        }
-        yield {
-            'source': '*',
-            'dest': None,  # Don't actually change state, just call the before function.
-            'trigger': 'disable_auto_rollbacks_button_clicked',
-            'conditions': [self.any_slo_failing, self.auto_rollbacks_enabled],
-            'before': self.disable_auto_rollbacks,
-        }
+        if rollback_is_possible:
+            # Suppress these buttons if it doesn't make sense to roll back.
+            yield {
+                'source': '*',
+                'dest': None,  # Don't actually change state, just call the before function.
+                'trigger': 'enable_auto_rollbacks_button_clicked',
+                'unless': [self.auto_rollbacks_enabled],
+                'before': self.enable_auto_rollbacks,
+            }
+            yield {
+                'source': '*',
+                'dest': None,  # Don't actually change state, just call the before function.
+                'trigger': 'disable_auto_rollbacks_button_clicked',
+                'conditions': [self.any_slo_failing, self.auto_rollbacks_enabled],
+                'before': self.disable_auto_rollbacks,
+            }
         yield {
             'source': '*',
             'dest': None,
@@ -997,19 +1003,24 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def get_button_text(self, button, is_active) -> str:
         active_button_texts = {
-            "rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:",
             "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:",
         }
-
         inactive_button_texts = {
-            "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
             "forward": f"Continue Forward to {self.commit[:8]} :arrow_forward:",
             "complete": f"Complete deploy to {self.commit[:8]} :white_check_mark:",
-            "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
             "snooze": f"Reset countdown",
             "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }
+
+        if self.old_git_sha is not None:
+            active_button_texts.update({
+                "rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:",
+            })
+            inactive_button_texts.update({
+                "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
+                "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
+            })
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 

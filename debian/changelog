@@ -1,3 +1,10 @@
+paasta-tools (0.85.14) xenial; urgency=medium
+
+  * 0.85.14 tagged with 'make release'
+    Commit: Merge branch "fix_crash_no_old_sha"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 20 Jun 2019 11:01:37 -0700
+
 paasta-tools (0.85.13) xenial; urgency=medium
 
   * 0.85.13 tagged with 'make release'
