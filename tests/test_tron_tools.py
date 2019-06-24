@@ -776,50 +776,6 @@ class TestTronTools:
     def test_load_tron_service_config(self, mock_load_tron_yaml):
         mock_load_tron_yaml.return_value = {
             '_template': {'actions': {'action1': {}}},
-            'jobs': {
-                'job1': {
-                    'actions': {'action1': {}},
-                },
-            },
-        }
-        job_configs = tron_tools.load_tron_service_config(
-            service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
-        )
-        assert job_configs == [
-            tron_tools.TronJobConfig(
-                name='job1',
-                service='service',
-                cluster='test-cluster',
-                config_dict={'actions': {'action1': {}}},
-                load_deployments=False,
-                soa_dir='fake',
-            ),
-        ]
-        mock_load_tron_yaml.assert_called_once_with(
-            service='service',
-            cluster='test-cluster',
-            soa_dir='fake',
-        )
-
-    @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
-    def test_load_tron_service_config_empty(self, mock_load_tron_yaml):
-        mock_load_tron_yaml.return_value = {
-            "jobs": {},
-        }
-        job_configs = tron_tools.load_tron_service_config(
-            service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
-        )
-        assert job_configs == []
-        mock_load_tron_yaml.assert_called_once_with(
-            service='service',
-            cluster='test-cluster',
-            soa_dir='fake',
-        )
-
-    @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
-    def test_load_tron_service_config_doesnt_need_a_jobs_keyword(self, mock_load_tron_yaml):
-        mock_load_tron_yaml.return_value = {
-            '_template': {'actions': {'action1': {}}},
             'job1': {
                 'actions': {'action1': {}},
             },
@@ -844,12 +800,17 @@ class TestTronTools:
         )
 
     @mock.patch('paasta_tools.tron_tools.load_tron_yaml', autospec=True)
-    def test_load_tron_service_config_jobs_none(self, mock_load_yaml):
-        mock_load_yaml.return_value = {'jobs': None}
-        soa_dir = '/other/services'
-
-        jc = tron_tools.load_tron_service_config('foo', 'dev', soa_dir=soa_dir)
-        assert jc == []
+    def test_load_tron_service_config_empty(self, mock_load_tron_yaml):
+        mock_load_tron_yaml.return_value = {}
+        job_configs = tron_tools.load_tron_service_config(
+            service='service', cluster='test-cluster', load_deployments=False, soa_dir='fake',
+        )
+        assert job_configs == []
+        mock_load_tron_yaml.assert_called_once_with(
+            service='service',
+            cluster='test-cluster',
+            soa_dir='fake',
+        )
 
     @mock.patch('paasta_tools.tron_tools.load_system_paasta_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.load_tron_config', autospec=True)
