@@ -1,12 +1,8 @@
 import abc
+import asyncio
 import json
 import logging
-import time
 import traceback
-from multiprocessing import Process
-from multiprocessing import Queue
-from queue import Empty
-from threading import Thread
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -20,8 +16,10 @@ from paasta_tools.automatic_rollbacks.state_machine import DeploymentProcess
 
 try:
     from scribereader import scribereader
+    from clog.readers import construct_conn_msg
 except ImportError:
     scribereader = None
+    construct_conn_msg = None
 
 SLACK_WEBHOOK_STREAM = 'stream_slack_incoming_webhook'
 SCRIBE_ENV = 'uswest1-prod'
@@ -64,33 +62,30 @@ def is_relevant_event(event):
     return True
 
 
-def get_slack_events():
+async def get_slack_events():
     if scribereader is None:
         logging.error("Scribereader unavailable. Not tailing slack events.")
         return
 
-    def scribe_tail(queue):
-        host_and_port = scribereader.get_env_scribe_host(SCRIBE_ENV, True)
-        host = host_and_port['host']
-        port = host_and_port['port']
-        tailer = scribereader.get_stream_tailer(SLACK_WEBHOOK_STREAM, host, port)
-        for line in tailer:
-            queue.put(line)
+    host_and_port = scribereader.get_env_scribe_host(SCRIBE_ENV, True)
+    host = host_and_port['host']
+    port = host_and_port['port']
 
-    # Tailing scribe is not thread-safe, therefore we must use a Multiprocess-Queue-based
-    # approach, with paasta logs as prior art.
-    queue = Queue()
-    kw = {'queue': queue}
-    process = Process(target=scribe_tail, daemon=True, kwargs=kw)
-    process.start()
     while True:
-        try:
-            line = queue.get(block=True, timeout=0.1)
+        reader, writer = await asyncio.open_connection(host=host, port=port)
+        writer.write(construct_conn_msg(stream=SLACK_WEBHOOK_STREAM).encode('utf-8'))
+        await writer.drain()
+
+        while True:
+            line = await reader.readline()
+            log.debug(f"got log line {line.decode('utf-8')}")
+            if not line:
+                break
             event = parse_webhook_event_json(line)
             if is_relevant_event(event):
                 yield event
-        except Empty:
-            pass
+
+        log.warning("Lost connection to scribe host; reconnecting")
 
 
 class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
@@ -101,11 +96,8 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.last_action = None
         self.send_initial_slack_message()
 
-        slack_thread = Thread(target=self.listen_for_slack_events, args=(), daemon=True)
-        slack_thread.start()
-
-        timer_thread = Thread(target=self.periodically_update_slack, args=(), daemon=True)
-        timer_thread.start()
+        asyncio.ensure_future(self.listen_for_slack_events(), loop=self.event_loop)
+        asyncio.ensure_future(self.periodically_update_slack(), loop=self.event_loop)
 
     @abc.abstractmethod
     def get_slack_client(self) -> SlackClient:
@@ -275,29 +267,32 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.human_readable_status = message
         self.update_slack()
 
-    def periodically_update_slack(self):
+    async def periodically_update_slack(self):
         while self.state not in self.status_code_by_state():
             self.update_slack()
-            time.sleep(20)
+            await asyncio.sleep(20)
 
     def is_relevant_buttonpress(self, buttonpress):
         return self.slack_ts == buttonpress.thread_ts
 
-    def listen_for_slack_events(self):
+    async def listen_for_slack_events(self):
         log.debug("Listening for slack events...")
-        for event in get_slack_events():
-            log.debug(f"Got slack event: {event}")
-            buttonpress = event_to_buttonpress(event)
-            if self.is_relevant_buttonpress(buttonpress):
-                self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
-                self.last_action = buttonpress.action
+        try:
+            async for event in get_slack_events():
+                log.debug(f"Got slack event: {event}")
+                buttonpress = event_to_buttonpress(event)
+                if self.is_relevant_buttonpress(buttonpress):
+                    self.update_slack_thread(f"{buttonpress.username} pressed {buttonpress.action}")
+                    self.last_action = buttonpress.action
 
-                try:
-                    self.trigger(f"{buttonpress.action}_button_clicked")
-                except (transitions.core.MachineError, AttributeError):
-                    self.update_slack_thread(f"Error: {traceback.format_exc()}")
-            else:
-                log.debug("But it was not relevant to this instance of mark-for-deployment")
+                    try:
+                        self.trigger(f"{buttonpress.action}_button_clicked")
+                    except (transitions.core.MachineError, AttributeError):
+                        self.update_slack_thread(f"Error: {traceback.format_exc()}")
+                else:
+                    log.debug("But it was not relevant to this instance of mark-for-deployment")
+        except Exception:
+            log.error(f"Saw error in listen_for_slack_events: {traceback.format_exc()}")
 
     def notify_users(self, message):
         self.update_slack_thread(message)
