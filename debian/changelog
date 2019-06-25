@@ -1,3 +1,12 @@
+paasta-tools (0.85.17) xenial; urgency=medium
+
+  * 0.85.17 tagged with 'make release'
+    Commit: Merge branch
+    "maybe_we_shouldnt_use_threads_and_multiprocessing_and_asyncio_and_p
+    open_all_at_the_same_time"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 25 Jun 2019 16:11:19 -0700
+
 paasta-tools (0.85.16) xenial; urgency=medium
 
   * 0.85.16 tagged with 'make release'
