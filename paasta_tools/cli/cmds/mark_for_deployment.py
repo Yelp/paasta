@@ -549,8 +549,8 @@ class Progress():
         self.percent = percent
         self.waiting_on = waiting_on
 
-    def human_readable(self):
-        if self.percent != 0 and self.percent != 100:
+    def human_readable(self, summary: bool):
+        if self.percent != 0 and self.percent != 100 and not summary:
             s = f"{round(self.percent)}% (Waiting on {self.human_waiting_on()})"
         else:
             s = f"{round(self.percent)}%"
@@ -623,8 +623,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         super().__init__()
         self.ping_authors()
 
-    def get_progress(self) -> str:
-        return self.progress.human_readable()
+    def get_progress(self, summary=False) -> str:
+        return self.progress.human_readable(summary)
 
     def ping_authors(self):
         authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)

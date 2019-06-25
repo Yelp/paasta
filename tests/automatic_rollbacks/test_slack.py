@@ -43,17 +43,17 @@ class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
     def get_deployment_name(self):
         return "deployment name"
 
-    def get_progress(self):
+    def get_progress(self, summary=False):
         return "progress%"
 
     def get_button_text(self, button, is_active):
         return f"{button} {is_active}"
 
 
-def test_get_slack_blocks_for_deployment_happy_path():
+def test_get_detail_slack_blocks_for_deployment_happy_path():
 
     sdp = DummySlackDeploymentProcess()
-    blocks = sdp.get_slack_blocks_for_deployment()
+    blocks = sdp.get_detail_slack_blocks_for_deployment()
     assert blocks[0]["text"]["text"] == "deployment name"
     assert blocks[1]["text"]["text"] == "Initializing..."
     assert blocks[2]["text"]["text"] == "State machine: `_begin`\nProgress: progress%\nLast operator action: None"
