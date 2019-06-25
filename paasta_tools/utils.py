@@ -1608,8 +1608,8 @@ class KubeCustomResourceDict(TypedDict, total=False):
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
-    api_ca_certificates: Dict[str, str]
     api_endpoints: Dict[str, str]
+    auth_certificate_ttl: str
     auto_hostname_unique_size: int
     chronos_config: ChronosConfig
     cluster: str
@@ -1621,7 +1621,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_fqdn_format: str
     clusters: Sequence[str]
     dashboard_links: Dict[str, Dict[str, str]]
-    default_api_ca_certificate: str
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
     deployd_big_bounce_rate: float
@@ -1653,6 +1652,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: str
     paasta_native: PaastaNativeConfig
+    pki_backend: str
     previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
     register_marathon_services: bool
@@ -1798,21 +1798,24 @@ class SystemPaastaConfig:
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict['api_endpoints']
 
-    def get_api_ca_certificates(self) -> Mapping[str, str]:
-        """ A mapping of cluster name to CA certificate for validating API server identity """
-        return self.config_dict.get('api_ca_certificates', {})
-
-    def get_default_api_ca_certificate(self) -> str:
-        """ A default CA certificate to fall back to if there is not a cluster mapped in
-        get_api_ca_certificates
-        """
-        return self.config_dict.get('default_api_ca_certificate', '/etc/paasta/pki/ca.crt')
-
     def get_enable_client_cert_auth(self) -> bool:
         """
         If enabled present a client certificate from ~/.paasta/pki/<cluster>.crt and ~/.paasta/pki/<cluster>.key
         """
         return self.config_dict.get('enable_client_cert_auth', True)
+
+    def get_auth_certificate_ttl(self) -> str:
+        """
+        How long to request for ttl on auth certificates. Note that this maybe limited
+        by policy in Vault
+        """
+        return self.config_dict.get('auth_certificate_ttl', '11h')
+
+    def get_pki_backend(self) -> str:
+        """
+        The Vault pki backend to use for issueing certificates
+        """
+        return self.config_dict.get('pki_backend', 'paastaca')
 
     def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)

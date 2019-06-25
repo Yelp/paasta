@@ -1,3 +1,11 @@
+paasta-tools (0.85.16) xenial; urgency=medium
+
+  * 0.85.16 tagged with 'make release'
+    Commit: Merge pull request #2282 from Yelp/https-cert-renew  Add
+    certificate issue/renewal logic
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 25 Jun 2019 05:34:08 -0700
+
 paasta-tools (0.85.15) xenial; urgency=medium
 
   * 0.85.15 tagged with 'make release'

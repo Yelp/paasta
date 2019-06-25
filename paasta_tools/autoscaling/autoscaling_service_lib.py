@@ -263,7 +263,7 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
         # If we time out querying an endpoint, assume the task is fully loaded
         # This won't trigger in the event of DNS error or when a request is refused
         # a requests.exception.ConnectionError is raised in those cases
-        log.debug("Received a timeout when querying %s on %s:%s. Assuming the service "
+        log.error("Received a timeout when querying %s on %s:%s. Assuming the service "
                   "is at full utilization." % (service, task.host, task.ports[0]))
         return 1.0
     except Exception as e:

@@ -11,6 +11,7 @@ try:
     from vault_tools.paasta_secret import get_vault_client
     from vault_tools.gpg import TempGpgKeyring
     from vault_tools.paasta_secret import encrypt_secret
+    from vault_tools.cert_tools import do_renew
     import hvac
 except ImportError:
     def get_plaintext(*args: Any, **kwargs: Any) -> bytes:
@@ -23,6 +24,9 @@ except ImportError:
     def encrypt_secret(*args: Any, **kwargs: Any) -> None:
         return None
 
+    def do_renew(*args: Any, **kwargs: Any) -> None:
+        return None
+
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.utils import paasta_print
 from paasta_tools.secret_tools import get_secret_name_from_ref
@@ -32,8 +36,8 @@ class SecretProvider(BaseSecretProvider):
 
     def __init__(
         self,
-        soa_dir: str,
-        service_name: str,
+        soa_dir: Optional[str],
+        service_name: Optional[str],
         cluster_names: List[str],
         vault_cluster_config: Dict[str, str] = {},
         vault_auth_method: str = 'ldap',
@@ -159,3 +163,25 @@ class SecretProvider(BaseSecretProvider):
             return data['environments'][ecosystem]['signature']
         else:
             return None
+
+    def renew_issue_cert(
+        self,
+        pki_backend: str,
+        ttl: str,
+    ) -> None:
+        client = self.clients[self.ecosystems[0]]
+        user = getpass.getuser()
+        pki_dir = os.path.expanduser('~/.paasta/pki')
+        do_renew(
+            client=client,
+            pki_backend=pki_backend,
+            role=user,
+            cn=f'{user}.{self.ecosystems[0]}.paasta.yelp',
+            cert_path=f'{pki_dir}/{self.ecosystems[0]}.crt',
+            key_path=f'{pki_dir}/{self.ecosystems[0]}.key',
+            ca_path=f'{pki_dir}/{self.ecosystems[0]}_ca.crt',
+            cert_owner=user,
+            cert_group='users',
+            cert_mode='0600',
+            ttl=ttl,
+        )
