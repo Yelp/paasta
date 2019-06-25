@@ -44,6 +44,7 @@ from paasta_tools.api import client
 from paasta_tools.automatic_rollbacks import state_machine
 from paasta_tools.automatic_rollbacks.slo import SLOSlackDeploymentProcess
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
+from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_git_sha
@@ -622,9 +623,18 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         # Initialize Slack threads and send the first message
         super().__init__()
         self.ping_authors()
+        self.print_who_is_running_this()
 
     def get_progress(self, summary=False) -> str:
         return self.progress.human_readable(summary)
+
+    def print_who_is_running_this(self):
+        build_url = get_jenkins_build_output_url()
+        if build_url is not None:
+            message = f"(<{build_url}|Jenkins Job>)"
+        else:
+            message = f"(Run by <@{getpass.getuser()}> on {socket.getfqdn()})"
+        self.update_slack_thread(message)
 
     def ping_authors(self):
         authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
