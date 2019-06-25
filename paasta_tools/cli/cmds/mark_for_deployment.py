@@ -639,7 +639,17 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         multi-channel notifications. """
         if self.deploy_info.get('slack_notify', True):
             try:
-                return self.deploy_info.get('slack_channels')[0]
+                channel = self.deploy_info.get('slack_channels')[0]
+                # Nightly jenkins builds will often re-deploy master. This causes Slack noise that wasn't present before
+                # the auto-rollbacks work.
+                if self.commit == self.old_git_sha:
+                    paasta_print(
+                        f"Rollback SHA matches rollforward SHA: {self.commit}, "
+                        f"Sending slack notifications to {DEFAULT_SLACK_CHANNEL} instead of {channel}.",
+                    )
+                    return DEFAULT_SLACK_CHANNEL
+                else:
+                    return channel
             except (IndexError, AttributeError, TypeError):
                 return DEFAULT_SLACK_CHANNEL
         else:

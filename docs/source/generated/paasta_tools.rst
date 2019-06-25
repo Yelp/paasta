@@ -30,6 +30,8 @@ Submodules
    paasta_tools.autoscale_all_services
    paasta_tools.autoscale_cluster
    paasta_tools.bounce_lib
+   paasta_tools.cassandracluster_tools
+   paasta_tools.check_cassandracluster_services_replication
    paasta_tools.check_chronos_jobs
    paasta_tools.check_flink_services_replication
    paasta_tools.check_kubernetes_api
