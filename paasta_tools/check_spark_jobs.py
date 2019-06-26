@@ -2,7 +2,11 @@
 import argparse
 import datetime
 import logging
+import smtplib
+import sys
 from collections import defaultdict
+from email.message import EmailMessage
+from socket import getfqdn
 
 import pysensu_yelp
 import requests
@@ -14,6 +18,7 @@ from paasta_tools.utils import list_services
 
 
 logger = logging.getLogger(__name__)
+email_from_address = f'paasta@{getfqdn()}'
 
 
 JUPYTER_PREFIX = 'jupyterhub_'
@@ -33,6 +38,11 @@ def parse_args():
         '--no-notify',
         action='store_true',
         help='Skip notifying the teams that own each framework',
+    )
+    parser.add_argument(
+        '--email-domain',
+        default=None,
+        help='Email domain for notifying users',
     )
     return parser.parse_args()
 
@@ -148,7 +158,32 @@ def update_check_status(service, output, status):
     )
 
 
-def report_spark_jobs(min_hours, no_notify):
+def email_user(framework_info, email_domain):
+    guessed_user = None
+    if framework_info['user'] != 'root':
+        guessed_user = framework_info['user']
+    elif framework_info['name'].startswith(JUPYTER_PREFIX):
+        try:
+            guessed_user = framework_info['name'].split('_')[-2]
+        except IndexError:
+            pass
+
+    if not guessed_user:
+        print(f'Could not guess user from {framework_info}, skipping user email')
+        return
+
+    msg = EmailMessage()
+    msg['From'] = email_from_address
+    msg['To'] = f'{guessed_user}@{email_domain}'
+    msg['Subject'] = f'Long-running Spark framework {framework_info["name"]}'
+    content = 'Please check why it is still running and terminate if appropriate.\n'
+    content += format_framework(framework_info)
+    msg.set_content(content)
+    with smtplib.SMTP('localhost') as s:
+        s.send_message(msg)
+
+
+def report_spark_jobs(min_hours, no_notify, email_domain=None):
     results = get_matching_framework_info(
         min_hours=min_hours,
     )
@@ -173,13 +208,18 @@ def report_spark_jobs(min_hours, no_notify):
                 update_check_status(service, message, pysensu_yelp.Status.WARNING)
             else:
                 update_check_status(service, 'No long running spark jobs', pysensu_yelp.Status.OK)
+        if email_domain:
+            for result in results:
+                email_user(result, email_domain)
+
+    return 0 if len(results) == 0 else 1
 
 
 def main():
     args = parse_args()
     logging.basicConfig()
-    report_spark_jobs(args.min_hours, args.no_notify)
+    return report_spark_jobs(args.min_hours, args.no_notify, args.email_domain)
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
