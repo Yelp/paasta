@@ -247,9 +247,9 @@ class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
             if summary:
                 # For summary, only display emojis.
                 if self.is_terminal_state(self.state):
-                    return ' '.join([c for c in slo_text_components if isinstance(c, Emoji)])
-                else:
                     return ''
+                else:
+                    return ' '.join([c for c in slo_text_components if isinstance(c, Emoji)])
             else:
                 # Display all text for non-summary mode, but hide Emojis if we're in a terminal state, to prevent
                 # things like :alert: from blinking until the end of time.
