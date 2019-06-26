@@ -166,7 +166,7 @@
       "type": "object",
       "additionalProperties": true
     },
-    ".+": {
+    "^[^_].*$": {
       "$ref": "#definitions/job"
     }
   }

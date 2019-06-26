@@ -635,29 +635,28 @@ def test_tron_validate_schema_good(
     mock_get_file_contents, capfd,
 ):
     tron_content = """
-jobs:
-    - name: test_job
-      node: batch_box
-      service: my_service
-      deploy_group: prod
-      allow_overlap: false
-      monitoring:
-        team: my_team
-      schedule:
-        type: cron
-        value: "0 7 * * 5"
-      actions:
-        - name: first
-          command: echo hello world
-        - name: second
-          command: sleep 10
-          expected_runtime: 15 sec
-          executor: paasta
-          cluster: paasta-cluster-1
-          cpus: 0.5
-          mem: 100
-          disk: 500
-          pool: custom
+test_job:
+  node: batch_box
+  service: my_service
+  deploy_group: prod
+  allow_overlap: false
+  monitoring:
+    team: my_team
+  schedule:
+    type: cron
+    value: "0 7 * * 5"
+  actions:
+    - name: first
+      command: echo hello world
+    - name: second
+      command: sleep 10
+      expected_runtime: 15 sec
+      executor: paasta
+      cluster: paasta-cluster-1
+      cpus: 0.5
+      mem: 100
+      disk: 500
+      pool: custom
 """
     mock_get_file_contents.return_value = tron_content
     assert validate_schema('unused_service_path.yaml', 'tron')
@@ -671,17 +670,16 @@ def test_tron_validate_schema_understands_underscores(
 ):
     tron_content = """
 _my_template: &a_template
-    actions:
-        - name: first
-          command: echo hello world
+  actions:
+    - name: first
+      command: echo hello world
 
-jobs:
-    - name: test_job
-      node: batch_box
-      schedule:
-        type: cron
-        value: "0 7 * * 5"
-      <<: *a_template
+test_job:
+  node: batch_box
+  schedule:
+    type: cron
+    value: "0 7 * * 5"
+  <<: *a_template
 """
     mock_get_file_contents.return_value = tron_content
     assert validate_schema('unused_service_path.yaml', 'tron')
@@ -694,14 +692,13 @@ def test_tron_validate_schema_job_extra_properties_bad(
     mock_get_file_contents, capfd,
 ):
     tron_content = """
-jobs:
-    - name: test_job
-      node: batch_box
-      schedule: "daily 04:00:00"
-      unexpected: 100
-      actions:
-        - name: first
-          command: echo hello world
+test_job:
+  node: batch_box
+  schedule: "daily 04:00:00"
+  unexpected: 100
+  actions:
+    - name: first
+      command: echo hello world
 """
     mock_get_file_contents.return_value = tron_content
     assert not validate_schema('unused_service_path.yaml', 'tron')
@@ -714,14 +711,13 @@ def test_tron_validate_schema_actions_extra_properties_bad(
     mock_get_file_contents, capfd,
 ):
     tron_content = """
-jobs:
-    - name: test_job
-      node: batch_box
-      schedule: "daily 04:00:00"
-      actions:
-        - name: first
-          command: echo hello world
-          something_else: true
+test_job:
+  node: batch_box
+  schedule: "daily 04:00:00"
+  actions:
+    - name: first
+      command: echo hello world
+      something_else: true
 """
     mock_get_file_contents.return_value = tron_content
     assert not validate_schema('unused_service_path.yaml', 'tron')
@@ -734,16 +730,15 @@ def test_tron_validate_schema_cleanup_action_extra_properties_bad(
     mock_get_file_contents, capfd,
 ):
     tron_content = """
-jobs:
-    - name: test_job
-      node: batch_box
-      schedule: "daily 04:00:00"
-      actions:
-        - name: first
-          command: echo hello world
-      cleanup_action:
-        command: rm output
-        other_key: value
+test_job:
+  node: batch_box
+  schedule: "daily 04:00:00"
+  actions:
+    - name: first
+      command: echo hello world
+  cleanup_action:
+    command: rm output
+    other_key: value
 """
     mock_get_file_contents.return_value = tron_content
     assert not validate_schema('unused_service_path.yaml', 'tron')
