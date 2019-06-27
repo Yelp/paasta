@@ -14,6 +14,7 @@ import datetime
 import difflib
 import glob
 import json
+import logging
 import os
 import pkgutil
 import re
@@ -47,6 +48,9 @@ from paasta_tools.monitoring_tools import list_teams
 from typing import Optional
 from typing import Dict
 from typing import Any
+
+log = logging.getLogger(__name__)
+logging.getLogger('tron').setLevel(logging.WARNING)
 
 MASTER_NAMESPACE = 'MASTER'
 SPACER = '.'
@@ -317,15 +321,11 @@ class TronJobConfig:
                     'force_bounce': None,
                 }
             except NoDeploymentsAvailable:
-                raise InvalidTronConfig(
-                    'No deployment found for action {action} in job {job}, looking for {deploy_group} '
-                    'in service {service}'.format(
-                        action=action_dict.get('name'),
-                        job=self.get_name(),
-                        deploy_group=action_deploy_group,
-                        service=action_service,
-                    ),
+                log.warning(
+                    f'Docker image unavailable for {action_service}.{self.get_name()}.{action_dict.get("name")}'
+                    ' is it deployed yet?',
                 )
+                branch_dict = None
         else:
             branch_dict = None
         action_dict['monitoring'] = self.get_monitoring()
