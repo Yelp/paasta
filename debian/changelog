@@ -1,3 +1,12 @@
+paasta-tools (0.85.18) xenial; urgency=medium
+
+  * 0.85.18 tagged with 'make release'
+    Commit: Merge pull request #2248 from
+    Yelp/paasta_dump_locally_running_puppet_services  Add puppet service
+    type option to paasta_dump_locally_running_services
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 27 Jun 2019 11:16:59 -0700
+
 paasta-tools (0.85.17) xenial; urgency=medium
 
   * 0.85.17 tagged with 'make release'
