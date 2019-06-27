@@ -161,19 +161,13 @@
       }
     }
   },
-  "properties": {
-    "jobs": {
-      "type": ["array", "object"],
-      "items": {"$ref": "#definitions/job"},
-      "patternProperties": {
-        ".+": {"$ref": "#definitions/job"}
-      }
-    }
-  },
   "patternProperties": {
     "^_.*$": {
       "type": "object",
       "additionalProperties": true
+    },
+    "^[^_].*$": {
+      "$ref": "#definitions/job"
     }
   }
 }

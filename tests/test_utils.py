@@ -889,19 +889,16 @@ def test_load_tron_yaml_empty(mock_read_file, mock_read_service_info):
 
 def test_get_tron_instance_list_from_yaml_with_dicts():
     fake_tron_job_config = {
-        "ssh_option": "foo",
-        "jobs": {
-            "job1": {
-                "actions": {
-                    "actionA": {},
-                    "actionB": {},
-                },
+        "job1": {
+            "actions": {
+                "actionA": {},
+                "actionB": {},
             },
-            "job2": {
-                "actions": {
-                    "actionC": {},
-                    "actionD": {},
-                },
+        },
+        "job2": {
+            "actions": {
+                "actionC": {},
+                "actionD": {},
             },
         },
     }
@@ -2460,14 +2457,6 @@ def test_extract_jobs_from_tron_yaml_with_empty_dict():
     assert utils.extract_jobs_from_tron_yaml({}) == {}
 
 
-def test_extract_jobs_from_tron_yaml_with_None():
-    assert utils.extract_jobs_from_tron_yaml({"jobs": None}) == {}
-
-
-def test_extract_jobs_from_tron_yaml_with_no_jobs():
-    assert utils.extract_jobs_from_tron_yaml({"jobs": {}}) == {}
-
-
 def test_extract_jobs_from_tron_yaml_with_just_jobs():
     assert utils.extract_jobs_from_tron_yaml({"job0": "foo"}) == {"job0": "foo"}
 
@@ -2478,14 +2467,3 @@ def test_extract_jobs_from_tron_yaml_with_mix():
         "job0": "bar",
     }
     assert utils.extract_jobs_from_tron_yaml(config) == {"job0": "bar"}
-
-
-def test_extract_jobs_from_tron_yaml_defaults_to_jobs_if_available():
-    config = {
-        "_template": "foo",
-        "job0": "bar",
-        "jobs": {
-            "job1": "baz",
-        },
-    }
-    assert utils.extract_jobs_from_tron_yaml(config) == {"job1": "baz"}
