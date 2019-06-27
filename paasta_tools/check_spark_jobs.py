@@ -128,15 +128,15 @@ def format_message_for_service(service, frameworks):
     return output
 
 
-def get_messages_by_service(results):
-    results_by_service = defaultdict(list)
-    for result in results:
-        service = result['service']
-        results_by_service[service].append(result)
+def get_messages_by_service(frameworks):
+    frameworks_by_service = defaultdict(list)
+    for framework in frameworks:
+        service = framework['service']
+        frameworks_by_service[service].append(framework)
 
     return {
-        service: format_message_for_service(service, results)
-        for service, results in results_by_service.items()
+        service: format_message_for_service(service, frameworks)
+        for service, frameworks in frameworks_by_service.items()
     }
 
 
@@ -168,7 +168,9 @@ def email_user(framework_info, email_domain):
         except IndexError:
             pass
 
-    if not guessed_user:
+    if guessed_user:
+        print(f'Guessed {framework_info["name"]} belongs to {guessed_user}, sending email')
+    else:
         print(f'Could not guess user from {framework_info}, skipping user email')
         return
 
@@ -184,10 +186,10 @@ def email_user(framework_info, email_domain):
 
 
 def report_spark_jobs(min_hours, no_notify, email_domain=None):
-    results = get_matching_framework_info(
+    frameworks = get_matching_framework_info(
         min_hours=min_hours,
     )
-    messages_by_service = get_messages_by_service(results)
+    messages_by_service = get_messages_by_service(frameworks)
     valid_services = set(list_services())
 
     messages_for_unknown_services = []
@@ -209,10 +211,10 @@ def report_spark_jobs(min_hours, no_notify, email_domain=None):
             else:
                 update_check_status(service, 'No long running spark jobs', pysensu_yelp.Status.OK)
         if email_domain:
-            for result in results:
-                email_user(result, email_domain)
+            for framework in frameworks:
+                email_user(framework, email_domain)
 
-    return 0 if len(results) == 0 else 1
+    return 0 if len(frameworks) == 0 else 1
 
 
 def main():
