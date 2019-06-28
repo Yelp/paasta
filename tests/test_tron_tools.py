@@ -213,28 +213,6 @@ class TestTronJobConfig:
         )
 
     @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
-    def test_get_action_config_no_deployment(
-        self,
-        mock_load_deployments,
-    ):
-        action_dict = {
-            'command': 'echo first',
-        }
-        job_dict = {
-            'node': 'batch_server',
-            'schedule': 'daily 12:10:00',
-            'service': 'my_service',
-            'deploy_group': 'prod',
-            'max_runtime': '2h',
-            'actions': {'normal': action_dict},
-        }
-        job_config = tron_tools.TronJobConfig('my_job', job_dict, 'fake-cluster')
-        mock_load_deployments.side_effect = NoDeploymentsAvailable
-
-        with pytest.raises(tron_tools.InvalidTronConfig):
-            job_config._get_action_config('normal', action_dict)
-
-    @mock.patch('paasta_tools.tron_tools.load_v2_deployments_json', autospec=True)
     def test_get_action_config_load_deployments_false(
         self,
         mock_load_deployments,
