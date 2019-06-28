@@ -19,8 +19,11 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.utils import get_user_agent
 
-HACHECK_CONN_TIMEOUT = 30
-HACHECK_READ_TIMEOUT = 10
+HACHECK_TIMEOUT = aiohttp.ClientTimeout(
+    total=45,
+    connect=30,
+    sock_read=10,
+)
 
 SpoolInfo = TypedDict(
     'SpoolInfo',
@@ -37,8 +40,7 @@ SpoolInfo = TypedDict(
 
 async def post_spool(url: str, status: str, data: Dict['str', 'str']) -> None:
     async with aiohttp.ClientSession(
-        conn_timeout=HACHECK_CONN_TIMEOUT,
-        read_timeout=HACHECK_READ_TIMEOUT,
+        timeout=HACHECK_TIMEOUT,
     ) as session:
         async with session.post(
             url,
@@ -55,8 +57,7 @@ async def get_spool(spool_url: str) -> SpoolInfo:
 
     # TODO: aiohttp says not to create a session per request. Fix this.
     async with aiohttp.ClientSession(
-        conn_timeout=HACHECK_CONN_TIMEOUT,
-        read_timeout=HACHECK_READ_TIMEOUT,
+        timeout=HACHECK_TIMEOUT,
     ) as session:
         async with session.get(
             spool_url,

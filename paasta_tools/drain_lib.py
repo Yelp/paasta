@@ -20,6 +20,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
+from typing import Tuple
 from typing import Type
 from typing import TypeVar
 
@@ -189,7 +190,7 @@ class HacheckDrainMethod(DrainMethod):
         self,
         task: DrainTask,
         func: Callable[..., Awaitable[T]]
-    ) -> 'asyncio.Future[T]':
+    ) -> Tuple[T, ...]:
         if task.ports == []:
             return None
         futures = [
