@@ -56,6 +56,7 @@ from paasta_tools.marathon_serviceinit import haproxy_backend_report
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
+from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.tron_tools import TronActionConfig
@@ -397,7 +398,6 @@ def create_mesos_running_tasks_table(running_tasks):
     table_header = ['Mesos Task ID', 'Host deployed to', 'Ram', 'CPU', 'Deployed at what localtime']
     rows.append(table_header)
     for task in running_tasks:
-        # TODO: break into own method? (stuff in initial if block)
         if task.rss.value is not None and task.mem_limit.value is not None:
             mem_percent = 100 * task.rss.value / task.mem_limit.value
             mem_string = '%d/%dMB' % ((task.rss.value / 1024 / 1024), (task.mem_limit.value / 1024 / 1024))
@@ -406,7 +406,6 @@ def create_mesos_running_tasks_table(running_tasks):
         else:
             mem_string = task.mem_limit.error_message
 
-        # TODO: break into own method? (stuff in initial if block)
         if task.cpu_shares.value is not None and task.cpu_used_seconds.value is not None:
             # The total time a task has been allocated is the total time the task has
             # been running multiplied by the "shares" a task has.
@@ -435,12 +434,7 @@ def create_mesos_running_tasks_table(running_tasks):
             cpu_string,
             deployed_at_string,
         ])
-        if task.tail_lines.stderr or task.tail_lines.stdout:
-            for stdstream in ('stdout', 'stderr'):
-                rows.append(PaastaColors.blue(f'{stdstream} tail for {task.id}'))
-                rows.extend(f'  {line}' for line in getattr(task.tail_lines, stdstream, []))
-        elif task.tail_lines.error_message is not None:
-            rows.append(PaastaColors.red(f'  {task.tail_lines.error_message}'))
+        rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
 
     return format_table(rows)
 

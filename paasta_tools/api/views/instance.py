@@ -48,23 +48,20 @@ from paasta_tools import paasta_remote_run
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.async_utils import aiter_to_list
-from paasta_tools.async_utils import async_timeout
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
-from paasta_tools.mesos import cluster
 from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_cached_list_of_not_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_cpu_shares
 from paasta_tools.mesos_tools import get_first_status_timestamp
-from paasta_tools.mesos_tools import get_mesos_config
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_short_hostname_from_task
+from paasta_tools.mesos_tools import get_tail_lines_for_mesos_task
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import results_or_unknown
@@ -622,7 +619,9 @@ async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> Mutabl
 
     futures = [short_hostname_future, mem_limit_future, rss_future, cpu_shares_future, cpu_time_future]
     if num_tail_lines > 0:
-        tail_lines_future = asyncio.ensure_future(get_tail_lines_for_mesos_task(task, num_tail_lines))
+        tail_lines_future = asyncio.ensure_future(
+            get_tail_lines_for_mesos_task(task, get_short_task_id, num_tail_lines),
+        )
         futures.append(tail_lines_future)
     else:
         tail_lines_future = None
@@ -650,7 +649,7 @@ async def get_mesos_running_task_dict(task: Task, num_tail_lines: int) -> Mutabl
 
 async def get_mesos_non_running_task_dict(task: Task, num_tail_lines: int) -> MutableMapping[str, Any]:
     if num_tail_lines > 0:
-        tail_lines = await get_tail_lines_for_mesos_task(task, num_tail_lines)
+        tail_lines = await get_tail_lines_for_mesos_task(task, get_short_task_id, num_tail_lines)
     else:
         tail_lines = {}
 
@@ -666,50 +665,6 @@ async def get_mesos_non_running_task_dict(task: Task, num_tail_lines: int) -> Mu
         task_dict['deployed_timestamp'] = task_start_time
 
     return task_dict
-
-
-@async_timeout()
-async def get_tail_lines_for_mesos_task(
-    task: Task,
-    num_tail_lines: int
-) -> MutableMapping[str, Sequence[str]]:
-    tail_lines_dict: Dict[str, List[str]] = {}
-    mesos_cli_config = get_mesos_config()
-
-    try:
-        fobjs = await aiter_to_list(cluster.get_files_for_tasks(
-            task_list=[task],
-            file_list=['stdout', 'stderr'],
-            max_workers=mesos_cli_config["max_workers"],
-        ))
-        fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
-
-        for fobj in fobjs:
-            # read nlines, starting from EOF
-            tail = []
-            lines_seen = 0
-
-            async for line in fobj._readlines_reverse():
-                tail.append(line)
-                lines_seen += 1
-                if lines_seen >= num_tail_lines:
-                    break
-
-            # reverse the tail, so that EOF is at the bottom again
-            tail_lines_dict[fobj.path] = tail[::-1]
-    except (
-        mesos_exceptions.MasterNotAvailableException,
-        mesos_exceptions.SlaveDoesNotExist,
-        mesos_exceptions.TaskNotFoundException,
-        mesos_exceptions.FileNotFoundForTaskException,
-    ) as e:
-        short_task_id = get_short_task_id(task['id'])
-        error_name = e.__class__.__name__
-        return {'error_message': f"Couldn't read stdout/stderr for {short_task_id}, ({error_name})"}
-    except TimeoutError:
-        return {'error_message': 'Timeout'}
-
-    return tail_lines_dict
 
 
 @view_config(route_name='service.instance.status', request_method='GET', renderer='json')
