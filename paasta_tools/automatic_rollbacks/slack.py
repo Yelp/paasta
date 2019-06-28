@@ -256,14 +256,24 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
 
         return buttons
 
-    def update_slack_thread(self, message):
+    def update_slack_thread(self, message, color=None):
         log.debug(f"Updating slack thread with {message}")
-        resp = self.slack_client.api_call(
-            'chat.postMessage',
-            channel=self.slack_channel,
-            text=message,
-            thread_ts=self.slack_ts,
-        )
+
+        if color:
+            resp = self.slack_client.api_call(
+                'chat.postMessage',
+                channel=self.slack_channel,
+                attachments=[{"text": message, "color": color}],
+                thread_ts=self.slack_ts,
+            )
+        else:
+            resp = self.slack_client.api_call(
+                'chat.postMessage',
+                channel=self.slack_channel,
+                text=message,
+                thread_ts=self.slack_ts,
+            )
+
         if resp["ok"] is not True:
             log.error("Posting to slack failed: {}".format(resp["error"]))
 
@@ -315,6 +325,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
     async def periodically_update_slack(self):
         while self.state not in self.status_code_by_state():
             self.update_slack()
+            print("Updated slack\n")
             await asyncio.sleep(20)
 
     def is_relevant_buttonpress(self, buttonpress):
