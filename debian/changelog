@@ -1,3 +1,11 @@
+paasta-tools (0.85.19) xenial; urgency=medium
+
+  * 0.85.19 tagged with 'make release'
+    Commit: Merge pull request #2299 from Yelp/aiohttp-bump  Bump
+    aiohttp
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 28 Jun 2019 03:10:00 -0700
+
 paasta-tools (0.85.18) xenial; urgency=medium
 
   * 0.85.18 tagged with 'make release'
