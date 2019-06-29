@@ -28,6 +28,7 @@ from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.marathon_serviceinit import get_short_task_id
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
@@ -507,7 +508,7 @@ class TestGetMesosRunningTaskDict:
             running_task_dict = await instance.get_mesos_running_task_dict(mock_task, 10)
 
         assert running_task_dict['tail_lines'] == mock_get_tail_lines.return_value
-        mock_get_tail_lines.assert_called_once_with(mock_task, 10)
+        mock_get_tail_lines.assert_called_once_with(mock_task, get_short_task_id, 10)
 
 
 @pytest.mark.asyncio
@@ -547,7 +548,7 @@ class TestGetMesosNonRunningTaskDict:
             running_task_dict = await instance.get_mesos_non_running_task_dict(mock_task, 100)
 
         assert running_task_dict['tail_lines'] == mock_get_tail_lines.return_value
-        mock_get_tail_lines.assert_called_once_with(mock_task, 100)
+        mock_get_tail_lines.assert_called_once_with(mock_task, get_short_task_id, 100)
 
 
 @mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_config', autospec=True)
