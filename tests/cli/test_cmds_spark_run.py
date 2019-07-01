@@ -356,7 +356,7 @@ def test_emit_resource_requirements(tmpdir):
     }
 
     clusterman_yaml_contents = {
-        'mesos_clusters': {
+        'clusters': {
             'anywhere-prod': {
                 'aws_region': 'us-north-14',
             },

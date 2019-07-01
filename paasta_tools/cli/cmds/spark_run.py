@@ -607,7 +607,7 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
 def get_aws_region_for_paasta_cluster(paasta_cluster):
     with open(CLUSTERMAN_YAML_FILE_PATH, 'r') as clusterman_yaml_file:
         clusterman_yaml = YAML().load(clusterman_yaml_file.read())
-        return clusterman_yaml['mesos_clusters'][paasta_cluster]['aws_region']
+        return clusterman_yaml['clusters'][paasta_cluster]['aws_region']
 
 
 def calculate_memory_per_executor(spark_memory_string, memory_overhead):
