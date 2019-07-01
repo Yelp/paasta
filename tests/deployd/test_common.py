@@ -1,16 +1,15 @@
 import unittest
+from queue import Empty
 
 import mock
 
 from paasta_tools.deployd.common import BaseServiceInstance
+from paasta_tools.deployd.common import DelayDeadlineQueue
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import get_marathon_clients_from_config
-from paasta_tools.deployd.common import get_priority
 from paasta_tools.deployd.common import get_service_instances_needing_update
-from paasta_tools.deployd.common import PaastaPriorityQueue
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
-from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
@@ -43,163 +42,94 @@ class TestPaastaQueue(unittest.TestCase):
             mock_q_put.assert_called_with(self.queue, "human")
 
 
-class TestPaastaPriorityQueue(unittest.TestCase):
+class TestDelayDeadlineQueue(unittest.TestCase):
     def setUp(self):
-        self.queue = PaastaPriorityQueue("AtThePostOffice")
+        self.queue = DelayDeadlineQueue()
 
     def test_log(self):
         self.queue.log.info("HAAAALP ME")
 
     def test_put(self):
-        with mock.patch(
-            'paasta_tools.deployd.common.PriorityQueue.put', autospec=True,
-        ) as mock_q_put:
-            self.queue.put(3, "human")
-            mock_q_put.assert_called_with(self.queue, (3, 1, "human"))
+        with mock.patch.object(
+            self.queue.unavailable_service_instances,
+            'put',
+            wraps=self.queue.unavailable_service_instances.put,
+        ) as mock_unavailable_service_instances_put, mock.patch.object(
+            self.queue.available_service_instances,
+            'put',
+            wraps=self.queue.available_service_instances.put,
+        ) as mock_available_service_instances_put:
+            si1 = mock.Mock(wait_until=6, bounce_by=4)
+            self.queue.put(si1, now=5)
+            mock_unavailable_service_instances_put.assert_called_with((6, 4, si1))
+            assert mock_available_service_instances_put.call_count == 0
 
-            self.queue.put(3, "human")
-            mock_q_put.assert_called_with(self.queue, (3, 2, "human"))
+            mock_unavailable_service_instances_put.reset_mock()
+            si2 = mock.Mock(wait_until=3, bounce_by=4)
+            self.queue.put(si2, now=5)
+            print(mock_unavailable_service_instances_put.mock_calls)
+            mock_unavailable_service_instances_put.assert_any_call((3, 4, si2))
+            # this is left over from the previous insertion, and gets re-inserted by
+            # process_unavailable_service_instances because 6 > now
+            mock_unavailable_service_instances_put.assert_any_call((6, 4, si1))
+            mock_available_service_instances_put.assert_called_with((4, si2))
 
     def test_get(self):
-        with mock.patch(
-            'paasta_tools.deployd.common.PriorityQueue.get', autospec=True,
-        ) as mock_q_get:
-            mock_q_get.return_value = (3, 2, "human")
+        with mock.patch.object(
+            self.queue.unavailable_service_instances,
+            'get',
+            autospec=True,
+        ) as mock_unavailable_service_instances_get:
+            mock_unavailable_service_instances_get.side_effect = [
+                (3, 2, "human"),
+                Empty,
+            ]
             assert self.queue.get() == "human"
 
 
 class TestServiceInstance(unittest.TestCase):
     def setUp(self):
-        with mock.patch(
-            'paasta_tools.deployd.common.get_priority', autospec=True,
-        ) as mock_get_priority:
-            mock_get_priority.return_value = 1
-            # https://github.com/python/mypy/issues/2852
-            self.service_instance = ServiceInstance(  # type: ignore
-                service='universe',
-                instance='c137',
-                watcher='mywatcher',
-                cluster='westeros-prod',
-                bounce_by=0,
-            )
+        self.service_instance = ServiceInstance(  # type: ignore
+            service='universe',
+            instance='c137',
+            watcher='mywatcher',
+            cluster='westeros-prod',
+            bounce_by=0,
+            wait_until=0,
+        )
 
     def test___new__(self):
-        with mock.patch(
-            'paasta_tools.deployd.common.get_priority', autospec=True,
-        ):
-            expected = BaseServiceInstance(
-                service='universe',
-                instance='c137',
-                watcher='mywatcher',
-                bounce_by=0,
-                failures=0,
-                bounce_timers=None,
-                priority=1,
-                processed_count=0,
-            )
-            assert self.service_instance == expected
+        expected = BaseServiceInstance(
+            service='universe',
+            instance='c137',
+            watcher='mywatcher',
+            bounce_by=0,
+            wait_until=0,
+            failures=0,
+            bounce_timers=None,
+            processed_count=0,
+        )
+        assert self.service_instance == expected
 
-            expected = BaseServiceInstance(
-                service='universe',
-                instance='c137',
-                watcher='mywatcher',
-                bounce_by=0,
-                failures=0,
-                bounce_timers=None,
-                priority=2,
-                processed_count=0,
-            )
-            # https://github.com/python/mypy/issues/2852
-            assert ServiceInstance(  # type: ignore
-                service='universe',
-                instance='c137',
-                watcher='mywatcher',
-                cluster='westeros-prod',
-                bounce_by=0,
-                priority=2,
-            ) == expected
-
-    def test_get_priority(self):
-        with mock.patch(
-            'paasta_tools.deployd.common.load_marathon_service_config', autospec=True,
-        ) as mock_load_marathon_service_config:
-            mock_load_marathon_service_config.return_value = mock.Mock(get_bounce_priority=mock.Mock(return_value=1))
-            assert get_priority('universe', 'c137', 'westeros-prod') == 1
-            mock_load_marathon_service_config.assert_called_with(
-                service='universe',
-                instance='c137',
-                cluster='westeros-prod',
-                soa_dir='/nail/etc/services',
-            )
-
-            mock_load_marathon_service_config.side_effect = NoDockerImageError()
-            assert get_priority('universe', 'c137', 'westeros-prod') == 0
-
-            mock_load_marathon_service_config.side_effect = InvalidJobNameError()
-            assert get_priority('universe', 'c137', 'westeros-prod') == 0
-
-            mock_load_marathon_service_config.side_effect = NoDeploymentsAvailable()
-            assert get_priority('universe', 'c137', 'westeros-prod') == 0
-
-
-def test_rate_limit_instances():
-    with mock.patch(
-        'paasta_tools.deployd.common.get_priority', autospec=True, return_value=0,
-    ), mock.patch(
-        'time.time', autospec=True,
-    ) as mock_time:
-        mock_time.return_value = 1
-        mock_si_1 = ('universe', 'c137')
-        mock_si_2 = ('universe', 'c138')
-        ret = rate_limit_instances([mock_si_1, mock_si_2], "westeros-prod", 2, "Custos")
-        expected = [
-            BaseServiceInstance(
-                service='universe',
-                instance='c137',
-                watcher='Custos',
-                priority=0,
-                bounce_by=1,
-                bounce_timers=None,
-                failures=0,
-                processed_count=0,
-            ),
-            BaseServiceInstance(
-                service='universe',
-                instance='c138',
-                watcher='Custos',
-                priority=0,
-                bounce_by=31,
-                bounce_timers=None,
-                failures=0,
-                processed_count=0,
-            ),
-        ]
-        assert ret == expected
-
-        ret = rate_limit_instances([mock_si_1, mock_si_2], "westeros-prod", 2, "Custos", priority=99)
-        expected = [
-            BaseServiceInstance(
-                service='universe',
-                instance='c137',
-                watcher='Custos',
-                priority=99,
-                bounce_by=1,
-                bounce_timers=None,
-                failures=0,
-                processed_count=0,
-            ),
-            BaseServiceInstance(
-                service='universe',
-                instance='c138',
-                watcher='Custos',
-                priority=99,
-                bounce_by=31,
-                bounce_timers=None,
-                failures=0,
-                processed_count=0,
-            ),
-        ]
-        assert ret == expected
+        expected = BaseServiceInstance(
+            service='universe',
+            instance='c137',
+            watcher='mywatcher',
+            bounce_by=0,
+            wait_until=0,
+            failures=0,
+            bounce_timers=None,
+            processed_count=0,
+        )
+        # https://github.com/python/mypy/issues/2852
+        assert ServiceInstance(  # type: ignore
+            service='universe',
+            instance='c137',
+            watcher='mywatcher',
+            cluster='westeros-prod',
+            bounce_by=0,
+            wait_until=0,
+        ) == expected
 
 
 def test_exponential_back_off():

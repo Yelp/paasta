@@ -16,7 +16,6 @@ from requests.exceptions import RequestException
 from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaThread
-from paasta_tools.deployd.common import rate_limit_instances
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
@@ -31,10 +30,10 @@ from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 class PaastaWatcher(PaastaThread):
 
-    def __init__(self, instances_to_bounce_later, cluster, config):
+    def __init__(self, instances_to_bounce, cluster, config):
         super().__init__()
         self.daemon = True
-        self.instances_to_bounce_later = instances_to_bounce_later
+        self.instances_to_bounce = instances_to_bounce
         self.cluster = cluster
         self.config = config
         self.is_ready = False
@@ -42,8 +41,8 @@ class PaastaWatcher(PaastaThread):
 
 class AutoscalerWatcher(PaastaWatcher):
 
-    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
-        super().__init__(instances_to_bounce_later, cluster, config)
+    def __init__(self, instances_to_bounce, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce, cluster, config)
         self.zk = kwargs.pop('zookeeper_client')
         self.watchers: Dict[str, PaastaWatcher] = {}
 
@@ -70,12 +69,13 @@ class AutoscalerWatcher(PaastaWatcher):
             service=service,
             instance=instance,
             cluster=self.config.get_cluster(),
-            bounce_by=int(time.time()),
+            bounce_by=time.time(),
+            wait_until=time.time(),
             bounce_timers=None,
             watcher=type(self).__name__,
             failures=0,
         )
-        self.instances_to_bounce_later.put(service_instance)
+        self.instances_to_bounce.put(service_instance)
 
     def watch_node(self, path, enqueue=False):
         self.log.info(f"Adding zk node watch on {path}")
@@ -107,8 +107,8 @@ class AutoscalerWatcher(PaastaWatcher):
 
 class SoaFileWatcher(PaastaWatcher):
 
-    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
-        super().__init__(instances_to_bounce_later, cluster, config)
+    def __init__(self, instances_to_bounce, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(DEFAULT_SOA_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(
@@ -133,8 +133,8 @@ class SoaFileWatcher(PaastaWatcher):
 
 class PublicConfigFileWatcher(PaastaWatcher):
 
-    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
-        super().__init__(instances_to_bounce_later, cluster, config)
+    def __init__(self, instances_to_bounce, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce, cluster, config)
         self.wm = pyinotify.WatchManager()
         self.wm.add_watch(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, self.mask, rec=True)
         self.notifier = pyinotify.Notifier(
@@ -158,8 +158,8 @@ class PublicConfigFileWatcher(PaastaWatcher):
 
 
 class MaintenanceWatcher(PaastaWatcher):
-    def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
-        super().__init__(instances_to_bounce_later, cluster, config)
+    def __init__(self, instances_to_bounce, cluster, config, **kwargs):
+        super().__init__(instances_to_bounce, cluster, config)
         self.draining: Set[str] = set()
         self.marathon_clients = get_marathon_clients_from_config()
 
@@ -186,7 +186,7 @@ class MaintenanceWatcher(PaastaWatcher):
                 self.log.info(f"Found new draining hosts: {new_draining_hosts}")
                 service_instances = self.get_at_risk_service_instances(new_draining_hosts)
             for service_instance in service_instances:
-                self.instances_to_bounce_later.put(service_instance)
+                self.instances_to_bounce.put(service_instance)
             time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts) -> List[ServiceInstance]:
@@ -213,7 +213,8 @@ class MaintenanceWatcher(PaastaWatcher):
                     service=service,
                     instance=instance,
                     cluster=self.config.get_cluster(),
-                    bounce_by=int(time.time()),
+                    bounce_by=time.time(),
+                    wait_until=time.time(),
                     watcher=type(self).__name__,
                     bounce_timers=None,
                     failures=0,
@@ -252,7 +253,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             except ValueError:
                 self.log.error("Couldn't load public config, the JSON is invalid!")
                 return
-            service_instances: List[Tuple[str, str]] = []
+            service_instance_names: List[Tuple[str, str]] = []
             if new_config != self.public_config:
                 self.log.info("Public config has changed, now checking if it affects any services config shas.")
                 self.public_config = new_config
@@ -261,22 +262,22 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     instance_type='marathon',
                     soa_dir=DEFAULT_SOA_DIR,
                 )
-                service_instances = get_service_instances_needing_update(
+                service_instance_names = get_service_instances_needing_update(
                     self.marathon_clients,
                     all_service_instances,
                     self.public_config.get_cluster(),
                 )
-            if service_instances:
-                self.log.info(f"{len(service_instances)} service instances affected. Doing a staggered bounce.")
-                bounce_rate = self.public_config.get_deployd_big_bounce_rate()
-                for service_instance in rate_limit_instances(
-                    instances=service_instances,
-                    cluster=self.public_config.get_cluster(),
-                    number_per_minute=bounce_rate,
-                    watcher_name=type(self).__name__,
-                    priority=99,
-                ):
-                    self.filewatcher.instances_to_bounce_later.put(service_instance)
+            if service_instance_names:
+                self.log.info(f"{len(service_instance_names)} service instances affected. Doing a staggered bounce.")
+                for service, instance in service_instance_names:
+                    self.filewatcher.instances_to_bounce.put(ServiceInstance(
+                        service=service,
+                        instance=instance,
+                        watcher=type(self).__name__,
+                        cluster=self.public_config.get_cluster(),
+                        bounce_by=time.time() + self.public_config.get_deployd_big_bounce_deadline(),
+                        wait_until=time.time(),
+                    ))
 
 
 class YelpSoaEventHandler(pyinotify.ProcessEvent):
@@ -340,18 +341,14 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         )
         for service, instance in service_instances:
             self.log.info(f"{service}.{instance} has a new marathon app ID. Enqueuing it to be bounced.")
-        service_instances_to_queue = [
-            # https://github.com/python/mypy/issues/2852
-            ServiceInstance(  # type: ignore
+            now = time.time()
+            self.filewatcher.instances_to_bounce.put(ServiceInstance(  # type: ignore
                 service=service,
                 instance=instance,
                 cluster=self.filewatcher.cluster,
-                bounce_by=int(time.time()),
+                bounce_by=now,
+                wait_until=now,
                 watcher=type(self).__name__,
                 bounce_timers=None,
                 failures=0,
-            )
-            for service, instance in service_instances
-        ]
-        for service_instance in service_instances_to_queue:
-            self.filewatcher.instances_to_bounce_later.put(service_instance)
+            ))
