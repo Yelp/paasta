@@ -209,31 +209,38 @@ class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
     def get_slo_text(self, summary: bool) -> str:
         slo_watchers = getattr(self, 'slo_watchers', None)
         if slo_watchers is not None and len(slo_watchers) > 0:
-            num_failing = len([w for w in slo_watchers if w.failing])
+            failing = [w for w in slo_watchers if w.failing]
 
             # Wrap emojis in this subclass so we can select only the emojis or only the detail sections.
             class Emoji(str):
                 pass
 
-            if num_failing > 0:
+            if len(failing) > 0:
                 slo_text_components = [
                     Emoji(":alert:"),
-                    f"{num_failing} of {len(slo_watchers)} SLOs are failing",
+                    f"{len(failing)} of {len(slo_watchers)} SLOs are failing:\n",
                 ]
+                for slo_watcher in failing:
+                    slo_text_components.append(f"{slo_watcher.label}\n")
             else:
 
-                num_unknown = len([w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None])
-                num_bad_before_mark = len([w for w in slo_watchers if w.bad_before_mark])
+                unknown = [w for w in slo_watchers if w.bad_before_mark is None or w.bad_after_mark is None]
+                bad_before_mark = [w for w in slo_watchers if w.bad_before_mark]
                 slo_text_components = []
-                if num_unknown > 0:
-                    slo_text_components.extend([Emoji(":thinking_face:"), f"{num_unknown} SLOs are missing data. "])
-                if num_bad_before_mark > 0:
+                if len(unknown) > 0:
+                    slo_text_components.extend([Emoji(":thinking_face:"), f"{len(unknown)} SLOs are missing data:\n"])
+                    for slo_watcher in unknown:
+                        slo_text_components.append(f"{slo_watcher.label}\n")
+
+                if len(bad_before_mark) > 0:
                     slo_text_components.extend([
                         Emoji(":grimacing:"),
-                        f"{num_bad_before_mark} SLOs were failing before deploy, and will be ignored.",
+                        f"{len(bad_before_mark)} SLOs were failing before deploy, and will be ignored:\n",
                     ])
+                    for slo_watcher in bad_before_mark:
+                        slo_text_components.append(f"{slo_watcher.label}\n")
 
-                remaining = len(slo_watchers) - num_unknown - num_bad_before_mark
+                remaining = len(slo_watchers) - len(unknown) - len(bad_before_mark)
 
                 if remaining == len(slo_watchers):
                     slo_text_components = [
@@ -285,10 +292,9 @@ class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
 
     def individual_slo_callback(self, label: str, bad: bool) -> None:
         if bad:
-            message = f"SLO started failing: {label}"
+            self.update_slack_thread(f"SLO started failing: {label}", color='danger')
         else:
-            message = f"SLO is now OK: {label}"
-        self.notify_users(message)
+            self.update_slack_thread(f"SLO is now OK: {label}", color='good')
 
     def all_slos_callback(self, bad: bool) -> None:
         if bad:
