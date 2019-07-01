@@ -18,6 +18,7 @@ Submodules
    paasta_tools.cli.cmds.emergency_stop
    paasta_tools.cli.cmds.fsm
    paasta_tools.cli.cmds.generate_pipeline
+   paasta_tools.cli.cmds.get_docker_image
    paasta_tools.cli.cmds.get_latest_deployment
    paasta_tools.cli.cmds.info
    paasta_tools.cli.cmds.itest

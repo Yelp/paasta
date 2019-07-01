@@ -1,3 +1,10 @@
+paasta-tools (0.85.20) xenial; urgency=medium
+
+  * 0.85.20 tagged with 'make release'
+    Commit: Merge branch "slo_details"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 01 Jul 2019 13:52:36 -0700
+
 paasta-tools (0.85.19) xenial; urgency=medium
 
   * 0.85.19 tagged with 'make release'
