@@ -54,6 +54,13 @@
           "items": {"type": "array"},
           "uniqueItems": true
         },
+        "extra_constraints": {
+            "type": "array",
+            "items": {
+                "type": "array"
+            },
+            "uniqueItems": true
+        },
         "service": {"type": "string"},
         "deploy_group": {"type": "string"},
         "pool": {"type": "string"},
