@@ -43,9 +43,11 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
             targets_seen[target] = rule
             raw_rules_seen[target] = iptables_rule
         else:
+            dport = target_rule_to_dport(rule)
+            if dport is None:
+                continue
             print("This is the second time we've seen a rule with the same target_parameters!")
             print(rule)
-            dport = target_rule_to_dport(rule)
             container1 = get_container_from_dport(dport, docker_client)
             print("The other rule with that target is:")
             print(targets_seen[target])
