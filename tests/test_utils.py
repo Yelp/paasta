@@ -1290,7 +1290,6 @@ class TestInstanceConfig:
                     'nice': {'soft': 20},
                 },
                 'cap_add': ['IPC_LOCK', 'SYS_PTRACE'],
-                'docker_init': False,
             },
             branch_dict=None,
         )
@@ -1304,6 +1303,7 @@ class TestInstanceConfig:
             {"key": "ulimit", "value": "nofile=1024:2048"},
             {"key": "cap-add", "value": "IPC_LOCK"},
             {"key": "cap-add", "value": "SYS_PTRACE"},
+            {'key': 'init', 'value': 'true'},
             {'key': 'cap-drop', 'value': 'SETPCAP'},
             {'key': 'cap-drop', 'value': 'MKNOD'},
             {'key': 'cap-drop', 'value': 'AUDIT_WRITE'},
