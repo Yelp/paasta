@@ -2497,13 +2497,13 @@ def get_tron_instance_list_from_yaml(service: str, cluster: str, soa_dir: str) -
 def get_action_names_from_job(job: dict) -> Collection[str]:
     # Warning: This duplicates some logic from TronActionConfig, but can't be imported here
     # dute to circular imports
-    actions = job.get('actions')
+    actions = job.get('actions', {})
     if isinstance(actions, dict):
         return list(actions.keys())
     elif actions is None:
         return []
     else:
-        return [action['name'] for action in actions]
+        raise TypeError("Tron actions must be a dictionary")
 
 
 def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
