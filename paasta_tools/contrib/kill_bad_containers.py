@@ -1,7 +1,11 @@
 #!/opt/venvs/paasta-tools/bin/python3
 import sys
 
-import iptc
+try:
+    import iptc
+except TypeError:
+    print("Failed to import iptc. This happens sometimes during a python upgrade or during bootstrapping")
+    sys.exit(0)
 
 from paasta_tools import iptables
 from paasta_tools.utils import get_docker_client
