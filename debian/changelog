@@ -1,3 +1,11 @@
+paasta-tools (0.85.21) xenial; urgency=medium
+
+  * 0.85.21 tagged with 'make release'
+    Commit: Merge pull request #2310 from Yelp/nix_docker_init  Removed
+    the option to disabled docker init
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Jul 2019 12:17:28 -0700
+
 paasta-tools (0.85.20) xenial; urgency=medium
 
   * 0.85.20 tagged with 'make release'
