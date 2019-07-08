@@ -320,10 +320,6 @@
                     "type": "object",
                     "additionalProperties": { "type": "string" }
                 },
-                "docker_init": {
-                  "type": "boolean",
-                  "default": true
-                },
                 "security": {
                     "type": "object",
                     "properties": {
