@@ -1,179 +1,303 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
-  "description": "tron on paasta yaml (docs todo)",
-  "type": "object",
-  "definitions": {
-    "name": {
-        "type": "string",
-        "pattern": "^[A-Za-z_][\\w\\-]{0,254}$"
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "tron on paasta yaml (docs todo)",
+    "type": "object",
+    "definitions": {
+        "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][\\w\\-]{0,254}$"
+        },
+        "time_delta": {
+            "type": "string",
+            "pattern": "^\\d+\\s*[a-z]+$"
+        },
+        "action": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "command"
+            ],
+            "properties": {
+                "name": {
+                    "$ref": "#definitions/name"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "node": {
+                    "$ref": "#definitions/name"
+                },
+                "requires": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "retries": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "retries_delay": {
+                    "$ref": "#definitions/time_delta"
+                },
+                "executor": {
+                    "enum": [
+                        "ssh",
+                        "paasta"
+                    ]
+                },
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "extra_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "service": {
+                    "type": "string"
+                },
+                "deploy_group": {
+                    "type": "string"
+                },
+                "pool": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "extra_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "cluster": {
+                    "type": "string"
+                },
+                "expected_runtime": {
+                    "$ref": "#definitions/time_delta"
+                },
+                "triggered_by": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "uniqueItems": true
+                },
+                "trigger_downstreams": {
+                    "type": [
+                        "object",
+                        "boolean"
+                    ],
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "on_upstream_rerun": {
+                    "type": "string"
+                },
+                "trigger_timeout": {
+                    "$ref": "#definitions/time_delta"
+                }
+            }
+        },
+        "job": {
+            "type": "object",
+            "required": [
+                "node",
+                "schedule",
+                "actions"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "$ref": "#definitions/name"
+                },
+                "node": {
+                    "$ref": "#definitions/name"
+                },
+                "schedule": {
+                    "type": [
+                        "string",
+                        "object"
+                    ]
+                },
+                "actions": {
+                    "type": [
+                        "array",
+                        "object"
+                    ],
+                    "items": {
+                        "$ref": "#definitions/action"
+                    },
+                    "patternProperties": {
+                        ".+": {
+                            "$ref": "#definitions/action"
+                        }
+                    }
+                },
+                "cluster": {
+                    "type": "string"
+                },
+                "monitoring": {
+                    "type": "object",
+                    "properties": {
+                        "team": {
+                            "type": "string"
+                        },
+                        "runbook": {
+                            "type": "string"
+                        },
+                        "page": {
+                            "type": "boolean"
+                        },
+                        "tip": {
+                            "type": "string"
+                        },
+                        "notification_email": {
+                            "type": [
+                                "string",
+                                "boolean",
+                                "null"
+                            ]
+                        },
+                        "realert_every": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "exclusiveMinimum": false
+                        },
+                        "dependencies": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "irc_channels": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "slack_channels": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "ticket": {
+                            "type": "boolean"
+                        },
+                        "project": {
+                            "type": "string"
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "component": {
+                            "type": [
+                                "string",
+                                "array"
+                            ]
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "alert_after": {
+                            "type": "string"
+                        },
+                        "check_that_every_day_has_a_successful_run": {
+                            "type": "boolean"
+                        },
+                        "priority": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "queueing": {
+                    "type": "boolean"
+                },
+                "allow_overlap": {
+                    "type": "boolean"
+                },
+                "run_limit": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                },
+                "all_nodes": {
+                    "type": "boolean"
+                },
+                "cleanup_action": {
+                    "$ref": "#definitions/action"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "max_runtime": {
+                    "$ref": "#definitions/time_delta"
+                },
+                "expected_runtime": {
+                    "$ref": "#definitions/time_delta"
+                },
+                "time_zone": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "deploy_group": {
+                    "type": "string"
+                }
+            }
+        }
     },
-    "time_delta": {
-        "type": "string",
-        "pattern": "^\\d+\\s*[a-z]+$"
-    },
-    "action": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["command"],
-      "properties": {
-        "name": {"$ref": "#definitions/name"},
-        "command": {"type": "string"},
-        "node": {"$ref": "#definitions/name"},
-        "requires": {
-          "type": "array",
-          "items": {"type": "string"}
+    "patternProperties": {
+        "^_.*$": {
+            "type": "object",
+            "additionalProperties": true
         },
-        "retries": {
-          "type": "integer",
-          "minimum": 0,
-          "exclusiveMinimum": false
-        },
-        "retries_delay":  {"$ref": "#definitions/time_delta"},
-        "executor": {"enum": ["ssh", "paasta"]},
-        "cpus": {
-          "type": "number",
-          "minimum": 0,
-          "exclusiveMinimum": true
-        },
-	"cap_add": {
-          "type": "array",
-          "items": {"type": "string"}
-        },
-        "mem": {
-          "type": "number",
-          "minimum": 32,
-          "exclusiveMinimum": true
-        },
-        "disk": {
-          "type": "number",
-          "minimum": 0,
-          "exclusiveMinimum": true
-        },
-        "constraints": {
-          "type": "array",
-          "items": {"type": "array"},
-          "uniqueItems": true
-        },
-        "extra_constraints": {
-            "type": "array",
-            "items": {
-                "type": "array"
-            },
-            "uniqueItems": true
-        },
-        "service": {"type": "string"},
-        "deploy_group": {"type": "string"},
-        "pool": {"type": "string"},
-        "env": {
-          "type": "object",
-          "patternProperties": {
-              "^[a-zA-Z_]+[a-zA-Z0-9_]*$": { "type": "string" }
-          },
-          "additionalProperties": false
-        },
-        "extra_volumes": {
-          "type": "array",
-          "items": {"type": "object"},
-          "uniqueItems": true
-        },
-        "cluster": {"type": "string"},
-        "expected_runtime": {"$ref": "#definitions/time_delta"},
-        "triggered_by": {
-          "type": "array",
-          "items": {"type": "string"},
-          "uniqueItems": true
-        },
-        "trigger_downstreams": {
-          "type": ["object", "boolean"],
-          "additionalProperties": {"type": "string"}
-        },
-        "on_upstream_rerun": {"type": "string"},
-        "trigger_timeout": {"$ref": "#definitions/time_delta"}
-      }
-    },
-    "job": {
-      "type": "object",
-      "required": ["node", "schedule", "actions"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {"$ref": "#definitions/name"},
-        "node": {"$ref": "#definitions/name"},
-        "schedule": {
-          "type": ["string", "object"]
-        },
-        "actions": {
-          "type": ["object"],
-          "patternProperties": {
-            ".+": {"$ref": "#definitions/action"}
-          }
-        },
-        "cluster": {"type": "string"},
-        "monitoring": {
-          "type": "object",
-          "properties": {
-              "team": {"type": "string"},
-              "runbook": {"type": "string"},
-              "page": {"type": "boolean"},
-              "tip": {"type": "string"},
-              "notification_email": {"type": ["string", "boolean", "null"]},
-              "realert_every": {
-                  "type": "integer",
-                  "minimum": -1,
-                  "exclusiveMinimum": false
-              },
-              "dependencies": {
-                  "type": "array",
-                  "items": {"type": "string"}
-              },
-              "irc_channels": {
-                  "type": "array",
-                  "items": {"type": "string"}
-              },
-              "slack_channels": {
-                  "type": "array",
-                  "items": {"type": "string"}
-              },
-              "ticket": {"type": "boolean"},
-              "project": {"type": "string"},
-              "tags": {
-                  "type": "array",
-                  "items": {"type": "string"}
-              },
-              "component": {
-                  "type": ["string", "array"]
-              },
-              "description": {"type": "string"},
-              "alert_after": {"type": "string"},
-              "check_that_every_day_has_a_successful_run": {"type": "boolean"},
-              "priority": {"type": "string"}
-            },
-            "additionalProperties": false
-        },
-        "queueing": {"type": "boolean"},
-        "allow_overlap": {"type": "boolean"},
-        "run_limit": {
-          "type": "integer",
-          "minimum": 0,
-          "exclusiveMinimum": true
-        },
-        "all_nodes": {"type": "boolean"},
-        "cleanup_action": {"$ref": "#definitions/action"},
-        "enabled": {"type": "boolean"},
-        "max_runtime": {"$ref": "#definitions/time_delta"},
-        "expected_runtime": {"$ref": "#definitions/time_delta"},
-        "time_zone": {"type": "string"},
-        "service": {"type": "string"},
-        "deploy_group": {"type": "string"}
-      }
+        "^[^_].*$": {
+            "$ref": "#definitions/job"
+        }
     }
-  },
-  "patternProperties": {
-    "^_.*$": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "^[^_].*$": {
-      "$ref": "#definitions/job"
-    }
-  }
 }
