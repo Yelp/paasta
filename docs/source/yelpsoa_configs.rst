@@ -55,13 +55,6 @@ specify the following options:
     met, other than a ``TASK_FAILED`` message. For more a more detailed read on
     how this works, see the docs on `isolation <isolation.html>`_
 
-  * ``docker_init``: Bool. If set ``false``, will disable the ``--init`` functionality
-    of Docker. Without ``--init``, it is up to the user to properly respond to
-    signals when behaving as PID #1 in a container. (See
-    `dumb-init <https://github.com/Yelp/dumb-init#why-you-need-an-init-system>`_
-    as an example of how to run a program in a container properly without
-    ``--init``) Defaults to ``true``.
-
   * ``env``: A dictionary of environment variables that will be made available
     to the container. PaaSTA additionally will inject the following variables:
 
