@@ -116,7 +116,7 @@
               "runbook": {"type": "string"},
               "page": {"type": "boolean"},
               "tip": {"type": "string"},
-              "notification_email": {"type": "string"},
+              "notification_email": {"type": ["string", "boolean", "null"]},
               "realert_every": {
                   "type": "integer",
                   "minimum": -1,
