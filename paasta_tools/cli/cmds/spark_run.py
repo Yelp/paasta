@@ -39,8 +39,6 @@ DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
-DEFAULT_S3_DEV_LOG_DIR = 's3a://yelp-emr-dev-us-west-2/spark-events'
-DEFAULT_S3_PROD_LOG_DIR = 's3a://yelp-emr-us-west-2/spark-events'
 SENSITIVE_ENV = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
@@ -436,8 +434,6 @@ def get_spark_config(
         # instance_type:m4.10xlarge\;pool:default
         'spark.mesos.constraints': 'pool:%s' % args.pool,
         'spark.mesos.executor.docker.forcePullImage': 'true',
-        'spark.eventLog.enabled': 'true',
-        'spark.eventLog.dir': DEFAULT_S3_PROD_LOG_DIR if 'prod' in args.cluster else DEFAULT_S3_DEV_LOG_DIR,
     }
 
     # Spark options managed by PaaSTA
