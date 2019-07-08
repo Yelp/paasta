@@ -1,3 +1,12 @@
+paasta-tools (0.85.22) xenial; urgency=medium
+
+  * 0.85.22 tagged with 'make release'
+    Commit: Merge pull request #2312 from
+    Yelp/u/hliu/revert_spark_event_logging  Revert "enable spark event
+    logging by default (#2309)"
+
+ -- Huadong Liu <hliu@yelp.com>  Mon, 08 Jul 2019 14:41:14 -0700
+
 paasta-tools (0.85.21) xenial; urgency=medium
 
   * 0.85.21 tagged with 'make release'
