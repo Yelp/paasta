@@ -102,8 +102,7 @@
           "type": ["string", "object"]
         },
         "actions": {
-          "type": ["array", "object"],
-          "items": {"$ref": "#definitions/action"},
+          "type": ["object"],
           "patternProperties": {
             ".+": {"$ref": "#definitions/action"}
           }

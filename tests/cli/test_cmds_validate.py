@@ -646,9 +646,9 @@ test_job:
     type: cron
     value: "0 7 * * 5"
   actions:
-    - name: first
+    first:
       command: echo hello world
-    - name: second
+    second:
       command: sleep 10
       expected_runtime: 15 sec
       executor: paasta
@@ -671,7 +671,7 @@ def test_tron_validate_schema_understands_underscores(
     tron_content = """
 _my_template: &a_template
   actions:
-    - name: first
+    first:
       command: echo hello world
 
 test_job:
@@ -697,7 +697,7 @@ test_job:
   schedule: "daily 04:00:00"
   unexpected: 100
   actions:
-    - name: first
+    first:
       command: echo hello world
 """
     mock_get_file_contents.return_value = tron_content
@@ -715,7 +715,7 @@ test_job:
   node: batch_box
   schedule: "daily 04:00:00"
   actions:
-    - name: first
+    first:
       command: echo hello world
       something_else: true
 """
@@ -734,7 +734,7 @@ test_job:
   node: batch_box
   schedule: "daily 04:00:00"
   actions:
-    - name: first
+    first:
       command: echo hello world
   cleanup_action:
     command: rm output
