@@ -547,16 +547,15 @@ def get_autoscaling_info(apps_with_clients, service_config):
                 marathon_service_config=service_config,
                 num_healthy_instances=len(marathon_tasks),
             )
-            current_utilization = "{:.1f}%".format(utilization * 100)
         except MetricsProviderNoDataError:
-            current_utilization = "Exception"
-            new_instance_count = "Exception"
+            utilization = None
+            new_instance_count = None
         return ServiceAutoscalingInfo(
-            current_instances=str(service_config.get_instances()),
-            max_instances=str(service_config.get_max_instances()),
-            min_instances=str(service_config.get_min_instances()),
-            current_utilization=current_utilization,
-            target_instances=str(new_instance_count),
+            current_instances=service_config.get_instances(),
+            max_instances=service_config.get_max_instances(),
+            min_instances=service_config.get_min_instances(),
+            current_utilization=utilization,
+            target_instances=new_instance_count,
         )
     return None
 
