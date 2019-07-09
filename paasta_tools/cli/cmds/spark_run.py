@@ -39,8 +39,8 @@ DEFAULT_SPARK_WORK_DIR = '/spark_driver'
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
 DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
 DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
-DEFAULT_S3_DEV_LOG_DIR = 's3a://yelp-emr-dev-us-west-2/spark-events'
-DEFAULT_S3_PROD_LOG_DIR = 's3a://yelp-emr-us-west-2/spark-events'
+DEFAULT_S3_DEV_LOG_DIR = 's3a://yelp-spark-event-logs-dev-us-west-2/'
+DEFAULT_S3_PROD_LOG_DIR = 's3a://yelp-spark-event-logs-prod-us-west-2/'
 SENSITIVE_ENV = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
