@@ -124,33 +124,9 @@ Feature: Bounces work as expected
       And setup_service is initiated
      Then the old app should be configured to have 1 instances
 
-  Scenario: Bounces make progress even if drain method fails to drain
+  Scenario: Bounces make progress even if drain method fails to respond
     Given a working paasta cluster
       And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "crashy_drain"
-      And an old app to be destroyed
-
-     When there are 2 old healthy tasks
-      And setup_service is initiated
-     Then the new app should be running
-      And the old app should be running
-
-
-     When there are 1 new healthy tasks
-      And setup_service is initiated
-     Then the new app should be running
-      And the old app should be running
-      # Note: this is different from the "wait for drain method" scenario because the drain method raises an exception.
-      And the old app should be configured to have 1 instances
-
-     When there are 2 new healthy tasks
-      And setup_service is initiated
-     Then the new app should be running
-     When we wait a bit for the old app to disappear
-     Then the old app should be gone
-
-  Scenario: Bounces make progress even if drain method fails is_safe_to_kill
-    Given a working paasta cluster
-      And a new healthy app to be deployed, with bounce strategy "crossover" and drain method "crashy_is_safe_to_kill"
       And an old app to be destroyed
 
      When there are 2 old healthy tasks
