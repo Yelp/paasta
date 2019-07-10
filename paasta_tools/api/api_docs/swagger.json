@@ -680,6 +680,7 @@
                         "Stopped",
                         "Delayed",
                         "Waiting",
+                        "Waiting for bounce",
                         "NotRunning"
                     ]
                 },
