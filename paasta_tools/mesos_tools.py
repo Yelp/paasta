@@ -27,6 +27,8 @@ from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Mapping
+from typing import MutableMapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -64,7 +66,6 @@ MARATHON_FRAMEWORK_NAME_PREFIX = "marathon"
 ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
 SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "batch_count", "slave"])
 
-
 DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
 
 log = logging.getLogger(__name__)
@@ -100,6 +101,12 @@ MESOS_SLAVE_PORT = "5051"
 
 class MesosSlaveConnectionError(Exception):
     pass
+
+
+class MesosTailLines(NamedTuple):
+    stdout: List[str]
+    stderr: List[str]
+    error_message: str
 
 
 def get_mesos_leader() -> str:
@@ -386,16 +393,12 @@ async def format_non_running_mesos_task_row(
 
 
 @async_timeout()
-async def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
-    """Returns the formatted "tail" of stdout/stderr, for a given a task.
-
-    :param get_short_task_id: A function which given a
-                              task_id returns a short task_id suitable for
-                              printing.
-    """
-    error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
-    output = []
+async def get_tail_lines_for_mesos_task(
+    task: Task, get_short_task_id: Callable[[str], str], num_tail_lines: int
+) -> MutableMapping[str, Sequence[str]]:
+    tail_lines_dict: Dict[str, List[str]] = {}
     mesos_cli_config = get_mesos_config()
+
     try:
         fobjs = await aiter_to_list(
             cluster.get_files_for_tasks(
@@ -404,45 +407,69 @@ async def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
                 max_workers=mesos_cli_config["max_workers"],
             )
         )
-        fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
         if not fobjs:
-            output.append(
-                PaastaColors.blue(
-                    "      no stdout/stderrr for %s" % get_short_task_id(task["id"])
-                )
-            )
-            return output
+            return {"stdout": [], "stderr": []}
+
+        fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
+
         for fobj in fobjs:
-            output.append(
-                PaastaColors.blue(
-                    "      {} tail for {}".format(
-                        fobj.path, get_short_task_id(task["id"])
-                    )
-                )
-            )
             # read nlines, starting from EOF
             tail = []
             lines_seen = 0
-            if nlines > 0:
-                async for line in fobj._readlines_reverse():
-                    tail.append(line)
-                    lines_seen += 1
-                    if lines_seen >= nlines:
-                        break
+
+            async for line in fobj._readlines_reverse():
+                tail.append(line)
+                lines_seen += 1
+                if lines_seen >= num_tail_lines:
+                    break
 
             # reverse the tail, so that EOF is at the bottom again
-            if tail:
-                output.extend(tail[::-1])
+            tail_lines_dict[fobj.path] = tail[::-1]
     except (
         mesos_exceptions.MasterNotAvailableException,
         mesos_exceptions.SlaveDoesNotExist,
         mesos_exceptions.TaskNotFoundException,
         mesos_exceptions.FileNotFoundForTaskException,
+        TimeoutError,
     ) as e:
-        output.append(error_message % (get_short_task_id(task["id"]), str(e)))
-    except TimeoutError:
-        output.append(error_message % (get_short_task_id(task["id"]), "timeout"))
-    return output
+        short_task_id = get_short_task_id(task["id"])
+        error_name = e.__class__.__name__
+        return {
+            "error_message": f"couldn't read stdout/stderr for {short_task_id} ({error_name})"
+        }
+
+    return tail_lines_dict
+
+
+def format_tail_lines_for_mesos_task(tail_lines, task_id):
+    rows = []
+    if (tail_lines.stderr or tail_lines.stdout) is not None:
+        if len(tail_lines.stderr) + len(tail_lines.stdout) == 0:
+            rows.append(PaastaColors.blue(f"  no stdout/stderrr for {task_id}"))
+        else:
+            for stdstream in ("stdout", "stderr"):
+                rows.append(PaastaColors.blue(f"{stdstream} tail for {task_id}"))
+                rows.extend(f"  {line}" for line in getattr(tail_lines, stdstream, []))
+    elif tail_lines.error_message is not None:
+        rows.append(PaastaColors.red(f"  {tail_lines.error_message}"))
+
+    return rows
+
+
+@async_timeout()
+async def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
+    tail_lines_dict = await get_tail_lines_for_mesos_task(
+        task, get_short_task_id, nlines
+    )
+    tail_lines = MesosTailLines(
+        stdout=tail_lines_dict.get("stdout"),
+        stderr=tail_lines_dict.get("stderr"),
+        error_message=tail_lines_dict.get("error_message"),
+    )
+    return [
+        f"    {line}"
+        for line in format_tail_lines_for_mesos_task(tail_lines, task["id"])
+    ]
 
 
 def zip_tasks_verbose_output(table, stdstreams):

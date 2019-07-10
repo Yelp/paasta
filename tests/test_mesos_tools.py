@@ -534,8 +534,8 @@ async def test_format_stdstreams_tail_for_task(test_case,):
         return mock_cluster_files
 
     def gen_output(task_id, file1, file2, nlines, raise_what):
-        error_message = PaastaColors.red(
-            "      couldn't read stdout/stderr for %s (%s)"
+        error_message = "    " + PaastaColors.red(
+            "  couldn't read stdout/stderr for %s (%s)"
         )
         output = []
         if not raise_what:
@@ -544,13 +544,11 @@ async def test_format_stdstreams_tail_for_task(test_case,):
             files.sort(key=lambda f: f[0], reverse=True)
             for f in files:
                 output.append(
-                    PaastaColors.blue("      {} tail for {}".format(f[0], task_id))
+                    "    " + PaastaColors.blue("{} tail for {}".format(f[0], task_id))
                 )
-                output.extend(f[1][-nlines:])
+                output.extend(f"      {line}" for line in f[1][-nlines:])
         else:
-            if raise_what == utils.TimeoutError:
-                raise_what = "timeout"
-            output.append(error_message % (task_id, raise_what))
+            output.append(error_message % (task_id, raise_what.__name__))
         return output
 
     task_id, file1, file2, nlines, raise_what = test_case
