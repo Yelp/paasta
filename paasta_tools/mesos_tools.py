@@ -276,19 +276,28 @@ async def get_short_hostname_from_task(task: Task) -> str:
         return "Unknown"
 
 
-def get_first_status_timestamp(task: Task) -> str:
+def get_first_status_timestamp(task: Task) -> Optional[str]:
+    try:
+        start_time_string = task["statuses"][0]["timestamp"]
+        return float(start_time_string)
+    except (IndexError, SlaveDoesNotExist):
+        return None
+
+
+def get_first_status_timestamp_string(task: Task) -> str:
     """Gets the first status timestamp from a task id and returns a human
     readable string with the local time and a humanized duration:
     ``2015-01-30T08:45 (an hour ago)``
     """
-    try:
-        start_time_string = task["statuses"][0]["timestamp"]
-        start_time = datetime.datetime.fromtimestamp(float(start_time_string))
-        return "{} ({})".format(
-            start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time)
-        )
-    except (IndexError, SlaveDoesNotExist):
+    first_status_timestamp = get_first_status_timestamp(task)
+    if first_status_timestamp is None:
         return "Unknown"
+    else:
+        first_status_datetime = datetime.datetime.fromtimestamp(first_status_timestamp)
+        return "{} ({})".format(
+            first_status_datetime.strftime("%Y-%m-%dT%H:%M"),
+            humanize.naturaltime(first_status_datetime),
+        )
 
 
 async def get_mem_usage(task: Task) -> str:
@@ -312,6 +321,14 @@ async def get_mem_usage(task: Task) -> str:
         return "Timed Out"
 
 
+async def get_cpu_shares(task: Task) -> float:
+    # The CPU shares has an additional .1 allocated to it for executor overhead.
+    # We subtract this to the true number
+    # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
+    cpu_shares = await task.cpu_limit()
+    return cpu_shares - 0.1
+
+
 async def get_cpu_usage(task: Task) -> str:
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
@@ -326,10 +343,7 @@ async def get_cpu_usage(task: Task) -> str:
         start_time = round(task["statuses"][0]["timestamp"])
         current_time = int(datetime.datetime.now().strftime("%s"))
         duration_seconds = current_time - start_time
-        # The CPU shares has an additional .1 allocated to it for executor overhead.
-        # We subtract this to the true number
-        # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
-        cpu_shares = (await task.cpu_limit()) - 0.1
+        cpu_shares = await get_cpu_shares(task)
         allocated_seconds = duration_seconds * cpu_shares
         task_stats = await task.stats()
         used_seconds = task_stats.get("cpus_system_time_secs", 0.0) + task_stats.get(
@@ -367,7 +381,7 @@ async def format_running_mesos_task_row(
     )
     mem_usage_future = asyncio.ensure_future(results_or_unknown(get_mem_usage(task)))
     cpu_usage_future = asyncio.ensure_future(results_or_unknown(get_cpu_usage(task)))
-    first_status_timestamp = get_first_status_timestamp(task)
+    first_status_timestamp = get_first_status_timestamp_string(task)
 
     await asyncio.wait([short_hostname_future, mem_usage_future, cpu_usage_future])
 
@@ -387,7 +401,7 @@ async def format_non_running_mesos_task_row(
     return (
         PaastaColors.grey(get_short_task_id(task["id"])),
         PaastaColors.grey(await results_or_unknown(get_short_hostname_from_task(task))),
-        PaastaColors.grey(get_first_status_timestamp(task)),
+        PaastaColors.grey(get_first_status_timestamp_string(task)),
         PaastaColors.grey(task["state"]),
     )
 
@@ -591,7 +605,7 @@ async def status_mesos_tasks_verbose(
         await get_cached_list_of_not_running_tasks_from_frameworks(), filter_string
     )
     # Order the tasks by timestamp
-    non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
+    non_running_tasks.sort(key=lambda task: get_first_status_timestamp_string(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))
 
     list_title = "Non-Running Tasks"
