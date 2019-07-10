@@ -1146,23 +1146,34 @@ class Struct:
 
 
 def test_paasta_status(system_paasta_config):
-    fake_dict = {
-        "git_sha": "fake_git_sha",
-        "instance": "fake_instance",
-        "service": "fake_service",
-    }
-    fake_dict2 = {
-        "error_message": None,
-        "desired_state": "start",
-        "app_id": "fake_app_id",
-        "app_count": 1,
-        "running_instance_count": 2,
-        "expected_instance_count": 2,
-        "deploy_status": "Running",
-        "bounce_method": "crossover",
-    }
-    fake_status_obj = Struct(**fake_dict)
-    fake_status_obj.marathon = Struct(**fake_dict2)
+    marathon_status = Struct(
+        error_message=None,
+        desired_state="start",
+        desired_app_id="abc.def",
+        autoscaling_info=None,
+        app_id="fake_app_id",
+        app_count=1,
+        running_instance_count=2,
+        expected_instance_count=2,
+        deploy_status="Running",
+        bounce_method="crossover",
+        app_statuses=[],
+        mesos=Struct(
+            running_task_count=2,
+            error_message=None,
+            running_tasks=[],
+            non_running_tasks=[],
+        ),
+        smartstack=Struct(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=1,
+            locations=[],
+        ),
+    )
+    fake_status_obj = Struct(
+        git_sha="fake_git_sha", instance="fake_instance", service="fake_service"
+    )
+    fake_status_obj.marathon = marathon_status
 
     system_paasta_config = system_paasta_config
 
