@@ -74,10 +74,9 @@ HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
-]
-SSH_ONLY_INSTANCE_CONFIG = [
     ChronosJobConfig,
 ]
+SSH_ONLY_INSTANCE_CONFIG = []
 
 
 def add_subparser(
@@ -249,10 +248,44 @@ def paasta_status_on_api_endpoint(
         return print_adhoc_status(cluster, service, instance, output, status.adhoc, verbose)
     elif status.flink is not None:
         return print_flink_status(cluster, service, instance, output, status.flink.get('status'), verbose)
+    elif status.chronos is not None:
+        return print_chronos_status(service, instance, output, status.chronos)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
 
+
+def print_chronos_status(
+    service: str,
+    instance: str,
+    output: List[str],
+    chronos_status,
+) -> int:
+    # TODO (fzz|PAASTA-7077) account for verbose before pushing
+
+    disabled_state = PaastaColors.green(chronos_status.status.get("disabled_state").capitalize())
+    desired_state = PaastaColors.bold(chronos_status.desired_state.capitalize())
+    chronos_state = PaastaColors.grey(chronos_status.status.get("chronos_state"))
+    chronos_result = chronos_status.last_status.get("result")
+    chronos_time = chronos_status.last_status.get("time")
+    schedule = chronos_status.schedule.get("schedule")
+    time_zone = chronos_status.schedule.get("time_zone")
+    epsilon = chronos_status.schedule.get("epsilon")
+    command = chronos_status.command
+    mesos_state = PaastaColors.grey("Not running") if not chronos_status.status.get("mesos_state") else chronos_status.status.get("mesos_state")
+
+    output.append(f"    Desired:    {desired_state}")
+    output.append(f"    Job:     {service} {instance}")
+    output.append(f"      Status:   {disabled_state} ({chronos_state})   Last:     {chronos_result} ({chronos_time})")
+    output.append(f"      Schedule: {schedule} ({time_zone}) Epsilon: {epsilon}")
+    output.append(f"          Command:  {command}")
+    output.append(f"      Mesos:    {mesos_state}")
+    output.append(f"      Running Tasks:")
+    output.append(f"        Mesos Task ID  Host deployed to  Ram  CPU  Deployed at what localtime")
+    output.append(PaastaColors.grey("      Non-Running Tasks"))
+    output.append(PaastaColors.grey("        Mesos Task ID  Host deployed to  Deployed at what localtime  Status"))
+
+    return 0
 
 def print_adhoc_status(
     cluster: str,
@@ -528,7 +561,6 @@ def report_status_for_cluster(
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
-    use_api_endpoint: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -579,8 +611,7 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance in http_only_instances or
-                deployed_instance not in ssh_only_instances and use_api_endpoint
+                deployed_instance in http_only_instances
             )
         ]
         if len(http_only_deployed_instances):
@@ -602,7 +633,7 @@ def report_status_for_cluster(
             for deployed_instance in deployed_instances
             if (
                 deployed_instance in ssh_only_instances or
-                deployed_instance not in http_only_instances and not use_api_endpoint
+                deployed_instance not in http_only_instances
             )
         ]
         if len(ssh_only_deployed_instances):
@@ -841,11 +872,6 @@ def paasta_status(
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
 
-    if 'USE_API_ENDPOINT' in os.environ:
-        use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
-    else:
-        use_api_endpoint = False
-
     return_codes = [0]
     tasks = []
     clusters_services_instances = apply_args_filters(args)
@@ -868,7 +894,6 @@ def paasta_status(
                         instance_whitelist=instances,
                         system_paasta_config=system_paasta_config,
                         verbose=args.verbose,
-                        use_api_endpoint=use_api_endpoint,
                     ),
                 ))
             else:
