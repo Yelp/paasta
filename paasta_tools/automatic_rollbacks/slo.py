@@ -41,10 +41,21 @@ def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR) -> Generator:
             return   # SFDCS instantiation crashes with IndexError if sources is an empty list.
         composite_sink = SFDCS(service=service, sources=sources)
 
+        # The sinks that we get from composite_sink.sinks() have a `source` attribute, but it's a different type than
+        # what we have in sources, and don't have alert_config. We build a map here so we can easily look up the
+        # alert_config for each sink.
+        alert_config_by_ts_metric = {
+            (slo_group.timeseries, slo.metric): slo_group.alert_config
+            for source in sources
+            for slo_group in source.slo_groups
+            for slo in slo_group.slos
+        }
+
         for sink in composite_sink.sinks():
-            signalflow, rules = sink.generate_signalflow_signals_and_rules()
-            query = textwrap.dedent('\n'.join(signalflow))
-            yield sink, query
+            if not alert_config_by_ts_metric[sink.source.timeseries, sink.source.metric].is_silent:
+                signalflow, rules = sink.generate_signalflow_signals_and_rules()
+                query = textwrap.dedent('\n'.join(signalflow))
+                yield sink, query
 
 
 class SLODemultiplexer:
