@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 from typing import Sequence
 
 from kubernetes.client import V1Deployment
@@ -12,7 +13,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 log = logging.getLogger(__name__)
 
 
-def is_valid_application(deployment):
+def is_valid_application(deployment: V1Deployment):
     is_valid = 'yelp.com/paasta_service' in deployment.metadata.labels \
         and 'yelp.com/paasta_instance' in deployment.metadata.labels \
         and 'yelp.com/paasta_git_sha' in deployment.metadata.labels \
@@ -51,7 +52,7 @@ def list_namespaced_stateful_sets(
 def list_namespaced_applications(
     kube_client: KubeClient,
     namespace: str,
-    application_types,
+    application_types: Sequence[Any],
 ) -> Sequence[Application]:
     res = []
     for application_type in application_types:

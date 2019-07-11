@@ -9,6 +9,7 @@ from paasta_tools.kubernetes_tools import get_deployment_config
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.utils import SystemPaastaConfig
 
 
 class Application(ABC):
@@ -30,7 +31,7 @@ class Application(ABC):
         self.soa_config = None
         self.logging = logging
 
-    def load_local_config(self, soa_dir, system_paasta_config) -> "KubernetesDeploymentConfig":
+    def load_local_config(self, soa_dir: str, system_paasta_config: SystemPaastaConfig) -> "KubernetesDeploymentConfig":
         if not self.soa_config:
             self.soa_config = get_deployment_config(self.item, soa_dir, system_paasta_config.get_cluster())
         return self.soa_config

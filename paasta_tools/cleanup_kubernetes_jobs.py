@@ -40,6 +40,7 @@ from contextlib import contextmanager
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
+from paasta_tools.kubernetes.tools import Application
 from paasta_tools.kubernetes.tools import list_namespaced_applications
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import _log
@@ -60,7 +61,7 @@ class DontKillEverythingError(Exception):
 
 
 @contextmanager
-def notify(application, soa_dir):
+def notify(application: Application, soa_dir: str) -> None:
     service = application.kube_deployment.service
     instance = application.kube_deployment.instance
     cluster = load_system_paasta_config().get_cluster()
@@ -99,7 +100,7 @@ def notify(application, soa_dir):
         raise
 
 
-def cleanup_unused_apps(soa_dir, kill_threshold=0.5, force=False):
+def cleanup_unused_apps(soa_dir: str, kill_threshold: int = 0.5, force: bool = False) -> None:
     """Clean up old or invalid jobs/apps from kubernetes. Retrieves
     both a list of apps currently in kubernetes and a list of valid
     app ids in order to determine what to kill.
@@ -168,7 +169,7 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def main(argv=None):
+def main(argv=None) -> None:
     args = parse_args(argv)
     soa_dir = args.soa_dir
     kill_threshold = args.kill_threshold
