@@ -1493,12 +1493,12 @@ def get_deployment_config(
     kube_deployment: KubeDeployment,
     soa_dir: str,
     cluster: str,
-) -> "KubernetesDeploymentConfig":
+) -> Optional["KubernetesDeploymentConfig"]:
     try:
         return load_kubernetes_service_config_no_cache(
-            kube_deployment['service'],
-            kube_deployment['instance'],
-            cluster,
+            service=kube_deployment.service,
+            instance=kube_deployment.instance,
+            cluster=cluster,
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
@@ -1508,3 +1508,4 @@ def get_deployment_config(
         error_msg = "Could not read kubernetes configuration file for %s.%s in cluster %s" % \
                     (kube_deployment.service, kube_deployment.instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
+    return None

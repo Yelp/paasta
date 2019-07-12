@@ -36,6 +36,7 @@ import logging
 import sys
 import traceback
 from contextlib import contextmanager
+from typing import Generator
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
@@ -61,7 +62,7 @@ class DontKillEverythingError(Exception):
 
 
 @contextmanager
-def notify(application: Application, soa_dir: str) -> None:
+def notify(application: Application, soa_dir: str) -> Generator:
     service = application.kube_deployment.service
     instance = application.kube_deployment.instance
     cluster = load_system_paasta_config().get_cluster()

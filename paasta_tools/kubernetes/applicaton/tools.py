@@ -55,14 +55,22 @@ def list_namespaced_applications(
     namespace: str,
     application_types: Sequence[Any],
 ) -> Sequence[Application]:
-    res = []
+    """
+    List all applications in the namespace of the types from application_types.
+    Only applications with complete set of labels are included (See is_valid_application()).
+    :param kube_client:
+    :param namespace:
+    :param application_types:  types of applications
+    :return:
+    """
+    apps = []  # type: ignore
     for application_type in application_types:
         if application_type == V1Deployment:
-            res.extend(list_namespaced_deployments(kube_client, namespace))
+            apps.extend(list_namespaced_deployments(kube_client, namespace))
         elif application_type == V1StatefulSet:
-            res.extend(list_namespaced_stateful_sets(kube_client, namespace))
-    return res
+            apps.extend(list_namespaced_stateful_sets(kube_client, namespace))
+    return apps
 
 
-def get_app_name(service, instance):
+def get_app_name(service: str, instance: str):
     return sanitise_service_name(f'{service}-{instance}')
