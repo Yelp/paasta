@@ -5,9 +5,9 @@ from typing import Sequence
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.wrappers import Application
-from paasta_tools.kubernetes.wrappers import DeploymentWrapper
-from paasta_tools.kubernetes.wrappers import StatefulSetWrapper
+from paasta_tools.kubernetes.applicaton.controller_wrappers import Application
+from paasta_tools.kubernetes.applicaton.controller_wrappers import DeploymentWrapper
+from paasta_tools.kubernetes.applicaton.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import sanitise_service_name
 

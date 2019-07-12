@@ -40,8 +40,8 @@ from contextlib import contextmanager
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.tools import Application
-from paasta_tools.kubernetes.tools import list_namespaced_applications
+from paasta_tools.kubernetes.applicaton.tools import Application
+from paasta_tools.kubernetes.applicaton.tools import list_namespaced_applications
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
