@@ -10,6 +10,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import get_deployment_config
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -34,7 +35,7 @@ class Application(ABC):
             self,
             soa_dir: str,
             system_paasta_config: SystemPaastaConfig,
-    ) -> Optional["KubernetesDeploymentConfig"]:
+    ) -> Optional[KubernetesDeploymentConfig]:
         if not self.soa_config:
             self.soa_config = get_deployment_config(    # type: ignore
                 self.item,
