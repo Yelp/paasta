@@ -14,11 +14,9 @@
 # limitations under the License.
 import concurrent.futures
 import difflib
-import os
 import sys
 from collections import defaultdict
 from datetime import datetime
-from distutils.util import strtobool
 from itertools import groupby
 from typing import Callable
 from typing import DefaultDict
@@ -227,9 +225,9 @@ def paasta_status_on_api_endpoint(
     if not client:
         paasta_print('Cannot get a paasta-api client')
         exit(1)
-
+    swagger_verbose = True if verbose > 0 else False
     try:
-        status = client.service.status_instance(service=service, instance=instance).result()
+        status = client.service.status_instance(service=service, instance=instance, verbose=swagger_verbose).result()
     except HTTPError as exc:
         paasta_print(exc.response.text)
         return exc.status_code
@@ -249,43 +247,11 @@ def paasta_status_on_api_endpoint(
     elif status.flink is not None:
         return print_flink_status(cluster, service, instance, output, status.flink.get('status'), verbose)
     elif status.chronos is not None:
-        return print_chronos_status(service, instance, output, status.chronos)
+        return paasta_print(output)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
 
-
-def print_chronos_status(
-    service: str,
-    instance: str,
-    output: List[str],
-    chronos_status,
-) -> int:
-    # TODO (fzz|PAASTA-7077) account for verbose before pushing
-
-    disabled_state = PaastaColors.green(chronos_status.status.get("disabled_state").capitalize())
-    desired_state = PaastaColors.bold(chronos_status.desired_state.capitalize())
-    chronos_state = PaastaColors.grey(chronos_status.status.get("chronos_state"))
-    chronos_result = chronos_status.last_status.get("result")
-    chronos_time = chronos_status.last_status.get("time")
-    schedule = chronos_status.schedule.get("schedule")
-    time_zone = chronos_status.schedule.get("time_zone")
-    epsilon = chronos_status.schedule.get("epsilon")
-    command = chronos_status.command
-    mesos_state = PaastaColors.grey("Not running") if not chronos_status.status.get("mesos_state") else chronos_status.status.get("mesos_state")
-
-    output.append(f"    Desired:    {desired_state}")
-    output.append(f"    Job:     {service} {instance}")
-    output.append(f"      Status:   {disabled_state} ({chronos_state})   Last:     {chronos_result} ({chronos_time})")
-    output.append(f"      Schedule: {schedule} ({time_zone}) Epsilon: {epsilon}")
-    output.append(f"          Command:  {command}")
-    output.append(f"      Mesos:    {mesos_state}")
-    output.append(f"      Running Tasks:")
-    output.append(f"        Mesos Task ID  Host deployed to  Ram  CPU  Deployed at what localtime")
-    output.append(PaastaColors.grey("      Non-Running Tasks"))
-    output.append(PaastaColors.grey("        Mesos Task ID  Host deployed to  Deployed at what localtime  Status"))
-
-    return 0
 
 def print_adhoc_status(
     cluster: str,
@@ -871,7 +837,6 @@ def paasta_status(
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
-
     return_codes = [0]
     tasks = []
     clusters_services_instances = apply_args_filters(args)

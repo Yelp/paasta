@@ -305,7 +305,8 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
     )
 
 
-def status_chronos_jobs(client, jobs, job_config, verbose):
+# TODO fzz - fix docstring before unWIPing
+def status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose):
     """Returns a formatted string of the status of a list of chronos jobs
 
     :param jobs: list of dicts of chronos job info as returned by the chronos
@@ -314,13 +315,27 @@ def status_chronos_jobs(client, jobs, job_config, verbose):
         provided by chronos_tools.load_chronos_job_config().
     :param verbose: int verbosity level
     """
-    if jobs == []:
+    # Verbose mode shows previous versions.
+    matching_jobs = chronos_tools.lookup_chronos_jobs(
+        service=service,
+        instance=instance,
+        client=client,
+        include_disabled=True,
+    )
+    sorted_matching_jobs = chronos_tools.sort_jobs(matching_jobs)
+    job_config = chronos_tools.load_chronos_job_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+    )
+    if sorted_matching_jobs == []:
         return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
     else:
         output = []
         desired_state = job_config.get_desired_state_human()
         output.append("Desired:    %s" % desired_state)
-        for job in jobs:
+        for job in sorted_matching_jobs:
             running_task_count = len(select_tasks_by_id(
                 a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
                 job["name"],
@@ -391,21 +406,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, clien
             emergency=True,
         )
     elif command == "status":
-        # Verbose mode shows previous versions.
-        matching_jobs = chronos_tools.lookup_chronos_jobs(
-            service=service,
-            instance=instance,
-            client=client,
-            include_disabled=True,
-        )
-        sorted_matching_jobs = chronos_tools.sort_jobs(matching_jobs)
-        job_config = chronos_tools.load_chronos_job_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-        )
-        paasta_print(status_chronos_jobs(client, sorted_matching_jobs, job_config, verbose))
+        paasta_print(status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose))
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
