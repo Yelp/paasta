@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015-2016 Yelp Inc.
+# Copyright 2019-2020 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./cleanup_marathon_jobs.py [options]
+Usage: ./cleanup_kubernetes_jobs.py [options]
 
-Clean up marathon apps that aren't supposed to run on this cluster by deleting them.
+Clean up kubernetes apps that aren't supposed to run on this cluster by deleting them.
 
-Gets the current app list from marathon, and then a 'valid_app_list'
+Gets the current app list from kubernetes, and then a 'valid_app_list'
 via utils.get_services_for_cluster
 
-If an app in the marathon app list isn't in the valid_app_list, it's
+If an app in the kubernetes app list isn't in the valid_app_list, it's
 deleted.
 
 Command line options:
@@ -53,7 +53,7 @@ from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger(__name__)
-application_types = [V1StatefulSet, V1Deployment]
+APPLICATION_TYPES = [V1StatefulSet, V1Deployment]
 
 
 class DontKillEverythingError(Exception):
@@ -100,7 +100,7 @@ def notify(application: Application, soa_dir: str) -> None:
         raise
 
 
-def cleanup_unused_apps(soa_dir: str, kill_threshold: int = 0.5, force: bool = False) -> None:
+def cleanup_unused_apps(soa_dir: str, kill_threshold: float = 0.5, force: bool = False) -> None:
     """Clean up old or invalid jobs/apps from kubernetes. Retrieves
     both a list of apps currently in kubernetes and a list of valid
     app ids in order to determine what to kill.
@@ -113,7 +113,7 @@ def cleanup_unused_apps(soa_dir: str, kill_threshold: int = 0.5, force: bool = F
     kube_client = KubeClient()
 
     log.info("Loading running Kubernetes apps")
-    applications = list_namespaced_applications(kube_client, 'paasta', application_types)
+    applications = list_namespaced_applications(kube_client, 'paasta', APPLICATION_TYPES)
 
     log.info("Retrieving valid apps from yelpsoa_configs")
     valid_services = get_services_for_cluster(instance_type='kubernetes', soa_dir=soa_dir)
@@ -140,11 +140,11 @@ def cleanup_unused_apps(soa_dir: str, kill_threshold: int = 0.5, force: bool = F
 
     for applicaton in applications_to_kill:
         with notify(applicaton, soa_dir):
-            applicaton.deep_delete()
+            applicaton.deep_delete(kube_client)
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
+    parser = argparse.ArgumentParser(description='Cleans up stale kubernetes jobs.')
     parser.add_argument(
         '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,

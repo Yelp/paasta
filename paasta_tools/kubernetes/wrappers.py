@@ -16,7 +16,6 @@ class Application(ABC):
     def __init__(
             self,
             item: KubeDeployment,
-            kube_client: KubeClient,
             logging=logging.getLogger(__name__),
     ) -> None:
         self.kube_deployment = KubeDeployment(
@@ -27,7 +26,6 @@ class Application(ABC):
             replicas=item.spec.replicas,
         )
         self.item = item
-        self.kube_client = kube_client
         self.soa_config = None
         self.logging = logging
 
@@ -40,13 +38,13 @@ class Application(ABC):
         return self.kube_deployment.__str__()
 
     @abstractmethod
-    def deep_delete(self) -> None:
+    def deep_delete(self, kube_client: KubeClient) -> None:
         pass
 
-    def delete_pod_disruption_budget(self) -> None:
+    def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
-            self.kube_client.policy.delete_namespaced_pod_disruption_budget(
-                name=f'{self.kube_deployment.service}-{self.kube_deployment.instance}',
+            kube_client.policy.delete_namespaced_pod_disruption_budget(
+                name=self.item.metadata.name,
                 namespace=self.item.metadata.namespace,
                 body=V1DeleteOptions(),
             )
@@ -68,12 +66,12 @@ class Application(ABC):
 
 
 class DeploymentWrapper(Application):
-    def deep_delete(self) -> None:
+    def deep_delete(self, kube_client: KubeClient) -> None:
         delete_options = V1DeleteOptions(
             propagation_policy='Foreground',
         )
         try:
-            self.kube_client.deployments.delete_namespaced_deployment(
+            kube_client.deployments.delete_namespaced_deployment(
                 self.item.metadata.name, self.item.metadata.namespace, delete_options,
             )
         except ApiException as e:
@@ -91,16 +89,16 @@ class DeploymentWrapper(Application):
             self.logging.info('deleted deploy/{} from namespace/{}'.format(
                 self.item.metadata.name, self.item.metadata.namespace,
             ))
-        self.delete_pod_disruption_budget()
+        self.delete_pod_disruption_budget(kube_client)
 
 
 class StatefulSetWrapper(Application):
-    def deep_delete(self) -> None:
+    def deep_delete(self, kube_client: KubeClient) -> None:
         delete_options = V1DeleteOptions(
             propagation_policy='Foreground',
         )
         try:
-            self.kube_client.deployments.delete_namespaced_stateful_set(
+            kube_client.deployments.delete_namespaced_stateful_set(
                 self.item.metadata.name, self.item.metadata.namespace, delete_options,
             )
         except ApiException as e:
@@ -118,4 +116,4 @@ class StatefulSetWrapper(Application):
             self.logging.info('deleted statefulset/{} from namespace/{}'.format(
                 self.item.metadata.name, self.item.metadata.namespace,
             ))
-        self.delete_pod_disruption_budget()
+        self.delete_pod_disruption_budget(kube_client)
