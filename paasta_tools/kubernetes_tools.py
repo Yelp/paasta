@@ -347,7 +347,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_volume_name(self, volume_name: str) -> str:
         """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip('/')
-        sanitised = volume_name.replace('/', 'slash-')
+        sanitised = volume_name.replace('/', 'slash-').replace('.', 'dot-')
         return sanitised.replace('_', '--')
 
     def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:

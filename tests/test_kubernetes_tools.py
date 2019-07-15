@@ -255,8 +255,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             )
 
     def test_get_sanitised_volume_name(self):
-        self.deployment.get_sanitised_volume_name('/var/tmp') == 'slash-varslash-tmp'
-        self.deployment.get_sanitised_volume_name('/var/tmp/') == 'slash-varslash-tmp'
+        assert self.deployment.get_sanitised_volume_name('/var/tmp') == 'slash-varslash-tmp'
+        assert self.deployment.get_sanitised_volume_name('/var/tmp/') == 'slash-varslash-tmp'
+        assert self.deployment.get_sanitised_volume_name('/var/tmp_file.json') == 'slash-varslash-tmp--filedot-json'
 
     def test_get_sidecar_containers(self):
         with mock.patch(

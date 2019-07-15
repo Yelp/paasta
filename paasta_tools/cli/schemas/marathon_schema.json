@@ -13,34 +13,57 @@
             "type": "object",
             "additionalProperties": false,
             "minProperties": 1,
-            "allOf":[
+            "allOf": [
                 {
                     "oneOf": [
                         {
                             "properties": {
-                                "healthcheck_mode": {"enum": ["tcp", "http", "https"]}
-                            }
-                        },
-                        {
-                            "properties": {
-                                "healthcheck_mode": {"enum": ["cmd"]},
-                                "healthcheck_cmd": {"type": "string"}
-                            },
-                            "required": ["healthcheck_cmd"]
-                        }
-                    ]
-                }, {
-                    "oneOf": [
-                        {
-                            "properties": {
-                                "drain_method": {
-                                    "enum": [ "noop", "hacheck", "test" ]
+                                "healthcheck_mode": {
+                                    "enum": [
+                                        "tcp",
+                                        "http",
+                                        "https"
+                                    ]
                                 }
                             }
                         },
                         {
                             "properties": {
-                                "drain_method": {"enum": ["http"]},
+                                "healthcheck_mode": {
+                                    "enum": [
+                                        "cmd"
+                                    ]
+                                },
+                                "healthcheck_cmd": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "healthcheck_cmd"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [
+                                        "noop",
+                                        "hacheck",
+                                        "test"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [
+                                        "http"
+                                    ]
+                                },
                                 "drain_method_params": {
                                     "type": "object",
                                     "properties": {
@@ -57,10 +80,17 @@
                                             "type": "object"
                                         }
                                     },
-                                    "required": ["drain", "stop_draining", "is_draining", "is_safe_to_kill"]
+                                    "required": [
+                                        "drain",
+                                        "stop_draining",
+                                        "is_draining",
+                                        "is_safe_to_kill"
+                                    ]
                                 }
                             },
-                            "required": ["drain_method_params"]
+                            "required": [
+                                "drain_method_params"
+                            ]
                         }
                     ]
                 }
@@ -162,7 +192,12 @@
                     "type": "object"
                 },
                 "drain_method": {
-                    "enum": [ "noop", "hacheck", "http", "test" ],
+                    "enum": [
+                        "noop",
+                        "hacheck",
+                        "http",
+                        "test"
+                    ],
                     "default": "noop"
                 },
                 "drain_method_params": {
@@ -197,7 +232,9 @@
                 "env": {
                     "type": "object",
                     "patternProperties": {
-                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": { "type": "string" }
+                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": {
+                            "type": "string"
+                        }
                     },
                     "additionalProperties": false
                 },
@@ -236,7 +273,12 @@
                     "type": "array"
                 },
                 "healthcheck_mode": {
-                    "enum": [ "cmd", "tcp", "http", "https" ]
+                    "enum": [
+                        "cmd",
+                        "tcp",
+                        "http",
+                        "https"
+                    ]
                 },
                 "healthcheck_cmd": {
                     "type": "string",
@@ -285,7 +327,9 @@
                                 "type": "number"
                             }
                         },
-                        "required": ["soft"],
+                        "required": [
+                            "soft"
+                        ],
                         "additionalProperties": false
                     }
                 },
@@ -318,13 +362,18 @@
                 },
                 "extra_docker_args": {
                     "type": "object",
-                    "additionalProperties": { "type": "string" }
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "security": {
                     "type": "object",
                     "properties": {
                         "outbound_firewall": {
-                            "enum": ["block", "monitor"]
+                            "enum": [
+                                "block",
+                                "monitor"
+                            ]
                         }
                     }
                 }

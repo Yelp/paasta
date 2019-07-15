@@ -149,10 +149,13 @@ class CrashyDrainDrainMethod(NoopDrainMethod):
     async def drain(self, task: DrainTask) -> None:
         raise Exception("Intentionally crashing for testing purposes")
 
-
-@register_drain_method('crashy_is_safe_to_kill')
-class CrashySafeToKillDrainMethod(NoopDrainMethod):
     async def is_safe_to_kill(self, task: DrainTask) -> bool:
+        raise Exception("Intentionally crashing for testing purposes")
+
+    async def stop_draining(self, task: DrainTask) -> None:
+        raise Exception("Intentionally crashing for testing purposes")
+
+    async def is_draining(self, task: DrainTask) -> bool:
         raise Exception("Intentionally crashing for testing purposes")
 
 

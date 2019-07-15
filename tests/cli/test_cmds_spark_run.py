@@ -18,6 +18,8 @@ from ruamel.yaml import YAML
 
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import create_spark_config_str
+from paasta_tools.cli.cmds.spark_run import DEFAULT_S3_DEV_LOG_DIR
+from paasta_tools.cli.cmds.spark_run import DEFAULT_S3_PROD_LOG_DIR
 from paasta_tools.cli.cmds.spark_run import DEFAULT_SERVICE
 from paasta_tools.cli.cmds.spark_run import emit_resource_requirements
 from paasta_tools.cli.cmds.spark_run import get_aws_credentials
@@ -64,47 +66,96 @@ def test_get_docker_run_cmd(
     ]
 
 
-@mock.patch('paasta_tools.cli.cmds.spark_run.find_mesos_leader', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.spark_run._load_mesos_secret', autospec=True)
-def test_get_spark_config(
-    mock_load_mesos_secret,
-    mock_find_mesos_leader,
-):
-    mock_find_mesos_leader.return_value = 'fake_leader'
-    args = mock.MagicMock()
-    args.cluster = 'fake_cluster'
-    args.spark_args = 'spark.cores.max=10'
+class TestGetSparkConig:
 
-    spark_conf = get_spark_config(
-        args=args,
-        spark_app_name='fake_name',
-        spark_ui_port=123,
-        docker_img='fake-registry/fake-service',
-        system_paasta_config=SystemPaastaConfig(
-            {"cluster_fqdn_format": "paasta-{cluster:s}.something"},
-            'fake_dir',
-        ),
-        volumes=['v1:v1:rw', 'v2:v2:rw'],
+    @pytest.fixture(autouse=True)
+    def mock_find_mesos_leader(self):
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.find_mesos_leader', autospec=True,
+        ) as m:
+            m.return_value = 'fake_leader'
+            yield m
+
+    @pytest.fixture(autouse=True)
+    def mock_load_mesos_secret(self):
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run._load_mesos_secret', autospec=True,
+        ) as m:
+            yield m
+
+    def get_spark_config(self, paasta_args=None):
+        paasta_args = paasta_args or {}
+        args = mock.MagicMock()
+        for k, v in paasta_args.items():
+            setattr(args, k, v)
+        if 'cluster' not in paasta_args:
+            args.cluster = 'fake_cluster'
+        return get_spark_config(
+            args=args,
+            spark_app_name='fake_name',
+            spark_ui_port=123,
+            docker_img='fake-registry/fake-service',
+            system_paasta_config=SystemPaastaConfig(
+                {'cluster_fqdn_format': 'paasta-{cluster:s}.something'},
+                'fake_dir',
+            ),
+            volumes=['v1:v1:rw', 'v2:v2:rw'],
+        )
+
+    def test_find_master(self):
+        spark_conf = self.get_spark_config()
+        assert spark_conf['spark.master'] == 'mesos://fake_leader:5050'
+        assert 'spark.master=mesos://fake_leader:5050' in create_spark_config_str(spark_conf, is_mrjob=False)
+
+    @pytest.mark.parametrize(
+        'spark_args,expected_partitions', [
+            ('spark.cores.max=10', 20),
+            ('spark.cores.max=10 spark.sql.shuffle.partitions=14', 14),
+        ],
     )
+    def test_default_shuffle_partitions(self, spark_args, expected_partitions):
+        spark_conf = self.get_spark_config({'spark_args': spark_args})
+        assert int(spark_conf['spark.sql.shuffle.partitions']) == expected_partitions
 
-    assert spark_conf['spark.master'] == 'mesos://fake_leader:5050'
-    assert 'spark.master=mesos://fake_leader:5050' in create_spark_config_str(spark_conf, is_mrjob=False)
-    assert int(spark_conf['spark.sql.shuffle.partitions']) == 20
-
-    args.spark_args = 'spark.core.max=10 spark.sql.shuffle.partitions=14'
-    spark_conf = get_spark_config(
-        args=args,
-        spark_app_name='fake_name',
-        spark_ui_port=123,
-        docker_img='fake-registry/fake-service',
-        system_paasta_config=SystemPaastaConfig(
-            {"cluster_fqdn_format": "paasta-{cluster:s}.something"},
-            'fake_dir',
-        ),
-        volumes=['v1:v1:rw', 'v2:v2:rw'],
+    @pytest.mark.parametrize(
+        'cluster,spark_args,expected_spark_config', [
+            # do not override if user disabled the eventlog
+            (
+                None, 'spark.eventLog.enabled=false',
+                {'spark.eventLog.enabled': 'false'},
+            ),
+            # do not override if user manually configure logDir
+            (
+                'prod', 'spark.eventLog.dir=s3a://fake-location', {
+                    'spark.eventLog.enabled': 'true',
+                    'spark.eventLog.dir': 's3a://fake-location',
+                },
+            ),
+            # use default prod log location if run in prod
+            (
+                'pnw-prod', None, {
+                    'spark.eventLog.enabled': 'true',
+                    'spark.eventLog.dir': DEFAULT_S3_PROD_LOG_DIR,
+                },
+            ),
+            # use dev log location if not run in prod
+            (
+                'test', None, {
+                    'spark.eventLog.enabled': 'true',
+                    'spark.eventLog.dir': DEFAULT_S3_DEV_LOG_DIR,
+                },
+            ),
+        ],
     )
-
-    assert int(spark_conf['spark.sql.shuffle.partitions']) == 14
+    def test_event_logging(self, cluster, spark_args, expected_spark_config):
+        args = {}
+        if cluster is not None:
+            args['cluster'] = cluster
+        if spark_args is not None:
+            args['spark_args'] = spark_args
+        spark_conf = self.get_spark_config(args)
+        for key, expected_value in expected_spark_config.items():
+            assert spark_conf[key] == expected_value
 
 
 @mock.patch('paasta_tools.cli.cmds.spark_run.get_aws_credentials', autospec=True)
