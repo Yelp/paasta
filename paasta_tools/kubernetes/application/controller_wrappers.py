@@ -45,7 +45,11 @@ class Application(ABC):
         return self.soa_config
 
     def __str__(self):
-        return self.kube_deployment.__str__()
+        service = self.kube_deployment.service
+        instance = self.kube_deployment.instance
+        git_sha = self.kube_deployment.git_sha
+        config_sha = self.kube_deployment.config_sha
+        return f'{service}-{instance}-{git_sha}-{config_sha}'
 
     @abstractmethod
     def deep_delete(self, kube_client: KubeClient) -> None:

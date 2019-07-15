@@ -41,8 +41,8 @@ from typing import Generator
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.applicaton.tools import Application
-from paasta_tools.kubernetes.applicaton.tools import list_namespaced_applications
+from paasta_tools.kubernetes.application.tools import Application
+from paasta_tools.kubernetes.application.tools import list_namespaced_applications
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -62,20 +62,12 @@ class DontKillEverythingError(Exception):
 
 
 @contextmanager
-def notify(application: Application, soa_dir: str) -> Generator:
+def alert_state_change(application: Application, soa_dir: str) -> Generator:
     service = application.kube_deployment.service
     instance = application.kube_deployment.instance
     cluster = load_system_paasta_config().get_cluster()
     try:
         yield
-        # send_event(
-        #     service=service,
-        #     check_name='setup_kubernetes_job.%s' % application.item.metadata.name,
-        #     soa_dir=soa_dir,
-        #     status=pysensu_yelp.Status.OK,
-        #     overrides={},
-        #     output="This instance was removed and is no longer running",
-        # )
         log_line = "Deleted stale Kubernetes apps that looks lost: %s" % application.item.metadata.name
         _log(
             service=service,
@@ -117,7 +109,7 @@ def cleanup_unused_apps(soa_dir: str, kill_threshold: float = 0.5, force: bool =
     applications = list_namespaced_applications(kube_client, 'paasta', APPLICATION_TYPES)
 
     log.info("Retrieving valid apps from yelpsoa_configs")
-    valid_services = get_services_for_cluster(instance_type='kubernetes', soa_dir=soa_dir)
+    valid_services = set(get_services_for_cluster(instance_type='kubernetes', soa_dir=soa_dir))
 
     log.info("Determining apps to be killed")
     applications_to_kill = [
@@ -140,7 +132,7 @@ def cleanup_unused_apps(soa_dir: str, kill_threshold: float = 0.5, force: bool =
             raise DontKillEverythingError
 
     for applicaton in applications_to_kill:
-        with notify(applicaton, soa_dir):
+        with alert_state_change(applicaton, soa_dir):
             applicaton.deep_delete(kube_client)
 
 
