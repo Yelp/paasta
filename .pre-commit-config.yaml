@@ -15,6 +15,12 @@ repos:
     -   id: requirements-txt-fixer
     -   id: fix-encoding-pragma
         args: [--remove]
+    -   id: pretty-format-json
+        args: [
+          '--autofix',
+          '--indent', '4',
+          '--no-sort-keys',
+        ]
 -   repo: https://gitlab.com/pycqa/flake8
     rev: 3.7.7
     hooks:

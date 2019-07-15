@@ -341,21 +341,10 @@ class TronJobConfig:
 
     def get_actions(self):
         actions = self.config_dict.get('actions')
-        if isinstance(actions, list):
-            actions = [
-                self._get_action_config(
-                    action_dict.get('name'),
-                    action_dict,
-                )
-                for action_dict in actions
-            ]
-        else:
-            actions = [
-                self._get_action_config(name, action_dict)
-                for name, action_dict in actions.items()
-            ]
-
-        return actions
+        return [
+            self._get_action_config(name, action_dict)
+            for name, action_dict in actions.items()
+        ]
 
     def get_cleanup_action(self):
         action_dict = self.config_dict.get('cleanup_action')

@@ -62,7 +62,9 @@
                     "default": 1024
                 },
                 "bounce_method": {
-                    "enum": [ "graceful" ],
+                    "enum": [
+                        "graceful"
+                    ],
                     "default": "graceful"
                 },
                 "monitoring": {
@@ -80,7 +82,9 @@
                 "env": {
                     "type": "object",
                     "patternProperties": {
-                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": { "type": "string" }
+                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": {
+                            "type": "string"
+                        }
                     },
                     "additionalProperties": false
                 },
@@ -125,7 +129,9 @@
                 },
                 "parents": {
                     "oneOf": [
-                        { "$ref": "#/definitions/jobName" },
+                        {
+                            "$ref": "#/definitions/jobName"
+                        },
                         {
                             "type": "array",
                             "items": {
@@ -151,20 +157,33 @@
                 },
                 "extra_docker_args": {
                     "type": "object",
-                    "additionalProperties": { "type": "string" }
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
                 "security": {
                     "type": "object",
                     "properties": {
                         "outbound_firewall": {
-                            "enum": ["block", "monitor"]
+                            "enum": [
+                                "block",
+                                "monitor"
+                            ]
                         }
                     }
                 }
             },
             "oneOf": [
-                {"required": ["schedule"]},
-                {"required": ["parents"]}
+                {
+                    "required": [
+                        "schedule"
+                    ]
+                },
+                {
+                    "required": [
+                        "parents"
+                    ]
+                }
             ]
         }
     },

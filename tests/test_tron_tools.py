@@ -259,22 +259,16 @@ class TestTronJobConfig:
 
     @mock.patch('paasta_tools.tron_tools.TronJobConfig._get_action_config', autospec=True)
     @mock.patch('paasta_tools.tron_tools.format_tron_action_dict', autospec=True)
-    @pytest.mark.parametrize('action_list', [True, False])
     def test_format_tron_job_dict(
         self,
         mock_format_action,
         mock_get_action_config,
-        action_list,
     ):
         action_name = 'normal'
         action_dict = {
             'command': 'echo first',
         }
-        if action_list:
-            action_dict['name'] = 'normal'
-            actions = [action_dict]
-        else:
-            actions = {action_name: action_dict}
+        actions = {action_name: action_dict}
 
         job_dict = {
             'node': 'batch_server',

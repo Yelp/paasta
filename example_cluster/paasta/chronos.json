@@ -1,9 +1,9 @@
 {
-  "chronos_config": {
-    "user": "admin",
-    "password": "secret3",
-    "url": [
-      "http://chronos:8081"
-    ]
-  }
+    "chronos_config": {
+        "user": "admin",
+        "password": "secret3",
+        "url": [
+            "http://chronos:8081"
+        ]
+    }
 }
