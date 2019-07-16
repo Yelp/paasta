@@ -89,17 +89,6 @@ def deploy_has_security_check(service, soa_dir):
         return False
 
 
-def deploy_has_performance_check(service, soa_dir):
-    pipeline = get_pipeline_config(service=service, soa_dir=soa_dir)
-    steps = [step['step'] for step in pipeline]
-    if 'performance-check' in steps:
-        paasta_print(PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND)
-        return True
-    else:
-        paasta_print(PaastaCheckMessages.DEPLOY_PERFORMANCE_MISSING)
-        return False
-
-
 def docker_check():
     """Check whether Dockerfile exists in service directory, and is valid.
     Prints suitable message depending on outcome"""
@@ -308,7 +297,6 @@ def paasta_check(args):
     service_dir_check(service, soa_dir)
     deploy_check(service_path)
     deploy_has_security_check(service, soa_dir)
-    deploy_has_performance_check(service, soa_dir)
     git_repo_check(service, soa_dir)
     docker_check()
     makefile_check()

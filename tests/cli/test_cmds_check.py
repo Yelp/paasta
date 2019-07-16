@@ -18,7 +18,6 @@ from mock import MagicMock
 from mock import patch
 
 from paasta_tools.cli.cmds.check import deploy_check
-from paasta_tools.cli.cmds.check import deploy_has_performance_check
 from paasta_tools.cli.cmds.check import deploy_has_security_check
 from paasta_tools.cli.cmds.check import deployments_check
 from paasta_tools.cli.cmds.check import docker_check
@@ -40,7 +39,6 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 @patch('paasta_tools.cli.cmds.check.service_dir_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
 @patch('paasta_tools.cli.cmds.check.figure_out_service_name', autospec=True)
-@patch('paasta_tools.cli.cmds.check.deploy_has_performance_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.deploy_has_security_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.deploy_check', autospec=True)
 @patch('paasta_tools.cli.cmds.check.docker_check', autospec=True)
@@ -58,7 +56,6 @@ def test_check_paasta_check_calls_everything(
         mock_docker_check,
         mock_deploy_check,
         mock_deploy_security_check,
-        mock_deploy_performance_check,
         mock_figure_out_service_name,
         mock_validate_service_name,
         mock_service_dir_check,
@@ -76,7 +73,6 @@ def test_check_paasta_check_calls_everything(
     assert mock_service_dir_check.called
     assert mock_deploy_check.called
     assert mock_deploy_security_check.called
-    assert mock_deploy_performance_check.called
     assert mock_docker_check.called
     assert mock_makefile_check.called
     assert mock_sensu_check.called
@@ -397,31 +393,6 @@ def test_deploy_has_security_check_true(mock_pipeline_config, capfd):
         {'step': 'hab.main', },
     ]
     actual = deploy_has_security_check(service='fake_service', soa_dir='/fake/path')
-    assert actual is True
-
-
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-def test_deploy_has_performance_check_false(mock_pipeline_config, capfd):
-    mock_pipeline_config.return_value = [
-        {'step': 'itest', },
-        {'step': 'push-to-registry', },
-        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'step': 'hab.main', },
-    ]
-    actual = deploy_has_performance_check(service='fake_service', soa_dir='/fake/path')
-    assert actual is False
-
-
-@patch('paasta_tools.cli.cmds.check.get_pipeline_config', autospec=True)
-def test_deploy_has_performance_check_true(mock_pipeline_config, capfd):
-    mock_pipeline_config.return_value = [
-        {'step': 'itest', },
-        {'step': 'performance-check', },
-        {'step': 'push-to-registry', },
-        {'step': 'hab.canary', 'trigger_next_step_manually': True, },
-        {'step': 'hab.main', },
-    ]
-    actual = deploy_has_performance_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
 
 
