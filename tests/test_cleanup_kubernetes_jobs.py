@@ -21,7 +21,7 @@ from pytest import raises
 from paasta_tools.cleanup_kubernetes_jobs import cleanup_unused_apps
 from paasta_tools.cleanup_kubernetes_jobs import DontKillEverythingError
 from paasta_tools.cleanup_kubernetes_jobs import main
-from paasta_tools.kubernetes_test_lib.utils import MockKubeClient
+from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 
 
 @fixture
@@ -73,12 +73,7 @@ def invalid_app():
     return invalid_app
 
 
-@fixture
-def mock_kube_client():
-    return MockKubeClient()
-
-
-def test_main(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client):
+def test_main(fake_deployment, fake_stateful_set, invalid_app):
     soa_dir = 'paasta_maaaachine'
     with mock.patch('paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps', autospec=True) as cleanup_patch:
         main(('--soa-dir', soa_dir))
@@ -87,10 +82,8 @@ def test_main(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client)
         )
 
 
-def test_cleanup_unused_apps(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client):
-    namespace = 'paasta'
-    mock_kube_client.deployments.create_namespaced_deployment(namespace, fake_deployment)
-    mock_kube_client.deployments.create_namespaced_stateful_set(namespace, fake_stateful_set)
+def test_list_apps(fake_deployment, fake_stateful_set, invalid_app):
+    mock_kube_client = mock.MagicMock()
     with mock.patch(
         'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
         return_value=mock_kube_client,
@@ -106,17 +99,43 @@ def test_cleanup_unused_apps(fake_deployment, fake_stateful_set, invalid_app, mo
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps('soa_dir', kill_threshold=1, force=False)
-        assert len(mock_kube_client.deployments.list_namespaced_deployment(namespace).items) == 0
-        assert len(mock_kube_client.deployments.list_namespaced_stateful_set(namespace).items) == 0
+        assert mock_kube_client.deployments.list_namespaced_deployment.call_count == 1
+        assert mock_kube_client.deployments.list_namespaced_stateful_set.call_count == 1
 
 
-def test_cleanup_unused_apps_does_not_delete(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client):
-    namespace = 'paasta'
-    mock_kube_client.deployments.create_namespaced_deployment(namespace, fake_deployment)
-    mock_kube_client.deployments.create_namespaced_stateful_set(namespace, fake_stateful_set)
+def test_cleanup_unused_apps(fake_deployment, fake_stateful_set, invalid_app):
+    mock_kube_client = mock.MagicMock()
     with mock.patch(
         'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
         return_value=mock_kube_client,
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.list_namespaced_applications',
+        return_value=[DeploymentWrapper(fake_deployment)],
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster',
+        return_value={},
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.alert_state_change',
+        autospec=True,
+    ) as mock_alert_state_change:
+        mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
+        mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
+        cleanup_unused_apps('soa_dir', kill_threshold=1, force=False)
+        assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 1
+
+
+def test_cleanup_unused_apps_does_not_delete(fake_deployment, fake_stateful_set, invalid_app):
+    mock_kube_client = mock.MagicMock()
+    with mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
+        return_value=mock_kube_client,
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.list_namespaced_applications',
+        return_value=[DeploymentWrapper(fake_deployment)],
         autospec=True,
     ), mock.patch(
         'paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster',
@@ -129,16 +148,18 @@ def test_cleanup_unused_apps_does_not_delete(fake_deployment, fake_stateful_set,
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         cleanup_unused_apps('soa_dir', kill_threshold=1, force=False)
-        assert fake_deployment in mock_kube_client.deployments.list_namespaced_deployment(namespace).items
-        assert fake_stateful_set in mock_kube_client.deployments.list_namespaced_stateful_set(namespace).items
+        assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 0
 
 
-def test_cleanup_unused_apps_dont_kill_everything(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client):
-    namespace = 'paasta'
-    mock_kube_client.deployments.create_namespaced_deployment(namespace, fake_deployment)
+def test_cleanup_unused_apps_dont_kill_everything(fake_deployment, fake_stateful_set, invalid_app):
+    mock_kube_client = mock.MagicMock()
     with mock.patch(
         'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
         return_value=mock_kube_client,
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.list_namespaced_applications',
+        return_value=[DeploymentWrapper(fake_deployment)],
         autospec=True,
     ), mock.patch(
         'paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster',
@@ -152,11 +173,35 @@ def test_cleanup_unused_apps_dont_kill_everything(fake_deployment, fake_stateful
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
         with raises(DontKillEverythingError):
             cleanup_unused_apps('soa_dir', kill_threshold=0, force=False)
+        assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 0
 
 
-def test_cleanup_unused_apps_force(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client):
-    namespace = 'paasta'
-    mock_kube_client.deployments.create_namespaced_deployment(namespace, fake_deployment)
+def test_cleanup_unused_apps_force(fake_deployment, fake_stateful_set, invalid_app):
+    mock_kube_client = mock.MagicMock()
+    with mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
+        return_value=mock_kube_client,
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.list_namespaced_applications',
+        return_value=[DeploymentWrapper(fake_deployment)],
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster',
+        return_value={},
+        autospec=True,
+    ), mock.patch(
+        'paasta_tools.cleanup_kubernetes_jobs.alert_state_change',
+        autospec=True,
+    ) as mock_alert_state_change:
+        mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
+        mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
+        cleanup_unused_apps('soa_dir', kill_threshold=0, force=True)
+        assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 1
+
+
+def test_cleanup_unused_apps_ignore_invalid_apps(fake_deployment, fake_stateful_set, invalid_app):
+    mock_kube_client = mock.MagicMock()
     with mock.patch(
         'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
         return_value=mock_kube_client,
@@ -171,26 +216,6 @@ def test_cleanup_unused_apps_force(fake_deployment, fake_stateful_set, invalid_a
     ) as mock_alert_state_change:
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
+        mock_kube_client.deployments.list_namespaced_deployment.return_value = mock.MagicMock(items=[invalid_app])
         cleanup_unused_apps('soa_dir', kill_threshold=0, force=True)
-        assert len(mock_kube_client.deployments.list_namespaced_deployment(namespace).items) == 0
-
-
-def test_cleanup_unused_apps_ignore_invalid_apps(fake_deployment, fake_stateful_set, invalid_app, mock_kube_client):
-    namespace = 'paasta'
-    mock_kube_client.deployments.create_namespaced_deployment(namespace, invalid_app)
-    with mock.patch(
-        'paasta_tools.cleanup_kubernetes_jobs.KubeClient',
-        return_value=mock_kube_client,
-        autospec=True,
-    ), mock.patch(
-        'paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster',
-        return_value={},
-        autospec=True,
-    ), mock.patch(
-        'paasta_tools.cleanup_kubernetes_jobs.alert_state_change',
-        autospec=True,
-    ) as mock_alert_state_change:
-        mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
-        mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
-        cleanup_unused_apps('soa_dir', kill_threshold=0, force=True)
-        assert invalid_app in mock_kube_client.deployments.list_namespaced_deployment(namespace).items
+        assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 0
