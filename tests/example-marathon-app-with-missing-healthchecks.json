@@ -1,0 +1,450 @@
+{
+    "app": {
+        "id": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+        "cmd": null,
+        "args": null,
+        "user": null,
+        "env": {
+            "PAASTA_INSTANCE_TYPE": "marathon",
+            "PAASTA_CLUSTER": "nova-prod",
+            "PAASTA_INSTANCE": "main"
+        },
+        "instances": 8,
+        "cpus": 1,
+        "mem": 3000,
+        "disk": 1024,
+        "gpus": 0,
+        "executor": "",
+        "constraints": [
+            [
+                "superregion",
+                "GROUP_BY",
+                "1"
+            ],
+            [
+                "pool",
+                "LIKE",
+                "default"
+            ]
+        ],
+        "uris": [
+            "file:///root/.dockercfg"
+        ],
+        "fetch": [
+            {
+                "uri": "file:///root/.dockercfg",
+                "extract": false,
+                "executable": false,
+                "cache": false
+            }
+        ],
+        "storeUrls": [],
+        "backoffSeconds": 1,
+        "backoffFactor": 2,
+        "maxLaunchDelaySeconds": 300,
+        "container": {
+            "type": "DOCKER",
+            "volumes": [],
+            "docker": {
+                "image": "dockercd067a7",
+                "network": "BRIDGE",
+                "portMappings": [
+                    {
+                        "containerPort": 8888,
+                        "hostPort": 0,
+                        "servicePort": 10014,
+                        "protocol": "tcp",
+                        "labels": {}
+                    }
+                ],
+                "privileged": false,
+                "parameters": [
+                    {
+                        "key": "memory-swap",
+                        "value": "3064m"
+                    },
+                    {
+                        "key": "cpu-period",
+                        "value": "100000"
+                    },
+                    {
+                        "key": "cpu-quota",
+                        "value": "200000"
+                    },
+                    {
+                        "key": "label",
+                        "value": "paasta_service=oauth_authorization"
+                    },
+                    {
+                        "key": "label",
+                        "value": "paasta_instance=main"
+                    },
+                    {
+                        "key": "init",
+                        "value": "true"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "SETPCAP"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "MKNOD"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "AUDIT_WRITE"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "CHOWN"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "NET_RAW"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "DAC_OVERRIDE"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "FOWNER"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "FSETID"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "KILL"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "SETGID"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "SETUID"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "NET_BIND_SERVICE"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "SYS_CHROOT"
+                    },
+                    {
+                        "key": "cap-drop",
+                        "value": "SETFCAP"
+                    }
+                ],
+                "forcePullImage": false
+            }
+        },
+        "healthChecks": [
+            {
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 30,
+                "portIndex": 0,
+                "path": "/status",
+                "protocol": "MESOS_HTTP",
+                "delaySeconds": 15
+            }
+        ],
+        "readinessChecks": [],
+        "dependencies": [],
+        "upgradeStrategy": {
+            "minimumHealthCapacity": 1,
+            "maximumOverCapacity": 1
+        },
+        "labels": {},
+        "ipAddress": null,
+        "version": "2019-07-15T16:50:38.723Z",
+        "residency": null,
+        "secrets": {},
+        "taskKillGracePeriodSeconds": null,
+        "unreachableStrategy": {
+            "inactiveAfterSeconds": 0,
+            "expungeAfterSeconds": 0
+        },
+        "killSelection": "YOUNGEST_FIRST",
+        "ports": [
+            10014
+        ],
+        "portDefinitions": [
+            {
+                "port": 10014,
+                "protocol": "tcp",
+                "name": "default",
+                "labels": {}
+            }
+        ],
+        "requirePorts": false,
+        "versionInfo": {
+            "lastScalingAt": "2019-07-15T16:50:38.723Z",
+            "lastConfigChangeAt": "2019-06-26T18:10:15.338Z"
+        },
+        "tasksStaged": 0,
+        "tasksRunning": 8,
+        "tasksHealthy": 4,
+        "tasksUnhealthy": 0,
+        "deployments": [],
+        "readinessCheckResults": [],
+        "tasks": [
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.107",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-12T07:45:46.440Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31058
+                ],
+                "startedAt": "2019-07-12T07:46:27.598Z",
+                "version": "2019-07-12T03:56:00.246Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.0f3154cd-a479-11e9-98e4-82a502d65d54",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S41189",
+                "host": "10-65-197-56"
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.49",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-12T12:00:26.036Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31852
+                ],
+                "startedAt": "2019-07-12T12:00:50.279Z",
+                "version": "2019-07-12T12:00:25.951Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.a28aa789-a49c-11e9-98e4-82a502d65d54",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S41253",
+                "host": "10-65-213-55"
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.5",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-12T00:58:21.543Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31316
+                ],
+                "startedAt": "2019-07-12T00:58:36.640Z",
+                "version": "2019-07-11T23:41:43.477Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.24e60ff8-a440-11e9-98e4-82a502d65d54",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S45177",
+                "host": "10-65-78-147"
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.42",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-14T04:02:15.829Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31644
+                ],
+                "startedAt": "2019-07-14T04:03:00.637Z",
+                "version": "2019-07-12T19:47:54.844Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.2aabd5db-a5ec-11e9-b12e-76cdf7c91225",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S50300",
+                "host": "10-65-128-189",
+                "healthCheckResults": [
+                    {
+                        "alive": true,
+                        "consecutiveFailures": 0,
+                        "firstSuccess": "2019-07-14T04:03:35.808Z",
+                        "lastFailure": null,
+                        "lastSuccess": "2019-07-14T04:03:35.808Z",
+                        "lastFailureCause": null,
+                        "instanceId": "oauth--authorization.main.gitbb0f6980.configac312efa.marathon-2aabd5db-a5ec-11e9-b12e-76cdf7c91225"
+                    }
+                ]
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.4",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-15T14:45:34.499Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31729
+                ],
+                "startedAt": "2019-07-15T14:45:53.296Z",
+                "version": "2019-07-15T14:45:30.848Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.33af5f8e-a70f-11e9-b12e-76cdf7c91225",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S56749",
+                "host": "10-65-237-240",
+                "healthCheckResults": [
+                    {
+                        "alive": true,
+                        "consecutiveFailures": 0,
+                        "firstSuccess": "2019-07-15T14:46:15.077Z",
+                        "lastFailure": null,
+                        "lastSuccess": "2019-07-15T14:46:15.077Z",
+                        "lastFailureCause": null,
+                        "instanceId": "oauth--authorization.main.gitbb0f6980.configac312efa.marathon-33af5f8e-a70f-11e9-b12e-76cdf7c91225"
+                    }
+                ]
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.8",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-15T16:50:38.804Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31484
+                ],
+                "startedAt": "2019-07-15T16:50:59.249Z",
+                "version": "2019-07-15T16:50:38.723Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.ac99716e-a720-11e9-b12e-76cdf7c91225",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S56802",
+                "host": "10-65-180-49",
+                "healthCheckResults": [
+                    {
+                        "alive": true,
+                        "consecutiveFailures": 0,
+                        "firstSuccess": "2019-07-15T16:51:16.807Z",
+                        "lastFailure": null,
+                        "lastSuccess": "2019-07-15T16:51:16.807Z",
+                        "lastFailureCause": null,
+                        "instanceId": "oauth--authorization.main.gitbb0f6980.configac312efa.marathon-ac99716e-a720-11e9-b12e-76cdf7c91225"
+                    }
+                ]
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.12",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-13T05:01:10.488Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31702
+                ],
+                "startedAt": "2019-07-13T05:01:24.544Z",
+                "version": "2019-07-12T19:47:54.844Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.3b143f46-a52b-11e9-b12e-76cdf7c91225",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S48404",
+                "host": "10-65-129-214",
+                "healthCheckResults": [
+                    {
+                        "alive": true,
+                        "consecutiveFailures": 0,
+                        "firstSuccess": "2019-07-13T05:01:40.579Z",
+                        "lastFailure": null,
+                        "lastSuccess": "2019-07-13T05:01:40.579Z",
+                        "lastFailureCause": null,
+                        "instanceId": "oauth--authorization.main.gitbb0f6980.configac312efa.marathon-3b143f46-a52b-11e9-b12e-76cdf7c91225"
+                    }
+                ]
+            },
+            {
+                "ipAddresses": [
+                    {
+                        "ipAddress": "169.254.0.19",
+                        "protocol": "IPv4"
+                    }
+                ],
+                "stagedAt": "2019-07-12T02:56:14.650Z",
+                "state": "TASK_RUNNING",
+                "ports": [
+                    31026
+                ],
+                "startedAt": "2019-07-12T02:56:31.405Z",
+                "version": "2019-07-11T23:41:43.477Z",
+                "id": "oauth--authorization.main.gitbb0f6980.configac312efa.9ccc62b8-a450-11e9-98e4-82a502d65d54",
+                "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+                "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S52405",
+                "host": "10-65-81-44"
+            }
+        ],
+        "lastTaskFailure": {
+            "appId": "/oauth--authorization.main.gitbb0f6980.configac312efa",
+            "host": "10-65-182-255",
+            "message": "Agent 10-65-182-255 removed: Operator initiated 'Machine DOWN'",
+            "state": "TASK_LOST",
+            "taskId": "oauth--authorization.main.gitbb0f6980.configac312efa.61f5f739-a496-11e9-98e4-82a502d65d54",
+            "timestamp": "2019-07-14T04:02:09.587Z",
+            "version": "2019-07-12T11:15:40.009Z",
+            "slaveId": "ca4839bd-7e94-4ca7-9152-0d3a21af5d5f-S53340"
+        },
+        "taskStats": {
+            "startedAfterLastScaling": {
+                "stats": {
+                    "counts": {
+                        "staged": 0,
+                        "running": 1,
+                        "healthy": 1,
+                        "unhealthy": 0
+                    },
+                    "lifeTime": {
+                        "averageSeconds": 29120.122,
+                        "medianSeconds": 29120.122
+                    }
+                }
+            },
+            "withLatestConfig": {
+                "stats": {
+                    "counts": {
+                        "staged": 0,
+                        "running": 8,
+                        "healthy": 4,
+                        "unhealthy": 0
+                    },
+                    "lifeTime": {
+                        "averageSeconds": 222801.41499999998,
+                        "medianSeconds": 305729.092
+                    }
+                }
+            },
+            "totalSummary": {
+                "stats": {
+                    "counts": {
+                        "staged": 0,
+                        "running": 8,
+                        "healthy": 4,
+                        "unhealthy": 0
+                    },
+                    "lifeTime": {
+                        "averageSeconds": 222801.41499999998,
+                        "medianSeconds": 305729.092
+                    }
+                }
+            }
+        }
+    }
+}

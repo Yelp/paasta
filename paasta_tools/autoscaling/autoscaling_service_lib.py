@@ -802,11 +802,15 @@ def filter_autoscaling_tasks(
     marathon_tasks = {}
     for app in marathon_apps:
         for task in app.tasks:
-            if task.id.startswith(job_id_prefix) and (
-                is_task_healthy(task) or not
-                app.health_checks or is_old_task_missing_healthchecks(task, app)
-            ):
-                marathon_tasks[task.id] = task
+            if task.id.startswith(job_id_prefix):
+                if not app.health_checks:
+                    # If we don't have healthchecks defined anyway, then we should just
+                    # let the task through the filter
+                    marathon_tasks[task.id] = task
+                elif is_task_healthy(task) or is_old_task_missing_healthchecks(task, app):
+                    # healthy is good, but also we need to consider those old tasks missing
+                    # health checks, because those are still valid candidates for autoscaling
+                    marathon_tasks[task.id] = task
 
     if not marathon_tasks:
         raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")

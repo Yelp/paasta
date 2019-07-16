@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import json
 from typing import cast
 from typing import Dict
 from typing import List
@@ -2654,6 +2655,18 @@ def test_is_old_task_missing_healthchecks():
     # test no health checks
     mock_marathon_app = mock.Mock(health_checks=[])
     assert not marathon_tools.is_old_task_missing_healthchecks(mock_task, mock_marathon_app)
+
+
+def test_is_old_task_missing_healthchecks_with_real_data():
+    marathon_client = marathon.MarathonClient(servers=[None])
+    json_response = json.load(open('tests/example-marathon-app-with-missing-healthchecks.json'))
+    mock_response = mock.Mock()
+    mock_response.json.return_value = json_response
+    app = marathon_client._parse_response(mock_response, MarathonApp, resource_name='app')
+    task_with_missing = app.tasks[0]
+    assert marathon_tools.is_old_task_missing_healthchecks(task_with_missing, app), task_with_missing
+    task_not_missing = app.tasks[6]
+    assert not marathon_tools.is_old_task_missing_healthchecks(task_not_missing, app), task_not_missing
 
 
 def test_kill_given_tasks():
