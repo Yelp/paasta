@@ -54,7 +54,6 @@ log = logging.getLogger(__name__)
 
 
 def chronos_instance_status(
-    instance_status: Mapping[str, Any],
     service: str,
     instance: str,
     verbose: int,
@@ -292,9 +291,9 @@ def instance_status(request):
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
             if verbose:
-                instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, 3)
+                instance_status['chronos'] = {'output': chronos_instance_status(service, instance, 1)}
             else:
-                instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, 0)
+                instance_status['chronos'] = {'output': chronos_instance_status(service, instance, 0)}
         elif instance_type == 'adhoc':
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'kubernetes':

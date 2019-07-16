@@ -247,10 +247,15 @@ def paasta_status_on_api_endpoint(
     elif status.flink is not None:
         return print_flink_status(cluster, service, instance, output, status.flink.get('status'), verbose)
     elif status.chronos is not None:
-        return paasta_print(output)
+        return print_chronos_status(output, status.chronos.output)
     else:
         paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
         return 0
+
+
+def print_chronos_status(output, status_output):
+    output.append(status_output)
+    return 0
 
 
 def print_adhoc_status(

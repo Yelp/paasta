@@ -266,7 +266,6 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
     disabled_state = _format_disabled_status(job)
     service, instance = chronos_tools.decompose_job_id(job['name'])
     chronos_state = chronos_tools.get_chronos_status_for_job(client, service, instance)
-
     (last_result, formatted_time) = _format_last_result(job)
 
     job_type = chronos_tools.get_job_type(job)
@@ -283,14 +282,14 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
             get_short_task_id=get_short_task_id,
             tail_lines=tail_lines,
         )
-        mesos_status = f"{mesos_status}\n{mesos_status_verbose}"
+        mesos_status = f"      {mesos_status}\n      {mesos_status_verbose}"
     return (
-        "Job:     %(job_name)s\n"
-        "  Status:   %(disabled_state)s (%(chronos_state)s)"
-        "  Last:     %(last_result)s (%(formatted_time)s)\n"
-        "  %(schedule_type)s: %(schedule_value)s\n"
-        "  Command:  %(command)s\n"
-        "  Mesos:    %(mesos_status)s" % {
+        "    Job:     %(job_name)s\n"
+        "      Status:   %(disabled_state)s (%(chronos_state)s)"
+        "      Last:     %(last_result)s (%(formatted_time)s)\n"
+        "      %(schedule_type)s: %(schedule_value)s\n"
+        "      Command:  %(command)s\n"
+        "      Mesos:    %(mesos_status)s" % {
             "job_name": job_name,
             "is_temporary": is_temporary,
             "schedule_type": schedule_type,
@@ -334,13 +333,14 @@ def status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose):
     else:
         output = []
         desired_state = job_config.get_desired_state_human()
-        output.append("Desired:    %s" % desired_state)
+        output.append("    Desired:    %s" % desired_state)
         for job in sorted_matching_jobs:
             running_task_count = len(select_tasks_by_id(
                 a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
                 job["name"],
             ))
             output.append(format_chronos_job_status(client, job, running_task_count, verbose))
+
         return "\n".join(output)
 
 
