@@ -551,17 +551,15 @@ class ChronosJobConfig(InstanceConfig):
         error_msgs = []
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs.extend(super().validate())
-
         for param in [
-            'epsilon', 'retries', 'cpus', 'mem', 'disk',
+            'epsilon', 'retries', 'disk',
             'schedule', 'scheduleTimeZone', 'parents', 'cmd',
             'security', 'dependencies_reference',
         ]:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
-
-        return len(error_msgs) == 0, error_msgs
+        return error_msgs
 
     def get_healthcheck_mode(self, _):
         # Healthchecks are not supported yet in chronos
