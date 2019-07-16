@@ -1,1 +1,5 @@
-{"clusters": ["test-cluster"]}
+{
+    "clusters": [
+        "test-cluster"
+    ]
+}

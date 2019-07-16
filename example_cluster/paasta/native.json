@@ -1,1 +1,6 @@
-{"paasta_native": {"principal": "slave", "secret": "secret1"}}
+{
+    "paasta_native": {
+        "principal": "slave",
+        "secret": "secret1"
+    }
+}
