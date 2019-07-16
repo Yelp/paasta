@@ -41,16 +41,13 @@ from typing import Generator
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.application.tools import Application
-from paasta_tools.kubernetes.application.tools import list_namespaced_applications
+from paasta_tools.kubernetes.application.tools import Application  # type: ignore
+from paasta_tools.kubernetes.application.tools import list_namespaced_applications  # type: ignore
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
-# import pysensu_yelp
-# from paasta_tools.monitoring_tools import send_event
-# import pysensu_yelp
 
 
 log = logging.getLogger(__name__)
