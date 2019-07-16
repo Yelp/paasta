@@ -742,6 +742,10 @@ class ScribeLogReader(LogReader):
             callback=callback,
         )
 
+        aggregated_logs = list({
+            line['raw_line']: line
+            for line in aggregated_logs
+        }.values())
         aggregated_logs.sort(key=lambda log_line: log_line['sort_key'])
         for line in aggregated_logs:
             print_log(line['raw_line'], levels, raw_mode)
@@ -773,6 +777,10 @@ class ScribeLogReader(LogReader):
             )
 
         self.run_code_over_scribe_envs(clusters=clusters, components=components, callback=callback)
+        aggregated_logs = list({
+            line['raw_line']: line
+            for line in aggregated_logs
+        }.values())
         aggregated_logs.sort(key=lambda log_line: log_line['sort_key'])
         for line in aggregated_logs:
             print_log(line['raw_line'], levels, raw_mode)
