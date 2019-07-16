@@ -235,6 +235,15 @@ class TronActionConfig(InstanceConfig):
     def get_nerve_namespace(self) -> None:
         return None
 
+    def validate(self):
+        error_msgs = []
+        error_msgs.extend(super().validate())
+        # Tron is a little special, because it can *not* have a deploy group
+        # But only if an action is running via ssh and not via paasta
+        if self.get_deploy_group() is None and self.get_executor() == "mesos":
+            error_msgs.append(f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set")
+        return error_msgs
+
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""

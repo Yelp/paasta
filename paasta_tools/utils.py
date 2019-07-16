@@ -569,10 +569,10 @@ class InstanceConfig:
         as a list of constraints.
         """
         return (
-            deploy_blacklist_to_constraints(blacklist) +
-            deploy_whitelist_to_constraints(whitelist) +
-            deploy_blacklist_to_constraints(system_deploy_blacklist) +
-            deploy_whitelist_to_constraints(system_deploy_whitelist)
+            deploy_blacklist_to_constraints(blacklist)
+            + deploy_whitelist_to_constraints(whitelist)
+            + deploy_blacklist_to_constraints(system_deploy_blacklist)
+            + deploy_whitelist_to_constraints(system_deploy_whitelist)
         )
 
     def get_deploy_blacklist(self) -> DeployBlacklist:
@@ -591,9 +591,9 @@ class InstanceConfig:
         """The monitoring_blacklist is a list of tuples of (location type, location value), where the tuples indicate
         which locations the user doesn't care to be monitored"""
         return (
-            safe_deploy_blacklist(self.config_dict.get('monitoring_blacklist', [])) +
-            self.get_deploy_blacklist() +
-            system_deploy_blacklist
+            safe_deploy_blacklist(self.config_dict.get('monitoring_blacklist', []))
+            + self.get_deploy_blacklist()
+            + system_deploy_blacklist
         )
 
     def get_docker_image(self) -> str:
@@ -715,7 +715,7 @@ class InstanceConfig:
         if deploy_group is not None:
             pipeline_deploy_groups = get_pipeline_deploy_groups(service=self.service, soa_dir=self.soa_dir)
             if deploy_group not in pipeline_deploy_groups:
-                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
+                return False, f'{self.service}.{self.instance} uses deploy_group {deploy_group}, but it is not deploy.yaml'  # noqa: E501
         return True, ''
 
     def get_extra_volumes(self) -> List[DockerVolume]:
@@ -2841,8 +2841,8 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
     """
     hasher = hashlib.md5()
     hasher.update(
-        json.dumps(config, sort_keys=True).encode('UTF-8') +
-        (force_bounce or '').encode('UTF-8'),
+        json.dumps(config, sort_keys=True).encode('UTF-8')
+        + (force_bounce or '').encode('UTF-8'),
     )
     return "config%s" % hasher.hexdigest()[:8]
 
