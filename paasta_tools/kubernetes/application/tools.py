@@ -9,7 +9,7 @@ from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import sanitise_service_name
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 
 log = logging.getLogger(__name__)
 
@@ -73,4 +73,4 @@ def list_namespaced_applications(
 
 
 def get_app_name(service: str, instance: str):
-    return sanitise_service_name(f'{service}-{instance}')
+    return sanitise_kubernetes_name(f'{service}-{instance}')

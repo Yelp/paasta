@@ -348,7 +348,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip('/')
         sanitised = volume_name.replace('/', 'slash-').replace('.', 'dot-')
-        return sanitised.replace('_', '--')
+        return sanitise_kubernetes_name(sanitised)
 
     def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
         return self.get_sanitised_volume_name(
@@ -668,7 +668,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return sanitise_kubernetes_name(self.get_service())
 
     def get_sanitised_instance_name(self) -> str:
-        return self.get_instance().replace('_', '--')
+        return sanitise_kubernetes_name(self.get_instance())
 
     def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance
