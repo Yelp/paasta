@@ -75,7 +75,7 @@ class SLODemultiplexer:
             self.start_timestamp = start_timestamp
 
         self.slo_watchers_by_label: Dict[str, 'SLOWatcher'] = {}
-        for slo in sink.slos:
+        for slo in sink.source.slos:
             label = sink._get_detector_label(slo)
             watcher = SLOWatcher(slo, individual_slo_callback, self.start_timestamp, label, max_duration=max_duration)
             self.slo_watchers_by_label[label] = watcher

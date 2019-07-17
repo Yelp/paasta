@@ -78,11 +78,11 @@ def test_SLODemultiplexer():
     bad = 2.0
 
     sink = mock.Mock(
-        slos=[
+        source=mock.Mock(slos=[
             mock.Mock(label='slo_1', config=slo_config),
             mock.Mock(label='slo_2', config=slo_config),
             mock.Mock(label='slo_3', config=slo_config),
-        ],
+        ]),
         _get_detector_label=lambda slo: slo.label,
     )
     individual_slo_callback = mock.Mock()
@@ -123,11 +123,11 @@ def test_watch_slos_for_service_alerting():
     bad = 2.0
 
     sink = mock.Mock(
-        slos=[
+        source=mock.Mock(slos=[
             mock.Mock(label='slo_1', config=slo_config),
             mock.Mock(label='slo_2', config=slo_config),
             mock.Mock(label='slo_3', config=slo_config),
-        ],
+        ]),
         _get_detector_label=lambda slo: slo.label,
     )
     individual_slo_callback = mock.Mock()
