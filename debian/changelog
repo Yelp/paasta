@@ -1,3 +1,10 @@
+paasta-tools (0.85.25) xenial; urgency=medium
+
+  * 0.85.25 tagged with 'make release'
+    Commit: Merge branch "fix_oopsie"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Jul 2019 09:01:26 -0700
+
 paasta-tools (0.85.24) xenial; urgency=medium
 
   * 0.85.24 tagged with 'make release'
