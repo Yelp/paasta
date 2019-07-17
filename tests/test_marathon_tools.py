@@ -833,7 +833,7 @@ class TestMarathonTools:
         })
         fake_healthchecks = [
             {
-                "protocol": "HTTP",
+                "protocol": "MESOS_HTTP",
                 "path": "/health",
                 "gracePeriodSeconds": 3,
                 "intervalSeconds": 10,
@@ -1831,7 +1831,7 @@ class TestMarathonServiceConfig:
         })
         expected = [
             {
-                "protocol": "HTTP",
+                "protocol": "MESOS_HTTP",
                 "path": fake_path,
                 "gracePeriodSeconds": 70,
                 "intervalSeconds": 12,
@@ -1841,36 +1841,7 @@ class TestMarathonServiceConfig:
             },
         ]
 
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        )
-        assert actual == expected
-
-    def test_get_healthchecks_http_defaults(self):
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            service='service',
-            cluster='cluster',
-            instance='instance',
-            config_dict={},
-            branch_dict=None,
-        )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'http'})
-        expected = [
-            {
-                "protocol": "HTTP",
-                "path": '/status',
-                "gracePeriodSeconds": 60,
-                "intervalSeconds": 10,
-                "portIndex": 0,
-                "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 30,
-            },
-        ]
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        )
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_http_mesos(self):
@@ -1893,10 +1864,7 @@ class TestMarathonServiceConfig:
                 "maxConsecutiveFailures": 30,
             },
         ]
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            True,
-        )
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_https(self):
@@ -1910,7 +1878,7 @@ class TestMarathonServiceConfig:
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({'mode': 'https'})
         expected = [
             {
-                "protocol": "HTTPS",
+                "protocol": "MESOS_HTTPS",
                 "path": '/status',
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
@@ -1919,10 +1887,7 @@ class TestMarathonServiceConfig:
                 "maxConsecutiveFailures": 30,
             },
         ]
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        )
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_tcp(self):
@@ -1944,10 +1909,7 @@ class TestMarathonServiceConfig:
                 "maxConsecutiveFailures": 30,
             },
         ]
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        )
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_cmd(self):
@@ -1970,10 +1932,7 @@ class TestMarathonServiceConfig:
                 "maxConsecutiveFailures": 30,
             },
         ]
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        )
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_cmd_overrides_timeout(self):
@@ -2001,10 +1960,7 @@ class TestMarathonServiceConfig:
                 "maxConsecutiveFailures": 30,
             },
         ]
-        actual = fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        )
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_empty(self):
@@ -2016,10 +1972,7 @@ class TestMarathonServiceConfig:
             branch_dict=None,
         )
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
-        assert fake_marathon_service_config.get_healthchecks(
-            fake_service_namespace_config,
-            False,
-        ) == []
+        assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
 
     def test_get_healthchecks_invalid_mode(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
@@ -2031,7 +1984,7 @@ class TestMarathonServiceConfig:
         )
         namespace_config = long_running_service_tools.ServiceNamespaceConfig({})
         with raises(long_running_service_tools.InvalidHealthcheckMode):
-            marathon_config.get_healthchecks(namespace_config, False)
+            marathon_config.get_healthchecks(namespace_config)
 
     def test_get_backoff_seconds_scales_up(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
@@ -2293,7 +2246,7 @@ def test_format_marathon_app_dict_with_smartstack():
             'health_checks': [
                 {
                     'portIndex': 0,
-                    'protocol': 'HTTP',
+                    'protocol': 'MESOS_HTTP',
                     'timeoutSeconds': 10,
                     'intervalSeconds': 10,
                     'gracePeriodSeconds': 60,
@@ -2550,7 +2503,7 @@ def test_marathon_service_config_get_healthchecks_invalid_type():
         return_value='fake-mode',
     ):
         with raises(long_running_service_tools.InvalidHealthcheckMode):
-            fake_marathon_service_config.get_healthchecks(mock.Mock(), False)
+            fake_marathon_service_config.get_healthchecks(mock.Mock())
 
 
 def test_marathon_service_config_get_desired_state_human_invalid_desired_state():

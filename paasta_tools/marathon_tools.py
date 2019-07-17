@@ -682,7 +682,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             'max_launch_delay_seconds': self.get_max_launch_delay_seconds(),
             'health_checks': self.get_healthchecks(
                 service_namespace_config=service_namespace_config,
-                use_mesos_healthcheck=system_paasta_config.get_use_mesos_healthchecks(),
             ),
             'env': self.get_env(),
             'mem': float(self.get_mem()),
@@ -764,7 +763,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
     def get_healthchecks(
         self,
         service_namespace_config: ServiceNamespaceConfig,
-        use_mesos_healthcheck: bool,
     ) -> List[HealthcheckDict]:
         """Returns a list of healthchecks per `the Marathon docs`_.
 
@@ -796,7 +794,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         if mode == 'http' or mode == 'https':
             http_path = self.get_healthcheck_uri(service_namespace_config)
-            protocol = "MESOS_%s" % mode.upper() if use_mesos_healthcheck else mode.upper()
+            protocol = f"MESOS_{mode.upper()}"
             healthchecks = [
                 HealthcheckDict({
                     "protocol": protocol,
