@@ -267,6 +267,14 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha):
         return f"(Could not get authors: {authors})"
 
 
+def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
+    for step in deploy_info.get('pipeline', []):
+        if step.get('step', '') == deploy_group:
+            # Use the specific notify_type if available else use slack_notify
+            return step.get(notify_type, step.get('slack_notify', False))
+    return False
+
+
 class SlackDeployNotifier:
     def __init__(self, service, deploy_info, deploy_group, commit, old_commit, git_url, auto_rollback=False):
         self.sc = get_slack_client()
@@ -297,11 +305,7 @@ class SlackDeployNotifier:
             return get_currently_deployed_sha(service=self.service, deploy_group=prod_deploy_group)
 
     def deploy_group_is_set_to_notify(self, notify_type):
-        for step in self.deploy_info.get('pipeline', []):
-            if step.get('step', '') == self.deploy_group:
-                # Use the specific notify_type if available else use slack_notify
-                return step.get(notify_type, step.get('slack_notify', False))
-        return False
+        return deploy_group_is_set_to_notify(self.deploy_info, self.deploy_group, notify_type)
 
     def _notify_with_thread(self, notify_type, channels, initial_message, initial_blocks=None, followups=[]):
         """Start a new thread with `initial_message`, then add any followups.
@@ -604,6 +608,10 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.soa_dir = soa_dir
         self.timeout = timeout
         self.mark_for_deployment_return_code = -1
+        self.auto_certify_delay = auto_certify_delay
+        self.auto_abandon_delay = auto_abandon_delay
+        self.auto_rollback_delay = auto_rollback_delay
+
         # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
         # and quickly launch wait_for_deployment for another commit without causing a race condition.
         self.wait_for_deployment_green_lights = defaultdict(Event)
@@ -614,9 +622,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.slack_channel = self.get_slack_channel()
         self.slack_channel_id = None
         self.last_action = None
-        self.auto_certify_delay = auto_certify_delay
-        self.auto_abandon_delay = auto_abandon_delay
-        self.auto_rollback_delay = auto_rollback_delay
         self.slo_watchers = []
 
         self.start_slo_watcher_threads(self.service)
@@ -636,9 +641,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             message = f"(Run by <@{getpass.getuser()}> on {socket.getfqdn()})"
         self.update_slack_thread(message)
 
-    def ping_authors(self):
-        authors = get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
-        self.update_slack_thread(authors)
+    def get_authors(self) -> str:
+        return get_authors_to_be_notified(git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit)
+
+    def ping_authors(self, message: str = None) -> None:
+        if message:
+            self.update_slack_thread(f"{message}\n{self.get_authors()}")
+        else:
+            self.update_slack_thread(self.get_authors())
 
     def get_slack_client(self) -> SlackClient:
         return get_slack_client().sc
@@ -679,7 +689,10 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.mark_for_deployment_return_code != 0:
             self.trigger('mfd_failed')
         else:
-            self.update_slack_thread(f"Marked `{self.commit[:8]}` for {self.deploy_group}.")
+            self.update_slack_thread(
+                f"Marked `{self.commit[:8]}` for {self.deploy_group}." +
+                ("\n" + self.get_authors() if self.deploy_group_is_set_to_notify('notify_after_mark') else ""),
+            )
             log.debug("triggering mfd_succeeded")
             self.trigger('mfd_succeeded')
 
@@ -926,7 +939,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.mark_for_deployment_return_code != 0:
             self.trigger('mfd_failed')
         else:
-            self.update_slack_thread(f"Marked `{self.old_git_sha[:8]}` for {self.deploy_group}.")
+            self.update_slack_thread(
+                f"Marked `{self.old_git_sha[:8]}` for {self.deploy_group}." +
+                ("\n" + self.get_authors() if self.deploy_group_is_set_to_notify('notify_after_mark') else ""),
+            )
+
             self.trigger('mfd_succeeded')
 
     def on_enter_rolling_back(self):
@@ -941,6 +958,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         report_waiting_aborted(self.service, self.deploy_group)
         self.update_slack_status(f"Deploy aborted, but it will still try to converge.")
         self.send_manual_rollback_instructions()
+        if self.deploy_group_is_set_to_notify('notify_after_abort'):
+            self.ping_authors("Deploy errored")
+
+    def on_enter_deploy_cancelled(self):
+        if self.deploy_group_is_set_to_notify('notify_after_abort'):
+            self.ping_authors("Deploy cancelled")
 
     def do_wait_for_deployment(self, target_commit: str):
         try:
@@ -993,6 +1016,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if not (self.any_slo_failing() and self.auto_rollbacks_enabled()):
             if self.get_auto_certify_delay() > 0:
                 self.start_timer(self.get_auto_certify_delay(), 'auto_certify', 'certify')
+                if self.deploy_group_is_set_to_notify('notify_after_good_deploy'):
+                    self.ping_authors()
+
+    def on_enter_complete(self):
+        if self.deploy_group_is_set_to_notify('notify_after_good_deploy'):
+            self.ping_authors()
 
     def send_manual_rollback_instructions(self):
         if self.old_git_sha != self.commit:
@@ -1033,6 +1062,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             })
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
+
+    def start_auto_rollback_countdown(self) -> None:
+        super().start_auto_rollback_countdown()
+        if self.deploy_group_is_set_to_notify('notify_after_auto_rollback'):
+            self.ping_authors()
+
+    def deploy_group_is_set_to_notify(self, notify_type):
+        return deploy_group_is_set_to_notify(self.deploy_info, self.deploy_group, notify_type)
 
 
 class ClusterData:

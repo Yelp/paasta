@@ -37,6 +37,7 @@ from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
@@ -238,8 +239,8 @@ def format_custom_resource(
     group: str,
     namespace: str,
 ) -> Mapping[str, Any]:
-    sanitised_service = service.replace('_', '--')
-    sanitised_instance = instance.replace('_', '--')
+    sanitised_service = sanitise_kubernetes_name(service)
+    sanitised_instance = sanitise_kubernetes_name(instance)
     resource: Mapping[str, Any] = {
         'apiVersion': f'{group}/{version}',
         'kind': kind,
@@ -310,8 +311,8 @@ def reconcile_kubernetes_resource(
                     group=group,
                 )
             elif desired_resource not in custom_resources:
-                sanitised_service = service.replace('_', '--')
-                sanitised_instance = inst.replace('_', '--')
+                sanitised_service = sanitise_kubernetes_name(service)
+                sanitised_instance = sanitise_kubernetes_name(inst)
                 log.info(f"{desired_resource} exists but config_sha doesn't match")
                 update_custom_resource(
                     kube_client=kube_client,
