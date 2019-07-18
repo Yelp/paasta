@@ -40,6 +40,7 @@ from kubernetes.client import models
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
+from kubernetes.client import V1Capabilities
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
@@ -69,6 +70,7 @@ from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
+from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
@@ -553,6 +555,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return probe
 
+    def get_security_context(self) -> V1SecurityContext:
+        cap_add = self.config_dict.get('cap_add', None)
+        if cap_add is None:
+            return None
+        return V1SecurityContext(
+            capabilities=V1Capabilities(
+                add=cap_add,
+            ),
+        )
+
     def get_kubernetes_containers(
         self,
         docker_volumes: Sequence[DockerVolume],
@@ -584,6 +596,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     container_port=self.get_container_port(),
                 ),
             ],
+            security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
                 docker_volumes=docker_volumes,
                 aws_ebs_volumes=aws_ebs_volumes,
