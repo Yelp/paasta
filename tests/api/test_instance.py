@@ -17,6 +17,7 @@ import mock
 from pyramid import testing
 from pytest import raises
 
+from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
@@ -66,14 +67,20 @@ def test_instances_status_marathon(
     assert response['marathon']['desired_state'] == 'start'
 
 
-@mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_config', autospec=True)
+@mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.chronos_tools.get_chronos_client', autospec=True)
-@mock.patch('paasta_tools.api.views.instance.chronos_tools.load_chronos_job_config', autospec=True)
+@mock.patch('paasta_tools.chronos_tools.load_chronos_job_config', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.validate_service_instance', autospec=True)
 @mock.patch('paasta_tools.api.views.instance.get_actual_deployments', autospec=True)
-@mock.patch('paasta_tools.api.views.instance.select_tasks_by_id', autospec=True)
-@mock.patch('paasta_tools.api.views.instance.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.select_tasks_by_id', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.lookup_chronos_jobs', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.get_job_type', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.get_chronos_status_for_job', autospec=True)
 def test_chronos_instance_status(
+    mock_get_chronos_status_for_job,
+    mock_get_job_type,
+    mock_lookup_chronos_jobs,
     mock_get_cached_list_of_running_tasks_from_frameworks,
     mock_select_tasks_by_id,
     mock_get_actual_deployments,
@@ -89,9 +96,10 @@ def test_chronos_instance_status(
         'fake_cluster2.fake_instance': 'GIT_SHA',
         'fake_cluster2.fake_instance2': 'GIT_SHA',
     }
+    mock_get_chronos_status_for_job.return_value = 'fake_state'
     mock_validate_service_instance.return_value = 'chronos'
     mock_select_tasks_by_id.return_value = [1, 2, 3]
-
+    mock_lookup_chronos_jobs.return_value = [{'name': 'fake_service fake_instance', 'schedule': 'always'}]
     mock_load_chronos_job_config.return_value = ChronosJobConfig(
         'fake_service',
         'fake_instance',
@@ -101,13 +109,14 @@ def test_chronos_instance_status(
         },
         None,
     )
-
+    mock_get_job_type.return_value = chronos_tools.JobType.Scheduled
     request = testing.DummyRequest()
     request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
 
     response = instance.instance_status(request)
-    assert response['chronos']['schedule']['schedule'] == 'always'
-    assert response['chronos']['schedule_type'] == 'schedule'
+
+    assert 'always' in response['chronos']['output']
+    assert 'Schedule' in response['chronos']['output']
 
 
 @mock.patch('paasta_tools.api.views.instance.adhoc_instance_status', autospec=True)

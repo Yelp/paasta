@@ -410,7 +410,11 @@ def test_format_chronos_job_mesos_verbose(verbosity_level):
 
 @mock.patch('paasta_tools.chronos_serviceinit.format_chronos_job_status', autospec=True)
 @mock.patch('paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.load_chronos_job_config', autospec=True)
+@mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.lookup_chronos_jobs', autospec=True)
 def test_status_chronos_jobs_is_deployed(
+    mock_lookup_chronos_jobs,
+    mock_load_chronos_job_config,
     mock_get_cached_list_of_running_tasks_from_frameworks,
     mock_format_chronos_job_status,
 ):
@@ -418,7 +422,8 @@ def test_status_chronos_jobs_is_deployed(
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
     verbose = False
-
+    mock_load_chronos_job_config.return_value = complete_job_config
+    mock_lookup_chronos_jobs.return_value = jobs
     mock_format_chronos_job_status.return_value = 'job_status_output'
     mock_get_cached_list_of_running_tasks_from_frameworks.return_value = [
         {'id': 'ct:1492206300000:0:my_service my_instance:'},
@@ -428,9 +433,11 @@ def test_status_chronos_jobs_is_deployed(
 
     actual = chronos_serviceinit.status_chronos_jobs(
         fake_client,
-        jobs,
-        complete_job_config,
-        verbose,
+        'service',
+        'instance',
+        'cluster',
+        'soa_dir_path',
+        0,
     )
     assert '\njob_status_output' in actual
     assert mock_get_cached_list_of_running_tasks_from_frameworks.called
@@ -438,7 +445,6 @@ def test_status_chronos_jobs_is_deployed(
 
 
 def test_status_chronos_jobs_is_not_deployed():
-    jobs = []
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
     verbose = False
@@ -450,11 +456,21 @@ def test_status_chronos_jobs_is_not_deployed():
         'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.lookup_chronos_jobs',
+        autospec=True,
+        return_value=[],
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.load_chronos_job_config',
+        autospec=True,
+        return_value=complete_job_config,
     ):
         actual = chronos_serviceinit.status_chronos_jobs(
             mock.Mock(),  # Chronos client
-            jobs,
-            complete_job_config,
+            'service',
+            'instance',
+            'cluster',
+            'soa_dir_path',
             verbose,
         )
         assert 'not set up' in actual
@@ -473,11 +489,21 @@ def test_status_chronos_jobs_get_desired_state_human():
         'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.lookup_chronos_jobs',
+        autospec=True,
+        return_value=jobs,
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.load_chronos_job_config',
+        autospec=True,
+        return_value=complete_job_config,
     ):
         actual = chronos_serviceinit.status_chronos_jobs(
             mock.Mock(),  # Chronos client
-            jobs,
-            complete_job_config,
+            'service',
+            'instance',
+            'cluster',
+            'soa_dir_path',
             verbose,
         )
         assert 'Desired:' in actual
@@ -500,11 +526,21 @@ def test_status_chronos_jobs_multiple_jobs():
         'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.lookup_chronos_jobs',
+        autospec=True,
+        return_value=jobs,
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.load_chronos_job_config',
+        autospec=True,
+        return_value=complete_job_config,
     ):
         actual = chronos_serviceinit.status_chronos_jobs(
             mock.Mock(),  # Chronos client
-            jobs,
-            complete_job_config,
+            'service',
+            'instance',
+            'cluster',
+            'soa_dir_path',
             verbose,
         )
         assert '\njob_status_output\njob_status_output' in actual
@@ -523,11 +559,21 @@ def test_status_chronos_jobs_get_running_tasks():
         'paasta_tools.chronos_serviceinit.get_cached_list_of_running_tasks_from_frameworks',
         autospec=True,
         return_value=[],
-    ) as mock_get_running_tasks:
+    ) as mock_get_running_tasks, mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.lookup_chronos_jobs',
+        autospec=True,
+        return_value=jobs,
+    ), mock.patch(
+        'paasta_tools.chronos_serviceinit.chronos_tools.load_chronos_job_config',
+        autospec=True,
+        return_value=complete_job_config,
+    ):
         chronos_serviceinit.status_chronos_jobs(
             mock.Mock(),  # Chronos client
-            jobs,
-            complete_job_config,
+            'service',
+            'instance',
+            'cluster',
+            'soa_dir_path',
             verbose,
         )
         assert mock_get_running_tasks.call_count == 1
