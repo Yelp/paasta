@@ -22,6 +22,7 @@ from mypy_extensions import TypedDict
 from paasta_tools.kubernetes_tools import InvalidJobNameError
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
@@ -146,8 +147,8 @@ def sanitised_name(
     service: str,
     instance: str,
 ) -> str:
-    sanitised_service = service.replace('_', '--')
-    sanitised_instance = instance.replace('_', '--')
+    sanitised_service = sanitise_kubernetes_name(service)
+    sanitised_instance = sanitise_kubernetes_name(instance)
     return f'{sanitised_service}-{sanitised_instance}'
 
 
