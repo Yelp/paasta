@@ -257,7 +257,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         return buttons
 
     def update_slack_thread(self, message, color=None):
-        log.debug(f"Updating slack thread with {message}")
+        print(f"Updating slack thread with: {message}")
 
         if color:
             resp = self.slack_client.api_call(
@@ -325,7 +325,6 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
     async def periodically_update_slack(self):
         while self.state not in self.status_code_by_state():
             self.update_slack()
-            print("Updated slack\n")
             await asyncio.sleep(20)
 
     def is_relevant_buttonpress(self, buttonpress):
