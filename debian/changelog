@@ -1,3 +1,10 @@
+paasta-tools (0.85.27) xenial; urgency=medium
+
+  * 0.85.27 tagged with 'make release'
+    Commit: Merge branch "also_ping_at_end"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 18 Jul 2019 09:24:42 -0700
+
 paasta-tools (0.85.26) xenial; urgency=medium
 
   * 0.85.26 tagged with 'make release'
