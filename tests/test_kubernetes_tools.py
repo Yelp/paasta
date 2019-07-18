@@ -75,7 +75,7 @@ from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
-from paasta_tools.kubernetes_tools import sanitise_service_name
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
@@ -1656,9 +1656,9 @@ def test_maybe_add_yelp_prefix():
     assert maybe_add_yelp_prefix('region') == 'yelp.com/region'
 
 
-def test_sanitise_service_name():
-    assert sanitise_service_name('my_service') == 'my--service'
-    assert sanitise_service_name('myservice') == 'myservice'
+def test_sanitise_kubernetes_name():
+    assert sanitise_kubernetes_name('my_service') == 'my--service'
+    assert sanitise_kubernetes_name('myservice') == 'myservice'
 
 
 def test_create_kubernetes_secret_signature():

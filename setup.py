@@ -51,6 +51,7 @@ setup(
         'paasta_tools/cleanup_marathon_jobs.py',
         'paasta_tools/cleanup_kubernetes_cr.py',
         'paasta_tools/cleanup_kubernetes_crd.py',
+        'paasta_tools/cleanup_kubernetes_jobs.py',
         'paasta_tools/paasta_deploy_chronos_jobs',
         'paasta_tools/deploy_marathon_services',
         'paasta_tools/paasta_deploy_tron_jobs',

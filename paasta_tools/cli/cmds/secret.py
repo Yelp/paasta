@@ -129,7 +129,7 @@ def get_plaintext_input(args):
     elif args.plain_text:
         plaintext = args.plain_text.encode('utf-8')
     else:
-        print("Please enter the plaintext for the secret, press Ctrl-D when done.")
+        print("Please enter the plaintext for the secret, then enter a newline and Ctrl-D when done.")
         lines = []
         while True:
             try:
@@ -138,6 +138,8 @@ def get_plaintext_input(args):
                 break
             lines.append(line)
         plaintext = '\n'.join(lines).encode('utf-8')
+        print("The secret as a Python string is:", repr(plaintext))
+        print("Please make sure this is correct.")
     return plaintext
 
 

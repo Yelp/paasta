@@ -1666,7 +1666,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    use_mesos_healthchecks: bool
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
@@ -2064,14 +2063,6 @@ class SystemPaastaConfig:
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
         return self.config_dict.get("deployd_log_level", 'INFO')
-
-    def get_use_mesos_healthchecks(self) -> bool:
-        """Get a boolean indicating whether HTTP(S) healthchecks should
-        be driven by Mesos, rather than Marathon
-
-        :return: a bool, indicating whether paasta should use MESOS healthchecks.
-        """
-        return self.config_dict.get("use_mesos_healthchecks", False)
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""

@@ -102,6 +102,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SystemPaastaConfig
@@ -347,7 +348,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip('/')
         sanitised = volume_name.replace('/', 'slash-').replace('.', 'dot-')
-        return sanitised.replace('_', '--')
+        return sanitise_kubernetes_name(sanitised)
 
     def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
         return self.get_sanitised_volume_name(
@@ -459,7 +460,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ))
         for k, v in shared_secret_env_vars.items():
-            service = sanitise_service_name(SHARED_SECRET_SERVICE)
+            service = sanitise_kubernetes_name(SHARED_SECRET_SERVICE)
             secret = get_secret_name_from_ref(v)
             ret.append(V1EnvVar(
                 name=k,
@@ -664,10 +665,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_sanitised_service_name(self) -> str:
-        return sanitise_service_name(self.get_service())
+        return sanitise_kubernetes_name(self.get_service())
 
     def get_sanitised_instance_name(self) -> str:
-        return self.get_instance().replace('_', '--')
+        return sanitise_kubernetes_name(self.get_instance())
 
     def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance
@@ -1175,8 +1176,8 @@ def filter_pods_by_service_instance(
 ) -> Sequence[V1Pod]:
     return [
         pod for pod in pod_list
-        if pod.metadata.labels['yelp.com/paasta_service'] == service and
-        pod.metadata.labels['yelp.com/paasta_instance'] == instance
+        if pod.metadata.labels['yelp.com/paasta_service'] == service
+        and pod.metadata.labels['yelp.com/paasta_instance'] == instance
     ]
 
 
@@ -1378,7 +1379,8 @@ def create_secret(
     service: str,
     secret_provider: BaseSecretProvider,
 ) -> None:
-    service = sanitise_service_name(service)
+    service = sanitise_kubernetes_name(service)
+    secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_secret(
         namespace="paasta",
         body=V1Secret(
@@ -1397,7 +1399,8 @@ def update_secret(
     service: str,
     secret_provider: BaseSecretProvider,
 ) -> None:
-    service = sanitise_service_name(service)
+    service = sanitise_kubernetes_name(service)
+    secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_secret(
         name=f"paasta-secret-{service}-{secret}",
         namespace="paasta",
@@ -1416,7 +1419,8 @@ def get_kubernetes_secret_signature(
     secret: str,
     service: str,
 ) -> Optional[str]:
-    service = sanitise_service_name(service)
+    service = sanitise_kubernetes_name(service)
+    secret = sanitise_kubernetes_name(secret)
     try:
         signature = kube_client.core.read_namespaced_config_map(
             name=f"paasta-secret-{service}-{secret}-signature",
@@ -1439,7 +1443,8 @@ def update_kubernetes_secret_signature(
     service: str,
     secret_signature: str,
 ) -> None:
-    service = sanitise_service_name(service)
+    service = sanitise_kubernetes_name(service)
+    secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_config_map(
         name=f"paasta-secret-{service}-{secret}-signature",
         namespace="paasta",
@@ -1459,7 +1464,8 @@ def create_kubernetes_secret_signature(
     service: str,
     secret_signature: str,
 ) -> None:
-    service = sanitise_service_name(service)
+    service = sanitise_kubernetes_name(service)
+    secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_config_map(
         namespace="paasta",
         body=V1ConfigMap(
@@ -1472,7 +1478,7 @@ def create_kubernetes_secret_signature(
     )
 
 
-def sanitise_service_name(
+def sanitise_kubernetes_name(
     service: str,
 ) -> str:
     return service.replace('_', '--')
@@ -1486,3 +1492,25 @@ def load_custom_resource_definitions(
         kube_kind = KubeKind(**custom_resource_dict.pop('kube_kind'))  # type: ignore
         custom_resources.append(CustomResourceDefinition(kube_kind=kube_kind, **custom_resource_dict))
     return custom_resources
+
+
+def get_deployment_config(
+    kube_deployment: KubeDeployment,
+    soa_dir: str,
+    cluster: str,
+) -> Optional["KubernetesDeploymentConfig"]:
+    try:
+        return load_kubernetes_service_config_no_cache(
+            service=kube_deployment.service,
+            instance=kube_deployment.instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+    except NoDeploymentsAvailable:
+        log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
+                  (kube_deployment.service, kube_deployment.instance, load_system_paasta_config().get_cluster()))
+    except NoConfigurationForServiceError:
+        error_msg = "Could not read kubernetes configuration file for %s.%s in cluster %s" % \
+                    (kube_deployment.service, kube_deployment.instance, load_system_paasta_config().get_cluster())
+        log.error(error_msg)
+    return None

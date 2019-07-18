@@ -1,3 +1,24 @@
+paasta-tools (0.85.26) xenial; urgency=medium
+
+  * 0.85.26 tagged with 'make release'
+    Commit: add cleanup_kubernetes_jobs.py to setup.py (#2329)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Wed, 17 Jul 2019 16:15:08 -0700
+
+paasta-tools (0.85.25) xenial; urgency=medium
+
+  * 0.85.25 tagged with 'make release'
+    Commit: Merge branch "fix_oopsie"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Jul 2019 09:01:26 -0700
+
+paasta-tools (0.85.24) xenial; urgency=medium
+
+  * 0.85.24 tagged with 'make release'
+    Commit: Merge branch "only_watch_paging_slos"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 16 Jul 2019 14:03:35 -0700
+
 paasta-tools (0.85.23) xenial; urgency=medium
 
   * 0.85.23 tagged with 'make release'

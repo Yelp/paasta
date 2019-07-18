@@ -165,14 +165,6 @@ class PaastaCheckMessages:
         "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.security_check.html",
     )
 
-    DEPLOY_PERFORMANCE_FOUND = success("Found a performance-check entry in your deploy pipeline")
-    DEPLOY_PERFORMANCE_MISSING = failure(
-        "No 'performance-check' entry was found in your deploy.yaml.\n"
-        "Please add a performance-check entry *AFTER* the security-check entry in deploy.yaml\n"
-        "so your docker image can be checked for performance regressions.\n"
-        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.performance_check.html",
-    )
-
     DOCKERFILE_FOUND = success("Found Dockerfile")
 
     DOCKERFILE_MISSING = failure(
