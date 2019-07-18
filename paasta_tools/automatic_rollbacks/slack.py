@@ -94,6 +94,8 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.human_readable_status = "Initializing..."
         self.slack_client = self.get_slack_client()
         self.last_action = None
+        self.summary_blocks_str = ''
+        self.detail_blocks_str = ''
         self.send_initial_slack_message()
 
         asyncio.ensure_future(self.listen_for_slack_events(), loop=self.event_loop)
@@ -275,7 +277,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             )
 
         if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
+            log.error(f"Posting to slack failed: {resp['error']}")
 
     def send_initial_slack_message(self):
         summary_blocks = self.get_summary_blocks_for_deployment()
@@ -284,7 +286,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
         self.slack_channel_id = resp['channel']
         if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
+            log.error(f"Posting to slack failed: {resp['error']}")
 
         resp = self.slack_client.api_call(
             'chat.postMessage',
@@ -295,28 +297,42 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.detail_slack_ts = resp['message']['ts'] if resp and resp['ok'] else None
 
         if resp["ok"] is not True:
-            log.error("Posting detail to slack failed: {}".format(resp["error"]))
+            log.error(f"Posting detail to slack failed: {resp['error']}")
+            if resp['error'] == 'invalid_blocks':
+                log.error(f"Blocks: {detail_blocks!r}")
 
     def update_slack(self):
         summary_blocks = self.get_summary_blocks_for_deployment()
         detail_blocks = self.get_detail_slack_blocks_for_deployment()
-        resp = self.slack_client.api_call(
-            "chat.update",
-            channel=self.slack_channel_id,
-            blocks=summary_blocks,
-            ts=self.slack_ts,
-        )
-        if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
 
-        resp = self.slack_client.api_call(
-            "chat.update",
-            channel=self.slack_channel_id,
-            blocks=detail_blocks,
-            ts=self.detail_slack_ts,
-        )
-        if resp["ok"] is not True:
-            log.error("Posting to slack failed: {}".format(resp["error"]))
+        summary_blocks_str = json.dumps(summary_blocks, sort_keys=True)
+        detail_blocks_str = json.dumps(detail_blocks, sort_keys=True)
+
+        if self.summary_blocks_str != summary_blocks_str:
+            resp = self.slack_client.api_call(
+                "chat.update",
+                channel=self.slack_channel_id,
+                blocks=summary_blocks,
+                ts=self.slack_ts,
+            )
+            if resp["ok"]:
+                self.old_summary_blocks_str = summary_blocks_str
+            else:
+                self.old_summary_blocks_str = ''  # So we retry next time.
+                log.error(f"Posting to slack failed: {resp['error']}")
+
+        if self.detail_blocks_str != detail_blocks_str:
+            resp = self.slack_client.api_call(
+                "chat.update",
+                channel=self.slack_channel_id,
+                blocks=detail_blocks,
+                ts=self.detail_slack_ts,
+            )
+            if resp["ok"]:
+                self.old_detail_blocks_str = detail_blocks_str
+            else:
+                self.old_detail_blocks_str = ''  # So we retry next time.
+                log.error(f"Posting detail to slack failed: {resp['error']}")
 
     def update_slack_status(self, message):
         self.human_readable_status = message
