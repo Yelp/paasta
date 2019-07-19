@@ -36,6 +36,7 @@ setup(
     author_email='kwa@yelp.com',
     description='Tools for Yelps SOA infrastructure',
     packages=find_packages(exclude=("tests*", "scripts*")),
+    py_modules=['paasta_tools.kubernetes.application'],
     include_package_data=True,
     install_requires=get_install_requires(),
     scripts=[
