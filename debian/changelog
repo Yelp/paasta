@@ -1,3 +1,11 @@
+paasta-tools (0.85.28) xenial; urgency=medium
+
+  * 0.85.28 tagged with 'make release'
+    Commit: Avoid updating slack messages if they are unchanged; print
+    blocks when we get an invalid_blocks error
+
+ -- Evan Krall <krall@yelp.com>  Fri, 19 Jul 2019 11:06:03 -0700
+
 paasta-tools (0.85.27) xenial; urgency=medium
 
   * 0.85.27 tagged with 'make release'
