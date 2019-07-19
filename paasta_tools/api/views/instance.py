@@ -60,14 +60,16 @@ def chronos_instance_status(
 ) -> str:
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
-    return chronos_serviceinit.status_chronos_jobs(
-        client,
-        service,
-        instance,
-        settings.cluster,
-        settings.soa_dir,
-        verbose,
-    )
+    return {
+        'output': chronos_serviceinit.status_chronos_jobs(
+            client,
+            service,
+            instance,
+            settings.cluster,
+            settings.soa_dir,
+            verbose,
+        ),
+    }
 
 
 def tron_instance_status(
@@ -291,9 +293,9 @@ def instance_status(request):
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
             if verbose:
-                instance_status['chronos'] = {'output': chronos_instance_status(service, instance, 1)}
+                instance_status['chronos'] = chronos_instance_status(service, instance, 1)
             else:
-                instance_status['chronos'] = {'output': chronos_instance_status(service, instance, 0)}
+                instance_status['chronos'] = chronos_instance_status(service, instance, 0)
         elif instance_type == 'adhoc':
             instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'kubernetes':

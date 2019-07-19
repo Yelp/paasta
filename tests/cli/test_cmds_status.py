@@ -586,6 +586,7 @@ def test_status_calls_sergeants(
         cluster=cluster,
         instance_whitelist={'fi': mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
+        use_api_endpoint=True,
         verbose=False,
     )
 
@@ -989,6 +990,7 @@ def test_status_with_registration(
         actual_deployments=ANY,
         instance_whitelist={'instance1': mock_inst_1.__class__, 'instance2': mock_inst_2.__class__},
         system_paasta_config=system_paasta_config,
+        use_api_endpoint=True,
         verbose=args.verbose,
     )
 

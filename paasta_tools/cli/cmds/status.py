@@ -14,9 +14,11 @@
 # limitations under the License.
 import concurrent.futures
 import difflib
+import os
 import sys
 from collections import defaultdict
 from datetime import datetime
+from distutils.util import strtobool
 from itertools import groupby
 from typing import Callable
 from typing import DefaultDict
@@ -68,13 +70,13 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
+
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
     ChronosJobConfig,
 ]
-SSH_ONLY_INSTANCE_CONFIG = []
 
 
 def add_subparser(
@@ -254,7 +256,8 @@ def paasta_status_on_api_endpoint(
 
 
 def print_chronos_status(output, status_output):
-    output.append(status_output)
+    for line in status_output.rstrip().split('\n'):
+        output.append('    %s' % line)
     return 0
 
 
@@ -532,6 +535,7 @@ def report_status_for_cluster(
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
+    use_api_endpoint: bool = True,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -543,14 +547,10 @@ def report_status_for_cluster(
         instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
         in HTTP_ONLY_INSTANCE_CONFIG
     ]
-    ssh_only_instances = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
-        in SSH_ONLY_INSTANCE_CONFIG
-    ]
 
     tron_jobs = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class ==
-        TronActionConfig
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
+        == TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
@@ -603,8 +603,7 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance in ssh_only_instances or
-                deployed_instance not in http_only_instances
+                deployed_instance not in http_only_instances and use_api_endpoint
             )
         ]
         if len(ssh_only_deployed_instances):
@@ -842,6 +841,11 @@ def paasta_status(
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
+    if 'USE_API_ENDPOINT' in os.environ:
+        use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
+    else:
+        use_api_endpoint = True
+
     return_codes = [0]
     tasks = []
     clusters_services_instances = apply_args_filters(args)
@@ -864,6 +868,7 @@ def paasta_status(
                         instance_whitelist=instances,
                         system_paasta_config=system_paasta_config,
                         verbose=args.verbose,
+                        use_api_endpoint=use_api_endpoint,
                     ),
                 ))
             else:

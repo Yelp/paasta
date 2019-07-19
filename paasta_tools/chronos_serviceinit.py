@@ -333,7 +333,7 @@ def status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose):
     else:
         output = []
         desired_state = job_config.get_desired_state_human()
-        output.append("    Desired:    %s" % desired_state)
+        output.append("Desired:    %s" % desired_state)
         for job in sorted_matching_jobs:
             running_task_count = len(select_tasks_by_id(
                 a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
