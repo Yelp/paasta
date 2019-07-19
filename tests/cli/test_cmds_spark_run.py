@@ -18,11 +18,10 @@ from ruamel.yaml import YAML
 
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import create_spark_config_str
-from paasta_tools.cli.cmds.spark_run import DEFAULT_S3_DEV_LOG_DIR
-from paasta_tools.cli.cmds.spark_run import DEFAULT_S3_PROD_LOG_DIR
 from paasta_tools.cli.cmds.spark_run import DEFAULT_SERVICE
 from paasta_tools.cli.cmds.spark_run import emit_resource_requirements
 from paasta_tools.cli.cmds.spark_run import get_aws_credentials
+from paasta_tools.cli.cmds.spark_run import get_default_event_log_dir
 from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_spark_config
@@ -65,7 +64,16 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
     ]
 
 
-class TestGetSparkConig:
+class TestGetSparkConfig:
+
+    dev_account_id = '12345'
+    dev_log_dir = 's3a://dev/log/path'
+
+    other_account_id = '23456'
+    other_log_dir = 's3a://other/log/path'
+
+    unrecognized_account_id = '34567'
+
     @pytest.fixture(autouse=True)
     def mock_find_mesos_leader(self):
         with mock.patch(
@@ -73,6 +81,37 @@ class TestGetSparkConig:
         ) as m:
             m.return_value = "fake_leader"
             yield m
+
+    @pytest.fixture(autouse=True)
+    def mock_account_id(self):
+        with mock.patch('boto3.client', autospec=True) as m:
+            mock_account_id = m.return_value.get_caller_identity.return_value.get
+            mock_account_id.return_value = self.dev_account_id
+            yield mock_account_id
+
+    @pytest.fixture(autouse=True)
+    def mock_spark_run_config(self, tmpdir):
+        spark_run_file = str(tmpdir.join('spark_config.yaml'))
+        spark_run_conf = {
+            'environments': {
+                'dev': {
+                    'account_id': self.dev_account_id,
+                    'default_event_log_dir': self.dev_log_dir,
+                },
+                'test_dev': {
+                    'account_id': self.other_account_id,
+                    'default_event_log_dir': self.other_log_dir,
+                },
+            },
+        }
+        with open(spark_run_file, 'w') as fp:
+            YAML().dump(spark_run_conf, fp)
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.DEFAULT_SPARK_RUN_CONFIG',
+            spark_run_file,
+            autospec=None,
+        ):
+            yield spark_run_file
 
     @pytest.fixture(autouse=True)
     def mock_load_mesos_secret(self):
@@ -96,7 +135,9 @@ class TestGetSparkConig:
             system_paasta_config=SystemPaastaConfig(
                 {"cluster_fqdn_format": "paasta-{cluster:s}.something"}, "fake_dir"
             ),
-            volumes=["v1:v1:rw", "v2:v2:rw"],
+            volumes=['v1:v1:rw', 'v2:v2:rw'],
+            access_key='test_access_key',
+            secret_key='test_secret_key',
         )
 
     def test_find_master(self):
@@ -118,48 +159,63 @@ class TestGetSparkConig:
         assert int(spark_conf["spark.sql.shuffle.partitions"]) == expected_partitions
 
     @pytest.mark.parametrize(
-        "cluster,spark_args,expected_spark_config",
-        [
+        'account_id,expected_dir', [
+            (dev_account_id, dev_log_dir),
+            (other_account_id, other_log_dir),
+            ('34567', None),
+        ],
+    )
+    def test_get_default_event_log_dir(self, mock_account_id, account_id, expected_dir):
+        mock_account_id.return_value = account_id
+        assert get_default_event_log_dir('test_access_key', 'test_secret_key') == expected_dir
+
+    @pytest.mark.parametrize(
+        'default_event_log_dir,spark_args,expected_spark_config', [
             # do not override if user disabled the eventlog
-            (None, "spark.eventLog.enabled=false", {"spark.eventLog.enabled": "false"}),
+            (
+                dev_log_dir, 'spark.eventLog.enabled=false',
+                {'spark.eventLog.enabled': 'false'},
+            ),
             # do not override if user manually configure logDir
             (
-                "prod",
-                "spark.eventLog.dir=s3a://fake-location",
-                {
-                    "spark.eventLog.enabled": "true",
-                    "spark.eventLog.dir": "s3a://fake-location",
+                dev_log_dir, 'spark.eventLog.dir=s3a://fake-location', {
+                    'spark.eventLog.enabled': 'true',
+                    'spark.eventLog.dir': 's3a://fake-location',
                 },
             ),
-            # use default prod log location if run in prod
+            # use specified dir if account id is found in config
             (
-                "pnw-prod",
-                None,
-                {
-                    "spark.eventLog.enabled": "true",
-                    "spark.eventLog.dir": DEFAULT_S3_PROD_LOG_DIR,
+                dev_log_dir, None, {
+                    'spark.eventLog.enabled': 'true',
+                    'spark.eventLog.dir': dev_log_dir,
                 },
             ),
-            # use dev log location if not run in prod
+            # do not enable if no default_event_log_dir found in config
             (
-                "test",
-                None,
-                {
-                    "spark.eventLog.enabled": "true",
-                    "spark.eventLog.dir": DEFAULT_S3_DEV_LOG_DIR,
+                None, None, {
+                    'spark.eventLog.enabled': None,
+                    'spark.eventLog.dir': None,
                 },
             ),
         ],
     )
-    def test_event_logging(self, cluster, spark_args, expected_spark_config):
+    def test_event_logging(self, default_event_log_dir, spark_args, expected_spark_config):
         args = {}
-        if cluster is not None:
-            args["cluster"] = cluster
         if spark_args is not None:
-            args["spark_args"] = spark_args
-        spark_conf = self.get_spark_config(args)
+            args['spark_args'] = spark_args
+
+        with mock.patch(
+            'paasta_tools.cli.cmds.spark_run.get_default_event_log_dir',
+            autospec=True,
+        ) as m:
+            m.return_value = default_event_log_dir
+            spark_conf = self.get_spark_config(args)
+
         for key, expected_value in expected_spark_config.items():
-            assert spark_conf[key] == expected_value
+            if expected_value is None:
+                assert key not in spark_conf
+            else:
+                assert spark_conf[key] == expected_value
 
 
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_aws_credentials", autospec=True)
