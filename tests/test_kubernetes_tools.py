@@ -1721,11 +1721,20 @@ def test_create_secret():
     assert mock_client.core.create_namespaced_secret.called
     mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys-fate')
 
+    create_secret(
+        kube_client=mock_client,
+        service='universe',
+        secret='mortys_fate',
+        secret_provider=mock_secret_provider,
+    )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys_fate')
+
 
 def test_update_secret():
     mock_client = mock.Mock()
     mock_secret_provider = mock.Mock()
     mock_secret_provider.decrypt_secret_raw.return_value = bytes("plaintext", 'utf-8')
+
     update_secret(
         kube_client=mock_client,
         service='universe',
@@ -1734,6 +1743,14 @@ def test_update_secret():
     )
     assert mock_client.core.replace_namespaced_secret.called
     mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys-fate')
+
+    update_secret(
+        kube_client=mock_client,
+        service='universe',
+        secret='mortys_fate',
+        secret_provider=mock_secret_provider,
+    )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys_fate')
 
 
 def test_get_kubernetes_secret_hashes():
