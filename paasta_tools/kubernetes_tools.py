@@ -1393,12 +1393,12 @@ def create_secret(
     secret_provider: BaseSecretProvider,
 ) -> None:
     service = sanitise_kubernetes_name(service)
-    secret = sanitise_kubernetes_name(secret)
+    sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_secret(
         namespace="paasta",
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{secret}",
+                name=f"paasta-secret-{service}-{sanitised_secret}",
                 labels={"yelp.com/paasta_service": service},
             ),
             data={secret: base64.b64encode(secret_provider.decrypt_secret_raw(secret)).decode('utf-8')},
@@ -1413,13 +1413,13 @@ def update_secret(
     secret_provider: BaseSecretProvider,
 ) -> None:
     service = sanitise_kubernetes_name(service)
-    secret = sanitise_kubernetes_name(secret)
+    sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_secret(
-        name=f"paasta-secret-{service}-{secret}",
+        name=f"paasta-secret-{service}-{sanitised_secret}",
         namespace="paasta",
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{secret}",
+                name=f"paasta-secret-{service}-{sanitised_secret}",
                 labels={"yelp.com/paasta_service": service},
             ),
             data={secret: base64.b64encode(secret_provider.decrypt_secret_raw(secret)).decode('utf-8')},
