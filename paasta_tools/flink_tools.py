@@ -66,9 +66,12 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
-    def validate(self) -> List[str]:
+    def validate(
+        self,
+        params: List[str] = ['cpus', 'mem', 'security', 'dependencies_reference', 'deploy_group'],
+    ) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
-        error_msgs = super().validate()
+        error_msgs = super().validate(params=params)
 
         if error_msgs:
             name = self.get_instance()
