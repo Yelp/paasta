@@ -57,7 +57,7 @@ def chronos_instance_status(
     service: str,
     instance: str,
     verbose: int,
-) -> str:
+) -> Dict[str, Any]:
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     return {
