@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import socket
 import sys
@@ -56,6 +57,8 @@ deprecated_opts = {
     "driver-cores": "spark.driver.cores",
     "driver-memory": "spark.driver.memory",
 }
+
+log = logging.getLogger(__name__)
 
 
 class DeprecatedAction(argparse.Action):
@@ -330,8 +333,9 @@ def get_default_event_log_dir(access_key, secret_key):
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
         ).get_caller_identity().get('Account')
-    except Exception:
-        account_id = None
+    except Exception as e:
+        log.warning('Failed to identify account ID, error: {}'.format(str(e)))
+        return None
 
     for conf in spark_run_conf['environments'].values():
         if account_id == conf['account_id']:
