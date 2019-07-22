@@ -1,3 +1,11 @@
+paasta-tools (0.85.29) xenial; urgency=medium
+
+  * 0.85.29 tagged with 'make release'
+    Commit: Merge pull request #2332 from Yelp/fix-secrets-sync  Fix
+    secret name sanitisation
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 22 Jul 2019 03:18:45 -0700
+
 paasta-tools (0.85.28) xenial; urgency=medium
 
   * 0.85.28 tagged with 'make release'
