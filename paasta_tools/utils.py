@@ -702,9 +702,12 @@ class InstanceConfig:
         else:
             return False, 'Your service config specifies "%s", an unsupported parameter.' % param
 
-    def validate(self) -> List[str]:
+    def validate(
+        self,
+        params: List[str] = ['cpus', 'mem', 'security', 'dependencies_reference', 'deploy_group'],
+    ) -> List[str]:
         error_msgs = []
-        for param in ['cpus', 'mem', 'security', 'dependencies_reference', 'deploy_group']:
+        for param in params:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)

@@ -56,9 +56,14 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
     def get_instances(self, with_limit: bool = True) -> int:
         return self.config_dict.get('replicas', 1)
 
-    def validate(self) -> List[str]:
+    def validate(
+        self,
+        params: List[str] = ['cpus', 'security', 'dependencies_reference', 'deploy_group'],
+    ) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
-        error_msgs = super().validate()
+        # TODO: add mem back to this list once we fix PAASTA-15582 and
+        # move to using the same units as flink/marathon etc.
+        error_msgs = super().validate(params=params)
 
         if error_msgs:
             name = self.get_instance()
