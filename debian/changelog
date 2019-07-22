@@ -1,3 +1,11 @@
+paasta-tools (0.85.30) xenial; urgency=medium
+
+  * 0.85.30 tagged with 'make release'
+    Commit: Merge pull request #2335 from Yelp/fix-cassandra-validation
+    Drop mem validation for cassandra
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 22 Jul 2019 06:00:44 -0700
+
 paasta-tools (0.85.29) xenial; urgency=medium
 
   * 0.85.29 tagged with 'make release'
