@@ -95,7 +95,7 @@ def check_metastatus_return_code_with_flags(context, flags, expected_return_code
     # We don't want to invoke the "paasta metastatus" wrapper because by
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
-    cmd = '../paasta_tools/paasta_metastatus.py%s' % flags
+    cmd = 'python -m paasta_tools.paasta_metastatus%s' % flags
     paasta_print('Running cmd %s' % (cmd))
     exit_code, output = _run(cmd)
 

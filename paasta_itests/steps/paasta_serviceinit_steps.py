@@ -93,7 +93,7 @@ def status_marathon_job(context, status, job_id):
     ' exits with return code 0 and the correct output'
 ))
 def chronos_status_returns_healthy(context, service_instance):
-    cmd = f'../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} status'
+    cmd = f'python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} status'
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -109,7 +109,7 @@ def chronos_status_returns_healthy(context, service_instance):
     ' exits with return code 0 and the correct output'
 ))
 def chronos_status_verbose_returns_healthy(context, service_instance):
-    cmd = f"../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} status --verbose"
+    cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} status --verbose"
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -124,7 +124,7 @@ def chronos_status_verbose_returns_healthy(context, service_instance):
     ' exits with return code 0 and the correct output'
 ))
 def paasta_serviceinit_tail_stdstreams(context, service_instance):
-    cmd = f"../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} status -vv"
+    cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} status -vv"
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -139,7 +139,7 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
     ' exits with return code 0 and the correct output'
 ))
 def paasta_serviceinit_status_single_instance(context, service, instances):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
+    cmd = 'python -m paasta_tools.paasta_serviceinit --soa-dir %s -s %s -i %s status' % \
         (context.soa_dir, service, instances)
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
@@ -155,7 +155,7 @@ def paasta_serviceinit_status_single_instance(context, service, instances):
     ' has the correct output for instance main and exits with non-zero return code for instance test'
 ))
 def paasta_serviceinit_status_multi_instances(context, service, instances):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
+    cmd = 'python -m paasta_tools.paasta_serviceinit --soa-dir %s -s %s -i %s status' % \
         (context.soa_dir, service, instances)
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
@@ -172,7 +172,7 @@ def paasta_serviceinit_status_multi_instances(context, service, instances):
     ' exits with return code {expected_exit_code:d}',
 )
 def paasta_native_status_returns_healthy(context, service_instance, expected_exit_code):
-    cmd = f'../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} status'
+    cmd = f'python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} status'
     paasta_print('Running cmd %s' % cmd)
     exit_code, context.output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{context.output}')
@@ -188,7 +188,7 @@ def output_matches_pattern(context, pattern):
 
 @when('we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
 def chronos_emergency_stop_job(context, service_instance):
-    cmd = f'../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} stop'
+    cmd = f'python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} stop'
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -199,7 +199,7 @@ def chronos_emergency_stop_job(context, service_instance):
 
 @when('we paasta_serviceinit emergency-start the service_instance "{service_instance}"')
 def chronos_emergency_start_job(context, service_instance):
-    cmd = f'../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} start'
+    cmd = f'python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} start'
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -210,7 +210,7 @@ def chronos_emergency_start_job(context, service_instance):
 
 @when('we paasta_serviceinit emergency-restart the service_instance "{service_instance}"')
 def chronos_emergency_restart_job(context, service_instance):
-    cmd = f'../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {service_instance} restart'
+    cmd = f'python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} restart'
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -221,7 +221,7 @@ def chronos_emergency_restart_job(context, service_instance):
 
 @when('we run paasta serviceinit "{command}" on "{job_id}"')
 def paasta_serviceinit_command(context, command, job_id):
-    cmd = f'../paasta_tools/paasta_serviceinit.py --soa-dir {context.soa_dir} {job_id} {command}'
+    cmd = f'python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {job_id} {command}'
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
     paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
@@ -234,7 +234,7 @@ def paasta_serviceinit_command(context, command, job_id):
 def paasta_serviceinit_command_appid(context, command, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s --appid %s %s %s' \
+    cmd = 'python -m paasta_tools.paasta_serviceinit --soa-dir %s --appid %s %s %s' \
           % (context.soa_dir, app_id, job_id, command)
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
@@ -246,7 +246,7 @@ def paasta_serviceinit_command_appid(context, command, job_id):
 
 @when('we run paasta serviceinit scale --delta "{delta}" on "{job_id}"')
 def paasta_serviceinit_command_scale(context, delta, job_id):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s scale --delta %s' \
+    cmd = 'python -m paasta_tools.paasta_serviceinit --soa-dir %s %s scale --delta %s' \
           % (context.soa_dir, job_id, delta)
     paasta_print('Running cmd %s' % cmd)
     exit_code, output = _run(cmd)
