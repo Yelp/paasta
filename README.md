@@ -11,7 +11,7 @@ running services using containers and Apache Mesos!
 Want to know more about the opinions behind what makes PaaSTA special? Check
 out the [PaaSTA Principles](http://paasta.readthedocs.io/en/latest/about/paasta_principles.html).
 
-*Note*: PaaSTA has been running in production at Yelp for more than a year,
+*Note*: PaaSTA has been running in production at Yelp for years,
 and has a number of "Yelpisms" still lingering in the codebase. We have made
 efforts to excise them, but there are bound to be lingering issues. Please help us
 by opening an [issue](https://github.com/Yelp/paasta/issues/new) or
@@ -24,10 +24,10 @@ tools. It requires a non-trivial amount of infrastructure to be in place
 before it works completely:
 
  * [Docker](http://www.docker.com/) for code delivery and containment
- * [Mesos](http://mesos.apache.org/) for code execution and scheduling (runs Docker containers)
+ * [Mesos](http://mesos.apache.org/) / [Kubernetes](https://kubernetes.io/) for code execution and scheduling (runs Docker containers)
  * [Marathon](https://mesosphere.github.io/marathon/) for managing long-running services
- * [Chronos](https://mesos.github.io/chronos/) for running things on a timer (nightly batches)
- * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) for service registration and discovery
+ * [Tron](https://tron.readthedocs.io/en/latest/) for running things on a timer (nightly batches)
+ * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) / [Envoy](https://www.envoyproxy.io/) for service registration and discovery
  * [Sensu](https://sensuapp.org/) for monitoring/alerting
  * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
 
