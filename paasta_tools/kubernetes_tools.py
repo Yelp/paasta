@@ -556,7 +556,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return probe
 
-    def get_security_context(self) -> V1SecurityContext:
+    def get_security_context(self) -> Optional[V1SecurityContext]:
         cap_add = self.config_dict.get('cap_add', None)
         if cap_add is None:
             return None
