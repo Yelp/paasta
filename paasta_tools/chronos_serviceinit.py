@@ -304,14 +304,14 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
     )
 
 
-# TODO fzz - fix docstring before unWIPing
 def status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose):
     """Returns a formatted string of the status of a list of chronos jobs
 
-    :param jobs: list of dicts of chronos job info as returned by the chronos
-        client
-    :param job_config: dict containing configuration about these jobs as
-        provided by chronos_tools.load_chronos_job_config().
+    :param client: ChronosClient or CachingChronosClient
+    :param service: service name
+    :param instance: instance name, like "main" or "canary"
+    :param cluster: cluster name
+    :param soa_dir: path to yelpsoa_configs dir
     :param verbose: int verbosity level
     """
     # Verbose mode shows previous versions.
