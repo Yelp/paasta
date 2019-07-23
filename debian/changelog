@@ -1,3 +1,11 @@
+paasta-tools (0.85.31) xenial; urgency=medium
+
+  * 0.85.31 tagged with 'make release'
+    Commit: Merge pull request #2133 from Yelp/x-nerve-check-ip  Pass X-
+    Nerve-Check-IP to configure_nerve
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 23 Jul 2019 15:27:26 -0700
+
 paasta-tools (0.85.30) xenial; urgency=medium
 
   * 0.85.30 tagged with 'make release'
