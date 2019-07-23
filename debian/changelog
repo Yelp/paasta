@@ -1,3 +1,27 @@
+paasta-tools (0.85.30) xenial; urgency=medium
+
+  * 0.85.30 tagged with 'make release'
+    Commit: Merge pull request #2335 from Yelp/fix-cassandra-validation
+    Drop mem validation for cassandra
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 22 Jul 2019 06:00:44 -0700
+
+paasta-tools (0.85.29) xenial; urgency=medium
+
+  * 0.85.29 tagged with 'make release'
+    Commit: Merge pull request #2332 from Yelp/fix-secrets-sync  Fix
+    secret name sanitisation
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 22 Jul 2019 03:18:45 -0700
+
+paasta-tools (0.85.28) xenial; urgency=medium
+
+  * 0.85.28 tagged with 'make release'
+    Commit: Avoid updating slack messages if they are unchanged; print
+    blocks when we get an invalid_blocks error
+
+ -- Evan Krall <krall@yelp.com>  Fri, 19 Jul 2019 11:06:03 -0700
+
 paasta-tools (0.85.27) xenial; urgency=medium
 
   * 0.85.27 tagged with 'make release'

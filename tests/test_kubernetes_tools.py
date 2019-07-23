@@ -8,6 +8,7 @@ from hypothesis.strategies import floats
 from hypothesis.strategies import integers
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
+from kubernetes.client import V1Capabilities
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1Deployment
@@ -30,6 +31,7 @@ from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1SecretKeySelector
+from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
@@ -555,6 +557,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         service_namespace_config.get_healthcheck_mode.return_value = 'cmd'
         self.deployment.config_dict['healthcheck_cmd'] = '/bin/true'
         assert self.deployment.get_liveness_probe(service_namespace_config) == liveness_probe
+
+    def test_get_security_context_without_cap_add(self):
+        assert self.deployment.get_security_context() is None
+
+    def test_get_security_context_with_cap_add(self):
+        self.deployment.config_dict['cap_add'] = ["SETGID"]
+        expected_security_context = V1SecurityContext(
+            capabilities=V1Capabilities(add=["SETGID"]),
+        )
+        assert self.deployment.get_security_context() == expected_security_context
 
     def test_get_pod_volumes(self):
         mock_docker_volumes = [
@@ -1721,11 +1733,20 @@ def test_create_secret():
     assert mock_client.core.create_namespaced_secret.called
     mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys-fate')
 
+    create_secret(
+        kube_client=mock_client,
+        service='universe',
+        secret='mortys_fate',
+        secret_provider=mock_secret_provider,
+    )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys_fate')
+
 
 def test_update_secret():
     mock_client = mock.Mock()
     mock_secret_provider = mock.Mock()
     mock_secret_provider.decrypt_secret_raw.return_value = bytes("plaintext", 'utf-8')
+
     update_secret(
         kube_client=mock_client,
         service='universe',
@@ -1734,6 +1755,14 @@ def test_update_secret():
     )
     assert mock_client.core.replace_namespaced_secret.called
     mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys-fate')
+
+    update_secret(
+        kube_client=mock_client,
+        service='universe',
+        secret='mortys_fate',
+        secret_provider=mock_secret_provider,
+    )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with('mortys_fate')
 
 
 def test_get_kubernetes_secret_hashes():
