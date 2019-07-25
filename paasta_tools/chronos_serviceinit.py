@@ -282,14 +282,14 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
             get_short_task_id=get_short_task_id,
             tail_lines=tail_lines,
         )
-        mesos_status = f"      {mesos_status}\n      {mesos_status_verbose}"
+        mesos_status = f"{mesos_status}\n{mesos_status_verbose}"
     return (
-        "    Job:     %(job_name)s\n"
-        "      Status:   %(disabled_state)s (%(chronos_state)s)"
-        "      Last:     %(last_result)s (%(formatted_time)s)\n"
-        "      %(schedule_type)s: %(schedule_value)s\n"
-        "      Command:  %(command)s\n"
-        "      Mesos:    %(mesos_status)s" % {
+        "Job:     %(job_name)s\n"
+        "  Status:   %(disabled_state)s (%(chronos_state)s)"
+        "  Last:     %(last_result)s (%(formatted_time)s)\n"
+        "  %(schedule_type)s: %(schedule_value)s\n"
+        "  Command:  %(command)s\n"
+        "  Mesos:    %(mesos_status)s" % {
             "job_name": job_name,
             "is_temporary": is_temporary,
             "schedule_type": schedule_type,

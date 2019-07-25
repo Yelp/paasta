@@ -75,6 +75,8 @@ HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
+]
+SSH_ONLY_INSTANCE_CONFIG = [
     ChronosJobConfig,
 ]
 
@@ -535,7 +537,7 @@ def report_status_for_cluster(
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
-    use_api_endpoint: bool = True,
+    use_api_endpoint: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -546,6 +548,10 @@ def report_status_for_cluster(
     http_only_instances = [
         instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
         in HTTP_ONLY_INSTANCE_CONFIG
+    ]
+    ssh_only_instances = [
+        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
+        in SSH_ONLY_INSTANCE_CONFIG
     ]
 
     tron_jobs = [
@@ -582,7 +588,8 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance in http_only_instances
+                deployed_instance in http_only_instances or
+                deployed_instance in ssh_only_instances and use_api_endpoint
             )
         ]
         if len(http_only_deployed_instances):
@@ -603,7 +610,7 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance not in http_only_instances and use_api_endpoint
+                deployed_instance not in http_only_deployed_instances
             )
         ]
         if len(ssh_only_deployed_instances):
@@ -842,9 +849,9 @@ def paasta_status(
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
     if 'USE_API_ENDPOINT' in os.environ:
-        use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
+        use_api_endpoint = bool(strtobool(os.environ['USE_API_ENDPOINT']))
     else:
-        use_api_endpoint = True
+        use_api_endpoint = False
 
     return_codes = [0]
     tasks = []

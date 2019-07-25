@@ -90,7 +90,14 @@ def test_chronos_instance_status(
     request.swagger_data = {'service': 'fake_service', 'instance': 'fake_instance'}
 
     instance.instance_status(request)
-    assert mock_status_chronos_jobs.called
+    assert mock_status_chronos_jobs.call_args == mock.call(
+        mock_get_chronos_client.return_value,
+        'fake_service',
+        'fake_instance',
+        'fake_cluster',
+        '/nail/etc/services',
+        0,
+    )
 
 
 @mock.patch('paasta_tools.api.views.instance.adhoc_instance_status', autospec=True)
