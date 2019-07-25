@@ -494,14 +494,22 @@ class TestMarathonTools:
         expected = [
             (
                 'no_test.uno', {
-                    'clock': 0, 'port': 1111, 'proxy_port': 6666,
-                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                    'paasta_instance': 'left_behind',
+                    'deploy_group': 'a_deploy_group',
+                    'clock': 0,
+                    'port': 1111,
+                    'proxy_port': 6666,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
                 },
             ),
             (
                 'no_docstrings.dos', {
-                    'binary': 1, 'port': 2222, 'proxy_port': 6666,
-                    'paasta_instance': 'forever_abandoned', 'deploy_group': 'a_deploy_group',
+                    'paasta_instance': 'forever_abandoned',
+                    'deploy_group': 'a_deploy_group',
+                    'binary': 1,
+                    'port': 2222,
+                    'proxy_port': 6666,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
                 },
             ),
         ]
@@ -516,7 +524,90 @@ class TestMarathonTools:
             'paasta_tools.marathon_tools.load_service_namespace_config',
             autospec=True,
             side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
-        ) as read_ns_config_patch:
+        ) as read_ns_config_patch, mock.patch(
+            'socket.gethostname', autospec=True,
+        ), mock.patch(
+            'socket.gethostbyname', autospec=True, return_value='10.1.1.1',
+        ):
+            def mock_get_registrations(*args, **kwargs):
+                return registrations.pop()
+            mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
+            mock_load_marathon_service_config.return_value.get_deploy_group.return_value = 'a_deploy_group'
+            actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+            assert expected == actual
+            mara_srvs_here_patch.assert_called_once_with()
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_test',
+                instance='left_behind',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            mock_load_marathon_service_config.assert_any_call(
+                service='no_docstrings',
+                instance='forever_abandoned',
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            assert mock_load_marathon_service_config.call_count == 2
+            read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
+            read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
+            assert read_ns_config_patch.call_count == 2
+
+    def test_get_marathon_services_running_here_for_nerve_fail_to_get_ip(self):
+        cluster = 'edelweiss'
+        soa_dir = 'the_sound_of_music'
+        fake_marathon_services = [
+            ('no_test', 'left_behind', 1111),
+            ('no_docstrings', 'forever_abandoned', 2222),
+        ]
+        registrations = [
+            ['no_docstrings.dos'],
+            ['no_test.uno'],
+        ]
+        nerve_dicts = [
+            long_running_service_tools.ServiceNamespaceConfig({'binary': 1, 'proxy_port': 6666}),
+            long_running_service_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666}),
+        ]
+        expected = [
+            (
+                'no_test.uno', {
+                    'paasta_instance': 'left_behind',
+                    'deploy_group': 'a_deploy_group',
+                    'clock': 0,
+                    'port': 1111,
+                    'proxy_port': 6666,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '127.0.0.1'},
+                },
+            ),
+            (
+                'no_docstrings.dos', {
+                    'paasta_instance': 'forever_abandoned',
+                    'deploy_group': 'a_deploy_group',
+                    'binary': 1,
+                    'port': 2222,
+                    'proxy_port': 6666,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '127.0.0.1'},
+                },
+            ),
+        ]
+        with mock.patch(
+            'paasta_tools.marathon_tools.marathon_services_running_here',
+            autospec=True,
+            return_value=fake_marathon_services,
+        ) as mara_srvs_here_patch, mock.patch(
+            'paasta_tools.marathon_tools.load_marathon_service_config',
+            autospec=True,
+        ) as mock_load_marathon_service_config, mock.patch(
+            'paasta_tools.marathon_tools.load_service_namespace_config',
+            autospec=True,
+            side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
+        ) as read_ns_config_patch, mock.patch(
+            'socket.gethostname', autospec=True,
+        ), mock.patch(
+            'socket.gethostbyname', autospec=True, side_effect=Exception,
+        ):
             def mock_get_registrations(*args, **kwargs):
                 return registrations.pop()
             mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
@@ -563,26 +654,38 @@ class TestMarathonTools:
         expected = [
             (
                 'no_test.uno', {
-                    'port': 1111, 'proxy_port': 6666,
-                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                    'paasta_instance': 'left_behind',
+                    'deploy_group': 'a_deploy_group',
+                    'port': 1111,
+                    'proxy_port': 6666,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
                 },
             ),
             (
                 'no_test.dos', {
-                    'port': 1111, 'proxy_port': 6667,
-                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                    'paasta_instance': 'left_behind',
+                    'deploy_group': 'a_deploy_group',
+                    'port': 1111,
+                    'proxy_port': 6667,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
                 },
             ),
             (
                 'no_test.tres', {
-                    'port': 1111, 'proxy_port': 6668,
-                    'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                    'paasta_instance': 'left_behind',
+                    'deploy_group': 'a_deploy_group',
+                    'port': 1111,
+                    'proxy_port': 6668,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
                 },
             ),
             (
                 'no_docstrings.quatro', {
-                    'port': 2222, 'proxy_port': 6669,
-                    'paasta_instance': 'forever_abandoned', 'deploy_group': 'a_deploy_group',
+                    'paasta_instance': 'forever_abandoned',
+                    'deploy_group': 'a_deploy_group',
+                    'port': 2222,
+                    'proxy_port': 6669,
+                    'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
                 },
             ),
         ]
@@ -597,7 +700,11 @@ class TestMarathonTools:
             'paasta_tools.marathon_tools.load_service_namespace_config',
             autospec=True,
             side_effect=lambda service, namespace, soa_dir: nerve_dicts.pop((service, namespace)),
-        ) as read_ns_config_patch:
+        ) as read_ns_config_patch, mock.patch(
+            'socket.gethostname', autospec=True,
+        ), mock.patch(
+            'socket.gethostbyname', autospec=True, return_value='10.1.1.1',
+        ):
             def mock_get_registrations(*args, **kwargs):
                 return namespaces.pop()
             mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations
@@ -643,8 +750,12 @@ class TestMarathonTools:
         ]
         expected = [(
             'no_test.uno', {
-                'clock': 0, 'port': 1111, 'proxy_port': 6666,
-                'paasta_instance': 'left_behind', 'deploy_group': 'a_deploy_group',
+                'paasta_instance': 'left_behind',
+                'deploy_group': 'a_deploy_group',
+                'clock': 0,
+                'port': 1111,
+                'proxy_port': 6666,
+                'extra_healthcheck_headers': {'X-Nerve-Check-IP': '10.1.1.1'},
             },
         )]
         with mock.patch(
@@ -658,7 +769,11 @@ class TestMarathonTools:
             'paasta_tools.marathon_tools.load_service_namespace_config',
             autospec=True,
             side_effect=lambda *args, **kwargs: nerve_dicts.pop(),
-        ) as read_ns_config_patch:
+        ) as read_ns_config_patch, mock.patch(
+            'socket.gethostname', autospec=True,
+        ), mock.patch(
+            'socket.gethostbyname', autospec=True, return_value='10.1.1.1',
+        ):
             def mock_get_registrations(*args, **kwargs):
                 return registrations.pop()
             mock_load_marathon_service_config.return_value.get_registrations.side_effect = mock_get_registrations

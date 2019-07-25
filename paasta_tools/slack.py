@@ -26,6 +26,7 @@ class PaastaSlackClient(SlackClient):
         super().__init__(self)
         if token is None:
             log.warning("No slack token available, will only log")
+            self.sc = None
         else:
             self.sc = SlackClient(token)
         self.token = token
