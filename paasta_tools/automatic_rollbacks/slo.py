@@ -1,6 +1,8 @@
 import abc
 import functools
+import json
 import os
+import tempfile
 import textwrap
 import threading
 import time
@@ -14,6 +16,13 @@ from typing import Optional
 from typing import Tuple
 
 import pytimeparse
+import requests
+
+from paasta_tools.automatic_rollbacks.newrelic import tail_newrelic
+from paasta_tools.automatic_rollbacks.signalfx import tail_signalfx
+from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
+from paasta_tools.utils import DEFAULT_SOA_DIR
+
 try:
     from slo_utils.yelpsoa_configs import get_slo_files_from_soaconfigs
     from slo_transcoder.composite_sinks.signalform_detectors import make_signalform_detector_composite_sink
@@ -22,14 +31,11 @@ try:
 except ImportError:
     SLO_TRANSCODER_LOADED = False
 
-import tempfile
-
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.automatic_rollbacks.signalfx import tail_signalfx
-from paasta_tools.automatic_rollbacks.slack import SlackDeploymentProcess
-
 
 def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR) -> Generator:
+    if service == 'nowait-server' or service == 'nowait-ygil':
+        yield 'New Relic', {}
+
     if not SLO_TRANSCODER_LOADED:
         return
 
@@ -58,6 +64,37 @@ def get_slos_for_service(service, soa_dir=DEFAULT_SOA_DIR) -> Generator:
                 yield sink, query
 
 
+class SLONewRelicDemultiplexer:
+    def __init__(
+        self,
+        sink: Any,
+        individual_slo_callback: Callable[['SLOWatcher'], None],
+        start_timestamp: Optional[float] = None,
+        max_duration: float = 3600,
+    ) -> None:
+        self.sink = sink
+        self.individual_slo_callback = individual_slo_callback
+        self.max_duration = max_duration
+        if start_timestamp is None:
+            self.start_timestamp = time.time()
+        else:
+            self.start_timestamp = start_timestamp
+
+        self.slo_watchers_by_label: Dict[str, 'SLOWatcher'] = {}
+        watcher = SLONewRelicWatcher(
+            {},
+            individual_slo_callback,
+            self.start_timestamp,
+            "New Relic",
+            max_duration=max_duration,
+        )
+        self.slo_watchers_by_label["New Relic"] = watcher
+
+    def process_datapoint(self, props, datapoint, timestamp) -> None:
+        watcher = self.slo_watchers_by_label["New Relic"]
+        watcher.process_datapoint(props, datapoint, timestamp)
+
+
 class SLODemultiplexer:
     def __init__(
         self,
@@ -77,7 +114,13 @@ class SLODemultiplexer:
         self.slo_watchers_by_label: Dict[str, 'SLOWatcher'] = {}
         for slo in sink.source.slos:
             label = sink._get_detector_label(slo)
-            watcher = SLOWatcher(slo, individual_slo_callback, self.start_timestamp, label, max_duration=max_duration)
+            watcher = SLOSFXWatcher(
+                slo,
+                individual_slo_callback,
+                self.start_timestamp,
+                label,
+                max_duration=max_duration,
+            )
             self.slo_watchers_by_label[label] = watcher
 
     def process_datapoint(self, props, datapoint, timestamp) -> None:
@@ -104,6 +147,60 @@ class SLOWatcher:
         self.callback = callback
         self.start_timestamp = start_timestamp
         self.label = label
+
+    def process_datapoint(self, props, datapoint, timestamp) -> None:
+        raise NotImplementedError
+
+    def trim_window(self) -> None:
+        raise NotImplementedError
+
+    def window_duration(self) -> float:
+        """Many of our SLOs are defined with durations of 1 hour or more; this is great if you're trying to avoid being
+        paged, but not helpful for a deployment that you expect to finish within a few minutes. self.max_duration allows
+        us to cap the length of time that we consider. This should make us a bit more sensitive."""
+        raise NotImplementedError
+
+    def is_window_bad(self) -> bool:
+        raise NotImplementedError
+
+
+class SLONewRelicWatcher(SLOWatcher):
+    def process_datapoint(self, props, datapoint, timestamp) -> None:
+
+        if timestamp > self.start_timestamp:
+            self.bad_after_mark = self.is_window_bad()
+        else:
+            self.bad_before_mark = self.is_window_bad()
+
+        old_failing = self.failing
+        self.failing = self.bad_after_mark or self.bad_before_mark
+
+        if self.failing == (not old_failing):
+            self.callback(self)
+
+    def trim_window(self) -> None:
+        return
+
+    def window_duration(self) -> float:
+        """Many of our SLOs are defined with durations of 1 hour or more; this is great if you're trying to avoid being
+        paged, but not helpful for a deployment that you expect to finish within a few minutes. self.max_duration allows
+        us to cap the length of time that we consider. This should make us a bit more sensitive."""
+        return self.max_duration
+
+    def is_window_bad(self) -> bool:
+        data = {'only_open': 'true'}
+        api_key = os.environ["NEW_RELIC_API_KEY"]
+        if api_key is None:
+            raise RuntimeError("The NEW_RELIC_API_KEY environment variable is not set!")
+        headers = {'X-Api-Key': api_key}
+        response = requests.get('https://api.newrelic.com/v2/alerts_violations.json', headers=headers, data=data)
+        violations = json.loads(response.text)
+        if len(violations["violations"]) > 0:
+            return True
+        return False
+
+
+class SLOSFXWatcher(SLOWatcher):
 
     def process_datapoint(self, props, datapoint, timestamp) -> None:
         self.window.append((timestamp, datapoint))
@@ -171,14 +268,24 @@ def watch_slos_for_service(
             all_slos_callback(new_failing)
 
     for sink, query in get_slos_for_service(service):
-        demux = SLODemultiplexer(
-            sink,
-            individual_slo_callback=callback_wrapper,
-            start_timestamp=start_timestamp,
-        )
+        print(f"Using the following sink {sink}")
+        if sink == 'New Relic':
+            tail_func = tail_newrelic
+            demux = SLONewRelicDemultiplexer(
+                sink,
+                individual_slo_callback=callback_wrapper,
+                start_timestamp=start_timestamp,
+            )
+        else:
+            demux = SLODemultiplexer(
+                sink,
+                individual_slo_callback=callback_wrapper,
+                start_timestamp=start_timestamp,
+            )
+            tail_func = tail_signalfx
         thread = threading.Thread(
             target=print_exceptions_wrapper(functools.partial(
-                tail_signalfx,
+                tail_func,
                 query,
                 lookback_seconds=30,
                 callback=print_exceptions_wrapper(demux.process_datapoint),

@@ -1,12 +1,12 @@
 from unittest import mock
 
 from paasta_tools.automatic_rollbacks.slo import SLODemultiplexer
-from paasta_tools.automatic_rollbacks.slo import SLOWatcher
+from paasta_tools.automatic_rollbacks.slo import SLOSFXWatcher
 from paasta_tools.automatic_rollbacks.slo import watch_slos_for_service
 
 
-def test_SLOWatcher_window_trimming():
-    watcher = SLOWatcher(
+def test_SLOSFXWatcher_window_trimming():
+    watcher = SLOSFXWatcher(
         slo=mock.Mock(config=mock.Mock(duration="300s", threshold=1.0, percent_of_duration=50.0)),
         callback=mock.Mock(),
         start_timestamp=100.0,
@@ -28,9 +28,9 @@ def test_SLOWatcher_window_trimming():
     assert latest_ts - earliest_ts <= watcher.window_duration()
 
 
-def test_SLOWatcher_alerting():
+def test_SLOSFXWatcher_alerting():
     callback = mock.Mock()
-    watcher = SLOWatcher(
+    watcher = SLOSFXWatcher(
         slo=mock.Mock(
             config=mock.Mock(
                 duration="300s",
