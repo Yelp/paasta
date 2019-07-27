@@ -55,19 +55,19 @@ from paasta_tools.utils import timeout
 # In the Chronos docs a space is suggested as the natural separator
 SPACER = " "
 # Until Chronos supports dots in the job name, we use this separator internally
-INTERNAL_SPACER = '.'
+INTERNAL_SPACER = "."
 # Chronos creates Mesos tasks with an id composed of some arbitrary strings,
 # the app's full name, a spacer, and a timestamp. This variable is that
 # spacer. Note that we don't control this spacer, i.e. you can't change it
 # here and expect the world to change with you. We need to know what it is so
 # we can decompose Mesos task ids.
-MESOS_TASK_SPACER = ':'
+MESOS_TASK_SPACER = ":"
 
 # this is the identifier prepended to a job name for use
 # with temporary jobs, like those created by ``chronos_rerun.py``
 TMP_JOB_IDENTIFIER = "tmp"
 
-VALID_BOUNCE_METHODS = ['graceful']
+VALID_BOUNCE_METHODS = ["graceful"]
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 log = logging.getLogger(__name__)
@@ -83,11 +83,13 @@ _ENTERED, _ENTERED_AND_EXITED = range(0, 2)
 
 class LastRunState:
     """Cheap enum to represent the state of the last run"""
+
     Success, Fail, NotRun = range(0, 3)
 
 
 class JobType:
     """ An enum to represent job types """
+
     Dependent, Scheduled = range(0, 2)
 
 
@@ -100,41 +102,47 @@ class InvalidParentError(Exception):
 
 
 class ChronosConfig(dict):
-
     def __init__(self, config):
         super().__init__(config)
 
     def get_url(self):
         """:returns: The Chronos API endpoint"""
         try:
-            return self['url']
+            return self["url"]
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos url in system chronos config')
+            raise ChronosNotConfigured(
+                "Could not find chronos url in system chronos config"
+            )
 
     def get_username(self):
         """:returns: The Chronos API username"""
         try:
-            return self['user']
+            return self["user"]
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos user in system chronos config')
+            raise ChronosNotConfigured(
+                "Could not find chronos user in system chronos config"
+            )
 
     def get_password(self):
         """:returns: The Chronos API password"""
         try:
-            return self['password']
+            return self["password"]
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos password in system chronos config')
+            raise ChronosNotConfigured(
+                "Could not find chronos password in system chronos config"
+            )
 
 
 def load_chronos_config():
     try:
         return ChronosConfig(load_system_paasta_config().get_chronos_config())
     except PaastaNotConfiguredError:
-        raise ChronosNotConfigured("Could not find chronos_config in configuration directory")
+        raise ChronosNotConfigured(
+            "Could not find chronos_config in configuration directory"
+        )
 
 
 class CachingChronosClient(chronos.ChronosClient):
-
     @time_cache(ttl=20)
     def list(self):
         return super().list()
@@ -180,13 +188,13 @@ def decompose_job_id(job_id):
     decomposed = job_id.split(SPACER)
     if len(decomposed) == 3:
         if not decomposed[0].startswith(TMP_JOB_IDENTIFIER):
-            raise InvalidJobNameError('invalid job id %s' % job_id)
+            raise InvalidJobNameError("invalid job id %s" % job_id)
         else:
             return (decomposed[1], decomposed[2])
     elif len(decomposed) == 2:
         return (decomposed[0], decomposed[1])
     else:
-        raise InvalidJobNameError('invalid job id %s' % job_id)
+        raise InvalidJobNameError("invalid job id %s" % job_id)
 
 
 class InvalidChronosConfigError(Exception):
@@ -195,11 +203,9 @@ class InvalidChronosConfigError(Exception):
 
 @time_cache(ttl=30)
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
-    chronos_conf_file = 'chronos-%s' % cluster
+    chronos_conf_file = "chronos-%s" % cluster
     return service_configuration_lib.read_extra_service_information(
-        service,
-        chronos_conf_file,
-        soa_dir=soa_dir,
+        service, chronos_conf_file, soa_dir=soa_dir
     )
 
 
@@ -209,21 +215,26 @@ def load_chronos_job_config(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> 'ChronosJobConfig':
+) -> "ChronosJobConfig":
     general_config = service_configuration_lib.read_service_configuration(
-        service,
-        soa_dir=soa_dir,
+        service, soa_dir=soa_dir
     )
 
-    if instance.startswith('_'):
+    if instance.startswith("_"):
         raise InvalidJobNameError(
-            f"Unable to load chronos job config for {service}.{instance} as instance name starts with '_'",
+            f"Unable to load chronos job config for {service}.{instance} as instance name starts with '_'"
         )
-    service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
+    service_chronos_jobs = read_chronos_jobs_for_service(
+        service, cluster, soa_dir=soa_dir
+    )
     if instance not in service_chronos_jobs:
-        raise NoConfigurationForServiceError(f'No job named "{instance}" in config file chronos-{cluster}.yaml')
+        raise NoConfigurationForServiceError(
+            f'No job named "{instance}" in config file chronos-{cluster}.yaml'
+        )
     branch_dict = None
-    general_config = deep_merge_dictionaries(overrides=service_chronos_jobs[instance], defaults=general_config)
+    general_config = deep_merge_dictionaries(
+        overrides=service_chronos_jobs[instance], defaults=general_config
+    )
 
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
@@ -250,9 +261,17 @@ def load_chronos_job_config(
 
 
 class ChronosJobConfig(InstanceConfig):
-    config_filename_prefix = 'chronos'
+    config_filename_prefix = "chronos"
 
-    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
+    def __init__(
+        self,
+        service,
+        instance,
+        cluster,
+        config_dict,
+        branch_dict,
+        soa_dir=DEFAULT_SOA_DIR,
+    ):
         super().__init__(
             cluster=cluster,
             instance=instance,
@@ -270,7 +289,9 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_owner(self):
         overrides = self.get_monitoring()
-        return monitoring_tools.get_team(overrides=overrides, service=self.get_service())
+        return monitoring_tools.get_team(
+            overrides=overrides, service=self.get_service()
+        )
 
     def get_bounce_method(self):
         """Returns the bounce method specified for the Chronos job.
@@ -280,7 +301,7 @@ class ChronosJobConfig(InstanceConfig):
         * ``brutal``: disables the old version and immediately kills any running tasks it has
         If unspecified, defaults to ``graceful``.
         """
-        return self.config_dict.get('bounce_method', 'graceful')
+        return self.config_dict.get("bounce_method", "graceful")
 
     def get_env(self):
         """The expected input env for PaaSTA is a dictionary of key/value pairs
@@ -301,7 +322,7 @@ class ChronosJobConfig(InstanceConfig):
                     whitelist=self.get_deploy_whitelist(),
                     system_deploy_blacklist=system_paasta_config.get_deploy_blacklist(),
                     system_deploy_whitelist=system_paasta_config.get_deploy_whitelist(),
-                ),
+                )
             )
             constraints.extend(self.get_pool_constraints())
         assert isinstance(constraints, list)
@@ -310,21 +331,26 @@ class ChronosJobConfig(InstanceConfig):
     def check_bounce_method(self):
         bounce_method = self.get_bounce_method()
         if bounce_method not in VALID_BOUNCE_METHODS:
-            return False, ('The specified bounce method "%s" is invalid. It must be one of (%s).'
-                           % (bounce_method, ', '.join(VALID_BOUNCE_METHODS)))
-        return True, ''
+            return (
+                False,
+                (
+                    'The specified bounce method "%s" is invalid. It must be one of (%s).'
+                    % (bounce_method, ", ".join(VALID_BOUNCE_METHODS))
+                ),
+            )
+        return True, ""
 
     def get_epsilon(self):
-        return self.config_dict.get('epsilon', 'PT60S')
+        return self.config_dict.get("epsilon", "PT60S")
 
     def get_retries(self):
-        return self.config_dict.get('retries', 2)
+        return self.config_dict.get("retries", 2)
 
     def get_disabled(self):
-        return self.config_dict.get('disabled', False)
+        return self.config_dict.get("disabled", False)
 
     def get_schedule(self):
-        return self.config_dict.get('schedule')
+        return self.config_dict.get("schedule")
 
     def get_schedule_interval_in_seconds(self, seconds_ago=0):
         """Return the job interval in seconds or None if there is no interval
@@ -340,20 +366,23 @@ class ChronosJobConfig(InstanceConfig):
                 job_tz = pytz.timezone(self.get_schedule_time_zone())
             except (pytz.exceptions.UnknownTimeZoneError, AttributeError):
                 job_tz = pytz.utc
-            c = croniter(schedule, datetime.datetime.now(job_tz) - datetime.timedelta(seconds=seconds_ago))
+            c = croniter(
+                schedule,
+                datetime.datetime.now(job_tz) - datetime.timedelta(seconds=seconds_ago),
+            )
             return c.get_next() - c.get_prev()
         else:
             try:
-                _, _, interval = self.get_schedule().split('/')
+                _, _, interval = self.get_schedule().split("/")
                 return int(float(isodate.parse_duration(interval).total_seconds()))
             except (isodate.ISO8601Error, ValueError):
                 return None
 
     def get_schedule_time_zone(self):
-        return self.config_dict.get('schedule_time_zone')
+        return self.config_dict.get("schedule_time_zone")
 
     def get_parents(self):
-        parents = self.config_dict.get('parents', [])
+        parents = self.config_dict.get("parents", [])
         if parents is not None and not isinstance(parents, list):
             return [parents]
         else:
@@ -372,15 +401,22 @@ class ChronosJobConfig(InstanceConfig):
         try:
             isodate.parse_duration(epsilon)
         except isodate.ISO8601Error:
-            return False, 'The specified epsilon value "%s" does not conform to the ISO8601 format.' % epsilon
-        return True, ''
+            return (
+                False,
+                'The specified epsilon value "%s" does not conform to the ISO8601 format.'
+                % epsilon,
+            )
+        return True, ""
 
     def check_retries(self):
         retries = self.get_retries()
         if retries is not None:
             if not isinstance(retries, int):
-                return False, 'The specified retries value "%s" is not a valid int.' % retries
-        return True, ''
+                return (
+                    False,
+                    'The specified retries value "%s" is not a valid int.' % retries,
+                )
+        return True, ""
 
     def check_parents(self):
         parents = self.get_parents()
@@ -388,9 +424,14 @@ class ChronosJobConfig(InstanceConfig):
             results = [(parent, check_parent_format(parent)) for parent in parents]
             badly_formatted = [res[0] for res in results if res[1] is False]
             if len(badly_formatted) > 0:
-                return False, ('The job name(s) %s is not formatted correctly: expected service.instance'
-                               % ", ".join(badly_formatted))
-        return True, ''
+                return (
+                    False,
+                    (
+                        "The job name(s) %s is not formatted correctly: expected service.instance"
+                        % ", ".join(badly_formatted)
+                    ),
+                )
+        return True, ""
 
     def check_cmd(self):
         command = self.get_cmd()
@@ -399,14 +440,18 @@ class ChronosJobConfig(InstanceConfig):
                 parse_time_variables(command=command)
                 return True, ""
             except (ValueError, KeyError, TypeError):
-                return False, ("Unparseable command '%s'. Hint: do you need to escape {} chars?") % command
+                return (
+                    False,
+                    ("Unparseable command '%s'. Hint: do you need to escape {} chars?")
+                    % command,
+                )
         else:
             return True, ""
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
     # more info: https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals
     def _check_schedule_repeat_helper(self, repeat_string):
-        pattern = re.compile(r'^R\d*$')
+        pattern = re.compile(r"^R\d*$")
         return pattern.match(repeat_string) is not None
 
     def check_schedule(self):
@@ -416,35 +461,50 @@ class ChronosJobConfig(InstanceConfig):
         if schedule is not None:
             if not CronSlices.is_valid(schedule):
                 try:
-                    repeat, start_time, interval = schedule.split('/')  # the parts have separate validators
+                    repeat, start_time, interval = schedule.split(
+                        "/"
+                    )  # the parts have separate validators
                 except ValueError:
                     return (
-                        False, (
+                        False,
+                        (
                             'The specified schedule "%s" is neither a valid cron schedule nor a valid'
-                            ' ISO 8601 schedule' % schedule
+                            " ISO 8601 schedule" % schedule
                         ),
                     )
 
                 # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
-                if start_time == '':
-                    msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
+                if start_time == "":
+                    msgs.append(
+                        'The specified schedule "%s" does not contain a start time'
+                        % schedule
+                    )
                 else:
                     # Check if start time contains time zone information
                     try:
                         dt = isodate.parse_datetime(start_time)
-                        if not hasattr(dt, 'tzinfo'):
-                            msgs.append('The specified start time "%s" must contain a time zone' % start_time)
+                        if not hasattr(dt, "tzinfo"):
+                            msgs.append(
+                                'The specified start time "%s" must contain a time zone'
+                                % start_time
+                            )
                     except isodate.ISO8601Error as exc:
-                        msgs.append('The specified start time "%s" in schedule "%s" does '
-                                    'not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
+                        msgs.append(
+                            'The specified start time "%s" in schedule "%s" does '
+                            "not conform to the ISO 8601 format:\n%s"
+                            % (start_time, schedule, str(exc))
+                        )
 
                 parsed_interval = None
                 try:
                     # 'interval' and 'duration' are interchangeable terms
                     parsed_interval = isodate.parse_duration(interval)
                 except isodate.ISO8601Error:
-                    msgs.append('The specified interval "%s" in schedule "%s" '
-                                'does not conform to the ISO 8601 format.' % (interval, schedule))
+                    msgs.append(
+                        'The specified interval "%s" in schedule "%s" '
+                        "does not conform to the ISO 8601 format."
+                        % (interval, schedule)
+                    )
 
                 # don't allow schedules more frequent than every minute we have
                 # to be careful here, since the isodate library returns
@@ -456,15 +516,23 @@ class ChronosJobConfig(InstanceConfig):
                 # one, so if someone does try to do something like "R1//P0.01M"
                 # then the API request to upload the job will fail.  TODO:
                 # detect when someone is trying to add a fractional period?
-                if (parsed_interval and isinstance(parsed_interval, datetime.timedelta) and
-                        parsed_interval < datetime.timedelta(seconds=60)):
-                    msgs.append('Unsupported interval "%s": jobs must be run at an interval of > 60 seconds' % interval)
+                if (
+                    parsed_interval
+                    and isinstance(parsed_interval, datetime.timedelta)
+                    and parsed_interval < datetime.timedelta(seconds=60)
+                ):
+                    msgs.append(
+                        'Unsupported interval "%s": jobs must be run at an interval of > 60 seconds'
+                        % interval
+                    )
 
                 if not self._check_schedule_repeat_helper(repeat):
-                    msgs.append('The specified repeat "%s" in schedule "%s" '
-                                'does not conform to the ISO 8601 format.' % (repeat, schedule))
+                    msgs.append(
+                        'The specified repeat "%s" in schedule "%s" '
+                        "does not conform to the ISO 8601 format." % (repeat, schedule)
+                    )
 
-        return len(msgs) == 0, '\n'.join(msgs)
+        return len(msgs) == 0, "\n".join(msgs)
 
     # TODO we should use pytz for best possible tz info and validation
     # TODO if tz specified in start_time, compare to the schedule_time_zone and warn if they differ
@@ -477,73 +545,82 @@ class ChronosJobConfig(InstanceConfig):
     def check_schedule_time_zone(self):
         time_zone = self.get_schedule_time_zone()
         if time_zone is not None:
-            return True, ''
+            return True, ""
             # try:
             # TODO validate tz format
             # except isodate.ISO8601Error as exc:
             #     return False, ('The specified time zone "%s" does not conform to the tz database format:\n%s'
             #                    % (time_zone, str(exc)))
-        return True, ''
+        return True, ""
 
     def check(self, param):
         check_methods = {
-            'bounce_method': self.check_bounce_method,
-            'epsilon': self.check_epsilon,
-            'retries': self.check_retries,
-            'cpus': self.check_cpus,
-            'mem': self.check_mem,
-            'disk': self.check_disk,
-            'schedule': self.check_schedule,
-            'scheduleTimeZone': self.check_schedule_time_zone,
-            'security': self.check_security,
-            'dependencies_reference': self.check_dependencies_reference,
-            'parents': self.check_parents,
-            'cmd': self.check_cmd,
-            'deploy_group': self.check_deploy_group,
+            "bounce_method": self.check_bounce_method,
+            "epsilon": self.check_epsilon,
+            "retries": self.check_retries,
+            "cpus": self.check_cpus,
+            "mem": self.check_mem,
+            "disk": self.check_disk,
+            "schedule": self.check_schedule,
+            "scheduleTimeZone": self.check_schedule_time_zone,
+            "security": self.check_security,
+            "dependencies_reference": self.check_dependencies_reference,
+            "parents": self.check_parents,
+            "cmd": self.check_cmd,
+            "deploy_group": self.check_deploy_group,
         }
-        supported_params_without_checks = ['description', 'owner', 'disabled']
+        supported_params_without_checks = ["description", "owner", "disabled"]
         if param in check_methods:
             return check_methods[param]()
         elif param in supported_params_without_checks:
-            return True, ''
+            return True, ""
         else:
-            return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
+            return (
+                False,
+                'Your Chronos config specifies "%s", an unsupported parameter.' % param,
+            )
 
-    def format_chronos_job_dict(self, docker_url, docker_volumes, docker_cfg_location, constraints):
+    def format_chronos_job_dict(
+        self, docker_url, docker_volumes, docker_cfg_location, constraints
+    ):
         net = get_mesos_network_for_net(self.get_net())
-        command = parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd()
+        command = (
+            parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd()
+        )
 
         complete_config = {
-            'name': self.get_job_name(),
-            'container': {
-                'image': docker_url,
-                'network': net,
-                'type': 'DOCKER',
-                'volumes': docker_volumes,
-                'parameters': self.format_docker_parameters(),
+            "name": self.get_job_name(),
+            "container": {
+                "image": docker_url,
+                "network": net,
+                "type": "DOCKER",
+                "volumes": docker_volumes,
+                "parameters": self.format_docker_parameters(),
             },
-            'uris': [docker_cfg_location],
-            'environmentVariables': self.get_env(),
-            'mem': self.get_mem(),
-            'cpus': self.get_cpus(),
-            'disk': self.get_disk(),
-            'constraints': constraints,
-            'command': command,
-            'arguments': self.get_args(),
-            'epsilon': self.get_epsilon(),
-            'retries': self.get_retries(),
-            'async': False,  # we don't support async jobs
-            'disabled': self.get_disabled(),
-            'owner': self.get_owner(),
-            'scheduleTimeZone': self.get_schedule_time_zone(),
-            'shell': self.get_shell(),
+            "uris": [docker_cfg_location],
+            "environmentVariables": self.get_env(),
+            "mem": self.get_mem(),
+            "cpus": self.get_cpus(),
+            "disk": self.get_disk(),
+            "constraints": constraints,
+            "command": command,
+            "arguments": self.get_args(),
+            "epsilon": self.get_epsilon(),
+            "retries": self.get_retries(),
+            "async": False,  # we don't support async jobs
+            "disabled": self.get_disabled(),
+            "owner": self.get_owner(),
+            "scheduleTimeZone": self.get_schedule_time_zone(),
+            "shell": self.get_shell(),
         }
         if self.get_schedule() is not None:
-            complete_config['schedule'] = self.get_schedule()
+            complete_config["schedule"] = self.get_schedule()
         else:
             # The input to parents is the normal paasta syntax, but for chronos we have to
             # convert it to what chronos expects, which uses its own spacer
-            complete_config["parents"] = [paasta_to_chronos_job_name(parent) for parent in self.get_parents()]
+            complete_config["parents"] = [
+                paasta_to_chronos_job_name(parent) for parent in self.get_parents()
+            ]
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -552,9 +629,15 @@ class ChronosJobConfig(InstanceConfig):
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs.extend(super().validate())
         for param in [
-            'epsilon', 'retries', 'disk',
-            'schedule', 'scheduleTimeZone', 'parents', 'cmd',
-            'security', 'dependencies_reference',
+            "epsilon",
+            "retries",
+            "disk",
+            "schedule",
+            "scheduleTimeZone",
+            "parents",
+            "cmd",
+            "security",
+            "dependencies_reference",
         ]:
             check_passed, check_msg = self.check(param)
             if not check_passed:
@@ -567,12 +650,12 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_desired_state_human(self):
         desired_state = self.get_desired_state()
-        if desired_state == 'start':
-            return PaastaColors.bold('Scheduled')
-        elif desired_state == 'stop':
-            return PaastaColors.bold('Disabled')
+        if desired_state == "start":
+            return PaastaColors.bold("Scheduled")
+        elif desired_state == "stop":
+            return PaastaColors.bold("Disabled")
         else:
-            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+            return PaastaColors.red("Unknown (desired_state: %s)" % desired_state)
 
     def get_nerve_namespace(self):
         """Currently not implemented yet, as we don't have the code
@@ -594,7 +677,7 @@ def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, job) for each job defined for the service name
     """
-    return get_service_instance_list(service, cluster, 'chronos', soa_dir)
+    return get_service_instance_list(service, cluster, "chronos", soa_dir)
 
 
 def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -603,20 +686,22 @@ def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, job_name)"""
-    return get_services_for_cluster(cluster, 'chronos', soa_dir)
+    return get_services_for_cluster(cluster, "chronos", soa_dir)
 
 
 def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create a job on Chronos"""
     system_paasta_config = load_system_paasta_config()
     chronos_job_config = load_chronos_job_config(
-        service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir,
+        service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir
     )
     docker_url = chronos_job_config.get_docker_url()
-    docker_volumes = chronos_job_config.get_volumes(system_volumes=system_paasta_config.get_volumes())
+    docker_volumes = chronos_job_config.get_volumes(
+        system_volumes=system_paasta_config.get_volumes()
+    )
 
     constraints = chronos_job_config.get_calculated_constraints(
-        system_paasta_config=system_paasta_config,
+        system_paasta_config=system_paasta_config
     )
 
     complete_config = chronos_job_config.format_chronos_job_dict(
@@ -626,18 +711,17 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
         constraints=constraints,
     )
 
-    complete_config['name'] = compose_job_id(service, job_name)
+    complete_config["name"] = compose_job_id(service, job_name)
 
     # resolve conflicts between the 'desired_state' and soa_configs disabled
     # flag.
     desired_state = chronos_job_config.get_desired_state()
-    soa_disabled_state = complete_config['disabled']
+    soa_disabled_state = complete_config["disabled"]
 
     resolved_disabled_state = determine_disabled_state(
-        desired_state,
-        soa_disabled_state,
+        desired_state, soa_disabled_state
     )
-    complete_config['disabled'] = resolved_disabled_state
+    complete_config["disabled"] = resolved_disabled_state
 
     config_for_hash = get_config_for_bounce_hash(
         complete_config=complete_config,
@@ -647,9 +731,8 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     )
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
-    complete_config['description'] = get_config_hash(
-        config=config_for_hash,
-        force_bounce=chronos_job_config.get_force_bounce(),
+    complete_config["description"] = get_config_hash(
+        config=config_for_hash, force_bounce=chronos_job_config.get_force_bounce()
     )
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
@@ -657,7 +740,9 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
 
 def get_config_for_bounce_hash(complete_config, service, soa_dir, system_paasta_config):
-    environment_variables = {x['name']: x['value'] for x in complete_config['environmentVariables']}
+    environment_variables = {
+        x["name"]: x["value"] for x in complete_config["environmentVariables"]
+    }
     secret_hashes = get_secret_hashes(
         environment_variables=environment_variables,
         secret_environment=system_paasta_config.get_vault_environment(),
@@ -665,7 +750,7 @@ def get_config_for_bounce_hash(complete_config, service, soa_dir, system_paasta_
         soa_dir=soa_dir,
     )
     if secret_hashes:
-        complete_config['paasta_secrets'] = secret_hashes
+        complete_config["paasta_secrets"] = secret_hashes
     return complete_config
 
 
@@ -685,12 +770,12 @@ def determine_disabled_state(branch_state, soa_disabled_state):
         stop.
     :param soa_disabled_state: the value of the disabled state in soa-configs.
     """
-    if branch_state not in ['start', 'stop']:
-        raise ValueError('Expected branch_state to be start or stop')
+    if branch_state not in ["start", "stop"]:
+        raise ValueError("Expected branch_state to be start or stop")
 
-    if branch_state == 'start' and soa_disabled_state is True:
+    if branch_state == "start" and soa_disabled_state is True:
         return True
-    elif branch_state == 'stop' and soa_disabled_state is False:
+    elif branch_state == "stop" and soa_disabled_state is False:
         return True
     else:
         return soa_disabled_state
@@ -738,7 +823,7 @@ def cmp_datetimes(first, second):
 
 def filter_enabled_jobs(jobs):
     """Given a list of chronos jobs, find those which are not disabled"""
-    return [job for job in jobs if job['disabled'] is False]
+    return [job for job in jobs if job["disabled"] is False]
 
 
 def last_success_for_job(job):
@@ -746,7 +831,7 @@ def last_success_for_job(job):
     Given a job, find the last time it was successful. In the case that it hasn't
     completed a successful run, return None.
     """
-    return job.get('lastSuccess', None)
+    return job.get("lastSuccess", None)
 
 
 def last_failure_for_job(job):
@@ -754,7 +839,7 @@ def last_failure_for_job(job):
     Given a job, find the last time it failed. In the case that it has never failed,
     return None.
     """
-    return job.get('lastError', None)
+    return job.get("lastError", None)
 
 
 def get_status_last_run(job):
@@ -778,12 +863,12 @@ def get_status_last_run(job):
 
 def get_job_type(job):
     """ Given a job, return a chronos_tools.JobType """
-    if job.get('schedule') is not None:
+    if job.get("schedule") is not None:
         return JobType.Scheduled
-    elif job.get('parents') is not None:
+    elif job.get("parents") is not None:
         return JobType.Dependent
     else:
-        raise ValueError('Expected either schedule field or parents field')
+        raise ValueError("Expected either schedule field or parents field")
 
 
 def sort_jobs(jobs):
@@ -792,17 +877,14 @@ def sort_jobs(jobs):
 
     :param jobs: list of dicts of job configuration, as returned by the chronos client
     """
+
     def get_key(job):
         failure = last_failure_for_job(job)
         success = last_success_for_job(job)
         newest = failure if cmp_datetimes(failure, success) < 0 else success
         return _safe_parse_datetime(newest)
 
-    return sorted(
-        jobs,
-        key=get_key,
-        reverse=True,
-    )
+    return sorted(jobs, key=get_key, reverse=True)
 
 
 def get_chronos_status_for_job(client, service, instance):
@@ -826,7 +908,9 @@ def get_chronos_status_for_job(client, service, instance):
             return line[3]
 
 
-def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False, include_temporary=False):
+def lookup_chronos_jobs(
+    client, service=None, instance=None, include_disabled=False, include_temporary=False
+):
     """Discovers Chronos jobs and filters them with ``filter_chronos_jobs()``.
 
     :param client: Chronos client object
@@ -855,7 +939,7 @@ def filter_non_temporary_chronos_jobs(jobs):
     :returns: a list of chronos jobs containing the same jobs as those provided
         by the ``jobs`` parameter, but with temporary jobs removed.
     """
-    return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
+    return [job for job in jobs if not job["name"].startswith(TMP_JOB_IDENTIFIER)]
 
 
 def filter_chronos_jobs(jobs, service, instance, include_disabled, include_temporary):
@@ -872,14 +956,13 @@ def filter_chronos_jobs(jobs, service, instance, include_disabled, include_tempo
     matching_jobs = []
     for job in jobs:
         try:
-            job_service, job_instance = decompose_job_id(job['name'])
+            job_service, job_instance = decompose_job_id(job["name"])
         except InvalidJobNameError:
             continue
-        if (
-            (service is None or job_service == service) and
-            (instance is None or job_instance == instance)
+        if (service is None or job_service == service) and (
+            instance is None or job_instance == instance
         ):
-            if job['disabled'] and not include_disabled:
+            if job["disabled"] and not include_disabled:
                 continue
             else:
                 matching_jobs.append(job)
@@ -898,7 +981,7 @@ def wait_for_job(client, job_name):
     """
     found = False
     while not found:
-        found = job_name in [job['name'] for job in client.list()]
+        found = job_name in [job["name"] for job in client.list()]
         if found:
             return True
         else:
@@ -914,9 +997,13 @@ def parse_execution_date(execution_date_string):
     :raise: ArgumentTypeError
     """
     try:
-        parsed = datetime.datetime.strptime(execution_date_string, EXECUTION_DATE_FORMAT)
+        parsed = datetime.datetime.strptime(
+            execution_date_string, EXECUTION_DATE_FORMAT
+        )
     except ValueError:
-        raise argparse.ArgumentTypeError('must be in the format "%s"' % EXECUTION_DATE_FORMAT)
+        raise argparse.ArgumentTypeError(
+            'must be in the format "%s"' % EXECUTION_DATE_FORMAT
+        )
     return parsed
 
 
@@ -926,8 +1013,7 @@ def uses_time_variables(chronos_job):
     """
     current_command = chronos_job.get_cmd()
     interpolated_command = parse_time_variables(
-        command=current_command,
-        parse_time=datetime.datetime.utcnow(),
+        command=current_command, parse_time=datetime.datetime.utcnow()
     )
     return current_command != interpolated_command
 
@@ -958,7 +1044,9 @@ def update_job(client, job):
     client.update(job)
 
 
-def get_jobs_for_service_instance(service, instance, include_disabled=True, include_temporary=False):
+def get_jobs_for_service_instance(
+    service, instance, include_disabled=True, include_temporary=False
+):
     """A wrapper for lookup_chronos_jobs that includes building the necessary chronos client.
     :param service: the service to be queried
     :param instance: the instance to be queried
@@ -979,7 +1067,7 @@ def get_jobs_for_service_instance(service, instance, include_disabled=True, incl
 
 def compose_check_name_for_service_instance(check_name, service, instance):
     """Compose a sensu check name for a given job"""
-    return f'{check_name}.{service}{INTERNAL_SPACER}{instance}'
+    return f"{check_name}.{service}{INTERNAL_SPACER}{instance}"
 
 
 def get_temporary_jobs_for_service_instance(client, service, instance):
@@ -995,7 +1083,7 @@ def get_temporary_jobs_for_service_instance(client, service, instance):
         include_temporary=True,
     )
     for job in all_jobs:
-        if job['name'].startswith(TMP_JOB_IDENTIFIER):
+        if job["name"].startswith(TMP_JOB_IDENTIFIER):
             temporary_jobs.append(job)
     return temporary_jobs
 
@@ -1006,7 +1094,7 @@ def is_temporary_job(job):
     :param job: the chronos job to check
     :returns: a boolean indicating if a job is a temporary job
     """
-    return job['name'].startswith(TMP_JOB_IDENTIFIER)
+    return job["name"].startswith(TMP_JOB_IDENTIFIER)
 
 
 def chronos_services_running_here():
@@ -1014,8 +1102,10 @@ def chronos_services_running_here():
     :returns: A list of triples of (service, instance, port)"""
 
     return mesos_services_running_here(
-        framework_filter=lambda fw: fw['name'].startswith('chronos'),
-        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(task_id.split(MESOS_TASK_SPACER)[3]),
+        framework_filter=lambda fw: fw["name"].startswith("chronos"),
+        parse_service_instance_from_executor_id=lambda task_id: decompose_job_id(
+            task_id.split(MESOS_TASK_SPACER)[3]
+        ),
     )
 
 
@@ -1066,7 +1156,7 @@ def dfs(node, neighbours_mapping, ignore_cycles=False, node_status=None):
                 neighbours_mapping=neighbours_mapping,
                 node_status=node_status,
                 ignore_cycles=ignore_cycles,
-            ),
+            )
         )
 
     visited_nodes.append(node)
@@ -1084,16 +1174,17 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
     :return: tuple(related jobs mapping, jobs configuration)
     """
     chronos_configs = {}
-    for service in service_configuration_lib.read_services_configuration(soa_dir=soa_dir):
-        for instance in read_chronos_jobs_for_service(service=service, cluster=cluster, soa_dir=soa_dir):
-            if instance.startswith('_'):  # some dependencies are templates, ignore
+    for service in service_configuration_lib.read_services_configuration(
+        soa_dir=soa_dir
+    ):
+        for instance in read_chronos_jobs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            if instance.startswith("_"):  # some dependencies are templates, ignore
                 continue
             try:
                 chronos_configs[(service, instance)] = load_chronos_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
+                    service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
                 )
             except NoDeploymentsAvailable:
                 pass
@@ -1125,11 +1216,13 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
             if node in known_dfs_result:
                 return known_dfs_result
 
-        visited_nodes = set(dfs(
-            node=node,
-            neighbours_mapping=neighbours_mapping,
-            ignore_cycles=ignore_cycles,
-        ))
+        visited_nodes = set(
+            dfs(
+                node=node,
+                neighbours_mapping=neighbours_mapping,
+                ignore_cycles=ignore_cycles,
+            )
+        )
         known_dfs_results.append(visited_nodes)
 
         return visited_nodes
@@ -1152,7 +1245,9 @@ def _get_related_jobs_and_configs(cluster, soa_dir=DEFAULT_SOA_DIR):
     return connected_components, chronos_configs
 
 
-def get_related_jobs_configs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR, use_cache=True):
+def get_related_jobs_configs(
+    cluster, service, instance, soa_dir=DEFAULT_SOA_DIR, use_cache=True
+):
     """
     Extract chronos configurations of all Chronos jobs related to the (cluster, service, instance)
 
@@ -1160,14 +1255,14 @@ def get_related_jobs_configs(cluster, service, instance, soa_dir=DEFAULT_SOA_DIR
     """
     kwargs = {}
     if not use_cache:
-        kwargs['ttl'] = -1  # Disable usage of time_cached value
+        kwargs["ttl"] = -1  # Disable usage of time_cached value
 
-    connected_components, chronos_configs = _get_related_jobs_and_configs(cluster, soa_dir=soa_dir, **kwargs)
+    connected_components, chronos_configs = _get_related_jobs_and_configs(
+        cluster, soa_dir=soa_dir, **kwargs
+    )
     related_jobs = connected_components[(service, instance)]
     return {
-        job: config
-        for job, config in chronos_configs.items()
-        if job in related_jobs
+        job: config for job, config in chronos_configs.items() if job in related_jobs
     }
 
 
@@ -1178,6 +1273,7 @@ def topological_sort_related_jobs(cluster, service, instance, soa_dir=DEFAULT_SO
             The list is ordered such that job with index `i` could be executed in respect of its dependencies
             if all jobs with index smaller than `i` have terminated.
     """
+
     def _sort(nodes):
         adjacency_list = {
             node: [
@@ -1196,14 +1292,14 @@ def topological_sort_related_jobs(cluster, service, instance, soa_dir=DEFAULT_SO
                     neighbours_mapping=adjacency_list,
                     node_status=node_status,
                     ignore_cycles=False,
-                ),
+                )
             )
 
         return order
 
-    connected_components, chronos_configs = _get_related_jobs_and_configs(cluster, soa_dir=soa_dir)
+    connected_components, chronos_configs = _get_related_jobs_and_configs(
+        cluster, soa_dir=soa_dir
+    )
     related_jobs = connected_components[(service, instance)]
 
-    return _sort(
-        nodes=related_jobs,
-    )
+    return _sort(nodes=related_jobs)

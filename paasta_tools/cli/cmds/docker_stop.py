@@ -24,11 +24,11 @@ from paasta_tools.cli.utils import PaastaTaskNotFound
 def add_subparser(subparsers):
     get_subparser(
         description="'paasta docker_stop' works by picking a container running your service "
-                    "at random. It then runs docker stop <container_id> to stop the container. "
-                    "You should expect marathon to then replace the dead container. "
-                    "Note this doesn't do any draining of the connections to this container!",
+        "at random. It then runs docker stop <container_id> to stop the container. "
+        "You should expect marathon to then replace the dead container. "
+        "Note this doesn't do any draining of the connections to this container!",
         help_text="Docker stop a container running your service",
-        command='docker_stop',
+        command="docker_stop",
         function=paasta_docker_stop,
         subparsers=subparsers,
     )
@@ -46,6 +46,6 @@ def paasta_docker_stop(args):
     except PaastaTaskNotFound:
         sys.exit(1)
     container = get_container_name(task)
-    slave = task.slave['hostname']
+    slave = task.slave["hostname"]
     command = f"sudo docker stop {container}"
     subprocess.call(["ssh", "-o", "LogLevel=QUIET", "-tA", slave, command])

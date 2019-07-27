@@ -42,7 +42,7 @@ async def get_files_for_tasks(task_list, file_list, max_workers):
             return fobj
 
     elements = itertools.chain(
-        *[[(task, fname) for fname in file_list] for task in task_list],
+        *[[(task, fname) for fname in file_list] for task in task_list]
     )
 
     futures = [asyncio.ensure_future(process(element)) for element in elements]
@@ -60,7 +60,6 @@ async def get_files_for_tasks(task_list, file_list, max_workers):
     if no_files_found:
         raise exceptions.FileNotFoundForTaskException(
             "None of the tasks in {} contain the files in list {}".format(
-                ",".join([task["id"] for task in task_list]),
-                ",".join(file_list),
-            ),
+                ",".join([task["id"] for task in task_list]), ",".join(file_list)
+            )
         )

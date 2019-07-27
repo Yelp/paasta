@@ -27,16 +27,20 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--expected', '-e', dest='expected', type=str, default='',
-        help='Comma separated list of frameworks to expect.\n'
-        'Will fail if any of these are not found',
+        "--expected",
+        "-e",
+        dest="expected",
+        type=str,
+        default="",
+        help="Comma separated list of frameworks to expect.\n"
+        "Will fail if any of these are not found",
     )
     return parser.parse_args()
 
 
 def check_mesos_active_frameworks() -> None:
     options = parse_args()
-    expected = options.expected.split(',')
+    expected = options.expected.split(",")
     master = get_mesos_master()
     try:
         state = block(master.state)
@@ -53,5 +57,5 @@ def check_mesos_active_frameworks() -> None:
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_mesos_active_frameworks()

@@ -28,5 +28,5 @@ def check_mesos_quorum():
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_mesos_quorum()

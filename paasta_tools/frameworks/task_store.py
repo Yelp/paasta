@@ -20,7 +20,7 @@ class MesosTaskParametersIsImmutableError(Exception):
     pass
 
 
-_SelfT = TypeVar('_SelfT', bound='MesosTaskParameters')
+_SelfT = TypeVar("_SelfT", bound="MesosTaskParameters")
 
 
 class MesosTaskParameters:
@@ -40,12 +40,12 @@ class MesosTaskParameters:
         offer=None,
         resources=None,
     ):
-        self.__dict__['health'] = health
-        self.__dict__['mesos_task_state'] = mesos_task_state
-        self.__dict__['is_draining'] = is_draining
-        self.__dict__['is_healthy'] = is_healthy
-        self.__dict__['offer'] = offer
-        self.__dict__['resources'] = resources
+        self.__dict__["health"] = health
+        self.__dict__["mesos_task_state"] = mesos_task_state
+        self.__dict__["is_draining"] = is_draining
+        self.__dict__["is_healthy"] = is_healthy
+        self.__dict__["offer"] = offer
+        self.__dict__["resources"] = resources
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -53,7 +53,7 @@ class MesosTaskParameters:
     def __repr__(self):
         return "{}(\n    {})".format(
             type(self).__name__,
-            ',\n    '.join(["%s=%r" % kv for kv in self.__dict__.items()]),
+            ",\n    ".join(["%s=%r" % kv for kv in self.__dict__.items()]),
         )
 
     def __setattr__(self, name, value):
@@ -62,7 +62,7 @@ class MesosTaskParameters:
     def __delattr__(self, name):
         raise MesosTaskParametersIsImmutableError()
 
-    def merge(self: _SelfT, **kwargs) -> 'MesosTaskParameters':
+    def merge(self: _SelfT, **kwargs) -> "MesosTaskParameters":
         """Return a merged MesosTaskParameters object, where attributes in other take precedence over self."""
 
         new_dict = copy.deepcopy(self.__dict__)
@@ -75,7 +75,7 @@ class MesosTaskParameters:
         return cls(**json.loads(serialized_params))
 
     def serialize(self):
-        return json.dumps(self.__dict__).encode('utf-8')
+        return json.dumps(self.__dict__).encode("utf-8")
 
 
 class TaskStore:
@@ -125,7 +125,9 @@ class TaskStore:
 class DictTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
         self.tasks: Dict[str, MesosTaskParameters] = {}
-        super().__init__(service_name, instance_name, framework_id, system_paasta_config)
+        super().__init__(
+            service_name, instance_name, framework_id, system_paasta_config
+        )
 
     def get_task(self, task_id: str) -> MesosTaskParameters:
         return self.tasks.get(task_id)
@@ -141,7 +143,9 @@ class DictTaskStore(TaskStore):
 
 class ZKTaskStore(TaskStore):
     def __init__(self, service_name, instance_name, framework_id, system_paasta_config):
-        super().__init__(service_name, instance_name, framework_id, system_paasta_config)
+        super().__init__(
+            service_name, instance_name, framework_id, system_paasta_config
+        )
         self.zk_hosts = system_paasta_config.get_zk_hosts()
 
         # For some reason, I could not get the code suggested by this SO post to work to ensure_path on the chroot.
@@ -149,7 +153,7 @@ class ZKTaskStore(TaskStore):
         # Plus, it just felt dirty to modify instance attributes of a running connection, especially given that
         # KazooClient.set_hosts() doesn't allow you to change the chroot. Must be for a good reason.
 
-        chroot = f'task_store/{service_name}/{instance_name}/{framework_id}'
+        chroot = f"task_store/{service_name}/{instance_name}/{framework_id}"
 
         temp_zk_client = KazooClient(hosts=self.zk_hosts)
         temp_zk_client.start()
@@ -157,9 +161,9 @@ class ZKTaskStore(TaskStore):
         temp_zk_client.stop()
         temp_zk_client.close()
 
-        self.zk_client = KazooClient(hosts=f'{self.zk_hosts}/{chroot}')
+        self.zk_client = KazooClient(hosts=f"{self.zk_hosts}/{chroot}")
         self.zk_client.start()
-        self.zk_client.ensure_path('/')
+        self.zk_client.ensure_path("/")
 
     def close(self):
         self.zk_client.stop()
@@ -172,7 +176,7 @@ class ZKTaskStore(TaskStore):
     def _get_task(self, task_id: str) -> Tuple[MesosTaskParameters, ZnodeStat]:
         """Like get_task, but also returns the ZnodeStat that self.zk_client.get() returns """
         try:
-            data, stat = self.zk_client.get('/%s' % task_id)
+            data, stat = self.zk_client.get("/%s" % task_id)
             return MesosTaskParameters.deserialize(data), stat
         except NoNodeError:
             return None, None
@@ -180,16 +184,16 @@ class ZKTaskStore(TaskStore):
             _log(
                 service=self.service_name,
                 instance=self.instance_name,
-                level='debug',
-                component='deploy',
-                line=f'Warning: found non-json-decodable value in zookeeper for task {task_id}: {data}',
+                level="debug",
+                component="deploy",
+                line=f"Warning: found non-json-decodable value in zookeeper for task {task_id}: {data}",
             )
             return None, None
 
     def get_all_tasks(self):
         all_tasks = {}
 
-        for child_path in self.zk_client.get_children('/'):
+        for child_path in self.zk_client.get_children("/"):
             task_id = self._task_id_from_zk_path(child_path)
             params = self.get_task(task_id)
             # sometimes there are bogus child ZK nodes. Ignore them.
@@ -208,7 +212,9 @@ class ZKTaskStore(TaskStore):
             if existing_task:
                 merged_params = existing_task.merge(**kwargs)
                 try:
-                    self.zk_client.set(zk_path, merged_params.serialize(), version=stat.version)
+                    self.zk_client.set(
+                        zk_path, merged_params.serialize(), version=stat.version
+                    )
                 except BadVersionError:
                     retry = True
             else:
@@ -220,14 +226,20 @@ class ZKTaskStore(TaskStore):
 
         return merged_params
 
-    def overwrite_task(self, task_id: str, params: MesosTaskParameters, version=-1) -> None:
+    def overwrite_task(
+        self, task_id: str, params: MesosTaskParameters, version=-1
+    ) -> None:
         try:
-            self.zk_client.set(self._zk_path_from_task_id(task_id), params.serialize(), version=version)
+            self.zk_client.set(
+                self._zk_path_from_task_id(task_id), params.serialize(), version=version
+            )
         except NoNodeError:
-            self.zk_client.create(self._zk_path_from_task_id(task_id), params.serialize())
+            self.zk_client.create(
+                self._zk_path_from_task_id(task_id), params.serialize()
+            )
 
     def _zk_path_from_task_id(self, task_id: str) -> str:
-        return '/%s' % task_id
+        return "/%s" % task_id
 
     def _task_id_from_zk_path(self, zk_path: str) -> str:
-        return zk_path.lstrip('/')
+        return zk_path.lstrip("/")

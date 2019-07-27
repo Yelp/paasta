@@ -32,7 +32,7 @@ class CassandraClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=F
 class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
     config_dict: CassandraClusterDeploymentConfigDict
 
-    config_filename_prefix = 'cassandracluster'
+    config_filename_prefix = "cassandracluster"
 
     def __init__(
         self,
@@ -54,11 +54,16 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_instances(self, with_limit: bool = True) -> int:
-        return self.config_dict.get('replicas', 1)
+        return self.config_dict.get("replicas", 1)
 
     def validate(
         self,
-        params: List[str] = ['cpus', 'security', 'dependencies_reference', 'deploy_group'],
+        params: List[str] = [
+            "cpus",
+            "security",
+            "dependencies_reference",
+            "deploy_group",
+        ],
     ) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
         # TODO: add mem back to this list once we fix PAASTA-15582 and
@@ -67,7 +72,7 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
 
         if error_msgs:
             name = self.get_instance()
-            return [f'{name}: {msg}' for msg in error_msgs]
+            return [f"{name}: {msg}" for msg in error_msgs]
         else:
             return []
 
@@ -92,26 +97,25 @@ def load_cassandracluster_instance_config(
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
     general_config = service_configuration_lib.read_service_configuration(
-        service,
-        soa_dir=soa_dir,
+        service, soa_dir=soa_dir
     )
     cassandracluster_conf_file = "cassandracluster-%s" % cluster
     instance_configs = service_configuration_lib.read_extra_service_information(
-        service,
-        cassandracluster_conf_file,
-        soa_dir=soa_dir,
+        service, cassandracluster_conf_file, soa_dir=soa_dir
     )
 
-    if instance.startswith('_'):
+    if instance.startswith("_"):
         raise InvalidJobNameError(
-            f"Unable to load kubernetes job config for {service}.{instance} as instance name starts with '_'",
+            f"Unable to load kubernetes job config for {service}.{instance} as instance name starts with '_'"
         )
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            f"{instance} not found in config file {soa_dir}/{service}/{cassandracluster_conf_file}.yaml.",
+            f"{instance} not found in config file {soa_dir}/{service}/{cassandracluster_conf_file}.yaml."
         )
 
-    general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
+    general_config = deep_merge_dictionaries(
+        overrides=instance_configs[instance], defaults=general_config
+    )
 
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:

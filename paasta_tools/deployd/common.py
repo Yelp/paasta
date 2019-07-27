@@ -23,17 +23,20 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
-BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
+BounceTimers = namedtuple(
+    "BounceTimers", ["processed_by_worker", "setup_marathon", "bounce_length"]
+)
 BaseServiceInstance = namedtuple(
-    'ServiceInstance', [
-        'service',
-        'instance',
-        'bounce_by',
-        'watcher',
-        'bounce_timers',
-        'failures',
-        'priority',
-        'processed_count',
+    "ServiceInstance",
+    [
+        "service",
+        "instance",
+        "bounce_by",
+        "watcher",
+        "bounce_timers",
+        "failures",
+        "priority",
+        "processed_count",
     ],
 )
 
@@ -52,7 +55,7 @@ class ServiceInstance(BaseServiceInstance):
         bounce_timers: Optional[BounceTimers] = None,
         priority: Optional[int] = None,
         processed_count: int = 0,
-    ) -> 'ServiceInstance':
+    ) -> "ServiceInstance":
         if priority is None:
             priority = get_priority(service, instance, cluster)
         return super().__new__(  # type: ignore
@@ -71,33 +74,33 @@ class ServiceInstance(BaseServiceInstance):
 def get_priority(service: str, instance: str, cluster: str) -> int:
     try:
         config = load_marathon_service_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=DEFAULT_SOA_DIR,
+            service=service, instance=instance, cluster=cluster, soa_dir=DEFAULT_SOA_DIR
         )
-    except (NoDockerImageError, InvalidJobNameError, NoDeploymentsAvailable, NoConfigurationForServiceError):
+    except (
+        NoDockerImageError,
+        InvalidJobNameError,
+        NoDeploymentsAvailable,
+        NoConfigurationForServiceError,
+    ):
         return 0
     return config.get_bounce_priority()
 
 
 class PaastaThread(Thread):
-
     @property
     def log(self) -> logging.Logger:
-        name = '.'.join([type(self).__module__, type(self).__name__])
+        name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
 
 class PaastaQueue(Queue):
-
     def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:
         self.name = name
         super().__init__(*args, **kwargs)
 
     @property
     def log(self) -> logging.Logger:
-        name = '.'.join([type(self).__module__, type(self).__name__])
+        name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
     def put(self, item: Any, *args: Any, **kwargs: Any) -> None:
@@ -106,7 +109,6 @@ class PaastaQueue(Queue):
 
 
 class PaastaPriorityQueue(PriorityQueue):
-
     def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:
         self.name = name
         super().__init__(*args, **kwargs)
@@ -114,11 +116,13 @@ class PaastaPriorityQueue(PriorityQueue):
 
     @property
     def log(self) -> logging.Logger:
-        name = '.'.join([type(self).__module__, type(self).__name__])
+        name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
     # ignored because https://github.com/python/mypy/issues/1237
-    def put(self, priority: float, item: Any, *args: Any, **kwargs: Any) -> None:  # type: ignore
+    def put(
+        self, priority: float, item: Any, *args: Any, **kwargs: Any
+    ) -> None:  # type: ignore
         self.log.debug(f"Adding {item} to {self.name} queue with priority {priority}")
         # this counter is to preserve the FIFO nature of the queue, it increments on every put
         # and the python PriorityQueue sorts based on the first item in the tuple (priority)
@@ -146,21 +150,25 @@ def rate_limit_instances(
     bounce_time = time_now
     for service, instance in instances:
         # https://github.com/python/mypy/issues/2852
-        service_instances.append(ServiceInstance(  # type: ignore
-            service=service,
-            instance=instance,
-            watcher=watcher_name,
-            cluster=cluster,
-            bounce_by=bounce_time,
-            bounce_timers=None,
-            failures=0,
-            priority=priority,
-        ))
+        service_instances.append(
+            ServiceInstance(  # type: ignore
+                service=service,
+                instance=instance,
+                watcher=watcher_name,
+                cluster=cluster,
+                bounce_by=bounce_time,
+                bounce_timers=None,
+                failures=0,
+                priority=priority,
+            )
+        )
         bounce_time += time_step
     return service_instances
 
 
-def exponential_back_off(failures: int, factor: float, base: float, max_time: float) -> float:
+def exponential_back_off(
+    failures: int, factor: float, base: float, max_time: float
+) -> float:
     seconds = factor * base ** failures
     return seconds if seconds < max_time else max_time
 
@@ -172,7 +180,9 @@ def get_service_instances_needing_update(
 ) -> List[Tuple[str, str]]:
     marathon_apps = {}
     for marathon_client in marathon_clients.get_all_clients():
-        marathon_apps.update({app.id: app for app in get_all_marathon_apps(marathon_client)})
+        marathon_apps.update(
+            {app.id: app for app in get_all_marathon_apps(marathon_client)}
+        )
 
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
@@ -185,15 +195,17 @@ def get_service_instances_needing_update(
                 soa_dir=DEFAULT_SOA_DIR,
             )
             config_app = config.format_marathon_app_dict()
-            app_id = '/{}'.format(config_app['id'])
+            app_id = "/{}".format(config_app["id"])
         # Not ideal but we rely on a lot of user input to create the app dict
         # and we really can't afford to bail if just one app definition is malformed
         except Exception as e:
-            print("ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e)))
+            print(
+                "ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e))
+            )
             continue
         if app_id not in marathon_app_ids:
             service_instances.append((service, instance))
-        elif marathon_apps[app_id].instances != config_app['instances']:
+        elif marathon_apps[app_id].instances != config_app["instances"]:
             service_instances.append((service, instance))
     return service_instances
 

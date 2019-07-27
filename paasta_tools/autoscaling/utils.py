@@ -24,6 +24,7 @@ def register_autoscaling_component(name, method_type):
     def outer(autoscaling_method):
         _autoscaling_components[method_type][name] = autoscaling_method
         return autoscaling_method
+
     return outer
 
 

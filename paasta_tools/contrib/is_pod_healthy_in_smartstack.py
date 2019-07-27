@@ -20,9 +20,9 @@ from paasta_tools.utils import load_system_paasta_config
 
 system_paasta_config = load_system_paasta_config()
 synapse_port = system_paasta_config.get_synapse_port()
-synapse_host = '169.254.255.254'
+synapse_host = "169.254.255.254"
 synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
-host_ip = os.environ['PAASTA_POD_IP']
+host_ip = os.environ["PAASTA_POD_IP"]
 port = sys.argv[1]
 services = sys.argv[2:]
 

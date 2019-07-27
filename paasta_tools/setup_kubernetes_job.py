@@ -59,20 +59,23 @@ log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Creates marathon jobs.')
+    parser = argparse.ArgumentParser(description="Creates marathon jobs.")
     parser.add_argument(
-        'service_instance_list', nargs='+',
+        "service_instance_list",
+        nargs="+",
         help="The list of marathon service instances to create or update",
         metavar="SERVICE%sINSTANCE" % SPACER,
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
     return args
@@ -89,7 +92,7 @@ def main() -> None:
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
 
-    ensure_namespace(kube_client, namespace='paasta')
+    ensure_namespace(kube_client, namespace="paasta")
     setup_kube_succeeded = setup_kube_deployments(
         kube_client=kube_client,
         service_instances=args.service_instance_list,
@@ -110,7 +113,10 @@ def setup_kube_deployments(
         try:
             service, instance, _, __ = decompose_job_id(service_instance)
         except InvalidJobNameError:
-            log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
+            log.error(
+                "Invalid service instance specified. Format is service%sinstance."
+                % SPACER
+            )
             succeeded = False
         else:
             if reconcile_kubernetes_deployment(
@@ -139,12 +145,16 @@ def reconcile_kubernetes_deployment(
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
-        log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
-                  (service, instance, load_system_paasta_config().get_cluster()))
+        log.debug(
+            "No deployments found for %s.%s in cluster %s. Skipping."
+            % (service, instance, load_system_paasta_config().get_cluster())
+        )
         return 0, None
     except NoConfigurationForServiceError:
-        error_msg = "Could not read kubernetes configuration file for %s.%s in cluster %s" % \
-                    (service, instance, load_system_paasta_config().get_cluster())
+        error_msg = (
+            "Could not read kubernetes configuration file for %s.%s in cluster %s"
+            % (service, instance, load_system_paasta_config().get_cluster())
+        )
         log.error(error_msg)
         return 1, None
 
@@ -162,17 +172,19 @@ def reconcile_kubernetes_deployment(
         replicas=formatted_application.spec.replicas,
     )
 
-    if not (service, instance) in [(kd.service, kd.instance) for kd in kube_deployments]:
+    if not (service, instance) in [
+        (kd.service, kd.instance) for kd in kube_deployments
+    ]:
         log.debug(f"{desired_deployment} does not exist so creating")
         create_kubernetes_application(
-            kube_client=kube_client,
-            application=formatted_application,
+            kube_client=kube_client, application=formatted_application
         )
     elif desired_deployment not in kube_deployments:
-        log.debug(f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed")
+        log.debug(
+            f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed"
+        )
         update_kubernetes_application(
-            kube_client=kube_client,
-            application=formatted_application,
+            kube_client=kube_client, application=formatted_application
         )
     else:
         log.debug(f"{desired_deployment} is up to date, no action taken")
@@ -181,7 +193,8 @@ def reconcile_kubernetes_deployment(
         kube_client=kube_client,
         service=service,
         instance=instance,
-        min_instances=service_instance_config.get_desired_instances() - max_unavailable(
+        min_instances=service_instance_config.get_desired_instances()
+        - max_unavailable(
             instance_count=service_instance_config.get_desired_instances(),
             bounce_margin_factor=service_instance_config.get_bounce_margin_factor(),
         ),
@@ -190,20 +203,14 @@ def reconcile_kubernetes_deployment(
 
 
 def ensure_pod_disruption_budget(
-        kube_client: KubeClient,
-        service: str,
-        instance: str,
-        min_instances: int,
+    kube_client: KubeClient, service: str, instance: str, min_instances: int
 ) -> V1beta1PodDisruptionBudget:
     pdr = pod_disruption_budget_for_service_instance(
-        service=service,
-        instance=instance,
-        min_instances=min_instances,
+        service=service, instance=instance, min_instances=min_instances
     )
     try:
         existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
-            name=pdr.metadata.name,
-            namespace=pdr.metadata.namespace,
+            name=pdr.metadata.name, namespace=pdr.metadata.namespace
         )
     except ApiException as e:
         if e.status == 404:
@@ -216,53 +223,45 @@ def ensure_pod_disruption_budget(
             # poddisruptionbudget objects are not mutable like most things in the kubernetes api,
             # so we have to do a delete/replace.
             # unfortunately we can't really do this transactionally, but I guess we'll just hope for the best?
-            logging.debug(f'existing poddisruptionbudget {pdr.metadata.name} is out of date; deleting')
+            logging.debug(
+                f"existing poddisruptionbudget {pdr.metadata.name} is out of date; deleting"
+            )
             kube_client.policy.delete_namespaced_pod_disruption_budget(
                 name=pdr.metadata.name,
                 namespace=pdr.metadata.namespace,
                 body=V1DeleteOptions(),
             )
-            logging.debug(f'creating poddisruptionbudget {pdr.metadata.name}')
+            logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
             return create_pod_disruption_budget(
-                kube_client=kube_client,
-                pod_disruption_budget=pdr,
+                kube_client=kube_client, pod_disruption_budget=pdr
             )
         else:
-            logging.debug(f'poddisruptionbudget {pdr.metadata.name} up to date')
+            logging.debug(f"poddisruptionbudget {pdr.metadata.name} up to date")
     else:
-        logging.debug(f'creating poddisruptionbudget {pdr.metadata.name}')
+        logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
         return create_pod_disruption_budget(
-            kube_client=kube_client,
-            pod_disruption_budget=pdr,
+            kube_client=kube_client, pod_disruption_budget=pdr
         )
 
 
-def create_kubernetes_application(kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]) -> None:
+def create_kubernetes_application(
+    kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]
+) -> None:
     if isinstance(application, V1Deployment):
-        create_deployment(
-            kube_client=kube_client,
-            formatted_deployment=application,
-        )
+        create_deployment(kube_client=kube_client, formatted_deployment=application)
     elif isinstance(application, V1StatefulSet):
-        create_stateful_set(
-            kube_client=kube_client,
-            formatted_stateful_set=application,
-        )
+        create_stateful_set(kube_client=kube_client, formatted_stateful_set=application)
     else:
         raise Exception("Unknown kubernetes object to create")
 
 
-def update_kubernetes_application(kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]) -> None:
+def update_kubernetes_application(
+    kube_client: KubeClient, application: Union[V1Deployment, V1StatefulSet]
+) -> None:
     if isinstance(application, V1Deployment):
-        update_deployment(
-            kube_client=kube_client,
-            formatted_deployment=application,
-        )
+        update_deployment(kube_client=kube_client, formatted_deployment=application)
     elif isinstance(application, V1StatefulSet):
-        update_stateful_set(
-            kube_client=kube_client,
-            formatted_stateful_set=application,
-        )
+        update_stateful_set(kube_client=kube_client, formatted_stateful_set=application)
     else:
         raise Exception("Unknown kubernetes object to update")
 

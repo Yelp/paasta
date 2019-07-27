@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-v', '--verbose', action='store_true', dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     options = parser.parse_args()
     return options

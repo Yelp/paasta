@@ -19,7 +19,7 @@ class MockChecker(ast.NodeVisitor):
     def check_file(self, filename):
         self.current_filename = filename
         try:
-            with open(filename, 'r') as fd:
+            with open(filename, "r") as fd:
                 try:
                     file_ast = ast.parse(fd.read())
                 except SyntaxError as error:
@@ -33,30 +33,38 @@ class MockChecker(ast.NodeVisitor):
 
     def _call_uses_patch(self, node):
         try:
-            return node.func.id == 'patch'
+            return node.func.id == "patch"
         except AttributeError:
             return False
 
     def _call_uses_mock_patch(self, node):
         try:
-            return node.func.value.id == 'mock' and node.func.attr == 'patch'
+            return node.func.value.id == "mock" and node.func.attr == "patch"
         except AttributeError:
             return False
 
     def visit_Import(self, node):
-        if [name for name in node.names if 'mock' == name.name]:
+        if [name for name in node.names if "mock" == name.name]:
             self.imported_mock = True
 
     def visit_ImportFrom(self, node):
-        if node.module == 'mock' and (name for name in node.names if 'patch' == name.name):
+        if node.module == "mock" and (
+            name for name in node.names if "patch" == name.name
+        ):
             self.imported_patch = True
 
     def visit_Call(self, node):
         try:
-            if (self.imported_patch and self._call_uses_patch(node)) or \
-                    (self.imported_mock and self._call_uses_mock_patch(node)):
-                if not any([keyword for keyword in node.keywords if keyword.arg == 'autospec']):
-                    print("%s:%d: Found a mock without an autospec!" % (self.current_filename, node.lineno))
+            if (self.imported_patch and self._call_uses_patch(node)) or (
+                self.imported_mock and self._call_uses_mock_patch(node)
+            ):
+                if not any(
+                    [keyword for keyword in node.keywords if keyword.arg == "autospec"]
+                ):
+                    print(
+                        "%s:%d: Found a mock without an autospec!"
+                        % (self.current_filename, node.lineno)
+                    )
                     self.errors += 1
         except AttributeError:
             pass
@@ -74,5 +82,5 @@ def main(filenames):
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

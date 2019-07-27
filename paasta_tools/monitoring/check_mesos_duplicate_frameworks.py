@@ -27,15 +27,19 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--check', '-C', dest='check', type=str, default='',
-        help='Comma separated list of frameworks to check for duplicates',
+        "--check",
+        "-C",
+        dest="check",
+        type=str,
+        default="",
+        help="Comma separated list of frameworks to check for duplicates",
     )
     return parser.parse_args()
 
 
 def check_mesos_no_duplicate_frameworks() -> None:
     options = parse_args()
-    check = options.check.split(',')
+    check = options.check.split(",")
     master = get_mesos_master()
     try:
         state = block(master.state)
@@ -52,5 +56,5 @@ def check_mesos_no_duplicate_frameworks() -> None:
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_mesos_no_duplicate_frameworks()

@@ -26,22 +26,26 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'get-latest-deployment',
-        help='Gets the Git SHA for the latest deployment of a service',
+        "get-latest-deployment",
+        help="Gets the Git SHA for the latest deployment of a service",
     )
     list_parser.add_argument(
-        '-s', '--service',
-        help='Name of the service which you want to get the latest deployment for.',
+        "-s",
+        "--service",
+        help="Name of the service which you want to get the latest deployment for.",
         required=True,
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '-i', '-l', '--deploy-group',
-        help='Name of the deploy group which you want to get the latest deployment for.',
+        "-i",
+        "-l",
+        "--deploy-group",
+        help="Name of the deploy group which you want to get the latest deployment for.",
         required=True,
     ).completer = lazy_choices_completer(list_deploy_groups)
     list_parser.add_argument(
-        '-d', '--soa-dir',
-        help='A directory from which soa-configs should be read from',
+        "-d",
+        "--soa-dir",
+        help="A directory from which soa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
 
@@ -54,10 +58,14 @@ def paasta_get_latest_deployment(args):
     soa_dir = args.soa_dir
     validate_service_name(service, soa_dir)
 
-    git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group, soa_dir=soa_dir)
+    git_sha = get_currently_deployed_sha(
+        service=service, deploy_group=deploy_group, soa_dir=soa_dir
+    )
     if not git_sha:
         paasta_print(
-            PaastaColors.red(f"A deployment could not be found for {deploy_group} in {service}"),
+            PaastaColors.red(
+                f"A deployment could not be found for {deploy_group} in {service}"
+            ),
             file=sys.stderr,
         )
         return 1

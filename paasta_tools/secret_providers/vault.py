@@ -14,11 +14,13 @@ try:
     from vault_tools.cert_tools import do_renew
     import hvac
 except ImportError:
+
     def get_plaintext(*args: Any, **kwargs: Any) -> bytes:
         return b"No plain text available without vault_tools"
 
     def get_vault_client(*args: Any, **kwargs: Any) -> None:
         return None
+
     TempGpgKeyring = None
 
     def encrypt_secret(*args: Any, **kwargs: Any) -> None:
@@ -27,21 +29,21 @@ except ImportError:
     def do_renew(*args: Any, **kwargs: Any) -> None:
         return None
 
+
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.utils import paasta_print
 from paasta_tools.secret_tools import get_secret_name_from_ref
 
 
 class SecretProvider(BaseSecretProvider):
-
     def __init__(
         self,
         soa_dir: Optional[str],
         service_name: Optional[str],
         cluster_names: List[str],
         vault_cluster_config: Dict[str, str] = {},
-        vault_auth_method: str = 'ldap',
-        vault_token_file: str = '/root/.vault-token',
+        vault_auth_method: str = "ldap",
+        vault_token_file: str = "/root/.vault-token",
         vault_num_uses: int = 1,
         **kwargs: Any,
     ) -> None:
@@ -51,9 +53,11 @@ class SecretProvider(BaseSecretProvider):
         self.vault_token_file = vault_token_file
         self.ecosystems = self.get_vault_ecosystems_for_clusters()
         self.clients: Mapping[str, hvac.Client] = {}
-        if vault_auth_method == 'ldap':
+        if vault_auth_method == "ldap":
             username = getpass.getuser()
-            password = getpass.getpass("Please enter your LDAP password to auth with Vault\n")
+            password = getpass.getpass(
+                "Please enter your LDAP password to auth with Vault\n"
+            )
         else:
             username = None
             password = None
@@ -68,18 +72,13 @@ class SecretProvider(BaseSecretProvider):
             )
 
     def decrypt_environment(
-        self,
-        environment: Dict[str, str],
-        **kwargs: Any,
+        self, environment: Dict[str, str], **kwargs: Any
     ) -> Dict[str, str]:
         client = self.clients[self.ecosystems[0]]
         secret_environment = {}
         for k, v in environment.items():
             secret_name = get_secret_name_from_ref(v)
-            secret_path = os.path.join(
-                self.secret_dir,
-                f"{secret_name}.json",
-            )
+            secret_path = os.path.join(self.secret_dir, f"{secret_name}.json")
             secret = get_plaintext(
                 client=client,
                 env=self.ecosystems[0],
@@ -88,26 +87,27 @@ class SecretProvider(BaseSecretProvider):
                 cache_dir=None,
                 cache_key=None,
                 context=self.service_name,
-            ).decode('utf-8')
+            ).decode("utf-8")
             secret_environment[k] = secret
         return secret_environment
 
     def get_vault_ecosystems_for_clusters(self) -> List[str]:
         try:
-            return list({self.vault_cluster_config[cluster_name] for cluster_name in self.cluster_names})
+            return list(
+                {
+                    self.vault_cluster_config[cluster_name]
+                    for cluster_name in self.cluster_names
+                }
+            )
         except KeyError as e:
             paasta_print(
                 "Cannot find a vault cluster for the %s paasta cluster. A mapping must exist "
-                "in /etc/paasta so we contact the correct vault cluster to get/set secrets" % e,
+                "in /etc/paasta so we contact the correct vault cluster to get/set secrets"
+                % e
             )
             raise
 
-    def write_secret(
-        self,
-        action: str,
-        secret_name: str,
-        plaintext: bytes,
-    ) -> None:
+    def write_secret(self, action: str, secret_name: str, plaintext: bytes) -> None:
         with TempGpgKeyring(overwrite=True):
             for ecosystem in self.ecosystems:
                 client = self.clients[ecosystem]
@@ -124,10 +124,7 @@ class SecretProvider(BaseSecretProvider):
 
     def decrypt_secret(self, secret_name: str) -> str:
         client = self.clients[self.ecosystems[0]]
-        secret_path = os.path.join(
-            self.secret_dir,
-            f"{secret_name}.json",
-        )
+        secret_path = os.path.join(self.secret_dir, f"{secret_name}.json")
         return get_plaintext(
             client=client,
             path=secret_path,
@@ -136,14 +133,11 @@ class SecretProvider(BaseSecretProvider):
             cache_key=None,
             cache_dir=None,
             context=self.service_name,
-        ).decode('utf-8')
+        ).decode("utf-8")
 
     def decrypt_secret_raw(self, secret_name: str) -> bytes:
         client = self.clients[self.ecosystems[0]]
-        secret_path = os.path.join(
-            self.secret_dir,
-            f"{secret_name}.json",
-        )
+        secret_path = os.path.join(self.secret_dir, f"{secret_name}.json")
         return get_plaintext(
             client=client,
             path=secret_path,
@@ -154,34 +148,27 @@ class SecretProvider(BaseSecretProvider):
             context=self.service_name,
         )
 
-    def get_secret_signature_from_data(
-        self,
-        data: Mapping[str, Any],
-    ) -> Optional[str]:
+    def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:
         ecosystem = self.ecosystems[0]
-        if data['environments'][ecosystem]:
-            return data['environments'][ecosystem]['signature']
+        if data["environments"][ecosystem]:
+            return data["environments"][ecosystem]["signature"]
         else:
             return None
 
-    def renew_issue_cert(
-        self,
-        pki_backend: str,
-        ttl: str,
-    ) -> None:
+    def renew_issue_cert(self, pki_backend: str, ttl: str) -> None:
         client = self.clients[self.ecosystems[0]]
         user = getpass.getuser()
-        pki_dir = os.path.expanduser('~/.paasta/pki')
+        pki_dir = os.path.expanduser("~/.paasta/pki")
         do_renew(
             client=client,
             pki_backend=pki_backend,
             role=user,
-            cn=f'{user}.{self.ecosystems[0]}.paasta.yelp',
-            cert_path=f'{pki_dir}/{self.ecosystems[0]}.crt',
-            key_path=f'{pki_dir}/{self.ecosystems[0]}.key',
-            ca_path=f'{pki_dir}/{self.ecosystems[0]}_ca.crt',
+            cn=f"{user}.{self.ecosystems[0]}.paasta.yelp",
+            cert_path=f"{pki_dir}/{self.ecosystems[0]}.crt",
+            key_path=f"{pki_dir}/{self.ecosystems[0]}.key",
+            ca_path=f"{pki_dir}/{self.ecosystems[0]}_ca.crt",
             cert_owner=user,
-            cert_group='users',
-            cert_mode='0600',
+            cert_group="users",
+            cert_mode="0600",
             ttl=ttl,
         )

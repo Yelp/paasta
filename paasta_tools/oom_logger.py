@@ -56,17 +56,27 @@ except ImportError:
 
 
 LogLine = namedtuple(
-    'LogLine', [
-        'timestamp', 'hostname', 'container_id',
-        'cluster', 'service', 'instance', 'process_name',
+    "LogLine",
+    [
+        "timestamp",
+        "hostname",
+        "container_id",
+        "cluster",
+        "service",
+        "instance",
+        "process_name",
     ],
 )
 
 
 def capture_oom_events_from_stdin():
-    process_name_regex = re.compile(r'^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(.+)\sinvoked\soom-killer:')
-    oom_regex = re.compile(r'^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /docker/(\w{12})\w+ killed as a')
-    process_name = ''
+    process_name_regex = re.compile(
+        r"^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(.+)\sinvoked\soom-killer:"
+    )
+    oom_regex = re.compile(
+        r"^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /docker/(\w{12})\w+ killed as a"
+    )
+    process_name = ""
 
     while True:
         syslog = sys.stdin.readline()
@@ -78,68 +88,86 @@ def capture_oom_events_from_stdin():
         r = oom_regex.search(syslog)
         if r:
             yield (int(r.group(1)), r.group(2), r.group(3), process_name)
-            process_name = ''
+            process_name = ""
 
 
 def get_container_env_as_dict(docker_inspect):
     env_vars = {}
-    config = docker_inspect.get('Config')
+    config = docker_inspect.get("Config")
     if config is not None:
-        env = config.get('Env', [])
+        env = config.get("Env", [])
         for i in env:
-            name, _, value = i.partition('=')
+            name, _, value = i.partition("=")
             env_vars[name] = value
     return env_vars
 
 
 def log_to_scribe(logger, log_line):
     """Send the event to 'tmp_paasta_oom_events'."""
-    line = ('{"timestamp": %d, "hostname": "%s", "container_id": "%s", "cluster": "%s", '
-            '"service": "%s", "instance": "%s", "process_name": "%s"}' % (
-                log_line.timestamp, log_line.hostname, log_line.container_id,
-                log_line.cluster, log_line.service, log_line.instance,
-                log_line.process_name,
-            ))
-    logger.log_line('tmp_paasta_oom_events', line)
+    line = (
+        '{"timestamp": %d, "hostname": "%s", "container_id": "%s", "cluster": "%s", '
+        '"service": "%s", "instance": "%s", "process_name": "%s"}'
+        % (
+            log_line.timestamp,
+            log_line.hostname,
+            log_line.container_id,
+            log_line.cluster,
+            log_line.service,
+            log_line.instance,
+            log_line.process_name,
+        )
+    )
+    logger.log_line("tmp_paasta_oom_events", line)
 
 
 def log_to_paasta(log_line):
     """Add the event to the standard PaaSTA logging backend."""
-    line = ('oom-killer killed %s on %s (container_id: %s).'
-            % (
-                'a %s process' % log_line.process_name if log_line.process_name else 'a process',
-                log_line.hostname, log_line.container_id,
-            ))
+    line = "oom-killer killed {} on {} (container_id: {}).".format(
+        "a %s process" % log_line.process_name
+        if log_line.process_name
+        else "a process",
+        log_line.hostname,
+        log_line.container_id,
+    )
     _log(
-        service=log_line.service, instance=log_line.instance, component='oom',
-        cluster=log_line.cluster, level=DEFAULT_LOGLEVEL, line=line,
+        service=log_line.service,
+        instance=log_line.instance,
+        component="oom",
+        cluster=log_line.cluster,
+        level=DEFAULT_LOGLEVEL,
+        line=line,
     )
 
 
 def send_sfx_event(service, instance, cluster):
     if yelp_meteorite:
         yelp_meteorite.events.emit_event(
-            'paasta.service.oom_events',
+            "paasta.service.oom_events",
             dimensions={
-                'paasta_cluster': cluster,
-                'paasta_instance': instance,
-                'paasta_service': service,
+                "paasta_cluster": cluster,
+                "paasta_instance": instance,
+                "paasta_service": service,
             },
         )
 
 
 def main():
-    scribe_logger = ScribeLogger(host='169.254.255.254', port=1463, retry_interval=5)
+    scribe_logger = ScribeLogger(host="169.254.255.254", port=1463, retry_interval=5)
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()
-    for timestamp, hostname, container_id, process_name in capture_oom_events_from_stdin():
+    for (
+        timestamp,
+        hostname,
+        container_id,
+        process_name,
+    ) in capture_oom_events_from_stdin():
         try:
             docker_inspect = client.inspect_container(resource_id=container_id)
         except (APIError):
             continue
         env_vars = get_container_env_as_dict(docker_inspect)
-        service = env_vars.get('PAASTA_SERVICE', 'unknown')
-        instance = env_vars.get('PAASTA_INSTANCE', 'unknown')
+        service = env_vars.get("PAASTA_SERVICE", "unknown")
+        instance = env_vars.get("PAASTA_INSTANCE", "unknown")
         log_line = LogLine(
             timestamp=timestamp,
             hostname=hostname,

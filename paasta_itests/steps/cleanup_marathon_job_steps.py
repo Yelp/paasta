@@ -29,24 +29,22 @@ def delete_apps(context, job_id, cluster_name):
     (service, instance, _, __) = decompose_job_id(job_id)
     context.service = service
     context.instance = instance
-    context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
+    context.zk_hosts = "%s/mesos-testcluster" % get_service_connection_string(
+        "zookeeper"
+    )
     update_context_marathon_config(context)
-    context.app_id = context.marathon_complete_config['id']
-    os.remove("{}/{}/marathon-{}.yaml".format(
-        context.soa_dir, service,
-        cluster_name,
-    ))
-    os.remove("{}/{}/deployments.json".format(
-        context.soa_dir, service,
-        cluster_name,
-    ))
+    context.app_id = context.marathon_complete_config["id"]
+    os.remove(f"{context.soa_dir}/{service}/marathon-{cluster_name}.yaml")
+    os.remove(f"{context.soa_dir}/{service}/deployments.json")
     os.rmdir(f"{context.soa_dir}/{service}")
 
 
-@then('we run cleanup_marathon_apps{flags} which exits with return code "{expected_return_code}"')
+@then(
+    'we run cleanup_marathon_apps{flags} which exits with return code "{expected_return_code}"'
+)
 def run_cleanup_marathon_job(context, flags, expected_return_code):
-    cmd = f'python -m paasta_tools.cleanup_marathon_jobs --soa-dir {context.soa_dir} {flags}'
-    paasta_print('Running cmd %s' % (cmd))
+    cmd = f"python -m paasta_tools.cleanup_marathon_jobs --soa-dir {context.soa_dir} {flags}"
+    paasta_print("Running cmd %s" % (cmd))
     exit_code, output = _run(cmd)
     paasta_print(output)
 

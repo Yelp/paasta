@@ -19,7 +19,8 @@ from paasta_tools.monitoring.check_chronos_has_jobs import check_chronos_jobs
 
 def test_check_chronos_jobs_no_config(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_chronos_has_jobs.load_chronos_config', autospec=True,
+        "paasta_tools.monitoring.check_chronos_has_jobs.load_chronos_config",
+        autospec=True,
         return_value=None,
     ):
         with pytest.raises(SystemExit) as error:
@@ -32,12 +33,15 @@ def test_check_chronos_jobs_no_config(capfd):
 def test_chronos_jobs_no_jobs(capfd):
     with mock.patch(
         # We expect this is tested properly elsewhere
-        'paasta_tools.metrics.metastatus_lib.chronos_tools.filter_enabled_jobs', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.chronos_tools.filter_enabled_jobs",
+        autospec=True,
         return_value=[],
     ), mock.patch(
-        'paasta_tools.monitoring.check_chronos_has_jobs.load_chronos_config', autospec=True,
+        "paasta_tools.monitoring.check_chronos_has_jobs.load_chronos_config",
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.monitoring.check_chronos_has_jobs.get_chronos_client', autospec=True,
+        "paasta_tools.monitoring.check_chronos_has_jobs.get_chronos_client",
+        autospec=True,
     ):
         with pytest.raises(SystemExit) as error:
             check_chronos_jobs()
@@ -49,12 +53,15 @@ def test_chronos_jobs_no_jobs(capfd):
 def test_chronos_jobs_some_jobs(capfd):
     with mock.patch(
         # We expect this is tested properly elsewhere
-        'paasta_tools.metrics.metastatus_lib.chronos_tools.filter_enabled_jobs', autospec=True,
-        return_value=['foo', 'bar'],
+        "paasta_tools.metrics.metastatus_lib.chronos_tools.filter_enabled_jobs",
+        autospec=True,
+        return_value=["foo", "bar"],
     ), mock.patch(
-        'paasta_tools.monitoring.check_chronos_has_jobs.load_chronos_config', autospec=True,
+        "paasta_tools.monitoring.check_chronos_has_jobs.load_chronos_config",
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.monitoring.check_chronos_has_jobs.get_chronos_client', autospec=True,
+        "paasta_tools.monitoring.check_chronos_has_jobs.get_chronos_client",
+        autospec=True,
     ):
         with pytest.raises(SystemExit) as error:
             check_chronos_jobs()

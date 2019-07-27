@@ -34,11 +34,11 @@ def make_copyfile_symlink_aware():
     orig_copymode = shutil.copymode
 
     def symlink_aware_copyfile(*args, **kwargs):
-        kwargs.setdefault('follow_symlinks', False)
+        kwargs.setdefault("follow_symlinks", False)
         orig_copyfile(*args, **kwargs)
 
     def symlink_aware_copymode(*args, **kwargs):
-        kwargs.setdefault('follow_symlinks', False)
+        kwargs.setdefault("follow_symlinks", False)
         orig_copymode(*args, **kwargs)
 
     shutil.copyfile = symlink_aware_copyfile
@@ -63,7 +63,8 @@ def add_subparser(subparsers):
         ),
     )
     fsm_parser.add_argument(
-        "-y", "--yelpsoa-config-root",
+        "-y",
+        "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         default=".",
         help=(
@@ -75,9 +76,7 @@ def add_subparser(subparsers):
 
 
 def get_paasta_config(yelpsoa_config_root):
-    variables = {
-        'proxy_port': suggest_smartstack_proxy_port(yelpsoa_config_root),
-    }
+    variables = {"proxy_port": suggest_smartstack_proxy_port(yelpsoa_config_root)}
     return variables
 
 
@@ -100,11 +99,7 @@ def paasta_fsm(args):
     paasta_config = load_system_paasta_config()
     template = paasta_config.get_fsm_template()
 
-    write_paasta_config(
-        variables=variables,
-        template=template,
-        destination=destination,
-    )
+    write_paasta_config(variables=variables, template=template, destination=destination)
 
     paasta_print(PaastaColors.yellow("               _  _(o)_(o)_  _"))
     paasta_print(PaastaColors.red(r"             ._\`:_ F S M _:' \_,"))

@@ -42,7 +42,9 @@ from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
 from paasta_tools.kubernetes.application.tools import Application  # type: ignore
-from paasta_tools.kubernetes.application.tools import list_namespaced_applications  # type: ignore
+from paasta_tools.kubernetes.application.tools import (
+    list_namespaced_applications,
+)  # type: ignore
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -65,24 +67,27 @@ def alert_state_change(application: Application, soa_dir: str) -> Generator:
     cluster = load_system_paasta_config().get_cluster()
     try:
         yield
-        log_line = "Deleted stale Kubernetes apps that looks lost: %s" % application.item.metadata.name
+        log_line = (
+            "Deleted stale Kubernetes apps that looks lost: %s"
+            % application.item.metadata.name
+        )
         _log(
             service=service,
-            component='deploy',
-            level='event',
+            component="deploy",
+            level="event",
             cluster=cluster,
             instance=instance,
             line=log_line,
         )
 
     except Exception:
-        loglines = ['Exception raised during cleanup of service %s:' % application]
+        loglines = ["Exception raised during cleanup of service %s:" % application]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             _log(
                 service=service,
-                component='deploy',
-                level='debug',
+                component="deploy",
+                level="debug",
                 cluster=cluster,
                 instance=instance,
                 line=logline,
@@ -90,7 +95,9 @@ def alert_state_change(application: Application, soa_dir: str) -> Generator:
         raise
 
 
-def cleanup_unused_apps(soa_dir: str, kill_threshold: float = 0.5, force: bool = False) -> None:
+def cleanup_unused_apps(
+    soa_dir: str, kill_threshold: float = 0.5, force: bool = False
+) -> None:
     """Clean up old or invalid jobs/apps from kubernetes. Retrieves
     both a list of apps currently in kubernetes and a list of valid
     app ids in order to determine what to kill.
@@ -103,28 +110,35 @@ def cleanup_unused_apps(soa_dir: str, kill_threshold: float = 0.5, force: bool =
     kube_client = KubeClient()
 
     log.info("Loading running Kubernetes apps")
-    applications = list_namespaced_applications(kube_client, 'paasta', APPLICATION_TYPES)
+    applications = list_namespaced_applications(
+        kube_client, "paasta", APPLICATION_TYPES
+    )
 
     log.info("Retrieving valid apps from yelpsoa_configs")
-    valid_services = set(get_services_for_cluster(instance_type='kubernetes', soa_dir=soa_dir))
+    valid_services = set(
+        get_services_for_cluster(instance_type="kubernetes", soa_dir=soa_dir)
+    )
 
     log.info("Determining apps to be killed")
     applications_to_kill = [
         applicaton
         for applicaton in applications
-        if (applicaton.kube_deployment.service, applicaton.kube_deployment.instance) not in valid_services
+        if (applicaton.kube_deployment.service, applicaton.kube_deployment.instance)
+        not in valid_services
     ]
 
     log.debug("Running apps: %s" % applications)
     log.debug("Valid apps: %s" % valid_services)
     log.debug("Terminating: %s" % applications_to_kill)
     if applications_to_kill:
-        above_kill_threshold = float(len(applications_to_kill)) / float(len(applications)) > float(kill_threshold)
+        above_kill_threshold = float(len(applications_to_kill)) / float(
+            len(applications)
+        ) > float(kill_threshold)
         if above_kill_threshold and not force:
             log.critical(
                 "Paasta was about to kill more than %s of the running services, this "
                 "is probably a BAD mistake!, run again with --force if you "
-                "really need to destroy everything" % kill_threshold,
+                "really need to destroy everything" % kill_threshold
             )
             raise DontKillEverythingError
 
@@ -134,27 +148,33 @@ def cleanup_unused_apps(soa_dir: str, kill_threshold: float = 0.5, force: bool =
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Cleans up stale kubernetes jobs.')
+    parser = argparse.ArgumentParser(description="Cleans up stale kubernetes jobs.")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-t', '--kill-threshold', dest="kill_threshold",
+        "-t",
+        "--kill-threshold",
+        dest="kill_threshold",
         default=0.5,
         help="The decimal fraction of apps we think is "
-             "sane to kill when this job runs",
+        "sane to kill when this job runs",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     parser.add_argument(
-        '-f', '--force', action='store_true',
-        dest="force", default=False,
-        help="Force the cleanup if we are above the "
-             "kill_threshold",
+        "-f",
+        "--force",
+        action="store_true",
+        dest="force",
+        default=False,
+        help="Force the cleanup if we are above the " "kill_threshold",
     )
     return parser.parse_args(argv)
 

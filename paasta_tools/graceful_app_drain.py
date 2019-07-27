@@ -17,14 +17,12 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="""This script attempts to gracefully drain and kill a marathon app.
         It is intended for use in emergencies when the regular bounce script can't proceed,
-        and needs to kill a specific app to get going.""",
+        and needs to kill a specific app to get going."""
     )
+    parser.add_argument("appname", help="the app that will be drained")
     parser.add_argument(
-        'appname',
-        help="the app that will be drained",
-    )
-    parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=marathon_tools.DEFAULT_SOA_DIR,
@@ -34,25 +32,28 @@ def parse_args():
 
 
 def kill_marathon_app(full_appid, cluster, client, soa_dir):
-    service, instance, _, __ = (s.replace('--', '_') for s in decompose_job_id(full_appid))
+    service, instance, _, __ = (
+        s.replace("--", "_") for s in decompose_job_id(full_appid)
+    )
     service_instance_config = marathon_tools.load_marathon_service_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
+        service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
     )
     complete_config = service_instance_config.format_marathon_app_dict()
     registrations = service_instance_config.get_registrations()
-    service_namespace_config = marathon_tools.load_service_namespace_config(service=service, namespace=registrations[0])
+    service_namespace_config = marathon_tools.load_service_namespace_config(
+        service=service, namespace=registrations[0]
+    )
     drain_method = drain_lib.get_drain_method(
         service_instance_config.get_drain_method(service_namespace_config),
         service=service,
         instance=instance,
         registrations=registrations,
-        drain_method_params=service_instance_config.get_drain_method_params(service_namespace_config),
+        drain_method_params=service_instance_config.get_drain_method_params(
+            service_namespace_config
+        ),
     )
 
-    bounce_func = bounce_lib.get_bounce_method_func('down')
+    bounce_func = bounce_lib.get_bounce_method_func("down")
 
     while marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         app_to_kill = client.get_app(full_appid)
@@ -66,20 +67,22 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
             drain_method=drain_method,
             service=service,
             nerve_ns=registrations[0],
-            bounce_health_params=service_instance_config.get_bounce_health_params(service_namespace_config),
+            bounce_health_params=service_instance_config.get_bounce_health_params(
+                service_namespace_config
+            ),
         )
         do_bounce(
             bounce_func=bounce_func,
             drain_method=drain_method,
             config=complete_config,
-            new_app_running='',
+            new_app_running="",
             happy_new_tasks=[],
             old_app_live_happy_tasks=old_app_live_happy_tasks,
             old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
             old_app_draining_tasks=old_app_draining_tasks,
             old_app_at_risk_tasks=old_app_at_risk_tasks,
             serviceinstance=f"{service}.{instance}",
-            bounce_method='down',
+            bounce_method="down",
             service=service,
             cluster=cluster,
             instance=instance,
@@ -97,11 +100,13 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
 def main():
     exit_code = 1
     args = parse_args()
-    full_appid = args.appname.lstrip('/')
+    full_appid = args.appname.lstrip("/")
 
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
-    clients = marathon_tools.get_list_of_marathon_clients(system_paasta_config=system_paasta_config)
+    clients = marathon_tools.get_list_of_marathon_clients(
+        system_paasta_config=system_paasta_config
+    )
 
     for client in clients:
         if marathon_tools.is_app_id_running(app_id=full_appid, client=client):
@@ -118,5 +123,5 @@ def main():
     return exit_code
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

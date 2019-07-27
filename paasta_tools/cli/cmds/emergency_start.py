@@ -28,7 +28,7 @@ from paasta_tools.utils import PaastaColors
 
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
-        'emergency-start',
+        "emergency-start",
         help="Kicks off a chronos job run. Not implemented for Marathon instances.",
         description=(
             "Chronos Jobs: Forces a job to run outside of its normal schedule.\n"
@@ -36,21 +36,25 @@ def add_subparser(subparsers):
         ),
     )
     status_parser.add_argument(
-        '-s', '--service',
+        "-s",
+        "--service",
         help="Service that you want to start. Like 'example_service'.",
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
-        '-i', '--instance',
+        "-i",
+        "--instance",
         help="Instance of the service that you want to start. Like 'main' or 'canary'.",
         required=True,
     ).completer = lazy_choices_completer(list_instances)
     status_parser.add_argument(
-        '-c', '--cluster',
+        "-c",
+        "--cluster",
         help="The PaaSTA cluster that has the service instance you want to start. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -66,16 +70,19 @@ def paasta_emergency_start(args):
     """
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
-    paasta_print("Performing an emergency start on %s..." % compose_job_id(service, args.instance))
+    paasta_print(
+        "Performing an emergency start on %s..."
+        % compose_job_id(service, args.instance)
+    )
     return_code, output = execute_paasta_serviceinit_on_remote_master(
-        subcommand='start',
+        subcommand="start",
         cluster=args.cluster,
         service=service,
         instances=args.instance,
         system_paasta_config=system_paasta_config,
     )
     _log_audit(
-        action='emergency-start',
+        action="emergency-start",
         service=service,
         cluster=args.cluster,
         instance=args.instance,

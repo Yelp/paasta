@@ -21,27 +21,32 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import paasta_print
 
 
-@when((
-    'I launch {num_jobs} {state} jobs for the service "{service}"'
-    ' with scheduled chronos instance "{job}"'
-))
+@when(
+    (
+        'I launch {num_jobs} {state} jobs for the service "{service}"'
+        ' with scheduled chronos instance "{job}"'
+    )
+)
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
-    jobs = [{
-        'async': False,
-        'command': 'echo 1',
-        'epsilon': 'PT15M',
-        'name': compose_job_id(service, job),
-        'owner': 'paasta',
-        'disabled': True,
-        'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
-    } for x in range(0, int(num_jobs))]
+    jobs = [
+        {
+            "async": False,
+            "command": "echo 1",
+            "epsilon": "PT15M",
+            "name": compose_job_id(service, job),
+            "owner": "paasta",
+            "disabled": True,
+            "schedule": "R/2014-01-01T00:00:00Z/PT60M",
+        }
+        for x in range(0, int(num_jobs))
+    ]
     for job in jobs:
         try:
-            paasta_print('attempting to create job %s' % job['name'])
+            paasta_print("attempting to create job %s" % job["name"])
             client.add(job)
         except Exception:
-            paasta_print('Error creating test job: %s' % json.dumps(job))
+            paasta_print("Error creating test job: %s" % json.dumps(job))
             raise
 
     # a 'configured' job is one which has had the appropriate
@@ -51,62 +56,69 @@ def launch_jobs(context, num_jobs, state, service, job):
     # corresponding configuration in place the target for.
     # 'unconfigured' jobs are the target for cleanup_chronos_jobs
     if state == "configured":
-        context.configured_job_names = [job['name'] for job in jobs]
+        context.configured_job_names = [job["name"] for job in jobs]
     elif state == "unconfigured":
-        context.unconfigured_job_names = [job['name'] for job in jobs]
+        context.unconfigured_job_names = [job["name"] for job in jobs]
 
 
-@when('I launch {num_jobs} non-paasta jobs')
+@when("I launch {num_jobs} non-paasta jobs")
 def launch_non_paasta_jobs(context, num_jobs):
     client = context.chronos_client
-    jobs = [{
-        'async': False,
-        'command': 'echo 1',
-        'epsilon': 'PT15M',
-        'name': 'foobar%d' % job,
-        'owner': 'rogue',
-        'disabled': True,
-        'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
-    } for job in range(0, int(num_jobs))]
-    context.non_paasta_jobs = [job['name'] for job in jobs]
+    jobs = [
+        {
+            "async": False,
+            "command": "echo 1",
+            "epsilon": "PT15M",
+            "name": "foobar%d" % job,
+            "owner": "rogue",
+            "disabled": True,
+            "schedule": "R/2014-01-01T00:00:00Z/PT60M",
+        }
+        for job in range(0, int(num_jobs))
+    ]
+    context.non_paasta_jobs = [job["name"] for job in jobs]
     for job in jobs:
         try:
-            paasta_print('attempting to create job %s' % job['name'])
+            paasta_print("attempting to create job %s" % job["name"])
             client.add(job)
         except Exception:
-            paasta_print('Error creating test job: %s' % json.dumps(job))
+            paasta_print("Error creating test job: %s" % json.dumps(job))
             raise
 
 
-@then('cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
+@then(
+    'cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output'
+)
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
-    cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
+    cmd = "../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s" % context.soa_dir
     exit_code, output = _run(cmd)
     paasta_print(context.unconfigured_job_names)
-    paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
+    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
 
     assert exit_code == int(expected_return_code)
     assert "Successfully Removed Tasks (if any were running) for:" in output
     assert "Successfully Removed Jobs:" in output
     for job in context.unconfigured_job_names:
-        assert '  %s' % job in output
+        assert "  %s" % job in output
 
 
-@when('we run cleanup_chronos_jobs')
+@when("we run cleanup_chronos_jobs")
 def run_cleanup_chronos_jobs(context):
-    cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
+    cmd = "../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s" % context.soa_dir
     context.exit_code, context.output = _run(cmd)
     paasta_print(context.output)
 
 
-@then('the non-paasta jobs are not in the job list')
+@then("the non-paasta jobs are not in the job list")
 def check_non_paasta_jobs(context):
     jobs = context.chronos_client.list()
-    running_job_names = [job['name'] for job in jobs]
-    assert not any([job_name in running_job_names for job_name in context.non_paasta_jobs])
+    running_job_names = [job["name"] for job in jobs]
+    assert not any(
+        [job_name in running_job_names for job_name in context.non_paasta_jobs]
+    )
 
 
-@then('the {state} chronos jobs are not in the job list')
+@then("the {state} chronos jobs are not in the job list")
 def assert_jobs_not_in_job_list(context, state):
     jobs = context.chronos_client.list()
     if state == "configured":
@@ -116,7 +128,7 @@ def assert_jobs_not_in_job_list(context, state):
     assert_no_job_names_in_list(state_list, jobs)
 
 
-@then('the {state} chronos jobs are in the job list')
+@then("the {state} chronos jobs are in the job list")
 def assert_jobs_all_in_job_list(context, state):
     jobs = context.chronos_client.list()
     if state == "configured":
@@ -127,10 +139,10 @@ def assert_jobs_all_in_job_list(context, state):
 
 
 def assert_no_job_names_in_list(names, jobs):
-    running_job_names = [job['name'] for job in jobs]
+    running_job_names = [job["name"] for job in jobs]
     assert all([job_name not in running_job_names for job_name in names])
 
 
 def assert_all_job_names_in_list(names, jobs):
-    running_job_names = [job['name'] for job in jobs]
+    running_job_names = [job["name"] for job in jobs]
     assert all([job_name in running_job_names for job_name in names])
