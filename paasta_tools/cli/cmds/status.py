@@ -696,9 +696,10 @@ def verify_instances(
     if misspelled_instances:
         suggestions: List[str] = []
         for instance in misspelled_instances:
-            suggestions.extend(
-                difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5)
-            )  # type: ignore
+            matches = difflib.get_close_matches(
+                instance, service_instances, n=5, cutoff=0.5
+            )
+            suggestions.extend(matches)  # type: ignore
         suggestions = list(set(suggestions))
 
         if clusters:

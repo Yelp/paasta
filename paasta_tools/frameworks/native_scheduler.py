@@ -112,9 +112,9 @@ class NativeScheduler(Scheduler):
 
         if service_config is not None:
             self.service_config = service_config
-            self.service_config.config_dict.update(
+            self.service_config.config_dict.update(  # type: ignore
                 self.service_config_overrides
-            )  # type: ignore
+            )
             self.recreate_drain_method()
             self.reload_constraints()
             self.validate_config()

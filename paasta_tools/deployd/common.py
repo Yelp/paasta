@@ -119,10 +119,9 @@ class PaastaPriorityQueue(PriorityQueue):
         name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    # ignored because https://github.com/python/mypy/issues/1237
-    def put(
+    def put_with_priority(
         self, priority: float, item: Any, *args: Any, **kwargs: Any
-    ) -> None:  # type: ignore
+    ) -> None:
         self.log.debug(f"Adding {item} to {self.name} queue with priority {priority}")
         # this counter is to preserve the FIFO nature of the queue, it increments on every put
         # and the python PriorityQueue sorts based on the first item in the tuple (priority)

@@ -772,9 +772,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             for key, value in config.items()
             if key not in CONFIG_HASH_BLACKLIST
         }
-        ahash["container"]["docker"]["parameters"] = self.format_docker_parameters(
-            with_labels=False
-        )  # type: ignore
+        ahash["container"]["docker"][  # type: ignore
+            "parameters"
+        ] = self.format_docker_parameters(with_labels=False)
         secret_hashes = get_secret_hashes(
             environment_variables=config["env"],
             secret_environment=system_paasta_config.get_vault_environment(),

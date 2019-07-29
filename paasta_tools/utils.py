@@ -302,11 +302,12 @@ class InstanceConfig:
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
             if (
-                key in self.config_dict and self.config_dict[key] is not None
-            ):  # type: ignore
-                self.config_dict[key] = self.config_dict[key].format(
+                key in self.config_dict
+                and self.config_dict[key] is not None  # type: ignore
+            ):
+                self.config_dict[key] = self.config_dict[key].format(  # type: ignore
                     **interpolation_facts
-                )  # type: ignore
+                )
 
     def __repr__(self) -> str:
         return "{!s}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(

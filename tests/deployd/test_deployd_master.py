@@ -54,18 +54,19 @@ class TestDedupedPriorityQueue(unittest.TestCase):
 
     def test_put(self):
         with mock.patch(
-            "paasta_tools.deployd.master.PaastaPriorityQueue.put", autospec=True
-        ) as mock_paasta_queue_put:
+            "paasta_tools.deployd.master.PaastaPriorityQueue.put_with_priority",
+            autospec=True,
+        ) as mock_paasta_queue_put_with_priority:
 
-            self.queue.put(0, self.mock_service_instance)
-            mock_paasta_queue_put.assert_called_with(
+            self.queue.put_with_priority(0, self.mock_service_instance)
+            mock_paasta_queue_put_with_priority.assert_called_with(
                 self.queue, 0, self.mock_service_instance
             )
             assert "universe.c137" in self.queue.bouncing
 
-            mock_paasta_queue_put.reset_mock()
-            self.queue.put(0, self.mock_service_instance)
-            assert not mock_paasta_queue_put.called
+            mock_paasta_queue_put_with_priority.reset_mock()
+            self.queue.put_with_priority(0, self.mock_service_instance)
+            assert not mock_paasta_queue_put_with_priority.called
             assert "universe.c137" in self.queue.bouncing
 
     def test_get(self):
@@ -174,10 +175,10 @@ class TestInbox(unittest.TestCase):
                 "universe.c138": mock_service_instance_2,
             }
             self.inbox.process_to_bounce()
-            self.mock_instances_to_bounce_now.put.assert_called_with(
+            self.mock_instances_to_bounce_now.put_with_priority.assert_called_with(
                 mock_service_instance_1.priority, mock_service_instance_1
             )
-            assert self.mock_instances_to_bounce_now.put.call_count == 1
+            assert self.mock_instances_to_bounce_now.put_with_priority.call_count == 1
 
     def tearDown(self):
         self.inbox.to_bounce = {}

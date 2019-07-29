@@ -40,13 +40,13 @@ class DedupedPriorityQueue(PaastaPriorityQueue):
         super().__init__(name, *args, **kwargs)
         self.bouncing = set()
 
-    def put(self, priority, service_instance, *args, **kwargs):
+    def put_with_priority(self, priority, service_instance, *args, **kwargs):
         service_instance_key = "{}.{}".format(
             service_instance.service, service_instance.instance
         )
         if service_instance_key not in self.bouncing:
             self.bouncing.add(service_instance_key)
-            super().put(priority, service_instance, *args, **kwargs)
+            super().put_with_priority(priority, service_instance, *args, **kwargs)
         else:
             self.log.debug(
                 f"{service_instance_key} already present in {self.name}, dropping extra message"
@@ -124,7 +124,7 @@ class Inbox(PaastaThread):
                 self.log.info(
                     f"Enqueuing {service_instance.service}.{service_instance.instance} to the bounce_now queue (bounce_by {human_bounce_by} ago)"
                 )  # noqa E501
-                self.instances_to_bounce_now.put(
+                self.instances_to_bounce_now.put_with_priority(
                     service_instance.priority, service_instance
                 )
         for service_instance_key in bounced:

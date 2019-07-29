@@ -54,10 +54,10 @@ class TestPaastaPriorityQueue(unittest.TestCase):
         with mock.patch(
             "paasta_tools.deployd.common.PriorityQueue.put", autospec=True
         ) as mock_q_put:
-            self.queue.put(3, "human")
+            self.queue.put_with_priority(3, "human")
             mock_q_put.assert_called_with(self.queue, (3, 1, "human"))
 
-            self.queue.put(3, "human")
+            self.queue.put_with_priority(3, "human")
             mock_q_put.assert_called_with(self.queue, (3, 2, "human"))
 
     def test_get(self):
