@@ -241,6 +241,49 @@
                 ]
             }
         },
+        "/services/{service}/{instance}/state/{desired_state}": {
+            "post": {
+                "responses": {
+                    "200": {
+                        "description": "Result of instance state change"
+                    },
+                    "404": {
+                        "description": "Deployment key not found"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    }
+                },
+                "summary": "Change state of service_name.instance_name",
+                "operationId": "instance_set_state",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Desired state",
+                        "name": "desired_state",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/services/{service}/{instance}/status": {
             "get": {
                 "responses": {

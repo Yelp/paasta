@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-import os
 import socket
 import sys
 from collections import defaultdict
@@ -21,18 +20,17 @@ from typing import Dict
 from typing import List
 
 import choice
+from bravado.exception import HTTPError
 
 from paasta_tools import remote_git
 from paasta_tools import utils
+from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import run_on_master
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
@@ -277,38 +275,31 @@ def paasta_start_or_stop(args, desired_state):
     return_val = 0
 
     if affected_flinks:
-        if os.environ.get('ON_PAASTA_MASTER'):
-            print_flink_message(desired_state)
-            kube_client = KubeClient()
-            for service_config in affected_flinks:
-                set_flink_desired_state(
-                    kube_client=kube_client,
-                    service=service_config.service,
-                    instance=service_config.instance,
-                    desired_state=dict(start='running', stop='stopped')[desired_state],
-                )
-        else:
-            csi = defaultdict(lambda: defaultdict(list))
-            for service_config in affected_flinks:
-                csi[service_config.cluster][service_config.service].append(service_config.instance)
+        print_flink_message(desired_state)
+        csi = defaultdict(lambda: defaultdict(list))
+        for service_config in affected_flinks:
+            csi[service_config.cluster][service_config.service].append(service_config.instance)
 
-            system_paasta_config = load_system_paasta_config()
-            for cluster, services_instances in csi.items():
-                for service, instances in services_instances.items():
-                    cmd_parts = [
-                        'ON_PAASTA_MASTER=1',
-                        'paasta',
-                        desired_state,
-                        '-c', cluster,
-                        '-s', service,
-                        '-i', ','.join(instances),
-                    ]
-                    return_val, _ = run_on_master(
-                        cluster=cluster,
-                        system_paasta_config=system_paasta_config,
-                        cmd_parts=cmd_parts,
-                        graceful_exit=True,
-                    )
+        system_paasta_config = load_system_paasta_config()
+        for cluster, services_instances in csi.items():
+            client = get_paasta_api_client(cluster, system_paasta_config)
+            if not client:
+                paasta_print('Cannot get a paasta-api client')
+                exit(1)
+
+            for service, instances in services_instances.items():
+                for instance in instances:
+                    try:
+                        client.service.instance_set_state(
+                            service=service,
+                            instance=instance,
+                            desired_state=desired_state,
+                        ).result()
+                    except HTTPError as exc:
+                        paasta_print(exc.response.text)
+                        return exc.status_code
+
+                return_val = 0
 
     if invalid_deploy_groups:
         paasta_print("No branches found for %s in %s." %
