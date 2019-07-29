@@ -29,6 +29,7 @@ from typing import Sequence
 import a_sync
 import marathon
 from kubernetes.client import V1Pod
+from kubernetes.client.rest import ApiException
 from pyramid.response import Response
 from pyramid.view import view_config
 
@@ -41,6 +42,8 @@ from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.flink_tools import set_flink_desired_state
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_task
@@ -318,7 +321,6 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    print(instance_type)
     if instance_type != 'flink' and instance_type != 'tron':
         try:
             actual_deployments = get_actual_deployments(service, settings.soa_dir)
@@ -361,6 +363,40 @@ def instance_status(request):
         raise ApiFailure(error_message, 500)
 
     return instance_status
+
+
+@view_config(route_name='service.instance.set_state', request_method='POST', renderer='json')
+def instance_set_state(
+    request,
+) -> None:
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    desired_state = request.swagger_data.get("desired_state")
+
+    try:
+        instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
+    except NoConfigurationForServiceError:
+        error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+        raise ApiFailure(error_message, 404)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    if instance_type == "flink":
+        try:
+            kube_client = KubeClient()
+            set_flink_desired_state(
+                kube_client=kube_client,
+                service=service,
+                instance=instance,
+                desired_state=desired_state,
+            )
+        except ApiException as e:
+            error_message = f'Error while setting state {desired_state} of {service}.{instance}: {e}'
+            raise ApiFailure(error_message, 500)
+    else:
+        error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
+        raise ApiFailure(error_message, 404)
 
 
 @view_config(route_name='service.instance.tasks.task', request_method='GET', renderer='json')
