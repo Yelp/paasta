@@ -35,15 +35,15 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 
-AWS_CREDENTIALS_DIR = '/etc/boto_cfg/'
-DEFAULT_SPARK_RUN_CONFIG = '/nail/srv/configs/spark.yaml'
-DEFAULT_AWS_REGION = 'us-west-2'
-DEFAULT_SERVICE = 'spark'
-DEFAULT_SPARK_WORK_DIR = '/spark_driver'
-DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = 'paasta-spark-run'
-DEFAULT_SPARK_DOCKER_REGISTRY = 'docker-dev.yelpcorp.com'
-DEFAULT_SPARK_MESOS_SECRET_FILE = '/nail/etc/paasta_spark_secret'
-SENSITIVE_ENV = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']
+AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
+DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
+DEFAULT_AWS_REGION = "us-west-2"
+DEFAULT_SERVICE = "spark"
+DEFAULT_SPARK_WORK_DIR = "/spark_driver"
+DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
+DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
+DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
+SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
 
@@ -328,37 +328,33 @@ def get_default_event_log_dir(access_key, secret_key):
     with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
         spark_run_conf = YAML().load(fp.read())
     try:
-        account_id = boto3.client(
-            'sts',
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-        ).get_caller_identity().get('Account')
+        account_id = (
+            boto3.client(
+                "sts", aws_access_key_id=access_key, aws_secret_access_key=secret_key
+            )
+            .get_caller_identity()
+            .get("Account")
+        )
     except Exception as e:
-        log.warning('Failed to identify account ID, error: {}'.format(str(e)))
+        log.warning("Failed to identify account ID, error: {}".format(str(e)))
         return None
 
-    for conf in spark_run_conf['environments'].values():
-        if account_id == conf['account_id']:
-            default_event_log_dir = conf['default_event_log_dir']
-            paasta_print(f'default event logging at: {default_event_log_dir}')
+    for conf in spark_run_conf["environments"].values():
+        if account_id == conf["account_id"]:
+            default_event_log_dir = conf["default_event_log_dir"]
+            paasta_print(f"default event logging at: {default_event_log_dir}")
             return default_event_log_dir
     return None
 
 
-def get_spark_env(
-    args,
-    spark_conf,
-    spark_ui_port,
-    access_key,
-    secret_key,
-):
+def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
     spark_env = {}
 
-    spark_env['AWS_ACCESS_KEY_ID'] = access_key
-    spark_env['AWS_SECRET_ACCESS_KEY'] = secret_key
-    spark_env['AWS_DEFAULT_REGION'] = args.aws_region
-    spark_env['PAASTA_LAUNCHED_BY'] = get_possible_launched_by_user_variable_from_env()
-    spark_env['PAASTA_INSTANCE_TYPE'] = 'spark'
+    spark_env["AWS_ACCESS_KEY_ID"] = access_key
+    spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
+    spark_env["AWS_DEFAULT_REGION"] = args.aws_region
+    spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
+    spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
     # Run spark (and mesos framework) as root.
     spark_env["SPARK_USER"] = "root"
@@ -452,14 +448,14 @@ def get_spark_config(
         "spark.executor.memory": "4g",
         # Use \; for multiple constraints. e.g.
         # instance_type:m4.10xlarge\;pool:default
-        'spark.mesos.constraints': 'pool:%s' % args.pool,
-        'spark.mesos.executor.docker.forcePullImage': 'true',
+        "spark.mesos.constraints": "pool:%s" % args.pool,
+        "spark.mesos.executor.docker.forcePullImage": "true",
     }
 
     default_event_log_dir = get_default_event_log_dir(access_key, secret_key)
     if default_event_log_dir is not None:
-        user_args['spark.eventLog.enabled'] = 'true'
-        user_args['spark.eventLog.dir'] = default_event_log_dir
+        user_args["spark.eventLog.enabled"] = "true"
+        user_args["spark.eventLog.dir"] = default_event_log_dir
 
     # Spark options managed by PaaSTA
     cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(
@@ -737,13 +733,7 @@ def configure_and_run_docker_container(
 
     environment = instance_config.get_env_dictionary()
     environment.update(
-        get_spark_env(
-            args,
-            spark_conf_str,
-            spark_ui_port,
-            access_key,
-            secret_key,
-        ),
+        get_spark_env(args, spark_conf_str, spark_ui_port, access_key, secret_key)
     )
 
     webui_url = f"http://{socket.getfqdn()}:{spark_ui_port}"
