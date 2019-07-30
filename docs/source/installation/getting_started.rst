@@ -29,8 +29,8 @@ code that interacts with the other components. Binary packages of ``paasta_tools
 are currently not available, so one must build them and install them manually::
 
   git clone git@github.com:Yelp/paasta.git
-  # Assuming you are on Ubuntu Trusty
-  make itest_trusty
+  # Assuming you are on Ubuntu Xenial
+  make itest_xenial
   sudo dpkg -i dist/paasta-tools*.deb
 
 This package must be installed anywhere the PaaSTA CLI and on the Mesos/Marathon
