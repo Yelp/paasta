@@ -135,23 +135,23 @@ class DelayDeadlineQueue():
     """Entries into this queue have both a wait_until and a bounce_by. Before wait_until, get() will not return an entry.
     get() returns the entry whose wait_until has passed and which has the lowest bounce_by."""
 
-    def __init__(self):
-        self.available_service_instances = PriorityQueue()
-        self.unavailable_service_instances = PriorityQueue()
+    def __init__(self) -> None:
+        self.available_service_instances: PriorityQueue[Tuple[float, ServiceInstance]] = PriorityQueue()
+        self.unavailable_service_instances: PriorityQueue[Tuple[float, float, ServiceInstance]] = PriorityQueue()
 
     @property
     def log(self) -> logging.Logger:
         name = '.'.join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    def put(self, si: ServiceInstance, now=None):
+    def put(self, si: ServiceInstance, now: Optional[float] = None) -> None:
         self.log.debug(
             f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}",
         )
         self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
         self.process_unavailable_service_instances(now=now)
 
-    def process_unavailable_service_instances(self, now=None):
+    def process_unavailable_service_instances(self, now: Optional[float] = None) -> None:
         """Take any entries in unavailable_service_instances that have a wait_until < now and put them in
         available_service_instances. Should not block."""
         if now is None:
@@ -165,10 +165,14 @@ class DelayDeadlineQueue():
                     self.unavailable_service_instances.put((wait_until, bounce_by, si))
                     return
         except Empty:
-            print('empty')
             pass
 
-    def get(self, block=True, timeout=None, now=None) -> ServiceInstance:
+    def get(
+        self,
+        block: bool = True,
+        timeout: float = None,
+        now: float = None,
+    ) -> ServiceInstance:
         self.process_unavailable_service_instances(now=now)
         bounce_by, si = self.available_service_instances.get(block=block, timeout=timeout)
         return si
