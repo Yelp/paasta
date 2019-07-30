@@ -26,7 +26,7 @@ def test_parse_filters_empty():
     filters = None
     parsed = parse_filters(filters)
 
-    assert(parsed == {})
+    assert parsed == {}
 
 
 def test_parse_filters_good():
@@ -34,158 +34,149 @@ def test_parse_filters_good():
 
     parsed = parse_filters(filters)
 
-    assert('foo' in parsed.keys())
-    assert('qux' in parsed.keys())
-    assert('bar' in parsed['foo'])
-    assert('baz' in parsed['foo'])
-    assert('zol' in parsed['qux'])
+    assert "foo" in parsed.keys()
+    assert "qux" in parsed.keys()
+    assert "bar" in parsed["foo"]
+    assert "baz" in parsed["foo"]
+    assert "zol" in parsed["qux"]
 
 
-@mock.patch('paasta_tools.api.views.resources.metastatus_lib.get_resource_utilization_by_grouping', autospec=True)
-@mock.patch('paasta_tools.api.views.resources.get_mesos_master', autospec=True)
-def test_resources_utilization_nothing_special(mock_get_mesos_master, mock_get_resource_utilization_by_grouping):
+@mock.patch(
+    "paasta_tools.api.views.resources.metastatus_lib.get_resource_utilization_by_grouping",
+    autospec=True,
+)
+@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
+def test_resources_utilization_nothing_special(
+    mock_get_mesos_master, mock_get_resource_utilization_by_grouping
+):
     request = testing.DummyRequest()
-    request.swagger_data = {'groupings': None, 'filter': None}
+    request.swagger_data = {"groupings": None, "filter": None}
     mock_mesos_state = mock.Mock()
-    mock_master = mock.Mock(state=asynctest.CoroutineMock(return_value=mock_mesos_state))
+    mock_master = mock.Mock(
+        state=asynctest.CoroutineMock(return_value=mock_mesos_state)
+    )
     mock_get_mesos_master.return_value = mock_master
 
     mock_get_resource_utilization_by_grouping.return_value = {
-        frozenset([('superregion', 'unknown')]): {
-            'total': metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
-            'free': metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
-        },
+        frozenset([("superregion", "unknown")]): {
+            "total": metastatus_lib.ResourceInfo(cpus=10.0, mem=512.0, disk=100.0),
+            "free": metastatus_lib.ResourceInfo(cpus=8.0, mem=312.0, disk=20.0),
+        }
     }
 
     resp = resources_utilization(request)
-    body = json.loads(resp.body.decode('utf-8'))
+    body = json.loads(resp.body.decode("utf-8"))
 
-    assert(resp.status_int == 200)
-    assert(len(body) == 1)
-    assert(set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"})
+    assert resp.status_int == 200
+    assert len(body) == 1
+    assert set(body[0].keys()) == {"disk", "mem", "groupings", "cpus", "gpus"}
 
 
 mock_mesos_state = {
-    'slaves': [
+    "slaves": [
         {
-            'id': 'foo1',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'pool': 'default', 'region': 'top'},
-            'reserved_resources': {},
+            "id": "foo1",
+            "resources": {"disk": 100, "cpus": 10, "mem": 50},
+            "attributes": {"pool": "default", "region": "top"},
+            "reserved_resources": {},
         },
         {
-            'id': 'bar1',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'pool': 'default', 'region': 'bottom'},
-            'reserved_resources': {},
+            "id": "bar1",
+            "resources": {"disk": 100, "cpus": 10, "mem": 50},
+            "attributes": {"pool": "default", "region": "bottom"},
+            "reserved_resources": {},
         },
         {
-            'id': 'foo2',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'pool': 'other', 'region': 'top'},
-            'reserved_resources': {},
+            "id": "foo2",
+            "resources": {"disk": 100, "cpus": 10, "mem": 50},
+            "attributes": {"pool": "other", "region": "top"},
+            "reserved_resources": {},
         },
         {
-            'id': 'bar2',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'pool': 'other', 'region': 'bottom'},
-            'reserved_resources': {},
+            "id": "bar2",
+            "resources": {"disk": 100, "cpus": 10, "mem": 50},
+            "attributes": {"pool": "other", "region": "bottom"},
+            "reserved_resources": {},
         },
         {
-            'id': 'foo3',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'pool': 'other', 'region': 'top'},
-            'reserved_resources': {},
+            "id": "foo3",
+            "resources": {"disk": 100, "cpus": 10, "mem": 50},
+            "attributes": {"pool": "other", "region": "top"},
+            "reserved_resources": {},
         },
         {
-            'id': 'bar2',
-            'resources': {
-                'disk': 100,
-                'cpus': 10,
-                'mem': 50,
-            },
-            'attributes': {'pool': 'other', 'region': 'bottom'},
-            'reserved_resources': {},
+            "id": "bar2",
+            "resources": {"disk": 100, "cpus": 10, "mem": 50},
+            "attributes": {"pool": "other", "region": "bottom"},
+            "reserved_resources": {},
         },
     ],
-    'frameworks': [
-        {'tasks': [
-            {
-                'state': 'TASK_RUNNING',
-                'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                'slave_id': 'foo1',
-            },
-            {
-                'state': 'TASK_RUNNING',
-                'resources': {'cpus': 1, 'mem': 10, 'disk': 10},
-                'slave_id': 'bar1',
-            },
-        ]},
+    "frameworks": [
+        {
+            "tasks": [
+                {
+                    "state": "TASK_RUNNING",
+                    "resources": {"cpus": 1, "mem": 10, "disk": 10},
+                    "slave_id": "foo1",
+                },
+                {
+                    "state": "TASK_RUNNING",
+                    "resources": {"cpus": 1, "mem": 10, "disk": 10},
+                    "slave_id": "bar1",
+                },
+            ]
+        }
     ],
 }
 
 
-@mock.patch('paasta_tools.api.views.resources.get_mesos_master', autospec=True)
+@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
 def test_resources_utilization_with_grouping(mock_get_mesos_master):
     request = testing.DummyRequest()
-    request.swagger_data = {'groupings': ['region', 'pool'], 'filter': None}
+    request.swagger_data = {"groupings": ["region", "pool"], "filter": None}
     mock_master = mock.Mock(
         state=asynctest.CoroutineMock(
             func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
             return_value=mock_mesos_state,
-        ),
+        )
     )
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)
-    body = json.loads(resp.body.decode('utf-8'))
+    body = json.loads(resp.body.decode("utf-8"))
 
-    assert(resp.status_int == 200)
+    assert resp.status_int == 200
     # 4 groupings, 2x2 attrs for 5 slaves
-    assert(len(body) == 4)
+    assert len(body) == 4
 
 
-@mock.patch('paasta_tools.api.views.resources.get_mesos_master', autospec=True)
+@mock.patch("paasta_tools.api.views.resources.get_mesos_master", autospec=True)
 def test_resources_utilization_with_filter(mock_get_mesos_master):
     request = testing.DummyRequest()
-    request.swagger_data = {'groupings': ['region', 'pool'], 'filter': ['region:top', 'pool:default,other']}
+    request.swagger_data = {
+        "groupings": ["region", "pool"],
+        "filter": ["region:top", "pool:default,other"],
+    }
     mock_master = mock.Mock(
         state=asynctest.CoroutineMock(
             func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
             return_value=mock_mesos_state,
-        ),
+        )
     )
     mock_get_mesos_master.return_value = mock_master
 
     resp = resources_utilization(request)
-    body = json.loads(resp.body.decode('utf-8'))
+    body = json.loads(resp.body.decode("utf-8"))
 
-    assert(resp.status_int == 200)
-    assert(len(body) == 2)
+    assert resp.status_int == 200
+    assert len(body) == 2
 
-    request.swagger_data = {'groupings': ['region', 'pool'], 'filter': ['region:non-exist', 'pool:default,other']}
+    request.swagger_data = {
+        "groupings": ["region", "pool"],
+        "filter": ["region:non-exist", "pool:default,other"],
+    }
     resp = resources_utilization(request)
-    body = json.loads(resp.body.decode('utf-8'))
+    body = json.loads(resp.body.decode("utf-8"))
 
-    assert(resp.status_int == 200)
-    assert(len(body) == 0)
+    assert resp.status_int == 200
+    assert len(body) == 0

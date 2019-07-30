@@ -20,10 +20,7 @@ from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.utils import paasta_print
 
 
-def check_replication(
-    service, service_replication,
-    warn_range, crit_range,
-):
+def check_replication(service, service_replication, warn_range, crit_range):
     """Check for sufficient replication of a service
 
     :param service: A string representing the name of the service
@@ -52,18 +49,18 @@ def check_replication(
         (2,
         "CRITICAL lucy has 0 instance(s), expected value in [1, 1e18])
     """
-    code, status, interval = 0, 'OK', None
+    code, status, interval = 0, "OK", None
     if not (crit_range[0] <= service_replication <= crit_range[1]):
-        code, status, interval = 2, 'CRITICAL', crit_range
+        code, status, interval = 2, "CRITICAL", crit_range
     elif not (warn_range[0] <= service_replication <= warn_range[1]):
-        code, status, interval = 1, 'WARNING', warn_range
+        code, status, interval = 1, "WARNING", warn_range
 
     expected_message = ""
     if interval is not None:
         expected_message = f", expected value in {interval}"
 
     message = "{} {} has {} instance(s){}".format(
-        status, service, service_replication, expected_message,
+        status, service, service_replication, expected_message
     )
 
     return code, message
@@ -72,10 +69,10 @@ def check_replication(
 def parse_range(str_range):
     int_range = str_range.split(":")
     if len(int_range) != 2:
-        fail('Incorrect range, see --help', 2)
-    if int_range[0] == '':
+        fail("Incorrect range, see --help", 2)
+    if int_range[0] == "":
         int_range[0] = 0
-    if int_range[1] == '':
+    if int_range[1] == "":
         int_range[1] = sys.maxsize
     try:
         return tuple(map(int, int_range))
@@ -88,37 +85,50 @@ def parse_synapse_check_options(system_paasta_config):
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument(
-        dest='services', nargs='+', type=str,
-        help="A series of service names to check.\n"
-        "e.g. lucy_east_0 lucy_east_1 ...",
+        dest="services",
+        nargs="+",
+        type=str,
+        help="A series of service names to check.\n" "e.g. lucy_east_0 lucy_east_1 ...",
     )
     parser.add_argument(
-        '-H', '--synapse-host',
-        dest='synapse_host', type=str,
-        help='The host to check',
+        "-H",
+        "--synapse-host",
+        dest="synapse_host",
+        type=str,
+        help="The host to check",
         default=system_paasta_config.get_default_synapse_host(),
     )
     parser.add_argument(
-        '-P', '--synapse-port',
-        dest='synapse_port', type=int,
-        help='The synapse port to check',
+        "-P",
+        "--synapse-port",
+        dest="synapse_port",
+        type=int,
+        help="The synapse port to check",
         default=system_paasta_config.get_synapse_port(),
     )
     parser.add_argument(
-        '-F', '--synapse-haproxy-url-format',
-        dest='synapse_haproxy_url_format', type=str,
-        help='The synapse haproxy url format',
+        "-F",
+        "--synapse-haproxy-url-format",
+        dest="synapse_haproxy_url_format",
+        type=str,
+        help="The synapse haproxy url format",
         default=system_paasta_config.get_synapse_haproxy_url_format(),
     )
     parser.add_argument(
-        '-w', '--warn', dest='warn', type=str,
-        metavar='RANGE',
+        "-w",
+        "--warn",
+        dest="warn",
+        type=str,
+        metavar="RANGE",
         help="Generate warning state if number of "
         "service instances is outside this range",
     )
     parser.add_argument(
-        '-c', '--critical', dest='crit', type=str,
-        metavar='RANGE',
+        "-c",
+        "--critical",
+        dest="crit",
+        type=str,
+        metavar="RANGE",
         help="Generate critical state if number of "
         "service instances is outside this range",
     )
@@ -149,14 +159,13 @@ def run_synapse_check():
         all_codes = []
         for name, replication in service_replications.items():
             code, message = check_replication(
-                name, replication,
-                options.warn, options.crit,
+                name, replication, options.warn, options.crit
             )
             all_codes.append(code)
             paasta_print(message)
         sys.exit(max(all_codes))
     except Exception as e:
-        fail(f'UNKNOWN: {e}', 3)
+        fail(f"UNKNOWN: {e}", 3)
 
 
 if __name__ == "__main__":

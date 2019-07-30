@@ -21,7 +21,7 @@ from paasta_tools.utils import SPACER
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'list',
+        "list",
         help="Display a list of PaaSTA services",
         description=(
             "'paasta list' inspects the soa-configs directory and lists all of the "
@@ -29,14 +29,17 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        '-a', '--all',
-        action='store_true',
-        help='Display all services, even if not on PaaSTA.',
+        "-a",
+        "--all",
+        action="store_true",
+        help="Display all services, even if not on PaaSTA.",
     )
     list_parser.add_argument(
-        '-i', '--print-instances',
-        action='store_true',
-        help='Display all service%sinstance values, which only PaaSTA services have.' % SPACER,
+        "-i",
+        "--print-instances",
+        action="store_true",
+        help="Display all service%sinstance values, which only PaaSTA services have."
+        % SPACER,
     )
     list_parser.set_defaults(command=paasta_list)
 

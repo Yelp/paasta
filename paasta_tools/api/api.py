@@ -37,25 +37,26 @@ log = logging.getLogger(__name__)
 
 
 def parse_paasta_api_args():
-    parser = argparse.ArgumentParser(description='Runs a PaaSTA API server')
+    parser = argparse.ArgumentParser(description="Runs a PaaSTA API server")
     parser.add_argument(
-        '-D', '--debug',
-        dest='debug',
-        action='store_true', default=False,
+        "-D",
+        "--debug",
+        dest="debug",
+        action="store_true",
+        default=False,
         help="output the debug logs",
     )
+    parser.add_argument("port", type=int, help="port number for the api server")
     parser.add_argument(
-        'port', type=int,
-        help="port number for the api server",
-    )
-    parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-c', '--cluster',
-        dest='cluster',
+        "-c",
+        "--cluster",
+        dest="cluster",
         help="specify a cluster. If no empty, the cluster from /etc/paasta is used",
     )
     args = parser.parse_args()
@@ -66,31 +67,76 @@ def make_app(global_config=None):
     paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     setup_paasta_api()
 
-    config = Configurator(settings={
-        'service_name': 'paasta-api',
-        'pyramid_swagger.schema_directory': os.path.join(paasta_api_path, 'api_docs'),
-        'pyramid_swagger.skip_validation': ['/(static)\\b', '/(status)\\b', '/(swagger.json)\\b'],
-        'pyramid_swagger.swagger_versions': ['2.0'],
-    })
+    config = Configurator(
+        settings={
+            "service_name": "paasta-api",
+            "pyramid_swagger.schema_directory": os.path.join(
+                paasta_api_path, "api_docs"
+            ),
+            "pyramid_swagger.skip_validation": [
+                "/(static)\\b",
+                "/(status)\\b",
+                "/(swagger.json)\\b",
+            ],
+            "pyramid_swagger.swagger_versions": ["2.0"],
+        }
+    )
 
-    config.include('pyramid_swagger')
-    config.add_route('resources.utilization', '/v1/resources/utilization')
-    config.add_route('service.instance.status', '/v1/services/{service}/{instance}/status')
-    config.add_route('service.instance.delay', '/v1/services/{service}/{instance}/delay')
-    config.add_route('service.instance.tasks', '/v1/services/{service}/{instance}/tasks')
-    config.add_route('service.instance.tasks.task', '/v1/services/{service}/{instance}/tasks/{task_id}')
-    config.add_route('service.list', '/v1/services/{service}')
-    config.add_route('services', '/v1/services')
-    config.add_route('service.autoscaler.get', '/v1/services/{service}/{instance}/autoscaler', request_method="GET")
-    config.add_route('service.autoscaler.post', '/v1/services/{service}/{instance}/autoscaler', request_method="POST")
-    config.add_route('service_autoscaler.pause.post', '/v1/service_autoscaler/pause', request_method="POST")
-    config.add_route('service_autoscaler.pause.delete', '/v1/service_autoscaler/pause', request_method="DELETE")
-    config.add_route('service_autoscaler.pause.get', '/v1/service_autoscaler/pause', request_method="GET")
-    config.add_route('version', '/v1/version')
-    config.add_route('marathon_dashboard', '/v1/marathon_dashboard', request_method="GET")
-    config.add_route('metastatus', '/v1/metastatus')
+    config.include("pyramid_swagger")
+    config.add_route("resources.utilization", "/v1/resources/utilization")
+    config.add_route(
+        "service.instance.status", "/v1/services/{service}/{instance}/status"
+    )
+    config.add_route(
+        "service.instance.set_state",
+        "/v1/services/{service}/{instance}/state/{desired_state}",
+    )
+    config.add_route(
+        "service.instance.delay", "/v1/services/{service}/{instance}/delay"
+    )
+    config.add_route(
+        "service.instance.tasks", "/v1/services/{service}/{instance}/tasks"
+    )
+    config.add_route(
+        "service.instance.tasks.task",
+        "/v1/services/{service}/{instance}/tasks/{task_id}",
+    )
+    config.add_route("service.list", "/v1/services/{service}")
+    config.add_route("services", "/v1/services")
+    config.add_route(
+        "service.autoscaler.get",
+        "/v1/services/{service}/{instance}/autoscaler",
+        request_method="GET",
+    )
+    config.add_route(
+        "service.autoscaler.post",
+        "/v1/services/{service}/{instance}/autoscaler",
+        request_method="POST",
+    )
+    config.add_route(
+        "service_autoscaler.pause.post",
+        "/v1/service_autoscaler/pause",
+        request_method="POST",
+    )
+    config.add_route(
+        "service_autoscaler.pause.delete",
+        "/v1/service_autoscaler/pause",
+        request_method="DELETE",
+    )
+    config.add_route(
+        "service_autoscaler.pause.get",
+        "/v1/service_autoscaler/pause",
+        request_method="GET",
+    )
+    config.add_route("version", "/v1/version")
+    config.add_route(
+        "marathon_dashboard", "/v1/marathon_dashboard", request_method="GET"
+    )
+    config.add_route("metastatus", "/v1/metastatus")
     config.scan()
-    return CORS(config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*")
+    return CORS(
+        config.make_wsgi_app(), headers="*", methods="*", maxage="180", origin="*"
+    )
 
 
 _app = None
@@ -103,7 +149,9 @@ def application(env, start_response):
         _app = make_app()
         manhole_path = os.environ.get("PAASTA_MANHOLE_PATH")
         if manhole_path:
-            manhole.install(socket_path=f'{manhole_path}-{os.getpid()}', locals={'_app': _app})
+            manhole.install(
+                socket_path=f"{manhole_path}-{os.getpid()}", locals={"_app": _app}
+            )
     return _app(env, start_response)
 
 
@@ -123,22 +171,23 @@ def setup_paasta_api():
         settings.cluster = settings.system_paasta_config.get_cluster()
 
     settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_tools.get_marathon_servers(settings.system_paasta_config),
+        marathon_tools.get_marathon_servers(settings.system_paasta_config)
     )
 
-    settings.marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config=settings.system_paasta_config)
+    settings.marathon_servers = marathon_tools.get_marathon_servers(
+        system_paasta_config=settings.system_paasta_config
+    )
     settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_servers=settings.marathon_servers,
-        cached=False,
+        marathon_servers=settings.marathon_servers, cached=False
     )
 
     try:
         settings.kubernetes_client = kubernetes_tools.KubeClient()
     except FileNotFoundError:
-        log.info('Kubernetes not found')
+        log.info("Kubernetes not found")
         settings.kubernetes_client = None
     except Exception:
-        log.exception('Error while initializing KubeClient')
+        log.exception("Error while initializing KubeClient")
         settings.kubernetes_client = None
 
     # Set up transparent cache for http API calls. With expire_after, responses
@@ -162,11 +211,13 @@ def main(argv=None):
     os.execlp(
         os.path.join(sys.exec_prefix, "bin", "gunicorn"),
         "gunicorn",
-        "-w", "4",
-        "--bind", f":{args.port}",
+        "-w",
+        "4",
+        "--bind",
+        f":{args.port}",
         "paasta_tools.api.api:application",
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

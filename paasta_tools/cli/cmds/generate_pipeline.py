@@ -31,7 +31,7 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'generate-pipeline',
+        "generate-pipeline",
         help="Configures a Yelp-specific Jenkins build pipeline to match the 'deploy.yaml'",
         description=(
             "'paasta generate-pipeline' is a Yelp-specific tool to interact with Jenkins "
@@ -41,8 +41,9 @@ def add_subparser(subparsers):
         epilog="Warning: Due to the Yelpisms in this tool, it is not currently useful to other organizations.",
     )
     list_parser.add_argument(
-        '-s', '--service',
-        help='Name of service for which you wish to generate a Jenkins pipeline',
+        "-s",
+        "--service",
+        help="Name of service for which you wish to generate a Jenkins pipeline",
     ).completer = lazy_choices_completer(list_services)
     list_parser.set_defaults(command=paasta_generate_pipeline)
 
@@ -59,7 +60,7 @@ def paasta_generate_pipeline(args):
         return 1
 
     generate_pipeline(service=service, soa_dir=soa_dir)
-    _log_audit(action='generate-pipeline', service=service)
+    _log_audit(action="generate-pipeline", service=service)
 
 
 def get_git_repo_for_fab_repo(service, soa_dir):
@@ -67,7 +68,7 @@ def get_git_repo_for_fab_repo(service, soa_dir):
     section of the git_url, after the colon.
     """
     git_url = get_git_url(service, soa_dir=soa_dir)
-    repo = git_url.split(':')[1]
+    repo = git_url.split(":")[1]
     return repo
 
 
@@ -76,7 +77,9 @@ def print_warning():
     paasta_print()
     paasta_print("Please go to y/jenkinsfile to move to a jenkinsfile")
     paasta_print()
-    paasta_print("If you really need to run this command, manually run the commands below:")
+    paasta_print(
+        "If you really need to run this command, manually run the commands below:"
+    )
     paasta_print()
     paasta_print("Warning: running this tool on an existing pipeline will remove any")
     paasta_print("hand-made customizations and will leave behind orphaned Jenkins jobs")
@@ -93,12 +96,12 @@ def generate_pipeline(service, soa_dir):
     else:
         # fab_repo tacks on the domain, so we only want the first
         # part of the email.
-        owner = re.sub('@.*', '', email_address)
+        owner = re.sub("@.*", "", email_address)
     cmds = [
-        'fab_repo setup_jenkins:services/%s,'
-        'profile=paasta,job_disabled=False,owner=%s,repo=%s' % (service, owner, repo),
-        'fab_repo setup_jenkins:services/%s,'
-        'profile=paasta_boilerplate,owner=%s,repo=%s' % (service, owner, repo),
+        "fab_repo setup_jenkins:services/%s,"
+        "profile=paasta,job_disabled=False,owner=%s,repo=%s" % (service, owner, repo),
+        "fab_repo setup_jenkins:services/%s,"
+        "profile=paasta_boilerplate,owner=%s,repo=%s" % (service, owner, repo),
     ]
     print_warning()
     for cmd in cmds:

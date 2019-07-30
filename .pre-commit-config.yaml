@@ -21,11 +21,6 @@ repos:
           '--indent', '4',
           '--no-sort-keys',
         ]
--   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.7.7
-    hooks:
-    -   id: flake8
-        exclude: ^docs/source/conf.py$
 -   repo: https://github.com/asottile/reorder_python_imports
     rev: v1.4.0
     hooks:
@@ -36,21 +31,26 @@ repos:
     hooks:
     -   id: pyupgrade
         args: [--py36-plus]
--   repo: https://github.com/asottile/add-trailing-comma
-    rev: v0.8.0
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.7
     hooks:
-    -   id: add-trailing-comma
-        args: [--py36-plus]
+    -   id: flake8
+        exclude: ^docs/source/conf.py$
+-   repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.4.3
+    hooks:
+    -   id: autopep8
+-   repo: https://github.com/psf/black
+    rev: stable
+    hooks:
+    -   id: black
+        args: ['--target-version', 'py36']
 -   repo: https://github.com/Yelp/detect-secrets
     rev: 0.9.1
     hooks:
     -   id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
         exclude: .*tests/.*|.*yelp/testing/.*|\.pre-commit-config\.yaml
--   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.4.3
-    hooks:
-    -   id: autopep8
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec

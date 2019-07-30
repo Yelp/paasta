@@ -54,7 +54,7 @@ class Resource(NamedTuple):
     amount: int
 
 
-MAINTENANCE_ROLE = 'maintenance'
+MAINTENANCE_ROLE = "maintenance"
 
 
 def base_api():
@@ -71,14 +71,12 @@ def base_api():
         req = Request(method, url, **kwargs)
         prepared = s.prepare_request(req)
         try:
-            resp = s.send(
-                prepared,
-                timeout=timeout,
-            )
+            resp = s.send(prepared, timeout=timeout)
             resp.raise_for_status()
             return resp
         except HTTPError:
             raise HTTPError("Error executing API request calling %s." % url)
+
     return execute_request
 
 
@@ -87,21 +85,24 @@ def master_api():
 
     :returns: a function that can be called to make a request to /master
     """
+
     def execute_master_api_request(method, endpoint, **kwargs):
         base_api_client = base_api()
         return base_api_client(method, "/master%s" % endpoint, **kwargs)
+
     return execute_master_api_request
 
 
 def operator_api():
     def execute_operator_api_request(**kwargs):
         base_api_client = base_api()
-        if 'headers' in kwargs:
-            kwargs['headers']['Content-Type'] = 'application/json'
+        if "headers" in kwargs:
+            kwargs["headers"]["Content-Type"] = "application/json"
         else:
-            kwargs['headers'] = {'Content-Type': 'application/json'}
-        data = kwargs.pop('data')
+            kwargs["headers"] = {"Content-Type": "application/json"}
+        data = kwargs.pop("data")
         return base_api_client("POST", "/api/v1", data=json.dumps(data), **kwargs)
+
     return execute_operator_api_request
 
 
@@ -110,9 +111,11 @@ def reserve_api():
 
     :returns: a function that can be called to make a request to /reserve
     """
+
     def execute_reserve_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
         return master_api_client(method, "/reserve%s" % endpoint, **kwargs)
+
     return execute_reserve_api_request
 
 
@@ -121,9 +124,11 @@ def unreserve_api():
 
     :returns: a function that can be called to make a request to /unreserve
     """
+
     def execute_unreserve_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
         return master_api_client(method, "/unreserve%s" % endpoint, **kwargs)
+
     return execute_unreserve_api_request
 
 
@@ -132,9 +137,13 @@ def maintenance_api():
 
     :returns: a function that can be called to make a request to /master/maintenance
     """
+
     def execute_schedule_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
-        return master_api_client(method, "/maintenance%s" % endpoint, timeout=(3, 10), **kwargs)
+        return master_api_client(
+            method, "/maintenance%s" % endpoint, timeout=(3, 10), **kwargs
+        )
+
     return execute_schedule_api_request
 
 
@@ -143,9 +152,11 @@ def get_schedule_client():
 
     :returns: a function that can be called to make a request to /master/maintenance/schedule
     """
+
     def execute_schedule_api_request(method, endpoint, **kwargs):
         maintenance_api_client = maintenance_api()
         return maintenance_api_client(method, "/schedule%s" % endpoint, **kwargs)
+
     return execute_schedule_api_request
 
 
@@ -155,7 +166,7 @@ def get_maintenance_schedule():
     :returns: a GET_MAINTENANCE_SCHEDULE response
     """
     client_fn = operator_api()
-    return client_fn(data={'type': 'GET_MAINTENANCE_SCHEDULE'})
+    return client_fn(data={"type": "GET_MAINTENANCE_SCHEDULE"})
 
 
 def get_maintenance_status():
@@ -164,7 +175,7 @@ def get_maintenance_status():
     :returns: a GET_MAINTENANCE_STATUS response
     """
     client_fn = operator_api()
-    return client_fn(data={'type': 'GET_MAINTENANCE_STATUS'})
+    return client_fn(data={"type": "GET_MAINTENANCE_STATUS"})
 
 
 def schedule():
@@ -187,15 +198,15 @@ def get_hosts_with_state(state):
     """
     try:
         status = get_maintenance_status().json()
-        status = status['get_maintenance_status']['status']
+        status = status["get_maintenance_status"]["status"]
     except HTTPError:
         raise HTTPError("Error getting maintenance status.")
     if not status or state not in status:
         return []
-    if 'id' in status[state][0]:
-        return [machine['id']['hostname'] for machine in status[state]]
+    if "id" in status[state][0]:
+        return [machine["id"]["hostname"] for machine in status[state]]
     else:
-        return [machine['hostname'] for machine in status[state]]
+        return [machine["hostname"] for machine in status[state]]
 
 
 def get_draining_hosts():
@@ -203,7 +214,7 @@ def get_draining_hosts():
 
     :returns: a list of strings representing hostnames
     """
-    return get_hosts_with_state(state='draining_machines')
+    return get_hosts_with_state(state="draining_machines")
 
 
 def get_down_hosts():
@@ -211,7 +222,7 @@ def get_down_hosts():
 
     :returns: a list of strings representing hostnames
     """
-    return get_hosts_with_state(state='down_machines')
+    return get_hosts_with_state(state="down_machines")
 
 
 def is_host_draining(hostname=getfqdn()):
@@ -245,7 +256,9 @@ def get_hosts_forgotten_draining(grace=0):
     hosts_past_maintenance_start = get_hosts_past_maintenance_start(grace=grace)
     log.debug("hosts_past_maintenance_start: %s" % hosts_past_maintenance_start)
 
-    forgotten_draining = list(set(draining_hosts).intersection(hosts_past_maintenance_start))
+    forgotten_draining = list(
+        set(draining_hosts).intersection(hosts_past_maintenance_start)
+    )
     log.debug("forgotten_draining: %s" % forgotten_draining)
 
     return forgotten_draining
@@ -355,10 +368,8 @@ def build_maintenance_payload(hostnames, maint_type):
     :returns: a dictionary representing the list of machines to bring up/down for maintenance
     """
     return {
-        'type': maint_type.upper(),
-        maint_type.lower(): {
-            'machines': get_machine_ids(hostnames),
-        },
+        "type": maint_type.upper(),
+        maint_type.lower(): {"machines": get_machine_ids(hostnames)},
     }
 
 
@@ -374,8 +385,8 @@ def hostnames_to_components(hostnames, resolve=False):
     for hostname in hostnames:
         # This is to allow specifying a hostname as "hostname|ipaddress"
         # to avoid querying DNS for the IP.
-        if '|' in hostname:
-            (host, ip) = hostname.split('|')
+        if "|" in hostname:
+            (host, ip) = hostname.split("|")
             components.append(Hostname(host=host, ip=ip))
         else:
             try:
@@ -395,10 +406,7 @@ def get_machine_ids(hostnames):
     machine_ids = []
     components = hostnames_to_components(hostnames, resolve=True)
     for component in components:
-        machine_id = {
-            'hostname': component.host,
-            'ip': component.ip,
-        }
+        machine_id = {"hostname": component.host, "ip": component.ip}
         machine_ids.append(machine_id)
     return machine_ids
 
@@ -412,21 +420,19 @@ def build_reservation_payload(resources):
     for resource in resources:
         payload.append(
             {
-                'name': resource.name,
-                'type': 'SCALAR',
-                'scalar': {
-                    'value': resource.amount,
-                },
-                'role': MAINTENANCE_ROLE,
-                'reservation': {
-                    'principal': get_principal(),
-                },
-            },
+                "name": resource.name,
+                "type": "SCALAR",
+                "scalar": {"value": resource.amount},
+                "role": MAINTENANCE_ROLE,
+                "reservation": {"principal": get_principal()},
+            }
         )
     return payload
 
 
-def build_maintenance_schedule_payload(hostnames, start=None, duration=None, drain=True):
+def build_maintenance_schedule_payload(
+    hostnames, start=None, duration=None, drain=True
+):
     """Creates the JSON payload needed to (un)schedule maintenance on the specified hostnames.
     :param hostnames: a list of hostnames
     :param start: the time to start the maintenance, represented as number of nanoseconds since the epoch
@@ -434,48 +440,48 @@ def build_maintenance_schedule_payload(hostnames, start=None, duration=None, dra
     :param drain: boolean to note whether we are draining (True) the specified hosts or undraining (False) them
     :returns: a dictionary that can be sent to Mesos to (un)schedule maintenance
     """
-    schedule = get_maintenance_schedule().json()['get_maintenance_schedule']['schedule']
+    schedule = get_maintenance_schedule().json()["get_maintenance_schedule"]["schedule"]
     machine_ids = get_machine_ids(hostnames)
 
     if drain:
         unavailability = dict()
-        unavailability['start'] = dict()
-        unavailability['start']['nanoseconds'] = int(start)
-        unavailability['duration'] = dict()
-        unavailability['duration']['nanoseconds'] = int(duration)
+        unavailability["start"] = dict()
+        unavailability["start"]["nanoseconds"] = int(start)
+        unavailability["duration"] = dict()
+        unavailability["duration"]["nanoseconds"] = int(duration)
 
         window = dict()
-        window['machine_ids'] = machine_ids
-        window['unavailability'] = unavailability
+        window["machine_ids"] = machine_ids
+        window["unavailability"] = unavailability
 
     if schedule:
-        for existing_window in schedule['windows']:
-            for existing_machine_id in existing_window['machine_ids']:
+        for existing_window in schedule["windows"]:
+            for existing_machine_id in existing_window["machine_ids"]:
                 # If we already have a maintenance window scheduled for one of the hosts,
                 # replace it with the new window.
                 if existing_machine_id in machine_ids:
-                    existing_window['machine_ids'].remove(existing_machine_id)
-                    if not existing_window['machine_ids']:
-                        schedule['windows'].remove(existing_window)
+                    existing_window["machine_ids"].remove(existing_machine_id)
+                    if not existing_window["machine_ids"]:
+                        schedule["windows"].remove(existing_window)
         if drain:
-            windows = schedule['windows'] + [window]
+            windows = schedule["windows"] + [window]
         else:
-            windows = schedule['windows']
+            windows = schedule["windows"]
     elif drain:
         windows = [window]
     else:
         windows = []
 
     payload = dict()
-    payload['windows'] = windows
+    payload["windows"] = windows
 
     return {
-        'type': 'UPDATE_MAINTENANCE_SCHEDULE',
-        'update_maintenance_schedule': {'schedule': payload},
+        "type": "UPDATE_MAINTENANCE_SCHEDULE",
+        "update_maintenance_schedule": {"schedule": payload},
     }
 
 
-def load_credentials(mesos_secrets='/nail/etc/mesos-slave-secret'):
+def load_credentials(mesos_secrets="/nail/etc/mesos-slave-secret"):
     """Loads the mesos-slave credentials from the specified file. These credentials will be used for all
     maintenance API requests.
     :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
@@ -485,21 +491,25 @@ def load_credentials(mesos_secrets='/nail/etc/mesos-slave-secret'):
         with open(mesos_secrets) as data_file:
             data = json.load(data_file)
     except EnvironmentError:
-        log.error("maintenance calls must be run on a Mesos slave containing valid credentials (%s)" % mesos_secrets)
+        log.error(
+            "maintenance calls must be run on a Mesos slave containing valid credentials (%s)"
+            % mesos_secrets
+        )
         raise
     try:
-        username = data['principal']
-        password = data['secret']
+        username = data["principal"]
+        password = data["secret"]
     except KeyError:
         log.error(
             "%s does not contain Mesos slave credentials in the expected format. "
-            "See http://mesos.apache.org/documentation/latest/authentication/ for details" % mesos_secrets,
+            "See http://mesos.apache.org/documentation/latest/authentication/ for details"
+            % mesos_secrets
         )
         raise
     return Credentials(file=mesos_secrets, principal=username, secret=password)
 
 
-def get_principal(mesos_secrets='/nail/etc/mesos-slave-secret'):
+def get_principal(mesos_secrets="/nail/etc/mesos-slave-secret"):
     """Helper function to get the principal from the mesos-slave credentials
     :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
     :returns: a string containing the principal/username
@@ -507,7 +517,7 @@ def get_principal(mesos_secrets='/nail/etc/mesos-slave-secret'):
     return load_credentials(mesos_secrets).principal
 
 
-def get_secret(mesos_secrets='/nail/etc/mesos-slave-secret'):
+def get_secret(mesos_secrets="/nail/etc/mesos-slave-secret"):
     """Helper function to get the secret from the mesos-slave credentials
     :param mesos_secrets: optional argument specifying the path to the file containing the mesos-slave credentials
     :returns: a string containing the secret/password
@@ -517,22 +527,18 @@ def get_secret(mesos_secrets='/nail/etc/mesos-slave-secret'):
 
 def _make_request_payload(slave_id, reservation_payload):
     return {
-        'slaveId': slave_id.encode('UTF-8'),
+        "slaveId": slave_id.encode("UTF-8"),
         # We used to_bytes here since py2 json doesn't have a well defined
         # return type.  When moving to python 3, replace with .encode()
-        'resources': to_bytes(json.dumps(reservation_payload)).replace(b'+', b'%20'),
+        "resources": to_bytes(json.dumps(reservation_payload)).replace(b"+", b"%20"),
     }
 
 
 def _make_operator_reservation_request_payload(slave_id, payload, request_type):
     return {
-        'type': request_type.upper(),
-        request_type.lower(): {
-            'agent_id': {
-                'value': slave_id,
-            },
-        },
-        'resources': payload,
+        "type": request_type.upper(),
+        request_type.lower(): {"agent_id": {"value": slave_id}},
+        "resources": payload,
     }
 
 
@@ -546,7 +552,7 @@ def reserve(slave_id, resources):
     payload = _make_operator_reservation_request_payload(
         slave_id=slave_id,
         payload=build_reservation_payload(resources),
-        request_type='reserve_resources',
+        request_type="reserve_resources",
     )
     client_fn = operator_api()
     try:
@@ -567,7 +573,7 @@ def unreserve(slave_id, resources):
     payload = _make_operator_reservation_request_payload(
         slave_id=slave_id,
         payload=build_reservation_payload(resources),
-        request_type='unreserve_resources',
+        request_type="unreserve_resources",
     )
     client_fn = operator_api()
     try:
@@ -595,21 +601,27 @@ def reserve_all_resources(hostnames):
     mesos_state = a_sync.block(get_mesos_master().state_summary)
     components = hostnames_to_components(hostnames)
     hosts = components_to_hosts(components)
-    known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
+    known_slaves = [
+        slave for slave in mesos_state["slaves"] if slave["hostname"] in hosts
+    ]
     for slave in known_slaves:
-        hostname = slave['hostname']
+        hostname = slave["hostname"]
         log.info("Reserving all resources on %s" % hostname)
-        slave_id = slave['id']
+        slave_id = slave["id"]
         resources = []
-        for resource in ['disk', 'mem', 'cpus', 'gpus']:
-            free_resource = slave['resources'][resource] - slave['used_resources'][resource]
-            for role in slave['reserved_resources']:
-                free_resource -= slave['reserved_resources'][role][resource]
+        for resource in ["disk", "mem", "cpus", "gpus"]:
+            free_resource = (
+                slave["resources"][resource] - slave["used_resources"][resource]
+            )
+            for role in slave["reserved_resources"]:
+                free_resource -= slave["reserved_resources"][role][resource]
             resources.append(Resource(name=resource, amount=free_resource))
         try:
             reserve(slave_id=slave_id, resources=resources)
         except HTTPError:
-            raise HTTPError(f"Failed reserving all of the resources on {hostname} ({slave_id}). Aborting.")
+            raise HTTPError(
+                f"Failed reserving all of the resources on {hostname} ({slave_id}). Aborting."
+            )
 
 
 def unreserve_all_resources(hostnames):
@@ -619,20 +631,26 @@ def unreserve_all_resources(hostnames):
     mesos_state = a_sync.block(get_mesos_master().state_summary)
     components = hostnames_to_components(hostnames)
     hosts = components_to_hosts(components)
-    known_slaves = [slave for slave in mesos_state['slaves'] if slave['hostname'] in hosts]
+    known_slaves = [
+        slave for slave in mesos_state["slaves"] if slave["hostname"] in hosts
+    ]
     for slave in known_slaves:
-        hostname = slave['hostname']
+        hostname = slave["hostname"]
         log.info("Unreserving all resources on %s" % hostname)
-        slave_id = slave['id']
+        slave_id = slave["id"]
         resources = []
-        if MAINTENANCE_ROLE in slave['reserved_resources']:
-            for resource in ['disk', 'mem', 'cpus', 'gpus']:
-                reserved_resource = slave['reserved_resources'][MAINTENANCE_ROLE][resource]
+        if MAINTENANCE_ROLE in slave["reserved_resources"]:
+            for resource in ["disk", "mem", "cpus", "gpus"]:
+                reserved_resource = slave["reserved_resources"][MAINTENANCE_ROLE][
+                    resource
+                ]
                 resources.append(Resource(name=resource, amount=reserved_resource))
             try:
                 unreserve(slave_id=slave_id, resources=resources)
             except HTTPError:
-                raise HTTPError(f"Failed unreserving all of the resources on {hostname} ({slave_id}). Aborting.")
+                raise HTTPError(
+                    f"Failed unreserving all of the resources on {hostname} ({slave_id}). Aborting."
+                )
 
 
 def drain(hostnames, start, duration, reserve_resources=True):
@@ -670,7 +688,9 @@ def undrain(hostnames, unreserve_resources=True):
         try:
             unreserve_all_resources(hostnames)
         except HTTPError as e:
-            log.warning("Failed to unreserve resources, will continue to undrain: %s" % e)
+            log.warning(
+                "Failed to unreserve resources, will continue to undrain: %s" % e
+            )
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     client_fn = operator_api()
@@ -687,7 +707,7 @@ def down(hostnames):
     :returns: None
     """
     log.info("Bringing down: %s" % hostnames)
-    payload = build_maintenance_payload(hostnames, 'start_maintenance')
+    payload = build_maintenance_payload(hostnames, "start_maintenance")
     client_fn = operator_api()
     try:
         down_output = client_fn(data=payload).text
@@ -702,7 +722,7 @@ def up(hostnames):
     :returns: None
     """
     log.info("Bringing up: %s" % hostnames)
-    payload = build_maintenance_payload(hostnames, 'stop_maintenance')
+    payload = build_maintenance_payload(hostnames, "stop_maintenance")
     client_fn = operator_api()
     try:
         up_output = client_fn(data=payload).text
@@ -735,12 +755,14 @@ def friendly_status():
     """Display the Mesos maintenance status in a human-friendly way.
     :returns: Text representation of the human-friendly status
     """
-    status = raw_status().json()['get_maintenance_status']['status']
+    status = raw_status().json()["get_maintenance_status"]["status"]
     ret = ""
-    for machine in status.get('draining_machines', []):
-        ret += "{} ({}): Draining\n".format(machine['id']['hostname'], machine['id']['ip'])
-    for machine in status.get('down_machines', []):
-        ret += "{} ({}): Down\n".format(machine['hostname'], machine['ip'])
+    for machine in status.get("draining_machines", []):
+        ret += "{} ({}): Draining\n".format(
+            machine["id"]["hostname"], machine["id"]["ip"]
+        )
+    for machine in status.get("down_machines", []):
+        ret += "{} ({}): Down\n".format(machine["hostname"], machine["ip"])
     return ret
 
 
@@ -750,7 +772,10 @@ def is_host_drained(hostname):
     :param hostname: hostname to check
     :returns: True or False
     """
-    return is_host_draining(hostname=hostname) and get_count_running_tasks_on_slave(hostname) == 0
+    return (
+        is_host_draining(hostname=hostname)
+        and get_count_running_tasks_on_slave(hostname) == 0
+    )
 
 
 def is_host_past_maintenance_start(hostname):
@@ -775,13 +800,15 @@ def get_hosts_past_maintenance_start(grace=0):
     state after the start of its maintenance window before we consider it past its maintenance start
     :returns: List of hostnames
     """
-    schedules = get_maintenance_schedule().json()['get_maintenance_schedule']['schedule']
+    schedules = get_maintenance_schedule().json()["get_maintenance_schedule"][
+        "schedule"
+    ]
     current_time = datetime_to_nanoseconds(now()) - grace
     ret = []
-    if 'windows' in schedules:
-        for window in schedules['windows']:
-            if window['unavailability']['start']['nanoseconds'] < current_time:
-                ret += [host['hostname'] for host in window['machine_ids']]
+    if "windows" in schedules:
+        for window in schedules["windows"]:
+            if window["unavailability"]["start"]["nanoseconds"] < current_time:
+                ret += [host["hostname"] for host in window["machine_ids"]]
     log.debug(f"Hosts past maintenance start: {ret}")
     return ret
 
@@ -792,13 +819,18 @@ def get_hosts_past_maintenance_end(grace=0):
     state after the end of its maintenance window before we consider it past its maintenance end
     :returns: List of hostnames
     """
-    schedules = get_maintenance_schedule().json()['get_maintenance_schedule']['schedule']
+    schedules = get_maintenance_schedule().json()["get_maintenance_schedule"][
+        "schedule"
+    ]
     current_time = datetime_to_nanoseconds(now()) - grace
     ret = []
-    if 'windows' in schedules:
-        for window in schedules['windows']:
-            end = window['unavailability']['start']['nanoseconds'] + window['unavailability']['duration']['nanoseconds']
+    if "windows" in schedules:
+        for window in schedules["windows"]:
+            end = (
+                window["unavailability"]["start"]["nanoseconds"]
+                + window["unavailability"]["duration"]["nanoseconds"]
+            )
             if end < current_time:
-                ret += [host['hostname'] for host in window['machine_ids']]
+                ret += [host["hostname"] for host in window["machine_ids"]]
     log.debug(f"Hosts past maintenance end: {ret}")
     return ret

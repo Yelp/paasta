@@ -10,17 +10,16 @@ from paasta_tools.deployd.common import PaastaThread
 
 
 class PaastaLeaderElection(Election):
-
     def __init__(self, client, *args, **kwargs):
         self.client = client
-        self.control = kwargs.pop('control')
+        self.control = kwargs.pop("control")
         super().__init__(self.client, *args, **kwargs)
         self.client.add_listener(self.connection_listener)
         self.waiting_for_reconnect = False
 
     @property
     def log(self):
-        name = '.'.join([__name__, type(self).__name__])
+        name = ".".join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
     def run(self, func, *args, **kwargs):
@@ -33,7 +32,9 @@ class PaastaLeaderElection(Election):
     def connection_listener(self, state):
         self.log.warning(f"Zookeeper connection transitioned to: {state}")
         if state == KazooState.SUSPENDED:
-            self.log.warning("Zookeeper connection suspended, waiting to see if it recovers.")
+            self.log.warning(
+                "Zookeeper connection suspended, waiting to see if it recovers."
+            )
             if not self.waiting_for_reconnect:
                 self.waiting_for_reconnect = True
                 reconnection_checker = PaastaThread(target=self.reconnection_listener)
@@ -57,11 +58,10 @@ class PaastaLeaderElection(Election):
         self._terminate()
 
     def _terminate(self):
-        thread_info = [{
-            'alive': t.is_alive(),
-            'daemon': t.daemon,
-            'name': t.__class__.__name__,
-        } for t in threading.enumerate()]
+        thread_info = [
+            {"alive": t.is_alive(), "daemon": t.daemon, "name": t.__class__.__name__}
+            for t in threading.enumerate()
+        ]
         self.log.info(f"Thread info: {thread_info}")
         self.control.put("ABORT")
         self.client.stop()

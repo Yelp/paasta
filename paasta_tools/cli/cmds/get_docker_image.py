@@ -27,22 +27,26 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'get-docker-image',
-        help='Gets the docker image URL for the deployment of a service',
+        "get-docker-image",
+        help="Gets the docker image URL for the deployment of a service",
     )
     list_parser.add_argument(
-        '-s', '--service',
-        help='Name of the service which you want to get the docker image for.',
+        "-s",
+        "--service",
+        help="Name of the service which you want to get the docker image for.",
         required=True,
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '-i', '-l', '--deploy-group',
+        "-i",
+        "-l",
+        "--deploy-group",
         help='Name of the deploy group, like "prod".',
         required=True,
     ).completer = lazy_choices_completer(list_deploy_groups)
     list_parser.add_argument(
-        '-d', '--soa-dir',
-        help='A directory from which soa-configs should be read from',
+        "-d",
+        "--soa-dir",
+        help="A directory from which soa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
 
@@ -60,12 +64,14 @@ def paasta_get_docker_image(args):
 
     if not docker_image:
         paasta_print(
-            PaastaColors.red(f"There is no {service} docker_image for {deploy_group}. Has it been deployed yet?"),
+            PaastaColors.red(
+                f"There is no {service} docker_image for {deploy_group}. Has it been deployed yet?"
+            ),
             file=sys.stderr,
         )
         return 1
     else:
         registry_uri = get_service_docker_registry(service=service, soa_dir=soa_dir)
-        docker_url = f'{registry_uri}/{docker_image}'
+        docker_url = f"{registry_uri}/{docker_image}"
         paasta_print(docker_url)
         return 0

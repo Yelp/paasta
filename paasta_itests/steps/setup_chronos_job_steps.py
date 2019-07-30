@@ -21,7 +21,9 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import paasta_print
 
 
-@then('we should see a job for the service "{service}" and instance "{instance}" in the job list')
+@then(
+    'we should see a job for the service "{service}" and instance "{instance}" in the job list'
+)
 def job_exists(context, service, instance):
     matching_jobs = chronos_tools.lookup_chronos_jobs(
         client=context.chronos_client,
@@ -35,16 +37,20 @@ def job_exists(context, service, instance):
 
 @when('we run setup_chronos_job for service_instance "{service_instance}"')
 def run_setup_chronos_job(context, service_instance):
-    cmd = f"../paasta_tools/setup_chronos_job.py {service_instance} -d {context.soa_dir}"
+    cmd = (
+        f"../paasta_tools/setup_chronos_job.py {service_instance} -d {context.soa_dir}"
+    )
     exit_code, output = _run(cmd)
     context.exit_code, context.output = exit_code, output
 
 
-@then('we should get exit code {expected_exit_code:d}')
+@then("we should get exit code {expected_exit_code:d}")
 def check_exit_code(context, expected_exit_code):
     try:
-        assert context.exit_code == expected_exit_code, \
-            "expected %d, got %d" % (expected_exit_code, context.exit_code)
+        assert context.exit_code == expected_exit_code, "expected %d, got %d" % (
+            expected_exit_code,
+            context.exit_code,
+        )
     except AssertionError:
         # behave likes to back up by two lines and then print some stuff, which clobbers my output, so I stick some
         # extra newlines on here.
@@ -52,18 +58,22 @@ def check_exit_code(context, expected_exit_code):
         raise
 
 
-@when('we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"')
+@when(
+    'we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"'
+)
 def old_jobs_leftover(context, job_count, job_name):
     for i in range(job_count):
         job_definition = copy.deepcopy(context.jobs[job_name])
         # modify the name by replacing the last character in the config hash
-        modified_name = "{}{}".format(job_definition['name'][:-1], i)
-        job_definition['name'] = modified_name
-        job_definition['disabled'] = True
+        modified_name = "{}{}".format(job_definition["name"][:-1], i)
+        job_definition["name"] = modified_name
+        job_definition["disabled"] = True
         context.chronos_client.add(job_definition)
 
 
-@then('there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"')
+@then(
+    'there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"'
+)
 def should_be_disabled_jobs(context, disabled, job_count, service, instance):
     is_disabled = True if disabled == "disabled" else False
     all_jobs = chronos_tools.lookup_chronos_jobs(
@@ -79,8 +89,10 @@ def should_be_disabled_jobs(context, disabled, job_count, service, instance):
 
 @then(
     'setup_chronos_job exits with return code "{expected_return_code}"'
-    ' and the output contains "{expected_output_substring}"',
+    ' and the output contains "{expected_output_substring}"'
 )
-def check_setup_chronos_job_output(context, expected_return_code, expected_output_substring):
+def check_setup_chronos_job_output(
+    context, expected_return_code, expected_output_substring
+):
     assert int(expected_return_code) == context.exit_code
     assert expected_output_substring in context.output

@@ -19,19 +19,16 @@ from paasta_tools.cli.fsm import autosuggest
 
 class TestGetSmartstackProxyPortFromFile:
     def test_multiple_stanzas_per_file(self):
-        with mock.patch('builtins.open', autospec=True):
-            with mock.patch("paasta_tools.cli.fsm.autosuggest.yaml", autospec=True) as mock_yaml:
+        with mock.patch("builtins.open", autospec=True):
+            with mock.patch(
+                "paasta_tools.cli.fsm.autosuggest.yaml", autospec=True
+            ) as mock_yaml:
                 mock_yaml.safe_load.return_value = {
-                    "main": {
-                        "proxy_port": 1,
-                    },
-                    "foo": {
-                        "proxy_port": 2,
-                    },
+                    "main": {"proxy_port": 1},
+                    "foo": {"proxy_port": 2},
                 }
                 actual = autosuggest._get_smartstack_proxy_ports_from_file(
-                    "fake_root",
-                    "smartstack.yaml",
+                    "fake_root", "smartstack.yaml"
                 )
                 assert actual == {1, 2}
 
@@ -56,16 +53,18 @@ class TestSuggestSmartstackProxyPort:
 
         def get_smarstack_proxy_ports_from_file_side_effect(*args):
             return get_smartstack_proxy_ports_from_file_returns.pop(0)
+
         mock_get_smartstack_proxy_ports_from_file = mock.Mock(
-            side_effect=get_smarstack_proxy_ports_from_file_side_effect,
+            side_effect=get_smarstack_proxy_ports_from_file_side_effect
         )
         with mock.patch("os.walk", mock_walk, autospec=None):
             with mock.patch(
                 "paasta_tools.cli.fsm.autosuggest._get_smartstack_proxy_ports_from_file",
-                mock_get_smartstack_proxy_ports_from_file, autospec=None,
+                mock_get_smartstack_proxy_ports_from_file,
+                autospec=None,
             ):
                 actual = autosuggest.suggest_smartstack_proxy_port(
-                    yelpsoa_config_root, range_min=20001, range_max=20004,
+                    yelpsoa_config_root, range_min=20001, range_max=20004
                 )
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
@@ -93,17 +92,21 @@ class TestSuggestSmartstackProxyPort:
 
         def get_smarstack_proxy_ports_from_file_side_effect(*args):
             return get_smartstack_proxy_ports_from_file_returns.pop(0)
+
         mock_get_smartstack_proxy_ports_from_file = mock.Mock(
-            side_effect=get_smarstack_proxy_ports_from_file_side_effect,
+            side_effect=get_smarstack_proxy_ports_from_file_side_effect
         )
         with mock.patch("os.walk", mock_walk, autospec=None):
             with mock.patch(
                 "paasta_tools.cli.fsm.autosuggest._get_smartstack_proxy_ports_from_file",
-                mock_get_smartstack_proxy_ports_from_file, autospec=None,
+                mock_get_smartstack_proxy_ports_from_file,
+                autospec=None,
             ):
                 with raises(Exception) as exc:
                     autosuggest.suggest_smartstack_proxy_port(
-                        yelpsoa_config_root, range_min=20001,
-                        range_max=20003,
+                        yelpsoa_config_root, range_min=20001, range_max=20003
                     )
-                assert "There are no more ports available in the range [20001, 20003]" == str(exc.value)
+                assert (
+                    "There are no more ports available in the range [20001, 20003]"
+                    == str(exc.value)
+                )

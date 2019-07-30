@@ -9,7 +9,6 @@ from service_configuration_lib import read_service_configuration
 
 
 class BaseSecretProvider:
-
     def __init__(
         self,
         soa_dir: Optional[str],
@@ -23,9 +22,11 @@ class BaseSecretProvider:
         if service_name:
             self.secret_dir = os.path.join(self.soa_dir, self.service_name, "secrets")
             service_config = read_service_configuration(self.service_name, self.soa_dir)
-            self.encryption_key = service_config.get('encryption_key', 'paasta')
+            self.encryption_key = service_config.get("encryption_key", "paasta")
 
-    def decrypt_environment(self, environment: Dict[str, str], **kwargs: Any) -> Dict[str, str]:
+    def decrypt_environment(
+        self, environment: Dict[str, str], **kwargs: Any
+    ) -> Dict[str, str]:
         raise NotImplementedError
 
     def write_secret(self, action: str, secret_name: str, plaintext: bytes) -> None:

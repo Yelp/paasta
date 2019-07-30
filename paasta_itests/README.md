@@ -23,7 +23,7 @@ runs it will be faster in the future.
 Run only, for example, the `paasta_api` itests. Just be sure to run the full tests
 once before pushing, or travis might be sad.
 
-5. `tox -e paasta_itests_inside_container -- -n 'instance GET shows the marathon status of service.instance'`
+5. `tox -e paasta_itests_inside_container -- -n '"instance GET shows the marathon status of service.instance"'`
 
 Run only, for example, the `instance GET shows the marathon status of service.instance`
 scenario. Just be sure to run the full tests once before pushing, or travis

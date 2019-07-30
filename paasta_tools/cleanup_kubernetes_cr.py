@@ -38,19 +38,20 @@ log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Cleanup custom_resources.')
+    parser = argparse.ArgumentParser(description="Cleanup custom_resources.")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     parser.add_argument(
-        '-c', '--cluster', default=None,
-        help="Cluster to cleanup CRs for",
+        "-c", "--cluster", default=None, help="Cluster to cleanup CRs for"
     )
     args = parser.parse_args()
     return args
@@ -86,9 +87,8 @@ def cleanup_all_custom_resources(
 ) -> bool:
     cluster_crds = {
         crd.spec.names.kind
-        for crd in
-        kube_client.apiextensions.list_custom_resource_definition(
-            label_selector="yelp.com/paasta_service",
+        for crd in kube_client.apiextensions.list_custom_resource_definition(
+            label_selector="yelp.com/paasta_service"
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")
@@ -97,15 +97,10 @@ def cleanup_all_custom_resources(
         if crd.kube_kind.singular not in cluster_crds:
             # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
             # and not `crd.names.singular`
-            log.warning(
-                f"CRD {crd.kube_kind.singular} "
-                f"not found in {cluster}",
-            )
+            log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
             continue
         config_dicts = load_all_configs(
-            cluster=cluster,
-            file_prefix=crd.file_prefix,
-            soa_dir=soa_dir,
+            cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
         if not config_dicts:
             continue
@@ -133,7 +128,7 @@ def cleanup_all_custom_resources(
                 )
                 result = True
             except Exception:
-                log.exception('Error while deleting CR {cr.name}')
+                log.exception("Error while deleting CR {cr.name}")
             results.append(result)
     return all(results) if results else True
 

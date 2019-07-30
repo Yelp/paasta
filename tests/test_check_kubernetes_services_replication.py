@@ -24,14 +24,14 @@ check_services_replication_tools.log = mock.Mock()
 
 @pytest.fixture
 def instance_config():
-    service = 'fake_service'
-    instance = 'fake_instance'
+    service = "fake_service"
+    instance = "fake_instance"
     job_id = compose_job_id(service, instance)
     mock_instance_config = mock.Mock(
         service=service,
         instance=instance,
-        cluster='fake_cluster',
-        soa_dir='fake_soa_dir',
+        cluster="fake_cluster",
+        soa_dir="fake_soa_dir",
         job_id=job_id,
     )
     mock_instance_config.get_replication_crit_percentage.return_value = 90
@@ -43,11 +43,11 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
     instance_config.get_instances.return_value = 100
     all_pods = []
     with mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.get_proxy_port_for_instance',
+        "paasta_tools.check_kubernetes_services_replication.get_proxy_port_for_instance",
         autospec=True,
         return_value=666,
     ), mock.patch(
-        'paasta_tools.monitoring_tools.check_smartstack_replication_for_instance',
+        "paasta_tools.monitoring_tools.check_smartstack_replication_for_instance",
         autospec=True,
     ) as mock_check_smartstack_replication_for_service:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
@@ -62,21 +62,23 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
         )
 
 
-def test_check_service_replication_for_smartstack_with_different_namespace(instance_config):
+def test_check_service_replication_for_smartstack_with_different_namespace(
+    instance_config
+):
     instance_config.get_instances.return_value = 100
     all_pods = []
     with mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.get_proxy_port_for_instance',
+        "paasta_tools.check_kubernetes_services_replication.get_proxy_port_for_instance",
         autospec=True,
         return_value=666,
     ), mock.patch(
-        'paasta_tools.monitoring_tools.check_smartstack_replication_for_instance',
+        "paasta_tools.monitoring_tools.check_smartstack_replication_for_instance",
         autospec=True,
     ) as mock_check_smartstack_replication_for_service, mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance',
+        "paasta_tools.check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance",
         autospec=True,
     ) as mock_check_healthy_kubernetes_tasks:
-        instance_config.get_registrations.return_value = ['some-random-other-namespace']
+        instance_config.get_registrations.return_value = ["some-random-other-namespace"]
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
             all_pods=all_pods,
@@ -84,9 +86,7 @@ def test_check_service_replication_for_smartstack_with_different_namespace(insta
         )
         assert not mock_check_smartstack_replication_for_service.called
         mock_check_healthy_kubernetes_tasks.assert_called_once_with(
-            instance_config=instance_config,
-            expected_count=100,
-            all_pods=[],
+            instance_config=instance_config, expected_count=100, all_pods=[]
         )
 
 
@@ -94,11 +94,11 @@ def test_check_service_replication_for_non_smartstack(instance_config):
     instance_config.get_instances.return_value = 100
 
     with mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.get_proxy_port_for_instance',
+        "paasta_tools.check_kubernetes_services_replication.get_proxy_port_for_instance",
         autospec=True,
         return_value=None,
     ), mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance',
+        "paasta_tools.check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance",
         autospec=True,
     ) as mock_check_healthy_kubernetes_tasks:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
@@ -107,47 +107,47 @@ def test_check_service_replication_for_non_smartstack(instance_config):
             smartstack_replication_checker=None,
         )
         mock_check_healthy_kubernetes_tasks.assert_called_once_with(
-            instance_config=instance_config,
-            expected_count=100,
-            all_pods=[],
+            instance_config=instance_config, expected_count=100, all_pods=[]
         )
 
 
 def test_check_all_kubernetes_services_replication(instance_config):
-    soa_dir = 'anw'
+    soa_dir = "anw"
     instance_config.get_docker_image.return_value = True
     with mock.patch(
-        'paasta_tools.check_services_replication_tools.list_services',
+        "paasta_tools.check_services_replication_tools.list_services",
         autospec=True,
-        return_value=['a'],
+        return_value=["a"],
     ), mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.check_kubernetes_pod_replication',
+        "paasta_tools.check_kubernetes_services_replication.check_kubernetes_pod_replication",
         autospec=True,
     ) as mock_check_service_replication, mock.patch(
-        'paasta_tools.check_services_replication_tools.load_system_paasta_config',
+        "paasta_tools.check_services_replication_tools.load_system_paasta_config",
         autospec=True,
     ) as mock_load_system_paasta_config, mock.patch(
-        'paasta_tools.check_services_replication_tools.PaastaServiceConfigLoader',
+        "paasta_tools.check_services_replication_tools.PaastaServiceConfigLoader",
         autospec=True,
     ) as mock_paasta_service_config_loader, mock.patch(
-        'paasta_tools.check_services_replication_tools.KubeClient',
-        autospec=True,
+        "paasta_tools.check_services_replication_tools.KubeClient", autospec=True
     ) as mock_kube_client:
         mock_kube_client.return_value = mock.Mock()
-        mock_paasta_service_config_loader.return_value.instance_configs.return_value = [instance_config]
+        mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
+            instance_config
+        ]
         mock_client = mock.Mock()
         mock_client.list_tasks.return_value = []
-        mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
+        mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(
+            return_value="fake_cluster"
+        )
         check_services_replication_tools.check_all_kubernetes_based_services_replication(
             soa_dir=soa_dir,
             service_instances=[],
             instance_type_class=None,
             check_service_replication=mock_check_service_replication,
-            namespace='baz',
+            namespace="baz",
         )
         mock_paasta_service_config_loader.assert_called_once_with(
-            service='a',
-            soa_dir=soa_dir,
+            service="a", soa_dir=soa_dir
         )
         instance_config.get_docker_image.assert_called_once_with()
         assert mock_check_service_replication.called
@@ -155,30 +155,27 @@ def test_check_all_kubernetes_services_replication(instance_config):
 
 def test_main():
     with mock.patch(
-        'paasta_tools.check_services_replication_tools.check_all_kubernetes_based_services_replication',
+        "paasta_tools.check_services_replication_tools.check_all_kubernetes_based_services_replication",
         autospec=True,
     ) as mock_check_all_kubernetes_services_replication, mock.patch(
-        'paasta_tools.check_services_replication_tools.parse_args',
-        autospec=True,
+        "paasta_tools.check_services_replication_tools.parse_args", autospec=True
     ):
         check_kubernetes_services_replication.main(
-            instance_type_class=None,
-            check_service_replication=None,
-            namespace='baz',
+            instance_type_class=None, check_service_replication=None, namespace="baz"
         )
         assert mock_check_all_kubernetes_services_replication.called
 
 
 def test_check_healthy_kubernetes_tasks_for_service_instance():
     with mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.filter_pods_by_service_instance',
+        "paasta_tools.check_kubernetes_services_replication.filter_pods_by_service_instance",
         autospec=True,
     ) as mock_filter_pods_by_service_instance, mock.patch(
-        'paasta_tools.check_kubernetes_services_replication.is_pod_ready',
+        "paasta_tools.check_kubernetes_services_replication.is_pod_ready",
         autospec=True,
         side_effect=[True, False],
     ), mock.patch(
-        'paasta_tools.monitoring_tools.send_replication_event_if_under_replication',
+        "paasta_tools.monitoring_tools.send_replication_event_if_under_replication",
         autospec=True,
     ) as mock_send_replication_event_if_under_replication:
         mock_instance_config = mock.Mock()
@@ -187,9 +184,7 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
         mock_pod_2 = mock.Mock()
         mock_filter_pods_by_service_instance.return_value = [mock_pod_1, mock_pod_2]
         check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance(
-            mock_instance_config,
-            5,
-            mock_pods,
+            mock_instance_config, 5, mock_pods
         )
         mock_filter_pods_by_service_instance.assert_called_with(
             pod_list=mock_pods,
@@ -197,7 +192,5 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
             instance=mock_instance_config.instance,
         )
         mock_send_replication_event_if_under_replication.assert_called_with(
-            instance_config=mock_instance_config,
-            expected_count=5,
-            num_available=1,
+            instance_config=mock_instance_config, expected_count=5, num_available=1
         )

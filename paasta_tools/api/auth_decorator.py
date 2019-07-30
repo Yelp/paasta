@@ -8,7 +8,6 @@ from paasta_tools.utils import load_system_paasta_config
 
 
 class AuthFutureDecorator:
-
     def __init__(self, future, cluster_name):
         self.future = future
         self.attempts = 0
@@ -22,14 +21,13 @@ class AuthFutureDecorator:
             # Yes nginx responds with a 400 if the certificate
             # is expired. So the best we can do is watch for that
             # return code and check the body of the response
-            if 'SSL' in e.response.text:
+            if "SSL" in e.response.text:
                 if self.attempts >= 3:
                     raise
                 self.attempts += 1
                 system_paasta_config = load_system_paasta_config()
                 paasta_tools.api.client.renew_issue_cert(
-                    system_paasta_config=system_paasta_config,
-                    cluster=self.cluster_name,
+                    system_paasta_config=system_paasta_config, cluster=self.cluster_name
                 )
                 result = self.result(timeout)
             else:
@@ -38,7 +36,6 @@ class AuthFutureDecorator:
 
 
 class AuthResourceDecorator:
-
     def __init__(self, resource, cluster_name):
         self.resource = resource
         self.cluster_name = cluster_name
@@ -48,8 +45,7 @@ class AuthResourceDecorator:
 
     def _with_auth_check(self, call_name, *args, **kwargs):
         return AuthFutureDecorator(
-            getattr(self.resource, call_name)(*args, **kwargs),
-            self.cluster_name,
+            getattr(self.resource, call_name)(*args, **kwargs), self.cluster_name
         )
 
 
@@ -69,10 +65,7 @@ class AuthClientDecorator:
         self.cluster_name = cluster_name
 
     def __getattr__(self, name):
-        return AuthResourceDecorator(
-            getattr(self.client, name),
-            self.cluster_name,
-        )
+        return AuthResourceDecorator(getattr(self.client, name), self.cluster_name)
 
     def __dir__(self):
         return dir(self.client)
@@ -80,6 +73,7 @@ class AuthClientDecorator:
 
 # below helpers borrowed from bravado_decorators/decorate_client.py
 # maybe move into one of the open bravado packages?
+
 
 def decorate_client(api_client, func, name):
     """A helper for decorating :class:`bravado.client.SwaggerClient`.

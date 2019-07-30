@@ -30,7 +30,6 @@ from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 
 class PaastaWatcher(PaastaThread):
-
     def __init__(self, instances_to_bounce_later, cluster, config):
         super().__init__()
         self.daemon = True
@@ -41,21 +40,22 @@ class PaastaWatcher(PaastaThread):
 
 
 class AutoscalerWatcher(PaastaWatcher):
-
     def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
         super().__init__(instances_to_bounce_later, cluster, config)
-        self.zk = kwargs.pop('zookeeper_client')
+        self.zk = kwargs.pop("zookeeper_client")
         self.watchers: Dict[str, PaastaWatcher] = {}
 
     def watch_folder(self, path, enqueue_children=False):
         """recursive nonsense"""
         if "autoscaling.lock" in path:
             return
-        if path.split('/')[-1] == 'instances':
+        if path.split("/")[-1] == "instances":
             self.watch_node(path, enqueue=enqueue_children)
             return
         self.log.info(f"Adding folder watch on {path}")
-        watcher = ChildrenWatch(self.zk, path, func=self.process_folder_event, send_event=True)
+        watcher = ChildrenWatch(
+            self.zk, path, func=self.process_folder_event, send_event=True
+        )
         self.watchers[path] = watcher
         children = watcher._client.get_children(watcher._path)
         if children:
@@ -63,8 +63,10 @@ class AutoscalerWatcher(PaastaWatcher):
                 self.watch_folder(f"{path}/{child}", enqueue_children=enqueue_children)
 
     def _enqueue_service_instance(self, path):
-        service, instance = path.split('/')[-3:-1]
-        self.log.info(f"Number of instances changed for {service}.{instance} by the autoscaler.")
+        service, instance = path.split("/")[-3:-1]
+        self.log.info(
+            f"Number of instances changed for {service}.{instance} by the autoscaler."
+        )
         # https://github.com/python/mypy/issues/2852
         service_instance = ServiceInstance(  # type: ignore
             service=service,
@@ -85,7 +87,9 @@ class AutoscalerWatcher(PaastaWatcher):
 
     def process_node_event(self, data, stat, event):
         self.log.debug(f"zk node change: {event}")
-        if event and (event.type == EventType.CREATED or event.type == EventType.CHANGED):
+        if event and (
+            event.type == EventType.CREATED or event.type == EventType.CHANGED
+        ):
             self._enqueue_service_instance(event.path)
 
     def process_folder_event(self, children, event):
@@ -106,7 +110,6 @@ class AutoscalerWatcher(PaastaWatcher):
 
 
 class SoaFileWatcher(PaastaWatcher):
-
     def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
         super().__init__(instances_to_bounce_later, cluster, config)
         self.wm = pyinotify.WatchManager()
@@ -118,10 +121,14 @@ class SoaFileWatcher(PaastaWatcher):
 
     @property
     def mask(self):
-        boring_flags = ['IN_CLOSE_NOWRITE', 'IN_OPEN', 'IN_ACCESS', 'IN_ATTRIB']
+        boring_flags = ["IN_CLOSE_NOWRITE", "IN_OPEN", "IN_ACCESS", "IN_ATTRIB"]
         return reduce(
             lambda x, y: x | y,
-            [v for k, v in pyinotify.EventsCodes.OP_FLAGS.items() if k not in boring_flags],
+            [
+                v
+                for k, v in pyinotify.EventsCodes.OP_FLAGS.items()
+                if k not in boring_flags
+            ],
         )
 
     def run(self):
@@ -132,7 +139,6 @@ class SoaFileWatcher(PaastaWatcher):
 
 
 class PublicConfigFileWatcher(PaastaWatcher):
-
     def __init__(self, instances_to_bounce_later, cluster, config, **kwargs):
         super().__init__(instances_to_bounce_later, cluster, config)
         self.wm = pyinotify.WatchManager()
@@ -144,10 +150,14 @@ class PublicConfigFileWatcher(PaastaWatcher):
 
     @property
     def mask(self):
-        boring_flags = ['IN_CLOSE_NOWRITE', 'IN_OPEN', 'IN_ACCESS', 'IN_ATTRIB']
+        boring_flags = ["IN_CLOSE_NOWRITE", "IN_OPEN", "IN_ACCESS", "IN_ATTRIB"]
         return reduce(
             lambda x, y: x | y,
-            [v for k, v in pyinotify.EventsCodes.OP_FLAGS.items() if k not in boring_flags],
+            [
+                v
+                for k, v in pyinotify.EventsCodes.OP_FLAGS.items()
+                if k not in boring_flags
+            ],
         )
 
     def run(self):
@@ -169,10 +179,14 @@ class MaintenanceWatcher(PaastaWatcher):
         except RequestException as e:
             self.log.error(f"Unable to get list of draining hosts from mesos: {e}")
             draining_hosts = list(self.draining)
-        new_draining_hosts = [host for host in draining_hosts if host not in self.draining]
+        new_draining_hosts = [
+            host for host in draining_hosts if host not in self.draining
+        ]
         for host in new_draining_hosts:
             self.draining.add(host)
-        hosts_finished_draining = [host for host in self.draining if host not in draining_hosts]
+        hosts_finished_draining = [
+            host for host in self.draining if host not in draining_hosts
+        ]
         for host in hosts_finished_draining:
             self.draining.remove(host)
         return new_draining_hosts
@@ -184,15 +198,16 @@ class MaintenanceWatcher(PaastaWatcher):
             service_instances: List[ServiceInstance] = []
             if new_draining_hosts:
                 self.log.info(f"Found new draining hosts: {new_draining_hosts}")
-                service_instances = self.get_at_risk_service_instances(new_draining_hosts)
+                service_instances = self.get_at_risk_service_instances(
+                    new_draining_hosts
+                )
             for service_instance in service_instances:
                 self.instances_to_bounce_later.put(service_instance)
             time.sleep(self.config.get_deployd_maintenance_polling_frequency())
 
     def get_at_risk_service_instances(self, draining_hosts) -> List[ServiceInstance]:
         marathon_apps_with_clients = get_marathon_apps_with_clients(
-            clients=self.marathon_clients.get_all_clients(),
-            embed_tasks=True,
+            clients=self.marathon_clients.get_all_clients(), embed_tasks=True
         )
         at_risk_tasks = []
         for app, client in marathon_apps_with_clients:
@@ -202,27 +217,33 @@ class MaintenanceWatcher(PaastaWatcher):
         self.log.info(f"At risk tasks: {at_risk_tasks}")
         service_instances: List[ServiceInstance] = []
         for task in at_risk_tasks:
-            app_id = task.app_id.strip('/')
+            app_id = task.app_id.strip("/")
             service, instance, _, __ = deformat_job_id(app_id)
             # check we haven't already added this instance,
             # no need to add the same instance to the bounce queue
             # more than once
-            if not any([(service, instance) == (si.service, si.instance) for si in service_instances]):
+            if not any(
+                [
+                    (service, instance) == (si.service, si.instance)
+                    for si in service_instances
+                ]
+            ):
                 # https://github.com/python/mypy/issues/2852
-                service_instances.append(ServiceInstance(  # type: ignore
-                    service=service,
-                    instance=instance,
-                    cluster=self.config.get_cluster(),
-                    bounce_by=int(time.time()),
-                    watcher=type(self).__name__,
-                    bounce_timers=None,
-                    failures=0,
-                ))
+                service_instances.append(
+                    ServiceInstance(  # type: ignore
+                        service=service,
+                        instance=instance,
+                        cluster=self.config.get_cluster(),
+                        bounce_by=int(time.time()),
+                        watcher=type(self).__name__,
+                        bounce_timers=None,
+                        failures=0,
+                    )
+                )
         return service_instances
 
 
 class PublicConfigEventHandler(pyinotify.ProcessEvent):
-
     def my_init(self, filewatcher):
         self.filewatcher = filewatcher
         self.public_config = load_system_paasta_config()
@@ -230,16 +251,18 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
 
     @property
     def log(self):
-        name = '.'.join([__name__, type(self).__name__])
+        name = ".".join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
     def filter_event(self, event):
-        if event.name.endswith('.json') or event.maskname == 'IN_CREATE|IN_ISDIR':
+        if event.name.endswith(".json") or event.maskname == "IN_CREATE|IN_ISDIR":
             return event
 
     def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
-            self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
+        if event.maskname == "IN_CREATE|IN_ISDIR" and ".~tmp~" not in event.pathname:
+            self.filewatcher.wm.add_watch(
+                event.pathname, self.filewatcher.mask, rec=True
+            )
 
     def process_default(self, event):
         self.log.debug(event)
@@ -254,11 +277,13 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 return
             service_instances: List[Tuple[str, str]] = []
             if new_config != self.public_config:
-                self.log.info("Public config has changed, now checking if it affects any services config shas.")
+                self.log.info(
+                    "Public config has changed, now checking if it affects any services config shas."
+                )
                 self.public_config = new_config
                 all_service_instances = get_services_for_cluster(
                     cluster=self.public_config.get_cluster(),
-                    instance_type='marathon',
+                    instance_type="marathon",
                     soa_dir=DEFAULT_SOA_DIR,
                 )
                 service_instances = get_service_instances_needing_update(
@@ -267,7 +292,9 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     self.public_config.get_cluster(),
                 )
             if service_instances:
-                self.log.info(f"{len(service_instances)} service instances affected. Doing a staggered bounce.")
+                self.log.info(
+                    f"{len(service_instances)} service instances affected. Doing a staggered bounce."
+                )
                 bounce_rate = self.public_config.get_deployd_big_bounce_rate()
                 for service_instance in rate_limit_instances(
                     instances=service_instances,
@@ -280,38 +307,39 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
 
 
 class YelpSoaEventHandler(pyinotify.ProcessEvent):
-
     def my_init(self, filewatcher):
         self.filewatcher = filewatcher
         self.marathon_clients = get_marathon_clients_from_config()
 
     @property
     def log(self):
-        name = '.'.join([__name__, type(self).__name__])
+        name = ".".join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
     def get_service_name_from_event(self, event):
         """Get service_name from the file inotify event,
         returns None if it is not an event we're interested in"""
-        starts_with = ['marathon-', 'deployments.json']
+        starts_with = ["marathon-", "deployments.json"]
         if any([event.name.startswith(x) for x in starts_with]):
-            service_name = event.path.split('/')[-1]
-        elif event.name.endswith('.json') and event.path.split('/')[-1] == 'secrets':
+            service_name = event.path.split("/")[-1]
+        elif event.name.endswith(".json") and event.path.split("/")[-1] == "secrets":
             # this is needed because we put the secrets json files in a
             # subdirectory so the service name would be "secrets" otherwise
-            service_name = event.path.split('/')[-2]
+            service_name = event.path.split("/")[-2]
         else:
             service_name = None
         return service_name
 
     def watch_new_folder(self, event):
-        if event.maskname == 'IN_CREATE|IN_ISDIR' and '.~tmp~' not in event.pathname:
-            self.filewatcher.wm.add_watch(event.pathname, self.filewatcher.mask, rec=True)
+        if event.maskname == "IN_CREATE|IN_ISDIR" and ".~tmp~" not in event.pathname:
+            self.filewatcher.wm.add_watch(
+                event.pathname, self.filewatcher.mask, rec=True
+            )
             try:
                 file_names = os.listdir(event.pathname)
             except OSError:
                 return
-            if any(['marathon-' in file_name for file_name in file_names]):
+            if any(["marathon-" in file_name for file_name in file_names]):
                 self.log.info(f"New folder with marathon files: {event.name}.")
                 self.bounce_service(event.name)
 
@@ -320,26 +348,30 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         self.watch_new_folder(event)
         service_name = self.get_service_name_from_event(event)
         if service_name:
-            self.log.info(f"Looking for things to bounce for {service_name} because {event.path}/{event.name} changed.")
+            self.log.info(
+                f"Looking for things to bounce for {service_name} because {event.path}/{event.name} changed."
+            )
             self.bounce_service(service_name)
 
     def bounce_service(self, service_name):
-        self.log.info(f"Checking if any marathon instances of {service_name} need bouncing.")
+        self.log.info(
+            f"Checking if any marathon instances of {service_name} need bouncing."
+        )
         instances = list_all_instances_for_service(
             service=service_name,
             clusters=[self.filewatcher.cluster],
-            instance_type='marathon',
+            instance_type="marathon",
             cache=False,
         )
         self.log.debug(instances)
         service_instances = [(service_name, instance) for instance in instances]
         service_instances = get_service_instances_needing_update(
-            self.marathon_clients,
-            service_instances,
-            self.filewatcher.cluster,
+            self.marathon_clients, service_instances, self.filewatcher.cluster
         )
         for service, instance in service_instances:
-            self.log.info(f"{service}.{instance} has a new marathon app ID. Enqueuing it to be bounced.")
+            self.log.info(
+                f"{service}.{instance} has a new marathon app ID. Enqueuing it to be bounced."
+            )
         service_instances_to_queue = [
             # https://github.com/python/mypy/issues/2852
             ServiceInstance(  # type: ignore

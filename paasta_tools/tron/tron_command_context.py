@@ -90,7 +90,7 @@ class JobContext:
         if not date_spec:
             raise KeyError(item)
 
-        if date_name == 'last_success':
+        if date_name == "last_success":
             last_success = self.job.runs.last_success
             last_success = last_success.run_time if last_success else None
 
@@ -101,14 +101,13 @@ class JobContext:
         raise KeyError(item)
 
     def _get_date_spec_parts(self, name):
-        parts = name.rsplit(':', 1)
+        parts = name.rsplit(":", 1)
         if len(parts) != 2:
             return name, None
         return parts
 
 
 class JobRunContext:
-
     def __init__(self, job_run):
         self.job_run = job_run
 
@@ -122,10 +121,10 @@ class JobRunContext:
         the status of the other steps
         """
         if self.job_run.action_runs.is_failed:
-            return 'FAILURE'
+            return "FAILURE"
         elif self.job_run.action_runs.is_complete_without_cleanup:
-            return 'SUCCESS'
-        return 'UNKNOWN'
+            return "SUCCESS"
+        return "UNKNOWN"
 
     def __getitem__(self, name):
         """Attempt to parse date arithmetic syntax and apply to run_time."""
@@ -153,7 +152,6 @@ class ActionRunContext:
 
 
 class ServiceInstancePidContext:
-
     def __init__(self, service_instance):
         self.service_instance = service_instance
 
@@ -171,7 +169,6 @@ class ServiceInstancePidContext:
 
 
 class ServiceInstanceContext(ServiceInstancePidContext):
-
     @property
     def pid_file(self):
         context = CommandContext(self, self.service_instance.parent_context)

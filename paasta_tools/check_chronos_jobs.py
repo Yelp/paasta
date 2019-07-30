@@ -29,12 +29,16 @@ log = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=(
-        'Check the status of Chronos jobs, and report'
-        'their status to Sensu.'
-    ))
+    parser = argparse.ArgumentParser(
+        description=(
+            "Check the status of Chronos jobs, and report" "their status to Sensu."
+        )
+    )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
@@ -58,29 +62,39 @@ def guess_realert_every(chronos_job_config):
 def compose_monitoring_overrides_for_service(chronos_job_config):
     """ Compose a group of monitoring overrides """
     monitoring_overrides = chronos_job_config.get_monitoring()
-    if 'alert_after' not in monitoring_overrides:
-        monitoring_overrides['alert_after'] = '15m'
-    monitoring_overrides['check_every'] = '1m'
-    monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
-        monitoring_overrides, chronos_job_config.service, soa_dir=chronos_job_config.soa_dir,
+    if "alert_after" not in monitoring_overrides:
+        monitoring_overrides["alert_after"] = "15m"
+    monitoring_overrides["check_every"] = "1m"
+    monitoring_overrides["runbook"] = monitoring_tools.get_runbook(
+        monitoring_overrides,
+        chronos_job_config.service,
+        soa_dir=chronos_job_config.soa_dir,
     )
 
-    if 'realert_every' not in monitoring_overrides:
+    if "realert_every" not in monitoring_overrides:
         guessed_realert_every = guess_realert_every(chronos_job_config)
         if guessed_realert_every is not None:
-            monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
-                monitoring_overrides, chronos_job_config.service, soa_dir=chronos_job_config.soa_dir,
-                monitoring_defaults=lambda x: {'realert_every': guessed_realert_every}.get(x),
+            monitoring_overrides["realert_every"] = monitoring_tools.get_realert_every(
+                monitoring_overrides,
+                chronos_job_config.service,
+                soa_dir=chronos_job_config.soa_dir,
+                monitoring_defaults=lambda x: {
+                    "realert_every": guessed_realert_every
+                }.get(x),
             )
         else:
-            monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
-                monitoring_overrides, chronos_job_config.service, soa_dir=chronos_job_config.soa_dir,
+            monitoring_overrides["realert_every"] = monitoring_tools.get_realert_every(
+                monitoring_overrides,
+                chronos_job_config.service,
+                soa_dir=chronos_job_config.soa_dir,
             )
     return monitoring_overrides
 
 
 def check_chronos_job_name(service, instance):
-    return compose_check_name_for_service_instance('check_chronos_jobs', service, instance)
+    return compose_check_name_for_service_instance(
+        "check_chronos_jobs", service, instance
+    )
 
 
 def send_event(chronos_job_config, status_code, output):
@@ -95,12 +109,11 @@ def send_event(chronos_job_config, status_code, output):
     return monitoring_tools.send_event(
         service=chronos_job_config.service,
         check_name=check_chronos_job_name(
-            chronos_job_config.service,
-            chronos_job_config.instance,
+            chronos_job_config.service, chronos_job_config.instance
         ),
         overrides=monitoring_overrides,
         status=status_code,
-        output=add_realert_status(output, monitoring_overrides.get('realert_every')),
+        output=add_realert_status(output, monitoring_overrides.get("realert_every")),
         soa_dir=chronos_job_config.soa_dir,
     )
 
@@ -108,7 +121,7 @@ def send_event(chronos_job_config, status_code, output):
 def human_readable_time_interval(minutes):
     hours = minutes // 60
     minutes = minutes % 60
-    return (hours > 0) * ('%sh' % hours) + (minutes > 0) * ('%sm' % minutes)
+    return (hours > 0) * ("%sh" % hours) + (minutes > 0) * ("%sm" % minutes)
 
 
 def add_realert_status(sensu_output, realert_every_in_minutes):
@@ -116,8 +129,9 @@ def add_realert_status(sensu_output, realert_every_in_minutes):
         return sensu_output
     else:
         interval_string = human_readable_time_interval(realert_every_in_minutes)
-        return ("{}\n\nThis check realerts every {}."
-                .format(sensu_output, interval_string))
+        return "{}\n\nThis check realerts every {}.".format(
+            sensu_output, interval_string
+        )
 
 
 def sensu_event_for_last_run_state(state):
@@ -134,7 +148,7 @@ def sensu_event_for_last_run_state(state):
     elif state is chronos_tools.LastRunState.NotRun:
         return None
     else:
-        raise ValueError('Expected valid LastRunState. Found %s' % state)
+        raise ValueError("Expected valid LastRunState. Found %s" % state)
 
 
 def build_service_job_mapping(client, configured_jobs):
@@ -185,21 +199,23 @@ def message_for_status(status, chronos_job_config):
             "See the docs on paasta rerun here:\n"
             "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
         ) % {
-            'service': chronos_job_config.service,
-            'instance': chronos_job_config.instance,
-            'cluster': chronos_job_config.cluster,
-            'separator': utils.SPACER,
+            "service": chronos_job_config.service,
+            "instance": chronos_job_config.instance,
+            "cluster": chronos_job_config.cluster,
+            "separator": utils.SPACER,
         }
     elif status == pysensu_yelp.Status.UNKNOWN:
-        return ('Last run of job %s%s%s Unknown' %
-                (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
+        return "Last run of job {}{}{} Unknown".format(
+            chronos_job_config.service, utils.SPACER, chronos_job_config.instance
+        )
     elif status == pysensu_yelp.Status.OK:
-        return ('Last run of job %s%s%s Succeeded' %
-                (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
+        return "Last run of job {}{}{} Succeeded".format(
+            chronos_job_config.service, utils.SPACER, chronos_job_config.instance
+        )
     elif status is None:
         return None
     else:
-        raise ValueError('unknown sensu status: %s' % status)
+        raise ValueError("unknown sensu status: %s" % status)
 
 
 def job_is_stuck(last_run_iso_time, interval_in_seconds, client, job_name):
@@ -213,29 +229,43 @@ def job_is_stuck(last_run_iso_time, interval_in_seconds, client, job_name):
     """
     if last_run_iso_time is None or interval_in_seconds is None:
         return False
-    dt_next_run = isodate.parse_datetime(last_run_iso_time) + timedelta(seconds=interval_in_seconds)
+    dt_next_run = isodate.parse_datetime(last_run_iso_time) + timedelta(
+        seconds=interval_in_seconds
+    )
     dt_now_utc = datetime.now(pytz.utc)
     if dt_next_run >= dt_now_utc:
         return False
     try:
-        expected_runtime = min(int(client.job_stat(job_name)['histogram']['99thPercentile']), interval_in_seconds)
+        expected_runtime = min(
+            int(client.job_stat(job_name)["histogram"]["99thPercentile"]),
+            interval_in_seconds,
+        )
     except KeyError:
-        log.debug("Can't get 99thPercentile for %s. "
-                  "Assuming a runtime of %d seconds." % (job_name, interval_in_seconds))
+        log.debug(
+            "Can't get 99thPercentile for %s. "
+            "Assuming a runtime of %d seconds." % (job_name, interval_in_seconds)
+        )
         expected_runtime = interval_in_seconds
-    return (dt_next_run + timedelta(seconds=expected_runtime) < dt_now_utc)
+    return dt_next_run + timedelta(seconds=expected_runtime) < dt_now_utc
 
 
 def message_for_stuck_job(
-    service, instance, cluster, last_run_iso_time,
-    interval_in_seconds, schedule, schedule_timezone,
+    service,
+    instance,
+    cluster,
+    last_run_iso_time,
+    interval_in_seconds,
+    schedule,
+    schedule_timezone,
 ):
     last_run_utc = isodate.parse_datetime(last_run_iso_time)
     if schedule_timezone is None:
         last_run_local = last_run_utc
-        schedule_timezone = 'UTC'
+        schedule_timezone = "UTC"
     else:
-        last_run_local = last_run_utc.astimezone(pytz.timezone(schedule_timezone)).isoformat()
+        last_run_local = last_run_utc.astimezone(
+            pytz.timezone(schedule_timezone)
+        ).isoformat()
 
     return (
         "Job %(service)s%(separator)s%(instance)s with schedule %(schedule)s (%(timezone)s) "
@@ -246,14 +276,14 @@ def message_for_stuck_job(
         "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
         "\n"
     ) % {
-        'service': service,
-        'instance': instance,
-        'cluster': cluster,
-        'separator': utils.SPACER,
-        'interval': human_readable_time_interval(interval_in_seconds // 60),
-        'last_run': last_run_local,
-        'schedule': schedule,
-        'timezone': schedule_timezone,
+        "service": service,
+        "instance": instance,
+        "cluster": cluster,
+        "separator": utils.SPACER,
+        "interval": human_readable_time_interval(interval_in_seconds // 60),
+        "last_run": last_run_local,
+        "schedule": schedule,
+        "timezone": schedule_timezone,
     }
 
 
@@ -265,22 +295,34 @@ def sensu_message_status_for_jobs(chronos_job_config, chronos_job, client):
     if not chronos_job:
         if chronos_job_config.get_disabled():
             sensu_status = pysensu_yelp.Status.OK
-            output = ("Job %s%s%s is disabled - ignoring status."
-                      % (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
+            output = "Job {}{}{} is disabled - ignoring status.".format(
+                chronos_job_config.service, utils.SPACER, chronos_job_config.instance
+            )
         else:
             sensu_status = pysensu_yelp.Status.WARNING
-            output = ("Warning: %s%s%s isn't in chronos at all, "
-                      "which means it may not be deployed yet"
-                      % (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
+            output = (
+                "Warning: %s%s%s isn't in chronos at all, "
+                "which means it may not be deployed yet"
+                % (
+                    chronos_job_config.service,
+                    utils.SPACER,
+                    chronos_job_config.instance,
+                )
+            )
     else:
-        if chronos_job.get('disabled') and not chronos_tools.is_temporary_job(chronos_job):
+        if chronos_job.get("disabled") and not chronos_tools.is_temporary_job(
+            chronos_job
+        ):
             sensu_status = pysensu_yelp.Status.OK
-            output = ("Job %s%s%s is disabled - ignoring status." %
-                      (chronos_job_config.service, utils.SPACER, chronos_job_config.instance))
+            output = "Job {}{}{} is disabled - ignoring status.".format(
+                chronos_job_config.service, utils.SPACER, chronos_job_config.instance
+            )
         else:
             last_run_time, state = chronos_tools.get_status_last_run(chronos_job)
             interval_in_seconds = chronos_job_config.get_schedule_interval_in_seconds()
-            if job_is_stuck(last_run_time, interval_in_seconds, client, chronos_job['name']):
+            if job_is_stuck(
+                last_run_time, interval_in_seconds, client, chronos_job["name"]
+            ):
                 sensu_status = pysensu_yelp.Status.CRITICAL
                 output = message_for_stuck_job(
                     service=chronos_job_config.service,
@@ -305,7 +347,9 @@ def main():
     system_paasta_config = utils.load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
 
-    configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir=soa_dir)
+    configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(
+        cluster, soa_dir=soa_dir
+    )
 
     try:
         service_job_mapping = build_service_job_mapping(client, configured_jobs)
@@ -314,10 +358,7 @@ def main():
             service, instance = service_instance[0], service_instance[1]
             try:
                 chronos_job_config = load_chronos_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
+                    service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
                 )
             except utils.NoDeploymentsAvailable:
                 log.info("Skipping %s because no deployments are available" % service)
@@ -334,5 +375,5 @@ def main():
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

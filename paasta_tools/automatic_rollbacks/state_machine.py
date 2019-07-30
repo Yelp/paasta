@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 class TransitionDefinitionBase(TypedDict):
     """The required fields for TransitionDefinition; see
     https://mypy.readthedocs.io/en/latest/more_types.html#mixing-required-and-non-required-items"""
+
     trigger: str
     source: Union[str, List[str], Tuple[str, ...]]
     dest: Union[str, List[str], Tuple[str, ...]]
@@ -42,11 +43,11 @@ class DeploymentProcess(abc.ABC):
         def trigger(self, *args, **kwargs):
             ...
 
-    run_timeout: Optional[float] = None  # in normal operation, this will be None, but this lets tests set a max time.
+    run_timeout: Optional[
+        float
+    ] = None  # in normal operation, this will be None, but this lets tests set a max time.
 
-    def __init__(
-        self,
-    ):
+    def __init__(self,):
 
         self.event_loop = asyncio.get_event_loop()
         self.finished_event = asyncio.Event(loop=self.event_loop)
@@ -67,7 +68,7 @@ class DeploymentProcess(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def states(self) -> Collection['str']:
+    def states(self) -> Collection["str"]:
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -88,7 +89,7 @@ class DeploymentProcess(abc.ABC):
         raise NotImplementedError()
 
     def is_terminal_state(self, state: str) -> bool:
-        return (state in self.status_code_by_state())
+        return state in self.status_code_by_state()
 
     def is_finished(self) -> bool:
         return self.finished_event.is_set()
@@ -115,7 +116,9 @@ class DeploymentProcess(abc.ABC):
         timer_end = timer_start + timeout
         formatted_time = datetime.datetime.fromtimestamp(timer_end)
 
-        self.notify_users(f"Will {message_verb} in {timeout} seconds, (at {formatted_time})")
+        self.notify_users(
+            f"Will {message_verb} in {timeout} seconds, (at {formatted_time})"
+        )
 
         def times_up():
             self.notify_users(f"Time's up, will now {message_verb}.")
@@ -127,7 +130,9 @@ class DeploymentProcess(abc.ABC):
             """Unfortunately, call_at is not threadsafe, and there's no call_at_threadsafe, so we need to schedule the
             call to call_at with call_soon_threadsafe."""
             self.timer_handle = self.event_loop.call_later(timeout, times_up)
-            self.timer_trigger = trigger  # This allows cancel_timer to selectively cancel.
+            self.timer_trigger = (
+                trigger
+            )  # This allows cancel_timer to selectively cancel.
             self.timer_timeout = timeout  # saved for restart_timer
             self.timer_message_verb = message_verb  # saved for restart_timer
 

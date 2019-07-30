@@ -56,25 +56,20 @@ class StdoutKubeClient:
             self.target = target
 
         def __getattr__(self, attr):
-            if attr.startswith('create') or attr.startswith('replace'):
+            if attr.startswith("create") or attr.startswith("replace"):
                 return self.yaml_dump
             return getattr(self.target, attr)
 
         def yaml_dump(self, **kwargs):
-            body = kwargs.get('body')
+            body = kwargs.get("body")
             if not body:
                 return
-            ns = kwargs.get('namespace')
+            ns = kwargs.get("namespace")
             if ns:
-                if 'metadata' not in body:
-                    body['metadata'] = {}
-                body['metadata']['namespace'] = ns
-            yaml.safe_dump(
-                body,
-                sys.stdout,
-                indent=4,
-                explicit_start=True,
-            )
+                if "metadata" not in body:
+                    body["metadata"] = {}
+                body["metadata"]["namespace"] = ns
+            yaml.safe_dump(body, sys.stdout, indent=4, explicit_start=True)
 
     def __init__(self, kube_client) -> None:
         self.deployments = StdoutKubeClient.StdoutWrapper(kube_client.deployments)
@@ -85,31 +80,33 @@ class StdoutKubeClient:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Creates custom_resources.')
+    parser = argparse.ArgumentParser(description="Creates custom_resources.")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     parser.add_argument(
-        '-s', '--service', default=None,
-        help="Service to setup CRs for",
+        "-s", "--service", default=None, help="Service to setup CRs for"
     )
     parser.add_argument(
-        '-i', '--instance', default=None,
-        help="Service instance to setup CR for",
+        "-i", "--instance", default=None, help="Service instance to setup CR for"
     )
     parser.add_argument(
-        '-D', '--dry-run', action='store_true', default=False,
+        "-D",
+        "--dry-run",
+        action="store_true",
+        default=False,
         help="Output kubernetes configuration instead of applying it",
     )
     parser.add_argument(
-        '-c', '--cluster', default=None,
-        help="Cluster to setup CRs for",
+        "-c", "--cluster", default=None, help="Cluster to setup CRs for"
     )
     args = parser.parse_args()
     return args
@@ -151,9 +148,8 @@ def setup_all_custom_resources(
 ) -> bool:
     cluster_crds = {
         crd.spec.names.kind
-        for crd in
-        kube_client.apiextensions.list_custom_resource_definition(
-            label_selector="yelp.com/paasta_service",
+        for crd in kube_client.apiextensions.list_custom_resource_definition(
+            label_selector="yelp.com/paasta_service"
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")
@@ -162,21 +158,15 @@ def setup_all_custom_resources(
         if crd.kube_kind.singular not in cluster_crds:
             # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
             # and not `crd.names.singular`
-            log.warning(
-                f"CRD {crd.kube_kind.singular} "
-                f"not found in {cluster}",
-            )
+            log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
             continue
         config_dicts = load_all_configs(
-            cluster=cluster,
-            file_prefix=crd.file_prefix,
-            soa_dir=soa_dir,
+            cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
         if not config_dicts:
             continue
         ensure_namespace(
-            kube_client=kube_client,
-            namespace=f'paasta-{crd.kube_kind.plural}',
+            kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
         )
         results.append(
             setup_custom_resources(
@@ -188,7 +178,7 @@ def setup_all_custom_resources(
                 cluster=cluster,
                 service=service,
                 instance=instance,
-            ),
+            )
         )
     return all(results) if results else True
 
@@ -206,10 +196,7 @@ def setup_custom_resources(
     succeded = True
     if config_dicts:
         crs = list_custom_resources(
-            kube_client=kube_client,
-            kind=kind,
-            version=version,
-            group=group,
+            kube_client=kube_client, kind=kind, version=version, group=group
         )
     for svc, config in config_dicts.items():
         if service is not None and service != svc:
@@ -242,26 +229,22 @@ def format_custom_resource(
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
     resource: Mapping[str, Any] = {
-        'apiVersion': f'{group}/{version}',
-        'kind': kind,
-        'metadata': {
-            'name': f'{sanitised_service}-{sanitised_instance}',
-            'namespace': namespace,
-            'labels': {
-                'yelp.com/paasta_service': service,
-                'yelp.com/paasta_instance': instance,
-                'yelp.com/paasta_cluster': cluster,
+        "apiVersion": f"{group}/{version}",
+        "kind": kind,
+        "metadata": {
+            "name": f"{sanitised_service}-{sanitised_instance}",
+            "namespace": namespace,
+            "labels": {
+                "yelp.com/paasta_service": service,
+                "yelp.com/paasta_instance": instance,
+                "yelp.com/paasta_cluster": cluster,
             },
-            'annotations': {
-                'yelp.com/desired_state': 'running',
-            },
+            "annotations": {"yelp.com/desired_state": "running"},
         },
-        'spec': instance_config,
+        "spec": instance_config,
     }
-    config_hash = get_config_hash(
-        instance_config,
-    )
-    resource['metadata']['labels']['yelp.com/paasta_config_sha'] = config_hash
+    config_hash = get_config_hash(instance_config)
+    resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     return resource
 
 
@@ -289,19 +272,23 @@ def reconcile_kubernetes_resource(
             kind=kind.singular,
             version=version,
             group=group,
-            namespace=f'paasta-{kind.plural}',
+            namespace=f"paasta-{kind.plural}",
         )
         desired_resource = KubeCustomResource(
             service=service,
             instance=inst,
-            config_sha=formatted_resource['metadata']['labels']['yelp.com/paasta_config_sha'],
+            config_sha=formatted_resource["metadata"]["labels"][
+                "yelp.com/paasta_config_sha"
+            ],
             kind=kind.singular,
-            name=formatted_resource['metadata']['name'],
-            namespace=f'paasta-{kind.plural}',
+            name=formatted_resource["metadata"]["name"],
+            namespace=f"paasta-{kind.plural}",
         )
 
         try:
-            if not (service, inst, kind.singular) in [(c.service, c.instance, c.kind) for c in custom_resources]:
+            if not (service, inst, kind.singular) in [
+                (c.service, c.instance, c.kind) for c in custom_resources
+            ]:
                 log.info(f"{desired_resource} does not exist so creating")
                 create_custom_resource(
                     kube_client=kube_client,
@@ -316,7 +303,7 @@ def reconcile_kubernetes_resource(
                 log.info(f"{desired_resource} exists but config_sha doesn't match")
                 update_custom_resource(
                     kube_client=kube_client,
-                    name=f'{sanitised_service}-{sanitised_instance}',
+                    name=f"{sanitised_service}-{sanitised_instance}",
                     version=version,
                     kind=kind,
                     formatted_resource=formatted_resource,

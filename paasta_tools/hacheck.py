@@ -19,33 +19,19 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.utils import get_user_agent
 
-HACHECK_TIMEOUT = aiohttp.ClientTimeout(
-    total=45,
-    connect=30,
-    sock_read=10,
-)
+HACHECK_TIMEOUT = aiohttp.ClientTimeout(total=45, connect=30, sock_read=10)
 
 SpoolInfo = TypedDict(
-    'SpoolInfo',
-    {
-        'service': str,
-        'state': str,
-        'since': float,
-        'until': float,
-        'reason': str,
-    },
+    "SpoolInfo",
+    {"service": str, "state": str, "since": float, "until": float, "reason": str},
     total=False,
 )
 
 
-async def post_spool(url: str, status: str, data: Dict['str', 'str']) -> None:
-    async with aiohttp.ClientSession(
-        timeout=HACHECK_TIMEOUT,
-    ) as session:
+async def post_spool(url: str, status: str, data: Dict["str", "str"]) -> None:
+    async with aiohttp.ClientSession(timeout=HACHECK_TIMEOUT) as session:
         async with session.post(
-            url,
-            data=data,
-            headers={'User-Agent': get_user_agent()},
+            url, data=data, headers={"User-Agent": get_user_agent()}
         ) as resp:
             resp.raise_for_status()
 
@@ -56,38 +42,35 @@ async def get_spool(spool_url: str) -> SpoolInfo:
         return None
 
     # TODO: aiohttp says not to create a session per request. Fix this.
-    async with aiohttp.ClientSession(
-        timeout=HACHECK_TIMEOUT,
-    ) as session:
+    async with aiohttp.ClientSession(timeout=HACHECK_TIMEOUT) as session:
         async with session.get(
-            spool_url,
-            headers={'User-Agent': get_user_agent()},
+            spool_url, headers={"User-Agent": get_user_agent()}
         ) as response:
             if response.status == 200:
-                return {
-                    'state': 'up',
-                }
+                return {"state": "up"}
 
-            regex = ''.join([
-                "^",
-                r"Service (?P<service>.+)",
-                r" in (?P<state>.+) state",
-                r"(?: since (?P<since>[0-9.]+))?",
-                r"(?: until (?P<until>[0-9.]+))?",
-                r"(?:: (?P<reason>.*))?",
-                "$",
-            ])
+            regex = "".join(
+                [
+                    "^",
+                    r"Service (?P<service>.+)",
+                    r" in (?P<state>.+) state",
+                    r"(?: since (?P<since>[0-9.]+))?",
+                    r"(?: until (?P<until>[0-9.]+))?",
+                    r"(?:: (?P<reason>.*))?",
+                    "$",
+                ]
+            )
 
             response_text = await response.text()
             match = re.match(regex, response_text)
             groupdict = match.groupdict()
             info: SpoolInfo = {}
-            info['service'] = groupdict['service']
-            info['state'] = groupdict['state']
-            if 'since' in groupdict:
-                info['since'] = float(groupdict['since'] or 0)
-            if 'until' in groupdict:
-                info['until'] = float(groupdict['until'] or 0)
-            if 'reason' in groupdict:
-                info['reason'] = groupdict['reason']
+            info["service"] = groupdict["service"]
+            info["state"] = groupdict["state"]
+            if "since" in groupdict:
+                info["since"] = float(groupdict["since"] or 0)
+            if "until" in groupdict:
+                info["until"] = float(groupdict["until"] or 0)
+            if "reason" in groupdict:
+                info["reason"] = groupdict["reason"]
             return info

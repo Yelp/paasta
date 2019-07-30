@@ -36,11 +36,11 @@ log = logging.getLogger(__name__)
 
 CheckServiceReplication = Callable[
     [
-        Arg(InstanceConfig_T, 'instance_config'),
-        Arg(Sequence[V1Pod], 'all_pods'),
-        Arg(KubeSmartstackReplicationChecker, 'smartstack_replication_checker'),
+        Arg(InstanceConfig_T, "instance_config"),
+        Arg(Sequence[V1Pod], "all_pods"),
+        Arg(KubeSmartstackReplicationChecker, "smartstack_replication_checker"),
     ],
-    None
+    None,
 ]
 
 
@@ -49,18 +49,21 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        'service_instance_list', nargs='*',
+        "service_instance_list",
+        nargs="*",
         help="The list of service instances to check",
         metavar="SERVICE%sINSTANCE" % SPACER,
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     options = parser.parse_args()
 
@@ -75,26 +78,25 @@ def check_all_kubernetes_based_services_replication(
     namespace: str,
 ) -> None:
     kube_client = KubeClient()
-    all_pods = get_all_pods(
-        kube_client=kube_client,
-        namespace=namespace,
-    )
+    all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
     all_nodes = get_all_nodes(kube_client)
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
     smartstack_replication_checker = KubeSmartstackReplicationChecker(
-        nodes=all_nodes,
-        system_paasta_config=system_paasta_config,
+        nodes=all_nodes, system_paasta_config=system_paasta_config
     )
     service_instances_set = set(service_instances)
 
     for service in list_services(soa_dir=soa_dir):
         service_config = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
         for instance_config in service_config.instance_configs(
-            cluster=cluster,
-            instance_type_class=instance_type_class,
+            cluster=cluster, instance_type_class=instance_type_class
         ):
-            if service_instances_set and f'{service}{SPACER}{instance_config.instance}' not in service_instances_set:
+            if (
+                service_instances_set
+                and f"{service}{SPACER}{instance_config.instance}"
+                not in service_instances_set
+            ):
                 continue
             if instance_config.get_docker_image():
                 check_service_replication(
@@ -104,8 +106,8 @@ def check_all_kubernetes_based_services_replication(
                 )
             else:
                 log.debug(
-                    '%s is not deployed. Skipping replication monitoring.' %
-                    instance_config.job_id,
+                    "%s is not deployed. Skipping replication monitoring."
+                    % instance_config.job_id
                 )
 
 

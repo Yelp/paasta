@@ -54,8 +54,8 @@ class DeployGroupError(Exception):
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'wait-for-deployment',
-        help='Wait a service to be deployed to deploy_group',
+        "wait-for-deployment",
+        help="Wait a service to be deployed to deploy_group",
         description=(
             "'paasta wait-for-deployment' waits for a previously marked for "
             "deployment service to be deployed to deploy_group."
@@ -66,32 +66,37 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        '-u', '--git-url',
+        "-u",
+        "--git-url",
         help=(
-            'Git url for service. Defaults to the normal git URL for '
-            'the service.'
+            "Git url for service. Defaults to the normal git URL for " "the service."
         ),
         default=None,
     )
     list_parser.add_argument(
-        '-c', '-k', '--commit',
-        help='Git sha to wait for deployment',
+        "-c",
+        "-k",
+        "--commit",
+        help="Git sha to wait for deployment",
         required=True,
         type=validate_short_git_sha,
     )
     list_parser.add_argument(
-        '-l', '--deploy-group',
-        help='deploy group (e.g. cluster1.canary, cluster2.main).',
+        "-l",
+        "--deploy-group",
+        help="deploy group (e.g. cluster1.canary, cluster2.main).",
         required=True,
     ).completer = lazy_choices_completer(list_deploy_groups)
     list_parser.add_argument(
-        '-s', '--service',
-        help='Name of the service which you wish to wait for deployment. '
+        "-s",
+        "--service",
+        help="Name of the service which you wish to wait for deployment. "
         'Leading "services-" will be stripped.',
         required=True,
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '-t', '--timeout',
+        "-t",
+        "--timeout",
         dest="timeout",
         type=int,
         default=DEFAULT_DEPLOYMENT_TIMEOUT,
@@ -102,15 +107,17 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     list_parser.add_argument(
-        '-v', '--verbose',
-        action='count',
+        "-v",
+        "--verbose",
+        action="count",
         dest="verbose",
         default=0,
         help="Print out more output.",
@@ -122,15 +129,15 @@ def add_subparser(subparsers):
 def get_latest_marked_sha(git_url, deploy_group):
     """Return the latest marked for deployment git sha or ''"""
     refs = list_remote_refs(git_url)
-    last_ref = ''
+    last_ref = ""
     for ref in refs:
         if (
-            ref.startswith(f'refs/tags/paasta-{deploy_group}-') and
-            ref.endswith('-deploy') and
-            ref > last_ref
+            ref.startswith(f"refs/tags/paasta-{deploy_group}-")
+            and ref.endswith("-deploy")
+            and ref > last_ref
         ):
             last_ref = ref
-    return refs[last_ref] if last_ref else ''
+    return refs[last_ref] if last_ref else ""
 
 
 def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
@@ -142,19 +149,24 @@ def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
     try:
         marked_sha = get_latest_marked_sha(git_url, deploy_group)
     except LSRemoteException as e:
-        paasta_print("Error talking to the git server: {}\n"
-                     "It is not possible to verify that {} is marked for deployment in {}, "
-                     "but I assume that it is marked and will continue waiting.."
-                     .format(e, git_sha, deploy_group))
+        paasta_print(
+            "Error talking to the git server: {}\n"
+            "It is not possible to verify that {} is marked for deployment in {}, "
+            "but I assume that it is marked and will continue waiting..".format(
+                e, git_sha, deploy_group
+            )
+        )
         return
-    if marked_sha == '':
-        raise GitShaError("ERROR: Nothing is marked for deployment "
-                          "in {} for {}"
-                          .format(deploy_group, service))
+    if marked_sha == "":
+        raise GitShaError(
+            "ERROR: Nothing is marked for deployment "
+            "in {} for {}".format(deploy_group, service)
+        )
     if git_sha != marked_sha:
-        raise GitShaError("ERROR: The latest git SHA marked for "
-                          "deployment in {} is {}"
-                          .format(deploy_group, marked_sha))
+        raise GitShaError(
+            "ERROR: The latest git SHA marked for "
+            "deployment in {} is {}".format(deploy_group, marked_sha)
+        )
 
 
 def validate_deploy_group(deploy_group, service, soa_dir):
@@ -162,22 +174,20 @@ def validate_deploy_group(deploy_group, service, soa_dir):
 
     Raise exception if the specified deploy group is not used anywhere.
     """
-    in_use_deploy_groups = list_deploy_groups(
-        service=service,
-        soa_dir=soa_dir,
+    in_use_deploy_groups = list_deploy_groups(service=service, soa_dir=soa_dir)
+    _, invalid_deploy_groups = validate_given_deploy_groups(
+        in_use_deploy_groups, [deploy_group]
     )
-    _, invalid_deploy_groups = \
-        validate_given_deploy_groups(in_use_deploy_groups, [deploy_group])
 
     if len(invalid_deploy_groups) == 1:
-        raise DeployGroupError("ERROR: These deploy groups are not currently "
-                               "used anywhere: {}.\n"
-                               "You probably need one of these in-use deploy "
-                               "groups?:\n   {}"
-                               .format(
-                                   ",".join(invalid_deploy_groups),
-                                   ",".join(in_use_deploy_groups),
-                               ))
+        raise DeployGroupError(
+            "ERROR: These deploy groups are not currently "
+            "used anywhere: {}.\n"
+            "You probably need one of these in-use deploy "
+            "groups?:\n   {}".format(
+                ",".join(invalid_deploy_groups), ",".join(in_use_deploy_groups)
+            )
+        )
 
 
 def paasta_wait_for_deployment(args):
@@ -188,8 +198,8 @@ def paasta_wait_for_deployment(args):
         log.setLevel(level=logging.INFO)
 
     service = args.service
-    if service and service.startswith('services-'):
-        service = service.split('services-', 1)[1]
+    if service and service.startswith("services-"):
+        service = service.split("services-", 1)[1]
 
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
@@ -200,11 +210,10 @@ def paasta_wait_for_deployment(args):
         validate_service_name(service, soa_dir=args.soa_dir)
         validate_deploy_group(args.deploy_group, service, args.soa_dir)
         validate_git_sha_is_latest(
-            args.commit, args.git_url,
-            args.deploy_group, service,
+            args.commit, args.git_url, args.deploy_group, service
         )
     except (GitShaError, DeployGroupError, NoSuchService) as e:
-        paasta_print(PaastaColors.red(f'{e}'))
+        paasta_print(PaastaColors.red(f"{e}"))
         return 1
 
     try:
@@ -217,10 +226,13 @@ def paasta_wait_for_deployment(args):
         )
         _log(
             service=service,
-            component='deploy',
-            line=("Deployment of {} for {} complete".
-                  format(args.commit, args.deploy_group)),
-            level='event',
+            component="deploy",
+            line=(
+                "Deployment of {} for {} complete".format(
+                    args.commit, args.deploy_group
+                )
+            ),
+            level="event",
         )
 
     except (KeyboardInterrupt, TimeoutError, NoSuchCluster):

@@ -19,11 +19,11 @@ from paasta_tools.generate_services_file import write_yaml_file
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument('output_path')
+    parser.add_argument("output_path")
     args = parser.parse_args(argv)
 
     write_yaml_file(args.output_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

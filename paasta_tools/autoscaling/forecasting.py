@@ -2,7 +2,7 @@ from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
 
 
-FORECAST_POLICY_KEY = 'forecast_policy'
+FORECAST_POLICY_KEY = "forecast_policy"
 
 
 def get_forecast_policy(name):
@@ -13,7 +13,7 @@ def get_forecast_policy(name):
     return get_autoscaling_component(name, FORECAST_POLICY_KEY)
 
 
-@register_autoscaling_component('current', FORECAST_POLICY_KEY)
+@register_autoscaling_component("current", FORECAST_POLICY_KEY)
 def current_value_forecast_policy(historical_load, **kwargs):
     """A prediction policy that assumes that the value any time in the future will be the same as the current value.
 
@@ -37,20 +37,27 @@ def trailing_window_historical_load(historical_load, window_size):
     return window_historical_load(historical_load, window_begin, window_end)
 
 
-@register_autoscaling_component('moving_average', FORECAST_POLICY_KEY)
-def moving_average_forecast_policy(historical_load, moving_average_window_seconds=1800, **kwargs):
+@register_autoscaling_component("moving_average", FORECAST_POLICY_KEY)
+def moving_average_forecast_policy(
+    historical_load, moving_average_window_seconds=1800, **kwargs
+):
     """Does a simple average of all historical load data points within the moving average window. Weights all data
     points within the window equally."""
 
-    windowed_data = trailing_window_historical_load(historical_load, moving_average_window_seconds)
+    windowed_data = trailing_window_historical_load(
+        historical_load, moving_average_window_seconds
+    )
     windowed_values = [value for timestamp, value in windowed_data]
     return sum(windowed_values) / len(windowed_values)
 
 
-@register_autoscaling_component('linreg', FORECAST_POLICY_KEY)
+@register_autoscaling_component("linreg", FORECAST_POLICY_KEY)
 def linreg_forecast_policy(
-    historical_load, linreg_window_seconds, linreg_extrapolation_seconds,
-    linreg_default_slope=0, **kwargs,
+    historical_load,
+    linreg_window_seconds,
+    linreg_extrapolation_seconds,
+    linreg_default_slope=0,
+    **kwargs,
 ):
     """Does a linear regression on the load data within the last linreg_window_seconds. For every time delta in
     linreg_extrapolation_seconds, forecasts the value at that time delta from now, and returns the maximum of these
@@ -75,7 +82,9 @@ def linreg_forecast_policy(
     mean_load = sum(loads) / len(loads)
 
     if len(window) > 1:
-        slope = sum((t - mean_time) * (l - mean_load) for t, l in window) / sum((t - mean_time) ** 2 for t in times)
+        slope = sum((t - mean_time) * (l - mean_load) for t, l in window) / sum(
+            (t - mean_time) ** 2 for t in times
+        )
     else:
         slope = linreg_default_slope
 

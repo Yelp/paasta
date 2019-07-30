@@ -45,20 +45,12 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 HaproxyBackend = TypedDict(
-    'HaproxyBackend',
-    {
-        'pxname': str,
-        'svname': str,
-        'status': str,
-    },
-    total=False,
+    "HaproxyBackend", {"pxname": str, "svname": str, "status": str}, total=False
 )
 
 
 def retrieve_haproxy_csv(
-    synapse_host: str,
-    synapse_port: int,
-    synapse_haproxy_url_format: str,
+    synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str
 ) -> Iterable[Dict[str, str]]:
     """Retrieves the haproxy csv from the haproxy web interface
 
@@ -66,19 +58,15 @@ def retrieve_haproxy_csv(
                               should contact for replication information.
     :returns reader: a csv.DictReader object
     """
-    synapse_uri = synapse_haproxy_url_format.format(host=synapse_host, port=synapse_port)
+    synapse_uri = synapse_haproxy_url_format.format(
+        host=synapse_host, port=synapse_port
+    )
 
     # timeout after 1 second and retry 3 times
     haproxy_request = requests.Session()
-    haproxy_request.headers.update({'User-Agent': get_user_agent()})
-    haproxy_request.mount(
-        'http://',
-        requests.adapters.HTTPAdapter(max_retries=3),
-    )
-    haproxy_request.mount(
-        'https://',
-        requests.adapters.HTTPAdapter(max_retries=3),
-    )
+    haproxy_request.headers.update({"User-Agent": get_user_agent()})
+    haproxy_request.mount("http://", requests.adapters.HTTPAdapter(max_retries=3))
+    haproxy_request.mount("https://", requests.adapters.HTTPAdapter(max_retries=3))
     haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
     haproxy_data = haproxy_response.text
     reader = csv.DictReader(haproxy_data.splitlines())
@@ -86,10 +74,7 @@ def retrieve_haproxy_csv(
 
 
 def get_backends(
-    service: str,
-    synapse_host: str,
-    synapse_port: int,
-    synapse_haproxy_url_format: str,
+    service: str, synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str
 ) -> List[HaproxyBackend]:
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
@@ -106,7 +91,9 @@ def get_backends(
     else:
         services = None
     return get_multiple_backends(
-        services, synapse_host=synapse_host, synapse_port=synapse_port,
+        services,
+        synapse_host=synapse_host,
+        synapse_port=synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
 
@@ -128,21 +115,28 @@ def get_multiple_backends(
                        services or the requested service
     """
 
-    reader = retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format=synapse_haproxy_url_format)
+    reader = retrieve_haproxy_csv(
+        synapse_host,
+        synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
+    )
     backends = []
 
     for line in reader:
         # clean up two irregularities of the CSV output, relative to
         # DictReader's behavior there's a leading "# " for no good reason:
-        line['pxname'] = line.pop('# pxname')
+        line["pxname"] = line.pop("# pxname")
         # and there's a trailing comma on every line:
-        line.pop('')
+        line.pop("")
 
         # Look for the service in question and ignore the fictional
         # FRONTEND/BACKEND hosts, use starts_with so that hosts that are UP
         # with 1/X healthchecks to go before going down get counted as UP:
-        ha_slave, ha_service = line['svname'], line['pxname']
-        if (services is None or ha_service in services) and ha_slave not in ('FRONTEND', 'BACKEND'):
+        ha_slave, ha_service = line["svname"], line["pxname"]
+        if (services is None or ha_service in services) and ha_slave not in (
+            "FRONTEND",
+            "BACKEND",
+        ):
             backends.append(cast(HaproxyBackend, line))
 
     return backends
@@ -176,7 +170,7 @@ def load_smartstack_info_for_service(
 
     """
     service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=soa_dir,
+        service=service, namespace=namespace, soa_dir=soa_dir
     )
     discover_location_type = service_namespace_config.get_discover()
     return get_smartstack_replication_for_attribute(
@@ -208,22 +202,20 @@ def get_smartstack_replication_for_attribute(
     """
     replication_info = {}
     filtered_slaves = mesos_tools.get_all_slaves_for_blacklist_whitelist(
-        blacklist=blacklist,
-        whitelist=None,
+        blacklist=blacklist, whitelist=None
     )
     if not filtered_slaves:
         raise NoSlavesAvailableError
 
     attribute_slave_dict = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves,
-        attribute=attribute,
+        slaves=filtered_slaves, attribute=attribute
     )
 
     full_name = compose_job_id(service, namespace)
 
     for value, hosts in attribute_slave_dict.items():
         # arbitrarily choose the first host with a given attribute to query for replication stats
-        synapse_host = hosts[0]['hostname']
+        synapse_host = hosts[0]["hostname"]
         repl_info = get_replication_for_services(
             synapse_host=synapse_host,
             synapse_port=system_paasta_config.get_synapse_port(),
@@ -236,9 +228,7 @@ def get_smartstack_replication_for_attribute(
 
 
 def get_replication_for_all_services(
-        synapse_host: str,
-        synapse_port: int,
-        synapse_haproxy_url_format: str,
+    synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str
 ) -> Dict[str, int]:
     """Returns the replication level for all services known to this synapse haproxy
 
@@ -254,7 +244,7 @@ def get_replication_for_all_services(
         synapse_port=synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
-    return collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
+    return collections.Counter([b["pxname"] for b in backends if backend_is_up(b)])
 
 
 def get_replication_for_services(
@@ -286,7 +276,7 @@ def get_replication_for_services(
         synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
 
-    counter = collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
+    counter = collections.Counter([b["pxname"] for b in backends if backend_is_up(b)])
     return {sn: counter[sn] for sn in services}
 
 
@@ -297,7 +287,7 @@ def backend_is_up(backend: HaproxyBackend) -> bool:
 
     :returns is_up: Whether the backend is in a state that receives traffic.
     """
-    return str(backend['status']).startswith('UP')
+    return str(backend["status"]).startswith("UP")
 
 
 def ip_port_hostname_from_svname(svname: str) -> Tuple[str, int, str]:
@@ -339,12 +329,18 @@ def get_registered_marathon_tasks(
     :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
     """
     backends = get_multiple_backends(
-        [service], synapse_host=synapse_host, synapse_port=synapse_port,
+        [service],
+        synapse_host=synapse_host,
+        synapse_port=synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
     healthy_tasks = []
     for backend, task in match_backends_and_tasks(backends, marathon_tasks):
-        if backend is not None and task is not None and backend['status'].startswith('UP'):
+        if (
+            backend is not None
+            and task is not None
+            and backend["status"].startswith("UP")
+        ):
             healthy_tasks.append(task)
     return healthy_tasks
 
@@ -358,13 +354,17 @@ def are_services_up_on_ip_port(
     host_port: int,
 ) -> bool:
     backends = get_multiple_backends(
-        services, synapse_host=synapse_host, synapse_port=synapse_port,
+        services,
+        synapse_host=synapse_host,
+        synapse_port=synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
-    backends_by_ip_port: DefaultDict[Tuple[str, int], List[HaproxyBackend]] = collections.defaultdict(list)
+    backends_by_ip_port: DefaultDict[
+        Tuple[str, int], List[HaproxyBackend]
+    ] = collections.defaultdict(list)
 
     for backend in backends:
-        ip, port, _ = ip_port_hostname_from_svname(backend['svname'])
+        ip, port, _ = ip_port_hostname_from_svname(backend["svname"])
         backends_by_ip_port[ip, port].append(backend)
 
     backends_on_ip = backends_by_ip_port[host_ip, host_port]
@@ -374,14 +374,13 @@ def are_services_up_on_ip_port(
     services_with_atleast_one_backend_up = {service: False for service in services}
     for service in services:
         for be in backends_on_ip:
-            if be['pxname'] == service and backend_is_up(be):
+            if be["pxname"] == service and backend_is_up(be):
                 services_with_atleast_one_backend_up[service] = True
     return all(services_with_atleast_one_backend_up.values())
 
 
 def match_backends_and_tasks(
-    backends: Iterable[HaproxyBackend],
-    tasks: Iterable[marathon_tools.MarathonTask],
+    backends: Iterable[HaproxyBackend], tasks: Iterable[marathon_tools.MarathonTask]
 ) -> List[Tuple[Optional[HaproxyBackend], Optional[marathon_tools.MarathonTask]]]:
     """Returns tuples of matching (backend, task) pairs, as matched by IP and port. Each backend will be listed exactly
     once, and each task will be listed once per port. If a backend does not match with a task, (backend, None) will
@@ -393,11 +392,13 @@ def match_backends_and_tasks(
     """
 
     # { (ip, port) : [backend1, backend2], ... }
-    backends_by_ip_port: DefaultDict[Tuple[str, int], List[HaproxyBackend]] = collections.defaultdict(list)
+    backends_by_ip_port: DefaultDict[
+        Tuple[str, int], List[HaproxyBackend]
+    ] = collections.defaultdict(list)
     backend_task_pairs = []
 
     for backend in backends:
-        ip, port, _ = ip_port_hostname_from_svname(backend['svname'])
+        ip, port, _ = ip_port_hostname_from_svname(backend["svname"])
         backends_by_ip_port[ip, port].append(backend)
 
     for task in tasks:
@@ -414,7 +415,9 @@ def match_backends_and_tasks(
     return backend_task_pairs
 
 
-_MesosSlaveDict = TypeVar('_MesosSlaveDict', bound=Dict)  # no type has been defined in mesos_tools for these yet.
+_MesosSlaveDict = TypeVar(
+    "_MesosSlaveDict", bound=Dict
+)  # no type has been defined in mesos_tools for these yet.
 
 
 class SmartstackHost(NamedTuple):
@@ -432,22 +435,22 @@ class SmartstackReplicationChecker(abc.ABC):
     _get_allowed_locations_and_hosts must be implemented in sub class
     """
 
-    def __init__(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> None:
+    def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
         self._synapse_port = system_paasta_config.get_synapse_port()
-        self._synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format()
+        self._synapse_haproxy_url_format = (
+            system_paasta_config.get_synapse_haproxy_url_format()
+        )
         self._system_paasta_config = system_paasta_config
         self._cache: Dict[str, Dict[str, int]] = {}
 
     @abc.abstractmethod
-    def _get_allowed_locations_and_hosts(self, instance_config: InstanceConfig) -> Dict[str, Sequence[SmartstackHost]]:
+    def _get_allowed_locations_and_hosts(
+        self, instance_config: InstanceConfig
+    ) -> Dict[str, Sequence[SmartstackHost]]:
         pass
 
     def get_replication_for_instance(
-        self,
-        instance_config: InstanceConfig,
+        self, instance_config: InstanceConfig
     ) -> Dict[str, Dict[str, int]]:
         """Returns the number of registered instances in each discoverable location.
 
@@ -459,13 +462,13 @@ class SmartstackReplicationChecker(abc.ABC):
         instance_pool = instance_config.get_pool()
         for location, hosts in attribute_host_dict.items():
             hostname = self._get_first_host_in_pool(hosts, instance_pool)
-            replication_info[location] = self._get_replication_info(location, hostname, instance_config)
+            replication_info[location] = self._get_replication_info(
+                location, hostname, instance_config
+            )
         return replication_info
 
     def _get_first_host_in_pool(
-        self,
-        hosts: Sequence[SmartstackHost],
-        pool: str,
+        self, hosts: Sequence[SmartstackHost], pool: str
     ) -> str:
         for host in hosts:
             if host.pool == pool:
@@ -473,10 +476,7 @@ class SmartstackReplicationChecker(abc.ABC):
         return hosts[0].hostname
 
     def _get_replication_info(
-        self,
-        location: str,
-        hostname: str,
-        instance_config: InstanceConfig,
+        self, location: str, hostname: str, instance_config: InstanceConfig
     ) -> Dict[str, int]:
         """Returns service.instance and the number of instances registered in smartstack
         at the location as a dict.
@@ -527,7 +527,9 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         self._mesos_slaves = mesos_slaves
         super().__init__(system_paasta_config=system_paasta_config)
 
-    def _get_allowed_locations_and_hosts(self, instance_config: InstanceConfig) -> Dict[str, Sequence[SmartstackHost]]:
+    def _get_allowed_locations_and_hosts(
+        self, instance_config: InstanceConfig
+    ) -> Dict[str, Sequence[SmartstackHost]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
         where deployment of the instance is allowed.
 
@@ -535,12 +537,10 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         :returns: A dict {"uswest1-prod": [SmartstackHost(), SmartstackHost(), ...]}
         """
         monitoring_blacklist = instance_config.get_monitoring_blacklist(
-            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist(),
+            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist()
         )
         filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
-            slaves=self._mesos_slaves,
-            blacklist=monitoring_blacklist,
-            whitelist=None,
+            slaves=self._mesos_slaves, blacklist=monitoring_blacklist, whitelist=None
         )
         discover_location_type = marathon_tools.load_service_namespace_config(
             service=instance_config.service,
@@ -548,36 +548,35 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
             soa_dir=instance_config.soa_dir,
         ).get_discover()
         attribute_to_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-            slaves=filtered_slaves,
-            attribute=discover_location_type,
+            slaves=filtered_slaves, attribute=discover_location_type
         )
         ret: Dict[str, Sequence[SmartstackHost]] = {}
         for attr, slaves in attribute_to_slaves.items():
             ret[attr] = [
-                SmartstackHost(hostname=slave['hostname'], pool=slave['attributes']['pool']) for slave in slaves
+                SmartstackHost(
+                    hostname=slave["hostname"], pool=slave["attributes"]["pool"]
+                )
+                for slave in slaves
             ]
         return ret
 
 
 class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
-
     def __init__(
-        self,
-        nodes: Sequence[V1Node],
-        system_paasta_config: SystemPaastaConfig,
+        self, nodes: Sequence[V1Node], system_paasta_config: SystemPaastaConfig
     ) -> None:
         self.nodes = nodes
         super().__init__(system_paasta_config=system_paasta_config)
 
-    def _get_allowed_locations_and_hosts(self, instance_config: InstanceConfig) -> Dict[str, Sequence[SmartstackHost]]:
+    def _get_allowed_locations_and_hosts(
+        self, instance_config: InstanceConfig
+    ) -> Dict[str, Sequence[SmartstackHost]]:
 
         monitoring_blacklist = instance_config.get_monitoring_blacklist(
-            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist(),
+            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist()
         )
         filtered_nodes = kubernetes_tools.filter_nodes_by_blacklist(
-            nodes=self.nodes,
-            blacklist=monitoring_blacklist,
-            whitelist=None,
+            nodes=self.nodes, blacklist=monitoring_blacklist, whitelist=None
         )
         discover_location_type = kubernetes_tools.load_service_namespace_config(
             service=instance_config.service,
@@ -585,15 +584,15 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
             soa_dir=instance_config.soa_dir,
         ).get_discover()
         attribute_to_nodes = kubernetes_tools.get_nodes_grouped_by_attribute(
-            nodes=filtered_nodes,
-            attribute=discover_location_type,
+            nodes=filtered_nodes, attribute=discover_location_type
         )
         ret: Dict[str, Sequence[SmartstackHost]] = {}
         for attr, nodes in attribute_to_nodes.items():
             ret[attr] = [
                 SmartstackHost(
-                    hostname=node.metadata.labels['yelp.com/hostname'],
-                    pool=node.metadata.labels['yelp.com/pool'],
-                ) for node in nodes
+                    hostname=node.metadata.labels["yelp.com/hostname"],
+                    pool=node.metadata.labels["yelp.com/pool"],
+                )
+                for node in nodes
             ]
         return ret

@@ -32,11 +32,9 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_subparser(
-    subparsers,
-) -> None:
+def add_subparser(subparsers,) -> None:
     status_parser = subparsers.add_parser(
-        'metastatus',
+        "metastatus",
         help="Display the status for an entire PaaSTA cluster",
         description=(
             "'paasta metastatus' is used to get the vital statistics about a PaaSTA "
@@ -51,67 +49,69 @@ def add_subparser(
         ),
     )
     status_parser.add_argument(
-        '-v', '--verbose',
-        action='count',
+        "-v",
+        "--verbose",
+        action="count",
         dest="verbose",
         default=0,
         help="""Print out more output regarding the state of the cluster.
         Multiple v options increase verbosity. Maximum is 3.""",
     )
     clusters_help = (
-        'A comma separated list of clusters to view. Defaults to view all clusters. '
-        'Try: --clusters norcal-prod,nova-prod'
+        "A comma separated list of clusters to view. Defaults to view all clusters. "
+        "Try: --clusters norcal-prod,nova-prod"
     )
     status_parser.add_argument(
-        '-c', '--clusters',
-        help=clusters_help,
+        "-c", "--clusters", help=clusters_help
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     status_parser.add_argument(
-        '-a', '--autoscaling-info',
-        action='store_true',
+        "-a",
+        "--autoscaling-info",
+        action="store_true",
         default=False,
         dest="autoscaling_info",
         help="Show cluster autoscaling info, implies -vv",
     )
     status_parser.add_argument(
-        '--use-mesos-cache',
-        action='store_true',
+        "--use-mesos-cache",
+        action="store_true",
         default=False,
         dest="use_mesos_cache",
         help="Use Mesos cache for state.json and frameworks",
     )
     status_parser.add_argument(
-        '-g',
-        '--groupings',
-        nargs='+',
-        default=['region'],
+        "-g",
+        "--groupings",
+        nargs="+",
+        default=["region"],
         help=(
-            'Group resource information of slaves grouped by attribute.'
-            'Note: This is only effective with -vv'
+            "Group resource information of slaves grouped by attribute."
+            "Note: This is only effective with -vv"
         ),
     )
     # The service and instance args default to None if not specified.
     status_parser.add_argument(
-        '-s',
-        '--service',
+        "-s",
+        "--service",
         help=(
-            'Show how many of a given service instance can be run on a cluster slave.'
-            'Note: This is only effective with -vvv and --instance must also be specified'
+            "Show how many of a given service instance can be run on a cluster slave."
+            "Note: This is only effective with -vvv and --instance must also be specified"
         ),
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
-        '-i',
-        '--instance',
+        "-i",
+        "--instance",
         help=(
-            'Show how many of a given service instance can be run on a cluster slave.'
-            'Note: This is only effective with -vvv and --service must also be specified'
+            "Show how many of a given service instance can be run on a cluster slave."
+            "Note: This is only effective with -vvv and --service must also be specified"
         ),
     )
     status_parser.set_defaults(command=paasta_metastatus)
@@ -127,7 +127,7 @@ def paasta_metastatus_on_api_endpoint(
 ) -> Tuple[int, str]:
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
-        paasta_print('Cannot get a paasta-api client')
+        paasta_print("Cannot get a paasta-api client")
         exit(1)
 
     try:
@@ -137,7 +137,9 @@ def paasta_metastatus_on_api_endpoint(
             autoscaling_info=autoscaling_info,
             use_mesos_cache=use_mesos_cache,
         )
-        res = client.metastatus.metastatus(cmd_args=[str(arg) for arg in cmd_args]).result()
+        res = client.metastatus.metastatus(
+            cmd_args=[str(arg) for arg in cmd_args]
+        ).result()
         output, exit_code = res.output, res.exit_code
     except HTTPError as exc:
         output, exit_code = exc.response.text, exc.status_code
@@ -178,10 +180,7 @@ def print_cluster_status(
     return return_code
 
 
-def figure_out_clusters_to_inspect(
-    args,
-    all_clusters,
-) -> Sequence[str]:
+def figure_out_clusters_to_inspect(args, all_clusters) -> Sequence[str]:
     if args.clusters is not None:
         clusters_to_inspect = args.clusters.split(",")
     else:
@@ -189,37 +188,37 @@ def figure_out_clusters_to_inspect(
     return clusters_to_inspect
 
 
-def get_cluster_dashboards(
-    cluster: str,
-) -> str:
+def get_cluster_dashboards(cluster: str,) -> str:
     """Returns the direct dashboards for humans to use for a given cluster"""
-    SPACER = ' '
+    SPACER = " "
     try:
         dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
     except KeyError as e:
         if e.args[0] == cluster:
-            output = [PaastaColors.red('No dashboards configured for %s!' % cluster)]
+            output = [PaastaColors.red("No dashboards configured for %s!" % cluster)]
         else:
-            output = [PaastaColors.red('No dashboards configured!')]
+            output = [PaastaColors.red("No dashboards configured!")]
     else:
-        output = ['Dashboards:']
+        output = ["Dashboards:"]
         spacing = max((len(label) for label in dashboards.keys())) + 1
         for label, urls in dashboards.items():
             if isinstance(urls, list):
-                urls = "\n    %s" % '\n    '.join(urls)
-            output.append('  {}:{}{}'.format(label, SPACER * (spacing - len(label)), PaastaColors.cyan(urls)))
-    return '\n'.join(output)
+                urls = "\n    %s" % "\n    ".join(urls)
+            output.append(
+                "  {}:{}{}".format(
+                    label, SPACER * (spacing - len(label)), PaastaColors.cyan(urls)
+                )
+            )
+    return "\n".join(output)
 
 
-def paasta_metastatus(
-    args,
-) -> int:
+def paasta_metastatus(args,) -> int:
     """Print the status of a PaaSTA clusters"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
 
-    if 'USE_API_ENDPOINT' in os.environ:
-        use_api_endpoint = strtobool(os.environ['USE_API_ENDPOINT'])
+    if "USE_API_ENDPOINT" in os.environ:
+        use_api_endpoint = strtobool(os.environ["USE_API_ENDPOINT"])
     else:
         use_api_endpoint = True
 
@@ -237,9 +236,11 @@ def paasta_metastatus(
                     autoscaling_info=args.autoscaling_info,
                     use_mesos_cache=args.use_mesos_cache,
                     use_api_endpoint=use_api_endpoint,
-                ),
+                )
             )
         else:
-            paasta_print("Cluster %s doesn't look like a valid cluster?" % args.clusters)
+            paasta_print(
+                "Cluster %s doesn't look like a valid cluster?" % args.clusters
+            )
             paasta_print("Try using tab completion to help complete the cluster name")
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1

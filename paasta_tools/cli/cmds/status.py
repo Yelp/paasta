@@ -76,16 +76,12 @@ HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
-SSH_ONLY_INSTANCE_CONFIG = [
-    ChronosJobConfig,
-]
+SSH_ONLY_INSTANCE_CONFIG = [ChronosJobConfig]
 
 
-def add_subparser(
-    subparsers,
-) -> None:
+def add_subparser(subparsers,) -> None:
     status_parser = subparsers.add_parser(
-        'status',
+        "status",
         help="Display the status of a PaaSTA service.",
         description=(
             "'paasta status' works by SSH'ing to remote PaaSTA masters and "
@@ -98,15 +94,17 @@ def add_subparser(
         ),
     )
     status_parser.add_argument(
-        '-v', '--verbose',
-        action='count',
+        "-v",
+        "--verbose",
+        action="count",
         dest="verbose",
         default=0,
         help="Print out more output regarding the state of the service. "
-             "A second -v will also print the stdout/stderr tail.",
+        "A second -v will also print the stdout/stderr tail.",
     )
     status_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -116,104 +114,93 @@ def add_subparser(
     status_parser.set_defaults(command=paasta_status)
 
 
-def add_instance_filter_arguments(
-    status_parser,
-    verb: str = 'inspect',
-) -> None:
+def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     status_parser.add_argument(
-        '-s', '--service',
-        help=f'The name of the service you wish to {verb}',
+        "-s", "--service", help=f"The name of the service you wish to {verb}"
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
-        '-c', '--clusters',
+        "-c",
+        "--clusters",
         help=f"A comma-separated list of clusters to {verb}. By default, will {verb} all clusters.\n"
-             f"For example: --clusters norcal-prod,nova-prod",
+        f"For example: --clusters norcal-prod,nova-prod",
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
-        '-i', '--instances',
+        "-i",
+        "--instances",
         help=f"A comma-separated list of instances to {verb}. By default, will {verb} all instances.\n"
-             f"For example: --instances canary,main",
+        f"For example: --instances canary,main",
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.add_argument(
-        '-l', '--deploy-group',
+        "-l",
+        "--deploy-group",
         help=(
-            f'Name of the deploy group which you want to {verb}. '
-            f'If specified together with --instances and/or --clusters, will {verb} common instances only.'
+            f"Name of the deploy group which you want to {verb}. "
+            f"If specified together with --instances and/or --clusters, will {verb} common instances only."
         ),
     ).completer = lazy_choices_completer(list_deploy_groups)
     status_parser.add_argument(
-        '-o', '--owner',
-        help=f'Only {verb} instances with this owner specified in soa-configs.',
+        "-o",
+        "--owner",
+        help=f"Only {verb} instances with this owner specified in soa-configs.",
     ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
-        '-r', '--registration',
-        help=f'Only {verb} instances with this registration.',
+        "-r", "--registration", help=f"Only {verb} instances with this registration."
     )
 
 
-def missing_deployments_message(
-    service: str,
-) -> str:
+def missing_deployments_message(service: str,) -> str:
     message = (
-        f"{service} has no deployments in deployments.json yet.\n  "
-        "Has Jenkins run?"
+        f"{service} has no deployments in deployments.json yet.\n  " "Has Jenkins run?"
     )
     return message
 
 
-def get_deploy_info(
-    deploy_file_path: str,
-) -> Mapping:
+def get_deploy_info(deploy_file_path: str,) -> Mapping:
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
-        paasta_print('Error encountered with %s' % deploy_file_path)
+        paasta_print("Error encountered with %s" % deploy_file_path)
 
         exit(1)
     return deploy_info
 
 
-def get_planned_deployments(
-    service: str,
-    soa_dir: str,
-) -> Iterable[str]:
+def get_planned_deployments(service: str, soa_dir: str) -> Iterable[str]:
     for cluster, cluster_deploy_file in get_soa_cluster_deploy_files(
-        service=service,
-        soa_dir=soa_dir,
+        service=service, soa_dir=soa_dir
     ):
         for instance in get_deploy_info(cluster_deploy_file):
-            yield f'{cluster}.{instance}'
+            yield f"{cluster}.{instance}"
 
 
 def list_deployed_clusters(
-    pipeline: Sequence[str],
-    actual_deployments: Sequence[str],
+    pipeline: Sequence[str], actual_deployments: Sequence[str]
 ) -> Sequence[str]:
     """Returns a list of clusters that a service is deployed to given
     an input deploy pipeline and the actual deployments"""
     deployed_clusters: List[str] = []
     for namespace in pipeline:
-        cluster, instance = namespace.split('.')
+        cluster, instance = namespace.split(".")
         if namespace in actual_deployments:
             if cluster not in deployed_clusters:
                 deployed_clusters.append(cluster)
     return deployed_clusters
 
 
-def get_actual_deployments(
-    service: str,
-    soa_dir: str,
-) -> Mapping[str, str]:
+def get_actual_deployments(service: str, soa_dir: str) -> Mapping[str, str]:
     deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
-        paasta_print("Warning: it looks like %s has not been deployed anywhere yet!" % service, file=sys.stderr)
+        paasta_print(
+            "Warning: it looks like %s has not been deployed anywhere yet!" % service,
+            file=sys.stderr,
+        )
     # Create a dictionary of actual $service Jenkins deployments
     actual_deployments = {}
     for key, branch_dict in deployments_json.config_dict.items():
-        service, namespace = key.split(':')
+        service, namespace = key.split(":")
         if service == service:
-            value = branch_dict['docker_image']
-            sha = value[value.rfind('-') + 1:]
-            actual_deployments[namespace.replace('paasta-', '', 1)] = sha
+            value = branch_dict["docker_image"]
+            sha = value[value.rfind("-") + 1 :]
+            actual_deployments[namespace.replace("paasta-", "", 1)] = sha
     return actual_deployments
 
 
@@ -227,18 +214,20 @@ def paasta_status_on_api_endpoint(
 ) -> int:
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
-        paasta_print('Cannot get a paasta-api client')
+        paasta_print("Cannot get a paasta-api client")
         exit(1)
     swagger_verbose = True if verbose > 0 else False
     try:
-        status = client.service.status_instance(service=service, instance=instance, verbose=swagger_verbose).result()
+        status = client.service.status_instance(
+            service=service, instance=instance, verbose=swagger_verbose
+        ).result()
     except HTTPError as exc:
         paasta_print(exc.response.text)
         return exc.status_code
 
-    output.append('    instance: %s' % PaastaColors.blue(instance))
-    if status.git_sha != '':
-        output.append('    Git sha:    %s (desired)' % status.git_sha)
+    output.append("    instance: %s" % PaastaColors.blue(instance))
+    if status.git_sha != "":
+        output.append("    Git sha:    %s (desired)" % status.git_sha)
 
     if status.marathon is not None:
         return print_marathon_status(service, instance, output, status.marathon)
@@ -247,19 +236,26 @@ def paasta_status_on_api_endpoint(
     elif status.tron is not None:
         return print_tron_status(service, instance, output, status.tron, verbose)
     elif status.adhoc is not None:
-        return print_adhoc_status(cluster, service, instance, output, status.adhoc, verbose)
+        return print_adhoc_status(
+            cluster, service, instance, output, status.adhoc, verbose
+        )
     elif status.flink is not None:
-        return print_flink_status(cluster, service, instance, output, status.flink.get('status'), verbose)
+        return print_flink_status(
+            cluster, service, instance, output, status.flink.get("status"), verbose
+        )
     elif status.chronos is not None:
         return print_chronos_status(output, status.chronos.output)
     else:
-        paasta_print("Not implemented: Looks like %s is not a Marathon or Kubernetes instance" % instance)
+        paasta_print(
+            "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
+            % instance
+        )
         return 0
 
 
 def print_chronos_status(output, status_output):
-    for line in status_output.rstrip().split('\n'):
-        output.append('    %s' % line)
+    for line in status_output.rstrip().split("\n"):
+        output.append("    %s" % line)
     return 0
 
 
@@ -273,14 +269,16 @@ def print_adhoc_status(
 ) -> int:
     output.append(f"    Job: {instance}")
     for run in status:
-        output.append("Launch time: %s, run id: %s, framework id: %s" %
-                      (run['launch_time'], run['run_id'], run['framework_id']))
+        output.append(
+            "Launch time: %s, run id: %s, framework id: %s"
+            % (run["launch_time"], run["run_id"], run["framework_id"])
+        )
     if status:
         output.append(
             (
                 "    Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
                 "    | -F <framework id>]` to stop."
-            ).format(service, cluster, instance),
+            ).format(service, cluster, instance)
         )
     else:
         output.append("    Nothing found.")
@@ -289,33 +287,30 @@ def print_adhoc_status(
 
 
 def print_marathon_status(
-    service: str,
-    instance: str,
-    output: List[str],
-    marathon_status,
+    service: str, instance: str, output: List[str], marathon_status
 ) -> int:
     if marathon_status.error_message:
         output.append(marathon_status.error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
-        marathon_status.app_count,
-        marathon_status.bounce_method,
+        marathon_status.app_count, marathon_status.bounce_method
     )
     desired_state = desired_state_human(
-        marathon_status.desired_state,
-        marathon_status.expected_instance_count,
+        marathon_status.desired_state, marathon_status.expected_instance_count
     )
     output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
     status = MarathonDeployStatus.fromstring(marathon_status.deploy_status)
     if status != MarathonDeployStatus.NotRunning:
         if status == MarathonDeployStatus.Delayed:
-            deploy_status = marathon_app_deploy_status_human(status, marathon_status.backoff_seconds)
+            deploy_status = marathon_app_deploy_status_human(
+                status, marathon_status.backoff_seconds
+            )
         else:
             deploy_status = marathon_app_deploy_status_human(status)
     else:
-        deploy_status = 'NotRunning'
+        deploy_status = "NotRunning"
 
     output.append(
         "    {}".format(
@@ -327,8 +322,8 @@ def print_marathon_status(
                 app_count=marathon_status.app_count,
                 running_instances=marathon_status.running_instance_count,
                 normal_instance_count=marathon_status.expected_instance_count,
-            ),
-        ),
+            )
+        )
     )
     return 0
 
@@ -337,7 +332,10 @@ def kubernetes_app_deploy_status_human(status, backoff_seconds=None):
     status_string = kubernetes_tools.KubernetesDeployStatus.tostring(status)
 
     if status == kubernetes_tools.KubernetesDeployStatus.Waiting:
-        deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
+        deploy_status = (
+            "%s (new tasks waiting for capacity to become available)"
+            % PaastaColors.red(status_string)
+        )
     elif status == kubernetes_tools.KubernetesDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)
     elif status == kubernetes_tools.KubernetesDeployStatus.Running:
@@ -362,49 +360,50 @@ def status_kubernetes_job_human(
     if app_count >= 0:
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
-            instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.green(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
         elif running_instances == 0:
             status = PaastaColors.yellow("Critical")
-            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.red(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
         else:
             status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.yellow(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
         return "Kubernetes:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status,
+            status, instance_count, deploy_status
         )
     else:
         status = PaastaColors.yellow("Warning")
         return "Kubernetes:   {} - {} (app {}) is not configured in Kubernetes yet (waiting for bounce)".format(
-            status, name, desired_app_id,
+            status, name, desired_app_id
         )
 
 
 def print_flink_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
-    status,
-    verbose: int,
+    cluster: str, service: str, instance: str, output: List[str], status, verbose: int
 ) -> int:
     if status is None:
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
     if status.state != "running":
-        output.append("    State: {state}".format(
-            state=PaastaColors.yellow(status.state),
-        ))
+        output.append(
+            "    State: {state}".format(state=PaastaColors.yellow(status.state))
+        )
         output.append(f"    No other information available in non-running state")
         return 0
 
     dashboard_url = get_dashboard_url(
-        cluster=cluster,
-        service=service,
-        instance=instance,
+        cluster=cluster, service=service, instance=instance
     )
     if verbose:
-        output.append(f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}")
+        output.append(
+            f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
+        )
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
     output.append(f"    URL: {dashboard_url}/")
@@ -414,73 +413,75 @@ def print_flink_status(
         f" {status.overview['jobs-running']} running,"
         f" {status.overview['jobs-finished']} finished,"
         f" {status.overview['jobs-failed']} failed,"
-        f" {status.overview['jobs-cancelled']} cancelled",
+        f" {status.overview['jobs-cancelled']} cancelled"
     )
     output.append(
         "   "
         f" {status.overview['taskmanagers']} taskmanagers,"
-        f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available",
+        f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available"
     )
 
     output.append(f"    Jobs:")
     if verbose:
-        output.append(f"      Job Name                         State       Job ID                           Started")
+        output.append(
+            f"      Job Name                         State       Job ID                           Started"
+        )
     else:
         output.append(f"      Job Name                         State       Started")
     # Use only the most recent jobs
     unique_jobs = (
-        sorted(jobs, key=lambda j: -j['start-time'])[0]
+        sorted(jobs, key=lambda j: -j["start-time"])[0]
         for _, jobs in groupby(
-            sorted(status.jobs, key=lambda j: j['name']),
-            lambda j: j['name'],
+            sorted(status.jobs, key=lambda j: j["name"]), lambda j: j["name"]
         )
     )
     for job in unique_jobs:
-        job_id = job['jid']
+        job_id = job["jid"]
         if verbose:
             fmt = """      {job_name: <32.32} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
             fmt = "      {job_name: <32.32} {state: <11} {start_time}"
-        start_time = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(job['start-time']) // 1000))
-        output.append(fmt.format(
-            job_id=job_id,
-            job_name=job['name'].split('.', 2)[2],
-            state=job['state'],
-            start_time=f'{str(start_time)} ({humanize.naturaltime(start_time)})',
-            dashboard_url=PaastaColors.grey(
-                f'{dashboard_url}/#/jobs/{job_id}',
-            ),
-        ))
+        start_time = datetime_from_utc_to_local(
+            datetime.utcfromtimestamp(int(job["start-time"]) // 1000)
+        )
+        output.append(
+            fmt.format(
+                job_id=job_id,
+                job_name=job["name"].split(".", 2)[2],
+                state=job["state"],
+                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            )
+        )
         if job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
-            root_exception = exceptions['root-exception']
+            root_exception = exceptions["root-exception"]
             if root_exception is not None:
                 output.append(f"        Exception: {root_exception}")
-                ts = exceptions['timestamp']
+                ts = exceptions["timestamp"]
                 if ts is not None:
-                    exc_ts = datetime_from_utc_to_local(datetime.utcfromtimestamp(int(ts) // 1000))
-                    output.append(f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})")
+                    exc_ts = datetime_from_utc_to_local(
+                        datetime.utcfromtimestamp(int(ts) // 1000)
+                    )
+                    output.append(
+                        f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                    )
     return 0
 
 
 def print_kubernetes_status(
-    service: str,
-    instance: str,
-    output: List[str],
-    kubernetes_status,
+    service: str, instance: str, output: List[str], kubernetes_status
 ) -> int:
     if kubernetes_status.error_message:
         output.append(kubernetes_status.error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
-        kubernetes_status.app_count,
-        kubernetes_status.bounce_method,
+        kubernetes_status.app_count, kubernetes_status.bounce_method
     )
     desired_state = desired_state_human(
-        kubernetes_status.desired_state,
-        kubernetes_status.expected_instance_count,
+        kubernetes_status.desired_state, kubernetes_status.expected_instance_count
     )
     output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
@@ -497,18 +498,14 @@ def print_kubernetes_status(
                 app_count=kubernetes_status.app_count,
                 running_instances=kubernetes_status.running_instance_count,
                 normal_instance_count=kubernetes_status.expected_instance_count,
-            ),
-        ),
+            )
+        )
     )
     return 0
 
 
 def print_tron_status(
-    service: str,
-    instance: str,
-    output: List[str],
-    tron_status,
-    verbose: int = 0,
+    service: str, instance: str, output: List[str], tron_status, verbose: int = 0
 ) -> int:
     output.append(f"    Tron job: {tron_status.job_name}")
     if verbose:
@@ -541,26 +538,29 @@ def report_status_for_cluster(
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
-    output = ['', 'service: %s' % service, 'cluster: %s' % cluster]
+    output = ["", "service: %s" % service, "cluster: %s" % cluster]
     seen_instances = []
     deployed_instances = []
     instances = instance_whitelist.keys()
     http_only_instances = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
-        in HTTP_ONLY_INSTANCE_CONFIG
+        instance
+        for instance, instance_config_class in instance_whitelist.items()
+        if instance_config_class in HTTP_ONLY_INSTANCE_CONFIG
     ]
     ssh_only_instances = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
-        in SSH_ONLY_INSTANCE_CONFIG
+        instance
+        for instance, instance_config_class in instance_whitelist.items()
+        if instance_config_class in SSH_ONLY_INSTANCE_CONFIG
     ]
 
     tron_jobs = [
-        instance for instance, instance_config_class in instance_whitelist.items() if instance_config_class
-        == TronActionConfig
+        instance
+        for instance, instance_config_class in instance_whitelist.items()
+        if instance_config_class == TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
-        cluster_in_pipeline, instance = namespace.split('.')
+        cluster_in_pipeline, instance = namespace.split(".")
         seen_instances.append(instance)
 
         if cluster_in_pipeline != cluster:
@@ -578,8 +578,8 @@ def report_status_for_cluster(
 
         # Case: service NOT deployed to cluster.instance
         else:
-            output.append('  instance: %s' % PaastaColors.red(instance))
-            output.append('    Git sha:    None (not deployed yet)')
+            output.append("  instance: %s" % PaastaColors.red(instance))
+            output.append("    Git sha:    None (not deployed yet)")
 
     api_return_code = 0
     ssh_return_code = 0
@@ -588,8 +588,12 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance in http_only_instances or
-                deployed_instance in ssh_only_instances and use_api_endpoint
+                deployed_instance in http_only_instances
+                or deployed_instance in ssh_only_instances
+                and use_api_endpoint
+                # deployed_instance in http_only_instances
+                # or deployed_instance not in ssh_only_instances
+                # and use_api_endpoint
             )
         ]
         if len(http_only_deployed_instances):
@@ -610,22 +614,31 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance not in http_only_deployed_instances
+                deployed_instance
+                not in http_only_deployed_instances
+                # deployed_instance in ssh_only_instances
+                # or deployed_instance not in http_only_instances
+                # and not use_api_endpoint
             )
         ]
         if len(ssh_only_deployed_instances):
             ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
-                'status', cluster, service, ','.join(
+                "status",
+                cluster,
+                service,
+                ",".join(
                     deployed_instance
                     for deployed_instance in ssh_only_deployed_instances
                 ),
-                system_paasta_config, stream=False, verbose=verbose,
+                system_paasta_config,
+                stream=False,
+                verbose=verbose,
                 ignore_ssh_output=True,
             )
             # Status results are streamed. This print is for possible error messages.
             if status is not None:
-                for line in status.rstrip().split('\n'):
-                    output.append('    %s' % line)
+                for line in status.rstrip().split("\n"):
+                    output.append("    %s" % line)
 
     if len(tron_jobs) > 0:
         return_codes = [
@@ -641,7 +654,9 @@ def report_status_for_cluster(
         ]
         seen_instances.extend(tron_jobs)
 
-    output.append(report_invalid_whitelist_values(instances, seen_instances, 'instance'))
+    output.append(
+        report_invalid_whitelist_values(instances, seen_instances, "instance")
+    )
 
     if ssh_return_code:
         return_code = ssh_return_code
@@ -654,9 +669,7 @@ def report_status_for_cluster(
 
 
 def report_invalid_whitelist_values(
-    whitelist: Iterable[str],
-    items: Sequence[str],
-    item_type: str,
+    whitelist: Iterable[str], items: Sequence[str], item_type: str
 ) -> str:
     """Warns the user if there are entries in ``whitelist`` which don't
     correspond to any item in ``items``. Helps highlight typos.
@@ -664,22 +677,19 @@ def report_invalid_whitelist_values(
     return_string = ""
     bogus_entries = []
     if whitelist is None:
-        return ''
+        return ""
     for entry in whitelist:
         if entry not in items:
             bogus_entries.append(entry)
     if len(bogus_entries) > 0:
         return_string = (
-            "\n"
-            "Warning: This service does not have any %s matching these names:\n%s"
+            "\n" "Warning: This service does not have any %s matching these names:\n%s"
         ) % (item_type, ",".join(bogus_entries))
     return return_string
 
 
 def verify_instances(
-    args_instances: str,
-    service: str,
-    clusters: Sequence[str],
+    args_instances: str, service: str, clusters: Sequence[str]
 ) -> Sequence[str]:
     """Verify that a list of instances specified by user is correct for this service.
 
@@ -689,28 +699,33 @@ def verify_instances(
     :returns: a list of instances specified in args_instances without any exclusions.
     """
     unverified_instances = args_instances.split(",")
-    service_instances: Set[str] = list_all_instances_for_service(service, clusters=clusters)
+    service_instances: Set[str] = list_all_instances_for_service(
+        service, clusters=clusters
+    )
 
-    misspelled_instances: Sequence[str] = [i for i in unverified_instances if i not in service_instances]
+    misspelled_instances: Sequence[str] = [
+        i for i in unverified_instances if i not in service_instances
+    ]
 
     if misspelled_instances:
         suggestions: List[str] = []
         for instance in misspelled_instances:
-            suggestions.extend(difflib.get_close_matches(instance, service_instances, n=5, cutoff=0.5))  # type: ignore
+            matches = difflib.get_close_matches(
+                instance, service_instances, n=5, cutoff=0.5
+            )
+            suggestions.extend(matches)  # type: ignore
         suggestions = list(set(suggestions))
 
         if clusters:
-            message = (
-                "%s doesn't have any instances matching %s on %s."
-                % (
-                    service,
-                    ', '.join(sorted(misspelled_instances)),
-                    ', '.join(sorted(clusters)),
-                )
+            message = "{} doesn't have any instances matching {} on {}.".format(
+                service,
+                ", ".join(sorted(misspelled_instances)),
+                ", ".join(sorted(clusters)),
             )
         else:
-            message = ("%s doesn't have any instances matching %s."
-                       % (service, ', '.join(sorted(misspelled_instances))))
+            message = "{} doesn't have any instances matching {}.".format(
+                service, ", ".join(sorted(misspelled_instances))
+            )
 
         paasta_print(PaastaColors.red(message))
 
@@ -723,21 +738,18 @@ def verify_instances(
 
 
 def normalize_registrations(
-    service: str,
-    registrations: Sequence[str],
+    service: str, registrations: Sequence[str]
 ) -> Sequence[str]:
     ret = []
     for reg in registrations:
-        if '.' not in reg:
+        if "." not in reg:
             ret.append(f"{service}.{reg}")
         else:
             ret.append(reg)
     return ret
 
 
-def get_filters(
-    args,
-) -> Sequence[Callable[[InstanceConfig], bool]]:
+def get_filters(args,) -> Sequence[Callable[[InstanceConfig], bool]]:
     """Figures out which filters to apply from an args object, and returns them
 
     :param args: args object
@@ -746,39 +758,45 @@ def get_filters(
     filters = []
 
     if args.service:
-        filters.append(lambda conf: conf.get_service() in args.service.split(','))
+        filters.append(lambda conf: conf.get_service() in args.service.split(","))
 
     if args.clusters:
-        filters.append(lambda conf: conf.get_cluster() in args.clusters.split(','))
+        filters.append(lambda conf: conf.get_cluster() in args.clusters.split(","))
 
     if args.instances:
-        filters.append(lambda conf: conf.get_instance() in args.instances.split(','))
+        filters.append(lambda conf: conf.get_instance() in args.instances.split(","))
 
     if args.deploy_group:
-        filters.append(lambda conf: conf.get_deploy_group() in args.deploy_group.split(','))
+        filters.append(
+            lambda conf: conf.get_deploy_group() in args.deploy_group.split(",")
+        )
 
     if args.registration:
         normalized_regs = normalize_registrations(
-            service=args.service,
-            registrations=args.registration.split(','),
+            service=args.service, registrations=args.registration.split(",")
         )
         filters.append(
             lambda conf: any(
                 reg in normalized_regs
-                for reg in (conf.get_registrations() if hasattr(conf, 'get_registrations') else [])
-            ),
+                for reg in (
+                    conf.get_registrations()
+                    if hasattr(conf, "get_registrations")
+                    else []
+                )
+            )
         )
 
     if args.owner:
-        owners = args.owner.split(',')
+        owners = args.owner.split(",")
 
         filters.append(
             # If the instance owner is None, check the service owner, else check the instance owner
             lambda conf: get_team(
-                overrides={},
-                service=conf.get_service(),
-                soa_dir=args.soa_dir,
-            ) in owners if conf.get_team() is None else conf.get_team() in owners,
+                overrides={}, service=conf.get_service(), soa_dir=args.soa_dir
+            )
+            in owners
+            if conf.get_team() is None
+            else conf.get_team() in owners
         )
 
     return filters
@@ -797,10 +815,7 @@ def apply_args_filters(
     :returns: Dict of dicts, in format {cluster_name: {service_name: {instance1, instance2}}}
     """
     clusters_services_instances: DefaultDict[
-        str,
-        DefaultDict[
-            str, Dict[str, Type[InstanceConfig]]
-        ]
+        str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
 
     if args.service is None and args.owner is None:
@@ -812,11 +827,13 @@ def apply_args_filters(
 
     if args.service and args.service not in all_services:
         paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
-        suggestions = difflib.get_close_matches(args.service, all_services, n=5, cutoff=0.5)
+        suggestions = difflib.get_close_matches(
+            args.service, all_services, n=5, cutoff=0.5
+        )
         if suggestions:
-            paasta_print(PaastaColors.red(f'Did you mean any of these?'))
+            paasta_print(PaastaColors.red(f"Did you mean any of these?"))
             for suggestion in suggestions:
-                paasta_print(PaastaColors.red(f'  {suggestion}'))
+                paasta_print(PaastaColors.red(f"  {suggestion}"))
         return clusters_services_instances
 
     i_count = 0
@@ -824,32 +841,36 @@ def apply_args_filters(
         if args.service and service != args.service:
             continue
 
-        for instance_conf in get_instance_configs_for_service(service, soa_dir=args.soa_dir):
+        for instance_conf in get_instance_configs_for_service(
+            service, soa_dir=args.soa_dir
+        ):
             if all([f(instance_conf) for f in filters]):
-                cluster_service = clusters_services_instances[instance_conf.get_cluster()][service]
+                cluster_service = clusters_services_instances[
+                    instance_conf.get_cluster()
+                ][service]
                 cluster_service[instance_conf.get_instance()] = instance_conf.__class__
                 i_count += 1
 
     if i_count == 0 and args.service and args.instances:
         if args.clusters:
-            clusters = args.clusters.split(',')
+            clusters = args.clusters.split(",")
         else:
             clusters = list_clusters()
-        for service in args.service.split(','):
+        for service in args.service.split(","):
             verify_instances(args.instances, service, clusters)
 
     return clusters_services_instances
 
 
-def paasta_status(
-    args,
-) -> int:
+def paasta_status(args,) -> int:
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
-    if 'USE_API_ENDPOINT' in os.environ:
-        use_api_endpoint = bool(strtobool(os.environ['USE_API_ENDPOINT']))
+
+    if "USE_API_ENDPOINT" in os.environ:
+        use_api_endpoint = bool(strtobool(os.environ["USE_API_ENDPOINT"]))
+        # use_api_endpoint = strtobool(os.environ["USE_API_ENDPOINT"])
     else:
         use_api_endpoint = False
 
@@ -866,18 +887,21 @@ def paasta_status(
                 actual_deployments = get_actual_deployments(service, soa_dir)
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-                tasks.append((
-                    report_status_for_cluster, dict(
-                        service=service,
-                        cluster=cluster,
-                        deploy_pipeline=deploy_pipeline,
-                        actual_deployments=actual_deployments,
-                        instance_whitelist=instances,
-                        system_paasta_config=system_paasta_config,
-                        verbose=args.verbose,
-                        use_api_endpoint=use_api_endpoint,
-                    ),
-                ))
+                tasks.append(
+                    (
+                        report_status_for_cluster,
+                        dict(
+                            service=service,
+                            cluster=cluster,
+                            deploy_pipeline=deploy_pipeline,
+                            actual_deployments=actual_deployments,
+                            instance_whitelist=instances,
+                            system_paasta_config=system_paasta_config,
+                            verbose=args.verbose,
+                            use_api_endpoint=use_api_endpoint,
+                        ),
+                    )
+                )
             else:
                 paasta_print(missing_deployments_message(service))
                 return_codes.append(1)
@@ -886,7 +910,7 @@ def paasta_status(
         tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
         for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
-            paasta_print('\n'.join(output))
+            paasta_print("\n".join(output))
             return_codes.append(return_code)
 
     return max(return_codes)

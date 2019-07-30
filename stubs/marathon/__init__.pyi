@@ -4,7 +4,17 @@
 
 from typing import Any
 from .client import MarathonClient as MarathonClient
-from .models import MarathonResource as MarathonResource, MarathonApp as MarathonApp, MarathonTask as MarathonTask, MarathonConstraint as MarathonConstraint
-from .exceptions import MarathonError as MarathonError, MarathonHttpError as MarathonHttpError, NotFoundError as NotFoundError, InvalidChoiceError as InvalidChoiceError
+from .models import (
+    MarathonResource as MarathonResource,
+    MarathonApp as MarathonApp,
+    MarathonTask as MarathonTask,
+    MarathonConstraint as MarathonConstraint,
+)
+from .exceptions import (
+    MarathonError as MarathonError,
+    MarathonHttpError as MarathonHttpError,
+    NotFoundError as NotFoundError,
+    InvalidChoiceError as InvalidChoiceError,
+)
 
 log = ...  # type: Any

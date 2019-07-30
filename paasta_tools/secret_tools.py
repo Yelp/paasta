@@ -21,7 +21,7 @@ from typing import Optional
 from paasta_tools.secret_providers import SecretProvider
 
 SECRET_REGEX = r"^(SHARED_)?SECRET\([A-Za-z0-9_-]*\)$"
-SHARED_SECRET_SERVICE = '_shared'
+SHARED_SECRET_SERVICE = "_shared"
 
 
 def is_secret_ref(env_var_val: str) -> bool:
@@ -35,31 +35,26 @@ def is_secret_ref(env_var_val: str) -> bool:
 
 
 def is_shared_secret(env_var_val: str) -> bool:
-    return env_var_val.startswith('SHARED_')
+    return env_var_val.startswith("SHARED_")
 
 
 def get_hmac_for_secret(
-    env_var_val: str,
-    service: str,
-    soa_dir: str,
-    secret_environment: str,
+    env_var_val: str, service: str, soa_dir: str, secret_environment: str
 ) -> Optional[str]:
     secret_name = get_secret_name_from_ref(env_var_val)
     if is_shared_secret(env_var_val):
         service = SHARED_SECRET_SERVICE
-    secret_path = os.path.join(
-        soa_dir,
-        service,
-        "secrets", f"{secret_name}.json",
-    )
+    secret_path = os.path.join(soa_dir, service, "secrets", f"{secret_name}.json")
     try:
-        with open(secret_path, 'r') as json_secret_file:
+        with open(secret_path, "r") as json_secret_file:
             secret_file = json.load(json_secret_file)
             try:
-                return secret_file['environments'][secret_environment]['signature']
+                return secret_file["environments"][secret_environment]["signature"]
             except KeyError:
-                print("Failed to get secret signature at environments:{}:signature in json"
-                      " file".format(secret_environment))
+                print(
+                    "Failed to get secret signature at environments:{}:signature in json"
+                    " file".format(secret_environment)
+                )
                 return None
     except IOError:
         print(f"Failed to open json secret at {secret_path}")
@@ -70,7 +65,7 @@ def get_hmac_for_secret(
 
 
 def get_secret_name_from_ref(env_var_val: str) -> str:
-    return env_var_val.split('(')[1][:-1]
+    return env_var_val.split("(")[1][:-1]
 
 
 def get_secret_provider(
@@ -80,7 +75,9 @@ def get_secret_provider(
     cluster_names: List[str],
     secret_provider_kwargs: Dict[str, Any],
 ) -> SecretProvider:
-    SecretProvider = __import__(secret_provider_name, fromlist=['SecretProvider']).SecretProvider
+    SecretProvider = __import__(
+        secret_provider_name, fromlist=["SecretProvider"]
+    ).SecretProvider
     return SecretProvider(
         soa_dir=soa_dir,
         service_name=service_name,

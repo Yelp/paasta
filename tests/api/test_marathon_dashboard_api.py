@@ -20,29 +20,23 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_list_instances():
-    settings.cluster = 'fake_cluster'
+    settings.cluster = "fake_cluster"
     system_paasta_config_dict = {
         "marathon_servers": [
             {
                 "user": "fake_user",
                 "password": "fake_password",
-                "url": [
-                    "http://marathon:8080",
-                ],
+                "url": ["http://marathon:8080"],
             },
             {
                 "user": "fake_user",
                 "password": "fake_password",
-                "url": [
-                    "http://marathon1:8080",
-                ],
+                "url": ["http://marathon1:8080"],
             },
             {
                 "user": "fake_user",
                 "password": "fake_password",
-                "url": [
-                    "http://marathon2:8080",
-                ],
+                "url": ["http://marathon2:8080"],
             },
         ],
         "dashboard_links": {
@@ -51,15 +45,16 @@ def test_list_instances():
                     "http://accessible-marathon",
                     "http://accessible-marathon1",
                     "http://accessible-marathon2",
-                ],
-            },
+                ]
+            }
         },
     }
-    system_paasta_config = SystemPaastaConfig(config=system_paasta_config_dict, directory='unused')
+    system_paasta_config = SystemPaastaConfig(
+        config=system_paasta_config_dict, directory="unused"
+    )
     marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
     settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_servers=marathon_servers,
-        cached=False,
+        marathon_servers=marathon_servers, cached=False
     )
     request = testing.DummyRequest()
 

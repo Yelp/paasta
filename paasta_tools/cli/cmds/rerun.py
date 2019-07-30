@@ -41,7 +41,7 @@ def _get_default_execution_date():
 
 def add_subparser(subparsers):
     rerun_parser = subparsers.add_parser(
-        'rerun',
+        "rerun",
         help="Re-run a scheduled PaaSTA job",
         description=(
             "'paasta rerun' creates a copy of the specified PaaSTA scheduled job and executes it immediately. "
@@ -54,62 +54,68 @@ def add_subparser(subparsers):
         formatter_class=RawTextHelpFormatter,
     )
     rerun_parser.add_argument(
-        '-v', '--verbose',
-        action='count',
+        "-v",
+        "--verbose",
+        action="count",
         dest="verbose",
         default=0,
         help="Print out more output regarding the operation.",
     )
     rerun_parser.add_argument(
-        '-s', '--service',
-        help='The name of the service you wish to operate on.',
+        "-s", "--service", help="The name of the service you wish to operate on."
     ).completer = lazy_choices_completer(list_services)
     rerun_parser.add_argument(
-        '-i', '--instance',
-        help='Name of the scheduled job (instance) that you want to rerun.',
+        "-i",
+        "--instance",
+        help="Name of the scheduled job (instance) that you want to rerun.",
         required=True,
     ).completer = lazy_choices_completer(list_instances)
     rerun_parser.add_argument(
-        '-c', '--clusters',
+        "-c",
+        "--clusters",
         help="A comma-separated list of clusters to rerun the job on. Defaults to rerun on all clusters.\n"
-             "For example: --clusters norcal-prod,nova-prod",
+        "For example: --clusters norcal-prod,nova-prod",
     ).completer = lazy_choices_completer(list_clusters)
     rerun_parser.add_argument(
-        '-d', '--execution_date',
+        "-d",
+        "--execution_date",
         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .",
         type=chronos_tools.parse_execution_date,
     )
     rerun_parser.add_argument(
-        '-y', '--soa-dir',
+        "-y",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     rerun_parser.add_argument(
-        '-t', '--rerun-type',
+        "-t",
+        "--rerun-type",
         dest="rerun_type",
-        choices=['instance', 'graph'],
+        choices=["instance", "graph"],
         help="Specify how to rerun jobs that have parent-dependencies.\n"
-             "  - instance: rerun, as soon as possible, the required instance ONLY\n"
-             "  - graph: will rerun, as soon as possible, ALL the instances related to the required instance\n"
-             "    NOTE: the jobs rerun will respect the parents dependencies (topological order).\n"
-             "    WARNING: it could be expensive in terms of resources and of time. Use it carefully.\n"
-             "\n"
-             "Example: Assume that we have 4 jobs (j1, j2, j3 and j4) with the following relations\n"
-             "    j1 -> j2, j1 -> j3, j2 -> j3, j2 -> j4\n"
-             "\n"
-             "    Rerunning j2 wih --rerun-type=instance will rerun ONLY j2, j3 and j4 will not be re-ran\n"
-             "    Rerunning j2 wih --rerun-type=graph will rerun j1, j2, j3 and j4 respecting the dependency order\n",
+        "  - instance: rerun, as soon as possible, the required instance ONLY\n"
+        "  - graph: will rerun, as soon as possible, ALL the instances related to the required instance\n"
+        "    NOTE: the jobs rerun will respect the parents dependencies (topological order).\n"
+        "    WARNING: it could be expensive in terms of resources and of time. Use it carefully.\n"
+        "\n"
+        "Example: Assume that we have 4 jobs (j1, j2, j3 and j4) with the following relations\n"
+        "    j1 -> j2, j1 -> j3, j2 -> j3, j2 -> j4\n"
+        "\n"
+        "    Rerunning j2 wih --rerun-type=instance will rerun ONLY j2, j3 and j4 will not be re-ran\n"
+        "    Rerunning j2 wih --rerun-type=graph will rerun j1, j2, j3 and j4 respecting the dependency order\n",
     )
     rerun_parser.add_argument(
-        '-f', '--force-disabled',
+        "-f",
+        "--force-disabled",
         dest="force_disabled",
         action="store_true",
         default=False,
         help="Ignore the 'disabled' configuration of the service.\n"
-             "If this is set, disabled services will still be run.\n"
-             "If specified with '--rerun-type=graph', will also rerun disabled dependencies.\n",
+        "If this is set, disabled services will still be run.\n"
+        "If specified with '--rerun-type=graph', will also rerun disabled dependencies.\n",
     )
     rerun_parser.set_defaults(command=paasta_rerun)
 
@@ -131,16 +137,22 @@ def paasta_rerun(args):
     :param args: argparse.Namespace obj created from sys.args by cli"""
     system_paasta_config = load_system_paasta_config()
     soa_dir = args.soa_dir
-    service = figure_out_service_name(args, soa_dir)  # exit with an error if the service doesn't exist
+    service = figure_out_service_name(
+        args, soa_dir
+    )  # exit with an error if the service doesn't exist
     if args.execution_date:
         execution_date = args.execution_date
     else:
         execution_date = None
 
     all_clusters = list_clusters(soa_dir=soa_dir)
-    actual_deployments = get_actual_deployments(service, soa_dir)  # cluster.instance: sha
+    actual_deployments = get_actual_deployments(
+        service, soa_dir
+    )  # cluster.instance: sha
     if actual_deployments:
-        deploy_pipeline = list(get_planned_deployments(service, soa_dir))  # cluster.instance
+        deploy_pipeline = list(
+            get_planned_deployments(service, soa_dir)
+        )  # cluster.instance
         deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
         deployed_cluster_instance = _get_cluster_instance(actual_deployments.keys())
 
@@ -153,25 +165,38 @@ def paasta_rerun(args):
         paasta_print("cluster: %s" % cluster)
 
         if cluster not in all_clusters:
-            paasta_print("  Warning: \"%s\" does not look like a valid cluster." % cluster)
+            paasta_print(
+                '  Warning: "%s" does not look like a valid cluster.' % cluster
+            )
             continue
         if cluster not in deployed_clusters:
-            paasta_print(f"  Warning: service \"{service}\" has not been deployed to \"{cluster}\" yet.")
+            paasta_print(
+                f'  Warning: service "{service}" has not been deployed to "{cluster}" yet.'
+            )
             continue
         if not deployed_cluster_instance[cluster].get(args.instance, False):
-            paasta_print(("  Warning: instance \"%s\" is either invalid "
-                          "or has not been deployed to \"%s\" yet." % (args.instance, cluster)))
+            paasta_print(
+                (
+                    '  Warning: instance "%s" is either invalid '
+                    'or has not been deployed to "%s" yet.' % (args.instance, cluster)
+                )
+            )
             continue
 
         try:
             chronos_job_config = chronos_tools.load_chronos_job_config(
-                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir,
+                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir
             )
-            if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
-                paasta_print((
-                    "  Warning: \"%s\" uses time variables interpolation, "
-                    "please supply a `--execution_date` argument." % args.instance
-                ))
+            if (
+                chronos_tools.uses_time_variables(chronos_job_config)
+                and execution_date is None
+            ):
+                paasta_print(
+                    (
+                        '  Warning: "%s" uses time variables interpolation, '
+                        "please supply a `--execution_date` argument." % args.instance
+                    )
+                )
                 continue
         except NoConfigurationForServiceError as e:
             paasta_print("  Warning: %s" % e)
@@ -182,24 +207,27 @@ def paasta_rerun(args):
         related_job_configs = get_related_jobs_configs(cluster, service, args.instance)
 
         if not args.rerun_type and len(related_job_configs) > 1:
-            instance_names = sorted([
-                f'- {srv}{chronos_tools.INTERNAL_SPACER}{inst}'
-                for srv, inst in related_job_configs
-                if srv != service or inst != args.instance
-            ])
-            paasta_print(PaastaColors.red('  error'))
+            instance_names = sorted(
+                [
+                    f"- {srv}{chronos_tools.INTERNAL_SPACER}{inst}"
+                    for srv, inst in related_job_configs
+                    if srv != service or inst != args.instance
+                ]
+            )
+            paasta_print(PaastaColors.red("  error"))
             paasta_print(
-                'Instance {instance} has dependency relations with the following jobs:\n'
-                '{relations}\n'
-                '\n'
-                'Please specify the rerun policy via --rerun-type argument'.format(
-                    instance=args.instance,
-                    relations='\n'.join(instance_names),
-                ),
+                "Instance {instance} has dependency relations with the following jobs:\n"
+                "{relations}\n"
+                "\n"
+                "Please specify the rerun policy via --rerun-type argument".format(
+                    instance=args.instance, relations="\n".join(instance_names)
+                )
             )
             return
 
-        formatted_execution_date = execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT)
+        formatted_execution_date = execution_date.strftime(
+            chronos_tools.EXECUTION_DATE_FORMAT
+        )
         rc, output = execute_chronos_rerun_on_remote_master(
             service=service,
             instancename=args.instance,
@@ -207,21 +235,21 @@ def paasta_rerun(args):
             verbose=args.verbose,
             execution_date=formatted_execution_date,
             system_paasta_config=system_paasta_config,
-            run_all_related_jobs=args.rerun_type == 'graph',
+            run_all_related_jobs=args.rerun_type == "graph",
             force_disabled=args.force_disabled,
         )
         if rc == 0:
-            paasta_print(PaastaColors.green('  successfully created job'))
+            paasta_print(PaastaColors.green("  successfully created job"))
             _log_audit(
-                action='chronos-rerun',
+                action="chronos-rerun",
                 action_details={
-                    'rerun_type': args.rerun_type,
-                    'execution_date': formatted_execution_date,
+                    "rerun_type": args.rerun_type,
+                    "execution_date": formatted_execution_date,
                 },
                 service=service,
                 instance=args.instance,
                 cluster=cluster,
             )
         else:
-            paasta_print(PaastaColors.red('  error'))
+            paasta_print(PaastaColors.red("  error"))
             paasta_print(output)

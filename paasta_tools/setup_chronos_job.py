@@ -63,20 +63,22 @@ log = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Creates chronos jobs.')
+    parser = argparse.ArgumentParser(description="Creates chronos jobs.")
     parser.add_argument(
-        'service_instance',
+        "service_instance",
         help="The chronos instance of the service to create or update",
         metavar=compose_job_id("SERVICE", "INSTANCE"),
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=chronos_tools.DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
     return args
@@ -105,12 +107,12 @@ def send_event(service, instance, soa_dir, status, output):
     # In order to let sensu know how often to expect this check to fire,
     # we need to set the ``check_every`` to the frequency of our cron job, which
     # is 10s.
-    monitoring_overrides['check_every'] = '10s'
+    monitoring_overrides["check_every"] = "10s"
     # Most deploy_chronos_jobs failures are transient and represent issues
     # that will probably be fixed eventually, so we set an alert_after
     # to suppress extra noise
-    monitoring_overrides['alert_after'] = '10m'
-    check_name = 'setup_chronos_job.%s' % compose_job_id(service, instance)
+    monitoring_overrides["alert_after"] = "10m"
+    check_name = "setup_chronos_job.%s" % compose_job_id(service, instance)
     monitoring_tools.send_event(
         service=service,
         check_name=check_name,
@@ -121,24 +123,26 @@ def send_event(service, instance, soa_dir, status, output):
     )
 
 
-def bounce_chronos_job(
-    service,
-    instance,
-    cluster,
-    job_to_update,
-    client,
-):
+def bounce_chronos_job(service, instance, cluster, job_to_update, client):
     if job_to_update:
-        log_line = 'Job to update: %s' % job_to_update
+        log_line = "Job to update: %s" % job_to_update
         _log(
-            service=service, instance=instance, component='deploy',
-            cluster=cluster, level='debug', line=log_line,
+            service=service,
+            instance=instance,
+            component="deploy",
+            cluster=cluster,
+            level="debug",
+            line=log_line,
         )
         chronos_tools.update_job(client=client, job=job_to_update)
-        log_line = 'Updated Chronos job: %s' % job_to_update['name']
+        log_line = "Updated Chronos job: %s" % job_to_update["name"]
         _log(
-            service=service, instance=instance, component='deploy',
-            cluster=cluster, level='event', line=log_line,
+            service=service,
+            instance=instance,
+            component="deploy",
+            cluster=cluster,
+            level="event",
+            line=log_line,
         )
 
     return (0, "All chronos bouncing tasks finished.")
@@ -147,16 +151,13 @@ def bounce_chronos_job(
 def setup_job(service, instance, complete_job_config, client, cluster):
     # There should only ever be *one* job for a given service_instance
     all_existing_jobs = chronos_tools.lookup_chronos_jobs(
-        service=service,
-        instance=instance,
-        client=client,
-        include_disabled=True,
+        service=service, instance=instance, client=client, include_disabled=True
     )
 
     job_to_update = None
     if len(all_existing_jobs) > 0:
         # we store the md5 sum of the config in the description field.
-        if all_existing_jobs[0]['description'] != complete_job_config['description']:
+        if all_existing_jobs[0]["description"] != complete_job_config["description"]:
             job_to_update = complete_job_config
     else:
         job_to_update = complete_job_config
@@ -197,10 +198,10 @@ def config_with_historical_stats(chronos_client, service, instance, job_config):
         # these keys should always exist, but I guess it's good to be
         # defensive
         historical_state = {
-            'lastSuccess': existing_job.get('lastSuccess', ''),
-            'lastError': existing_job.get('lastError', ''),
-            'successCount': existing_job.get('successCount', 0),
-            'errorCount': existing_job.get('errorCount', 0),
+            "lastSuccess": existing_job.get("lastSuccess", ""),
+            "lastError": existing_job.get("lastError", ""),
+            "successCount": existing_job.get("successCount", 0),
+            "errorCount": existing_job.get("errorCount", 0),
         }
         copied = copy.deepcopy(job_config)
         copied.update(historical_state)
@@ -217,10 +218,14 @@ def main():
         logging.basicConfig(level=logging.WARNING)
 
     try:
-        service, instance, _, __ = decompose_job_id(args.service_instance, spacer=chronos_tools.INTERNAL_SPACER)
+        service, instance, _, __ = decompose_job_id(
+            args.service_instance, spacer=chronos_tools.INTERNAL_SPACER
+        )
     except InvalidJobNameError:
-        log.error("Invalid service instance '%s' specified. Format is service%sinstance."
-                  % (args.service_instance, SPACER))
+        log.error(
+            "Invalid service instance '%s' specified. Format is service%sinstance."
+            % (args.service_instance, SPACER)
+        )
         sys.exit(1)
 
     client = chronos_tools.get_chronos_client(chronos_tools.load_chronos_config())
@@ -228,13 +233,11 @@ def main():
 
     try:
         complete_job_config = chronos_tools.create_complete_config(
-            service=service,
-            job_name=instance,
-            soa_dir=soa_dir,
+            service=service, job_name=instance, soa_dir=soa_dir
         )
     except (NoDeploymentsAvailable, NoDockerImageError):
         error_msg = "No deployment found for {} in cluster {}. Has Jenkins run for it?".format(
-            args.service_instance, cluster,
+            args.service_instance, cluster
         )
         send_event(
             service=service,
@@ -247,8 +250,8 @@ def main():
         sys.exit(0)
     except NoConfigurationForServiceError as e:
         error_msg = (
-            f"Could not read chronos configuration file for {args.service_instance} in cluster {cluster}\n" +
-            "Error was: %s" % str(e)
+            f"Could not read chronos configuration file for {args.service_instance} in cluster {cluster}\n"
+            + "Error was: %s" % str(e)
         )
         send_event(
             service=service,
@@ -261,8 +264,8 @@ def main():
         sys.exit(0)
     except NoSlavesAvailableError as e:
         error_msg = (
-            f"There are no PaaSTA slaves that can run {args.service_instance} in cluster {cluster}\n" +
-            "Double check the cluster and the configured constraints/pool/whitelist.\n"
+            f"There are no PaaSTA slaves that can run {args.service_instance} in cluster {cluster}\n"
+            + "Double check the cluster and the configured constraints/pool/whitelist.\n"
             "Error was: %s" % str(e)
         )
         send_event(

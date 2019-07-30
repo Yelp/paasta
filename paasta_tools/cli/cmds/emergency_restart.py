@@ -27,7 +27,7 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
-        'emergency-restart',
+        "emergency-restart",
         help="Restarts a PaaSTA service instance in an emergency",
         description=(
             "'paasta emergency-restart' is useful in situations where the operator "
@@ -40,21 +40,25 @@ def add_subparser(subparsers):
         ),
     )
     status_parser.add_argument(
-        '-s', '--service',
+        "-s",
+        "--service",
         help="Service that you want to restart. Like 'example_service'.",
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
-        '-i', '--instance',
+        "-i",
+        "--instance",
         help="Instance of the service that you want to restart. Like 'main' or 'canary'.",
         required=True,
     ).completer = lazy_choices_completer(list_instances)
     status_parser.add_argument(
-        '-c', '--cluster',
+        "-c",
+        "--cluster",
         help="The PaaSTA cluster that has the service you want to restart. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -71,16 +75,19 @@ def paasta_emergency_restart(args):
     """
     service = figure_out_service_name(args, args.soa_dir)
     system_paasta_config = load_system_paasta_config()
-    paasta_print("Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance))
+    paasta_print(
+        "Performing an emergency restart on %s...\n"
+        % compose_job_id(service, args.instance)
+    )
     return_code, output = execute_paasta_serviceinit_on_remote_master(
-        subcommand='restart',
+        subcommand="restart",
         cluster=args.cluster,
         service=args.service,
         instances=args.instance,
         system_paasta_config=system_paasta_config,
     )
     _log_audit(
-        action='emergency-restart',
+        action="emergency-restart",
         service=args.service,
         cluster=args.cluster,
         instance=args.instance,

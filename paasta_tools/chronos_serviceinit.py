@@ -33,7 +33,16 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-def start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency=False):
+def start_chronos_job(
+    service,
+    instance,
+    job_id,
+    client,
+    cluster,
+    job_config,
+    complete_job_config,
+    emergency=False,
+):
     """
     Calls the 'manual start' Chronos endpoint (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
     running the job now regardless of its 'schedule'. The job's "schedule" is unmodified. If a job is disabled,
@@ -43,10 +52,16 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
 
     # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs or has
     # been previously stopped.
-    if complete_job_config['disabled']:
-        paasta_print(PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first."))
+    if complete_job_config["disabled"]:
+        paasta_print(
+            PaastaColors.red(
+                "You cannot emergency start a disabled job. Run `paasta start` first."
+            )
+        )
     else:
-        log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
+        log_reason = (
+            PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
+        )
         _log(
             service=service,
             line=f"{log_reason}: Starting manual run of {name} in Chronos",
@@ -60,7 +75,9 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
         client.run(job_id)
 
 
-def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergency=False):
+def stop_chronos_job(
+    service, instance, client, cluster, existing_jobs, emergency=False
+):
     log_reason = PaastaColors.red("EmergencyStop") if emergency else "Brutal bounce"
     for job in existing_jobs:
         name = PaastaColors.cyan(job["name"])
@@ -89,7 +106,16 @@ def restart_chronos_job(
     emergency=False,
 ):
     stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency)
-    start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency)
+    start_chronos_job(
+        service,
+        instance,
+        job_id,
+        client,
+        cluster,
+        job_config,
+        complete_job_config,
+        emergency,
+    )
 
 
 def get_short_task_id(task_id):
@@ -119,8 +145,7 @@ def _prettify_time(time):
         raise
     dt_localtime = datetime_from_utc_to_local(dt)
     pretty_dt = "{}, {}".format(
-        dt_localtime.strftime("%Y-%m-%dT%H:%M"),
-        humanize.naturaltime(dt_localtime),
+        dt_localtime.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(dt_localtime)
     )
     return pretty_dt
 
@@ -150,7 +175,7 @@ def _format_last_result(job):
 
 
 def _format_schedule(job):
-    if job.get('parents') is not None:
+    if job.get("parents") is not None:
         schedule = PaastaColors.yellow("None (Dependent Job).")
     else:
         schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
@@ -167,14 +192,16 @@ def _format_parents_summary(parents):
 
 
 def _format_parents_verbose(job):
-    parents = job.get('parents', [])
+    parents = job.get("parents", [])
     # create (service,instance) pairs for the parent names
-    parent_service_instances = [tuple(chronos_tools.decompose_job_id(parent)) for parent in parents]
+    parent_service_instances = [
+        tuple(chronos_tools.decompose_job_id(parent)) for parent in parents
+    ]
 
     # find matching parent jobs
     parent_jobs = [
         chronos_tools.get_jobs_for_service_instance(
-            *service_instance, include_disabled=True, include_temporary=False,
+            *service_instance, include_disabled=True, include_temporary=False
         )[0]
         for service_instance in parent_service_instances
     ]
@@ -182,15 +209,19 @@ def _format_parents_verbose(job):
     # get the status of the last run of each parent job
     parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]
     formatted_lines = [
-        ("\n"
-         "    - %(job_name)s\n"
-         "      Last Run: %(status)s (%(last_run)s)" % {
-             "job_name": parent['name'],
-             "last_run": status_parent[1],
-             "status": status_parent[0],
-         }) for (parent, status_parent) in parent_statuses
+        (
+            "\n"
+            "    - %(job_name)s\n"
+            "      Last Run: %(status)s (%(last_run)s)"
+            % {
+                "job_name": parent["name"],
+                "last_run": status_parent[1],
+                "status": status_parent[0],
+            }
+        )
+        for (parent, status_parent) in parent_statuses
     ]
-    return '\n'.join(formatted_lines)
+    return "\n".join(formatted_lines)
 
 
 def none_formatter():
@@ -213,22 +244,24 @@ def _get_parent_formatter(verbose):
     """ Returns a formatting function dependent on
     desired verbosity.
     """
+
     def dispatch_formatter(job):
-        parents = job.get('parents')
+        parents = job.get("parents")
         if not parents:
             return none_formatter()
         elif verbose:
             return _format_parents_verbose(job)
         else:
             return _format_parents_summary(parents)
+
     return dispatch_formatter
 
 
 def _get_schedule_field_for_job_type(job_type):
     if job_type == chronos_tools.JobType.Dependent:
-        return 'Parents'
+        return "Parents"
     elif job_type == chronos_tools.JobType.Scheduled:
-        return 'Schedule'
+        return "Schedule"
     else:
         raise ValueError("Expected a valid JobType")
 
@@ -261,10 +294,10 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
     :param verbose: int verbosity level
     """
     job_name = _format_job_name(job)
-    is_temporary = chronos_tools.is_temporary_job(job) if 'name' in job else 'UNKNOWN'
+    is_temporary = chronos_tools.is_temporary_job(job) if "name" in job else "UNKNOWN"
     job_name = modify_string_for_rerun_status(job_name, is_temporary)
     disabled_state = _format_disabled_status(job)
-    service, instance = chronos_tools.decompose_job_id(job['name'])
+    service, instance = chronos_tools.decompose_job_id(job["name"])
     chronos_state = chronos_tools.get_chronos_status_for_job(client, service, instance)
     (last_result, formatted_time) = _format_last_result(job)
 
@@ -274,7 +307,11 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
     schedule_value = schedule_formatter(job)
 
     command = _format_command(job)
-    mesos_status = PaastaColors.yellow("Running") if running_task_count else PaastaColors.grey("Not running")
+    mesos_status = (
+        PaastaColors.yellow("Running")
+        if running_task_count
+        else PaastaColors.grey("Not running")
+    )
     if verbose > 0:
         tail_lines = calculate_tail_lines(verbose_level=verbose)
         mesos_status_verbose = status_mesos_tasks_verbose(
@@ -289,7 +326,8 @@ def format_chronos_job_status(client, job, running_task_count, verbose=0):
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
-        "  Mesos:    %(mesos_status)s" % {
+        "  Mesos:    %(mesos_status)s"
+        % {
             "job_name": job_name,
             "is_temporary": is_temporary,
             "schedule_type": schedule_type,
@@ -316,17 +354,11 @@ def status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose):
     """
     # Verbose mode shows previous versions.
     matching_jobs = chronos_tools.lookup_chronos_jobs(
-        service=service,
-        instance=instance,
-        client=client,
-        include_disabled=True,
+        service=service, instance=instance, client=client, include_disabled=True
     )
     sorted_matching_jobs = chronos_tools.sort_jobs(matching_jobs)
     job_config = chronos_tools.load_chronos_job_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
+        service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
     )
     if sorted_matching_jobs == []:
         return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
@@ -335,12 +367,15 @@ def status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose):
         desired_state = job_config.get_desired_state_human()
         output.append("Desired:    %s" % desired_state)
         for job in sorted_matching_jobs:
-            running_task_count = len(select_tasks_by_id(
-                a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
-                job["name"],
-            ))
-            output.append(format_chronos_job_status(client, job, running_task_count, verbose))
-
+            running_task_count = len(
+                select_tasks_by_id(
+                    a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
+                    job["name"],
+                )
+            )
+            output.append(
+                format_chronos_job_status(client, job, running_task_count, verbose)
+            )
         return "\n".join(output)
 
 
@@ -359,12 +394,11 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, clien
         client = chronos_tools.get_chronos_client(chronos_config)
 
     job_config = chronos_tools.load_chronos_job_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
+        service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
     )
-    complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
+    complete_job_config = chronos_tools.create_complete_config(
+        service, instance, soa_dir=soa_dir
+    )
     job_id = complete_job_config["name"]
 
     if command == "start":
@@ -386,13 +420,12 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, clien
             include_disabled=True,
             include_temporary=True,
         )
-        stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
+        stop_chronos_job(
+            service, instance, client, cluster, matching_jobs, emergency=True
+        )
     elif command == "restart":
         matching_jobs = chronos_tools.lookup_chronos_jobs(
-            service=service,
-            instance=instance,
-            client=client,
-            include_disabled=True,
+            service=service, instance=instance, client=client, include_disabled=True
         )
         restart_chronos_job(
             service=service,
@@ -406,10 +439,13 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, clien
             emergency=True,
         )
     elif command == "status":
-        paasta_print(status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose))
+        paasta_print(
+            status_chronos_jobs(client, service, instance, cluster, soa_dir, verbose)
+        )
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
     return 0
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

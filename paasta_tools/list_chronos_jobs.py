@@ -34,14 +34,20 @@ from paasta_tools.utils import paasta_print
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Lists Chronos jobs for a service.')
+    parser = argparse.ArgumentParser(description="Lists Chronos jobs for a service.")
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="define a specific cluster to read from",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=chronos_tools.DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
@@ -51,10 +57,12 @@ def parse_args():
 
 def main():
     args = parse_args()
-    jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
+    jobs = chronos_tools.get_chronos_jobs_for_cluster(
+        cluster=args.cluster, soa_dir=args.soa_dir
+    )
     # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
-    composed = [f'{name}{chronos_tools.INTERNAL_SPACER}{job}' for name, job in jobs]
-    paasta_print('\n'.join(composed))
+    composed = [f"{name}{chronos_tools.INTERNAL_SPACER}{job}" for name, job in jobs]
+    paasta_print("\n".join(composed))
     sys.exit(0)
 
 

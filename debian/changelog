@@ -1,3 +1,18 @@
+paasta-tools (0.85.33) xenial; urgency=medium
+
+  * 0.85.33 tagged with 'make release'
+    Commit: Fix `make release` incompatibility with `black`
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 30 Jul 2019 06:23:25 -0700
+
+paasta-tools (0.85.32) xenial; urgency=medium
+
+  * 0.85.32 tagged with 'make release'
+    Commit: Merge pull request #2344 from Yelp/black-pyproject_toml
+    pyproject.toml with config for black
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 30 Jul 2019 05:17:15 -0700
+
 paasta-tools (0.85.31) xenial; urgency=medium
 
   * 0.85.31 tagged with 'make release'
