@@ -1,10 +1,12 @@
 import argparse
 import json
+import logging
 import os
 import socket
 import sys
 import time
 
+import boto3
 from boto3.exceptions import Boto3Error
 from botocore.session import Session
 from ruamel.yaml import YAML
@@ -32,15 +34,15 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
+
 AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
+DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 DEFAULT_AWS_REGION = "us-west-2"
 DEFAULT_SERVICE = "spark"
 DEFAULT_SPARK_WORK_DIR = "/spark_driver"
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
-DEFAULT_S3_DEV_LOG_DIR = "s3a://yelp-spark-event-logs-dev-us-west-2/"
-DEFAULT_S3_PROD_LOG_DIR = "s3a://yelp-spark-event-logs-prod-us-west-2/"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
@@ -55,6 +57,8 @@ deprecated_opts = {
     "driver-cores": "spark.driver.cores",
     "driver-memory": "spark.driver.memory",
 }
+
+log = logging.getLogger(__name__)
 
 
 class DeprecatedAction(argparse.Action):
@@ -320,10 +324,32 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
     return cmd
 
 
-def get_spark_env(args, spark_conf, spark_ui_port):
+def get_default_event_log_dir(access_key, secret_key):
+    with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
+        spark_run_conf = YAML().load(fp.read())
+    try:
+        account_id = (
+            boto3.client(
+                "sts", aws_access_key_id=access_key, aws_secret_access_key=secret_key
+            )
+            .get_caller_identity()
+            .get("Account")
+        )
+    except Exception as e:
+        log.warning("Failed to identify account ID, error: {}".format(str(e)))
+        return None
+
+    for conf in spark_run_conf["environments"].values():
+        if account_id == conf["account_id"]:
+            default_event_log_dir = conf["default_event_log_dir"]
+            paasta_print(f"default event logging at: {default_event_log_dir}")
+            return default_event_log_dir
+    return None
+
+
+def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
     spark_env = {}
 
-    access_key, secret_key = get_aws_credentials(args)
     spark_env["AWS_ACCESS_KEY_ID"] = access_key
     spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
     spark_env["AWS_DEFAULT_REGION"] = args.aws_region
@@ -405,7 +431,14 @@ def load_aws_credentials_from_yaml(yaml_file_path):
 
 
 def get_spark_config(
-    args, spark_app_name, spark_ui_port, docker_img, system_paasta_config, volumes
+    args,
+    spark_app_name,
+    spark_ui_port,
+    docker_img,
+    system_paasta_config,
+    volumes,
+    access_key,
+    secret_key,
 ):
     # User configurable Spark options
     user_args = {
@@ -417,11 +450,12 @@ def get_spark_config(
         # instance_type:m4.10xlarge\;pool:default
         "spark.mesos.constraints": "pool:%s" % args.pool,
         "spark.mesos.executor.docker.forcePullImage": "true",
-        "spark.eventLog.enabled": "true",
-        "spark.eventLog.dir": DEFAULT_S3_PROD_LOG_DIR
-        if "prod" in args.cluster
-        else DEFAULT_S3_DEV_LOG_DIR,
     }
+
+    default_event_log_dir = get_default_event_log_dir(access_key, secret_key)
+    if default_event_log_dir is not None:
+        user_args["spark.eventLog.enabled"] = "true"
+        user_args["spark.eventLog.dir"] = default_event_log_dir
 
     # Spark options managed by PaaSTA
     cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(
@@ -679,6 +713,7 @@ def configure_and_run_docker_container(
     if "jupyter" not in original_docker_cmd:
         spark_app_name = container_name
 
+    access_key, secret_key = get_aws_credentials(args)
     spark_config_dict = get_spark_config(
         args=args,
         spark_app_name=spark_app_name,
@@ -686,6 +721,8 @@ def configure_and_run_docker_container(
         docker_img=docker_img,
         system_paasta_config=system_paasta_config,
         volumes=volumes,
+        access_key=access_key,
+        secret_key=secret_key,
     )
     spark_conf_str = create_spark_config_str(spark_config_dict, is_mrjob=args.mrjob)
 
@@ -695,7 +732,9 @@ def configure_and_run_docker_container(
     volumes.append("/etc/group:/etc/group:ro")
 
     environment = instance_config.get_env_dictionary()
-    environment.update(get_spark_env(args, spark_conf_str, spark_ui_port))
+    environment.update(
+        get_spark_env(args, spark_conf_str, spark_ui_port, access_key, secret_key)
+    )
 
     webui_url = f"http://{socket.getfqdn()}:{spark_ui_port}"
 
