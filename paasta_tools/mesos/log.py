@@ -41,10 +41,10 @@ def duration(fn):
         try:
             return fn(*args, **kwargs)
         finally:
-            debug("duration: {}.{}: {:2.2f}s".format(
-                fn.__module__,
-                fn.__name__,
-                time.time() - start,
-            ))
+            debug(
+                "duration: {}.{}: {:2.2f}s".format(
+                    fn.__module__, fn.__name__, time.time() - start
+                )
+            )
 
     return timer

@@ -29,141 +29,140 @@ from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 def test_load_smartstack_info_for_service(system_paasta_config):
     with mock.patch(
-        'paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config',
+        "paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config",
         autospec=True,
     ), mock.patch(
-        'paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute',
+        "paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute",
         autospec=True,
     ):
         # just a smoke test for now.
         smartstack_tools.load_smartstack_info_for_service(
-            service='service',
-            namespace='namespace',
-            soa_dir='fake',
+            service="service",
+            namespace="namespace",
+            soa_dir="fake",
             blacklist=[],
             system_paasta_config=system_paasta_config,
         )
 
 
 def test_get_smartstack_replication_for_attribute(system_paasta_config):
-    fake_namespace = 'fake_main'
-    fake_service = 'fake_service'
+    fake_namespace = "fake_main"
+    fake_service = "fake_service"
     mock_filtered_slaves = [
-        {
-            'hostname': 'hostone',
-            'attributes': {
-                'fake_attribute': 'foo',
-            },
-        },
-        {
-            'hostname': 'hostone',
-            'attributes': {
-                'fake_attribute': 'bar',
-            },
-        },
+        {"hostname": "hostone", "attributes": {"fake_attribute": "foo"}},
+        {"hostname": "hostone", "attributes": {"fake_attribute": "bar"}},
     ]
 
     with mock.patch(
-        'paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist',
-        return_value=mock_filtered_slaves, autospec=True,
+        "paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist",
+        return_value=mock_filtered_slaves,
+        autospec=True,
     ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
-        'paasta_tools.smartstack_tools.get_replication_for_services',
-        return_value={}, autospec=True,
+        "paasta_tools.smartstack_tools.get_replication_for_services",
+        return_value={},
+        autospec=True,
     ) as mock_get_replication_for_services:
-        expected = {
-            'foo': {},
-            'bar': {},
-        }
+        expected = {"foo": {}, "bar": {}}
         actual = smartstack_tools.get_smartstack_replication_for_attribute(
-            attribute='fake_attribute',
+            attribute="fake_attribute",
             service=fake_service,
             namespace=fake_namespace,
             blacklist=[],
             system_paasta_config=system_paasta_config,
         )
         mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
-            blacklist=[],
-            whitelist=None,
+            blacklist=[], whitelist=None
         )
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
 
         mock_get_replication_for_services.assert_any_call(
-            synapse_host='hostone',
+            synapse_host="hostone",
             synapse_port=system_paasta_config.get_synapse_port(),
             synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-            services=['fake_service.fake_main'],
+            services=["fake_service.fake_main"],
         )
 
 
 def test_get_replication_for_service():
     testdir = os.path.dirname(os.path.realpath(__file__))
-    testdata = os.path.join(testdir, 'haproxy_snapshot.txt')
-    with open(testdata, 'r') as fd:
+    testdata = os.path.join(testdir, "haproxy_snapshot.txt")
+    with open(testdata, "r") as fd:
         mock_haproxy_data = fd.read()
 
     mock_response = mock.Mock()
     mock_response.text = mock_haproxy_data
     mock_get = mock.Mock(return_value=(mock_response))
 
-    with mock.patch.object(requests.Session, 'get', mock_get):
+    with mock.patch.object(requests.Session, "get", mock_get):
         replication_result = get_replication_for_services(
-            'fake_host',
+            "fake_host",
             6666,
             DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-            ['service1', 'service2', 'service3', 'service4'],
+            ["service1", "service2", "service3", "service4"],
         )
-        expected = {
-            'service1': 18,
-            'service2': 19,
-            'service3': 0,
-            'service4': 3,
-        }
+        expected = {"service1": 18, "service2": 19, "service3": 0, "service4": 3}
         assert expected == replication_result
 
 
 def test_get_registered_marathon_tasks():
     backends = [
-        {"pxname": "servicename.main", "svname": "10.50.2.4:31000_box4", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.5:31001_box5", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.6:31001_box6", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.6:31002_box7", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.8:31000_box8", "status": "UP"},
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.4:31000_box4",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.5:31001_box5",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31001_box6",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31002_box7",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.8:31000_box8",
+            "status": "UP",
+        },
     ]
 
     hostnames = {
-        'box4': '10.50.2.4',
-        'box5': '10.50.2.5',
-        'box6': '10.50.2.6',
-        'box7': '10.50.2.7',
-        'box8': '10.50.2.8',
+        "box4": "10.50.2.4",
+        "box5": "10.50.2.5",
+        "box6": "10.50.2.6",
+        "box7": "10.50.2.7",
+        "box8": "10.50.2.8",
     }
 
-    good_task1 = mock.Mock(host='box4', ports=[31000])
-    good_task2 = mock.Mock(host='box5', ports=[31001])
-    bad_task = mock.Mock(host='box7', ports=[31000])
+    good_task1 = mock.Mock(host="box4", ports=[31000])
+    good_task2 = mock.Mock(host="box5", ports=[31001])
+    bad_task = mock.Mock(host="box7", ports=[31000])
 
-    marathon_tasks = [
-        good_task1,
-        good_task2,
-        bad_task,
-    ]
+    marathon_tasks = [good_task1, good_task2, bad_task]
 
     with mock.patch(
-        'paasta_tools.smartstack_tools.get_multiple_backends',
+        "paasta_tools.smartstack_tools.get_multiple_backends",
         return_value=backends,
         autospec=True,
     ) as mock_get_multiple_backends:
         with mock.patch(
-            'paasta_tools.smartstack_tools.socket.gethostbyname',
+            "paasta_tools.smartstack_tools.socket.gethostbyname",
             side_effect=lambda x: hostnames[x],
             autospec=True,
         ):
             actual = get_registered_marathon_tasks(
-                'fake_host',
+                "fake_host",
                 6666,
                 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-                'servicename.main',
+                "servicename.main",
                 marathon_tasks,
             )
 
@@ -171,8 +170,8 @@ def test_get_registered_marathon_tasks():
             assert actual == expected
 
             mock_get_multiple_backends.assert_called_once_with(
-                ['servicename.main'],
-                synapse_host='fake_host',
+                ["servicename.main"],
+                synapse_host="fake_host",
                 synapse_port=6666,
                 synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
             )
@@ -187,37 +186,61 @@ def test_backend_is_up():
 
 
 def test_ip_port_hostname_from_svname_new_format():
-    assert ("10.40.10.155", 31219, "myhost") == ip_port_hostname_from_svname("myhost_10.40.10.155:31219")
+    assert ("10.40.10.155", 31219, "myhost") == ip_port_hostname_from_svname(
+        "myhost_10.40.10.155:31219"
+    )
 
 
 def test_ip_port_hostname_from_svname_old_format():
-    assert ("10.85.5.101", 3744, "myhost") == ip_port_hostname_from_svname("10.85.5.101:3744_myhost")
+    assert ("10.85.5.101", 3744, "myhost") == ip_port_hostname_from_svname(
+        "10.85.5.101:3744_myhost"
+    )
 
 
 def test_match_backends_and_tasks():
     backends = [
-        {"pxname": "servicename.main", "svname": "10.50.2.4:31000_box4", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.5:31001_box5", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.6:31001_box6", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.6:31002_box7", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.8:31000_box8", "status": "UP"},
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.4:31000_box4",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.5:31001_box5",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31001_box6",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31002_box7",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.8:31000_box8",
+            "status": "UP",
+        },
     ]
 
     hostnames = {
-        'box4': '10.50.2.4',
-        'box5': '10.50.2.5',
-        'box6': '10.50.2.6',
-        'box7': '10.50.2.7',
-        'box8': '10.50.2.8',
+        "box4": "10.50.2.4",
+        "box5": "10.50.2.5",
+        "box6": "10.50.2.6",
+        "box7": "10.50.2.7",
+        "box8": "10.50.2.8",
     }
 
-    good_task1 = mock.Mock(host='box4', ports=[31000])
-    good_task2 = mock.Mock(host='box5', ports=[31001])
-    bad_task = mock.Mock(host='box7', ports=[31000])
+    good_task1 = mock.Mock(host="box4", ports=[31000])
+    good_task2 = mock.Mock(host="box5", ports=[31001])
+    bad_task = mock.Mock(host="box7", ports=[31000])
     tasks = [good_task1, good_task2, bad_task]
 
     with mock.patch(
-        'paasta_tools.smartstack_tools.socket.gethostbyname',
+        "paasta_tools.smartstack_tools.socket.gethostbyname",
         side_effect=lambda x: hostnames[x],
         autospec=True,
     ):
@@ -233,47 +256,81 @@ def test_match_backends_and_tasks():
 
         def keyfunc(t):
             return tuple(sorted((t[0] or {}).items())), t[1]
+
         assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
 
 
-@mock.patch('paasta_tools.smartstack_tools.get_multiple_backends', autospec=True)
+@mock.patch("paasta_tools.smartstack_tools.get_multiple_backends", autospec=True)
 def test_get_replication_for_all_services(mock_get_multiple_backends):
     mock_get_multiple_backends.return_value = [
-        {"pxname": "servicename.main", "svname": "10.50.2.4:31000_box4", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.5:31001_box5", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.6:31001_box6", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.6:31002_box7", "status": "UP"},
-        {"pxname": "servicename.main", "svname": "10.50.2.8:31000_box8", "status": "UP"},
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.4:31000_box4",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.5:31001_box5",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31001_box6",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31002_box7",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.8:31000_box8",
+            "status": "UP",
+        },
     ]
-    assert {'servicename.main': 5} == \
-        smartstack_tools.get_replication_for_all_services('', 8888, '')
+    assert {"servicename.main": 5} == smartstack_tools.get_replication_for_all_services(
+        "", 8888, ""
+    )
 
 
-@mock.patch('paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config', autospec=True)
-@mock.patch('paasta_tools.smartstack_tools.get_replication_for_all_services', autospec=True)
+@mock.patch(
+    "paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.smartstack_tools.get_replication_for_all_services", autospec=True
+)
 def test_get_replication_for_instance_mesos(
     mock_get_replication_for_all_services,
     mock_load_service_namespace_config,
     system_paasta_config,
 ):
     mock_mesos_slaves = [
-        {'hostname': 'host1', 'attributes': {'region': 'fake_region1', 'pool': 'default'}},
-        {'hostname': 'host2', 'attributes': {'region': 'fake_region1', 'pool': 'cool_pool'}},
+        {
+            "hostname": "host1",
+            "attributes": {"region": "fake_region1", "pool": "default"},
+        },
+        {
+            "hostname": "host2",
+            "attributes": {"region": "fake_region1", "pool": "cool_pool"},
+        },
     ]
-    instance_config = mock.Mock(service='fake_service', instance='fake_instance')
+    instance_config = mock.Mock(service="fake_service", instance="fake_instance")
     instance_config.get_monitoring_blacklist.return_value = []
-    instance_config.get_pool.return_value = 'cool_pool'
-    mock_get_replication_for_all_services.return_value = \
-        {'fake_service.fake_instance': 20}
-    mock_load_service_namespace_config.return_value.get_discover.return_value = 'region'
+    instance_config.get_pool.return_value = "cool_pool"
+    mock_get_replication_for_all_services.return_value = {
+        "fake_service.fake_instance": 20
+    }
+    mock_load_service_namespace_config.return_value.get_discover.return_value = "region"
     checker = smartstack_tools.MesosSmartstackReplicationChecker(
-        mesos_slaves=mock_mesos_slaves,
-        system_paasta_config=system_paasta_config,
+        mesos_slaves=mock_mesos_slaves, system_paasta_config=system_paasta_config
     )
-    assert checker.get_replication_for_instance(instance_config) == \
-        {'fake_region1': {'fake_service.fake_instance': 20}}
+    assert checker.get_replication_for_instance(instance_config) == {
+        "fake_region1": {"fake_service.fake_instance": 20}
+    }
     mock_get_replication_for_all_services.assert_called_once_with(
-        synapse_host='host2',
+        synapse_host="host2",
         synapse_port=system_paasta_config.get_synapse_port(),
         synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
     )
@@ -281,116 +338,88 @@ def test_get_replication_for_instance_mesos(
 
 def test_are_services_up_on_port():
     with mock.patch(
-        'paasta_tools.smartstack_tools.get_multiple_backends', autospec=True,
+        "paasta_tools.smartstack_tools.get_multiple_backends", autospec=True
     ) as mock_get_multiple_backends, mock.patch(
-        'paasta_tools.smartstack_tools.ip_port_hostname_from_svname', autospec=True,
+        "paasta_tools.smartstack_tools.ip_port_hostname_from_svname", autospec=True
     ) as mock_ip_port_hostname_from_svname, mock.patch(
-        'paasta_tools.smartstack_tools.backend_is_up', autospec=True,
+        "paasta_tools.smartstack_tools.backend_is_up", autospec=True
     ) as mock_backend_is_up:
         # none present
         assert not smartstack_tools.are_services_up_on_ip_port(
-            synapse_host='1.2.3.4',
+            synapse_host="1.2.3.4",
             synapse_port=3212,
             synapse_haproxy_url_format="thing",
-            services=['service1.instance1', 'service1.instance2'],
-            host_ip='10.1.1.1',
+            services=["service1.instance1", "service1.instance2"],
+            host_ip="10.1.1.1",
             host_port=8888,
         )
 
         mock_get_multiple_backends.return_value = [
-            {
-                'svname': 'thing1',
-                'pxname': 'service1.instance1',
-            }, {
-                'svname': 'thing2',
-                'pxname': 'service1.instance2',
-            }, {
-                'svname': 'thing3',
-                'pxname': 'service1.instance2',
-            },
+            {"svname": "thing1", "pxname": "service1.instance1"},
+            {"svname": "thing2", "pxname": "service1.instance2"},
+            {"svname": "thing3", "pxname": "service1.instance2"},
         ]
-        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_ip_port_hostname_from_svname.return_value = ("10.1.1.1", 8888, "a")
         mock_backend_is_up.return_value = True
         # all backends present and up
         assert smartstack_tools.are_services_up_on_ip_port(
-            synapse_host='1.2.3.4',
+            synapse_host="1.2.3.4",
             synapse_port=3212,
             synapse_haproxy_url_format="thing",
-            services=['service1.instance1', 'service1.instance2'],
-            host_ip='10.1.1.1',
+            services=["service1.instance1", "service1.instance2"],
+            host_ip="10.1.1.1",
             host_port=8888,
         )
 
         mock_get_multiple_backends.return_value = [
-            {
-                'svname': 'thing1',
-                'pxname': 'service1.instance1',
-            }, {
-                'svname': 'thing2',
-                'pxname': 'service1.instance2',
-            }, {
-                'svname': 'thing3',
-                'pxname': 'service1.instance2',
-            },
+            {"svname": "thing1", "pxname": "service1.instance1"},
+            {"svname": "thing2", "pxname": "service1.instance2"},
+            {"svname": "thing3", "pxname": "service1.instance2"},
         ]
-        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_ip_port_hostname_from_svname.return_value = ("10.1.1.1", 8888, "a")
         mock_backend_is_up.side_effect = [True, False, False]
         # all present bu both of service1.instance2 are DOWN
         assert not smartstack_tools.are_services_up_on_ip_port(
-            synapse_host='1.2.3.4',
+            synapse_host="1.2.3.4",
             synapse_port=3212,
             synapse_haproxy_url_format="thing",
-            services=['service1.instance1', 'service1.instance2'],
-            host_ip='10.1.1.1',
+            services=["service1.instance1", "service1.instance2"],
+            host_ip="10.1.1.1",
             host_port=8888,
         )
 
         mock_get_multiple_backends.return_value = [
-            {
-                'svname': 'thing1',
-                'pxname': 'service1.instance1',
-            }, {
-                'svname': 'thing2',
-                'pxname': 'service1.instance2',
-            }, {
-                'svname': 'thing3',
-                'pxname': 'service1.instance2',
-            },
+            {"svname": "thing1", "pxname": "service1.instance1"},
+            {"svname": "thing2", "pxname": "service1.instance2"},
+            {"svname": "thing3", "pxname": "service1.instance2"},
         ]
-        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_ip_port_hostname_from_svname.return_value = ("10.1.1.1", 8888, "a")
         mock_backend_is_up.side_effect = [True, True, False]
         # all present but 1 of service1.instance2 is UP
         assert smartstack_tools.are_services_up_on_ip_port(
-            synapse_host='1.2.3.4',
+            synapse_host="1.2.3.4",
             synapse_port=3212,
             synapse_haproxy_url_format="thing",
-            services=['service1.instance1', 'service1.instance2'],
-            host_ip='10.1.1.1',
+            services=["service1.instance1", "service1.instance2"],
+            host_ip="10.1.1.1",
             host_port=8888,
         )
 
         mock_get_multiple_backends.return_value = [
-            {
-                'svname': 'thing1',
-                'pxname': 'service1.instance1',
-            }, {
-                'svname': 'thing2',
-                'pxname': 'service1.instance2',
-            }, {
-                'svname': 'thing3',
-                'pxname': 'service1.instance2',
-            },
+            {"svname": "thing1", "pxname": "service1.instance1"},
+            {"svname": "thing2", "pxname": "service1.instance2"},
+            {"svname": "thing3", "pxname": "service1.instance2"},
         ]
-        mock_ip_port_hostname_from_svname.return_value = ('10.1.1.1', 8888, 'a')
+        mock_ip_port_hostname_from_svname.return_value = ("10.1.1.1", 8888, "a")
         mock_backend_is_up.return_value = True
         mock_backend_is_up.side_effect = None
         # all up and present but service1.instance3 not present
         assert not smartstack_tools.are_services_up_on_ip_port(
-            synapse_host='1.2.3.4',
+            synapse_host="1.2.3.4",
             synapse_port=3212,
             synapse_haproxy_url_format="thing",
-            services=['service1.instance1', 'service1.instance2', 'service1.instance3'],
-            host_ip='10.1.1.1',
+            services=["service1.instance1", "service1.instance2", "service1.instance3"],
+            host_ip="10.1.1.1",
             host_port=8888,
         )
 
@@ -398,103 +427,120 @@ def test_are_services_up_on_port():
 @pytest.fixture
 def mock_replication_checker():
     smartstack_tools.SmartstackReplicationChecker.__abstractmethods__ = frozenset()
-    return smartstack_tools.SmartstackReplicationChecker(system_paasta_config=mock.Mock())
+    return smartstack_tools.SmartstackReplicationChecker(
+        system_paasta_config=mock.Mock()
+    )
 
 
 @pytest.fixture
 def mock_kube_replication_checker():
     mock_nodes = [mock.Mock()]
-    return smartstack_tools.KubeSmartstackReplicationChecker(nodes=mock_nodes, system_paasta_config=mock.Mock())
+    return smartstack_tools.KubeSmartstackReplicationChecker(
+        nodes=mock_nodes, system_paasta_config=mock.Mock()
+    )
 
 
 def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
     with mock.patch(
-        'paasta_tools.kubernetes_tools.filter_nodes_by_blacklist', autospec=True,
+        "paasta_tools.kubernetes_tools.filter_nodes_by_blacklist", autospec=True
     ) as mock_filter_nodes_by_blacklist, mock.patch(
-        'paasta_tools.kubernetes_tools.load_service_namespace_config', autospec=True,
+        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace_config, mock.patch(
-        'paasta_tools.kubernetes_tools.get_nodes_grouped_by_attribute', autospec=True,
+        "paasta_tools.kubernetes_tools.get_nodes_grouped_by_attribute", autospec=True
     ) as mock_get_nodes_grouped_by_attribute:
-        mock_instance_config = mock.Mock(service="blah", instance="foo", soa_dir="/nail/thing")
+        mock_instance_config = mock.Mock(
+            service="blah", instance="foo", soa_dir="/nail/thing"
+        )
         mock_node_1 = mock.MagicMock(
             metadata=mock.MagicMock(
-                labels={
-                    'yelp.com/hostname': 'foo1',
-                    'yelp.com/pool': 'default',
-                },
-            ),
+                labels={"yelp.com/hostname": "foo1", "yelp.com/pool": "default"}
+            )
         )
         mock_node_2 = mock.MagicMock(
             metadata=mock.MagicMock(
-                labels={
-                    'yelp.com/hostname': 'foo2',
-                    'yelp.com/pool': 'default',
-                },
-            ),
+                labels={"yelp.com/hostname": "foo2", "yelp.com/pool": "default"}
+            )
         )
-        mock_load_service_namespace_config.return_value = mock.Mock(get_discover=mock.Mock(
-            return_value='region',
-        ))
+        mock_load_service_namespace_config.return_value = mock.Mock(
+            get_discover=mock.Mock(return_value="region")
+        )
         mock_get_nodes_grouped_by_attribute.return_value = {
-            'us-west-1': [mock_node_1, mock_node_2],
+            "us-west-1": [mock_node_1, mock_node_2]
         }
-        ret = mock_kube_replication_checker._get_allowed_locations_and_hosts(mock_instance_config)
-        assert ret == {'us-west-1': [
-            SmartstackHost(hostname='foo1', pool='default'),
-            SmartstackHost(hostname='foo2', pool='default'),
-        ]}
+        ret = mock_kube_replication_checker._get_allowed_locations_and_hosts(
+            mock_instance_config
+        )
+        assert ret == {
+            "us-west-1": [
+                SmartstackHost(hostname="foo1", pool="default"),
+                SmartstackHost(hostname="foo2", pool="default"),
+            ]
+        }
         mock_get_nodes_grouped_by_attribute.assert_called_with(
-            nodes=mock_filter_nodes_by_blacklist.return_value,
-            attribute='region',
+            nodes=mock_filter_nodes_by_blacklist.return_value, attribute="region"
         )
 
 
 def test_get_allowed_locations_and_hosts(mock_replication_checker):
-    mock_replication_checker._get_allowed_locations_and_hosts(instance_config=mock.Mock())
+    mock_replication_checker._get_allowed_locations_and_hosts(
+        instance_config=mock.Mock()
+    )
 
 
 def test_get_replication_for_instance(mock_replication_checker):
     with mock.patch(
-        'paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_allowed_locations_and_hosts', autospec=True,
+        "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_allowed_locations_and_hosts",
+        autospec=True,
     ) as mock_get_allowed_locations_and_hosts, mock.patch(
-        'paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_first_host_in_pool', autospec=True,
+        "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_first_host_in_pool",
+        autospec=True,
     ) as mock_get_first_host_in_pool, mock.patch(
-        'paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_replication_info', autospec=True,
+        "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_replication_info",
+        autospec=True,
     ) as mock_get_replication_info:
         mock_get_allowed_locations_and_hosts.return_value = {
-            'westeros-prod': [mock.Mock()],
-            'middleearth-prod': [mock.Mock(), mock.Mock()],
+            "westeros-prod": [mock.Mock()],
+            "middleearth-prod": [mock.Mock(), mock.Mock()],
         }
         expected = {
-            'westeros-prod': mock_get_replication_info.return_value,
-            'middleearth-prod': mock_get_replication_info.return_value,
+            "westeros-prod": mock_get_replication_info.return_value,
+            "middleearth-prod": mock_get_replication_info.return_value,
         }
-        assert mock_replication_checker.get_replication_for_instance(mock.Mock()) == expected
+        assert (
+            mock_replication_checker.get_replication_for_instance(mock.Mock())
+            == expected
+        )
         assert mock_get_first_host_in_pool.call_count == 2
 
 
 def test_get_first_host_in_pool(mock_replication_checker):
-    mock_host_0 = mock.Mock(hostname='host0', pool='some')
-    mock_host_1 = mock.Mock(hostname='host123', pool='default')
-    mock_host_2 = mock.Mock(hostname='host456', pool='default')
-    mock_host_3 = mock.Mock(hostname='host789', pool='special')
+    mock_host_0 = mock.Mock(hostname="host0", pool="some")
+    mock_host_1 = mock.Mock(hostname="host123", pool="default")
+    mock_host_2 = mock.Mock(hostname="host456", pool="default")
+    mock_host_3 = mock.Mock(hostname="host789", pool="special")
     mock_hosts = [mock_host_0, mock_host_1, mock_host_2, mock_host_3]
-    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, 'default')
-    assert ret == 'host123'
-    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, 'special')
-    assert ret == 'host789'
-    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, 'what')
-    assert ret == 'host0'
+    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, "default")
+    assert ret == "host123"
+    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, "special")
+    assert ret == "host789"
+    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, "what")
+    assert ret == "host0"
 
 
 def test_get_replication_info(mock_replication_checker):
     with mock.patch(
-        'paasta_tools.smartstack_tools.get_replication_for_all_services', autospec=True,
+        "paasta_tools.smartstack_tools.get_replication_for_all_services", autospec=True
     ) as mock_get_replication_for_all_services:
         mock_replication_checker._cache = {}
-        mock_instance_config = mock.Mock(service='thing', instance='main')
-        ret = mock_replication_checker._get_replication_info('westeros-prod', 'host1', mock_instance_config)
-        assert ret == {'thing.main': mock_get_replication_for_all_services.return_value['thing.main']}
+        mock_instance_config = mock.Mock(service="thing", instance="main")
+        ret = mock_replication_checker._get_replication_info(
+            "westeros-prod", "host1", mock_instance_config
+        )
+        assert ret == {
+            "thing.main": mock_get_replication_for_all_services.return_value[
+                "thing.main"
+            ]
+        }
         assert mock_replication_checker._cache == {
-            'westeros-prod': mock_get_replication_for_all_services.return_value,
+            "westeros-prod": mock_get_replication_for_all_services.return_value
         }

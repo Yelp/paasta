@@ -22,11 +22,19 @@ from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Runs native paasta mesos scheduler.')
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR", default=DEFAULT_SOA_DIR)
-    parser.add_argument('--stay-alive-seconds', dest="stay_alive_seconds", type=int, default=300)
-    parser.add_argument('--periodic-interval', dest="periodic_interval", type=int, default=30)
-    parser.add_argument('--staging-timeout', dest="staging_timeout", type=float, default=60)
+    parser = argparse.ArgumentParser(description="Runs native paasta mesos scheduler.")
+    parser.add_argument(
+        "-d", "--soa-dir", dest="soa_dir", metavar="SOA_DIR", default=DEFAULT_SOA_DIR
+    )
+    parser.add_argument(
+        "--stay-alive-seconds", dest="stay_alive_seconds", type=int, default=300
+    )
+    parser.add_argument(
+        "--periodic-interval", dest="periodic_interval", type=int, default=30
+    )
+    parser.add_argument(
+        "--staging-timeout", dest="staging_timeout", type=float, default=60
+    )
     return parser.parse_args(argv)
 
 
@@ -38,7 +46,9 @@ def main(argv):
 
     drivers = []
     schedulers = []
-    for service, instance in get_paasta_native_jobs_for_cluster(cluster=cluster, soa_dir=args.soa_dir):
+    for service, instance in get_paasta_native_jobs_for_cluster(
+        cluster=cluster, soa_dir=args.soa_dir
+    ):
         scheduler = NativeScheduler(
             service_name=service,
             instance_name=instance,
@@ -68,7 +78,7 @@ def main(argv):
 
 def get_app_id_and_task_uuid_from_executor_id(executor_id):
     """Parse the paasta_native executor ID and return the (app id, task uuid)"""
-    return executor_id.rsplit('.', 1)
+    return executor_id.rsplit(".", 1)
 
 
 def parse_service_instance_from_executor_id(task_id):
@@ -86,7 +96,9 @@ def paasta_native_services_running_here(hostname=None, framework_id=None):
     """
 
     def framework_filter(fw):
-        return fw['name'].startswith('paasta_native ') and (framework_id is None or fw['id'] == framework_id)
+        return fw["name"].startswith("paasta_native ") and (
+            framework_id is None or fw["id"] == framework_id
+        )
 
     return mesos_tools.mesos_services_running_here(
         framework_filter=framework_filter,
@@ -96,9 +108,7 @@ def paasta_native_services_running_here(hostname=None, framework_id=None):
 
 
 def get_paasta_native_services_running_here_for_nerve(
-    cluster: Optional[str],
-    soa_dir: str,
-    hostname: Optional[str] = None,
+    cluster: Optional[str], soa_dir: str, hostname: Optional[str] = None
 ) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
     if not cluster:
         try:
@@ -127,16 +137,16 @@ def get_paasta_native_services_running_here_for_nerve(
             for registration in job_config.get_registrations():
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
                 nerve_dict = load_service_namespace_config(
-                    service=reg_service, namespace=reg_namespace, soa_dir=soa_dir,
+                    service=reg_service, namespace=reg_namespace, soa_dir=soa_dir
                 )
                 if not nerve_dict.is_in_smartstack():
                     continue
-                nerve_dict['port'] = port
+                nerve_dict["port"] = port
                 nerve_list.append((registration, nerve_dict))
         except KeyError:
             continue  # SOA configs got deleted for this app, it'll get cleaned up
     return nerve_list
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv[1:])

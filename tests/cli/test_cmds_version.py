@@ -20,7 +20,7 @@ from paasta_tools.cli.cli import main
 
 def test_paasta_version(capfd):
     with pytest.raises(SystemExit) as excinfo:
-        main(('-V',))
+        main(("-V",))
     assert excinfo.value.code == 0
     out, err = capfd.readouterr()
-    assert re.match(r'^paasta-tools \d+\.\d+\.\d+\n$', out)
+    assert re.match(r"^paasta-tools \d+\.\d+\.\d+\n$", out)

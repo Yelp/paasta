@@ -20,9 +20,9 @@ def check_registration(threshold_percentage):
     config = load_system_paasta_config()
     autoscaling_resources = config.get_cluster_autoscaling_resources()
     for resource in autoscaling_resources.values():
-        print("Checking %s" % resource['id'])
+        print("Checking %s" % resource["id"])
         try:
-            scaler = get_scaler(resource['type'])(
+            scaler = get_scaler(resource["type"])(
                 resource=resource,
                 pool_settings=None,
                 config_folder=None,
@@ -32,38 +32,51 @@ def check_registration(threshold_percentage):
                 max_decrease=0.0,
             )
         except KeyError:
-            print("Couldn't find a metric provider for resource of type: {}".format(resource['type']))
+            print(
+                "Couldn't find a metric provider for resource of type: {}".format(
+                    resource["type"]
+                )
+            )
             continue
         if len(scaler.instances) == 0:
             print("No instances for this resource")
             continue
         elif scaler.is_new_autoscaling_resource():
             # See OPS-13784
-            threshold = config.get_monitoring_config().get('check_registered_slave_threshold')
+            threshold = config.get_monitoring_config().get(
+                "check_registered_slave_threshold"
+            )
             print(
                 f"Autoscaling resource was created within last {threshold}"
-                " seconds and would probably fail this check",
+                " seconds and would probably fail this check"
             )
             continue
         else:
             slaves = scaler.get_aws_slaves(mesos_state)
-            percent_registered = float(float(len(slaves)) / float(len(scaler.instances))) * 100
+            percent_registered = (
+                float(float(len(slaves)) / float(len(scaler.instances))) * 100
+            )
             if percent_registered < float(threshold_percentage):
-                print("CRIT: Only found {}% of instances in {} registered in mesos. "
-                      "Please check for puppet or AMI baking problems!".format(
-                          percent_registered,
-                          resource['id'],
-                      ))
+                print(
+                    "CRIT: Only found {}% of instances in {} registered in mesos. "
+                    "Please check for puppet or AMI baking problems!".format(
+                        percent_registered, resource["id"]
+                    )
+                )
                 return False
-    print("OK: Found more than {}% of instances registered for all paasta resources in this "
-          "superregion".format(threshold_percentage))
+    print(
+        "OK: Found more than {}% of instances registered for all paasta resources in this "
+        "superregion".format(threshold_percentage)
+    )
     return True
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-t", "--threshold", help="percentage threshold for registered instances",
+        "-t",
+        "--threshold",
+        help="percentage threshold for registered instances",
         default="75",
     )
     threshold = parser.parse_args().threshold

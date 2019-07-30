@@ -14,7 +14,17 @@ class MarathonDeployment(MarathonResource):
     total_steps = ...  # type: Any
     version = ...  # type: Any
     affected_pods = ...  # type: Any
-    def __init__(self, affected_apps: Optional[Any] = ..., current_actions: Optional[Any] = ..., current_step: Optional[Any] = ..., id: Optional[Any] = ..., steps: Optional[Any] = ..., total_steps: Optional[Any] = ..., version: Optional[Any] = ..., affected_pods: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        affected_apps: Optional[Any] = ...,
+        current_actions: Optional[Any] = ...,
+        current_step: Optional[Any] = ...,
+        id: Optional[Any] = ...,
+        steps: Optional[Any] = ...,
+        total_steps: Optional[Any] = ...,
+        version: Optional[Any] = ...,
+        affected_pods: Optional[Any] = ...,
+    ) -> None: ...
     def parse_deployment_step(self, step): ...
 
 class MarathonDeploymentAction(MarathonObject):
@@ -24,7 +34,15 @@ class MarathonDeploymentAction(MarathonObject):
     pod = ...  # type: Any
     type = ...  # type: Any
     readiness_check_results = ...  # type: Any
-    def __init__(self, action: Optional[Any] = ..., app: Optional[Any] = ..., apps: Optional[Any] = ..., type: Optional[Any] = ..., readiness_check_results: Optional[Any] = ..., pod: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        action: Optional[Any] = ...,
+        app: Optional[Any] = ...,
+        apps: Optional[Any] = ...,
+        type: Optional[Any] = ...,
+        readiness_check_results: Optional[Any] = ...,
+        pod: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonDeploymentPlan(MarathonObject):
     original = ...  # type: Any
@@ -32,7 +50,14 @@ class MarathonDeploymentPlan(MarathonObject):
     steps = ...  # type: Any
     id = ...  # type: Any
     version = ...  # type: Any
-    def __init__(self, original: Optional[Any] = ..., target: Optional[Any] = ..., steps: Optional[Any] = ..., id: Optional[Any] = ..., version: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        original: Optional[Any] = ...,
+        target: Optional[Any] = ...,
+        steps: Optional[Any] = ...,
+        id: Optional[Any] = ...,
+        version: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonDeploymentStep(MarathonObject):
     actions = ...  # type: Any
@@ -45,7 +70,15 @@ class MarathonDeploymentOriginalState(MarathonObject):
     version = ...  # type: Any
     dependencies = ...  # type: Any
     pods = ...  # type: Any
-    def __init__(self, dependencies: Optional[Any] = ..., apps: Optional[Any] = ..., id: Optional[Any] = ..., version: Optional[Any] = ..., groups: Optional[Any] = ..., pods: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        dependencies: Optional[Any] = ...,
+        apps: Optional[Any] = ...,
+        id: Optional[Any] = ...,
+        version: Optional[Any] = ...,
+        groups: Optional[Any] = ...,
+        pods: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonDeploymentTargetState(MarathonObject):
     apps = ...  # type: Any
@@ -54,4 +87,12 @@ class MarathonDeploymentTargetState(MarathonObject):
     version = ...  # type: Any
     dependencies = ...  # type: Any
     pods = ...  # type: Any
-    def __init__(self, groups: Optional[Any] = ..., apps: Optional[Any] = ..., dependencies: Optional[Any] = ..., id: Optional[Any] = ..., version: Optional[Any] = ..., pods: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        groups: Optional[Any] = ...,
+        apps: Optional[Any] = ...,
+        dependencies: Optional[Any] = ...,
+        id: Optional[Any] = ...,
+        version: Optional[Any] = ...,
+        pods: Optional[Any] = ...,
+    ) -> None: ...

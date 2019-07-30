@@ -55,9 +55,10 @@ def restart_marathon_job(service, instance, app_id, client, cluster):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
         service=service,
-        line="EmergencyRestart: Scaling %s down to 0 instances, then letting them scale back up" % (name),
-        component='deploy',
-        level='event',
+        line="EmergencyRestart: Scaling %s down to 0 instances, then letting them scale back up"
+        % (name),
+        component="deploy",
+        level="event",
         cluster=cluster,
         instance=instance,
     )
@@ -78,21 +79,23 @@ def bouncing_status_human(app_count, bounce_method):
 def get_bouncing_status(service, instance, client, job_config):
     # embed_tasks=True here so that we're making the same HTTP call as the other parts of this code, so the call can be
     # cached.
-    apps = marathon_tools.get_matching_appids(service, instance, client, embed_tasks=True)
+    apps = marathon_tools.get_matching_appids(
+        service, instance, client, embed_tasks=True
+    )
     app_count = len(apps)
     bounce_method = job_config.get_bounce_method()
     return bouncing_status_human(app_count, bounce_method)
 
 
 def desired_state_human(desired_state, instances):
-    if desired_state == 'start' and instances != 0:
-        return PaastaColors.bold('Started')
-    elif desired_state == 'start' and instances == 0:
-        return PaastaColors.bold('Stopped')
-    elif desired_state == 'stop':
-        return PaastaColors.red('Stopped')
+    if desired_state == "start" and instances != 0:
+        return PaastaColors.bold("Started")
+    elif desired_state == "start" and instances == 0:
+        return PaastaColors.bold("Stopped")
+    elif desired_state == "stop":
+        return PaastaColors.red("Stopped")
     else:
-        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+        return PaastaColors.red("Unknown (desired_state: %s)" % desired_state)
 
 
 def status_desired_state(
@@ -102,7 +105,9 @@ def status_desired_state(
     job_config: marathon_tools.MarathonServiceConfig,
 ) -> str:
     status = get_bouncing_status(service, instance, client, job_config)
-    desired_state = desired_state_human(job_config.get_desired_state(), job_config.get_instances())
+    desired_state = desired_state_human(
+        job_config.get_desired_state(), job_config.get_instances()
+    )
     return f"Desired State:      {status} and {desired_state}"
 
 
@@ -120,20 +125,26 @@ def status_marathon_job_human(
     if app_count >= 0:
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
-            instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.green(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
         elif running_instances == 0:
             status = PaastaColors.yellow("Critical")
-            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.red(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
         else:
             status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.yellow(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
         return "Marathon:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status,
+            status, instance_count, deploy_status
         )
     else:
         status = PaastaColors.yellow("Warning")
         return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
-            status, name, desired_app_id,
+            status, name, desired_app_id
         )
 
 
@@ -141,10 +152,13 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
     status_string = marathon_tools.MarathonDeployStatus.tostring(status)
 
     if status == marathon_tools.MarathonDeployStatus.Waiting:
-        deploy_status = "%s (new tasks waiting for capacity to become available)" % PaastaColors.red(status_string)
+        deploy_status = (
+            "%s (new tasks waiting for capacity to become available)"
+            % PaastaColors.red(status_string)
+        )
     elif status == marathon_tools.MarathonDeployStatus.Delayed:
         deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
-                        PaastaColors.red(status_string), backoff_seconds,
+            PaastaColors.red(status_string), backoff_seconds
         )
     elif status == marathon_tools.MarathonDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)
@@ -176,7 +190,9 @@ def status_marathon_job(
         service_name=service,
     )
     all_tasks = []
-    all_output = [""]  # One entry that will be replaced with status_marathon_job_human output later.
+    all_output = [
+        ""
+    ]  # One entry that will be replaced with status_marathon_job_human output later.
 
     running_instances = 0
 
@@ -184,15 +200,18 @@ def status_marathon_job(
         autoscaling_info = get_autoscaling_info(marathon_apps_with_clients, job_config)
         if autoscaling_info:
             all_output.append("  Autoscaling Info:")
-            headers = [field.replace("_", " ").capitalize() for field in ServiceAutoscalingInfo._fields]
+            headers = [
+                field.replace("_", " ").capitalize()
+                for field in ServiceAutoscalingInfo._fields
+            ]
             table = [headers, autoscaling_info]
-            all_output.append('\n'.join(["    %s" % line for line in format_table(table)]))
+            all_output.append(
+                "\n".join(["    %s" % line for line in format_table(table)])
+            )
 
-    deploy_status_for_desired_app = 'Waiting for bounce'
+    deploy_status_for_desired_app = "Waiting for bounce"
     matching_apps_with_clients = marathon_tools.get_matching_apps_with_clients(
-        service,
-        instance,
-        marathon_apps_with_clients,
+        service, instance, marathon_apps_with_clients
     )
     for app, client in matching_apps_with_clients:
         all_tasks.extend(app.tasks)
@@ -206,8 +225,10 @@ def status_marathon_job(
             dashboards=dashboards,
             verbose=verbose,
         )
-        if app.id.lstrip('/') == desired_app_id.lstrip('/'):
-            deploy_status_for_desired_app = marathon_tools.MarathonDeployStatus.tostring(deploy_status_for_current_app)
+        if app.id.lstrip("/") == desired_app_id.lstrip("/"):
+            deploy_status_for_desired_app = marathon_tools.MarathonDeployStatus.tostring(
+                deploy_status_for_current_app
+            )
 
         running_instances += running_instances_for_current_app
         all_output.append(out)
@@ -222,7 +243,7 @@ def status_marathon_job(
         normal_instance_count=normal_instance_count,
     )
 
-    return all_tasks, '\n'.join(all_output)
+    return all_tasks, "\n".join(all_output)
 
 
 def get_marathon_dashboard(
@@ -233,7 +254,7 @@ def get_marathon_dashboard(
     if dashboards is not None:
         base_url = dashboards.get(client)
         if base_url:
-            url = "{}/ui/#/apps/%2F{}".format(base_url.rstrip('/'), app_id.lstrip('/'))
+            url = "{}/ui/#/apps/%2F{}".format(base_url.rstrip("/"), app_id.lstrip("/"))
             return "  Marathon dashboard: %s" % PaastaColors.blue(url)
     return "  Marathon app ID: %s" % PaastaColors.bold(app_id)
 
@@ -252,31 +273,51 @@ def status_marathon_app(
     output = []
     create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append(get_marathon_dashboard(marathon_client, dashboards, app.id))
-    output.append('    ' + ' '.join([
-        f"{app.tasks_running} running,",
-        f"{app.tasks_healthy} healthy,",
-        f"{app.tasks_staged} staged",
-        f"out of {app.instances}",
-    ]))
-    output.append("    App created: {} ({})".format(str(create_datetime), humanize.naturaltime(create_datetime)))
+    output.append(
+        "    "
+        + " ".join(
+            [
+                f"{app.tasks_running} running,",
+                f"{app.tasks_healthy} healthy,",
+                f"{app.tasks_staged} staged",
+                f"out of {app.instances}",
+            ]
+        )
+    )
+    output.append(
+        "    App created: {} ({})".format(
+            str(create_datetime), humanize.naturaltime(create_datetime)
+        )
+    )
 
     deploy_status = marathon_tools.get_marathon_app_deploy_status(marathon_client, app)
     app_queue = marathon_tools.get_app_queue(marathon_client, app.id)
     unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
     if deploy_status == marathon_tools.MarathonDeployStatus.Delayed:
         _, backoff_seconds = marathon_tools.get_app_queue_status_from_queue(app_queue)
-        deploy_status_human = marathon_app_deploy_status_human(deploy_status, backoff_seconds)
+        deploy_status_human = marathon_app_deploy_status_human(
+            deploy_status, backoff_seconds
+        )
     else:
         deploy_status_human = marathon_app_deploy_status_human(deploy_status)
     output.append(f"    Status: {deploy_status_human}")
 
     if unused_offers_summary is not None and len(unused_offers_summary) > 0:
         output.append("    Possibly stalled for:")
-        output.append("      ".join([f"{k}: {n} times" for k, n in unused_offers_summary.items()]))
+        output.append(
+            "      ".join([f"{k}: {n} times" for k, n in unused_offers_summary.items()])
+        )
 
     if verbose > 0:
         output.append("    Tasks:")
-        rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
+        rows = [
+            (
+                "Mesos Task ID",
+                "Host deployed to",
+                "Deployed at what localtime",
+                "Health",
+            )
+        ]
         for task in app.tasks:
             local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
             if task.host is not None:
@@ -290,16 +331,18 @@ def status_marathon_app(
             else:
                 health_check_status = PaastaColors.red("Unhealthy")
 
-            rows.append((
-                get_short_task_id(task.id),
-                hostname,
-                '{} ({})'.format(
-                    local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
-                    humanize.naturaltime(local_deployed_datetime),
-                ),
-                health_check_status,
-            ))
-        output.append('\n'.join(["      %s" % line for line in format_table(rows)]))
+            rows.append(
+                (
+                    get_short_task_id(task.id),
+                    hostname,
+                    "{} ({})".format(
+                        local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
+                        humanize.naturaltime(local_deployed_datetime),
+                    ),
+                    health_check_status,
+                )
+            )
+        output.append("\n".join(["      %s" % line for line in format_table(rows)]))
         if len(app.tasks) == 0:
             output.append("      No tasks associated with this marathon app")
     return deploy_status, app.tasks_running, "\n".join(output)
@@ -317,11 +360,13 @@ def haproxy_backend_report(normal_instance_count, up_backends):
     )
     if under_replicated:
         status = PaastaColors.red("Critical")
-        count = PaastaColors.red("(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio))
+        count = PaastaColors.red(
+            "(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio)
+        )
     else:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
-    up_string = PaastaColors.bold('UP')
+    up_string = PaastaColors.bold("UP")
     return f"{status} - in haproxy with {count} total backends {up_string} in this namespace."
 
 
@@ -331,30 +376,31 @@ def format_haproxy_backend_row(backend, is_correct_instance):
     http://www.haproxy.org/download/1.5/doc/configuration.txt
     And tries to make a good guess about how to represent them in text
     """
-    backend_name = backend['svname']
+    backend_name = backend["svname"]
     backend_hostname = backend_name.split("_")[-1]
     backend_port = backend_name.split("_")[0].split(":")[-1]
     pretty_backend_name = f"{backend_hostname}:{backend_port}"
-    if backend['status'] == "UP":
-        status = PaastaColors.default(backend['status'])
-    elif backend['status'] == 'DOWN' or backend['status'] == 'MAINT':
-        status = PaastaColors.red(backend['status'])
+    if backend["status"] == "UP":
+        status = PaastaColors.default(backend["status"])
+    elif backend["status"] == "DOWN" or backend["status"] == "MAINT":
+        status = PaastaColors.red(backend["status"])
     else:
-        status = PaastaColors.yellow(backend['status'])
-    lastcheck = "{}/{} in {}ms".format(backend['check_status'], backend['check_code'], backend['check_duration'])
-    lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
-
-    row = (
-        '      %s' % pretty_backend_name,
-        lastcheck,
-        lastchange,
-        status,
+        status = PaastaColors.yellow(backend["status"])
+    lastcheck = "{}/{} in {}ms".format(
+        backend["check_status"], backend["check_code"], backend["check_duration"]
     )
+    lastchange = humanize.naturaltime(
+        datetime.timedelta(seconds=int(backend["lastchg"]))
+    )
+
+    row = ("      %s" % pretty_backend_name, lastcheck, lastchange, status)
 
     if is_correct_instance:
         return row
     else:
-        return tuple(PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row)
+        return tuple(
+            PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row
+        )
 
 
 def status_smartstack_backends(
@@ -382,49 +428,56 @@ def status_smartstack_backends(
 
     discover_location_type = service_namespace_config.get_discover()
     monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=system_deploy_blacklist,
+        system_deploy_blacklist=system_deploy_blacklist
     )
 
     filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist,
-        whitelist=[],
+        blacklist=monitoring_blacklist, whitelist=[]
     )
 
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves,
-        attribute=discover_location_type,
+        slaves=filtered_slaves, attribute=discover_location_type
     )
 
     # rebuild the dict, replacing the slave object
     # with just their hostname
     grouped_slave_hostname = {
-        attribute_value: [slave['hostname'] for slave in slaves]
+        attribute_value: [slave["hostname"] for slave in slaves]
         for attribute_value, slaves in grouped_slaves.items()
     }
 
     if len(grouped_slave_hostname) == 0:
-        output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % registration)
+        output.append(
+            "Smartstack: ERROR - %s is NOT in smartstack at all!" % registration
+        )
     else:
         output.append("Smartstack:")
         if verbose:
             output.append("  Haproxy Service Name: %s" % registration)
             output.append("  Backends:")
 
-        output.extend(pretty_print_smartstack_backends_for_locations(
-            registration=registration,
-            tasks=tasks,
-            locations=grouped_slave_hostname,
-            expected_count=expected_count,
-            verbose=verbose,
-            synapse_port=synapse_port,
-            synapse_haproxy_url_format=synapse_haproxy_url_format,
-        ))
+        output.extend(
+            pretty_print_smartstack_backends_for_locations(
+                registration=registration,
+                tasks=tasks,
+                locations=grouped_slave_hostname,
+                expected_count=expected_count,
+                verbose=verbose,
+                synapse_port=synapse_port,
+                synapse_haproxy_url_format=synapse_haproxy_url_format,
+            )
+        )
     return "\n".join(output)
 
 
 def pretty_print_smartstack_backends_for_locations(
-    registration, tasks, locations, expected_count, verbose,
-    synapse_port, synapse_haproxy_url_format,
+    registration,
+    tasks,
+    locations,
+    expected_count,
+    verbose,
+    synapse_port,
+    synapse_haproxy_url_format,
 ):
     """
     Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
@@ -442,12 +495,19 @@ def pretty_print_smartstack_backends_for_locations(
                 synapse_port=synapse_port,
                 synapse_haproxy_url_format=synapse_haproxy_url_format,
             ),
-            key=lambda backend: backend['status'],
+            key=lambda backend: backend["status"],
             reverse=True,  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
         )
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
-        running_count = sum(1 for backend, task in matched_tasks if backend and backend_is_up(backend))
-        rows.append("    {} - {}".format(location, haproxy_backend_report(expected_count_per_location, running_count)))
+        running_count = sum(
+            1 for backend, task in matched_tasks if backend and backend_is_up(backend)
+        )
+        rows.append(
+            "    {} - {}".format(
+                location,
+                haproxy_backend_report(expected_count_per_location, running_count),
+            )
+        )
 
         # If verbose mode is specified, show status of individual backends
         if verbose:
@@ -463,10 +523,7 @@ def get_short_task_id(task_id):
 
 
 def status_mesos_tasks(
-    service: str,
-    instance: str,
-    normal_instance_count: int,
-    verbose: int,
+    service: str, instance: str, normal_instance_count: int, verbose: int
 ) -> str:
     job_id = marathon_tools.format_job_id(service, instance)
     # We have to add a spacer at the end to make sure we only return
@@ -474,7 +531,12 @@ def status_mesos_tasks(
     filter_string = f"{job_id}{marathon_tools.MESOS_TASK_SPACER}"
 
     try:
-        count = len(select_tasks_by_id(a_sync.block(get_cached_list_of_running_tasks_from_frameworks), filter_string))
+        count = len(
+            select_tasks_by_id(
+                a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
+                filter_string,
+            )
+        )
         if count >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             count_str = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
@@ -484,14 +546,16 @@ def status_mesos_tasks(
         else:
             status = PaastaColors.yellow("Warning")
             count_str = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
-        running_string = PaastaColors.bold('TASK_RUNNING')
-        output = f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
+        running_string = PaastaColors.bold("TASK_RUNNING")
+        output = (
+            f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
+        )
     except ReadTimeout:
         return "Error: talking to Mesos timed out. It may be overloaded."
 
     if verbose > 0:
         tail_lines = calculate_tail_lines(verbose_level=verbose)
-        output += '\n' + status_mesos_tasks_verbose(
+        output += "\n" + status_mesos_tasks_verbose(
             filter_string=filter_string,
             get_short_task_id=get_short_task_id,
             tail_lines=tail_lines,
@@ -504,7 +568,9 @@ def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
     """Return a dict of marathon clients and their corresponding dashboard URLs"""
     cluster = system_paasta_config.get_cluster()
     try:
-        links = system_paasta_config.get_dashboard_links().get(cluster).get('Marathon RO')
+        links = (
+            system_paasta_config.get_dashboard_links().get(cluster).get("Marathon RO")
+        )
     except KeyError:
         pass
     if isinstance(links, list) and len(links) >= len(marathon_clients.current):
@@ -536,20 +602,25 @@ def perform_command(
 
     if not app_id:
         try:
-            app_id = job_config.format_marathon_app_dict()['id']
+            app_id = job_config.format_marathon_app_dict()["id"]
         except NoDockerImageError:
             job_id = compose_job_id(service, instance)
-            paasta_print("Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id)
+            paasta_print(
+                "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?"
+                % job_id
+            )
             return 1
 
     normal_instance_count = job_config.get_instances()
 
     current_client = clients.get_current_client_for_service(job_config)
 
-    if command == 'restart':
+    if command == "restart":
         restart_marathon_job(service, instance, app_id, current_client, cluster)
-    elif command == 'status':
-        paasta_print(status_desired_state(service, instance, current_client, job_config))
+    elif command == "status":
+        paasta_print(
+            status_desired_state(service, instance, current_client, job_config)
+        )
         dashboards = get_marathon_dashboard_links(clients, system_config)
         tasks, out = status_marathon_job(
             service=service,
@@ -565,35 +636,35 @@ def perform_command(
         )
         paasta_print(out)
         service_namespace_config = marathon_tools.load_service_namespace_config(
-            service=service,
-            namespace=job_config.get_nerve_namespace(),
-            soa_dir=soa_dir,
+            service=service, namespace=job_config.get_nerve_namespace(), soa_dir=soa_dir
         )
 
-        paasta_print(status_mesos_tasks(service, instance, normal_instance_count, verbose))
+        paasta_print(
+            status_mesos_tasks(service, instance, normal_instance_count, verbose)
+        )
 
-        proxy_port = service_namespace_config.get('proxy_port')
+        proxy_port = service_namespace_config.get("proxy_port")
         if proxy_port is not None:
             normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
-                service,
-                instance,
-                cluster,
+                service, instance, cluster
             )
-            paasta_print(status_smartstack_backends(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                job_config=job_config,
-                service_namespace_config=service_namespace_config,
-                tasks=tasks,
-                expected_count=normal_smartstack_count,
-                soa_dir=soa_dir,
-                verbose=verbose > 0,
-                synapse_port=system_config.get_synapse_port(),
-                synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
-                system_deploy_blacklist=system_config.get_deploy_blacklist(),
-                system_deploy_whitelist=system_config.get_deploy_whitelist(),
-            ))
+            paasta_print(
+                status_smartstack_backends(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    job_config=job_config,
+                    service_namespace_config=service_namespace_config,
+                    tasks=tasks,
+                    expected_count=normal_smartstack_count,
+                    soa_dir=soa_dir,
+                    verbose=verbose > 0,
+                    synapse_port=system_config.get_synapse_port(),
+                    synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
+                    system_deploy_blacklist=system_config.get_deploy_blacklist(),
+                    system_deploy_whitelist=system_config.get_deploy_whitelist(),
+                )
+            )
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

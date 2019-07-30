@@ -9,7 +9,7 @@ from paasta_tools.utils import paasta_print
 
 
 def get_datetime_from_ts(ts):
-    tformat = '%Y-%m-%dT%H:%M:%S.%f'
+    tformat = "%Y-%m-%dT%H:%M:%S.%f"
     return datetime.strptime(ts, tformat)
 
 
@@ -19,10 +19,10 @@ def get_deploy_durations_from_file(filename):
     The expected input is a paasta service log for the deploy events
     The way I've been fetching them is by running 'internal logreader command' | grep deploy | grep event > filename
     """
-    file_object = open(filename, 'r')
+    file_object = open(filename, "r")
     data = sorted(
-        [json.loads(line.rstrip('\n')) for line in file_object],
-        key=lambda x: get_datetime_from_ts(x['timestamp']),
+        [json.loads(line.rstrip("\n")) for line in file_object],
+        key=lambda x: get_datetime_from_ts(x["timestamp"]),
     )
 
     timedeltas = defaultdict(list)
@@ -30,12 +30,12 @@ def get_deploy_durations_from_file(filename):
     instance_bitvector = defaultdict(bool)  # defaults to False
 
     for datum in data:
-        time = get_datetime_from_ts(datum['timestamp'])
-        instance = datum['instance']
-        if 'in progress' in datum['message'] and not instance_bitvector[instance]:
+        time = get_datetime_from_ts(datum["timestamp"])
+        instance = datum["instance"]
+        if "in progress" in datum["message"] and not instance_bitvector[instance]:
             instance_bitvector[instance] = True
             last_time[instance] = time
-        elif 'finishing' in datum['message']:
+        elif "finishing" in datum["message"]:
             instance_bitvector[instance] = False
             timedeltas[instance].append(time - last_time[instance])
 
@@ -66,5 +66,5 @@ def main(filenames):
         paasta_print("=========================")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(filenames=sys.argv[1:])

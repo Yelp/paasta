@@ -59,28 +59,24 @@ log.addHandler(logging.NullHandler())
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
-ZK_LOCK_PATH = '/bounce'
+ZK_LOCK_PATH = "/bounce"
 WAIT_CREATE_S = 3
 WAIT_DELETE_S = 5
 
 
 BounceMethodResult = TypedDict(
-    'BounceMethodResult',
-    {
-        "create_app": bool,
-        "tasks_to_drain": Set,
-    },
+    "BounceMethodResult", {"create_app": bool, "tasks_to_drain": Set}
 )
 
 BounceMethod = Callable[
     [
-        Arg(BounceMethodConfigDict, 'new_config'),
-        Arg(bool, 'new_app_running'),
-        Arg(Collection, 'happy_new_tasks'),
-        Arg(Sequence, 'old_non_draining_tasks'),
-        DefaultArg(float, 'margin_factor'),
+        Arg(BounceMethodConfigDict, "new_config"),
+        Arg(bool, "new_app_running"),
+        Arg(Collection, "happy_new_tasks"),
+        Arg(Sequence, "old_non_draining_tasks"),
+        DefaultArg(float, "margin_factor"),
     ],
-    BounceMethodResult
+    BounceMethodResult,
 ]
 
 
@@ -90,9 +86,11 @@ _bounce_method_funcs: Dict[str, BounceMethod] = {}
 def register_bounce_method(name: str) -> Callable[[BounceMethod], BounceMethod]:
     """Returns a decorator that registers that bounce function at a given name
     so get_bounce_method_func can find it."""
+
     def outer(bounce_func: BounceMethod):
         _bounce_method_funcs[name] = bounce_func
         return bounce_func
+
     return outer
 
 
@@ -116,8 +114,8 @@ def bounce_lock(name):
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
 
     :param name: The lock name to acquire"""
-    lockfile = '/var/lock/%s.lock' % name
-    with open(lockfile, 'w') as fd:
+    lockfile = "/var/lock/%s.lock" % name
+    with open(lockfile, "w") as fd:
         remove = False
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -136,9 +134,12 @@ def bounce_lock_zookeeper(name):
     generally be the service namespace being bounced.
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
     :param name: The lock name to acquire"""
-    zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk = KazooClient(
+        hosts=load_system_paasta_config().get_zk_hosts(),
+        timeout=ZK_LOCK_CONNECT_TIMEOUT_S,
+    )
     zk.start()
-    lock = zk.Lock(f'{ZK_LOCK_PATH}/{name}')
+    lock = zk.Lock(f"{ZK_LOCK_PATH}/{name}")
     try:
         lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
         yield
@@ -233,21 +234,28 @@ def filter_tasks_in_smartstack(
     async def get_registered_tasks_on_host(host):
         try:
             registered_task_count.update(
-                set(await a_sync.to_async(get_registered_marathon_tasks)(
-                    synapse_host=host,
-                    synapse_port=system_paasta_config.get_synapse_port(),
-                    synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-                    service=compose_job_id(service, nerve_ns),
-                    marathon_tasks=tasks,
-                )),
+                set(
+                    await a_sync.to_async(get_registered_marathon_tasks)(
+                        synapse_host=host,
+                        synapse_port=system_paasta_config.get_synapse_port(),
+                        synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+                        service=compose_job_id(service, nerve_ns),
+                        marathon_tasks=tasks,
+                    )
+                )
             )
         except (ConnectionError, RequestException):
-            log.warning(f"Failed to connect to smartstack on {host}; this may cause us to consider tasks unhealthy.")
+            log.warning(
+                f"Failed to connect to smartstack on {host}; this may cause us to consider tasks unhealthy."
+            )
 
     if selected_hosts:
         a_sync.block(
             asyncio.wait,
-            [asyncio.ensure_future(get_registered_tasks_on_host(host)) for host in selected_hosts],
+            [
+                asyncio.ensure_future(get_registered_tasks_on_host(host))
+                for host in selected_hosts
+            ],
             timeout=30,
         )
 
@@ -293,7 +301,9 @@ def get_happy_tasks(
             continue
 
         # if there are health check results, check if at least one healthcheck is passing
-        if not marathon_tools.is_task_healthy(task, require_all=False, default_healthy=True):
+        if not marathon_tools.is_task_healthy(
+            task, require_all=False, default_healthy=True
+        ):
             continue
 
         happy.append(task)
@@ -310,10 +320,12 @@ def get_happy_tasks(
         return happy
 
 
-_Flatten_Tasks_T = TypeVar('_Flatten_Tasks_T')
+_Flatten_Tasks_T = TypeVar("_Flatten_Tasks_T")
 
 
-def flatten_tasks(tasks_by_app_id: Mapping[Any, Collection[_Flatten_Tasks_T]]) -> Set[_Flatten_Tasks_T]:
+def flatten_tasks(
+    tasks_by_app_id: Mapping[Any, Collection[_Flatten_Tasks_T]]
+) -> Set[_Flatten_Tasks_T]:
     """Takes a dictionary of app_id -> set([task, task, ...]) and returns the union of all the task sets.
 
     :param tasks_by_app_id: A dictionary of app_id -> set(Tasks), such as the old_app_live_happy_tasks or
@@ -323,7 +335,7 @@ def flatten_tasks(tasks_by_app_id: Mapping[Any, Collection[_Flatten_Tasks_T]]) -
     return set.union(set(), *(tasks_by_app_id.values()))
 
 
-@register_bounce_method('brutal')
+@register_bounce_method("brutal")
 def brutal_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
@@ -352,7 +364,7 @@ def brutal_bounce(
     }
 
 
-@register_bounce_method('upthendown')
+@register_bounce_method("upthendown")
 def upthendown_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
@@ -364,19 +376,13 @@ def upthendown_bounce(
 
     See the docstring for brutal_bounce() for parameters and return value.
     """
-    if new_app_running and len(happy_new_tasks) == new_config['instances']:
-        return {
-            "create_app": False,
-            "tasks_to_drain": set(old_non_draining_tasks),
-        }
+    if new_app_running and len(happy_new_tasks) == new_config["instances"]:
+        return {"create_app": False, "tasks_to_drain": set(old_non_draining_tasks)}
     else:
-        return {
-            "create_app": not new_app_running,
-            "tasks_to_drain": set(),
-        }
+        return {"create_app": not new_app_running, "tasks_to_drain": set()}
 
 
-@register_bounce_method('crossover')
+@register_bounce_method("crossover")
 def crossover_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
@@ -393,8 +399,8 @@ def crossover_bounce(
     assert margin_factor <= 1
 
     needed_count = max(
-        int(math.ceil(new_config['instances'] * margin_factor)) -
-        len(happy_new_tasks), 0,
+        int(math.ceil(new_config["instances"] * margin_factor)) - len(happy_new_tasks),
+        0,
     )
 
     return {
@@ -403,7 +409,7 @@ def crossover_bounce(
     }
 
 
-@register_bounce_method('downthenup')
+@register_bounce_method("downthenup")
 def downthenup_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
@@ -421,7 +427,7 @@ def downthenup_bounce(
     }
 
 
-@register_bounce_method('down')
+@register_bounce_method("down")
 def down_bounce(
     new_config: BounceMethodConfigDict,
     new_app_running: bool,
@@ -433,9 +439,7 @@ def down_bounce(
     Stops old apps, doesn't start any new apps.
     Used for the graceful_app_drain script.
     """
-    return {
-        "create_app": False,
-        "tasks_to_drain": set(old_non_draining_tasks),
-    }
+    return {"create_app": False, "tasks_to_drain": set(old_non_draining_tasks)}
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

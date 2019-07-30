@@ -31,7 +31,9 @@ class File:
         if self.task is None:
             self._host_path = self.path
         else:
-            self._host_path = None  # Defer until later (_fetch) so we don't make HTTP requests in __init__.
+            self._host_path = (
+                None
+            )  # Defer until later (_fetch) so we don't make HTTP requests in __init__.
 
         self._offset = 0
 
@@ -152,7 +154,7 @@ class File:
 
             # This is not streaming and assumes small chunk sizes
             blob_lines = (last + blob).split("\n")
-            for line in blob_lines[:len(blob_lines) - 1]:
+            for line in blob_lines[: len(blob_lines) - 1]:
                 yield line
 
             last = blob_lines[-1]

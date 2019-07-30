@@ -15,29 +15,33 @@ import asynctest
 import mock
 import pytest
 
-from paasta_tools.monitoring.check_mesos_duplicate_frameworks import check_mesos_no_duplicate_frameworks
+from paasta_tools.monitoring.check_mesos_duplicate_frameworks import (
+    check_mesos_no_duplicate_frameworks,
+)
 
 
 def test_check_mesos_no_duplicate_frameworks_ok(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args', autospec=True,
+        "paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args",
+        autospec=True,
     ) as mock_parse_args, mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
+        "paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master",
+        autospec=True,
     ) as mock_get_mesos_master:
         mock_opts = mock.MagicMock()
-        mock_opts.check = 'marathon,chronos'
+        mock_opts.check = "marathon,chronos"
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = asynctest.CoroutineMock(
             func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
             return_value={
-                'frameworks': [
-                    {'name': 'marathon'},
-                    {'name': 'marathon1'},
-                    {'name': 'chronos'},
-                    {'name': 'foobar'},
-                    {'name': 'foobar'},
-                ],
+                "frameworks": [
+                    {"name": "marathon"},
+                    {"name": "marathon1"},
+                    {"name": "chronos"},
+                    {"name": "foobar"},
+                    {"name": "foobar"},
+                ]
             },
         )
         mock_get_mesos_master.return_value = mock_master
@@ -54,25 +58,27 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
 
 def test_check_mesos_no_duplicate_frameworks_critical(capfd):
     with mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args', autospec=True,
+        "paasta_tools.monitoring.check_mesos_duplicate_frameworks.parse_args",
+        autospec=True,
     ) as mock_parse_args, mock.patch(
-        'paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master', autospec=True,
+        "paasta_tools.monitoring.check_mesos_duplicate_frameworks.get_mesos_master",
+        autospec=True,
     ) as mock_get_mesos_master:
         mock_opts = mock.MagicMock()
-        mock_opts.check = 'marathon,chronos'
+        mock_opts.check = "marathon,chronos"
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = asynctest.CoroutineMock(
             func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
             return_value={
-                'frameworks': [
-                    {'name': 'marathon'},
-                    {'name': 'marathon1'},
-                    {'name': 'marathon1'},
-                    {'name': 'chronos'},
-                    {'name': 'foobar'},
-                    {'name': 'foobar'},
-                ],
+                "frameworks": [
+                    {"name": "marathon"},
+                    {"name": "marathon1"},
+                    {"name": "marathon1"},
+                    {"name": "chronos"},
+                    {"name": "foobar"},
+                    {"name": "foobar"},
+                ]
             },
         )
         mock_get_mesos_master.return_value = mock_master
@@ -80,7 +86,9 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
         with pytest.raises(SystemExit) as error:
             check_mesos_no_duplicate_frameworks()
         out, err = capfd.readouterr()
-        assert "CRITICAL: There are 2 connected marathon1 frameworks! (Expected 1)" in out
+        assert (
+            "CRITICAL: There are 2 connected marathon1 frameworks! (Expected 1)" in out
+        )
         assert "marathon" in out
         assert "chronos" in out
         assert "foobar" not in out

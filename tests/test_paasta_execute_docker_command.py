@@ -21,93 +21,98 @@ from paasta_tools.paasta_execute_docker_command import TimeoutException
 
 
 def test_execute_in_container():
-    fake_container_id = 'fake_container_id'
+    fake_container_id = "fake_container_id"
     fake_return_code = 0
-    fake_output = 'fake_output'
-    fake_command = 'fake_cmd'
+    fake_output = "fake_output"
+    fake_command = "fake_cmd"
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.exec_start.return_value = fake_output
-    mock_docker_client.exec_inspect.return_value = {'ExitCode': fake_return_code}
+    mock_docker_client.exec_inspect.return_value = {"ExitCode": fake_return_code}
 
-    assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code,
+    assert execute_in_container(
+        mock_docker_client, fake_container_id, fake_command, 1
+    ) == (fake_output, fake_return_code)
+    expected_cmd = ["/bin/sh", "-c", fake_command]
+    mock_docker_client.exec_create.assert_called_once_with(
+        fake_container_id, expected_cmd
     )
-    expected_cmd = ['/bin/sh', '-c', fake_command]
-    mock_docker_client.exec_create.assert_called_once_with(fake_container_id, expected_cmd)
 
 
 def test_execute_in_container_reuses_exec():
-    fake_container_id = 'fake_container_id'
-    fake_execid = 'fake_execid'
+    fake_container_id = "fake_container_id"
+    fake_execid = "fake_execid"
     fake_return_code = 0
-    fake_output = 'fake_output'
-    fake_command = 'fake_cmd'
+    fake_output = "fake_output"
+    fake_command = "fake_cmd"
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_docker_client.inspect_container.return_value = {'ExecIDs': [fake_execid]}
+    mock_docker_client.inspect_container.return_value = {"ExecIDs": [fake_execid]}
     mock_docker_client.exec_start.return_value = fake_output
     mock_docker_client.exec_inspect.return_value = {
-        'ExitCode': fake_return_code,
-        'ProcessConfig': {
-            'entrypoint': '/bin/sh',
-            'arguments': ['-c', fake_command],
-        },
+        "ExitCode": fake_return_code,
+        "ProcessConfig": {"entrypoint": "/bin/sh", "arguments": ["-c", fake_command]},
     }
 
-    assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code,
-    )
+    assert execute_in_container(
+        mock_docker_client, fake_container_id, fake_command, 1
+    ) == (fake_output, fake_return_code)
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 
 
 def test_execute_in_container_reuses_only_valid_exec():
-    fake_container_id = 'fake_container_id'
-    fake_execid = 'fake_execid'
+    fake_container_id = "fake_container_id"
+    fake_execid = "fake_execid"
     fake_return_code = 0
-    fake_output = 'fake_output'
-    fake_command = 'fake_cmd'
+    fake_output = "fake_output"
+    fake_command = "fake_cmd"
     bad_exec = {
-        'ExitCode': fake_return_code,
-        'ProcessConfig': {
-            'entrypoint': '/bin/sh',
-            'arguments': ['-c', 'some_other_command'],
+        "ExitCode": fake_return_code,
+        "ProcessConfig": {
+            "entrypoint": "/bin/sh",
+            "arguments": ["-c", "some_other_command"],
         },
     }
     good_exec = {
-        'ExitCode': fake_return_code,
-        'ProcessConfig': {
-            'entrypoint': '/bin/sh',
-            'arguments': ['-c', fake_command],
-        },
+        "ExitCode": fake_return_code,
+        "ProcessConfig": {"entrypoint": "/bin/sh", "arguments": ["-c", fake_command]},
     }
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_docker_client.inspect_container.return_value = {'ExecIDs': ['fake_other_exec', fake_execid, 'fake_other_exec']}
+    mock_docker_client.inspect_container.return_value = {
+        "ExecIDs": ["fake_other_exec", fake_execid, "fake_other_exec"]
+    }
     mock_docker_client.exec_start.return_value = fake_output
     # the last side effect is used to check the exit code of the command
-    mock_docker_client.exec_inspect.side_effect = [bad_exec, good_exec, bad_exec, good_exec]
+    mock_docker_client.exec_inspect.side_effect = [
+        bad_exec,
+        good_exec,
+        bad_exec,
+        good_exec,
+    ]
 
-    assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
-        fake_output, fake_return_code,
-    )
+    assert execute_in_container(
+        mock_docker_client, fake_container_id, fake_command, 1
+    ) == (fake_output, fake_return_code)
     assert mock_docker_client.exec_create.call_count == 0
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 
 
 def test_main():
-    fake_container_id = 'fake_container_id'
+    fake_container_id = "fake_container_id"
     fake_timeout = 3
     with mock.patch(
-        'paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-        return_value=fake_container_id, autospec=True,
+        "paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id",
+        return_value=fake_container_id,
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.parse_args', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.parse_args", autospec=True
     ) as args_patch, mock.patch(
-        'paasta_tools.paasta_execute_docker_command.execute_in_container',
-        return_value=('fake_output', 0), autospec=True,
+        "paasta_tools.paasta_execute_docker_command.execute_in_container",
+        return_value=("fake_output", 0),
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.time_limit', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.time_limit", autospec=True
     ) as time_limit_patch:
-        args_patch.return_value.mesos_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = "fake_task_id"
         args_patch.return_value.timeout = fake_timeout
         with pytest.raises(SystemExit) as excinfo:
             main()
@@ -116,20 +121,22 @@ def test_main():
 
 
 def test_main_with_empty_task_id():
-    fake_container_id = 'fake_container_id'
+    fake_container_id = "fake_container_id"
     fake_timeout = 3
     with mock.patch(
-        'paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-        return_value=fake_container_id, autospec=True,
+        "paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id",
+        return_value=fake_container_id,
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.parse_args', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.parse_args", autospec=True
     ) as args_patch, mock.patch(
-        'paasta_tools.paasta_execute_docker_command.execute_in_container',
-        return_value=('fake_output', 0), autospec=True,
+        "paasta_tools.paasta_execute_docker_command.execute_in_container",
+        return_value=("fake_output", 0),
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.time_limit', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.time_limit", autospec=True
     ):
-        args_patch.return_value.mesos_id = ''
+        args_patch.return_value.mesos_id = ""
         args_patch.return_value.timeout = fake_timeout
         with pytest.raises(SystemExit) as excinfo:
             main()
@@ -138,57 +145,64 @@ def test_main_with_empty_task_id():
 
 def test_main_container_not_found_failure():
     with mock.patch(
-        'paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-        return_value=None, autospec=True,
+        "paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id",
+        return_value=None,
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.execute_in_container',
-        return_value=('fake_output', 2), autospec=True,
+        "paasta_tools.paasta_execute_docker_command.execute_in_container",
+        return_value=("fake_output", 2),
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.parse_args', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.parse_args", autospec=True
     ) as args_patch, mock.patch(
-        'paasta_tools.paasta_execute_docker_command.time_limit', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.time_limit", autospec=True
     ):
-        args_patch.return_value.mesos_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = "fake_task_id"
         with pytest.raises(SystemExit) as excinfo:
             main()
         assert excinfo.value.code == 1
 
 
 def test_main_cmd_unclean_exit_failure():
-    fake_container_id = 'fake_container_id'
+    fake_container_id = "fake_container_id"
     with mock.patch(
-        'paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-        return_value=fake_container_id, autospec=True,
+        "paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id",
+        return_value=fake_container_id,
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.execute_in_container',
-        return_value=('fake_output', 2), autospec=True,
+        "paasta_tools.paasta_execute_docker_command.execute_in_container",
+        return_value=("fake_output", 2),
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.parse_args', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.parse_args", autospec=True
     ) as args_patch, mock.patch(
-        'paasta_tools.paasta_execute_docker_command.time_limit', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.time_limit", autospec=True
     ):
-        args_patch.return_value.mesos_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = "fake_task_id"
         with pytest.raises(SystemExit) as excinfo:
             main()
         assert excinfo.value.code == 2
 
 
 def test_main_timeout_failure():
-    fake_container_id = 'fake_container_id'
+    fake_container_id = "fake_container_id"
     fake_timeout = 3
     with mock.patch(
-        'paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
-        return_value=fake_container_id, autospec=True,
+        "paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id",
+        return_value=fake_container_id,
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.parse_args', autospec=True,
+        "paasta_tools.paasta_execute_docker_command.parse_args", autospec=True
     ) as args_patch, mock.patch(
-        'paasta_tools.paasta_execute_docker_command.execute_in_container',
-        return_value=('fake_output', 0), autospec=True,
+        "paasta_tools.paasta_execute_docker_command.execute_in_container",
+        return_value=("fake_output", 0),
+        autospec=True,
     ), mock.patch(
-        'paasta_tools.paasta_execute_docker_command.time_limit',
-        side_effect=TimeoutException, autospec=True,
+        "paasta_tools.paasta_execute_docker_command.time_limit",
+        side_effect=TimeoutException,
+        autospec=True,
     ) as time_limit_patch:
-        args_patch.return_value.mesos_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = "fake_task_id"
         args_patch.return_value.timeout = fake_timeout
         with pytest.raises(SystemExit) as excinfo:
             main()

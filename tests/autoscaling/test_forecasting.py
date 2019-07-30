@@ -13,12 +13,10 @@ def test_moving_average_forecast_policy():
     ]
 
     assert 170 == forecasting.moving_average_forecast_policy(
-        historical_load,
-        moving_average_window_seconds=5,
+        historical_load, moving_average_window_seconds=5
     )
     assert 220 == forecasting.moving_average_forecast_policy(
-        historical_load,
-        moving_average_window_seconds=0.5,
+        historical_load, moving_average_window_seconds=0.5
     )
 
 
@@ -34,26 +32,18 @@ def test_linreg_forecast_policy():
     ]
 
     assert 220 == forecasting.linreg_forecast_policy(
-        historical_load,
-        linreg_window_seconds=7,
-        linreg_extrapolation_seconds=0,
+        historical_load, linreg_window_seconds=7, linreg_extrapolation_seconds=0
     )
     assert 1000 == forecasting.linreg_forecast_policy(
-        historical_load,
-        linreg_window_seconds=7,
-        linreg_extrapolation_seconds=39,
+        historical_load, linreg_window_seconds=7, linreg_extrapolation_seconds=39
     )
 
     # We should handle the case where there's only 1 data point within the window.
     assert 220 == forecasting.linreg_forecast_policy(
-        historical_load,
-        linreg_window_seconds=0,
-        linreg_extrapolation_seconds=0,
+        historical_load, linreg_window_seconds=0, linreg_extrapolation_seconds=0
     )
     assert 220 == forecasting.linreg_forecast_policy(
-        historical_load,
-        linreg_window_seconds=0,
-        linreg_extrapolation_seconds=10,
+        historical_load, linreg_window_seconds=0, linreg_extrapolation_seconds=10
     )
     assert 1000 == forecasting.linreg_forecast_policy(
         historical_load,
@@ -69,7 +59,6 @@ def test_linreg_forecast_policy():
         (4, 100),
         (5, 100),
         (6, 100),
-
         (1, 100),
         (2, 200),
         (3, 300),
@@ -79,7 +68,5 @@ def test_linreg_forecast_policy():
     ]
 
     assert 350 == forecasting.linreg_forecast_policy(
-        historical_load_2,
-        linreg_window_seconds=7,
-        linreg_extrapolation_seconds=0,
+        historical_load_2, linreg_window_seconds=7, linreg_extrapolation_seconds=0
     )

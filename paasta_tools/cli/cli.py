@@ -49,8 +49,8 @@ def add_subparser(command, subparsers):
 
     :param command: a simple string - e.g. 'list'
     :param subparsers: an ArgumentParser object"""
-    module_name = 'paasta_tools.cli.cmds.%s' % command
-    add_subparser_fn = load_method(module_name, 'add_subparser')
+    module_name = "paasta_tools.cli.cmds.%s" % command
+    add_subparser_fn = load_method(module_name, "add_subparser")
     add_subparser_fn(subparsers)
 
 
@@ -73,18 +73,21 @@ def get_argparser():
 
     # http://stackoverflow.com/a/8521644/812183
     parser.add_argument(
-        '-V', '--version',
-        action='version',
-        version='paasta-tools {}'.format(
-            pkg_resources.get_distribution('paasta-tools').version,
+        "-V",
+        "--version",
+        action="version",
+        version="paasta-tools {}".format(
+            pkg_resources.get_distribution("paasta-tools").version
         ),
     )
 
-    subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help", dest='command')
+    subparsers = parser.add_subparsers(
+        help="[-h, --help] for subcommand help", dest="command"
+    )
     subparsers.required = True
 
     # Adding a separate help subparser allows us to respond to "help" without --help
-    help_parser = subparsers.add_parser('help', add_help=False)
+    help_parser = subparsers.add_parser("help", add_help=False)
     help_parser.set_defaults(command=None)
 
     for command in sorted(paasta_commands_dir(cmds)):
@@ -124,5 +127,5 @@ def main(argv=None):
     sys.exit(return_code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-class PaastaServiceConfigLoader():
+class PaastaServiceConfigLoader:
     """PaastaServiceConfigLoader provides useful methods for reading soa-configs and
     iterating instance names or InstanceConfigs objects.
 
@@ -58,14 +58,17 @@ class PaastaServiceConfigLoader():
     canary
     >>>
     """
-    _framework_configs: Dict[
-        Tuple[str, type],
-        Dict[str, utils.InstanceConfigDict],
-    ]
+
+    _framework_configs: Dict[Tuple[str, type], Dict[str, utils.InstanceConfigDict]]
     _clusters: List[str]
     _deployments_json: utils.DeploymentsJsonV2
 
-    def __init__(self, service: str, soa_dir: str = DEFAULT_SOA_DIR, load_deployments: bool = True) -> None:
+    def __init__(
+        self,
+        service: str,
+        soa_dir: str = DEFAULT_SOA_DIR,
+        load_deployments: bool = True,
+    ) -> None:
         self._service = service
         self._soa_dir = soa_dir
         self._load_deployments = load_deployments
@@ -85,7 +88,9 @@ class PaastaServiceConfigLoader():
         for cluster in self._clusters:
             yield cluster
 
-    def instances(self, cluster: str, instance_type_class: Type[InstanceConfig_T]) -> Iterable[str]:
+    def instances(
+        self, cluster: str, instance_type_class: Type[InstanceConfig_T]
+    ) -> Iterable[str]:
         """Returns an iterator that yields instance names as strings.
 
         :param cluster: The cluster name
@@ -98,9 +103,7 @@ class PaastaServiceConfigLoader():
             yield instance
 
     def instance_configs(
-        self,
-        cluster: str,
-        instance_type_class: Type[InstanceConfig_T],
+        self, cluster: str, instance_type_class: Type[InstanceConfig_T]
     ) -> Iterable[InstanceConfig_T]:
         """Returns an iterator that yields InstanceConfig objects.
 
@@ -111,43 +114,53 @@ class PaastaServiceConfigLoader():
         """
         if (cluster, instance_type_class) not in self._framework_configs:
             self._refresh_framework_config(cluster, instance_type_class)
-        for instance, config in self._framework_configs.get((cluster, instance_type_class), {}).items():
+        for instance, config in self._framework_configs.get(
+            (cluster, instance_type_class), {}
+        ).items():
             try:
-                yield self._create_service_config(cluster, instance, config, instance_type_class)
+                yield self._create_service_config(
+                    cluster, instance, config, instance_type_class
+                )
             except NoDeploymentsAvailable:
                 pass
 
-    def _framework_config_filename(self, cluster: str, instance_type_class: Type[InstanceConfig_T]):
+    def _framework_config_filename(
+        self, cluster: str, instance_type_class: Type[InstanceConfig_T]
+    ):
         return f"{instance_type_class.config_filename_prefix}-{cluster}"
 
-    def _refresh_framework_config(self, cluster: str, instance_type_class: Type[InstanceConfig_T]):
+    def _refresh_framework_config(
+        self, cluster: str, instance_type_class: Type[InstanceConfig_T]
+    ):
         conf_name = self._framework_config_filename(cluster, instance_type_class)
         log.info("Reading configuration file: %s.yaml", conf_name)
         instances = read_extra_service_information(
-            service_name=self._service,
-            extra_info=conf_name,
-            soa_dir=self._soa_dir,
+            service_name=self._service, extra_info=conf_name, soa_dir=self._soa_dir
         )
         self._framework_configs[(cluster, instance_type_class)] = instances
 
-    def _get_branch_dict(self, cluster: str, instance: str, config: utils.InstanceConfig) -> utils.BranchDictV2:
+    def _get_branch_dict(
+        self, cluster: str, instance: str, config: utils.InstanceConfig
+    ) -> utils.BranchDictV2:
         if self._deployments_json is None:
-            self._deployments_json = load_v2_deployments_json(self._service, soa_dir=self._soa_dir)
+            self._deployments_json = load_v2_deployments_json(
+                self._service, soa_dir=self._soa_dir
+            )
 
         branch = config.get_branch()
         deploy_group = config.get_deploy_group()
-        return self._deployments_json.get_branch_dict(self._service, branch, deploy_group)
+        return self._deployments_json.get_branch_dict(
+            self._service, branch, deploy_group
+        )
 
-    def _get_merged_config(self, config: utils.InstanceConfigDict) -> utils.InstanceConfigDict:
+    def _get_merged_config(
+        self, config: utils.InstanceConfigDict
+    ) -> utils.InstanceConfigDict:
         if self._general_config is None:
             self._general_config = read_service_configuration(
-                service_name=self._service,
-                soa_dir=self._soa_dir,
+                service_name=self._service, soa_dir=self._soa_dir
             )
-        return deep_merge_dictionaries(
-            overrides=config,
-            defaults=self._general_config,
-        )
+        return deep_merge_dictionaries(overrides=config, defaults=self._general_config)
 
     def _create_service_config(
         self,

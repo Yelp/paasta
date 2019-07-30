@@ -42,9 +42,12 @@ from paasta_tools.utils import paasta_print
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Cleans up stale chronos jobs.')
+    parser = argparse.ArgumentParser(description="Cleans up stale chronos jobs.")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=chronos_tools.DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
@@ -80,15 +83,18 @@ def cleanup_jobs(client, jobs):
 
 def cleanup_tasks(client, jobs):
     """Maps a list of tasks to cleanup to a list of response objects (or exception objects) from the api"""
-    return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
+    return [
+        (job, execute_chronos_api_call_for_job(client.delete_tasks, job))
+        for job in jobs
+    ]
 
 
 def format_list_output(title, job_names):
-    return '{}\n  {}'.format(title, '\n  '.join(job_names))
+    return "{}\n  {}".format(title, "\n  ".join(job_names))
 
 
 def deployed_job_names(client):
-    return [job['name'] for job in client.list()]
+    return [job["name"] for job in client.list()]
 
 
 def filter_paasta_jobs(jobs):
@@ -113,7 +119,9 @@ def filter_tmp_jobs(job_names):
     """
     filter temporary jobs created by chronos_rerun
     """
-    return [name for name in job_names if name.startswith(chronos_tools.TMP_JOB_IDENTIFIER)]
+    return [
+        name for name in job_names if name.startswith(chronos_tools.TMP_JOB_IDENTIFIER)
+    ]
 
 
 def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
@@ -129,27 +137,25 @@ def filter_expired_tmp_jobs(client, job_names, cluster, soa_dir):
     for job_name in job_names:
         service, instance = chronos_tools.decompose_job_id(job_name)
         temporary_jobs = chronos_tools.get_temporary_jobs_for_service_instance(
-            client=client,
-            service=service,
-            instance=instance,
+            client=client, service=service, instance=instance
         )
         for job in temporary_jobs:
             last_run_time, last_run_state = chronos_tools.get_status_last_run(job)
             try:
                 chronos_job_config = chronos_tools.load_chronos_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
+                    service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
                 )
                 interval = chronos_job_config.get_schedule_interval_in_seconds() or 0
             except NoConfigurationForServiceError:
                 # If we can't get the job's config, default to cleanup after 1 day
                 interval = 0
             if last_run_state != chronos_tools.LastRunState.NotRun:
-                if ((datetime.datetime.now(dateutil.tz.tzutc()) -
-                     dateutil.parser.parse(last_run_time)) >
-                        max(datetime.timedelta(seconds=interval), datetime.timedelta(days=1))):
+                if (
+                    datetime.datetime.now(dateutil.tz.tzutc())
+                    - dateutil.parser.parse(last_run_time)
+                ) > max(
+                    datetime.timedelta(seconds=interval), datetime.timedelta(days=1)
+                ):
                     expired.append(job_name)
     return expired
 
@@ -167,11 +173,15 @@ def main():
 
     running_jobs = set(deployed_job_names(client))
 
-    expected_service_jobs = {chronos_tools.compose_job_id(*job) for job in
-                             chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)}
+    expected_service_jobs = {
+        chronos_tools.compose_job_id(*job)
+        for job in chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
+    }
 
     all_tmp_jobs = set(filter_tmp_jobs(filter_paasta_jobs(running_jobs)))
-    expired_tmp_jobs = set(filter_expired_tmp_jobs(client, all_tmp_jobs, cluster=cluster, soa_dir=soa_dir))
+    expired_tmp_jobs = set(
+        filter_expired_tmp_jobs(client, all_tmp_jobs, cluster=cluster, soa_dir=soa_dir)
+    )
     valid_tmp_jobs = all_tmp_jobs - expired_tmp_jobs
 
     to_delete = running_jobs - expected_service_jobs - valid_tmp_jobs
@@ -209,24 +219,38 @@ def main():
                 pass
 
     if len(to_delete) == 0:
-        paasta_print('No Chronos Jobs to remove')
+        paasta_print("No Chronos Jobs to remove")
     else:
         if len(task_successes) > 0:
-            paasta_print(format_list_output(
-                "Successfully Removed Tasks (if any were running) for:",
-                [job[0] for job in task_successes],
-            ))
+            paasta_print(
+                format_list_output(
+                    "Successfully Removed Tasks (if any were running) for:",
+                    [job[0] for job in task_successes],
+                )
+            )
 
         # if there are any failures, print and exit appropriately
         if len(task_failures) > 0:
-            paasta_print(format_list_output("Failed to Delete Tasks for:", [job[0] for job in task_failures]))
+            paasta_print(
+                format_list_output(
+                    "Failed to Delete Tasks for:", [job[0] for job in task_failures]
+                )
+            )
 
         if len(job_successes) > 0:
-            paasta_print(format_list_output("Successfully Removed Jobs:", [job[0] for job in job_successes]))
+            paasta_print(
+                format_list_output(
+                    "Successfully Removed Jobs:", [job[0] for job in job_successes]
+                )
+            )
 
         # if there are any failures, print and exit appropriately
         if len(job_failures) > 0:
-            paasta_print(format_list_output("Failed to Delete Jobs:", [job[0] for job in job_failures]))
+            paasta_print(
+                format_list_output(
+                    "Failed to Delete Jobs:", [job[0] for job in job_failures]
+                )
+            )
 
         if len(job_failures) > 0 or len(task_failures) > 0:
             sys.exit(1)

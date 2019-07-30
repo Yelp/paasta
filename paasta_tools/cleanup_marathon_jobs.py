@@ -56,27 +56,33 @@ class DontKillEverythingError(Exception):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
+    parser = argparse.ArgumentParser(description="Cleans up stale marathon jobs.")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-t', '--kill-threshold', dest="kill_threshold",
+        "-t",
+        "--kill-threshold",
+        dest="kill_threshold",
         default=0.5,
         help="The decimal fraction of apps we think is "
-             "sane to kill when this job runs",
+        "sane to kill when this job runs",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     parser.add_argument(
-        '-f', '--force', action='store_true',
-        dest="force", default=False,
-        help="Force the cleanup if we are above the "
-             "kill_threshold",
+        "-f",
+        "--force",
+        action="store_true",
+        dest="force",
+        default=False,
+        help="Force the cleanup if we are above the " "kill_threshold",
     )
     return parser.parse_args(argv)
 
@@ -93,7 +99,7 @@ def delete_app(app_id, client, soa_dir):
             bounce_lib.delete_marathon_app(app_id, client)
         send_event(
             service=service,
-            check_name='check_marathon_services_replication.%s' % short_app_id,
+            check_name="check_marathon_services_replication.%s" % short_app_id,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
             overrides={},
@@ -101,7 +107,7 @@ def delete_app(app_id, client, soa_dir):
         )
         send_event(
             service=service,
-            check_name='setup_marathon_job.%s' % short_app_id,
+            check_name="setup_marathon_job.%s" % short_app_id,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
             overrides={},
@@ -110,8 +116,8 @@ def delete_app(app_id, client, soa_dir):
         log_line = "Deleted stale marathon job that looks lost: %s" % app_id
         _log(
             service=service,
-            component='deploy',
-            level='event',
+            component="deploy",
+            level="event",
             cluster=cluster,
             instance=instance,
             line=log_line,
@@ -119,13 +125,13 @@ def delete_app(app_id, client, soa_dir):
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
     except Exception:
-        loglines = ['Exception raised during cleanup of service %s:' % service]
+        loglines = ["Exception raised during cleanup of service %s:" % service]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             _log(
                 service=service,
-                component='deploy',
-                level='debug',
+                component="deploy",
+                level="debug",
                 cluster=load_system_paasta_config().get_cluster(),
                 instance=instance,
                 line=logline,
@@ -145,17 +151,23 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
     log.info("Loading marathon configuration")
     system_paasta_config = load_system_paasta_config()
     log.info("Connecting to marathon")
-    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers(system_paasta_config))
+    clients = marathon_tools.get_marathon_clients(
+        marathon_tools.get_marathon_servers(system_paasta_config)
+    )
 
-    valid_services = get_services_for_cluster(instance_type='marathon', soa_dir=soa_dir)
-    all_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(clients.get_all_clients())
+    valid_services = get_services_for_cluster(instance_type="marathon", soa_dir=soa_dir)
+    all_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
+        clients.get_all_clients()
+    )
 
     app_ids_with_clients = []
     for (app, client) in all_apps_with_clients:
         try:
-            app_id = marathon_tools.deformat_job_id(app.id.lstrip('/'))
+            app_id = marathon_tools.deformat_job_id(app.id.lstrip("/"))
         except InvalidJobNameError:
-            log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app.id)
+            log.warn(
+                "%s doesn't conform to paasta naming conventions? Skipping." % app.id
+            )
             continue
         app_ids_with_clients.append((app_id, client))
     apps_to_kill = [
@@ -168,21 +180,19 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
     log.debug("Valid apps: %s" % valid_services)
     log.debug("Terminating: %s" % apps_to_kill)
     if app_ids_with_clients:
-        above_kill_threshold = float(len(apps_to_kill)) / float(len(app_ids_with_clients)) > float(kill_threshold)
+        above_kill_threshold = float(len(apps_to_kill)) / float(
+            len(app_ids_with_clients)
+        ) > float(kill_threshold)
         if above_kill_threshold and not force:
             log.critical(
                 "Paasta was about to kill more than %s of the running services, this "
                 "is probably a BAD mistake!, run again with --force if you "
-                "really need to destroy everything" % kill_threshold,
+                "really need to destroy everything" % kill_threshold
             )
             raise DontKillEverythingError
     for id_tuple, client in apps_to_kill:
         app_id = marathon_tools.format_job_id(*id_tuple)
-        delete_app(
-            app_id=app_id,
-            client=client,
-            soa_dir=soa_dir,
-        )
+        delete_app(app_id=app_id, client=client, soa_dir=soa_dir)
 
 
 def main(argv=None):

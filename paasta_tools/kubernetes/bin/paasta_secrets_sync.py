@@ -37,25 +37,31 @@ log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Sync paasta secrets into k8s')
+    parser = argparse.ArgumentParser(description="Sync paasta secrets into k8s")
     parser.add_argument(
-        'service_list', nargs='+',
+        "service_list",
+        nargs="+",
         help="The list of services to sync secrets for",
         metavar="SERVICE",
     )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="Kubernetes cluster name",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
     return args
@@ -96,14 +102,16 @@ def sync_all_secrets(
 ) -> bool:
     results = []
     for service in service_list:
-        results.append(sync_secrets(
-            kube_client=kube_client,
-            cluster=cluster,
-            service=service,
-            secret_provider_name=secret_provider_name,
-            vault_cluster_config=vault_cluster_config,
-            soa_dir=soa_dir,
-        ))
+        results.append(
+            sync_secrets(
+                kube_client=kube_client,
+                cluster=cluster,
+                service=service,
+                secret_provider_name=secret_provider_name,
+                vault_cluster_config=vault_cluster_config,
+                soa_dir=soa_dir,
+            )
+        )
     return all(results)
 
 
@@ -117,11 +125,11 @@ def sync_secrets(
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
-        'vault_cluster_config': vault_cluster_config,
+        "vault_cluster_config": vault_cluster_config,
         # TODO: make vault-tools support k8s auth method so we don't have to
         # mount a token in.
-        'vault_auth_method': 'token',
-        'vault_token_file': '/root/.vault_token',
+        "vault_auth_method": "token",
+        "vault_token_file": "/root/.vault_token",
     }
     secret_provider = get_secret_provider(
         secret_provider_name=secret_provider_name,
@@ -135,16 +143,16 @@ def sync_secrets(
         return True
     with os.scandir(secret_dir) as secret_file_paths:
         for secret_file_path in secret_file_paths:
-            if secret_file_path.path.endswith('json'):
-                secret = secret_file_path.name.replace('.json', '')
-                with open(secret_file_path, 'r') as secret_file:
+            if secret_file_path.path.endswith("json"):
+                secret = secret_file_path.name.replace(".json", "")
+                with open(secret_file_path, "r") as secret_file:
                     secret_data = json.load(secret_file)
-                secret_signature = secret_provider.get_secret_signature_from_data(secret_data)
+                secret_signature = secret_provider.get_secret_signature_from_data(
+                    secret_data
+                )
                 if secret_signature:
                     kubernetes_secret_signature = get_kubernetes_secret_signature(
-                        kube_client=kube_client,
-                        secret=secret,
-                        service=service,
+                        kube_client=kube_client, secret=secret, service=service
                     )
                     if not kubernetes_secret_signature:
                         log.info(f"{secret} for {service} not found, creating")
@@ -157,7 +165,9 @@ def sync_secrets(
                             )
                         except ApiException as e:
                             if e.status == 409:
-                                log.warning(f"Secret {secret} for {service} already exists")
+                                log.warning(
+                                    f"Secret {secret} for {service} already exists"
+                                )
                             else:
                                 raise
                         create_kubernetes_secret_signature(
@@ -167,7 +177,9 @@ def sync_secrets(
                             secret_signature=secret_signature,
                         )
                     elif secret_signature != kubernetes_secret_signature:
-                        log.info(f"{secret} for {service} needs updating as signature changed")
+                        log.info(
+                            f"{secret} for {service} needs updating as signature changed"
+                        )
                         update_secret(
                             kube_client=kube_client,
                             secret=secret,
@@ -185,5 +197,5 @@ def sync_secrets(
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

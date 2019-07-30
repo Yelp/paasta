@@ -23,41 +23,63 @@ from paasta_tools.utils import paasta_print
 
 def test_cleanup_jobs():
     chronos_client = mock.Mock()
-    returns = [None, None, Exception('boom')]
+    returns = [None, None, Exception("boom")]
 
     def side_effect(*args):
         result = returns.pop(0)
         if isinstance(result, Exception):
             raise result
         return result
+
     chronos_client.delete = mock.Mock(side_effect=side_effect)
-    result = cleanup_chronos_jobs.cleanup_jobs(chronos_client, ['foo', 'bar', 'baz'])
+    result = cleanup_chronos_jobs.cleanup_jobs(chronos_client, ["foo", "bar", "baz"])
 
     # I'd like to just compare the lists, but you can't compare exception objects.
     paasta_print(result)
-    assert result[0] == ('foo', None)
-    assert result[1] == ('bar', None)
-    assert result[2][0] == 'baz'
+    assert result[0] == ("foo", None)
+    assert result[1] == ("bar", None)
+    assert result[2][0] == "baz"
     assert isinstance(result[2][1], Exception)
 
 
 def test_format_list_output():
-    assert cleanup_chronos_jobs.format_list_output("Successfully Removed:", ['foo', 'bar', 'baz']) \
+    assert (
+        cleanup_chronos_jobs.format_list_output(
+            "Successfully Removed:", ["foo", "bar", "baz"]
+        )
         == "Successfully Removed:\n  foo\n  bar\n  baz"
+    )
 
 
 def test_deployed_job_names():
     mock_client = mock.Mock()
-    mock_client.list.return_value = [{'name': 'foo', 'blah': 'blah'}, {'name': 'bar', 'blah': 'blah'}]
-    assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']
+    mock_client.list.return_value = [
+        {"name": "foo", "blah": "blah"},
+        {"name": "bar", "blah": "blah"},
+    ]
+    assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ["foo", "bar"]
 
 
-@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.load_chronos_config', autospec=True)
-@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.load_chronos_job_config', autospec=True)
-@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance', autospec=True)
-def test_filter_expired_tmp_jobs(mock_get_temporary_jobs, mock_load_chronos_job_config, mock_load_chronos_config):
-    two_days_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(days=2)
-    one_hour_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(hours=1)
+@mock.patch(
+    "paasta_tools.cleanup_chronos_jobs.chronos_tools.load_chronos_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cleanup_chronos_jobs.chronos_tools.load_chronos_job_config",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance",
+    autospec=True,
+)
+def test_filter_expired_tmp_jobs(
+    mock_get_temporary_jobs, mock_load_chronos_job_config, mock_load_chronos_config
+):
+    two_days_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(
+        days=2
+    )
+    one_hour_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(
+        hours=1
+    )
 
     # Ensure that a tmp job with a very long schedule interval is only cleaned
     # up if the last success was outside the schedule interval
@@ -84,21 +106,35 @@ def test_filter_expired_tmp_jobs(mock_get_temporary_jobs, mock_load_chronos_job_
     ]
 
     mock_get_temporary_jobs.side_effect = [
-        [{'name': 'tmp long batch', 'lastSuccess': two_days_ago.isoformat()}],
-        [{'name': 'tmp foo bar', 'lastSuccess': two_days_ago.isoformat()}],
-        [{'name': 'tmp anotherservice anotherinstance', 'lastSuccess': one_hour_ago.isoformat()}],
-        [{'name': 'tmp short batch', 'lastSuccess': one_hour_ago.isoformat()}],
-        [{'name': 'tmp nonexistent batch', 'lastSuccess': one_hour_ago.isoformat()}],
+        [{"name": "tmp long batch", "lastSuccess": two_days_ago.isoformat()}],
+        [{"name": "tmp foo bar", "lastSuccess": two_days_ago.isoformat()}],
+        [
+            {
+                "name": "tmp anotherservice anotherinstance",
+                "lastSuccess": one_hour_ago.isoformat(),
+            }
+        ],
+        [{"name": "tmp short batch", "lastSuccess": one_hour_ago.isoformat()}],
+        [{"name": "tmp nonexistent batch", "lastSuccess": one_hour_ago.isoformat()}],
     ]
     actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(
         mock.Mock(),
-        ['long batch', 'foo bar', 'anotherservice anotherinstance', 'short batch', 'nonexistent batch'],
-        cluster='fake_cluster',
-        soa_dir='/soa/dir',
+        [
+            "long batch",
+            "foo bar",
+            "anotherservice anotherinstance",
+            "short batch",
+            "nonexistent batch",
+        ],
+        cluster="fake_cluster",
+        soa_dir="/soa/dir",
     )
-    assert actual == ['foo bar']
+    assert actual == ["foo bar"]
 
 
 def test_filter_paasta_jobs():
-    expected = ['foo bar']
-    assert cleanup_chronos_jobs.filter_paasta_jobs(iter(['foo bar', 'madeupchronosjob'])) == expected
+    expected = ["foo bar"]
+    assert (
+        cleanup_chronos_jobs.filter_paasta_jobs(iter(["foo bar", "madeupchronosjob"]))
+        == expected
+    )

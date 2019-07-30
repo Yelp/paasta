@@ -20,20 +20,17 @@ from paasta_tools.utils import NoConfigurationForServiceError
 
 def test_get_default_interactive_config():
     with mock.patch(
-        'paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True,
+        "paasta_tools.adhoc_tools.load_adhoc_job_config", autospec=True
     ) as mock_load_adhoc_job_config:
         mock_load_adhoc_job_config.return_value = adhoc_tools.AdhocJobConfig(
-            service='fake_service',
-            instance='interactive',
-            cluster='fake_cluster',
+            service="fake_service",
+            instance="interactive",
+            cluster="fake_cluster",
             config_dict={},
-            branch_dict={'deploy_group': 'fake_deploy_group'},
+            branch_dict={"deploy_group": "fake_deploy_group"},
         )
         result = adhoc_tools.get_default_interactive_config(
-            'fake_service',
-            'fake_cluster',
-            '/fake/soa/dir',
-            load_deployments=False,
+            "fake_service", "fake_cluster", "/fake/soa/dir", load_deployments=False
         )
         assert result.get_cpus() == 4
         assert result.get_mem() == 10240
@@ -42,31 +39,28 @@ def test_get_default_interactive_config():
 
 def test_get_default_interactive_config_reads_from_tty():
     with mock.patch(
-        'paasta_tools.adhoc_tools.prompt_pick_one', autospec=True,
+        "paasta_tools.adhoc_tools.prompt_pick_one", autospec=True
     ) as mock_prompt_pick_one, mock.patch(
-        'paasta_tools.adhoc_tools.load_adhoc_job_config', autospec=True,
+        "paasta_tools.adhoc_tools.load_adhoc_job_config", autospec=True
     ) as mock_load_adhoc_job_config, mock.patch(
-        'paasta_tools.adhoc_tools.load_v2_deployments_json', autospec=True,
+        "paasta_tools.adhoc_tools.load_v2_deployments_json", autospec=True
     ) as mock_load_deployments_json:
-        mock_prompt_pick_one.return_value = 'fake_deploygroup'
+        mock_prompt_pick_one.return_value = "fake_deploygroup"
         mock_load_adhoc_job_config.side_effect = NoConfigurationForServiceError
         mock_load_deployments_json.return_value = DeploymentsJsonV2(
-            service='fake-service',
+            service="fake-service",
             config_dict={
-                'deployments': {
-                    'fake_deploygroup': {
-                        'docker_image': mock.sentinel.docker_image,
-                        'git_sha': mock.sentinel.git_sha,
-                    },
+                "deployments": {
+                    "fake_deploygroup": {
+                        "docker_image": mock.sentinel.docker_image,
+                        "git_sha": mock.sentinel.git_sha,
+                    }
                 },
-                'controls': {},
+                "controls": {},
             },
         )
         result = adhoc_tools.get_default_interactive_config(
-            'fake_service',
-            'fake_cluster',
-            '/fake/soa/dir',
-            load_deployments=True,
+            "fake_service", "fake_cluster", "/fake/soa/dir", load_deployments=True
         )
-        assert result.get_deploy_group() == 'fake_deploygroup'
+        assert result.get_deploy_group() == "fake_deploygroup"
         assert result.get_docker_image() == mock.sentinel.docker_image

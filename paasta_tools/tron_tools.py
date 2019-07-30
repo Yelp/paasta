@@ -25,6 +25,7 @@ from typing import Tuple
 
 import service_configuration_lib
 import yaml
+
 try:
     from yaml.cyaml import CSafeDumper as Dumper
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
@@ -50,14 +51,14 @@ from typing import Dict
 from typing import Any
 
 log = logging.getLogger(__name__)
-logging.getLogger('tron').setLevel(logging.WARNING)
+logging.getLogger("tron").setLevel(logging.WARNING)
 
-MASTER_NAMESPACE = 'MASTER'
-SPACER = '.'
+MASTER_NAMESPACE = "MASTER"
+SPACER = "."
 VALID_MONITORING_KEYS = set(
     json.loads(
-        pkgutil.get_data('paasta_tools.cli', 'schemas/tron_schema.json').decode(),
-    )['definitions']['job']['properties']['monitoring']['properties'].keys(),
+        pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
+    )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
 
 
@@ -78,20 +79,24 @@ class TronConfig(dict):
     def get_cluster_name(self):
         """:returns The name of the Tron cluster"""
         try:
-            return self['cluster_name']
+            return self["cluster_name"]
         except KeyError:
-            raise TronNotConfigured('Could not find name of Tron cluster in system Tron config')
+            raise TronNotConfigured(
+                "Could not find name of Tron cluster in system Tron config"
+            )
 
     def get_url(self):
         """:returns The URL for the Tron master's API"""
         try:
-            return self['url']
+            return self["url"]
         except KeyError:
-            raise TronNotConfigured('Could not find URL of Tron master in system Tron config')
+            raise TronNotConfigured(
+                "Could not find URL of Tron master in system Tron config"
+            )
 
 
 def get_tronfig_folder(cluster, soa_dir):
-    return os.path.join(soa_dir, 'tron', cluster)
+    return os.path.join(soa_dir, "tron", cluster)
 
 
 def load_tron_config():
@@ -103,14 +108,14 @@ def get_tron_client():
 
 
 def compose_instance(job, action):
-    return f'{job}{SPACER}{action}'
+    return f"{job}{SPACER}{action}"
 
 
 def decompose_instance(instance):
     """Get (job_name, action_name) from an instance."""
     decomposed = instance.split(SPACER)
     if len(decomposed) != 2:
-        raise InvalidInstanceConfig('Invalid instance name: %s' % instance)
+        raise InvalidInstanceConfig("Invalid instance name: %s" % instance)
     return (decomposed[0], decomposed[1])
 
 
@@ -129,10 +134,7 @@ class StringFormatter(Formatter):
                 return Formatter.get_value(key, args, kwds)
 
 
-def parse_time_variables(
-    command: str,
-    parse_time: datetime.datetime = None,
-) -> str:
+def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> str:
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
     variables listed in the tron documentation:
@@ -146,7 +148,9 @@ def parse_time_variables(
         parse_time = datetime.datetime.now()
     # We build up a tron context object that has the right
     # methods to parse tron-style time syntax
-    job_context = tron_command_context.JobRunContext(tron_command_context.CommandContext())
+    job_context = tron_command_context.JobRunContext(
+        tron_command_context.CommandContext()
+    )
     # The tron context object needs the run_time attribute set so it knows
     # how to interpret the date strings
     job_context.job_run.run_time = parse_time
@@ -154,9 +158,17 @@ def parse_time_variables(
 
 
 class TronActionConfig(InstanceConfig):
-    config_filename_prefix = 'tron'
+    config_filename_prefix = "tron"
 
-    def __init__(self, service, instance, cluster, config_dict, branch_dict, soa_dir=DEFAULT_SOA_DIR):
+    def __init__(
+        self,
+        service,
+        instance,
+        cluster,
+        config_dict,
+        branch_dict,
+        soa_dir=DEFAULT_SOA_DIR,
+    ):
         super().__init__(
             cluster=cluster,
             instance=instance,
@@ -174,44 +186,44 @@ class TronActionConfig(InstanceConfig):
         return self.action
 
     def get_deploy_group(self) -> Optional[str]:
-        return self.config_dict.get('deploy_group', None)
+        return self.config_dict.get("deploy_group", None)
 
     def get_cmd(self):
-        return self.config_dict.get('command')
+        return self.config_dict.get("command")
 
     def get_executor(self):
-        executor = self.config_dict.get('executor', None)
-        return 'mesos' if executor == 'paasta' else executor
+        executor = self.config_dict.get("executor", None)
+        return "mesos" if executor == "paasta" else executor
 
     def get_healthcheck_mode(self, _) -> None:
         return None
 
     def get_node(self):
-        return self.config_dict.get('node')
+        return self.config_dict.get("node")
 
     def get_retries(self):
-        return self.config_dict.get('retries')
+        return self.config_dict.get("retries")
 
     def get_retries_delay(self):
-        return self.config_dict.get('retries_delay')
+        return self.config_dict.get("retries_delay")
 
     def get_requires(self):
-        return self.config_dict.get('requires')
+        return self.config_dict.get("requires")
 
     def get_expected_runtime(self):
-        return self.config_dict.get('expected_runtime')
+        return self.config_dict.get("expected_runtime")
 
     def get_triggered_by(self):
-        return self.config_dict.get('triggered_by', None)
+        return self.config_dict.get("triggered_by", None)
 
     def get_trigger_downstreams(self):
-        return self.config_dict.get('trigger_downstreams', None)
+        return self.config_dict.get("trigger_downstreams", None)
 
     def get_on_upstream_rerun(self):
-        return self.config_dict.get('on_upstream_rerun', None)
+        return self.config_dict.get("on_upstream_rerun", None)
 
     def get_trigger_timeout(self):
-        return self.config_dict.get('trigger_timeout', None)
+        return self.config_dict.get("trigger_timeout", None)
 
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
@@ -227,7 +239,7 @@ class TronActionConfig(InstanceConfig):
                     # Don't have configs for the paasta cluster
                     system_deploy_blacklist=[],
                     system_deploy_whitelist=None,
-                ),
+                )
             )
             constraints.extend(self.get_pool_constraints())
             return constraints
@@ -241,7 +253,9 @@ class TronActionConfig(InstanceConfig):
         # Tron is a little special, because it can *not* have a deploy group
         # But only if an action is running via ssh and not via paasta
         if self.get_deploy_group() is None and self.get_executor() == "mesos":
-            error_msgs.append(f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set")
+            error_msgs.append(
+                f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
+            )
         return error_msgs
 
 
@@ -249,8 +263,13 @@ class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
 
     def __init__(
-        self, name: str, config_dict: Dict[str, Any], cluster: str, service: Optional[str] = None,
-        load_deployments: bool = True, soa_dir: str = DEFAULT_SOA_DIR,
+        self,
+        name: str,
+        config_dict: Dict[str, Any],
+        cluster: str,
+        service: Optional[str] = None,
+        load_deployments: bool = True,
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         self.name = name
         self.config_dict = config_dict
@@ -263,81 +282,86 @@ class TronJobConfig:
         return self.name
 
     def get_node(self):
-        return self.config_dict.get('node')
+        return self.config_dict.get("node")
 
     def get_schedule(self):
-        return self.config_dict.get('schedule')
+        return self.config_dict.get("schedule")
 
     def get_monitoring(self):
-        srv_monitoring = dict(monitoring_tools.read_monitoring_config(
-            self.service,
-            soa_dir=self.soa_dir,
-        ))
-        tron_monitoring = self.config_dict.get('monitoring', {})
+        srv_monitoring = dict(
+            monitoring_tools.read_monitoring_config(self.service, soa_dir=self.soa_dir)
+        )
+        tron_monitoring = self.config_dict.get("monitoring", {})
         srv_monitoring.update(tron_monitoring)
         # filter out non-tron monitoring keys
         srv_monitoring = {
-            k: v
-            for k, v in srv_monitoring.items()
-            if k in VALID_MONITORING_KEYS
+            k: v for k, v in srv_monitoring.items() if k in VALID_MONITORING_KEYS
         }
         return srv_monitoring
 
     def get_queueing(self):
-        return self.config_dict.get('queueing')
+        return self.config_dict.get("queueing")
 
     def get_run_limit(self):
-        return self.config_dict.get('run_limit')
+        return self.config_dict.get("run_limit")
 
     def get_all_nodes(self):
-        return self.config_dict.get('all_nodes')
+        return self.config_dict.get("all_nodes")
 
     def get_enabled(self):
-        return self.config_dict.get('enabled')
+        return self.config_dict.get("enabled")
 
     def get_allow_overlap(self):
-        return self.config_dict.get('allow_overlap')
+        return self.config_dict.get("allow_overlap")
 
     def get_max_runtime(self):
-        return self.config_dict.get('max_runtime')
+        return self.config_dict.get("max_runtime")
 
     def get_time_zone(self):
-        return self.config_dict.get('time_zone')
+        return self.config_dict.get("time_zone")
 
     def get_service(self) -> Optional[str]:
-        return self.service or self.config_dict.get('service')
+        return self.service or self.config_dict.get("service")
 
     def get_deploy_group(self) -> Optional[str]:
-        return self.config_dict.get('deploy_group', None)
+        return self.config_dict.get("deploy_group", None)
 
     def get_cluster(self):
         return self.cluster
 
     def get_expected_runtime(self):
-        return self.config_dict.get('expected_runtime')
+        return self.config_dict.get("expected_runtime")
 
     def _get_action_config(self, action_name, action_dict):
-        action_service = action_dict.setdefault('service', self.get_service())
-        action_deploy_group = action_dict.setdefault('deploy_group', self.get_deploy_group())
+        action_service = action_dict.setdefault("service", self.get_service())
+        action_deploy_group = action_dict.setdefault(
+            "deploy_group", self.get_deploy_group()
+        )
         if action_service and action_deploy_group and self.load_deployments:
             try:
-                deployments_json = load_v2_deployments_json(service=action_service, soa_dir=self.soa_dir)
+                deployments_json = load_v2_deployments_json(
+                    service=action_service, soa_dir=self.soa_dir
+                )
                 branch_dict = {
-                    'docker_image': deployments_json.get_docker_image_for_deploy_group(action_deploy_group),
-                    'git_sha': deployments_json.get_git_sha_for_deploy_group(action_deploy_group),
+                    "docker_image": deployments_json.get_docker_image_for_deploy_group(
+                        action_deploy_group
+                    ),
+                    "git_sha": deployments_json.get_git_sha_for_deploy_group(
+                        action_deploy_group
+                    ),
                     # TODO: add Tron instances when generating deployments json
-                    'desired_state': 'start',
-                    'force_bounce': None,
+                    "desired_state": "start",
+                    "force_bounce": None,
                 }
             except NoDeploymentsAvailable:
                 log.warning(
                     f'Docker image unavailable for {action_service}.{self.get_name()}.{action_dict.get("name")}'
-                    ' is it deployed yet?',
+                    " is it deployed yet?"
                 )
                 branch_dict = None
         else:
             branch_dict = None
-        action_dict['monitoring'] = self.get_monitoring()
+        action_dict["monitoring"] = self.get_monitoring()
 
         return TronActionConfig(
             service=action_service,
@@ -349,31 +373,36 @@ class TronJobConfig:
         )
 
     def get_actions(self):
-        actions = self.config_dict.get('actions')
+        actions = self.config_dict.get("actions")
         return [
             self._get_action_config(name, action_dict)
             for name, action_dict in actions.items()
         ]
 
     def get_cleanup_action(self):
-        action_dict = self.config_dict.get('cleanup_action')
+        action_dict = self.config_dict.get("cleanup_action")
         if not action_dict:
             return None
 
         # TODO: we should keep this trickery outside paasta repo
-        return self._get_action_config('cleanup', action_dict)
+        return self._get_action_config("cleanup", action_dict)
 
     def check_monitoring(self) -> Tuple[bool, str]:
         monitoring = self.get_monitoring()
         valid_teams = list_teams()
         if monitoring is not None:
-            team_name = monitoring.get('team', None)
+            team_name = monitoring.get("team", None)
             if team_name is None:
-                return False, 'Team name is required for monitoring'
+                return False, "Team name is required for monitoring"
             elif team_name not in valid_teams:
-                suggest_teams = difflib.get_close_matches(word=team_name, possibilities=valid_teams)
-                return False, f'Invalid team name: {team_name}. Do you mean one of these: {suggest_teams}'
-        return True, ''
+                suggest_teams = difflib.get_close_matches(
+                    word=team_name, possibilities=valid_teams
+                )
+                return (
+                    False,
+                    f"Invalid team name: {team_name}. Do you mean one of these: {suggest_teams}",
+                )
+        return True, ""
 
     def check_actions(self) -> Tuple[bool, List[str]]:
         actions = self.get_actions()
@@ -392,7 +421,7 @@ class TronJobConfig:
 
     def validate(self) -> List[str]:
         _, error_msgs = self.check_actions()
-        checks = ['check_monitoring']
+        checks = ["check_monitoring"]
         for check in checks:
             check_passed, check_msg = getattr(self, check)()
             if not check_passed:
@@ -408,20 +437,23 @@ class TronJobConfig:
 def format_volumes(paasta_volume_list):
     return [
         {
-            'container_path': v['containerPath'],
-            'host_path': v['hostPath'],
-            'mode': v['mode'],
-        } for v in paasta_volume_list
+            "container_path": v["containerPath"],
+            "host_path": v["hostPath"],
+            "mode": v["mode"],
+        }
+        for v in paasta_volume_list
     ]
 
 
 def format_master_config(master_config, default_volumes, dockercfg_location):
-    mesos_options = master_config.get('mesos_options', {})
-    mesos_options.update({
-        'default_volumes': format_volumes(default_volumes),
-        'dockercfg_location': dockercfg_location,
-    })
-    master_config['mesos_options'] = mesos_options
+    mesos_options = master_config.get("mesos_options", {})
+    mesos_options.update(
+        {
+            "default_volumes": format_volumes(default_volumes),
+            "dockercfg_location": dockercfg_location,
+        }
+    )
+    master_config["mesos_options"] = mesos_options
     return master_config
 
 
@@ -432,40 +464,38 @@ def format_tron_action_dict(action_config):
     """
     executor = action_config.get_executor()
     result = {
-        'command': action_config.get_cmd(),
-        'executor': executor,
-        'requires': action_config.get_requires(),
-        'node': action_config.get_node(),
-        'retries': action_config.get_retries(),
-        'retries_delay': action_config.get_retries_delay(),
-        'expected_runtime': action_config.get_expected_runtime(),
-        'trigger_downstreams': action_config.get_trigger_downstreams(),
-        'triggered_by': action_config.get_triggered_by(),
-        'on_upstream_rerun': action_config.get_on_upstream_rerun(),
-        'trigger_timeout': action_config.get_trigger_timeout(),
+        "command": action_config.get_cmd(),
+        "executor": executor,
+        "requires": action_config.get_requires(),
+        "node": action_config.get_node(),
+        "retries": action_config.get_retries(),
+        "retries_delay": action_config.get_retries_delay(),
+        "expected_runtime": action_config.get_expected_runtime(),
+        "trigger_downstreams": action_config.get_trigger_downstreams(),
+        "triggered_by": action_config.get_triggered_by(),
+        "on_upstream_rerun": action_config.get_on_upstream_rerun(),
+        "trigger_timeout": action_config.get_trigger_timeout(),
     }
-    if executor == 'mesos':
-        result['cpus'] = action_config.get_cpus()
-        result['mem'] = action_config.get_mem()
-        result['env'] = action_config.get_env()
-        result['extra_volumes'] = format_volumes(action_config.get_extra_volumes())
-        result['docker_parameters'] = [
-            {
-                'key': param['key'],
-                'value': param['value'],
-            } for param in action_config.format_docker_parameters()
+    if executor == "mesos":
+        result["cpus"] = action_config.get_cpus()
+        result["mem"] = action_config.get_mem()
+        result["env"] = action_config.get_env()
+        result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
+        result["docker_parameters"] = [
+            {"key": param["key"], "value": param["value"]}
+            for param in action_config.format_docker_parameters()
         ]
-        constraint_labels = ['attribute', 'operator', 'value']
-        result['constraints'] = [
+        constraint_labels = ["attribute", "operator", "value"]
+        result["constraints"] = [
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
         ]
 
         # If deployments were not loaded
         if not action_config.get_docker_image():
-            result['docker_image'] = ''
+            result["docker_image"] = ""
         else:
-            result['docker_image'] = action_config.get_docker_url()
+            result["docker_image"] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
@@ -482,23 +512,23 @@ def format_tron_job_dict(job_config):
     }
 
     result = {
-        'node': job_config.get_node(),
-        'schedule': job_config.get_schedule(),
-        'actions': action_dict,
-        'monitoring': job_config.get_monitoring(),
-        'queueing': job_config.get_queueing(),
-        'run_limit': job_config.get_run_limit(),
-        'all_nodes': job_config.get_all_nodes(),
-        'enabled': job_config.get_enabled(),
-        'allow_overlap': job_config.get_allow_overlap(),
-        'max_runtime': job_config.get_max_runtime(),
-        'time_zone': job_config.get_time_zone(),
-        'expected_runtime': job_config.get_expected_runtime(),
+        "node": job_config.get_node(),
+        "schedule": job_config.get_schedule(),
+        "actions": action_dict,
+        "monitoring": job_config.get_monitoring(),
+        "queueing": job_config.get_queueing(),
+        "run_limit": job_config.get_run_limit(),
+        "all_nodes": job_config.get_all_nodes(),
+        "enabled": job_config.get_enabled(),
+        "allow_overlap": job_config.get_allow_overlap(),
+        "max_runtime": job_config.get_max_runtime(),
+        "time_zone": job_config.get_time_zone(),
+        "expected_runtime": job_config.get_expected_runtime(),
     }
     cleanup_config = job_config.get_cleanup_action()
     if cleanup_config:
         cleanup_action = format_tron_action_dict(cleanup_config)
-        result['cleanup_action'] = cleanup_action
+        result["cleanup_action"] = cleanup_action
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
@@ -517,16 +547,20 @@ def load_tron_instance_config(
         load_deployments=load_deployments,
         soa_dir=soa_dir,
     )
-    requested_job, requested_action = instance.split('.')
+    requested_job, requested_action = instance.split(".")
     for job in jobs:
         if job.get_name() == requested_job:
             for action in job.get_actions():
                 if action.get_action_name() == requested_action:
                     return action
-    raise NoConfigurationForServiceError(f"No tron configuration found for {service} {instance}")
+    raise NoConfigurationForServiceError(
+        f"No tron configuration found for {service} {instance}"
+    )
 
 
-def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_tron_service_config(
+    service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR
+):
     """Load all configured jobs for a service, and any additional config values."""
     config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
     jobs = extract_jobs_from_tron_yaml(config)
@@ -538,7 +572,8 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
             config_dict=job,
             load_deployments=load_deployments,
             soa_dir=soa_dir,
-        ) for name, job in jobs.items()
+        )
+        for name, job in jobs.items()
     ]
     return job_configs
 
@@ -546,45 +581,35 @@ def load_tron_service_config(service, cluster, load_deployments=True, soa_dir=DE
 def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
     tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
-    config = service_configuration_lib._read_yaml_file(os.path.join(tronfig_folder, f"MASTER.yaml"))
+    config = service_configuration_lib._read_yaml_file(
+        os.path.join(tronfig_folder, f"MASTER.yaml")
+    )
     master_config = format_master_config(
         config,
         system_paasta_config.get_volumes(),
         system_paasta_config.get_dockercfg_location(),
     )
-    return yaml.dump(
-        master_config,
-        Dumper=Dumper,
-        default_flow_style=False,
-    )
+    return yaml.dump(master_config, Dumper=Dumper, default_flow_style=False)
 
 
 def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     """Generate a namespace configuration file for Tron, for a service."""
     job_configs = load_tron_service_config(
-        service=service,
-        cluster=cluster,
-        load_deployments=True,
-        soa_dir=soa_dir,
+        service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir
     )
     preproccessed_config = {}
-    preproccessed_config['jobs'] = {
+    preproccessed_config["jobs"] = {
         job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
     }
-    return yaml.dump(
-        preproccessed_config,
-        Dumper=Dumper,
-        default_flow_style=False,
-    )
+    return yaml.dump(preproccessed_config, Dumper=Dumper, default_flow_style=False)
 
 
-def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
+def validate_complete_config(
+    service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> List[str]:
     job_configs = load_tron_service_config(
-        service=service,
-        cluster=cluster,
-        load_deployments=False,
-        soa_dir=soa_dir,
+        service=service, cluster=cluster, load_deployments=False, soa_dir=soa_dir
     )
 
     # PaaSTA-specific validation
@@ -593,11 +618,13 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
         if check_msgs:
             return check_msgs
 
-    master_config_path = os.path.join(os.path.abspath(soa_dir), 'tron', cluster, MASTER_NAMESPACE + '.yaml')
+    master_config_path = os.path.join(
+        os.path.abspath(soa_dir), "tron", cluster, MASTER_NAMESPACE + ".yaml"
+    )
 
     preproccessed_config = {}
     # Use Tronfig on generated config from PaaSTA to validate the rest
-    preproccessed_config['jobs'] = {
+    preproccessed_config["jobs"] = {
         job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
     }
@@ -605,11 +632,11 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
     complete_config = yaml.dump(preproccessed_config, Dumper=Dumper)
 
     proc = subprocess.run(
-        ['tronfig', '-', '-V', '-n', service, '-m', master_config_path],
+        ["tronfig", "-", "-V", "-n", service, "-m", master_config_path],
         input=complete_config,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        encoding='utf-8',
+        encoding="utf-8",
     )
 
     if proc.returncode != 0:
@@ -622,18 +649,22 @@ def validate_complete_config(service: str, cluster: str, soa_dir: str = DEFAULT_
 
 
 def get_tron_namespaces(cluster, soa_dir):
-    tron_config_file = f'tron-{cluster}.yaml'
-    config_dirs = [_dir[0] for _dir in os.walk(os.path.abspath(soa_dir)) if tron_config_file in _dir[2]]
+    tron_config_file = f"tron-{cluster}.yaml"
+    config_dirs = [
+        _dir[0]
+        for _dir in os.walk(os.path.abspath(soa_dir))
+        if tron_config_file in _dir[2]
+    ]
     namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
     return namespaces
 
 
 def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
     """Returns the Tron clusters a service is configured to deploy to."""
-    search_re = r'/tron-([0-9a-z-_]*)\.yaml$'
+    search_re = r"/tron-([0-9a-z-_]*)\.yaml$"
     service_dir = os.path.join(soa_dir, service)
     clusters = []
-    for filename in glob.glob(f'{service_dir}/*.yaml'):
+    for filename in glob.glob(f"{service_dir}/*.yaml"):
         cluster_re_match = re.search(search_re, filename)
         if cluster_re_match is not None:
             clusters.append(cluster_re_match.group(1))
@@ -642,6 +673,6 @@ def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str
 
 def get_tron_dashboard_for_cluster(cluster: str):
     dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
-    if 'Tron' not in dashboards:
+    if "Tron" not in dashboards:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
-    return dashboards['Tron']
+    return dashboards["Tron"]

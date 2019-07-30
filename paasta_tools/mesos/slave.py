@@ -25,7 +25,6 @@ from paasta_tools.utils import get_user_agent
 
 
 class MesosSlave:
-
     def __init__(self, config, items):
         self.config = config
         self.__items = items
@@ -37,33 +36,29 @@ class MesosSlave:
         return self.key()
 
     def key(self):
-        return self["pid"].split('@')[-1]
+        return self["pid"].split("@")[-1]
 
     @property
     def host(self):
         return "{}://{}:{}".format(
-            self.config["scheme"],
-            self["hostname"],
-            self["pid"].split(":")[-1],
+            self.config["scheme"], self["hostname"], self["pid"].split(":")[-1]
         )
 
     async def fetch(self, url, **kwargs) -> aiohttp.ClientResponse:
-        headers = {'User-Agent': get_user_agent()}
+        headers = {"User-Agent": get_user_agent()}
         async with aiohttp.ClientSession(
             conn_timeout=self.config["response_timeout"],
             read_timeout=self.config["response_timeout"],
         ) as session:
             try:
                 async with session.get(
-                    urljoin(self.host, url),
-                    headers=headers,
-                    **kwargs,
+                    urljoin(self.host, url), headers=headers, **kwargs
                 ) as response:
                     await response.text()
                     return response
             except aiohttp.ClientConnectionError:
                 raise exceptions.SlaveDoesNotExist(
-                    f"Unable to connect to the slave at {self.host}",
+                    f"Unable to connect to the slave at {self.host}"
                 )
 
     @async_ttl_cache(ttl=5, cleanup_self=True)
@@ -76,12 +71,12 @@ class MesosSlave:
     async def task_executor(self, task_id):
         for fw in await self.frameworks():
             for exc in util.merge(fw, "executors", "completed_executors"):
-                if task_id in list(map(
+                if task_id in list(
+                    map(
                         lambda x: x["id"],
-                        util.merge(
-                            exc, "completed_tasks", "tasks", "queued_tasks",
-                        ),
-                )):
+                        util.merge(exc, "completed_tasks", "tasks", "queued_tasks"),
+                    )
+                ):
                     return exc
         raise exceptions.MissingExecutor("No executor has a task by that id")
 
@@ -106,10 +101,7 @@ class MesosSlave:
         return list(filter(lambda x: x["executor_id"]))
 
     async def task_stats(self, _id):
-        stats = list(filter(
-            lambda x: x["executor_id"] == _id,
-            await self.stats(),
-        ))
+        stats = list(filter(lambda x: x["executor_id"] == _id, await self.stats()))
 
         # Tasks that are not yet in a RUNNING state have no stats.
         if len(stats) == 0:

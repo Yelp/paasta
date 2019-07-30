@@ -22,25 +22,25 @@ from paasta_tools import chronos_tools
 @when('we create a trivial chronos job called "{job_name}"')
 def create_trivial_chronos_job(context, job_name):
     job_config = {
-        'async': False,
-        'command': 'echo 1',
-        'epsilon': 'PT15M',
-        'name': 'job_name',
-        'owner': '',
-        'disabled': False,
-        'schedule': 'R/20140101T00:00:00Z/PT60M',
+        "async": False,
+        "command": "echo 1",
+        "epsilon": "PT15M",
+        "name": "job_name",
+        "owner": "",
+        "disabled": False,
+        "schedule": "R/20140101T00:00:00Z/PT60M",
     }
     context.jobs[job_name] = job_config
     context.chronos_client.add(job_config)
-    context.chronos_job_name = job_config['name']
+    context.chronos_job_name = job_config["name"]
 
 
-@when('we store the name of the job for the service {service} and instance {instance} as {job_name}')
+@when(
+    "we store the name of the job for the service {service} and instance {instance} as {job_name}"
+)
 def create_chronos_job_config_object_from_configs(context, service, instance, job_name):
     job_config = chronos_tools.create_complete_config(
-        service=service,
-        job_name=instance,
-        soa_dir=context.soa_dir,
+        service=service, job_name=instance, soa_dir=context.soa_dir
     )
     # s_c_l caches reads from the fs and doesn't offer a way to ignore the cache, so doesn't return
     # the most recent version on the file. I *hate* this, but need to move on.
@@ -48,19 +48,24 @@ def create_chronos_job_config_object_from_configs(context, service, instance, jo
     context.jobs[job_name] = job_config
 
 
-@when('we store the name of the rerun job for the service {service} and instance {instance} as {job_name}')
-def get_rerun_jobs_for_service_instance_from_chronos(context, service, instance, job_name):
+@when(
+    "we store the name of the rerun job for the service {service} and instance {instance} as {job_name}"
+)
+def get_rerun_jobs_for_service_instance_from_chronos(
+    context, service, instance, job_name
+):
     jobs_for_service = chronos_tools.get_jobs_for_service_instance(
-        service,
-        instance,
-        include_disabled=True,
-        include_temporary=True,
+        service, instance, include_disabled=True, include_temporary=True
     )
-    all_tmp_jobs = [job for job in jobs_for_service if job['name'].startswith(chronos_tools.TMP_JOB_IDENTIFIER)]
+    all_tmp_jobs = [
+        job
+        for job in jobs_for_service
+        if job["name"].startswith(chronos_tools.TMP_JOB_IDENTIFIER)
+    ]
     context.jobs[job_name] = all_tmp_jobs[0]
 
 
-@when('we send the job to chronos')
+@when("we send the job to chronos")
 def send_job_to_chronos(context):
     context.chronos_client.add(context.chronos_job_config)
 
@@ -68,13 +73,13 @@ def send_job_to_chronos(context):
 @when('we wait for the chronos job stored as "{job_name}" to appear in the job list')
 def chronos_job_is_ready(context, job_name):
     """Wait for a job with a matching job id to be ready."""
-    chronos_tools.wait_for_job(context.chronos_client, context.jobs[job_name]['name'])
+    chronos_tools.wait_for_job(context.chronos_client, context.jobs[job_name]["name"])
 
 
 @then("we {should_or_not} be able to see it when we list jobs")
 def list_chronos_jobs_has_job(context, should_or_not):
     jobs = context.chronos_client.list()
-    job_names = [job['name'] for job in jobs]
+    job_names = [job["name"] for job in jobs]
     if should_or_not == "should not":
         assert context.chronos_job_name not in job_names
     else:
@@ -85,10 +90,12 @@ def list_chronos_jobs_has_job(context, should_or_not):
 def chronos_check_running_tasks(context, job_name, has_or_not):
     # This uses an undocumented endpoint that should be replaced once it's possible
     # to get more detailed per-job task information from Chronos
-    job_id = context.jobs[job_name]['name']
+    job_id = context.jobs[job_name]["name"]
     service, instance = chronos_tools.decompose_job_id(job_id)
     for _ in range(10):
-        status = chronos_tools.get_chronos_status_for_job(context.chronos_client, service, instance)
+        status = chronos_tools.get_chronos_status_for_job(
+            context.chronos_client, service, instance
+        )
         if has_or_not == "has no":
             if status == "idle":
                 return
@@ -101,7 +108,7 @@ def chronos_check_running_tasks(context, job_name, has_or_not):
 
 @then('the field "{field}" for the job stored as "{job_name}" is set to "{value}"')
 def chronos_check_job_state(context, field, job_name, value):
-    job_id = context.jobs[job_name]['name']
+    job_id = context.jobs[job_name]["name"]
     service, instance = chronos_tools.decompose_job_id(job_id)
     jobs = chronos_tools.lookup_chronos_jobs(
         service=service,
@@ -127,4 +134,4 @@ def job_is_disabled(context, job_name, disabled):
 @then('there exists a job named "{job_name}" in chronos')
 def job_exists(context, job_name):
     all_jobs = context.chronos_client.list()
-    assert any([job['name'] == job_name for job in all_jobs])
+    assert any([job["name"] == job_name for job in all_jobs])

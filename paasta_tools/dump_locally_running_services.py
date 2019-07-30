@@ -33,11 +33,16 @@ from paasta_tools.utils import paasta_print
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Dumps information about locally running services.')
+    parser = argparse.ArgumentParser(
+        description="Dumps information about locally running services."
+    )
     parser.add_argument(
-        '-d', '--soa-dir', dest='soa_dir', metavar='SOA_DIR',
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
-        help='define a different soa config directory',
+        help="define a different soa config directory",
     )
     return parser.parse_args(argv)
 
@@ -46,18 +51,13 @@ def main(argv=None):
     args = parse_args(argv)
     soa_dir = args.soa_dir
 
-    service_dump = (
-        get_marathon_services_running_here_for_nerve(
-            cluster=None,
-            soa_dir=soa_dir,
-        ) + get_puppet_services_running_here_for_nerve(
-            soa_dir=soa_dir,
-        )
-    )
+    service_dump = get_marathon_services_running_here_for_nerve(
+        cluster=None, soa_dir=soa_dir
+    ) + get_puppet_services_running_here_for_nerve(soa_dir=soa_dir)
 
     paasta_print(json.dumps(service_dump))
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

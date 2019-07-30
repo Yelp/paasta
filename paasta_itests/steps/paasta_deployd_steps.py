@@ -24,30 +24,32 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import ZookeeperPool
 
 
-@given('paasta-deployd is running')
+@given("paasta-deployd is running")
 def start_deployd(context):
     try:
-        os.makedirs('/nail/etc/services')
+        os.makedirs("/nail/etc/services")
     except OSError as e:
         if e.errno == errno.EEXIST:
             pass
     with ZookeeperPool() as zk:
         try:
-            zk.create('/autoscaling')
+            zk.create("/autoscaling")
         except NodeExistsError:
             pass
-    context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
-    context.soa_dir = '/nail/etc/services'
-    if not hasattr(context, 'daemon'):
-        context.daemon = Popen('paasta-deployd', stderr=PIPE)
-    output = context.daemon.stderr.readline().decode('utf-8')
+    context.zk_hosts = "%s/mesos-testcluster" % get_service_connection_string(
+        "zookeeper"
+    )
+    context.soa_dir = "/nail/etc/services"
+    if not hasattr(context, "daemon"):
+        context.daemon = Popen("paasta-deployd", stderr=PIPE)
+    output = context.daemon.stderr.readline().decode("utf-8")
     start = time.time()
     timeout = start + 60
     while "Startup finished!" not in output:
-        output = context.daemon.stderr.readline().decode('utf-8')
+        output = context.daemon.stderr.readline().decode("utf-8")
         if not output:
             raise Exception("deployd exited prematurely")
-        print(output.rstrip('\n'))
+        print(output.rstrip("\n"))
         if time.time() > timeout:
             raise Exception("deployd never ran")
 
@@ -57,48 +59,49 @@ def start_deployd(context):
             if not line:
                 return
             paasta_print(f"deployd stderr: {line}")
+
     threading.Thread(target=dont_let_stderr_buffer).start()
     time.sleep(5)
 
 
-@then('paasta-deployd can be stopped')
+@then("paasta-deployd can be stopped")
 def stop_deployd(context):
     context.daemon.terminate()
     context.daemon.wait()
 
 
-@then('a second deployd does not become leader')
+@then("a second deployd does not become leader")
 def start_second_deployd(context):
-    context.daemon1 = Popen('paasta-deployd', stderr=PIPE)
-    output = context.daemon1.stderr.readline().decode('utf-8')
+    context.daemon1 = Popen("paasta-deployd", stderr=PIPE)
+    output = context.daemon1.stderr.readline().decode("utf-8")
     fd = context.daemon1.stderr
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
     for i in range(0, 5):
         try:
-            output = context.daemon1.stderr.readline().decode('utf-8')
-            print(output.rstrip('\n'))
-            assert 'This node is elected as leader' not in output
+            output = context.daemon1.stderr.readline().decode("utf-8")
+            print(output.rstrip("\n"))
+            assert "This node is elected as leader" not in output
         except IOError:
             pass
         time.sleep(1)
 
 
-@then('a second deployd becomes leader')
+@then("a second deployd becomes leader")
 def second_deployd_is_leader(context):
     try:
-        output = context.daemon1.stderr.readline().decode('utf-8')
+        output = context.daemon1.stderr.readline().decode("utf-8")
     except IOError:
-        output = ''
+        output = ""
     start = time.time()
     timeout = start + 60
     while "This node is elected as leader" not in output:
         try:
-            output = context.daemon1.stderr.readline().decode('utf-8')
+            output = context.daemon1.stderr.readline().decode("utf-8")
         except IOError:
-            output = ''
+            output = ""
         if output:
-            print(output.rstrip('\n'))
+            print(output.rstrip("\n"))
         if time.time() > timeout:
             raise Exception("Timed out waiting for second deployd leader")
         time.sleep(1)
@@ -110,11 +113,15 @@ def second_deployd_is_leader(context):
 def check_app_running(context, service_instance, seconds):
     service, instance, _, _ = decompose_job_id(service_instance)
     service_configuration_lib._yaml_cache = {}
-    context.marathon_config = load_marathon_service_config_no_cache(service, instance, context.cluster)
-    context.app_id = context.marathon_config.format_marathon_app_dict()['id']
+    context.marathon_config = load_marathon_service_config_no_cache(
+        service, instance, context.cluster
+    )
+    context.app_id = context.marathon_config.format_marathon_app_dict()["id"]
     step = 5
     attempts = 0
-    context.current_client = context.marathon_clients.get_current_client_for_service(context.marathon_config)
+    context.current_client = context.marathon_clients.get_current_client_for_service(
+        context.marathon_config
+    )
     while (attempts * step) < seconds:
         if context.app_id in list_all_marathon_app_ids(context.current_client):
             break
@@ -124,7 +131,7 @@ def check_app_running(context, service_instance, seconds):
     context.old_app_id = context.app_id
 
 
-@then('we should not see the old version listed in marathon after {seconds:d} seconds')
+@then("we should not see the old version listed in marathon after {seconds:d} seconds")
 def check_app_not_running(context, seconds):
     step = 5
     attempts = 0
@@ -136,7 +143,7 @@ def check_app_not_running(context, seconds):
     assert context.old_app_id not in list_all_marathon_app_ids(context.current_client)
 
 
-@then('we set a new command for our service instance to {cmd}')
+@then("we set a new command for our service instance to {cmd}")
 def set_cmd(context, cmd):
     context.cmd = cmd
 
@@ -145,48 +152,57 @@ def set_cmd(context, cmd):
 def check_sha_changed(context, service_instance):
     service, instance, _, _ = decompose_job_id(service_instance)
     service_configuration_lib._yaml_cache = {}
-    context.marathon_config = load_marathon_service_config_no_cache(service, instance, context.cluster)
-    assert context.app_id != context.marathon_config.format_marathon_app_dict()['id']
+    context.marathon_config = load_marathon_service_config_no_cache(
+        service, instance, context.cluster
+    )
+    assert context.app_id != context.marathon_config.format_marathon_app_dict()["id"]
 
 
-@given('we have a secret called "{secret_name}" for the service "{service}" with signature "{signature}"')
+@given(
+    'we have a secret called "{secret_name}" for the service "{service}" with signature "{signature}"'
+)
 def create_secret_json_file(context, secret_name, service, signature):
     secret = {
-        'environments': {
-            'devc': {
-                'ciphertext': 'ScrambledNonsense',
-                'signature': signature,
-            },
-        },
+        "environments": {
+            "devc": {"ciphertext": "ScrambledNonsense", "signature": signature}
+        }
     }
     if not os.path.exists(os.path.join(context.soa_dir, service, "secrets")):
         os.makedirs(os.path.join(context.soa_dir, service, "secrets"))
 
-    with open(os.path.join(context.soa_dir, service, "secrets", f"{secret_name}.json"), "w") as secret_file:
+    with open(
+        os.path.join(context.soa_dir, service, "secrets", f"{secret_name}.json"), "w"
+    ) as secret_file:
         json.dump(secret, secret_file)
 
 
 @given(
     'we set the an environment variable called "{var}" to "{val}" for '
-    'service "{service}" and instance "{instance}" for framework "{framework}"',
+    'service "{service}" and instance "{instance}" for framework "{framework}"'
 )
 def add_env_var(context, var, val, service, instance, framework):
-    field = 'env'
+    field = "env"
     value = {var: val}
     modify_configs(context, field, framework, service, instance, value)
 
 
 @when('we set some arbitrary data at "{zookeeper_path}" in ZK')
 def zookeeper_write_bogus_key(context, zookeeper_path):
-    with mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts):
+    with mock.patch.object(
+        SystemPaastaConfig, "get_zk_hosts", autospec=True, return_value=context.zk_hosts
+    ):
         with ZookeeperPool() as zookeeper_client:
             zookeeper_client.ensure_path(zookeeper_path)
             zookeeper_client.set(zookeeper_path, b"WHATEVER")
 
 
-@given('we remove autoscaling ZK keys for test-service')
+@given("we remove autoscaling ZK keys for test-service")
 def zookeeper_rmr_keys(context):
-    context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
-    with mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts):
+    context.zk_hosts = "%s/mesos-testcluster" % get_service_connection_string(
+        "zookeeper"
+    )
+    with mock.patch.object(
+        SystemPaastaConfig, "get_zk_hosts", autospec=True, return_value=context.zk_hosts
+    ):
         with ZookeeperPool() as zookeeper_client:
             zookeeper_client.delete("/autoscaling/test-service", recursive=True)

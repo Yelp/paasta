@@ -17,21 +17,16 @@ from paasta_tools import deployment_utils
 from paasta_tools.utils import DeploymentsJsonV2
 
 
-@mock.patch('paasta_tools.deployment_utils.load_v2_deployments_json', autospec=True)
-def test_get_currently_deployed_sha(
-    mock_load_v2_deployments_json,
-):
+@mock.patch("paasta_tools.deployment_utils.load_v2_deployments_json", autospec=True)
+def test_get_currently_deployed_sha(mock_load_v2_deployments_json,):
     mock_load_v2_deployments_json.return_value = DeploymentsJsonV2(
-        service='fake-service',
+        service="fake-service",
         config_dict={
             "controls": {},
-            "deployments": {
-                "everything": {
-                    "git_sha": "abc",
-                    "docker_image": "foo",
-                },
-            },
+            "deployments": {"everything": {"git_sha": "abc", "docker_image": "foo"}},
         },
     )
-    actual = deployment_utils.get_currently_deployed_sha(service='service', deploy_group='everything')
+    actual = deployment_utils.get_currently_deployed_sha(
+        service="service", deploy_group="everything"
+    )
     assert actual == "abc"

@@ -34,26 +34,38 @@ except ImportError:
     scribereader = None
 
 
-OOM_EVENTS_STREAM = 'tmp_paasta_oom_events'
+OOM_EVENTS_STREAM = "tmp_paasta_oom_events"
 
-OOMEvent = namedtuple('OOMEvent', ['hostname', 'container_id', 'process_name'])
+OOMEvent = namedtuple("OOMEvent", ["hostname", "container_id", "process_name"])
 
 
 def parse_args(args):
-    parser = argparse.ArgumentParser(description=(
-        'Check the %s stream and report to Sensu if'
-        ' there are any OOM events.' % OOM_EVENTS_STREAM
-    ))
+    parser = argparse.ArgumentParser(
+        description=(
+            "Check the %s stream and report to Sensu if"
+            " there are any OOM events." % OOM_EVENTS_STREAM
+        )
+    )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", default=DEFAULT_SOA_DIR,
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-r', '--realert-every', dest="realert_every", type=int, default=1,
+        "-r",
+        "--realert-every",
+        dest="realert_every",
+        type=int,
+        default=1,
         help="Sensu 'realert_every' to use.",
     )
     parser.add_argument(
-        '-s', '--superregion', dest="superregion", required=True,
+        "-s",
+        "--superregion",
+        dest="superregion",
+        required=True,
         help="The superregion to read OOM events from.",
     )
     return parser.parse_args(args)
@@ -64,8 +76,8 @@ def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
     host_port = choice(scribereader.get_default_scribe_hosts(tail=True))
     stream = scribereader.get_stream_tailer(
         stream_name=OOM_EVENTS_STREAM,
-        tailing_host=host_port['host'],
-        tailing_port=host_port['port'],
+        tailing_host=host_port["host"],
+        tailing_port=host_port["port"],
         use_kafka=True,
         lines=num_lines,
         superregion=superregion,
@@ -73,7 +85,7 @@ def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
     for line in stream:
         try:
             j = json.loads(line)
-            if j.get('cluster', '') == cluster:
+            if j.get("cluster", "") == cluster:
                 yield j
         except json.decoder.JSONDecodeError:
             pass
@@ -87,14 +99,14 @@ def latest_oom_events(cluster, superregion, interval=60):
     start_timestamp = int(time.time()) - interval
     res = {}
     for e in read_oom_events_from_scribe(cluster, superregion):
-        if e['timestamp'] > start_timestamp:
-            key = (e['service'], e['instance'])
+        if e["timestamp"] > start_timestamp:
+            key = (e["service"], e["instance"])
             res.setdefault(key, []).append(
                 OOMEvent(
-                    hostname=e.get('hostname', ''),
-                    container_id=e.get('container_id', ''),
-                    process_name=e.get('process_name', ''),
-                ),
+                    hostname=e.get("hostname", ""),
+                    container_id=e.get("container_id", ""),
+                    process_name=e.get("process_name", ""),
+                )
             )
     return res
 
@@ -107,22 +119,27 @@ def compose_sensu_status(instance, oom_events, is_check_enabled):
     """
     if not is_check_enabled:
         return (
-            Status.OK, 'This check is disabled for {}.{}.'.format(
-                instance.service,
-                instance.instance,
+            Status.OK,
+            "This check is disabled for {}.{}.".format(
+                instance.service, instance.instance
             ),
         )
     if len(oom_events) == 0:
         return (
-            Status.OK, 'No oom events for %s.%s in the last minute.' %
-            (instance.service, instance.instance),
+            Status.OK,
+            "No oom events for %s.%s in the last minute."
+            % (instance.service, instance.instance),
         )
     else:
         return (
-            Status.CRITICAL, 'The Out Of Memory killer killed %d processes (%s) '
-            'in the last minute in %s.%s containers.' % (
+            Status.CRITICAL,
+            "The Out Of Memory killer killed %d processes (%s) "
+            "in the last minute in %s.%s containers."
+            % (
                 len(oom_events),
-                ','.join(sorted({e.process_name for e in oom_events if e.process_name})),
+                ",".join(
+                    sorted({e.process_name for e in oom_events if e.process_name})
+                ),
                 instance.service,
                 instance.instance,
             ),
@@ -135,24 +152,24 @@ def send_sensu_event(instance, oom_events, args):
     :param oom_events: a list of OOMEvents
     """
     check_name = compose_check_name_for_service_instance(
-        'oom-killer',
-        instance.service,
-        instance.instance,
+        "oom-killer", instance.service, instance.instance
     )
     monitoring_overrides = instance.get_monitoring()
     status = compose_sensu_status(
         instance=instance,
         oom_events=oom_events,
-        is_check_enabled=monitoring_overrides.get('check_oom_events', True),
+        is_check_enabled=monitoring_overrides.get("check_oom_events", True),
     )
-    monitoring_overrides.update({
-        'page': False,
-        'ticket': False,
-        'alert_after': '0m',
-        'realert_every': args.realert_every,
-        'runbook': 'y/check-oom-events',
-        'tip': 'Try bumping the memory limit past %dMB' % instance.get_mem(),
-    })
+    monitoring_overrides.update(
+        {
+            "page": False,
+            "ticket": False,
+            "alert_after": "0m",
+            "realert_every": args.realert_every,
+            "runbook": "y/check-oom-events",
+            "tip": "Try bumping the memory limit past %dMB" % instance.get_mem(),
+        }
+    )
     return monitoring_tools.send_event(
         service=instance.service,
         check_name=check_name,
@@ -182,5 +199,5 @@ def main(sys_argv):
             pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)

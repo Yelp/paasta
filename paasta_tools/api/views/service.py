@@ -22,14 +22,14 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 
 
-@view_config(route_name='service.list', request_method='GET', renderer='json')
+@view_config(route_name="service.list", request_method="GET", renderer="json")
 def list_instances(request):
-    service = request.swagger_data.get('service')
+    service = request.swagger_data.get("service")
     instances = list_all_instances_for_service(service, clusters=[settings.cluster])
-    return {'instances': list(instances)}
+    return {"instances": list(instances)}
 
 
-@view_config(route_name='services', request_method='GET', renderer='json')
+@view_config(route_name="services", request_method="GET", renderer="json")
 def list_services_for_cluster(request):
     services_for_cluster = get_services_for_cluster(cluster=settings.cluster)
-    return {'services': services_for_cluster}
+    return {"services": services_for_cluster}

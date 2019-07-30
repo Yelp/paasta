@@ -25,22 +25,21 @@ from paasta_tools.cli.utils import PaastaTaskNotFound
 def add_subparser(subparsers):
     new_parser = get_subparser(
         description="'paasta docker_exec' works by picking a container running your service "
-                    "at random. It then runs docker exec -ti <container_id> <commands> "
-                    "where commands are those that you specify",
+        "at random. It then runs docker exec -ti <container_id> <commands> "
+        "where commands are those that you specify",
         help_text="Docker exec against a container running your service",
-        command='docker_exec',
+        command="docker_exec",
         function=paasta_docker_exec,
         subparsers=subparsers,
     )
     new_parser.add_argument(
-        '--user',
-        help='User to exec into the container as (e.g. root)',
+        "--user", help="User to exec into the container as (e.g. root)"
     )
     new_parser.add_argument(
-        'exec_command',
-        help='Command to append to docker docker_exec',
-        nargs='?',
-        default='/bin/bash',
+        "exec_command",
+        help="Command to append to docker docker_exec",
+        nargs="?",
+        default="/bin/bash",
     )
 
 
@@ -56,9 +55,17 @@ def paasta_docker_exec(args):
     except PaastaTaskNotFound:
         sys.exit(1)
     container = get_container_name(task)
-    slave = task.slave['hostname']
+    slave = task.slave["hostname"]
 
-    user_args = ('--user', args.user) if args.user else ()
-    command = ('sudo', 'docker', 'exec', '-ti', *user_args, container, *shlex.split(args.exec_command))
-    command = ' '.join(shlex.quote(arg) for arg in command)
+    user_args = ("--user", args.user) if args.user else ()
+    command = (
+        "sudo",
+        "docker",
+        "exec",
+        "-ti",
+        *user_args,
+        container,
+        *shlex.split(args.exec_command),
+    )
+    command = " ".join(shlex.quote(arg) for arg in command)
     subprocess.call(["ssh", "-o", "LogLevel=QUIET", "-tA", slave, command])

@@ -31,15 +31,24 @@ from paasta_tools.utils import timeout
 
 def update_context_marathon_config(context):
     whitelist_keys = {
-        'id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances',
-        'marathon_shard', 'previous_marathon_shards',
+        "id",
+        "backoff_factor",
+        "backoff_seconds",
+        "max_instances",
+        "mem",
+        "cpus",
+        "instances",
+        "marathon_shard",
+        "previous_marathon_shards",
     }
     with mock.patch.object(
-        MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1,
+        MarathonServiceConfig, "get_min_instances", autospec=True, return_value=1
     ), mock.patch.object(
-        MarathonServiceConfig, 'get_max_instances', autospec=True,
+        MarathonServiceConfig, "get_max_instances", autospec=True
     ) as mock_get_max_instances:
-        mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
+        mock_get_max_instances.return_value = (
+            context.max_instances if "max_instances" in context else None
+        )
         service_configuration_lib._yaml_cache = {}
         context.job_config = marathon_tools.load_marathon_service_config_no_cache(
             service=context.service,
@@ -47,23 +56,26 @@ def update_context_marathon_config(context):
             cluster=context.system_paasta_config.get_cluster(),
             soa_dir=context.soa_dir,
         )
-        context.current_client = context.marathon_clients.get_current_client_for_service(context.job_config)
+        context.current_client = context.marathon_clients.get_current_client_for_service(
+            context.job_config
+        )
         context.marathon_complete_config = {
-            key: value for key, value in context.job_config.format_marathon_app_dict().items() if key in whitelist_keys
+            key: value
+            for key, value in context.job_config.format_marathon_app_dict().items()
+            if key in whitelist_keys
         }
-    context.marathon_complete_config.update({
-        'cmd': '/bin/sleep 1m',
-        'constraints': None,
-        'container': {
-            'type': 'DOCKER',
-            'docker': {
-                'network': 'BRIDGE',
-                'image': 'busybox',
+    context.marathon_complete_config.update(
+        {
+            "cmd": "/bin/sleep 1m",
+            "constraints": None,
+            "container": {
+                "type": "DOCKER",
+                "docker": {"network": "BRIDGE", "image": "busybox"},
             },
-        },
-    })
-    if 'max_instances' not in context:
-        context.marathon_complete_config['instances'] = context.instances
+        }
+    )
+    if "max_instances" not in context:
+        context.marathon_complete_config["instances"] = context.instances
 
 
 def get_service_connection_string(service):
@@ -73,24 +85,23 @@ def get_service_connection_string(service):
     function would return 0.0.0.0:23493 or whatever ephemeral forwarded port
     it has from docker-compose"""
     service = service.upper()
-    raw_host_port = os.environ['%s_PORT' % service]
+    raw_host_port = os.environ["%s_PORT" % service]
     # Remove leading tcp:// or similar
     host_port = raw_host_port.split("://")[1]
     return host_port
 
 
-@timeout(30, error_message='Marathon service is not available. Cancelling integration tests')
+@timeout(
+    30, error_message="Marathon service is not available. Cancelling integration tests"
+)
 def wait_for_marathon():
     """Waits for marathon to start. Maximum 30 seconds"""
-    marathon_service = get_service_connection_string('marathon')
+    marathon_service = get_service_connection_string("marathon")
     while True:
-        paasta_print('Connecting marathon on %s' % marathon_service)
+        paasta_print("Connecting marathon on %s" % marathon_service)
         try:
-            response = requests.get('http://%s/ping' % marathon_service, timeout=5)
-        except (
-            requests.exceptions.ConnectionError,
-            requests.exceptions.Timeout,
-        ):
+            response = requests.get("http://%s/ping" % marathon_service, timeout=5)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             time.sleep(5)
             continue
         if response.status_code == 200:
@@ -99,7 +110,9 @@ def wait_for_marathon():
 
 
 @timeout(30)
-def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
+def wait_for_app_to_launch_tasks(
+    client, app_id, expected_tasks, exact_matches_only=False
+):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
     and retry. Times out after 30 seconds.
 
@@ -112,21 +125,26 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
     with requests_cache.disabled():
         while not found:
             try:
-                found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
+                found = app_has_tasks(
+                    client, app_id, expected_tasks, exact_matches_only
+                )
             except NotFoundError:
                 pass
             if found:
                 time.sleep(3)  # Give it a bit more time to actually launch
                 return
             else:
-                paasta_print("waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks))
+                paasta_print(
+                    "waiting for app %s to have %d tasks. retrying"
+                    % (app_id, expected_tasks)
+                )
                 time.sleep(0.5)
 
 
 def setup_mesos_cli_config(config_file, cluster):
     """Creates a mesos-cli.json config file for mesos.cli module.
     Sets up the environment dictionary to point to that file"""
-    zookeeper_service = get_service_connection_string('zookeeper')
+    zookeeper_service = get_service_connection_string("zookeeper")
     mesos_cli_config = {
         "profile": "default",
         "default": {
@@ -135,10 +153,10 @@ def setup_mesos_cli_config(config_file, cluster):
             "response_timeout": 5,
         },
     }
-    paasta_print('Generating mesos.cli config file: %s' % config_file)
-    with open(config_file, 'w') as fp:
+    paasta_print("Generating mesos.cli config file: %s" % config_file)
+    with open(config_file, "w") as fp:
         json.dump(mesos_cli_config, fp)
-    os.environ['MESOS_CLI_CONFIG'] = config_file
+    os.environ["MESOS_CLI_CONFIG"] = config_file
 
 
 def cleanup_file(path_to_file):
