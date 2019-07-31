@@ -76,7 +76,7 @@ HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
-SSH_ONLY_INSTANCE_CONFIG = [ChronosJobConfig]
+SSH_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [ChronosJobConfig]
 
 
 def add_subparser(subparsers,) -> None:
@@ -589,11 +589,8 @@ def report_status_for_cluster(
             for deployed_instance in deployed_instances
             if (
                 deployed_instance in http_only_instances
-                or deployed_instance in ssh_only_instances
+                or deployed_instance not in ssh_only_instances
                 and use_api_endpoint
-                # deployed_instance in http_only_instances
-                # or deployed_instance not in ssh_only_instances
-                # and use_api_endpoint
             )
         ]
         if len(http_only_deployed_instances):
@@ -614,11 +611,9 @@ def report_status_for_cluster(
             deployed_instance
             for deployed_instance in deployed_instances
             if (
-                deployed_instance
-                not in http_only_deployed_instances
-                # deployed_instance in ssh_only_instances
-                # or deployed_instance not in http_only_instances
-                # and not use_api_endpoint
+                deployed_instance in ssh_only_instances
+                or deployed_instance not in http_only_instances
+                and not use_api_endpoint
             )
         ]
         if len(ssh_only_deployed_instances):
@@ -869,8 +864,8 @@ def paasta_status(args,) -> int:
     system_paasta_config = load_system_paasta_config()
 
     if "USE_API_ENDPOINT" in os.environ:
+        # bool will throw a ValueError if it doesn't recognize $USE_API_ENDPOINT
         use_api_endpoint = bool(strtobool(os.environ["USE_API_ENDPOINT"]))
-        # use_api_endpoint = strtobool(os.environ["USE_API_ENDPOINT"])
     else:
         use_api_endpoint = False
 
