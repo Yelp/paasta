@@ -37,7 +37,6 @@ import re
 import sys
 from collections import namedtuple
 
-from clog.loggers import ScribeLogger
 from docker.errors import APIError
 
 from paasta_tools.utils import _log
@@ -152,6 +151,11 @@ def send_sfx_event(service, instance, cluster):
 
 
 def main():
+    try:
+        from clog.loggers import ScribeLogger
+    except ImportError:
+        print("Scribe logger unavailable, exiting.", file=sys.stderr)
+        sys.exit(1)
     scribe_logger = ScribeLogger(host="169.254.255.254", port=1463, retry_interval=5)
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()

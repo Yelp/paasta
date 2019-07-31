@@ -1,6 +1,7 @@
 a-sync >= 0.5.0
 aiohttp >= 3.5.4
 argcomplete >= 0.8.1
+boto
 boto3
 botocore
 bravado >= 10.2.0
@@ -26,6 +27,7 @@ manhole
 marathon >= 0.9.3
 mypy-extensions >= 0.3.0
 objgraph
+ply
 progressbar2 >= 3.10.0
 pymesos >= 0.2.0
 pyramid >= 1.8
@@ -47,10 +49,10 @@ signalfx
 slackclient >= 1.2.1
 syslogmp
 task-processing
+thriftpy
 transitions
 typing-extensions
 tzlocal
 ujson >= 1.35
 utaw >= 0.2.0
 wsgicors
-yelp-clog >= 2.7.2

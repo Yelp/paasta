@@ -116,6 +116,5 @@ whichcraft==0.4.0
 ws4py==0.5.1
 wsgicors==0.7.0
 yarl==1.1.1
-yelp-clog==2.12.1
 zope.deprecation==4.2.0
 zope.interface==4.1.2
