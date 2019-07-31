@@ -35,6 +35,7 @@ import sys
 import tempfile
 import threading
 import time
+import warnings
 from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import lru_cache
@@ -1391,67 +1392,73 @@ def get_log_name_for_service(service: str, prefix: str = None) -> str:
     return "stream_paasta_%s" % service
 
 
-@register_log_writer("scribe")
-class ScribeLogWriter(LogWriter):
-    def __init__(
-        self,
-        scribe_host: str = "169.254.255.254",
-        scribe_port: int = 1463,
-        scribe_disable: bool = False,
-        **kwargs: Any,
-    ) -> None:
-        self.clog = __import__("clog")
-        self.clog.config.configure(
-            scribe_host=scribe_host,
-            scribe_port=scribe_port,
-            scribe_disable=scribe_disable,
-        )
+try:
+    import clog
 
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str = DEFAULT_LOGLEVEL,
-        cluster: str = ANY_CLUSTER,
-        instance: str = ANY_INSTANCE,
-    ) -> None:
-        """This expects someone (currently the paasta cli main()) to have already
-        configured the log object. We'll just write things to it.
-        """
-        if level == "event":
-            paasta_print(f"[service {service}] {line}", file=sys.stdout)
-        elif level == "debug":
-            paasta_print(f"[service {service}] {line}", file=sys.stderr)
-        else:
-            raise NoSuchLogLevel
-        log_name = get_log_name_for_service(service)
-        formatted_line = format_log_line(
-            level, cluster, service, instance, component, line
-        )
-        self.clog.log_line(log_name, formatted_line)
+    @register_log_writer("scribe")
+    class ScribeLogWriter(LogWriter):
+        def __init__(
+            self,
+            scribe_host: str = "169.254.255.254",
+            scribe_port: int = 1463,
+            scribe_disable: bool = False,
+            **kwargs: Any,
+        ) -> None:
+            clog.config.configure(
+                scribe_host=scribe_host,
+                scribe_port=scribe_port,
+                scribe_disable=scribe_disable,
+            )
 
-    def log_audit(
-        self,
-        user: str,
-        host: str,
-        action: str,
-        action_details: dict = None,
-        service: str = None,
-        cluster: str = ANY_CLUSTER,
-        instance: str = ANY_INSTANCE,
-    ) -> None:
-        log_name = AUDIT_LOG_STREAM
-        formatted_line = format_audit_log_line(
-            user=user,
-            host=host,
-            action=action,
-            action_details=action_details,
-            service=service,
-            cluster=cluster,
-            instance=instance,
-        )
-        self.clog.log_line(log_name, formatted_line)
+        def log(
+            self,
+            service: str,
+            line: str,
+            component: str,
+            level: str = DEFAULT_LOGLEVEL,
+            cluster: str = ANY_CLUSTER,
+            instance: str = ANY_INSTANCE,
+        ) -> None:
+            """This expects someone (currently the paasta cli main()) to have already
+            configured the log object. We'll just write things to it.
+            """
+            if level == "event":
+                paasta_print(f"[service {service}] {line}", file=sys.stdout)
+            elif level == "debug":
+                paasta_print(f"[service {service}] {line}", file=sys.stderr)
+            else:
+                raise NoSuchLogLevel
+            log_name = get_log_name_for_service(service)
+            formatted_line = format_log_line(
+                level, cluster, service, instance, component, line
+            )
+            clog.log_line(log_name, formatted_line)
+
+        def log_audit(
+            self,
+            user: str,
+            host: str,
+            action: str,
+            action_details: dict = None,
+            service: str = None,
+            cluster: str = ANY_CLUSTER,
+            instance: str = ANY_INSTANCE,
+        ) -> None:
+            log_name = AUDIT_LOG_STREAM
+            formatted_line = format_audit_log_line(
+                user=user,
+                host=host,
+                action=action,
+                action_details=action_details,
+                service=service,
+                cluster=cluster,
+                instance=instance,
+            )
+            clog.log_line(log_name, formatted_line)
+
+
+except ImportError:
+    warnings.warn("clog is unavailable")
 
 
 @register_log_writer("null")

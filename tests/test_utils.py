@@ -17,6 +17,7 @@ import os
 import stat
 import sys
 import time
+import warnings
 from typing import Dict
 from typing import List
 
@@ -216,47 +217,53 @@ def test_format_audit_log_line_with_details():
         assert actual == expected
 
 
-def test_ScribeLogWriter_log_raise_on_unknown_level():
-    with raises(utils.NoSuchLogLevel):
-        utils.ScribeLogWriter().log("fake_service", "fake_line", "build", "BOGUS_LEVEL")
+try:
+    from utils import ScribeLogWriter
+
+    def test_ScribeLogWriter_log_raise_on_unknown_level():
+        with raises(utils.NoSuchLogLevel):
+            ScribeLogWriter().log("fake_service", "fake_line", "build", "BOGUS_LEVEL")
+
+    def test_ScribeLogWriter_logs_audit_messages():
+        slw = ScribeLogWriter(scribe_disable=True)
+        mock_clog = mock.Mock()
+        slw.clog = mock_clog
+
+        user = "fake_user"
+        host = "fake_hostname"
+        action = "mark-for-deployment"
+        action_details = {"sha": "deadbeef"}
+        service = "fake_service"
+        cluster = "fake_cluster"
+        instance = "fake_instance"
+
+        expected_log_name = utils.AUDIT_LOG_STREAM
+        expected_line = utils.format_audit_log_line(
+            user=user,
+            host=host,
+            action=action,
+            action_details=action_details,
+            service=service,
+            cluster=cluster,
+            instance=instance,
+        )
+
+        slw.log_audit(
+            user=user,
+            host=host,
+            action=action,
+            action_details=action_details,
+            service=service,
+            cluster=cluster,
+            instance=instance,
+        )
+
+        assert mock_clog.log_line.call_count == 1
+        assert mock_clog.log_line.called_once_with(expected_log_name, expected_line)
 
 
-def test_ScribeLogWriter_logs_audit_messages():
-    slw = utils.ScribeLogWriter(scribe_disable=True)
-    mock_clog = mock.Mock()
-    slw.clog = mock_clog
-
-    user = "fake_user"
-    host = "fake_hostname"
-    action = "mark-for-deployment"
-    action_details = {"sha": "deadbeef"}
-    service = "fake_service"
-    cluster = "fake_cluster"
-    instance = "fake_instance"
-
-    expected_log_name = utils.AUDIT_LOG_STREAM
-    expected_line = utils.format_audit_log_line(
-        user=user,
-        host=host,
-        action=action,
-        action_details=action_details,
-        service=service,
-        cluster=cluster,
-        instance=instance,
-    )
-
-    slw.log_audit(
-        user=user,
-        host=host,
-        action=action,
-        action_details=action_details,
-        service=service,
-        cluster=cluster,
-        instance=instance,
-    )
-
-    assert mock_clog.log_line.call_count == 1
-    assert mock_clog.log_line.called_once_with(expected_log_name, expected_line)
+except ImportError:
+    warnings.warn("ScribeLogWriter is unavailable")
 
 
 def test_get_log_name_for_service():
