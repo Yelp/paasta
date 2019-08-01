@@ -259,8 +259,8 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         "--no-aws-credentials",
-        help="Do not load any AWS credentials; allow the service to use its "
-        "its own logic to load credentials",
+        help="Do not load any AWS credentials; allow the Spark job to use its "
+        "own logic to load credentials",
         action='store_true',
         default=False,
     )
