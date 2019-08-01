@@ -19,17 +19,20 @@ from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.utils import load_system_paasta_config
 
-BounceTimers = namedtuple('BounceTimers', ['processed_by_worker', 'setup_marathon', 'bounce_length'])
+BounceTimers = namedtuple(
+    "BounceTimers", ["processed_by_worker", "setup_marathon", "bounce_length"]
+)
 BaseServiceInstance = namedtuple(
-    'ServiceInstance', [
-        'service',
-        'instance',
-        'bounce_by',
-        'wait_until',
-        'watcher',
-        'bounce_timers',
-        'failures',
-        'processed_count',
+    "ServiceInstance",
+    [
+        "service",
+        "instance",
+        "bounce_by",
+        "wait_until",
+        "watcher",
+        "bounce_timers",
+        "failures",
+        "processed_count",
     ],
 )
 
@@ -48,7 +51,7 @@ class ServiceInstance(BaseServiceInstance):
         failures: int = 0,
         bounce_timers: Optional[BounceTimers] = None,
         processed_count: int = 0,
-    ) -> 'ServiceInstance':
+    ) -> "ServiceInstance":
         return super().__new__(  # type: ignore
             _cls=_cls,
             service=service,
@@ -63,22 +66,20 @@ class ServiceInstance(BaseServiceInstance):
 
 
 class PaastaThread(Thread):
-
     @property
     def log(self) -> logging.Logger:
-        name = '.'.join([type(self).__module__, type(self).__name__])
+        name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
 
 class PaastaQueue(Queue):
-
     def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:
         self.name = name
         super().__init__(*args, **kwargs)
 
     @property
     def log(self) -> logging.Logger:
-        name = '.'.join([type(self).__module__, type(self).__name__])
+        name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
     def put(self, item: Any, *args: Any, **kwargs: Any) -> None:
@@ -86,7 +87,9 @@ class PaastaQueue(Queue):
         super().put(item, *args, **kwargs)
 
 
-def exponential_back_off(failures: int, factor: float, base: float, max_time: float) -> float:
+def exponential_back_off(
+    failures: int, factor: float, base: float, max_time: float
+) -> float:
     seconds = factor * base ** failures
     return seconds if seconds < max_time else max_time
 
@@ -98,7 +101,9 @@ def get_service_instances_needing_update(
 ) -> List[Tuple[str, str]]:
     marathon_apps = {}
     for marathon_client in marathon_clients.get_all_clients():
-        marathon_apps.update({app.id: app for app in get_all_marathon_apps(marathon_client)})
+        marathon_apps.update(
+            {app.id: app for app in get_all_marathon_apps(marathon_client)}
+        )
 
     marathon_app_ids = marathon_apps.keys()
     service_instances = []
@@ -111,15 +116,17 @@ def get_service_instances_needing_update(
                 soa_dir=DEFAULT_SOA_DIR,
             )
             config_app = config.format_marathon_app_dict()
-            app_id = '/{}'.format(config_app['id'])
+            app_id = "/{}".format(config_app["id"])
         # Not ideal but we rely on a lot of user input to create the app dict
         # and we really can't afford to bail if just one app definition is malformed
         except Exception as e:
-            print("ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e)))
+            print(
+                "ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e))
+            )
             continue
         if app_id not in marathon_app_ids:
             service_instances.append((service, instance))
-        elif marathon_apps[app_id].instances != config_app['instances']:
+        elif marathon_apps[app_id].instances != config_app["instances"]:
             service_instances.append((service, instance))
     return service_instances
 
@@ -131,34 +138,42 @@ def get_marathon_clients_from_config() -> MarathonClients:
     return marathon_clients
 
 
-class DelayDeadlineQueue():
+class DelayDeadlineQueue:
     """Entries into this queue have both a wait_until and a bounce_by. Before wait_until, get() will not return an entry.
     get() returns the entry whose wait_until has passed and which has the lowest bounce_by."""
 
     def __init__(self) -> None:
-        self.available_service_instances: PriorityQueue[Tuple[float, ServiceInstance]] = PriorityQueue()
-        self.unavailable_service_instances: PriorityQueue[Tuple[float, float, ServiceInstance]] = PriorityQueue()
+        self.available_service_instances: PriorityQueue[
+            Tuple[float, ServiceInstance]
+        ] = PriorityQueue()
+        self.unavailable_service_instances: PriorityQueue[
+            Tuple[float, float, ServiceInstance]
+        ] = PriorityQueue()
 
     @property
     def log(self) -> logging.Logger:
-        name = '.'.join([type(self).__module__, type(self).__name__])
+        name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
     def put(self, si: ServiceInstance, now: Optional[float] = None) -> None:
         self.log.debug(
-            f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}",
+            f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}"
         )
         self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
         self.process_unavailable_service_instances(now=now)
 
-    def process_unavailable_service_instances(self, now: Optional[float] = None) -> None:
+    def process_unavailable_service_instances(
+        self, now: Optional[float] = None
+    ) -> None:
         """Take any entries in unavailable_service_instances that have a wait_until < now and put them in
         available_service_instances. Should not block."""
         if now is None:
             now = time.time()
         try:
             while True:
-                wait_until, bounce_by, si = self.unavailable_service_instances.get_nowait()
+                wait_until, bounce_by, si = (
+                    self.unavailable_service_instances.get_nowait()
+                )
                 if wait_until < now:
                     self.available_service_instances.put((bounce_by, si))
                 else:
@@ -168,11 +183,10 @@ class DelayDeadlineQueue():
             pass
 
     def get(
-        self,
-        block: bool = True,
-        timeout: float = None,
-        now: float = None,
+        self, block: bool = True, timeout: float = None, now: float = None
     ) -> ServiceInstance:
         self.process_unavailable_service_instances(now=now)
-        bounce_by, si = self.available_service_instances.get(block=block, timeout=timeout)
+        bounce_by, si = self.available_service_instances.get(
+            block=block, timeout=timeout
+        )
         return si

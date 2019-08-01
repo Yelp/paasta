@@ -20,7 +20,7 @@ try:
 except ImportError:
     yelp_meteorite = None
 
-_metrics_interfaces: Dict[str, Type['BaseMetrics']] = {}
+_metrics_interfaces: Dict[str, Type["BaseMetrics"]] = {}
 
 
 class TimerProtocol(Protocol):
@@ -63,28 +63,33 @@ def get_metrics_interface(base_name: str) -> BaseMetrics:
     return _metrics_interfaces[metrics_provider](base_name)
 
 
-def register_metrics_interface(name: Optional[str]) -> Callable[[Type[BaseMetrics]], Type[BaseMetrics]]:
+def register_metrics_interface(
+    name: Optional[str]
+) -> Callable[[Type[BaseMetrics]], Type[BaseMetrics]]:
     def outer(func: Type[BaseMetrics]) -> Type[BaseMetrics]:
         _metrics_interfaces[name] = func
         return func
+
     return outer
 
 
-@register_metrics_interface('meteorite')
+@register_metrics_interface("meteorite")
 class MeteoriteMetrics(BaseMetrics):
     def __init__(self, base_name: str) -> None:
         self.base_name = base_name
         if yelp_meteorite is None:
-            raise ImportError("yelp_meteorite not imported, please try another metrics provider")
+            raise ImportError(
+                "yelp_meteorite not imported, please try another metrics provider"
+            )
 
     def create_timer(self, name: str, **kwargs: Any) -> TimerProtocol:
-        return yelp_meteorite.create_timer(self.base_name + '.' + name, kwargs)
+        return yelp_meteorite.create_timer(self.base_name + "." + name, kwargs)
 
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
-        return yelp_meteorite.create_gauge(self.base_name + '.' + name, kwargs)
+        return yelp_meteorite.create_gauge(self.base_name + "." + name, kwargs)
 
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
-        return yelp_meteorite.create_counter(self.base_name + '.' + name, kwargs)
+        return yelp_meteorite.create_counter(self.base_name + "." + name, kwargs)
 
 
 class Timer(TimerProtocol):
@@ -122,10 +127,10 @@ class NoMetrics(BaseMetrics):
         self.base_name = base_name
 
     def create_timer(self, name: str, **kwargs: Any) -> Timer:
-        return Timer(self.base_name + '.' + name)
+        return Timer(self.base_name + "." + name)
 
     def create_gauge(self, name: str, **kwargs: Any) -> Gauge:
-        return Gauge(self.base_name + '.' + name)
+        return Gauge(self.base_name + "." + name)
 
     def create_counter(self, name: str, **kwargs: Any) -> Counter:
-        return Counter(self.base_name + '.' + name)
+        return Counter(self.base_name + "." + name)

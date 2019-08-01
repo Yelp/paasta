@@ -42,5 +42,5 @@ def check_marathon_apps():
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_marathon_apps()

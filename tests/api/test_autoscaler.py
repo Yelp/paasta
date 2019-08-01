@@ -19,28 +19,28 @@ from paasta_tools.api.views import autoscaler
 
 def test_get_autoscaler_count():
     request = testing.DummyRequest()
-    request.swagger_data = {
-        'service': 'fake_service',
-        'instance': 'fake_instance',
-    }
+    request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
 
     with mock.patch(
-        'paasta_tools.api.views.autoscaler.load_marathon_service_config',
-        autospec=True,
+        "paasta_tools.api.views.autoscaler.load_marathon_service_config", autospec=True
     ) as mock_load_marathon_service_config:
-        mock_load_marathon_service_config.return_value = mock.MagicMock(get_instances=mock.MagicMock(return_value=123))
+        mock_load_marathon_service_config.return_value = mock.MagicMock(
+            get_instances=mock.MagicMock(return_value=123)
+        )
         response = autoscaler.get_autoscaler_count(request)
-        assert response.json_body['desired_instances'] == 123
-        assert response.json_body['calculated_instances'] == 123
+        assert response.json_body["desired_instances"] == 123
+        assert response.json_body["calculated_instances"] == 123
 
 
-@mock.patch('paasta_tools.api.views.autoscaler.load_marathon_service_config', autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.autoscaler.load_marathon_service_config", autospec=True
+)
 def test_update_autoscaler_count(mock_load_marathon_service_config):
     request = testing.DummyRequest()
     request.swagger_data = {
-        'service': 'fake_service',
-        'instance': 'fake_instance',
-        'json_body': {'desired_instances': 123},
+        "service": "fake_service",
+        "instance": "fake_instance",
+        "json_body": {"desired_instances": 123},
     }
 
     mock_load_marathon_service_config.return_value = mock.MagicMock(
@@ -49,25 +49,31 @@ def test_update_autoscaler_count(mock_load_marathon_service_config):
     )
 
     with mock.patch(
-        'paasta_tools.api.views.autoscaler.set_instances_for_marathon_service',
+        "paasta_tools.api.views.autoscaler.set_instances_for_marathon_service",
         autospec=True,
     ) as mock_set_instances:
         response = autoscaler.update_autoscaler_count(request)
-        assert response.json_body['desired_instances'] == 123
-        mock_set_instances.assert_called_once_with(service='fake_service', instance='fake_instance', instance_count=123)
+        assert response.json_body["desired_instances"] == 123
+        mock_set_instances.assert_called_once_with(
+            service="fake_service", instance="fake_instance", instance_count=123
+        )
 
 
-@mock.patch('paasta_tools.api.views.autoscaler.load_marathon_service_config', autospec=True)
-@mock.patch('paasta_tools.api.views.autoscaler.set_instances_for_marathon_service', autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.autoscaler.load_marathon_service_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.api.views.autoscaler.set_instances_for_marathon_service",
+    autospec=True,
+)
 def test_update_autoscaler_count_warning(
-    mock_set_instances_for_marathon_service,
-    mock_load_marathon_service_config,
+    mock_set_instances_for_marathon_service, mock_load_marathon_service_config
 ):
     request = testing.DummyRequest()
     request.swagger_data = {
-        'service': 'fake_service',
-        'instance': 'fake_instance',
-        'json_body': {'desired_instances': 123},
+        "service": "fake_service",
+        "instance": "fake_instance",
+        "json_body": {"desired_instances": 123},
     }
 
     mock_load_marathon_service_config.return_value = mock.MagicMock(
@@ -76,5 +82,5 @@ def test_update_autoscaler_count_warning(
     )
 
     response = autoscaler.update_autoscaler_count(request)
-    assert response.json_body['desired_instances'] == 100
-    assert 'WARNING' in response.json_body['status']
+    assert response.json_body["desired_instances"] == 100
+    assert "WARNING" in response.json_body["status"]

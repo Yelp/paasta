@@ -19,10 +19,12 @@ from paasta_tools.monitoring.check_mesos_quorum import check_mesos_quorum
 
 def test_check_mesos_quorum_ok(capfd):
     with mock.patch(
-        'paasta_tools.metrics.metastatus_lib.get_num_masters', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.get_num_masters",
+        autospec=True,
         return_value=3,
     ), mock.patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_quorum', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.get_mesos_quorum",
+        autospec=True,
         return_value=2,
     ):
         with pytest.raises(SystemExit) as error:
@@ -34,10 +36,12 @@ def test_check_mesos_quorum_ok(capfd):
 
 def test_check_mesos_quorum_critical(capfd):
     with mock.patch(
-        'paasta_tools.metrics.metastatus_lib.get_num_masters', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.get_num_masters",
+        autospec=True,
         return_value=1,
     ), mock.patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_quorum', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.get_mesos_quorum",
+        autospec=True,
         return_value=2,
     ):
         with pytest.raises(SystemExit) as error:

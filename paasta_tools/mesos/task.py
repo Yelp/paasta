@@ -70,8 +70,7 @@ class Task:
 
     async def cpu_time(self):
         st = await self.stats()
-        secs = st.get("cpus_user_time_secs", 0) + \
-            st.get("cpus_system_time_secs", 0)
+        secs = st.get("cpus_user_time_secs", 0) + st.get("cpus_system_time_secs", 0)
         # timedelta has a resolution of .000000 while mesos only keeps .00
         return str(datetime.timedelta(seconds=secs)).rsplit(".", 1)[0]
 

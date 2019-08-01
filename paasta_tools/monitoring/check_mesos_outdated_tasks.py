@@ -30,10 +30,12 @@ MAX_BOUNCE_TIME_IN_HOURS = 4
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Find all containers serving previous push versions.',
+        description="Find all containers serving previous push versions."
     )
     parser.add_argument(
-        '--bounce-time', dest="bounce_time", type=int,
+        "--bounce-time",
+        dest="bounce_time",
+        type=int,
         default=MAX_BOUNCE_TIME_IN_HOURS,
         help=(
             "Ignore versions that were launched in the last BOUNCE_TIME hours "
@@ -49,25 +51,25 @@ def get_mesos_state():
 
 
 def marathon_tasks(state):
-    for framework in state.get('frameworks', []):
-        if framework['name'].lower().startswith(FRAMEWORK_NAME):
-            for task in framework.get('tasks', []):
+    for framework in state.get("frameworks", []):
+        if framework["name"].lower().startswith(FRAMEWORK_NAME):
+            for task in framework.get("tasks", []):
                 yield task
 
 
 def create_slave_id_to_hostname_dict(state):
     res = {}
-    for slave in state['slaves']:
-        res[slave['id']] = slave['hostname']
+    for slave in state["slaves"]:
+        res[slave["id"]] = slave["hostname"]
     return res
 
 
 def group_running_tasks_by_id_and_gitsha(state):
     res = {}
     for t in marathon_tasks(state):
-        if t['state'] == 'TASK_RUNNING':
-            task_id = t['name'][:t['name'].find('.', t['name'].find('.') + 1)]
-            gitsha = t['name'][len(task_id) + 1:t['name'].find('.', len(task_id) + 1)]
+        if t["state"] == "TASK_RUNNING":
+            task_id = t["name"][: t["name"].find(".", t["name"].find(".") + 1)]
+            gitsha = t["name"][len(task_id) + 1 : t["name"].find(".", len(task_id) + 1)]
             res.setdefault(task_id, {}).setdefault(gitsha, []).append(t)
     return res
 
@@ -79,10 +81,12 @@ def detect_outdated_gitshas(versions, max_bounce_time_in_hours):
     deploy_time = {}
     latest_deploy = 0
     for version, tasks in versions.items():
-        deploy_time[version] = sum(t['statuses'][0]['timestamp'] for t in tasks) / len(tasks)
+        deploy_time[version] = sum(t["statuses"][0]["timestamp"] for t in tasks) / len(
+            tasks
+        )
         if (
-            deploy_time[version] > latest_deploy and
-            time.time() - deploy_time[version] > max_bounce_time_in_hours * 3600
+            deploy_time[version] > latest_deploy
+            and time.time() - deploy_time[version] > max_bounce_time_in_hours * 3600
         ):
             latest_deploy = deploy_time[version]
     return [version for version, dtime in deploy_time.items() if dtime < latest_deploy]
@@ -92,25 +96,25 @@ def report_outdated_instances(task_id, gitsha, tasks, slave_id2hostname):
     output = []
     remedy = []
     for t in tasks:
-        deploy_time = datetime.datetime.fromtimestamp(int(t['statuses'][0]['timestamp'])).strftime('%Y-%m-%d %H:%M:%S')
+        deploy_time = datetime.datetime.fromtimestamp(
+            int(t["statuses"][0]["timestamp"])
+        ).strftime("%Y-%m-%d %H:%M:%S")
         container_name = "mesos-{}.{}".format(
-            t['slave_id'],
-            t['statuses'][0]['container_status']['container_id']['value'],
+            t["slave_id"], t["statuses"][0]["container_status"]["container_id"]["value"]
         )
-        hostname = slave_id2hostname[t['slave_id']]
-        hostname = hostname[:hostname.find('.')]
-        service_instance = task_id.replace('--', '_')
+        hostname = slave_id2hostname[t["slave_id"]]
+        hostname = hostname[: hostname.find(".")]
+        service_instance = task_id.replace("--", "_")
         output.append(
             OUTPUT_FORMAT.format(
-                service_instance[:30],
-                gitsha[3:],
-                deploy_time,
-                hostname,
-                container_name,
-            ),
+                service_instance[:30], gitsha[3:], deploy_time, hostname, container_name
+            )
         )
-        remedy.append('ssh {0} "sudo hadown {1}; sleep 10; sudo docker stop {2}; sudo haup {1}"'
-                      .format(hostname, service_instance, container_name))
+        remedy.append(
+            'ssh {0} "sudo hadown {1}; sleep 10; sudo docker stop {2}; sudo haup {1}"'.format(
+                hostname, service_instance, container_name
+            )
+        )
     return output, remedy
 
 
@@ -123,7 +127,7 @@ def check_mesos_tasks(max_bounce_time_in_hours=MAX_BOUNCE_TIME_IN_HOURS):
     for task_id, versions in aggregated_tasks.items():
         for gitsha in detect_outdated_gitshas(versions, max_bounce_time_in_hours):
             temp_output, temp_remedy = report_outdated_instances(
-                task_id, gitsha, versions[gitsha], slave_id2hostname,
+                task_id, gitsha, versions[gitsha], slave_id2hostname
             )
             output.extend(temp_output)
             remedy.extend(temp_remedy)
@@ -135,15 +139,21 @@ def main():
     cluster = load_system_paasta_config().get_cluster()
     output, remedy = check_mesos_tasks(args.bounce_time)
     if output:
-        print("CRITICAL - There are {} tasks running in {} that are more than {}h older than their"
-              " last bounce.".format(len(output), cluster, args.bounce_time))
-        print(OUTPUT_FORMAT.format('SERVICE.INSTANCE', 'COMMIT', 'CREATED', 'HOSTNAME', 'CONTAINER'))
-        print('\n'.join(output))
-        print('')
-        print('Run the following commands to terminate them:')
-        print('{code}')
-        print('\n'.join(remedy))
-        print('{code}')
+        print(
+            "CRITICAL - There are {} tasks running in {} that are more than {}h older than their"
+            " last bounce.".format(len(output), cluster, args.bounce_time)
+        )
+        print(
+            OUTPUT_FORMAT.format(
+                "SERVICE.INSTANCE", "COMMIT", "CREATED", "HOSTNAME", "CONTAINER"
+            )
+        )
+        print("\n".join(output))
+        print("")
+        print("Run the following commands to terminate them:")
+        print("{code}")
+        print("\n".join(remedy))
+        print("{code}")
         return 1
     else:
         print(f"OK - There are no outdated tasks in {cluster}")

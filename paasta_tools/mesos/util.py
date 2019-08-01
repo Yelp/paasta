@@ -23,7 +23,6 @@ def merge(obj, *keys):
 
 
 class CachedProperty:
-
     def __init__(self, ttl=300):
         self.ttl = ttl
 
@@ -58,17 +57,13 @@ def memoize(obj):
         if key not in cache:
             cache[key] = obj(*args, **kwargs)
         return cache[key]
+
     return memoizer
 
 
 def humanize_bytes(b):
-    abbrevs = (
-        (1 << 30, 'GB'),
-        (1 << 20, 'MB'),
-        (1 << 10, 'kB'),
-        (1, 'B'),
-    )
+    abbrevs = ((1 << 30, "GB"), (1 << 20, "MB"), (1 << 10, "kB"), (1, "B"))
     for factor, suffix in abbrevs:
         if b >= factor:
             break
-    return '%.*f %s' % (2, b / float(factor), suffix)
+    return "%.*f %s" % (2, b / float(factor), suffix)

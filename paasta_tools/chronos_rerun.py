@@ -34,29 +34,44 @@ from paasta_tools.utils import paasta_print
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description='',
-    )
+    parser = argparse.ArgumentParser(description="")
     parser.add_argument(
-        '-v', '--verbose', action='store_true', dest="verbose", default=False,
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        default=False,
         help="Print out more output regarding the state of the service",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=chronos_tools.DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-a', '--run-all-related-jobs', action='store_true', dest='run_all_related_jobs',
-        default=False, help='Run all the parent-dependent related jobs',
+        "-a",
+        "--run-all-related-jobs",
+        action="store_true",
+        dest="run_all_related_jobs",
+        default=False,
+        help="Run all the parent-dependent related jobs",
     )
     parser.add_argument(
-        '-f', '--force-disabled', action='store_true', dest='force_disabled',
-        default=False, help='Run services that are configured to be disabled',
+        "-f",
+        "--force-disabled",
+        action="store_true",
+        dest="force_disabled",
+        default=False,
+        help="Run services that are configured to be disabled",
     )
-    parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument(
-        'execution_date',
+        "service_instance", help="Instance to operate on. Eg: example_service.main"
+    )
+    parser.add_argument(
+        "execution_date",
         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .",
     )
     args = parser.parse_args()
@@ -75,16 +90,17 @@ def modify_command_for_date(chronos_job, date, verbose):
     :returns chronos_job: a chronos_job dict with the command modified to
         interpolate in the context of the date provided.
     """
-    current_command = chronos_job['command']
+    current_command = chronos_job["command"]
     if current_command is not None:
-        chronos_job['command'] = chronos_tools.parse_time_variables(
-            command=current_command,
-            parse_time=date,
+        chronos_job["command"] = chronos_tools.parse_time_variables(
+            command=current_command, parse_time=date
         )
     else:
         if verbose:
-            job_name = ".".join(chronos_tools.decompose_job_id(chronos_job['name']))
-            paasta_print(f'command in job {job_name} is empty - skipping formatting and depending on command in image')
+            job_name = ".".join(chronos_tools.decompose_job_id(chronos_job["name"]))
+            paasta_print(
+                f"command in job {job_name} is empty - skipping formatting and depending on command in image"
+            )
     return chronos_job
 
 
@@ -99,19 +115,16 @@ def set_default_schedule(chronos_job):
         a schedule for chronos to run the job now and only once. The interval field
         of the schedule is irrelevant, but required by Chronos.
     """
-    chronos_job['schedule'] = 'R1//PT1M'
+    chronos_job["schedule"] = "R1//PT1M"
     return chronos_job
 
 
 def get_tmp_naming_scheme_prefix(timestamp=None):
     timestamp = timestamp if timestamp else datetime.datetime.utcnow().isoformat()
-    timestamp = timestamp.replace(':', '')
-    timestamp = timestamp.replace('.', '')
+    timestamp = timestamp.replace(":", "")
+    timestamp = timestamp.replace(".", "")
 
-    return '{}-{}'.format(
-        chronos_tools.TMP_JOB_IDENTIFIER,
-        timestamp,
-    )
+    return f"{chronos_tools.TMP_JOB_IDENTIFIER}-{timestamp}"
 
 
 def set_tmp_naming_scheme(chronos_job, timestamp=None):
@@ -124,12 +137,10 @@ def set_tmp_naming_scheme(chronos_job, timestamp=None):
     :returns: the chronos_job parameter, with the name of the job modified to
         allow it to be identified as a temporary job.
     """
-    current_name = chronos_job['name']
+    current_name = chronos_job["name"]
 
-    chronos_job['name'] = '{}{}{}'.format(
-        get_tmp_naming_scheme_prefix(timestamp),
-        chronos_tools.SPACER,
-        current_name,
+    chronos_job["name"] = "{}{}{}".format(
+        get_tmp_naming_scheme_prefix(timestamp), chronos_tools.SPACER, current_name
     )
 
     return chronos_job
@@ -144,7 +155,7 @@ def remove_parents(chronos_job):
     :returns: the chronos_job parameter, with the parents field of the job
         removed.
     """
-    chronos_job.pop('parents', None)
+    chronos_job.pop("parents", None)
     return chronos_job
 
 
@@ -167,13 +178,11 @@ def clone_job(chronos_job, timestamp=None, force_disabled=False):
     # If the jobs is a dependent job rename the parents dependencies
     # in order to make this job dependent from the temporary clone of the parents
     if job_type == chronos_tools.JobType.Dependent:
-        clone['parents'] = [
-            '{}{}{}'.format(
-                get_tmp_naming_scheme_prefix(timestamp),
-                chronos_tools.SPACER,
-                parent,
+        clone["parents"] = [
+            "{}{}{}".format(
+                get_tmp_naming_scheme_prefix(timestamp), chronos_tools.SPACER, parent
             )
-            for parent in chronos_job['parents']
+            for parent in chronos_job["parents"]
         ]
     else:
         # If the job is a scheduled one update the schedule to start it NOW
@@ -181,7 +190,7 @@ def clone_job(chronos_job, timestamp=None, force_disabled=False):
 
     # Set disabled to false if force_disabled is on
     if force_disabled:
-        clone['disabled'] = False
+        clone["disabled"] = False
 
     return clone
 
@@ -197,10 +206,12 @@ def main():
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
-    related_jobs = chronos_tools.get_related_jobs_configs(cluster, service, instance, soa_dir=args.soa_dir)
+    related_jobs = chronos_tools.get_related_jobs_configs(
+        cluster, service, instance, soa_dir=args.soa_dir
+    )
     if not related_jobs:
         error_msg = "No deployment found for {} in cluster {}. Has Jenkins run for it?".format(
-            args.service_instance, cluster,
+            args.service_instance, cluster
         )
         paasta_print(error_msg)
         raise NoDeploymentsAvailable
@@ -208,9 +219,7 @@ def main():
     if not args.run_all_related_jobs:
         # Strip all the configuration for the related services
         # those information will not be used by the rest of the flow
-        related_jobs = {
-            (service, instance): related_jobs[(service, instance)],
-        }
+        related_jobs = {(service, instance): related_jobs[(service, instance)]}
 
     complete_job_configs = {}
     for (srv, inst) in related_jobs:
@@ -218,23 +227,19 @@ def main():
             complete_job_configs.update(
                 {
                     (srv, inst): chronos_tools.create_complete_config(
-                        service=srv,
-                        job_name=inst,
-                        soa_dir=args.soa_dir,
-                    ),
-                },
+                        service=srv, job_name=inst, soa_dir=args.soa_dir
+                    )
+                }
             )
         except (NoDeploymentsAvailable, NoDockerImageError) as e:
             error_msg = "No deployment found for {} in cluster {}. Has Jenkins run for it?".format(
-                chronos_tools.compose_job_id(srv, inst), cluster,
+                chronos_tools.compose_job_id(srv, inst), cluster
             )
             paasta_print(error_msg)
             raise e
         except NoConfigurationForServiceError as e:
-            error_msg = (
-                "Could not read chronos configuration file for {} in cluster {}\nError was: {}".format(
-                    chronos_tools.compose_job_id(srv, inst), cluster, str(e),
-                )
+            error_msg = "Could not read chronos configuration file for {} in cluster {}\nError was: {}".format(
+                chronos_tools.compose_job_id(srv, inst), cluster, str(e)
             )
             paasta_print(error_msg)
             raise e
@@ -244,7 +249,9 @@ def main():
     if not args.run_all_related_jobs:
         sorted_jobs = [(service, instance)]
     else:
-        sorted_jobs = chronos_tools.topological_sort_related_jobs(cluster, service, instance, soa_dir=args.soa_dir)
+        sorted_jobs = chronos_tools.topological_sort_related_jobs(
+            cluster, service, instance, soa_dir=args.soa_dir
+        )
 
     timestamp = datetime.datetime.utcnow().isoformat()
 
@@ -254,14 +261,11 @@ def main():
         # so the command is formatted in the context of 'now'
         # replace it with the 'original' cmd so it can be re rendered
         chronos_job_config = chronos_tools.load_chronos_job_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=args.soa_dir,
+            service=service, instance=instance, cluster=cluster, soa_dir=args.soa_dir
         )
         original_command = chronos_job_config.get_cmd()
         complete_job_config = complete_job_configs[(service, instance)]
-        complete_job_config['command'] = original_command
+        complete_job_config["command"] = original_command
         clone = clone_job(
             chronos_job=complete_job_config,
             timestamp=timestamp,
@@ -274,7 +278,10 @@ def main():
             verbose=args.verbose,
         )
 
-        if not args.run_all_related_jobs and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent:
+        if (
+            not args.run_all_related_jobs
+            and chronos_tools.get_job_type(clone) == chronos_tools.JobType.Dependent
+        ):
             # If the job is a dependent job and we want to re-run only the specific instance
             # remove the parents and update the schedule to start the job as soon as possible
             clone = set_default_schedule(remove_parents(clone))

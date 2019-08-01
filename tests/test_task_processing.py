@@ -16,5 +16,6 @@
 
 def test_import():
     from task_processing.task_processor import TaskProcessor
+
     tp = TaskProcessor()
-    tp.load_plugin('task_processing.plugins.mesos')
+    tp.load_plugin("task_processing.plugins.mesos")

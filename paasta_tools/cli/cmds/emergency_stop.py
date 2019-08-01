@@ -27,7 +27,7 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
-        'emergency-stop',
+        "emergency-stop",
         help="Stop a PaaSTA service instance in an emergency",
         description=(
             "Chronos jobs: Stops and kills and inflight run.\n"
@@ -35,21 +35,23 @@ def add_subparser(subparsers):
         ),
     )
     status_parser.add_argument(
-        '-s', '--service',
-        help="Service that you want to stop. Like 'example_service'.",
+        "-s", "--service", help="Service that you want to stop. Like 'example_service'."
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
-        '-i', '--instance',
+        "-i",
+        "--instance",
         help="Instance of the service that you want to stop. Like 'main' or 'canary'.",
         required=True,
     ).completer = lazy_choices_completer(list_instances)
     status_parser.add_argument(
-        '-c', '--cluster',
+        "-c",
+        "--cluster",
         help="The PaaSTA cluster that has the service instance you want to stop. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -63,16 +65,18 @@ def paasta_emergency_stop(args):
     """
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
-    paasta_print("Performing an emergency stop on %s..." % compose_job_id(service, args.instance))
+    paasta_print(
+        "Performing an emergency stop on %s..." % compose_job_id(service, args.instance)
+    )
     return_code, output = execute_paasta_serviceinit_on_remote_master(
-        subcommand='stop',
+        subcommand="stop",
         cluster=args.cluster,
         service=service,
         instances=args.instance,
         system_paasta_config=system_paasta_config,
     )
     _log_audit(
-        action='emergency-stop',
+        action="emergency-stop",
         service=service,
         cluster=args.cluster,
         instance=args.instance,
@@ -82,7 +86,7 @@ def paasta_emergency_stop(args):
     paasta_print("%s" % "\n".join(paasta_emergency_stop.__doc__.splitlines()[-7:]))
     paasta_print("To start this service again asap, run:")
     paasta_print(
-        f"paasta emergency-start --service {service} --instance {args.instance} --cluster {args.cluster}",
+        f"paasta emergency-start --service {service} --instance {args.instance} --cluster {args.cluster}"
     )
 
     return return_code

@@ -21,7 +21,7 @@ from path import Path
 from paasta_tools.utils import _run
 
 
-@given('a simple service to test')
+@given("a simple service to test")
 def given_simple_service(context):
     context.fake_service_name = "fake_simple_service"
     assert os.path.isfile(os.path.join(context.fake_service_name, "Dockerfile"))
@@ -29,8 +29,8 @@ def given_simple_service(context):
 
 
 @when(
-    'we run paasta local-run on a Marathon service in non-interactive mode '
-    'with environment variable "{var}" set to "{val}"',
+    "we run paasta local-run on a Marathon service in non-interactive mode "
+    'with environment variable "{var}" set to "{val}"'
 )
 def non_interactive_local_run(context, var, val):
     with Path("fake_simple_service"):
@@ -40,22 +40,27 @@ def non_interactive_local_run(context, var, val):
         # container dies before it gets a chance to lookup the containerid
         # (which causes jenkins flakes) The sleep can be removed once local-run
         # understands that containers can die quickly.
-        localrun_cmd = ("paasta local-run "
-                        "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
-                        "--service fake_simple_service "
-                        "--cluster test-cluster "
-                        "--instance main "
-                        "--build "
-                        '''--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' ''' % (var, var))
+        localrun_cmd = (
+            "paasta local-run "
+            "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
+            "--service fake_simple_service "
+            "--cluster test-cluster "
+            "--instance main "
+            "--build "
+            """--cmd '/bin/sh -c "echo \\"%s=$%s\\" && sleep 2s && exit 42"' """
+            % (var, var)
+        )
         context.return_code, context.output = _run(command=localrun_cmd, timeout=90)
 
 
-@then('we should see the environment variable "{var}" with the value "{val}" in the output')
+@then(
+    'we should see the environment variable "{var}" with the value "{val}" in the output'
+)
 def env_var_in_output(context, var, val):
     assert f"{var}={val}" in context.output
 
 
-@when('we run paasta local-run in non-interactive mode on a chronos job')
+@when("we run paasta local-run in non-interactive mode on a chronos job")
 def local_run_on_chronos_job(context):
     with Path("fake_simple_service"):
         # The local-run invocation here is designed to run and return a sentinel
@@ -76,7 +81,7 @@ def local_run_on_chronos_job(context):
         context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
 
 
-@when('we run paasta local-run on an interactive job')
+@when("we run paasta local-run on an interactive job")
 def local_run_on_adhoc_job(context):
     with Path("fake_simple_service"):
         local_run_cmd = (
@@ -90,7 +95,9 @@ def local_run_on_adhoc_job(context):
         context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
 
 
-@when('we run paasta local-run in non-interactive mode on a chronos job with cmd set to \'echo hello && sleep 5\'')
+@when(
+    "we run paasta local-run in non-interactive mode on a chronos job with cmd set to 'echo hello && sleep 5'"
+)
 def local_run_on_chronos_job_with_cmd(context):
     with Path("fake_simple_service"):
         local_run_cmd = (
@@ -104,7 +111,7 @@ def local_run_on_chronos_job_with_cmd(context):
         context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
 
 
-@when('we run paasta local-run on a tron action')
+@when("we run paasta local-run on a tron action")
 def local_run_on_tron_action(context):
     with Path("fake_simple_service"):
         local_run_cmd = (

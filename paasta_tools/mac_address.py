@@ -3,7 +3,7 @@ import fcntl
 import os.path
 import random
 
-MAC_ADDRESS_PREFIX = ('02', '52')
+MAC_ADDRESS_PREFIX = ("02", "52")
 
 
 class MacAddressException(Exception):
@@ -17,14 +17,10 @@ def reserve_unique_mac_address(lock_directory):
     and lockfile is a file object that holds an exclusive lock
     """
     for x in range(100):
-        random_hex = '{:08x}'.format(random.getrandbits(32))
-        mac_address = ':'.join(
-            MAC_ADDRESS_PREFIX + (
-                random_hex[0:2],
-                random_hex[2:4],
-                random_hex[4:6],
-                random_hex[6:8],
-            ),
+        random_hex = "{:08x}".format(random.getrandbits(32))
+        mac_address = ":".join(
+            MAC_ADDRESS_PREFIX
+            + (random_hex[0:2], random_hex[2:4], random_hex[4:6], random_hex[6:8])
         )
 
         lock_filepath = os.path.join(lock_directory, mac_address)
@@ -32,13 +28,13 @@ def reserve_unique_mac_address(lock_directory):
         if lock_file is not None:
             return (mac_address, lock_file)
 
-    raise MacAddressException('Unable to pick unique MAC address')
+    raise MacAddressException("Unable to pick unique MAC address")
 
 
 def obtain_lock(lock_filepath):
     """ Open and obtain a flock on the parameter. Returns a file if successful, None if not
     """
-    lock_file = open(lock_filepath, 'w')
+    lock_file = open(lock_filepath, "w")
     try:
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return lock_file

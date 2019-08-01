@@ -1,3 +1,118 @@
+paasta-tools (0.85.34) xenial; urgency=medium
+
+  * 0.85.34 tagged with 'make release'
+    Commit: Merge pull request #2346 from Yelp/internalize-yelp-clog
+    Internalize `yelp-clog`
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 31 Jul 2019 10:30:20 -0700
+
+paasta-tools (0.85.33) xenial; urgency=medium
+
+  * 0.85.33 tagged with 'make release'
+    Commit: Fix `make release` incompatibility with `black`
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 30 Jul 2019 06:23:25 -0700
+
+paasta-tools (0.85.32) xenial; urgency=medium
+
+  * 0.85.32 tagged with 'make release'
+    Commit: Merge pull request #2344 from Yelp/black-pyproject_toml
+    pyproject.toml with config for black
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 30 Jul 2019 05:17:15 -0700
+
+paasta-tools (0.85.31) xenial; urgency=medium
+
+  * 0.85.31 tagged with 'make release'
+    Commit: Merge pull request #2133 from Yelp/x-nerve-check-ip  Pass X-
+    Nerve-Check-IP to configure_nerve
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 23 Jul 2019 15:27:26 -0700
+
+paasta-tools (0.85.30) xenial; urgency=medium
+
+  * 0.85.30 tagged with 'make release'
+    Commit: Merge pull request #2335 from Yelp/fix-cassandra-validation
+    Drop mem validation for cassandra
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 22 Jul 2019 06:00:44 -0700
+
+paasta-tools (0.85.29) xenial; urgency=medium
+
+  * 0.85.29 tagged with 'make release'
+    Commit: Merge pull request #2332 from Yelp/fix-secrets-sync  Fix
+    secret name sanitisation
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 22 Jul 2019 03:18:45 -0700
+
+paasta-tools (0.85.28) xenial; urgency=medium
+
+  * 0.85.28 tagged with 'make release'
+    Commit: Avoid updating slack messages if they are unchanged; print
+    blocks when we get an invalid_blocks error
+
+ -- Evan Krall <krall@yelp.com>  Fri, 19 Jul 2019 11:06:03 -0700
+
+paasta-tools (0.85.27) xenial; urgency=medium
+
+  * 0.85.27 tagged with 'make release'
+    Commit: Merge branch "also_ping_at_end"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 18 Jul 2019 09:24:42 -0700
+
+paasta-tools (0.85.26) xenial; urgency=medium
+
+  * 0.85.26 tagged with 'make release'
+    Commit: add cleanup_kubernetes_jobs.py to setup.py (#2329)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Wed, 17 Jul 2019 16:15:08 -0700
+
+paasta-tools (0.85.25) xenial; urgency=medium
+
+  * 0.85.25 tagged with 'make release'
+    Commit: Merge branch "fix_oopsie"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Jul 2019 09:01:26 -0700
+
+paasta-tools (0.85.24) xenial; urgency=medium
+
+  * 0.85.24 tagged with 'make release'
+    Commit: Merge branch "only_watch_paging_slos"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 16 Jul 2019 14:03:35 -0700
+
+paasta-tools (0.85.23) xenial; urgency=medium
+
+  * 0.85.23 tagged with 'make release'
+    Commit: Merge pull request #2259 from Yelp/actually_validate
+    Actually validate the instance configs when we run paasta validate
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 15 Jul 2019 16:47:12 -0700
+
+paasta-tools (0.85.22) xenial; urgency=medium
+
+  * 0.85.22 tagged with 'make release'
+    Commit: Merge pull request #2312 from
+    Yelp/u/hliu/revert_spark_event_logging  Revert "enable spark event
+    logging by default (#2309)"
+
+ -- Huadong Liu <hliu@yelp.com>  Mon, 08 Jul 2019 14:41:14 -0700
+
+paasta-tools (0.85.21) xenial; urgency=medium
+
+  * 0.85.21 tagged with 'make release'
+    Commit: Merge pull request #2310 from Yelp/nix_docker_init  Removed
+    the option to disabled docker init
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Jul 2019 12:17:28 -0700
+
+paasta-tools (0.85.20) xenial; urgency=medium
+
+  * 0.85.20 tagged with 'make release'
+    Commit: Merge branch "slo_details"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 01 Jul 2019 13:52:36 -0700
+
 paasta-tools (0.85.19) xenial; urgency=medium
 
   * 0.85.19 tagged with 'make release'

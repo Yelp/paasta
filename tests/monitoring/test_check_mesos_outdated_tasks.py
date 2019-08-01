@@ -17,49 +17,61 @@ from mock import patch
 from paasta_tools.monitoring import check_mesos_outdated_tasks
 
 
-@patch('paasta_tools.monitoring.check_mesos_outdated_tasks.get_mesos_master', autospec=True)
+@patch(
+    "paasta_tools.monitoring.check_mesos_outdated_tasks.get_mesos_master", autospec=True
+)
 def test_check_mesos_tasks(mock_get_mesos_master):
     mock_get_mesos_master.return_value.state = asynctest.CoroutineMock(
         func=asynctest.CoroutineMock(),
         return_value={
-            'slaves': [
+            "slaves": [
                 {
-                    'id': '4abbb181-fd06-4729-815b-6b55cebdf8ee-S2',
-                    'hostname': 'mesos-slave1.example.com',
-                },
+                    "id": "4abbb181-fd06-4729-815b-6b55cebdf8ee-S2",
+                    "hostname": "mesos-slave1.example.com",
+                }
             ],
-            'frameworks': [{
-                'name': 'marathon',
-                'tasks': [
-                    {
-                        'state': 'TASK_RUNNING',
-                        'name': 'service.instance.gitlast_SHA.config3f15fefe',
-                        'slave_id': '4abbb181-fd06-4729-815b-6b55cebdf8ee-S2',
-                        'statuses': [{
-                            'state': 'TASK_RUNNING',
-                            'timestamp': 1509392500.9267,
-                            'container_status': {
-                                 'container_id': {'value': 'a69b426d-f283-4287-9bee-6b8811386e1a'},
-                            },
-                        }],
-                    },
-                    {
-                        'state': 'TASK_RUNNING',
-                        'name': 'service.instance.gitold_SHA.config3f15fefe',
-                        'slave_id': '4abbb181-fd06-4729-815b-6b55cebdf8ee-S2',
-                        'statuses': [{
-                            'state': 'TASK_RUNNING',
-                            'timestamp': 1509342500.9267,
-                            'container_status': {
-                                'container_id': {'value': 'a69b426d-f283-4287-9bee-6b8811386e1b'},
-                            },
-                        }],
-                    },
-                ],
-            }],
+            "frameworks": [
+                {
+                    "name": "marathon",
+                    "tasks": [
+                        {
+                            "state": "TASK_RUNNING",
+                            "name": "service.instance.gitlast_SHA.config3f15fefe",
+                            "slave_id": "4abbb181-fd06-4729-815b-6b55cebdf8ee-S2",
+                            "statuses": [
+                                {
+                                    "state": "TASK_RUNNING",
+                                    "timestamp": 1509392500.9267,
+                                    "container_status": {
+                                        "container_id": {
+                                            "value": "a69b426d-f283-4287-9bee-6b8811386e1a"
+                                        }
+                                    },
+                                }
+                            ],
+                        },
+                        {
+                            "state": "TASK_RUNNING",
+                            "name": "service.instance.gitold_SHA.config3f15fefe",
+                            "slave_id": "4abbb181-fd06-4729-815b-6b55cebdf8ee-S2",
+                            "statuses": [
+                                {
+                                    "state": "TASK_RUNNING",
+                                    "timestamp": 1509342500.9267,
+                                    "container_status": {
+                                        "container_id": {
+                                            "value": "a69b426d-f283-4287-9bee-6b8811386e1b"
+                                        }
+                                    },
+                                }
+                            ],
+                        },
+                    ],
+                }
+            ],
         },
     )
     output, remedy = check_mesos_outdated_tasks.check_mesos_tasks()
     assert len(output) == 1
-    assert 'a69b426d-f283-4287-9bee-6b8811386e1b' in output[0]
-    assert 'old_SHA' in output[0]
+    assert "a69b426d-f283-4287-9bee-6b8811386e1b" in output[0]
+    assert "old_SHA" in output[0]

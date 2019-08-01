@@ -19,20 +19,19 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'security-check',
-        description='Performs a security check consisting of a few tests.',
-        help='Performs a security check',
+        "security-check",
+        description="Performs a security check consisting of a few tests.",
+        help="Performs a security check",
     )
     list_parser.add_argument(
-        '-s', '--service',
+        "-s",
+        "--service",
         help='Name of service for which you wish to check. Leading "services-", as included in a '
-             'Jenkins job name, will be stripped.',
+        "Jenkins job name, will be stripped.",
         required=True,
     )
     list_parser.add_argument(
-        '-c', '--commit',
-        help='Git sha of the image to check',
-        required=True,
+        "-c", "--commit", help="Git sha of the image to check", required=True
     )
     list_parser.set_defaults(command=perform_security_check)
 
@@ -55,7 +54,7 @@ def perform_security_check(args):
     if ret_code != 0:
         paasta_print(
             "The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
-            "including whitelisting safe versions of packages and docker images).",
+            "including whitelisting safe versions of packages and docker images)."
         )
 
     return ret_code

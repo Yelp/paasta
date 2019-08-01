@@ -26,23 +26,25 @@ def _get_smartstack_proxy_ports_from_file(root, file):
     with open(os.path.join(root, file)) as f:
         data = yaml.safe_load(f)
 
-    if file.endswith('service.yaml') and 'smartstack' in data:
+    if file.endswith("service.yaml") and "smartstack" in data:
         # Specifying this in service.yaml is old and deprecated and doesn't
         # support multiple namespaces.
-        ports = {int(data['smartstack'].get('proxy_port', 0))}
-    elif file.endswith('smartstack.yaml'):
+        ports = {int(data["smartstack"].get("proxy_port", 0))}
+    elif file.endswith("smartstack.yaml"):
         for namespace in data.keys():
-            ports.add(data[namespace].get('proxy_port', 0))
+            ports.add(data[namespace].get("proxy_port", 0))
 
     return ports
 
 
-def suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20000, range_max=21000):
+def suggest_smartstack_proxy_port(
+    yelpsoa_config_root, range_min=20000, range_max=21000
+):
     """Pick a random available port in the 20000-21000 block"""
     available_proxy_ports = set(range(range_min, range_max + 1))
     for root, dirs, files in os.walk(yelpsoa_config_root):
         for f in files:
-            if f.endswith('smartstack.yaml'):
+            if f.endswith("smartstack.yaml"):
                 try:
                     used_ports = _get_smartstack_proxy_ports_from_file(root, f)
                     for used_port in used_ports:
@@ -53,7 +55,9 @@ def suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20000, range_ma
     try:
         return random.choice(list(available_proxy_ports))
     except IndexError:
-        raise Exception(f"There are no more ports available in the range [{range_min}, {range_max}]")
+        raise Exception(
+            f"There are no more ports available in the range [{range_min}, {range_max}]"
+        )
 
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:

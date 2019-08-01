@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.85.19
+RELEASE=0.85.34
 
 SHELL=/bin/bash
 
@@ -83,7 +83,7 @@ LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/\x27/"/g')
 # Follow the instructions to generate a github api token
 release:
 	dch -v $(RELEASE) --distribution xenial --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
-	sed -i -e "s/__version__ = .*/__version__ = '$(VERSION)'/" ../paasta_tools/__init__.py
+	sed -i -e "s/__version__ = .*/__version__ = \"$(VERSION)\"/" ../paasta_tools/__init__.py
 	@echo "$(RELEASE) has the changelog set."
 	github_changelog_generator -u Yelp -p paasta --since-tag v0.72.0 --max-issues=100 --future-release $(RELEASE) --output ../CHANGELOG.md || echo github_changelog_generator not installed, not generating changelog!! || true
 	cd .. && make docs || true

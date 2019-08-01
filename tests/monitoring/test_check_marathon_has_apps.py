@@ -19,7 +19,8 @@ from paasta_tools.monitoring.check_marathon_has_apps import check_marathon_apps
 
 def test_check_marathon_jobs_no_config(capfd):
     with mock.patch(
-        'paasta_tools.marathon_tools.get_list_of_marathon_clients', autospec=True,
+        "paasta_tools.marathon_tools.get_list_of_marathon_clients",
+        autospec=True,
         return_value=[],
     ):
         with pytest.raises(SystemExit) as error:
@@ -34,7 +35,7 @@ def test_marathon_jobs_no_jobs(capfd):
     mock_client.list_apps.return_value = []
     with mock.patch(
         # We expect this is tested properly elsewhere
-        'paasta_tools.marathon_tools.get_list_of_marathon_clients',
+        "paasta_tools.marathon_tools.get_list_of_marathon_clients",
         autospec=True,
         return_value=[mock_client],
     ):
@@ -49,13 +50,13 @@ def test_marathon_jobs_some_jobs(capfd):
     mock_client = mock.MagicMock()
     with mock.patch(
         # We expect this is tested properly elsewhere
-        'paasta_tools.marathon_tools.get_list_of_marathon_clients',
+        "paasta_tools.marathon_tools.get_list_of_marathon_clients",
         autospec=True,
         return_value=[mock_client],
     ), mock.patch(
-        'paasta_tools.metrics.metastatus_lib.get_all_marathon_apps',
+        "paasta_tools.metrics.metastatus_lib.get_all_marathon_apps",
         autospec=True,
-        return_value=['foo', 'bar'],
+        return_value=["foo", "bar"],
     ):
         with pytest.raises(SystemExit) as error:
             check_marathon_apps()

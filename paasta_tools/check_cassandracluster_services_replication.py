@@ -18,7 +18,9 @@ Usage: ./check_cassandracluster_services_replication.py [options]
 import logging
 
 from paasta_tools import cassandracluster_tools
-from paasta_tools.check_kubernetes_services_replication import check_kubernetes_pod_replication
+from paasta_tools.check_kubernetes_services_replication import (
+    check_kubernetes_pod_replication,
+)
 from paasta_tools.check_services_replication_tools import main
 
 

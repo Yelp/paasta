@@ -32,41 +32,28 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Update the Tron namespace configuration for a service.',
+        description="Update the Tron namespace configuration for a service."
+    )
+    parser.add_argument("services", nargs="*", help="Services to update.")
+    parser.add_argument(
+        "-a",
+        "--all",
+        dest="all_namespaces",
+        action="store_true",
+        help="Update all available Tron namespaces.",
     )
     parser.add_argument(
-        'services',
-        nargs='*',
-        help='Services to update.',
-    )
-    parser.add_argument(
-        '-a',
-        '--all',
-        dest='all_namespaces',
-        action='store_true',
-        help='Update all available Tron namespaces.',
-    )
-    parser.add_argument(
-        '-d',
-        '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=tron_tools.DEFAULT_SOA_DIR,
         help="Use a different soa config directory",
     )
+    parser.add_argument("-v", "--verbose", action="store_true", default=False)
+    parser.add_argument("--dry-run", action="store_true", default=False)
     parser.add_argument(
-        '-v',
-        '--verbose',
-        action='store_true',
-        default=False,
-    )
-    parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        default=False,
-    )
-    parser.add_argument(
-        '--cluster',
+        "--cluster",
         help="Cluster to read configs for. Defaults to the configuration in /etc/paasta",
         default=None,
     )
@@ -84,15 +71,15 @@ def main():
 
     if args.all_namespaces:
         if args.services:
-            log.error('Do not pass service names with --all flag')
+            log.error("Do not pass service names with --all flag")
             sys.exit(1)
 
         try:
-            services = tron_tools.get_tron_namespaces(cluster=args.cluster, soa_dir=args.soa_dir)
+            services = tron_tools.get_tron_namespaces(
+                cluster=args.cluster, soa_dir=args.soa_dir
+            )
         except Exception as e:
-            log.error('Failed to list tron namespaces: {error}'.format(
-                error=str(e),
-            ))
+            log.error("Failed to list tron namespaces: {error}".format(error=str(e)))
             sys.exit(1)
     else:
         services = args.services
@@ -109,8 +96,7 @@ def main():
     skipped = []
 
     master_config = tron_tools.create_complete_master_config(
-        cluster=args.cluster,
-        soa_dir=args.soa_dir,
+        cluster=args.cluster, soa_dir=args.soa_dir
     )
     if args.dry_run:
         log.info(f"Would update {MASTER_NAMESPACE} to:")
@@ -119,17 +105,15 @@ def main():
     else:
         if client.update_namespace(MASTER_NAMESPACE, master_config):
             updated.append(MASTER_NAMESPACE)
-            log.debug(f'Updated {MASTER_NAMESPACE}')
+            log.debug(f"Updated {MASTER_NAMESPACE}")
         else:
             skipped.append(MASTER_NAMESPACE)
-            log.debug(f'Skipped {MASTER_NAMESPACE}')
+            log.debug(f"Skipped {MASTER_NAMESPACE}")
 
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
-                cluster=args.cluster,
-                service=service,
-                soa_dir=args.soa_dir,
+                cluster=args.cluster, service=service, soa_dir=args.soa_dir
             )
             if args.dry_run:
                 log.info(f"Would update {service} to:")
@@ -138,19 +122,19 @@ def main():
             else:
                 if client.update_namespace(service, new_config):
                     updated.append(service)
-                    log.debug(f'Updated {service}')
+                    log.debug(f"Updated {service}")
                 else:
                     skipped.append(service)
-                    log.debug(f'Skipped {service}')
+                    log.debug(f"Skipped {service}")
         except Exception as e:
-            log.error(f'Update for {service} failed: {str(e)}')
-            log.debug(f'Exception while updating {service}', exc_info=1)
+            log.error(f"Update for {service} failed: {str(e)}")
+            log.debug(f"Exception while updating {service}", exc_info=1)
             failed.append(service)
 
     skipped_report = skipped if args.verbose else len(skipped)
     log.info(
-        f'Updated following namespaces: {updated}, '
-        f'failed: {failed}, skipped: {skipped_report}',
+        f"Updated following namespaces: {updated}, "
+        f"failed: {failed}, skipped: {skipped_report}"
     )
 
     sys.exit(1 if failed else 0)

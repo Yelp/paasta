@@ -38,11 +38,11 @@ from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import paasta_print
 
 
-@given('a test git repo is setup with commits')
+@given("a test git repo is setup with commits")
 def step_impl_given(context):
-    context.test_git_repo_dir = tempfile.mkdtemp('paasta_tools_deployments_json_itest')
+    context.test_git_repo_dir = tempfile.mkdtemp("paasta_tools_deployments_json_itest")
     context.test_git_repo = Repo.init(context.test_git_repo_dir)
-    paasta_print('Temp repo in %s' % context.test_git_repo_dir)
+    paasta_print("Temp repo in %s" % context.test_git_repo_dir)
 
     blob = Blob.from_string(b"My file content\n")
     tree = Tree()
@@ -51,7 +51,7 @@ def step_impl_given(context):
     commit = Commit()
     commit.author = commit.committer = b"itest author"
     commit.commit_time = commit.author_time = int(time())
-    commit.commit_timezone = commit.author_timezone = parse_timezone(b'-0200')[0]
+    commit.commit_timezone = commit.author_timezone = parse_timezone(b"-0200")[0]
     commit.message = b"Initial commit"
     commit.tree = tree.id
 
@@ -60,42 +60,41 @@ def step_impl_given(context):
     object_store.add_object(tree)
     object_store.add_object(commit)
 
-    context.test_git_repo.refs[b'refs/heads/master'] = commit.id
+    context.test_git_repo.refs[b"refs/heads/master"] = commit.id
     context.expected_commit_as_bytes = commit.id
     context.expected_commit = context.expected_commit_as_bytes.decode()
 
 
-@given('a valid system paasta config')
+@given("a valid system paasta config")
 def generate_system_paasta_config(context):
-    system_paasta_config_dir = os.environ['PAASTA_SYSTEM_CONFIG_DIR']
+    system_paasta_config_dir = os.environ["PAASTA_SYSTEM_CONFIG_DIR"]
     if not os.path.exists(system_paasta_config_dir):
         os.makedirs(system_paasta_config_dir)
-    with open('%s/clusters.json' % system_paasta_config_dir, 'w+') as f:
-        f.write(json.dumps({
-            'clusters': [
-                'test-cluster',
-            ],
-        }))
+    with open("%s/clusters.json" % system_paasta_config_dir, "w+") as f:
+        f.write(json.dumps({"clusters": ["test-cluster"]}))
 
 
-@when('paasta mark-for-deployments is run against the repo')
+@when("paasta mark-for-deployments is run against the repo")
 def step_paasta_mark_for_deployments_when(context):
     fake_args = mock.MagicMock(
-        deploy_group='test-cluster.test_instance',
-        service='fake_deployments_json_service',
+        deploy_group="test-cluster.test_instance",
+        service="fake_deployments_json_service",
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
-        soa_dir='fake_soa_configs',
+        soa_dir="fake_soa_configs",
         block=False,
         verify_image=False,
         auto_rollback=False,
+        auto_certify_delay=None,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(
-        'paasta_tools.utils.format_timestamp', autospec=True,
+        "paasta_tools.utils.format_timestamp",
+        autospec=True,
         return_value=context.force_bounce_timestamp,
     ), mock.patch(
-        'paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True,
+        "paasta_tools.cli.cmds.mark_for_deployment.validate_service_name",
+        autospec=True,
         return_value=True,
     ):
         try:
@@ -104,26 +103,31 @@ def step_paasta_mark_for_deployments_when(context):
             pass
 
 
-@when('paasta stop is run against the repo')
+@when("paasta stop is run against the repo")
 def step_paasta_stop_when(context):
     fake_args = mock.MagicMock(
-        clusters='test-cluster',
-        instances='test_instance',
-        soa_dir='fake_soa_configs',
-        service='fake_deployments_json_service',
+        clusters="test-cluster",
+        instances="test_instance",
+        soa_dir="fake_soa_configs",
+        service="fake_deployments_json_service",
         deploy_group=None,
         verify_image=False,
     )
     context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
     with mock.patch(
-        'paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True,
+        "paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url",
+        autospec=True,
         return_value=context.test_git_repo_dir,
     ), mock.patch(
-        'paasta_tools.utils.format_timestamp', autospec=True,
+        "paasta_tools.utils.format_timestamp",
+        autospec=True,
         return_value=context.force_bounce_timestamp,
     ), mock.patch(
-        'paasta_tools.cli.cmds.start_stop_restart.apply_args_filters', autospec=True,
-        return_value={fake_args.clusters: {fake_args.service: {fake_args.instances: None}}},
+        "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters",
+        autospec=True,
+        return_value={
+            fake_args.clusters: {fake_args.service: {fake_args.instances: None}}
+        },
     ):
         try:
             paasta_stop(fake_args)
@@ -131,61 +135,87 @@ def step_paasta_stop_when(context):
             pass
 
 
-@when('we generate deployments.json for that service')
+@when("we generate deployments.json for that service")
 def step_impl_when(context):
-    context.deployments_file = os.path.join('fake_soa_configs', 'fake_deployments_json_service', 'deployments.json')
+    context.deployments_file = os.path.join(
+        "fake_soa_configs", "fake_deployments_json_service", "deployments.json"
+    )
     try:
         os.remove(context.deployments_file)
     except OSError:
         pass
     fake_args = mock.MagicMock(
-        service='fake_deployments_json_service',
-        soa_dir='fake_soa_configs',
+        service="fake_deployments_json_service",
+        soa_dir="fake_soa_configs",
         verbose=True,
     )
     with mock.patch(
-        'paasta_tools.generate_deployments_for_service.get_git_url', autospec=True,
+        "paasta_tools.generate_deployments_for_service.get_git_url",
+        autospec=True,
         return_value=context.test_git_repo_dir,
     ), mock.patch(
-        'paasta_tools.generate_deployments_for_service.parse_args',
-        autospec=True, return_value=fake_args,
+        "paasta_tools.generate_deployments_for_service.parse_args",
+        autospec=True,
+        return_value=fake_args,
     ):
         generate_deployments_for_service.main()
 
 
-@then('that deployments.json can be read back correctly')
+@then("that deployments.json can be read back correctly")
 def step_impl_then(context):
-    deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    expected_deployments = DeploymentsJsonV1({
-        'fake_deployments_json_service:paasta-test-cluster.test_instance': {
-            'force_bounce': context.force_bounce_timestamp,
-            'desired_state': 'stop',
-            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
-        },
-        'fake_deployments_json_service:paasta-test-cluster.test_instance_2': {
-            'force_bounce': None,
-            'desired_state': 'start',
-            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
-        },
-    })
-    assert expected_deployments == deployments, f"actual: {deployments}\nexpected:{expected_deployments}"
+    deployments = load_deployments_json(
+        "fake_deployments_json_service", soa_dir="fake_soa_configs"
+    )
+    expected_deployments = DeploymentsJsonV1(
+        {
+            "fake_deployments_json_service:paasta-test-cluster.test_instance": {
+                "force_bounce": context.force_bounce_timestamp,
+                "desired_state": "stop",
+                "docker_image": "services-fake_deployments_json_service:paasta-%s"
+                % context.expected_commit,
+            },
+            "fake_deployments_json_service:paasta-test-cluster.test_instance_2": {
+                "force_bounce": None,
+                "desired_state": "start",
+                "docker_image": "services-fake_deployments_json_service:paasta-%s"
+                % context.expected_commit,
+            },
+        }
+    )
+    assert (
+        expected_deployments == deployments
+    ), f"actual: {deployments}\nexpected:{expected_deployments}"
 
 
 @then('that deployments.json has a desired_state of "{expected_state}"')
 def step_impl_then_desired_state(context, expected_state):
-    deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
-    latest = sorted(deployments.config_dict.items(), key=lambda kv: kv[1]['force_bounce'] or '', reverse=True)[0][1]
-    desired_state = latest['desired_state']
-    assert desired_state == expected_state, f"actual: {desired_state}\nexpected: {expected_state}"
+    deployments = load_deployments_json(
+        "fake_deployments_json_service", soa_dir="fake_soa_configs"
+    )
+    latest = sorted(
+        deployments.config_dict.items(),
+        key=lambda kv: kv[1]["force_bounce"] or "",
+        reverse=True,
+    )[0][1]
+    desired_state = latest["desired_state"]
+    assert (
+        desired_state == expected_state
+    ), f"actual: {desired_state}\nexpected: {expected_state}"
 
 
-@then('the repository should be correctly tagged')
+@then("the repository should be correctly tagged")
 def step_impl_then_correctly_tagged(context):
     with mock.patch(
-        'paasta_tools.utils.format_timestamp', autospec=True,
+        "paasta_tools.utils.format_timestamp",
+        autospec=True,
         return_value=context.force_bounce_timestamp,
     ):
-        expected_tag = get_paasta_tag_from_deploy_group(identifier='test-cluster.test_instance', desired_state='deploy')
-    expected_formatted_tag = format_tag(expected_tag).encode('UTF-8')
+        expected_tag = get_paasta_tag_from_deploy_group(
+            identifier="test-cluster.test_instance", desired_state="deploy"
+        )
+    expected_formatted_tag = format_tag(expected_tag).encode("UTF-8")
     assert expected_formatted_tag in context.test_git_repo.refs
-    assert context.test_git_repo.refs[expected_formatted_tag] == context.expected_commit_as_bytes
+    assert (
+        context.test_git_repo.refs[expected_formatted_tag]
+        == context.expected_commit_as_bytes
+    )

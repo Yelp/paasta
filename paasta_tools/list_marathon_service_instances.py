@@ -48,20 +48,29 @@ from paasta_tools.utils import use_requests_cache
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Lists marathon instances for a service.',
+        description="Lists marathon instances for a service."
     )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="define a specific cluster to read from",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-m', '--minimal', dest='minimal', action='store_true',
+        "-m",
+        "--minimal",
+        dest="minimal",
+        action="store_true",
         help="show only service instances that need bouncing",
     )
     args = parser.parse_args()
@@ -71,9 +80,7 @@ def parse_args():
 def get_desired_marathon_configs(soa_dir):
     cluster = load_system_paasta_config().get_cluster()
     instances = get_services_for_cluster(
-        instance_type='marathon',
-        cluster=cluster,
-        soa_dir=soa_dir,
+        instance_type="marathon", cluster=cluster, soa_dir=soa_dir
     )
 
     job_configs = dict()
@@ -82,44 +89,54 @@ def get_desired_marathon_configs(soa_dir):
     for service, instance in instances:
         try:
             job_config = load_marathon_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
+                service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
             )
 
             formatted_config = job_config.format_marathon_app_dict()
-            formatted_marathon_configs[formatted_config['id'].lstrip('/')] = formatted_config
-            job_configs[formatted_config['id'].lstrip('/')] = job_config
+            formatted_marathon_configs[
+                formatted_config["id"].lstrip("/")
+            ] = formatted_config
+            job_configs[formatted_config["id"].lstrip("/")] = job_config
         # Not ideal but we rely on a lot of user input to create the app dict
         # and we really can't afford to bail if just one app definition is malformed
         except Exception as errormsg:
             _log(
                 service=service,
                 line=str(errormsg),
-                component='deploy',
-                level='debug',
+                component="deploy",
+                level="debug",
                 cluster=cluster,
                 instance=instance,
             )
     return formatted_marathon_configs, job_configs
 
 
-@use_requests_cache('list_marathon_services')
+@use_requests_cache("list_marathon_services")
 def get_service_instances_that_need_bouncing(marathon_clients, soa_dir):
-    desired_marathon_configs_formatted, desired_job_configs = get_desired_marathon_configs(soa_dir)
+    desired_marathon_configs_formatted, desired_job_configs = get_desired_marathon_configs(
+        soa_dir
+    )
     desired_ids_and_clients = set()
     for app_id, job_config in desired_job_configs.items():
-        desired_ids_and_clients.add((app_id, marathon_clients.get_current_client_for_service(job_config)))
+        desired_ids_and_clients.add(
+            (app_id, marathon_clients.get_current_client_for_service(job_config))
+        )
 
     current_apps_with_clients = {
-        (app.id.lstrip('/'), client): app
-        for app, client in get_marathon_apps_with_clients(marathon_clients.get_all_clients())
+        (app.id.lstrip("/"), client): app
+        for app, client in get_marathon_apps_with_clients(
+            marathon_clients.get_all_clients()
+        )
     }
     actual_ids_and_clients = set(current_apps_with_clients.keys())
 
-    undesired_apps_and_clients = actual_ids_and_clients.symmetric_difference(desired_ids_and_clients)
-    apps_that_need_bouncing = {long_job_id_to_short_job_id(app_id) for app_id, client in undesired_apps_and_clients}
+    undesired_apps_and_clients = actual_ids_and_clients.symmetric_difference(
+        desired_ids_and_clients
+    )
+    apps_that_need_bouncing = {
+        long_job_id_to_short_job_id(app_id)
+        for app_id, client in undesired_apps_and_clients
+    }
 
     draining_hosts = get_draining_hosts()
 
@@ -127,12 +144,12 @@ def get_service_instances_that_need_bouncing(marathon_clients, soa_dir):
         short_app_id = long_job_id_to_short_job_id(app_id)
         if short_app_id not in apps_that_need_bouncing:
             if (
-                app.instances != desired_marathon_configs_formatted[app_id]['instances'] or
-                get_num_at_risk_tasks(app, draining_hosts) != 0
+                app.instances != desired_marathon_configs_formatted[app_id]["instances"]
+                or get_num_at_risk_tasks(app, draining_hosts) != 0
             ):
                 apps_that_need_bouncing.add(short_app_id)
 
-    return (app_id.replace('--', '_') for app_id in apps_that_need_bouncing)
+    return (app_id.replace("--", "_") for app_id in apps_that_need_bouncing)
 
 
 def main():
@@ -144,18 +161,16 @@ def main():
         marathon_servers = get_marathon_servers(system_paasta_config)
         marathon_clients = get_marathon_clients(marathon_servers)
         service_instances = get_service_instances_that_need_bouncing(
-            marathon_clients=marathon_clients, soa_dir=soa_dir,
+            marathon_clients=marathon_clients, soa_dir=soa_dir
         )
     else:
         instances = get_services_for_cluster(
-            cluster=cluster,
-            instance_type='marathon',
-            soa_dir=soa_dir,
+            cluster=cluster, instance_type="marathon", soa_dir=soa_dir
         )
         service_instances = []
         for name, instance in instances:
             service_instances.append(compose_job_id(name, instance))
-    paasta_print('\n'.join(service_instances))
+    paasta_print("\n".join(service_instances))
     sys.exit(0)
 
 

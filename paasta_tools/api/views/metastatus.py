@@ -20,11 +20,8 @@ from pyramid.view import view_config
 from paasta_tools.paasta_metastatus import get_output
 
 
-@view_config(route_name='metastatus', request_method='GET', renderer='json')
+@view_config(route_name="metastatus", request_method="GET", renderer="json")
 def metastatus(request):
-    cmd_args = request.swagger_data.get('cmd_args', None)
+    cmd_args = request.swagger_data.get("cmd_args", None)
     output, exit_code = get_output(cmd_args)
-    return {
-        "output": output,
-        "exit_code": exit_code,
-    }
+    return {"output": output, "exit_code": exit_code}

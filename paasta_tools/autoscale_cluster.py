@@ -25,26 +25,33 @@ logging.getLogger("kazoo").setLevel(logging.CRITICAL)
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Autoscales the local PaaSTA cluster')
+    parser = argparse.ArgumentParser(description="Autoscales the local PaaSTA cluster")
     parser.add_argument(
-        '-v', '--verbose', action='count', dest="verbose", default=0,
+        "-v",
+        "--verbose",
+        action="count",
+        dest="verbose",
+        default=0,
         help="Print out more output.",
     )
     parser.add_argument(
-        '-d', '--dry-run', action='store_true',
+        "-d",
+        "--dry-run",
+        action="store_true",
         help="Perform no actions, only print what to do",
     )
     parser.add_argument(
-        '-a', '--autoscaler-configs',
+        "-a",
+        "--autoscaler-configs",
         help="Path to autoscaler config files",
-        default='/etc/paasta/cluster_autoscaling',
+        default="/etc/paasta/cluster_autoscaling",
     )
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
-    log_format = '%(asctime)s:%(levelname)s:%(name)s:%(message)s'
+    log_format = "%(asctime)s:%(levelname)s:%(name)s:%(message)s"
     log_level = None
     if args.verbose >= 3:
         logging.basicConfig(level=logging.DEBUG, format=log_format)
@@ -57,11 +64,9 @@ def main(argv=None):
         logging.basicConfig(level=logging.WARNING, format=log_format)
 
     a_sync.to_blocking(autoscale_local_cluster)(
-        dry_run=args.dry_run,
-        config_folder=args.autoscaler_configs,
-        log_level=log_level,
+        dry_run=args.dry_run, config_folder=args.autoscaler_configs, log_level=log_level
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

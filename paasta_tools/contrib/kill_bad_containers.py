@@ -1,7 +1,13 @@
 #!/opt/venvs/paasta-tools/bin/python3
 import sys
 
-import iptc
+try:
+    import iptc
+except TypeError:
+    print(
+        "Failed to import iptc. This happens sometimes during a python upgrade or during bootstrapping"
+    )
+    sys.exit(0)
 
 from paasta_tools import iptables
 from paasta_tools.utils import get_docker_client
@@ -10,7 +16,7 @@ from paasta_tools.utils import get_docker_client
 def get_container_from_dport(dport, docker_client):
     for container in docker_client.containers():
         try:
-            ports = container['Ports']
+            ports = container["Ports"]
             for port in ports:
                 if "PublicPort" in port:
                     if port["PublicPort"] == int(dport):
@@ -29,7 +35,7 @@ def target_rule_to_dport(rule):
 
 
 def kill_containers_with_duplicate_iptables_rules(docker_client):
-    chain_name = 'DOCKER'
+    chain_name = "DOCKER"
     table = iptc.Table(iptc.Table.NAT)
     chain = iptc.Chain(table, chain_name)
 
@@ -43,21 +49,29 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
             targets_seen[target] = rule
             raw_rules_seen[target] = iptables_rule
         else:
-            print("This is the second time we've seen a rule with the same target_parameters!")
-            print(rule)
             dport = target_rule_to_dport(rule)
+            if dport is None:
+                continue
+            print(
+                "This is the second time we've seen a rule with the same target_parameters!"
+            )
+            print(rule)
             container1 = get_container_from_dport(dport, docker_client)
             print("The other rule with that target is:")
             print(targets_seen[target])
             dport2 = target_rule_to_dport(targets_seen[target])
             container2 = get_container_from_dport(dport2, docker_client)
             if container1 is None:
-                print("We have a duplicate iptables rule going to a container1, but no container1!")
+                print(
+                    "We have a duplicate iptables rule going to a container1, but no container1!"
+                )
                 print(rule)
                 print("Deleting this rule")
                 chain.delete_rule(iptables_rule)
             elif container2 is None:
-                print("We have a iptables rule going to a container2, but no container2!")
+                print(
+                    "We have a iptables rule going to a container2, but no container2!"
+                )
                 print(targets_seen[target])
                 print("Deleting this rule")
                 chain.delete_rule(raw_rules_seen[target])
@@ -70,7 +84,9 @@ def kill_containers_with_duplicate_iptables_rules(docker_client):
                 chain.delete_rule(iptables_rule)
                 chain.delete_rule(raw_rules_seen[target])
             elif container1["Id"] != container2["Id"]:
-                print("These are two different containers, which means we have duplicate ips:")
+                print(
+                    "These are two different containers, which means we have duplicate ips:"
+                )
                 print(container1)
                 print(container2)
                 print("Not sure which to kill, killing both")
@@ -89,5 +105,5 @@ def main():
     kill_containers_with_duplicate_iptables_rules(docker_client)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

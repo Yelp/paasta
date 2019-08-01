@@ -32,28 +32,25 @@ from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 log = logging.getLogger(__name__)
 
 
-def container_lifetime(
-    pod: V1Pod,
-) -> datetime.timedelta:
+def container_lifetime(pod: V1Pod,) -> datetime.timedelta:
     """Return a time duration for how long the pod is alive
     """
     st = pod.status.start_time
     return datetime.datetime.now(st.tzinfo) - st
 
 
-def healthy_flink_containers_cnt(
-    si_pods: Sequence[V1Pod],
-    container_type: str,
-) -> int:
+def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) -> int:
     """Return count of healthy Flink containers with given type
     """
-    return len([
-        pod
-        for pod in si_pods
-        if pod.metadata.labels['flink-container-type'] == container_type
-        and is_pod_ready(pod)
-        and container_lifetime(pod).total_seconds() > 60
-    ])
+    return len(
+        [
+            pod
+            for pod in si_pods
+            if pod.metadata.labels["flink-container-type"] == container_type
+            and is_pod_ready(pod)
+            and container_lifetime(pod).total_seconds() > 60
+        ]
+    )
 
 
 def check_flink_service_replication(
@@ -66,10 +63,12 @@ def check_flink_service_replication(
         service=instance_config.service,
         instance=instance_config.instance,
     )
-    taskmanagers_expected_cnt = instance_config.config_dict.get('taskmanager', {'instances': 10}).get('instances', 10)
-    num_healthy_supervisors = healthy_flink_containers_cnt(si_pods, 'supervisor')
-    num_healthy_jobmanagers = healthy_flink_containers_cnt(si_pods, 'jobmanager')
-    num_healthy_taskmanagers = healthy_flink_containers_cnt(si_pods, 'taskmanager')
+    taskmanagers_expected_cnt = instance_config.config_dict.get(
+        "taskmanager", {"instances": 10}
+    ).get("instances", 10)
+    num_healthy_supervisors = healthy_flink_containers_cnt(si_pods, "supervisor")
+    num_healthy_jobmanagers = healthy_flink_containers_cnt(si_pods, "jobmanager")
+    num_healthy_taskmanagers = healthy_flink_containers_cnt(si_pods, "taskmanager")
 
     # TBD: check cnt according to Flink
 
@@ -77,19 +76,19 @@ def check_flink_service_replication(
         instance_config=instance_config,
         expected_count=1,
         num_available=num_healthy_supervisors,
-        sub_component='supervisor',
+        sub_component="supervisor",
     )
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,
         expected_count=1,
         num_available=num_healthy_jobmanagers,
-        sub_component='jobmanager',
+        sub_component="jobmanager",
     )
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,
         expected_count=taskmanagers_expected_cnt,
         num_available=num_healthy_taskmanagers,
-        sub_component='taskmanager',
+        sub_component="taskmanager",
     )
 
 

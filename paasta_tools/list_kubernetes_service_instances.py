@@ -37,15 +37,21 @@ from paasta_tools.utils import paasta_print
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Lists kubernetes instances for a service.',
+        description="Lists kubernetes instances for a service."
     )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="define a specific cluster to read from",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
@@ -58,14 +64,12 @@ def main():
     soa_dir = args.soa_dir
     cluster = args.cluster
     instances = get_services_for_cluster(
-        cluster=cluster,
-        instance_type='kubernetes',
-        soa_dir=soa_dir,
+        cluster=cluster, instance_type="kubernetes", soa_dir=soa_dir
     )
     service_instances = []
     for name, instance in instances:
         service_instances.append(compose_job_id(name, instance))
-    paasta_print('\n'.join(service_instances))
+    paasta_print("\n".join(service_instances))
     sys.exit(0)
 
 

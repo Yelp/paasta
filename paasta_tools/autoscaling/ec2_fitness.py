@@ -10,17 +10,14 @@ def sort_by_system_instance_health(instances):
     return sorted(
         instances,
         key=lambda i: (
-            i.instance_status['SystemStatus']['Status'] != 'ok' or
-            i.instance_status['InstanceStatus']['Status'] != 'ok'
+            i.instance_status["SystemStatus"]["Status"] != "ok"
+            or i.instance_status["InstanceStatus"]["Status"] != "ok"
         ),
     )
 
 
 def sort_by_upcoming_events(instances):
-    return sorted(
-        instances,
-        key=lambda i: len(i.instance_status.get('Events', [])),
-    )
+    return sorted(instances, key=lambda i: len(i.instance_status.get("Events", [])))
 
 
 def sort_by_total_tasks(instances):
@@ -49,8 +46,6 @@ def sort_by_ec2_fitness(instances):
     """
     return sort_by_system_instance_health(
         sort_by_upcoming_events(
-            sort_by_running_batch_count(
-                sort_by_total_tasks(instances),
-            ),
-        ),
+            sort_by_running_batch_count(sort_by_total_tasks(instances))
+        )
     )

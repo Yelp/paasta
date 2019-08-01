@@ -58,7 +58,9 @@ def check_healthy_kubernetes_tasks_for_service_instance(
         instance=instance_config.instance,
     )
     num_healthy_tasks = len([pod for pod in si_pods if is_pod_ready(pod)])
-    log.info(f"Checking {instance_config.service}.{instance_config.instance} in kubernetes as it is not in smartstack")
+    log.info(
+        f"Checking {instance_config.service}.{instance_config.instance} in kubernetes as it is not in smartstack"
+    )
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,
         expected_count=expected_count,
@@ -78,7 +80,9 @@ def check_kubernetes_pod_replication(
     :param smartstack_replication_checker: an instance of KubeSmartstackReplicationChecker
     """
     expected_count = instance_config.get_instances()
-    log.info("Expecting %d total tasks for %s" % (expected_count, instance_config.job_id))
+    log.info(
+        "Expecting %d total tasks for %s" % (expected_count, instance_config.job_id)
+    )
     proxy_port = get_proxy_port_for_instance(instance_config)
 
     registrations = instance_config.get_registrations()

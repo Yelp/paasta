@@ -58,13 +58,15 @@ def parse_args():
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     options = parser.parse_args()
 
@@ -72,27 +74,28 @@ def parse_args():
 
 
 def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
-    tasks_for_app = [task for task in all_tasks if task.app_id.startswith('/%s' % app_id)]
+    tasks_for_app = [
+        task for task in all_tasks if task.app_id.startswith("/%s" % app_id)
+    ]
     one_minute_ago = datetime.now() - timedelta(minutes=1)
 
     healthy_tasks = []
     for task in tasks_for_app:
-        if marathon_tools.is_task_healthy(task, default_healthy=True) \
-                and task.started_at is not None \
-                and datetime_from_utc_to_local(task.started_at) < one_minute_ago:
+        if (
+            marathon_tools.is_task_healthy(task, default_healthy=True)
+            and task.started_at is not None
+            and datetime_from_utc_to_local(task.started_at) < one_minute_ago
+        ):
             healthy_tasks.append(task)
     return len(healthy_tasks)
 
 
 def check_healthy_marathon_tasks_for_service_instance(
-    instance_config,
-    expected_count,
-    all_tasks,
+    instance_config, expected_count, all_tasks
 ):
     app_id = format_job_id(instance_config.service, instance_config.instance)
     num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
-        all_tasks=all_tasks,
-        app_id=app_id,
+        all_tasks=all_tasks, app_id=app_id
     )
     log.info("Checking %s in marathon as it is not in smartstack" % app_id)
     monitoring_tools.send_replication_event_if_under_replication(
@@ -103,9 +106,7 @@ def check_healthy_marathon_tasks_for_service_instance(
 
 
 def check_service_replication(
-    instance_config,
-    all_tasks,
-    smartstack_replication_checker,
+    instance_config, all_tasks, smartstack_replication_checker
 ):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
@@ -114,7 +115,9 @@ def check_service_replication(
     :param smartstack_replication_checker: an instance of MesosSmartstackReplicationChecker
     """
     expected_count = instance_config.get_instances()
-    log.info("Expecting %d total tasks for %s" % (expected_count, instance_config.job_id))
+    log.info(
+        "Expecting %d total tasks for %s" % (expected_count, instance_config.job_id)
+    )
     proxy_port = get_proxy_port_for_instance(instance_config)
 
     registrations = instance_config.get_registrations()
@@ -145,19 +148,24 @@ def main():
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
 
-    clients = marathon_tools.get_marathon_clients(marathon_tools.get_marathon_servers(system_paasta_config))
+    clients = marathon_tools.get_marathon_clients(
+        marathon_tools.get_marathon_servers(system_paasta_config)
+    )
     all_clients = clients.get_all_clients()
     all_tasks = []
     for client in all_clients:
         all_tasks.extend(client.list_tasks())
     mesos_slaves = a_sync.block(get_slaves)
-    smartstack_replication_checker = MesosSmartstackReplicationChecker(mesos_slaves, system_paasta_config)
+    smartstack_replication_checker = MesosSmartstackReplicationChecker(
+        mesos_slaves, system_paasta_config
+    )
 
     for service in list_services(soa_dir=args.soa_dir):
-        service_config = PaastaServiceConfigLoader(service=service, soa_dir=args.soa_dir)
+        service_config = PaastaServiceConfigLoader(
+            service=service, soa_dir=args.soa_dir
+        )
         for instance_config in service_config.instance_configs(
-            cluster=cluster,
-            instance_type_class=marathon_tools.MarathonServiceConfig,
+            cluster=cluster, instance_type_class=marathon_tools.MarathonServiceConfig
         ):
             if instance_config.get_docker_image():
                 check_service_replication(
@@ -167,8 +175,8 @@ def main():
                 )
             else:
                 log.debug(
-                    '%s is not deployed. Skipping replication monitoring.' %
-                    instance_config.job_id,
+                    "%s is not deployed. Skipping replication monitoring."
+                    % instance_config.job_id
                 )
 
 

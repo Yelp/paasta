@@ -22,9 +22,7 @@ from . import exceptions
 @contextlib.contextmanager
 def execute(max_workers):
     try:
-        executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_workers,
-        )
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
         yield executor
     except KeyboardInterrupt:
         # Threads in the ThreadPoolExecutor are created with

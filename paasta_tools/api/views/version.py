@@ -20,6 +20,6 @@ from pyramid.view import view_config
 from paasta_tools import __version__
 
 
-@view_config(route_name='version', request_method='GET', renderer='json')
+@view_config(route_name="version", request_method="GET", renderer="json")
 def version(request):
     return __version__

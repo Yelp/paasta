@@ -22,6 +22,7 @@ from mypy_extensions import TypedDict
 from paasta_tools.kubernetes_tools import InvalidJobNameError
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
@@ -44,7 +45,7 @@ class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
 class FlinkDeploymentConfig(LongRunningServiceConfig):
     config_dict: FlinkDeploymentConfigDict
 
-    config_filename_prefix = 'flink'
+    config_filename_prefix = "flink"
 
     def __init__(
         self,
@@ -65,13 +66,22 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
-    def validate(self) -> List[str]:
+    def validate(
+        self,
+        params: List[str] = [
+            "cpus",
+            "mem",
+            "security",
+            "dependencies_reference",
+            "deploy_group",
+        ],
+    ) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
-        error_msgs = super().validate()
+        error_msgs = super().validate(params=params)
 
         if error_msgs:
             name = self.get_instance()
-            return [f'{name}: {msg}' for msg in error_msgs]
+            return [f"{name}: {msg}" for msg in error_msgs]
         else:
             return []
 
@@ -96,26 +106,25 @@ def load_flink_instance_config(
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
     general_config = service_configuration_lib.read_service_configuration(
-        service,
-        soa_dir=soa_dir,
+        service, soa_dir=soa_dir
     )
     flink_conf_file = "flink-%s" % cluster
     instance_configs = service_configuration_lib.read_extra_service_information(
-        service,
-        flink_conf_file,
-        soa_dir=soa_dir,
+        service, flink_conf_file, soa_dir=soa_dir
     )
 
-    if instance.startswith('_'):
+    if instance.startswith("_"):
         raise InvalidJobNameError(
-            f"Unable to load kubernetes job config for {service}.{instance} as instance name starts with '_'",
+            f"Unable to load kubernetes job config for {service}.{instance} as instance name starts with '_'"
         )
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            f"{instance} not found in config file {soa_dir}/{service}/{flink_conf_file}.yaml.",
+            f"{instance} not found in config file {soa_dir}/{service}/{flink_conf_file}.yaml."
         )
 
-    general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
+    general_config = deep_merge_dictionaries(
+        overrides=instance_configs[instance], defaults=general_config
+    )
 
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
@@ -142,35 +151,30 @@ def load_flink_instance_config(
     )
 
 
-def sanitised_name(
-    service: str,
-    instance: str,
-) -> str:
-    sanitised_service = service.replace('_', '--')
-    sanitised_instance = instance.replace('_', '--')
-    return f'{sanitised_service}-{sanitised_instance}'
+def sanitised_name(service: str, instance: str) -> str:
+    sanitised_service = sanitise_kubernetes_name(service)
+    sanitised_instance = sanitise_kubernetes_name(instance)
+    return f"{sanitised_service}-{sanitised_instance}"
 
 
 def flink_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
-        group='yelp.com',
-        version='v1alpha1',
-        namespace='paasta-flinks',
-        plural='flinks',
+        group="yelp.com",
+        version="v1alpha1",
+        namespace="paasta-flinks",
+        plural="flinks",
         name=sanitised_name(service, instance),
     )
 
 
 def get_flink_config(
-    kube_client: KubeClient,
-    service: str,
-    instance: str,
+    kube_client: KubeClient, service: str, instance: str
 ) -> Optional[Mapping[str, Any]]:
     try:
         co = kube_client.custom.get_namespaced_custom_object(
-            **flink_custom_object_id(service, instance),
+            **flink_custom_object_id(service, instance)
         )
-        status = co.get('status')
+        status = co.get("status")
         return status
     except ApiException as e:
         if e.status == 404:
@@ -180,30 +184,23 @@ def get_flink_config(
 
 
 def set_flink_desired_state(
-    kube_client: KubeClient,
-    service: str,
-    instance: str,
-    desired_state: str,
+    kube_client: KubeClient, service: str, instance: str, desired_state: str
 ) -> str:
     co_id = flink_custom_object_id(service, instance)
     co = kube_client.custom.get_namespaced_custom_object(**co_id)
-    if co.get('status', {}).get('state') == desired_state:
-        return co['status']
+    if co.get("status", {}).get("state") == desired_state:
+        return co["status"]
 
-    if 'metadata' not in co:
-        co['metadata'] = {}
-    if 'annotations' not in co['metadata']:
-        co['metadata']['annotations'] = {}
-    co['metadata']['annotations']['yelp.com/desired_state'] = desired_state
+    if "metadata" not in co:
+        co["metadata"] = {}
+    if "annotations" not in co["metadata"]:
+        co["metadata"]["annotations"] = {}
+    co["metadata"]["annotations"]["yelp.com/desired_state"] = desired_state
     kube_client.custom.replace_namespaced_custom_object(**co_id, body=co)
-    status = co.get('status')
+    status = co.get("status")
     return status
 
 
-def get_dashboard_url(
-    cluster: str,
-    service: str,
-    instance: str,
-) -> str:
+def get_dashboard_url(cluster: str, service: str, instance: str) -> str:
     sname = sanitised_name(service, instance)
-    return f'http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}'
+    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}"

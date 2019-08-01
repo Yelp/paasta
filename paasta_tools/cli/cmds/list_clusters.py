@@ -19,7 +19,7 @@ from paasta_tools.utils import paasta_print
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'list-clusters',
+        "list-clusters",
         help="Display a list of all PaaSTA clusters",
         description=(
             "'paasta list' inspects all of the PaaSTA services declared in the soa-configs "
@@ -28,7 +28,8 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,

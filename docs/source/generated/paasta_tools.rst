@@ -12,6 +12,7 @@ Subpackages
     paasta_tools.cli
     paasta_tools.deployd
     paasta_tools.frameworks
+    paasta_tools.kubernetes
     paasta_tools.kubernetes_scripts
     paasta_tools.mesos
     paasta_tools.metrics
@@ -46,6 +47,7 @@ Submodules
    paasta_tools.cleanup_chronos_jobs
    paasta_tools.cleanup_kubernetes_cr
    paasta_tools.cleanup_kubernetes_crd
+   paasta_tools.cleanup_kubernetes_jobs
    paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_marathon_jobs
    paasta_tools.cleanup_tron_namespaces

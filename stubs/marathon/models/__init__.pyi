@@ -5,9 +5,17 @@
 from .app import MarathonApp as MarathonApp, MarathonHealthCheck as MarathonHealthCheck
 from .base import MarathonResource as MarathonResource, MarathonObject as MarathonObject
 from .constraint import MarathonConstraint as MarathonConstraint
-from .deployment import MarathonDeployment as MarathonDeployment, MarathonDeploymentAction as MarathonDeploymentAction, MarathonDeploymentStep as MarathonDeploymentStep
+from .deployment import (
+    MarathonDeployment as MarathonDeployment,
+    MarathonDeploymentAction as MarathonDeploymentAction,
+    MarathonDeploymentStep as MarathonDeploymentStep,
+)
 from .endpoint import MarathonEndpoint as MarathonEndpoint
 from .group import MarathonGroup as MarathonGroup
-from .info import MarathonInfo as MarathonInfo, MarathonConfig as MarathonConfig, MarathonZooKeeperConfig as MarathonZooKeeperConfig
+from .info import (
+    MarathonInfo as MarathonInfo,
+    MarathonConfig as MarathonConfig,
+    MarathonZooKeeperConfig as MarathonZooKeeperConfig,
+)
 from .queue import MarathonQueueItem as MarathonQueueItem
 from .task import MarathonTask as MarathonTask

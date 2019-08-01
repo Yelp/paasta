@@ -1,1 +1,9 @@
-{"chronos_config": {"url": ["http://chronos:8081"], "password": null, "user": null}}
+{
+    "chronos_config": {
+        "url": [
+            "http://chronos:8081"
+        ],
+        "password": null,
+        "user": null
+    }
+}

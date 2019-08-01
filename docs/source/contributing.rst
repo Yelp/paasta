@@ -29,7 +29,7 @@ System Package Building / itests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PaaSTA is distributed as a debian package. This package can be built and tested
-with ``make itest_trusty``. These tests make assertions about the
+with ``make itest_xenial``. These tests make assertions about the
 packaging implementation.
 
 
