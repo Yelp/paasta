@@ -258,6 +258,14 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
+        "--no-aws-credentials",
+        help="Do not load any AWS credentials; allow the service to use its "
+        "its own logic to load credentials",
+        action='store_true',
+        default=False,
+    )
+
+    aws_group.add_argument(
         "--aws-region",
         help=f"Specify an aws region. If the region is not specified, we will"
         f"default to using {DEFAULT_AWS_REGION}.",
@@ -325,6 +333,13 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
 
 
 def get_default_event_log_dir(access_key, secret_key):
+    if access_key is None:
+        log.warning(
+            "Since no AWS credentials were provided, spark event logging "
+            "will be disabled"
+        )
+        return None
+
     with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
         spark_run_conf = YAML().load(fp.read())
     try:
@@ -350,9 +365,10 @@ def get_default_event_log_dir(access_key, secret_key):
 def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
     spark_env = {}
 
-    spark_env["AWS_ACCESS_KEY_ID"] = access_key
-    spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
-    spark_env["AWS_DEFAULT_REGION"] = args.aws_region
+    if access_key is not None:
+        spark_env["AWS_ACCESS_KEY_ID"] = access_key
+        spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
+        spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
@@ -387,7 +403,9 @@ def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
 
 
 def get_aws_credentials(args):
-    if args.aws_credentials_yaml:
+    if args.no_aws_credentials:
+        return None, None
+    elif args.aws_credentials_yaml:
         return load_aws_credentials_from_yaml(args.aws_credentials_yaml)
     elif args.service != DEFAULT_SERVICE:
         service_credentials_path = get_service_aws_credentials_path(args.service)

@@ -164,6 +164,7 @@ class TestGetSparkConfig:
             (dev_account_id, dev_log_dir),
             (other_account_id, other_log_dir),
             ("34567", None),
+            (None, None),
         ],
     )
     def test_get_default_event_log_dir(self, mock_account_id, account_id, expected_dir):
@@ -172,6 +173,7 @@ class TestGetSparkConfig:
             get_default_event_log_dir("test_access_key", "test_secret_key")
             == expected_dir
         )
+
 
     @pytest.mark.parametrize(
         "default_event_log_dir,spark_args,expected_spark_config",
@@ -571,8 +573,14 @@ class TestGetAwsCredentials:
         ) as self.mock_load_aws_credentials_from_yaml:
             yield
 
+    def test_creds_disabled(self):
+        args = mock.Mock(no_aws_credentials=True)
+        credentials = get_aws_credentials(args)
+        assert credentials == (None, None)
+
     def test_yaml_provided(self):
-        args = mock.Mock(aws_credentials_yaml="credentials.yaml")
+        args = mock.Mock(
+            no_aws_credentials=False, aws_credentials_yaml="credentials.yaml")
         credentials = get_aws_credentials(args)
 
         self.mock_load_aws_credentials_from_yaml.assert_called_once_with(
@@ -586,7 +594,9 @@ class TestGetAwsCredentials:
         autospec=True,
     )
     def test_service_provided_no_yaml(self, mock_get_credentials_path, mock_os):
-        args = mock.Mock(aws_credentials_yaml=None, service="service_name")
+        args = mock.Mock(
+            no_aws_credentials=False, aws_credentials_yaml=None,
+            service="service_name")
         mock_os.path.exists.return_value = True
         credentials = get_aws_credentials(args)
 
@@ -600,7 +610,9 @@ class TestGetAwsCredentials:
         "paasta_tools.cli.cmds.spark_run.Session.get_credentials", autospec=True
     )
     def test_use_default_creds(self, mock_get_credentials):
-        args = mock.Mock(aws_credentials_yaml=None, service=DEFAULT_SERVICE)
+        args = mock.Mock(
+            no_aws_credentials=False, aws_credentials_yaml=None,
+            service=DEFAULT_SERVICE)
         mock_get_credentials.return_value = mock.MagicMock(
             access_key="id", secret_key="secret"
         )
@@ -613,7 +625,9 @@ class TestGetAwsCredentials:
         "paasta_tools.cli.cmds.spark_run.Session.get_credentials", autospec=True
     )
     def test_service_provided_fallback_to_default(self, mock_get_credentials, mock_os):
-        args = mock.Mock(aws_credentials_yaml=None, service="service_name")
+        args = mock.Mock(
+            no_aws_credentials=False, aws_credentials_yaml=None,
+            service="service_name")
         mock_os.path.exists.return_value = False
         mock_get_credentials.return_value = mock.MagicMock(
             access_key="id", secret_key="secret"
