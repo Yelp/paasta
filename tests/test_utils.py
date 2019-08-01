@@ -551,12 +551,12 @@ def test_SystemPaastaConfig_get_deployd_number_workers():
     assert actual == expected
 
 
-def test_SystemPaastaConfig_get_deployd_big_bounce_rate():
+def test_SystemPaastaConfig_get_deployd_big_bounce_deadline():
     fake_config = utils.SystemPaastaConfig(
-        {"deployd_big_bounce_rate": 3}, "/some/fake/dir"
+        {"deployd_big_bounce_deadline": 305}, "/some/fake/dir"
     )
-    actual = fake_config.get_deployd_big_bounce_rate()
-    expected = 3
+    actual = fake_config.get_deployd_big_bounce_deadline()
+    expected = 305
     assert actual == expected
 
 
