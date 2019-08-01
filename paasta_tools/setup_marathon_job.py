@@ -585,6 +585,8 @@ def deploy_service(
     soa_dir: str,
     job_config: marathon_tools.MarathonServiceConfig,
     bounce_margin_factor: float = 1.0,
+    min_instances: int = 1,
+    max_instances: Optional[int] = None,
 ) -> Tuple[int, str, Optional[float]]:
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
@@ -696,24 +698,25 @@ def deploy_service(
             new_app, draining_hosts=draining_hosts
         )
         if new_app.instances < config["instances"] + num_at_risk_tasks:
+            new_instance_count = config["instances"] + num_at_risk_tasks
+            if max_instances is not None and max_instances < new_instance_count:
+                new_instance_count = max_instances
             log.info(
                 "Scaling %s up from %d to %d instances."
-                % (
-                    new_app.id,
-                    new_app.instances,
-                    config["instances"] + num_at_risk_tasks,
-                )
+                % (new_app.id, new_app.instances, new_instance_count)
             )
             new_client.scale_app(
-                app_id=new_app.id,
-                instances=config["instances"] + num_at_risk_tasks,
-                force=True,
+                app_id=new_app.id, instances=new_instance_count, force=True
             )
         # If we have more than the specified number of instances running, we will want to drain some of them.
         # We will start by draining any tasks running on at-risk hosts.
         elif new_app.instances > config["instances"]:
             num_tasks_to_scale = max(
-                min(len(new_app.tasks), new_app.instances) - config["instances"], 0
+                [
+                    min(len(new_app.tasks), new_app.instances) - config["instances"],
+                    min_instances,
+                    0,
+                ]
             )
             task_dict = get_tasks_by_state_for_app(
                 app=new_app,
@@ -880,6 +883,8 @@ def setup_service(
         soa_dir=soa_dir,
         job_config=job_config,
         bounce_margin_factor=job_config.get_bounce_margin_factor(),
+        min_instances=job_config.get_min_instances(),
+        max_instances=job_config.get_max_instances(),
     )
 
 

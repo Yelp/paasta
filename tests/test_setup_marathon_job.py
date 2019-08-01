@@ -23,6 +23,7 @@ from typing import Tuple
 import asynctest
 import marathon
 import mock
+import pytest
 from marathon import MarathonClient
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
@@ -957,7 +958,8 @@ class TestSetupMarathonJob:
 
             assert set(all_non_draining_tasks) == set(all_passed_tasks)
 
-    def test_deploy_service_scale_up(self):
+    @pytest.mark.parametrize("max_instances", [2, 10000])
+    def test_deploy_service_scale_up(self, max_instances):
         fake_service = "fake_service"
         fake_instance = "fake_instance"
         fake_jobid = "fake_jobid"
@@ -1017,12 +1019,15 @@ class TestSetupMarathonJob:
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
+                min_instances=1,
+                max_instances=max_instances,
             )
             mock_get_matching_apps_with_clients.assert_called_with(
                 fake_service, fake_instance, fake_marathon_apps_with_clients
             )
+            expected_instances = 5 if max_instances >= 5 else max_instances
             fake_client.scale_app.assert_called_once_with(
-                app_id="/some_id", instances=5, force=True
+                app_id="/some_id", instances=expected_instances, force=True
             )
 
     def test_deploy_service_scale_up_at_risk_hosts(self):
@@ -1094,12 +1099,15 @@ class TestSetupMarathonJob:
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
+                min_instances=1,
+                max_instances=10000,
             )
             fake_client.scale_app.assert_called_once_with(
                 app_id="/some_id", instances=7, force=True
             )
 
-    def test_deploy_service_scale_down(self):
+    @pytest.mark.parametrize("min_instances", [1, 20])
+    def test_deploy_service_scale_down(self, min_instances):
         fake_service = "fake_service"
         fake_instance = "fake_instance"
         fake_jobid = "fake_jobid"
@@ -1171,17 +1179,20 @@ class TestSetupMarathonJob:
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
+                min_instances=min_instances,
+                max_instances=10000,
             )
             assert mock_do_bounce.call_args[1]["old_app_live_happy_tasks"][
                 ("/some_id", fake_client)
-            ] < set(tasks)
+            ] <= set(tasks)
+            expected_task_count = 5 if min_instances >= 5 else 4
             assert (
                 len(
                     mock_do_bounce.call_args[1]["old_app_live_happy_tasks"][
                         ("/some_id", fake_client)
                     ]
                 )
-                == 4
+                == expected_task_count
             )
             assert fake_client.scale_app.call_count == 0, fake_client.scale_app.calls
 
@@ -1260,6 +1271,8 @@ class TestSetupMarathonJob:
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
+                min_instances=1,
+                max_instances=10000,
             )
             assert mock_do_bounce.call_args[1]["old_app_live_happy_tasks"][
                 ("/some_id", fake_client)
@@ -1345,6 +1358,8 @@ class TestSetupMarathonJob:
                 bounce_health_params=fake_bounce_health_params,
                 soa_dir=fake_soa_dir,
                 job_config=self.fake_marathon_service_config,
+                min_instances=1,
+                max_instances=10000,
             )
             assert mock_do_bounce.call_args[1]["old_app_draining_tasks"][
                 ("/some_id", fake_client)
@@ -1511,6 +1526,8 @@ class TestSetupMarathonJob:
                 soa_dir=None,
                 bounce_margin_factor=fake_bounce_margin_factor,
                 job_config=self.fake_marathon_service_config,
+                min_instances=1,
+                max_instances=None,
             )
 
     def test_setup_service_srv_complete_config_raises(self):
