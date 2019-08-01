@@ -33,6 +33,7 @@ from kubernetes.client.rest import ApiException
 from pyramid.response import Response
 from pyramid.view import view_config
 
+from paasta_tools import chronos_serviceinit
 from paasta_tools import chronos_tools
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
@@ -44,11 +45,9 @@ from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
-from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -59,71 +58,15 @@ log = logging.getLogger(__name__)
 
 
 def chronos_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: bool
-) -> Mapping[str, Any]:
-    cstatus: Dict[str, Any] = {}
+    service: str, instance: str, verbose: int
+) -> Dict[str, Any]:
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
-    job_config = chronos_tools.load_chronos_job_config(
-        service=service,
-        instance=instance,
-        cluster=settings.cluster,
-        soa_dir=settings.soa_dir,
-    )
-    cstatus["desired_state"] = job_config.get_desired_state()
-    job_type = chronos_tools.get_job_type(job_config.config_dict)
-    if job_type == chronos_tools.JobType.Scheduled:
-        schedule_type = "schedule"
-        schedule = job_config.get_schedule()
-        epsilon = job_config.get_epsilon()
-        time_zone = job_config.get_schedule_time_zone()
-        if time_zone == "null" or time_zone is None:
-            time_zone = "UTC"
-        cstatus["schedule"] = {}
-        cstatus["schedule"]["schedule"] = schedule
-        cstatus["schedule"]["epsilon"] = epsilon
-        cstatus["schedule"]["time_zone"] = time_zone
-    elif job_type == chronos_tools.JobType.Dependent:
-        schedule_type = "parents"
-        parents = job_config.get_parents()
-        cstatus["parents"] = parents
-    else:
-        schedule_type = "unknown"
-    cstatus["schedule_type"] = schedule_type
-    cstatus["status"] = {}
-    if verbose:
-        running_task_count = len(
-            select_tasks_by_id(
-                a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
-                job_config.get_job_name(),
-            )
+    return {
+        "output": chronos_serviceinit.status_chronos_jobs(
+            client, service, instance, settings.cluster, settings.soa_dir, verbose
         )
-        cstatus["status"]["mesos_state"] = (
-            "running" if running_task_count else "not_running"
-        )
-    cstatus["status"]["disabled_state"] = (
-        "not_scheduled" if job_config.get_disabled() else "scheduled"
-    )
-    cstatus["status"]["chronos_state"] = chronos_tools.get_chronos_status_for_job(
-        client, service, instance
-    )
-    cstatus["command"] = job_config.get_cmd()
-    last_time, last_status = chronos_tools.get_status_last_run(job_config.config_dict)
-    if last_status == chronos_tools.LastRunState.Success:
-        last_status = "success"
-    elif last_status == chronos_tools.LastRunState.Fail:
-        last_status = "fail"
-    elif last_status == chronos_tools.LastRunState.NotRun:
-        last_status = "not_run"
-    else:
-        last_status = ""
-    if last_status == "not_run" or last_status == "":
-        last_time = "never"
-    cstatus["last_status"] = {}
-    cstatus["last_status"]["result"] = last_status
-    cstatus["last_status"]["time"] = last_time
-
-    return cstatus
+    }
 
 
 def tron_instance_status(
@@ -315,12 +258,12 @@ def marathon_instance_status(
 def instance_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
+    # TODO change swagger to accept int instead of bool for verbosity level
     verbose = request.swagger_data.get("verbose", False)
 
     instance_status: Dict[str, Any] = {}
     instance_status["service"] = service
     instance_status["instance"] = instance
-
     try:
         instance_type = validate_service_instance(
             service, instance, settings.cluster, settings.soa_dir
@@ -359,9 +302,14 @@ def instance_status(request):
                 instance_status, service, instance, verbose
             )
         elif instance_type == "chronos":
-            instance_status["chronos"] = chronos_instance_status(
-                instance_status, service, instance, verbose
-            )
+            if verbose:
+                instance_status["chronos"] = chronos_instance_status(
+                    service, instance, 1
+                )
+            else:
+                instance_status["chronos"] = chronos_instance_status(
+                    service, instance, 0
+                )
         elif instance_type == "adhoc":
             instance_status["adhoc"] = adhoc_instance_status(
                 instance_status, service, instance, verbose

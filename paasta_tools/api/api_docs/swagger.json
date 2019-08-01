@@ -778,92 +778,13 @@
         },
         "InstanceStatusChronos": {
             "type": "object",
+            "description": "Result of `paasta status` command for chronos job",
             "properties": {
-                "desired_state": {
+                "output": {
                     "type": "string",
-                    "description": "Desired state of a service, for both Marathon and Chronos",
-                    "enum": [
-                        "start",
-                        "stop"
-                    ]
-                },
-                "schedule_type": {
-                    "type": "string",
-                    "description": "The type of schedule, dependent or shceduled",
-                    "enum": [
-                        "parents",
-                        "schedule"
-                    ]
-                },
-                "schedule_parents": {
-                    "type": "array",
-                    "description": "The parents on a dependent job",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "schedule": {
-                    "type": "object",
-                    "description": "The schedule of a scheduled job",
-                    "properties": {
-                        "schedule": {
-                            "type": "string"
-                        },
-                        "time_zone": {
-                            "type": "string"
-                        },
-                        "epsilon": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "status": {
-                    "type": "object",
-                    "description": "The status of the job",
-                    "properties": {
-                        "disabled_state": {
-                            "type": "string",
-                            "enum": [
-                                "not_scheduled",
-                                "scheduled"
-                            ]
-                        },
-                        "chronos_state": {
-                            "type": "string"
-                        },
-                        "mesos_state": {
-                            "type": "string",
-                            "description": "The status in mesos",
-                            "enum": [
-                                "running",
-                                "not_running"
-                            ]
-                        }
-                    }
-                },
-                "command": {
-                    "type": "string",
-                    "description": "The command for the job"
-                },
-                "last_status": {
-                    "type": "object",
-                    "properties": {
-                        "result": {
-                            "type": "string"
-                        },
-                        "time": {
-                            "type": "string"
-                        }
-                    }
+                    "description": "Output from `paasta status` command"
                 }
-            },
-            "required": [
-                "desired_state",
-                "schedule_type",
-                "status",
-                "command",
-                "last_status"
-            ]
+            }
         },
         "InstanceStatusTron": {
             "type": "object",

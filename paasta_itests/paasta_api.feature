@@ -14,7 +14,7 @@ Feature: paasta_api
       And we have yelpsoa-configs for the service "testservice" with the enabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled chronos instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-    Then instance GET should return chronos desired_state "start" for "testservice.testinstance"
+    Then instance GET should return chronos desired_state "Scheduled" for "testservice.testinstance"
 
   Scenario: High disk usage
     Given a working paasta cluster

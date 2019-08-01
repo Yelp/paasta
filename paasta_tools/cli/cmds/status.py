@@ -38,7 +38,6 @@ from service_configuration_lib import read_deploy
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
-from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -70,12 +69,13 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
+
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
-SSH_ONLY_INSTANCE_CONFIG = [ChronosJobConfig]
+SSH_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = []
 
 
 def add_subparser(subparsers,) -> None:
@@ -215,10 +215,10 @@ def paasta_status_on_api_endpoint(
     if not client:
         paasta_print("Cannot get a paasta-api client")
         exit(1)
-
+    swagger_verbose = True if verbose > 0 else False
     try:
         status = client.service.status_instance(
-            service=service, instance=instance
+            service=service, instance=instance, verbose=swagger_verbose
         ).result()
     except HTTPError as exc:
         paasta_print(exc.response.text)
@@ -242,12 +242,20 @@ def paasta_status_on_api_endpoint(
         return print_flink_status(
             cluster, service, instance, output, status.flink.get("status"), verbose
         )
+    elif status.chronos is not None:
+        return print_chronos_status(output, status.chronos.output)
     else:
         paasta_print(
             "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
             % instance
         )
         return 0
+
+
+def print_chronos_status(output, status_output):
+    for line in status_output.rstrip().split("\n"):
+        output.append("    %s" % line)
+    return 0
 
 
 def print_adhoc_status(
@@ -855,7 +863,8 @@ def paasta_status(args,) -> int:
     system_paasta_config = load_system_paasta_config()
 
     if "USE_API_ENDPOINT" in os.environ:
-        use_api_endpoint = strtobool(os.environ["USE_API_ENDPOINT"])
+        # bool will throw a ValueError if it doesn't recognize $USE_API_ENDPOINT
+        use_api_endpoint = bool(strtobool(os.environ["USE_API_ENDPOINT"]))
     else:
         use_api_endpoint = False
 

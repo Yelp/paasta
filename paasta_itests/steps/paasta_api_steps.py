@@ -38,7 +38,7 @@ def chronos_service_instance_status(context, desired_state, job_id):
         instance=instance, service=service
     ).result()
 
-    assert response["chronos"]["desired_state"] == desired_state, response
+    assert desired_state in response["chronos"]["output"]
 
 
 @then('instance GET should return error code "{error_code}" for "{job_id}"')
