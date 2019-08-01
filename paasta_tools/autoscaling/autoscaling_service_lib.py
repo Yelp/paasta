@@ -706,6 +706,12 @@ def autoscale_marathon_instance(
                         ),
                         level="event",
                     )
+            else:
+                write_to_log(
+                    config=marathon_service_config,
+                    line="Staying at %d instances (%s)" % (current_instances, humanize_error(error)),
+                    level="debug",
+                )
     except LockHeldException:
         log.warning(
             "Skipping autoscaling run for {service}.{instance} because the lock is held".format(
