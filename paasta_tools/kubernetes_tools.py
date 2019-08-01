@@ -695,10 +695,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_storage_class_name(self, volume: PersistentVolume) -> str:
-        storage_class_name = volume.storage_class_name
-        if storage_class_name not in ['ebs', 'ebs-slow']:
+        storage_class_name = volume["storage_class_name"]
+        if storage_class_name not in ["ebs", "ebs-slow"]:
             log.warning(f"storage class {storage_class_name} is not supported")
-            storage_class_name = 'ebs'
+            storage_class_name = "ebs"
         return storage_class_name
 
     def get_kubernetes_metadata(self, code_sha: str) -> V1ObjectMeta:

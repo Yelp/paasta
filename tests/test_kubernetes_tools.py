@@ -959,7 +959,12 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             assert len(ret) == 2
 
     def test_get_storage_class_name(self):
-        assert isinstance(self.deployment.get_storage_class_name(), str)
+        assert isinstance(
+            self.deployment.get_storage_class_name(
+                kubernetes_tools.PersistentVolume(storage_class_name="hello")
+            ),
+            str,
+        )
 
     def test_get_persistent_volume_name(self):
         assert (
