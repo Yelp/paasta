@@ -261,7 +261,7 @@ def add_subparser(subparsers):
         "--no-aws-credentials",
         help="Do not load any AWS credentials; allow the Spark job to use its "
         "own logic to load credentials",
-        action='store_true',
+        action="store_true",
         default=False,
     )
 

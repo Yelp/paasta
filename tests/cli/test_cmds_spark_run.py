@@ -174,7 +174,6 @@ class TestGetSparkConfig:
             == expected_dir
         )
 
-
     @pytest.mark.parametrize(
         "default_event_log_dir,spark_args,expected_spark_config",
         [
@@ -580,7 +579,8 @@ class TestGetAwsCredentials:
 
     def test_yaml_provided(self):
         args = mock.Mock(
-            no_aws_credentials=False, aws_credentials_yaml="credentials.yaml")
+            no_aws_credentials=False, aws_credentials_yaml="credentials.yaml"
+        )
         credentials = get_aws_credentials(args)
 
         self.mock_load_aws_credentials_from_yaml.assert_called_once_with(
@@ -595,8 +595,8 @@ class TestGetAwsCredentials:
     )
     def test_service_provided_no_yaml(self, mock_get_credentials_path, mock_os):
         args = mock.Mock(
-            no_aws_credentials=False, aws_credentials_yaml=None,
-            service="service_name")
+            no_aws_credentials=False, aws_credentials_yaml=None, service="service_name"
+        )
         mock_os.path.exists.return_value = True
         credentials = get_aws_credentials(args)
 
@@ -611,8 +611,8 @@ class TestGetAwsCredentials:
     )
     def test_use_default_creds(self, mock_get_credentials):
         args = mock.Mock(
-            no_aws_credentials=False, aws_credentials_yaml=None,
-            service=DEFAULT_SERVICE)
+            no_aws_credentials=False, aws_credentials_yaml=None, service=DEFAULT_SERVICE
+        )
         mock_get_credentials.return_value = mock.MagicMock(
             access_key="id", secret_key="secret"
         )
@@ -626,8 +626,8 @@ class TestGetAwsCredentials:
     )
     def test_service_provided_fallback_to_default(self, mock_get_credentials, mock_os):
         args = mock.Mock(
-            no_aws_credentials=False, aws_credentials_yaml=None,
-            service="service_name")
+            no_aws_credentials=False, aws_credentials_yaml=None, service="service_name"
+        )
         mock_os.path.exists.return_value = False
         mock_get_credentials.return_value = mock.MagicMock(
             access_key="id", secret_key="secret"
