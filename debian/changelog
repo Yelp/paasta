@@ -1,3 +1,12 @@
+paasta-tools (0.85.35) xenial; urgency=medium
+
+  * 0.85.35 tagged with 'make release'
+    Commit: Merge pull request #2314 from Yelp/PAASTA-
+    7077_use_chronos_endpoint_paast_api  use api for chronos status with
+    env var instead of ssh
+
+ -- Fatima Zahra Elfilali <fzz@yelp.com>  Thu, 01 Aug 2019 11:25:45 -0700
+
 paasta-tools (0.85.34) xenial; urgency=medium
 
   * 0.85.34 tagged with 'make release'
