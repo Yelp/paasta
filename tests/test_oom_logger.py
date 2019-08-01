@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import warnings
 
 import pytest
 from mock import Mock
@@ -175,33 +176,40 @@ def test_log_to_scribe(log_line):
     )
 
 
-@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch("paasta_tools.oom_logger.ScribeLogger", autospec=True)
-@patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_scribe", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
-@patch("paasta_tools.oom_logger.get_docker_client", autospec=True)
-def test_main(
-    mock_get_docker_client,
-    mock_log_to_paasta,
-    mock_log_to_scribe,
-    mock_load_system_paasta_config,
-    mock_scribelogger,
-    mock_sys_stdin,
-    sys_stdin,
-    docker_inspect,
-    log_line,
-):
+try:
+    from paasta_tools.oom_logger import ScribeLogger  # noqa: F401
 
-    mock_sys_stdin.readline.side_effect = sys_stdin
-    docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
-    mock_get_docker_client.return_value = docker_client
-    mock_load_system_paasta_config.return_value.get_cluster.return_value = (
-        "fake_cluster"
-    )
-    scribe_logger = Mock()
-    mock_scribelogger.return_value = scribe_logger
+    @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+    @patch("paasta_tools.oom_logger.ScribeLogger", autospec=True)
+    @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.oom_logger.log_to_scribe", autospec=True)
+    @patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
+    @patch("paasta_tools.oom_logger.get_docker_client", autospec=True)
+    def test_main(
+        mock_get_docker_client,
+        mock_log_to_paasta,
+        mock_log_to_scribe,
+        mock_load_system_paasta_config,
+        mock_scribelogger,
+        mock_sys_stdin,
+        sys_stdin,
+        docker_inspect,
+        log_line,
+    ):
 
-    main()
-    mock_log_to_paasta.assert_called_once_with(log_line)
-    mock_log_to_scribe.assert_called_once_with(scribe_logger, log_line)
+        mock_sys_stdin.readline.side_effect = sys_stdin
+        docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
+        mock_get_docker_client.return_value = docker_client
+        mock_load_system_paasta_config.return_value.get_cluster.return_value = (
+            "fake_cluster"
+        )
+        scribe_logger = Mock()
+        mock_scribelogger.return_value = scribe_logger
+
+        main()
+        mock_log_to_paasta.assert_called_once_with(log_line)
+        mock_log_to_scribe.assert_called_once_with(scribe_logger, log_line)
+
+
+except ImportError:
+    warnings.warn("ScribeLogger is unavailable")

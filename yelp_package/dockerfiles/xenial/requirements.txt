@@ -1,0 +1,5 @@
+setuptools==31.0.1
+tox==2.9.1
+tox-pip-extensions==1.2.1
+tox-virtualenv-no-download==1.0.0
+virtualenv==15.2.0

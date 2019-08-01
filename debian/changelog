@@ -1,3 +1,11 @@
+paasta-tools (0.85.34) xenial; urgency=medium
+
+  * 0.85.34 tagged with 'make release'
+    Commit: Merge pull request #2346 from Yelp/internalize-yelp-clog
+    Internalize `yelp-clog`
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 31 Jul 2019 10:30:20 -0700
+
 paasta-tools (0.85.33) xenial; urgency=medium
 
   * 0.85.33 tagged with 'make release'
