@@ -38,7 +38,6 @@ from service_configuration_lib import read_deploy
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
-from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -76,7 +75,7 @@ HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
-SSH_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [ChronosJobConfig]
+SSH_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = []
 
 
 def add_subparser(subparsers,) -> None:
