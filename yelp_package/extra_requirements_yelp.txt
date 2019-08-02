@@ -6,6 +6,7 @@ gitdb2==2.0.3
 gitpython==2.1.9
 inflection==0.3.1
 markdown==2.4
+monk==0.7.0
 python-jsonschema-objects==0.3.1
 scribereader==0.2.6
 signalform-tools==0.0.16
