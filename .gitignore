@@ -34,3 +34,4 @@ yelp_package/bintray.json
 .mypy_cache/
 debian/.debhelper
 example_cluster/paasta/docker_registry.json
+general_itests/fake_etc_paasta/clusters.json
