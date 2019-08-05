@@ -76,7 +76,7 @@ class TestDeployDaemon(unittest.TestCase):
         assert not hasattr(self.deployd, "is_leader")
         assert not self.deployd.started
         with mock.patch(
-            "paasta_tools.deployd.master.QueueMetrics", autospec=True
+            "paasta_tools.deployd.master.QueueAndWorkerMetrics", autospec=True
         ) as mock_q_metrics, mock.patch(
             "paasta_tools.deployd.master.DeployDaemon.start_watchers", autospec=True
         ) as mock_start_watchers, mock.patch(
@@ -85,7 +85,11 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_prioritise_bouncing_services, mock.patch(
             "paasta_tools.deployd.master.DeployDaemon.add_all_services", autospec=True
         ) as mock_add_all_services, mock.patch(
-            "paasta_tools.deployd.master.DeployDaemon.start_workers", autospec=True
+            "paasta_tools.deployd.master.DeployDaemon.start_workers",
+            autospec=True,
+            side_effect=lambda self: setattr(
+                self, "workers", []
+            ),  # setattr because you can't do assignment in a lambda
         ) as mock_start_workers, mock.patch(
             "paasta_tools.deployd.master.DeployDaemon.main_loop", autospec=True
         ) as mock_main_loop:
@@ -93,7 +97,10 @@ class TestDeployDaemon(unittest.TestCase):
             assert self.deployd.started
             assert self.deployd.is_leader
             mock_q_metrics.assert_called_with(
-                self.deployd.instances_to_bounce, "westeros-prod", self.deployd.metrics
+                self.deployd.instances_to_bounce,
+                self.deployd.workers,
+                "westeros-prod",
+                self.deployd.metrics,
             )
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called

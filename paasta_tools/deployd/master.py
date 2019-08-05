@@ -15,7 +15,7 @@ from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
-from paasta_tools.deployd.metrics import QueueMetrics
+from paasta_tools.deployd.metrics import QueueAndWorkerMetrics
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.list_marathon_service_instances import (
     get_service_instances_that_need_bouncing,
@@ -101,11 +101,6 @@ class DeployDaemon(PaastaThread):
             "leader_elections", paasta_cluster=self.config.get_cluster()
         )
         leader_counter.count()
-        QueueMetrics(
-            queue=self.instances_to_bounce,
-            cluster=self.config.get_cluster(),
-            metrics_provider=self.metrics,
-        ).start()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
         self.log.info(
@@ -117,6 +112,12 @@ class DeployDaemon(PaastaThread):
             self.prioritise_bouncing_services()
         self.log.info("Starting worker threads")
         self.start_workers()
+        QueueAndWorkerMetrics(
+            queue=self.instances_to_bounce,
+            workers=self.workers,
+            cluster=self.config.get_cluster(),
+            metrics_provider=self.metrics,
+        ).start()
         self.started = True
         self.log.info("Startup finished!")
         self.main_loop()
