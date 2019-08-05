@@ -1737,12 +1737,12 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dashboard_links: Dict[str, Dict[str, str]]
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
-    deployd_big_bounce_rate: float
+    deployd_big_bounce_deadline: float
     deployd_log_level: str
     deployd_maintenance_polling_frequency: int
     deployd_metrics_provider: str
     deployd_number_workers: int
-    deployd_startup_bounce_rate: float
+    deployd_startup_bounce_deadline: float
     deployd_startup_oracle_enabled: bool
     deployd_worker_failure_backoff_factor: int
     disabled_watchers: List
@@ -2191,22 +2191,26 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get("deployd_number_workers", 4)
 
-    def get_deployd_big_bounce_rate(self) -> float:
-        """Get the number of deploys to do per minute when deployd starts
-        or determines it needs to bounce all services
+    def get_deployd_big_bounce_deadline(self) -> float:
+        """Get the amount of time in the future to set the deadline when enqueuing instances for SystemPaastaConfig
+        changes.
 
         :return: float
         """
 
-        return float(self.config_dict.get("deployd_big_bounce_rate", 0.1))
+        return float(
+            self.config_dict.get("deployd_big_bounce_deadline", 7 * 24 * 60 * 60)
+        )
 
-    def get_deployd_startup_bounce_rate(self) -> float:
-        """Get the number of deploys to do per minute when deployd starts
+    def get_deployd_startup_bounce_deadline(self) -> float:
+        """Get the amount of time in the future to set the deadline when enqueuing instances on deployd startup.
 
         :return: float
         """
 
-        return float(self.config_dict.get("deployd_startup_bounce_rate", 0.1))
+        return float(
+            self.config_dict.get("deployd_startup_bounce_deadline", 7 * 24 * 60 * 60)
+        )
 
     def get_deployd_log_level(self) -> str:
         """Get the log level for paasta-deployd

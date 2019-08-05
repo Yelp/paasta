@@ -18,19 +18,11 @@ BounceResults = namedtuple(
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(
-        self,
-        worker_number,
-        instances_to_bounce_later,
-        instances_to_bounce_now,
-        config,
-        metrics_provider,
-    ):
+    def __init__(self, worker_number, instances_to_bounce, config, metrics_provider):
         super().__init__()
         self.daemon = True
         self.name = f"Worker{worker_number}"
-        self.instances_to_bounce_later = instances_to_bounce_later
-        self.instances_to_bounce_now = instances_to_bounce_now
+        self.instances_to_bounce = instances_to_bounce
         self.metrics = metrics_provider
         self.config = config
         self.cluster = self.config.get_cluster()
@@ -81,7 +73,7 @@ class PaastaDeployWorker(PaastaThread):
         might put them on the bounce_later queue for future processing"""
         self.log.info(f"{self.name} starting up")
         while True:
-            service_instance = self.instances_to_bounce_now.get()
+            service_instance = self.instances_to_bounce.get()
             try:
                 bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(
                     service_instance
@@ -103,18 +95,19 @@ class PaastaDeployWorker(PaastaThread):
                     max_time=6000,
                 )
             if bounce_again_in_seconds:
+                bounce_by = int(time.time()) + bounce_again_in_seconds
                 service_instance = ServiceInstance(
                     service=service_instance.service,
                     instance=service_instance.instance,
                     cluster=self.config.get_cluster(),
-                    bounce_by=int(time.time()) + bounce_again_in_seconds,
+                    bounce_by=bounce_by,
+                    wait_until=bounce_by,
                     watcher=self.name,
                     bounce_timers=bounce_timers,
-                    priority=service_instance.priority,
                     failures=failures,
                     processed_count=service_instance.processed_count + 1,
                 )
-                self.instances_to_bounce_later.put(service_instance)
+                self.instances_to_bounce.put(service_instance)
             time.sleep(0.1)
 
     def process_service_instance(self, service_instance):

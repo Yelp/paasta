@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import namedtuple
+from queue import Empty
 from queue import PriorityQueue
 from queue import Queue
 from threading import Thread
@@ -14,14 +15,9 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
-from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
-from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import NoDockerImageError
 
 BounceTimers = namedtuple(
     "BounceTimers", ["processed_by_worker", "setup_marathon", "bounce_length"]
@@ -32,10 +28,10 @@ BaseServiceInstance = namedtuple(
         "service",
         "instance",
         "bounce_by",
+        "wait_until",
         "watcher",
         "bounce_timers",
         "failures",
-        "priority",
         "processed_count",
     ],
 )
@@ -51,39 +47,22 @@ class ServiceInstance(BaseServiceInstance):
         watcher: str,
         cluster: str,
         bounce_by: float,
+        wait_until: float,
         failures: int = 0,
         bounce_timers: Optional[BounceTimers] = None,
-        priority: Optional[int] = None,
         processed_count: int = 0,
     ) -> "ServiceInstance":
-        if priority is None:
-            priority = get_priority(service, instance, cluster)
         return super().__new__(  # type: ignore
             _cls=_cls,
             service=service,
             instance=instance,
             watcher=watcher,
             bounce_by=bounce_by,
+            wait_until=wait_until,
             failures=failures,
             bounce_timers=bounce_timers,
-            priority=priority,
             processed_count=processed_count,
         )
-
-
-def get_priority(service: str, instance: str, cluster: str) -> int:
-    try:
-        config = load_marathon_service_config(
-            service=service, instance=instance, cluster=cluster, soa_dir=DEFAULT_SOA_DIR
-        )
-    except (
-        NoDockerImageError,
-        InvalidJobNameError,
-        NoDeploymentsAvailable,
-        NoConfigurationForServiceError,
-    ):
-        return 0
-    return config.get_bounce_priority()
 
 
 class PaastaThread(Thread):
@@ -106,63 +85,6 @@ class PaastaQueue(Queue):
     def put(self, item: Any, *args: Any, **kwargs: Any) -> None:
         self.log.debug(f"Adding {item} to {self.name} queue")
         super().put(item, *args, **kwargs)
-
-
-class PaastaPriorityQueue(PriorityQueue):
-    def __init__(self, name: str, *args: Any, **kwargs: Any) -> None:
-        self.name = name
-        super().__init__(*args, **kwargs)
-        self.counter = 0
-
-    @property
-    def log(self) -> logging.Logger:
-        name = ".".join([type(self).__module__, type(self).__name__])
-        return logging.getLogger(name)
-
-    def put_with_priority(
-        self, priority: float, item: Any, *args: Any, **kwargs: Any
-    ) -> None:
-        self.log.debug(f"Adding {item} to {self.name} queue with priority {priority}")
-        # this counter is to preserve the FIFO nature of the queue, it increments on every put
-        # and the python PriorityQueue sorts based on the first item in the tuple (priority)
-        # and then the second item in the tuple (counter). This way all items with the same
-        # priority come out in the order they were entered.
-        self.counter += 1
-        super().put((priority, self.counter, item), *args, **kwargs)
-
-    def get(self, *args: Any, **kwargs: Any) -> Any:
-        return super().get(*args, **kwargs)[2]
-
-
-def rate_limit_instances(
-    instances: Collection[Tuple[str, str]],
-    cluster: str,
-    number_per_minute: float,
-    watcher_name: str,
-    priority: Optional[float] = None,
-) -> List[ServiceInstance]:
-    service_instances = []
-    if not instances:
-        return []
-    time_now = int(time.time())
-    time_step = int(60 / number_per_minute)
-    bounce_time = time_now
-    for service, instance in instances:
-        # https://github.com/python/mypy/issues/2852
-        service_instances.append(
-            ServiceInstance(  # type: ignore
-                service=service,
-                instance=instance,
-                watcher=watcher_name,
-                cluster=cluster,
-                bounce_by=bounce_time,
-                bounce_timers=None,
-                failures=0,
-                priority=priority,
-            )
-        )
-        bounce_time += time_step
-    return service_instances
 
 
 def exponential_back_off(
@@ -214,3 +136,57 @@ def get_marathon_clients_from_config() -> MarathonClients:
     marathon_servers = get_marathon_servers(system_paasta_config)
     marathon_clients = get_marathon_clients(marathon_servers)
     return marathon_clients
+
+
+class DelayDeadlineQueue:
+    """Entries into this queue have both a wait_until and a bounce_by. Before wait_until, get() will not return an entry.
+    get() returns the entry whose wait_until has passed and which has the lowest bounce_by."""
+
+    def __init__(self) -> None:
+        self.available_service_instances: PriorityQueue[
+            Tuple[float, ServiceInstance]
+        ] = PriorityQueue()
+        self.unavailable_service_instances: PriorityQueue[
+            Tuple[float, float, ServiceInstance]
+        ] = PriorityQueue()
+
+    @property
+    def log(self) -> logging.Logger:
+        name = ".".join([type(self).__module__, type(self).__name__])
+        return logging.getLogger(name)
+
+    def put(self, si: ServiceInstance, now: Optional[float] = None) -> None:
+        self.log.debug(
+            f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}"
+        )
+        self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
+        self.process_unavailable_service_instances(now=now)
+
+    def process_unavailable_service_instances(
+        self, now: Optional[float] = None
+    ) -> None:
+        """Take any entries in unavailable_service_instances that have a wait_until < now and put them in
+        available_service_instances. Should not block."""
+        if now is None:
+            now = time.time()
+        try:
+            while True:
+                wait_until, bounce_by, si = (
+                    self.unavailable_service_instances.get_nowait()
+                )
+                if wait_until < now:
+                    self.available_service_instances.put((bounce_by, si))
+                else:
+                    self.unavailable_service_instances.put((wait_until, bounce_by, si))
+                    return
+        except Empty:
+            pass
+
+    def get(
+        self, block: bool = True, timeout: float = None, now: float = None
+    ) -> ServiceInstance:
+        self.process_unavailable_service_instances(now=now)
+        bounce_by, si = self.available_service_instances.get(
+            block=block, timeout=timeout
+        )
+        return si

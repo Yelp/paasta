@@ -22,7 +22,7 @@ class TestQueueMetrics(unittest.TestCase):
         with mock.patch("time.sleep", autospec=True, side_effect=LoopBreak):
             with raises(LoopBreak):
                 self.metrics.run()
-            assert self.mock_gauge.set.call_count == 3
+            assert self.mock_gauge.set.call_count == 2
 
 
 class LoopBreak(Exception):
