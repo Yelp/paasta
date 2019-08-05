@@ -1,3 +1,11 @@
+paasta-tools (0.85.37) xenial; urgency=medium
+
+  * 0.85.37 tagged with 'make release'
+    Commit: Fix broken yelp-clog dependencies (#2352)  Install `monk`
+    0.7.0 to fix broken `yelp-clog` 3.3.1 dependencies.
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Mon, 05 Aug 2019 03:45:28 -0700
+
 paasta-tools (0.85.36) xenial; urgency=medium
 
   * 0.85.36 tagged with 'make release'
