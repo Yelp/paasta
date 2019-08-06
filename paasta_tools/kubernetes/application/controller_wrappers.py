@@ -2,20 +2,34 @@ import logging
 from abc import ABC
 from abc import abstractmethod
 from typing import Optional
+from typing import Union
 
+from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
+from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes_tools import get_deployment_config
+from paasta_tools.kubernetes_tools import create_deployment
+from paasta_tools.kubernetes_tools import create_pod_disruption_budget
+from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.kubernetes_tools import max_unavailable
+from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
+from paasta_tools.kubernetes_tools import update_deployment
+from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.utils import SystemPaastaConfig
 
 
 class Application(ABC):
-    def __init__(self, item: V1Deployment, logging=logging.getLogger(__name__)) -> None:
+    def __init__(
+        self,
+        item: Union[V1Deployment, V1StatefulSet],
+        logging=logging.getLogger(__name__),
+    ) -> None:
         self.kube_deployment = KubeDeployment(
             service=item.metadata.labels["yelp.com/paasta_service"],
             instance=item.metadata.labels["yelp.com/paasta_instance"],
@@ -31,8 +45,11 @@ class Application(ABC):
         self, soa_dir: str, system_paasta_config: SystemPaastaConfig
     ) -> Optional[KubernetesDeploymentConfig]:
         if not self.soa_config:
-            self.soa_config = get_deployment_config(  # type: ignore
-                self.item, soa_dir, system_paasta_config.get_cluster()
+            self.soa_config = load_kubernetes_service_config_no_cache(
+                service=self.kube_deployment.service,
+                instance=self.kube_deployment.instance,
+                cluster=system_paasta_config.get_cluster(),
+                soa_dir=soa_dir,
             )
         return self.soa_config
 
@@ -76,6 +93,54 @@ class Application(ABC):
                 )
             )
 
+    def ensure_pod_disruption_budget(
+        self, kube_client: KubeClient
+    ) -> V1beta1PodDisruptionBudget:
+        pdr = pod_disruption_budget_for_service_instance(
+            service=self.item.service,
+            instance=self.item.instance,
+            min_instances=self.soa_config.get_desired_instances()
+            - max_unavailable(
+                instance_count=self.soa_config.get_desired_instances(),
+                bounce_margin_factor=self.soa_config.get_bounce_margin_factor(),
+            ),
+        )
+        try:
+            existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
+                name=pdr.metadata.name, namespace=pdr.metadata.namespace
+            )
+        except ApiException as e:
+            if e.status == 404:
+                existing_pdr = None
+            else:
+                raise
+
+        if existing_pdr:
+            if existing_pdr.spec.min_available != pdr.spec.min_available:
+                # poddisruptionbudget objects are not mutable like most things in the kubernetes api,
+                # so we have to do a delete/replace.
+                # unfortunately we can't really do this transactionally, but I guess we'll just hope for the best?
+                logging.debug(
+                    f"existing poddisruptionbudget {pdr.metadata.name} is out of date; deleting"
+                )
+                kube_client.policy.delete_namespaced_pod_disruption_budget(
+                    name=pdr.metadata.name,
+                    namespace=pdr.metadata.namespace,
+                    body=V1DeleteOptions(),
+                )
+                logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
+                return create_pod_disruption_budget(
+                    kube_client=kube_client, pod_disruption_budget=pdr
+                )
+            else:
+                logging.debug(f"poddisruptionbudget {pdr.metadata.name} up to date")
+        else:
+            logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
+            return create_pod_disruption_budget(
+                kube_client=kube_client, pod_disruption_budget=pdr
+            )
+            raise Exception("Unknown kubernetes object to update")
+
 
 class DeploymentWrapper(Application):
     def deep_delete(self, kube_client: KubeClient) -> None:
@@ -107,6 +172,14 @@ class DeploymentWrapper(Application):
             )
         self.delete_pod_disruption_budget(kube_client)
 
+    def create(self, kube_client: KubeClient):
+        create_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        self.ensure_pod_disruption_budget(kube_client)
+
+    def update(self, kube_client: KubeClient):
+        update_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        self.ensure_pod_disruption_budget(kube_client)
+
 
 class StatefulSetWrapper(Application):
     def deep_delete(self, kube_client: KubeClient) -> None:
@@ -137,3 +210,11 @@ class StatefulSetWrapper(Application):
                 )
             )
         self.delete_pod_disruption_budget(kube_client)
+
+    def create(self, kube_client: KubeClient):
+        create_stateful_set(kube_client=kube_client, formatted_deployment=self.item)
+        self.ensure_pod_disruption_budget(kube_client)
+
+    def update(self, kube_client: KubeClient):
+        update_stateful_set(kube_client=kube_client, formatted_deployment=self.item)
+        self.ensure_pod_disruption_budget(kube_client)
