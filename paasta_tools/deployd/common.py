@@ -1,7 +1,8 @@
+import asyncio
+import concurrent
 import logging
 import time
 from collections import namedtuple
-from queue import Empty
 from queue import PriorityQueue
 from queue import Queue
 from threading import Thread
@@ -146,46 +147,39 @@ class DelayDeadlineQueue:
         self.available_service_instances: PriorityQueue[
             Tuple[float, ServiceInstance]
         ] = PriorityQueue()
-        self.unavailable_service_instances: PriorityQueue[
-            Tuple[float, float, ServiceInstance]
-        ] = PriorityQueue()
+        self.run_background_event_loop()
 
     @property
     def log(self) -> logging.Logger:
         name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    def put(self, si: ServiceInstance, now: Optional[float] = None) -> None:
+    def put(self, si: ServiceInstance) -> concurrent.futures.Future:
         self.log.debug(
             f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}"
         )
-        self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
-        self.process_unavailable_service_instances(now=now)
 
-    def process_unavailable_service_instances(
-        self, now: Optional[float] = None
-    ) -> None:
-        """Take any entries in unavailable_service_instances that have a wait_until < now and put them in
-        available_service_instances. Should not block."""
-        if now is None:
-            now = time.time()
-        try:
-            while True:
-                wait_until, bounce_by, si = (
-                    self.unavailable_service_instances.get_nowait()
-                )
-                if wait_until < now:
-                    self.available_service_instances.put((bounce_by, si))
-                else:
-                    self.unavailable_service_instances.put((wait_until, bounce_by, si))
-                    return
-        except Empty:
-            pass
+        async def inner() -> None:
+            while time.time() < si.wait_until:
+                # In python < 3.7.1, asyncio.sleep, loop.call_later, and loop.call_at all have an issue where they will
+                # not accept times too far in the future. Repeatedly sleep a shorter amount of time to work around this.
+                await asyncio.sleep(min(86400 - 1, si.wait_until - time.time()))
+            self.available_service_instances.put((si.bounce_by, si))
 
-    def get(
-        self, block: bool = True, timeout: float = None, now: float = None
-    ) -> ServiceInstance:
-        self.process_unavailable_service_instances(now=now)
+        return asyncio.run_coroutine_threadsafe(inner(), self.loop)
+
+    def run_background_event_loop(self) -> None:
+        """Run an asyncio event loop in a thread so put_entry_in_queue_later can schedule
+        callbacks on it."""
+        self.loop = asyncio.new_event_loop()
+
+        def inner() -> None:
+            asyncio.set_event_loop(self.loop)
+            self.loop.run_forever()
+
+        Thread(target=inner, daemon=True).start()
+
+    def get(self, block: bool = True, timeout: float = None) -> ServiceInstance:
         bounce_by, si = self.available_service_instances.get(
             block=block, timeout=timeout
         )

@@ -1,7 +1,11 @@
+import asyncio
+import concurrent
+import time
 import unittest
 from queue import Empty
 
 import mock
+import pytest
 
 from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import DelayDeadlineQueue
@@ -42,47 +46,68 @@ class TestPaastaQueue(unittest.TestCase):
             mock_q_put.assert_called_with(self.queue, "human")
 
 
-class TestDelayDeadlineQueue(unittest.TestCase):
-    def setUp(self):
-        self.queue = DelayDeadlineQueue()
+class TestDelayDeadlineQueue:
+    @pytest.fixture
+    def queue(self):
+        yield DelayDeadlineQueue()
 
-    def test_log(self):
-        self.queue.log.info("HAAAALP ME")
+    def test_log(self, queue):
+        queue.log.info("HAAAALP ME")
 
     def test_put(self):
-        with mock.patch.object(
-            self.queue.unavailable_service_instances,
-            "put",
-            wraps=self.queue.unavailable_service_instances.put,
-        ) as mock_unavailable_service_instances_put, mock.patch.object(
-            self.queue.available_service_instances,
-            "put",
-            wraps=self.queue.available_service_instances.put,
-        ) as mock_available_service_instances_put:
-            si1 = mock.Mock(wait_until=6, bounce_by=4)
-            self.queue.put(si1, now=5)
-            mock_unavailable_service_instances_put.assert_called_with((6, 4, si1))
-            assert mock_available_service_instances_put.call_count == 0
+        # We have to mock time.time and asyncio.sleep before the DelayDeadlineQueue, so that they are mocked when the
+        # background thread is launched.
+        with mock.patch("time.time", autospec=True) as mock_time, mock.patch(
+            "asyncio.sleep", autospec=True
+        ) as mock_asyncio_sleep:
+            queue = DelayDeadlineQueue()
+            sleep_future = concurrent.futures.Future()
+            mock_asyncio_sleep.return_value = asyncio.wrap_future(
+                sleep_future, loop=queue.loop
+            )
 
-            mock_unavailable_service_instances_put.reset_mock()
-            si2 = mock.Mock(wait_until=3, bounce_by=4)
-            self.queue.put(si2, now=5)
-            print(mock_unavailable_service_instances_put.mock_calls)
-            mock_unavailable_service_instances_put.assert_any_call((3, 4, si2))
-            # this is left over from the previous insertion, and gets re-inserted by
-            # process_unavailable_service_instances because 6 > now
-            mock_unavailable_service_instances_put.assert_any_call((6, 4, si1))
-            mock_available_service_instances_put.assert_called_with((4, si2))
+            with mock.patch.object(
+                queue.available_service_instances,
+                "put",
+                wraps=queue.available_service_instances.put,
+            ) as mock_available_service_instances_put:
+                mock_time.return_value = 5
 
-    def test_get(self):
+                si1 = mock.Mock(wait_until=3, bounce_by=41)
+                si2 = mock.Mock(wait_until=6, bounce_by=42)
+                si1_future = queue.put(si1)
+                si2_future = queue.put(si2)
+                # Since si1.wait_until < time.time(), the background thread should immediately make si1 available.
+                si1_future.result(
+                    timeout=1.0
+                )  # wait until si1 is put in the available_service_instances queue
+                assert mock_available_service_instances_put.call_count == 1
+                mock_available_service_instances_put.assert_called_with((41, si1))
+
+                mock_time.return_value = 7
+                sleep_future.set_result(None)  # make all asyncio.sleep() calls finish
+                si2_future.result(
+                    timeout=2.0
+                )  # wait until si2 is put in the available_service_instances queue
+                assert mock_available_service_instances_put.call_count == 2
+
+                mock_available_service_instances_put.assert_called_with((42, si2))
+
+    def test_get(self, queue):
         with mock.patch.object(
-            self.queue.unavailable_service_instances, "get", autospec=True
-        ) as mock_unavailable_service_instances_get:
-            mock_unavailable_service_instances_get.side_effect = [
-                (3, 2, "human"),
-                Empty,
-            ]
-            assert self.queue.get() == "human"
+            queue.available_service_instances, "get", autospec=True
+        ) as mock_available_service_instances_get:
+            mock_available_service_instances_get.side_effect = [(2, "human"), Empty]
+            assert queue.get() == "human"
+            with pytest.raises(Empty):
+                queue.get(block=False)
+
+    def test_dont_block_indefinitely_when_wait_until_is_in_future(self, queue):
+        """Regression test for a specific bug in the first implementation of DelayDeadlineQueue"""
+        queue.put(
+            mock.Mock(wait_until=time.time() + 0.001, bounce_by=time.time() + 0.001)
+        )
+        queue.get(timeout=1.0)
 
 
 class TestServiceInstance(unittest.TestCase):
