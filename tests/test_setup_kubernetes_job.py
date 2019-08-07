@@ -7,7 +7,6 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 from pytest import raises
 
-from paasta_tools import setup_kubernetes_job
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
@@ -36,7 +35,7 @@ def test_main():
     ) as mock_ensure_namespace, mock.patch(
         "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
     ) as mock_setup_kube_deployments:
-        setup_kubernetes_job.setup_kube_succeeded = True
+        mock_setup_kube_deployments.return_value = True
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 0
@@ -46,7 +45,7 @@ def test_main():
             service_instances=mock_parse_args.return_value.service_instance_list,
             soa_dir=mock_parse_args.return_value.soa_dir,
         )
-        setup_kubernetes_job.setup_kube_succeeded = False
+        mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 1
@@ -200,22 +199,19 @@ def test_create_application_object():
         mock_load_kubernetes_service_config_no_cache.side_effect = (
             NoDeploymentsAvailable
         )
-        setup_kubernetes_job.setup_kube_succeeded = True
         ret = create_application_object(
             kube_client=mock_kube_client,
             service="kurupt",
             instance="fm",
             soa_dir="/nail/blah",
         )
-        assert ret is None
-        assert setup_kubernetes_job.setup_kube_succeeded
+        assert ret == (True, None)
         assert not mock_deployment_wrapper.called
         assert not mock_stateful_set_wrapper.called
 
         mock_load_kubernetes_service_config_no_cache.side_effect = (
             NoConfigurationForServiceError
         )
-        setup_kubernetes_job.setup_kube_succeeded = True
         ret = create_application_object(
             kube_client=mock_kube_client,
             service="kurupt",
@@ -223,8 +219,7 @@ def test_create_application_object():
             soa_dir="/nail/blah",
         )
 
-        assert ret is None
-        assert not setup_kubernetes_job.setup_kube_succeeded
+        assert ret == (False, None)
         assert not mock_deployment_wrapper.called
         assert not mock_stateful_set_wrapper.called
 
@@ -234,7 +229,6 @@ def test_create_application_object():
                 side_effect=InvalidKubernetesConfig(Exception("Oh no!"), "kurupt", "fm")
             )
         )
-        setup_kubernetes_job.setup_kube_succeeded = True
         ret = create_application_object(
             kube_client=mock_kube_client,
             service="kurupt",
@@ -242,8 +236,7 @@ def test_create_application_object():
             soa_dir="/nail/blah",
         )
 
-        assert ret is None
-        assert not setup_kubernetes_job.setup_kube_succeeded
+        assert ret == (False, None)
         assert not mock_deployment_wrapper.called
         assert not mock_stateful_set_wrapper.called
 

@@ -23,8 +23,9 @@ Command line options:
 import argparse
 import logging
 import sys
+from typing import Optional
 from typing import Sequence
-from typing import Union
+from typing import Tuple
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
@@ -46,7 +47,6 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
 
 log = logging.getLogger(__name__)
-setup_kube_succeeded = True
 
 
 def parse_args() -> argparse.Namespace:
@@ -73,7 +73,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    global setup_kube_succeeded
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
@@ -85,7 +84,7 @@ def main() -> None:
     kube_client = KubeClient()
 
     ensure_namespace(kube_client, namespace="paasta")
-    setup_kube_deployments(
+    setup_kube_succeeded = setup_kube_deployments(
         kube_client=kube_client,
         service_instances=args.service_instance_list,
         soa_dir=soa_dir,
@@ -93,7 +92,7 @@ def main() -> None:
     sys.exit(0 if setup_kube_succeeded else 1)
 
 
-def validate_job_name(service_instance):
+def validate_job_name(service_instance: str) -> bool:
     try:
         service, instance, _, __ = decompose_job_id(service_instance)
     except InvalidJobNameError:
@@ -108,7 +107,7 @@ def setup_kube_deployments(
     kube_client: KubeClient,
     service_instances: Sequence[str],
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> None:
+) -> bool:
     if service_instances:
         existing_kube_deployments = set(list_all_deployments(kube_client))
         existing_apps = {
@@ -129,7 +128,8 @@ def setup_kube_deployments(
         )
         for service_instance in service_instances_with_valid_names
     ]
-    for app in applications:
+
+    for _, app in applications:
         if (
             app
             and (app.kube_deployment.service, app.kube_deployment.instance)
@@ -141,11 +141,14 @@ def setup_kube_deployments(
         else:
             log.debug(f"{app} is up to date, no action taken")
 
+    return (False, None) not in applications and len(
+        service_instances_with_valid_names
+    ) == len(service_instances)
+
 
 def create_application_object(
     kube_client: KubeClient, service: str, instance: str, soa_dir: str
-) -> Union[Application, None]:
-    global setup_kube_succeeded
+) -> Tuple[bool, Optional[Application]]:
     try:
         service_instance_config = load_kubernetes_service_config_no_cache(
             service,
@@ -158,21 +161,19 @@ def create_application_object(
             "No deployments found for %s.%s in cluster %s. Skipping."
             % (service, instance, load_system_paasta_config().get_cluster())
         )
-        return None
+        return True, None
     except NoConfigurationForServiceError:
         error_msg = (
             "Could not read kubernetes configuration file for %s.%s in cluster %s"
             % (service, instance, load_system_paasta_config().get_cluster())
         )
         log.error(error_msg)
-        setup_kube_succeeded = False
-        return None
+        return False, None
     try:
         formatted_application = service_instance_config.format_kubernetes_app()
     except InvalidKubernetesConfig as e:
         log.error(str(e))
-        setup_kube_succeeded = False
-        return None
+        return False, None
 
     app = None
     if isinstance(formatted_application, V1Deployment):
@@ -183,7 +184,7 @@ def create_application_object(
         raise Exception("Unknown kubernetes object to update")
 
     app.load_local_config(soa_dir, load_system_paasta_config())
-    return app
+    return True, app
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
@@ -38,7 +39,7 @@ class Application(ABC):
             replicas=item.spec.replicas,
         )
         self.item = item
-        self.soa_config = None
+        self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging
 
     def load_local_config(
@@ -67,6 +68,23 @@ class Application(ABC):
         :param kube_client:
         """
         pass
+
+    def create(self, kube_client: KubeClient):
+        """
+        Create all controllers, HPA, and pod disruption budgets related to this application
+        :param kube_client:
+        """
+        pass
+
+    def update(self, kube_client: KubeClient):
+        """
+        Update all controllers, HPA, and pod disruption budgets related to this application
+        :param kube_client:
+        """
+        pass
+
+    def get_soa_config(self) -> KubernetesDeploymentConfigDict:
+        return self.soa_config.config_dict
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
@@ -172,11 +190,11 @@ class DeploymentWrapper(Application):
             )
         self.delete_pod_disruption_budget(kube_client)
 
-    def create(self, kube_client: KubeClient):
+    def create(self, kube_client: KubeClient) -> None:
         create_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
 
-    def update(self, kube_client: KubeClient):
+    def update(self, kube_client: KubeClient) -> None:
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
 
@@ -212,9 +230,9 @@ class StatefulSetWrapper(Application):
         self.delete_pod_disruption_budget(kube_client)
 
     def create(self, kube_client: KubeClient):
-        create_stateful_set(kube_client=kube_client, formatted_deployment=self.item)
+        create_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
         self.ensure_pod_disruption_budget(kube_client)
 
     def update(self, kube_client: KubeClient):
-        update_stateful_set(kube_client=kube_client, formatted_deployment=self.item)
+        update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
         self.ensure_pod_disruption_budget(kube_client)
