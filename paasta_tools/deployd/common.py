@@ -4,6 +4,8 @@ from collections import namedtuple
 from queue import Empty
 from queue import PriorityQueue
 from queue import Queue
+from threading import Condition
+from threading import Event
 from threading import Thread
 from typing import Any
 from typing import Collection
@@ -150,43 +152,46 @@ class DelayDeadlineQueue:
             Tuple[float, float, ServiceInstance]
         ] = PriorityQueue()
 
+        self.unavailable_service_instances_modify = Condition()
+        self.background_thread_started = Event()
+        Thread(target=self.move_from_unavailable_to_available, daemon=True).start()
+        self.background_thread_started.wait()
+
     @property
     def log(self) -> logging.Logger:
         name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    def put(self, si: ServiceInstance, now: Optional[float] = None) -> None:
+    def put(self, si: ServiceInstance) -> None:
         self.log.debug(
             f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}"
         )
-        self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
-        self.process_unavailable_service_instances(now=now)
+        with self.unavailable_service_instances_modify:
+            self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
+            self.unavailable_service_instances_modify.notify()
 
-    def process_unavailable_service_instances(
-        self, now: Optional[float] = None
-    ) -> None:
-        """Take any entries in unavailable_service_instances that have a wait_until < now and put them in
-        available_service_instances. Should not block."""
-        if now is None:
-            now = time.time()
-        try:
+    def move_from_unavailable_to_available(self) -> None:
+        self.background_thread_started.set()
+        with self.unavailable_service_instances_modify:
             while True:
-                wait_until, bounce_by, si = (
-                    self.unavailable_service_instances.get_nowait()
-                )
-                if wait_until < now:
-                    self.available_service_instances.put((bounce_by, si))
-                else:
-                    self.unavailable_service_instances.put((wait_until, bounce_by, si))
-                    return
-        except Empty:
-            pass
+                try:
+                    while True:
+                        wait_until, bounce_by, si = (
+                            self.unavailable_service_instances.get_nowait()
+                        )
+                        if wait_until < time.time():
+                            self.available_service_instances.put_nowait((bounce_by, si))
+                        else:
+                            self.unavailable_service_instances.put_nowait(
+                                (wait_until, bounce_by, si)
+                            )
+                            timeout = wait_until - time.time()
+                            break
+                except Empty:
+                    timeout = None
 
-    def get(
-        self, block: bool = True, timeout: float = None, now: float = None
-    ) -> ServiceInstance:
-        self.process_unavailable_service_instances(now=now)
-        bounce_by, si = self.available_service_instances.get(
-            block=block, timeout=timeout
-        )
+                self.unavailable_service_instances_modify.wait(timeout=timeout)
+
+    def get(self, block: bool = True, timeout: float = None) -> ServiceInstance:
+        _, si = self.available_service_instances.get(block=block, timeout=timeout)
         return si
