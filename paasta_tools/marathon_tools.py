@@ -475,7 +475,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             raise ValueError("only list or str accepted for cmd")
 
     def copy(self) -> "MarathonServiceConfig":
-        return self.__class__(
+        return self.__class__(  # type: ignore
             service=self.service,
             instance=self.instance,
             cluster=self.cluster,

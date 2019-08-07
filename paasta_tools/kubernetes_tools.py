@@ -297,7 +297,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def copy(self) -> "KubernetesDeploymentConfig":
-        return self.__class__(
+        return self.__class__(  # type: ignore
             service=self.service,
             instance=self.instance,
             cluster=self.cluster,
@@ -1471,7 +1471,9 @@ def load_custom_resource_definitions(
     for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
         kube_kind = KubeKind(**custom_resource_dict.pop("kube_kind"))  # type: ignore
         custom_resources.append(
-            CustomResourceDefinition(kube_kind=kube_kind, **custom_resource_dict)
+            CustomResourceDefinition(
+                kube_kind=kube_kind, **custom_resource_dict
+            )  # type: ignore
         )
     return custom_resources
 
