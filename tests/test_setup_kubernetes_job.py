@@ -252,7 +252,7 @@ def test_setup_kube_deployment_create_update():
         )
         fake_app.create = fake_create
         fake_app.update = fake_update
-        return fake_app
+        return True, fake_app
 
     with mock.patch(
         "paasta_tools.setup_kubernetes_job.create_application_object",
