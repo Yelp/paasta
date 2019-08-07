@@ -275,12 +275,13 @@ def fill_table_rows_with_service_instance_stats(
             # default=0 to indicate there is none of that resource
             rsrc_free = resource_free_dict.get(rsrc_name, 0)
             if (
-                rsrc_free // rsrc_amt_wanted < num_service_instances_allowed
-            ):  # type: ignore
+                rsrc_free // rsrc_amt_wanted
+                < num_service_instances_allowed  # type: ignore
+            ):
                 limiting_factor = rsrc_name
                 num_service_instances_allowed = (
-                    rsrc_free // rsrc_amt_wanted
-                )  # type: ignore
+                    rsrc_free // rsrc_amt_wanted  # type: ignore
+                )
     table_rows[-1].append(
         "{:6} ; {}".format(int(num_service_instances_allowed), limiting_factor)
     )
