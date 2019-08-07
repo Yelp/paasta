@@ -1,3 +1,10 @@
+paasta-tools (0.85.39) xenial; urgency=medium
+
+  * 0.85.39 tagged with 'make release'
+    Commit: Merge branch "fix_deployd_deadlock3"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 07 Aug 2019 10:43:54 -0700
+
 paasta-tools (0.85.38) xenial; urgency=medium
 
   * 0.85.38 tagged with 'make release'
