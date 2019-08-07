@@ -1,7 +1,11 @@
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from queue import Empty
 
 import mock
+from pytest import fixture
+from pytest import raises
 
 from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import DelayDeadlineQueue
@@ -42,47 +46,115 @@ class TestPaastaQueue(unittest.TestCase):
             mock_q_put.assert_called_with(self.queue, "human")
 
 
-class TestDelayDeadlineQueue(unittest.TestCase):
-    def setUp(self):
-        self.queue = DelayDeadlineQueue()
+class TestDelayDeadlineQueue:
+    @fixture
+    def queue(self):
+        yield DelayDeadlineQueue()
 
-    def test_log(self):
-        self.queue.log.info("HAAAALP ME")
+    def test_log(self, queue):
+        queue.log.info("HAAAALP ME")
 
-    def test_put(self):
+    def test_put(self, queue):
         with mock.patch.object(
-            self.queue.unavailable_service_instances,
+            queue.unavailable_service_instances,
             "put",
-            wraps=self.queue.unavailable_service_instances.put,
+            wraps=queue.unavailable_service_instances.put,
         ) as mock_unavailable_service_instances_put, mock.patch.object(
-            self.queue.available_service_instances,
+            queue.available_service_instances,
             "put",
-            wraps=self.queue.available_service_instances.put,
-        ) as mock_available_service_instances_put:
+            wraps=queue.available_service_instances.put,
+        ) as mock_available_service_instances_put, mock.patch(
+            "time.time", return_value=5, autospec=True
+        ):
             si1 = mock.Mock(wait_until=6, bounce_by=4)
-            self.queue.put(si1, now=5)
+            queue.put(si1)
             mock_unavailable_service_instances_put.assert_called_with((6, 4, si1))
             assert mock_available_service_instances_put.call_count == 0
 
             mock_unavailable_service_instances_put.reset_mock()
             si2 = mock.Mock(wait_until=3, bounce_by=4)
-            self.queue.put(si2, now=5)
-            print(mock_unavailable_service_instances_put.mock_calls)
-            mock_unavailable_service_instances_put.assert_any_call((3, 4, si2))
-            # this is left over from the previous insertion, and gets re-inserted by
-            # process_unavailable_service_instances because 6 > now
-            mock_unavailable_service_instances_put.assert_any_call((6, 4, si1))
-            mock_available_service_instances_put.assert_called_with((4, si2))
+            queue.put(si2)
+            mock_unavailable_service_instances_put.assert_called_with((3, 4, si2))
 
-    def test_get(self):
+    def test_get_empty(self, queue):
+        with raises(Empty):
+            queue.get(block=False)
+
+        start_time = time.time()
+        with raises(Empty):
+            queue.get(timeout=0.01)
+        assert time.time() > start_time + 0.01
+
+    def test_get(self, queue):
         with mock.patch.object(
-            self.queue.unavailable_service_instances, "get", autospec=True
+            queue.unavailable_service_instances, "get", autospec=True
         ) as mock_unavailable_service_instances_get:
             mock_unavailable_service_instances_get.side_effect = [
                 (3, 2, "human"),
                 Empty,
             ]
-            assert self.queue.get() == "human"
+            assert queue.get() == "human"
+
+    def test_dont_block_indefinitely_when_wait_until_is_in_future(self, queue):
+        """Regression test for a specific bug in the first implementation of DelayDeadlineQueue"""
+        # First, put an item with a distant wait_until
+        queue.put(mock.Mock(wait_until=time.time() + 100, bounce_by=time.time() + 100))
+        # an immediate get should fail.
+        with raises(Empty):
+            queue.get(block=False)
+        # a get with a short timeout should fail.
+        with raises(Empty):
+            queue.get(timeout=0.001)
+
+        wait_until = time.time() + 0.01
+        queue.put(mock.Mock(wait_until=wait_until, bounce_by=wait_until))
+        # but if we wait a short while it should return.
+        queue.get(
+            timeout=1.0
+        )  # This timeout is only there so that if this test fails it doesn't take forever.
+        assert time.time() > wait_until
+
+    def test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
+        self, queue
+    ):
+        """
+        Set up several threads waiting for work; insert several pieces of work; make sure each thread finishes.
+        """
+        tpe = ThreadPoolExecutor()
+
+        def time_get():
+            start_time = time.time()
+            si = queue.get(timeout=1.0)
+            return time.time() - start_time, si
+
+        fut1 = tpe.submit(time_get)
+        fut2 = tpe.submit(time_get)
+        fut3 = tpe.submit(time_get)
+
+        begin = time.time()
+        si1 = mock.Mock(wait_until=begin, bounce_by=begin)
+        queue.put(si1)
+        si2 = mock.Mock(wait_until=begin + 0.01, bounce_by=begin + 0.01)
+        queue.put(si2)
+        si3 = mock.Mock(wait_until=begin + 0.02, bounce_by=begin + 0.02)
+        queue.put(si3)
+
+        times = sorted([x.result() for x in [fut1, fut2, fut3]])
+        assert times[0][0] < 0.01
+        assert times[0][1] == si1
+        assert 0.01 < times[1][0] < 0.02
+        assert times[1][1] == si2
+        assert 0.02 < times[2][0] < 0.03
+        assert times[2][1] == si3
+
+    def test_return_immediately_when_blocking_on_distant_wait_until_and_available_task_comes_in(
+        self, queue
+    ):
+        """Same as above, except there's a far-off unavailable item already."""
+        queue.put(mock.Mock(wait_until=time.time() + 100, bounce_by=time.time() + 100))
+        self.test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
+            queue
+        )
 
 
 class TestServiceInstance(unittest.TestCase):

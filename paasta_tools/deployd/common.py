@@ -4,6 +4,7 @@ from collections import namedtuple
 from queue import Empty
 from queue import PriorityQueue
 from queue import Queue
+from threading import Condition
 from threading import Thread
 from typing import Any
 from typing import Collection
@@ -150,43 +151,79 @@ class DelayDeadlineQueue:
             Tuple[float, float, ServiceInstance]
         ] = PriorityQueue()
 
+        self.unavailable_service_instances_modify = Condition()
+
     @property
     def log(self) -> logging.Logger:
         name = ".".join([type(self).__module__, type(self).__name__])
         return logging.getLogger(name)
 
-    def put(self, si: ServiceInstance, now: Optional[float] = None) -> None:
+    def put(self, si: ServiceInstance) -> None:
         self.log.debug(
             f"adding {si.service}.{si.instance} to queue with wait_until {si.wait_until} and bounce_by {si.bounce_by}"
         )
-        self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
-        self.process_unavailable_service_instances(now=now)
+        with self.unavailable_service_instances_modify:
+            self.unavailable_service_instances.put((si.wait_until, si.bounce_by, si))
+            self.unavailable_service_instances_modify.notify()
 
-    def process_unavailable_service_instances(
-        self, now: Optional[float] = None
-    ) -> None:
-        """Take any entries in unavailable_service_instances that have a wait_until < now and put them in
-        available_service_instances. Should not block."""
-        if now is None:
-            now = time.time()
+    def process_unavailable_service_instances(self) -> None:
+        """Must be called while self.unavailable_service_instances_modify is held."""
         try:
             while True:
                 wait_until, bounce_by, si = (
                     self.unavailable_service_instances.get_nowait()
                 )
-                if wait_until < now:
-                    self.available_service_instances.put((bounce_by, si))
+                if wait_until < time.time():
+                    self.available_service_instances.put_nowait((bounce_by, si))
                 else:
-                    self.unavailable_service_instances.put((wait_until, bounce_by, si))
+                    self.unavailable_service_instances.put_nowait(
+                        (wait_until, bounce_by, si)
+                    )
                     return
         except Empty:
             pass
 
-    def get(
-        self, block: bool = True, timeout: float = None, now: float = None
-    ) -> ServiceInstance:
-        self.process_unavailable_service_instances(now=now)
-        bounce_by, si = self.available_service_instances.get(
-            block=block, timeout=timeout
-        )
-        return si
+    def get(self, block: bool = True, timeout: float = None) -> ServiceInstance:
+        if timeout is not None:
+            overall_timeout_deadline = time.time() + timeout
+
+        with self.unavailable_service_instances_modify:
+            self.process_unavailable_service_instances()
+
+        # Do a non-blocking attempt to pull from available_service_instances; we never want to block on
+        # available_service_instances.
+        try:
+            bounce_by, si = self.available_service_instances.get_nowait()
+            return si
+        except Empty:
+            # Nothing is available right now. Wait until either the newest unavailable_service_instances entry becomes
+            # available, or someone inserts a new one.
+            if block:
+                with self.unavailable_service_instances_modify:
+                    while True:
+                        try:
+                            wait_until, bounce_by, si = (
+                                self.unavailable_service_instances.get_nowait()
+                            )
+                            self.unavailable_service_instances.put_nowait(
+                                (wait_until, bounce_by, si)
+                            )
+                            deadline = min(wait_until, overall_timeout_deadline)
+                        except Empty:
+                            deadline = overall_timeout_deadline
+
+                        self.unavailable_service_instances_modify.wait(
+                            timeout=deadline - time.time()
+                        )
+                        self.process_unavailable_service_instances()
+
+                        try:
+                            _, si = self.available_service_instances.get_nowait()
+                            return si
+                        except Empty:
+                            if time.time() > overall_timeout_deadline:
+                                raise
+                            else:
+                                pass  # Someone else managed to grab the instance from available_service_instances, wait again.
+            else:
+                raise
