@@ -73,8 +73,6 @@ Existing service
 
 #. Push your changes to the soa configs repo
 
-#. Regenerate your jenkins workflow by running the ``paasta generate-pipeline`` command
-
 #. Make sure your jenkins pipeline marks every deploy group for deployment (i.e. your pipeline runs all the way through)
 
 #. Remove the deployment steps that were replaced by deploy groups from ``deploy.yaml``
@@ -82,8 +80,6 @@ Existing service
 #. Edit your service's ``marathon-*.yaml`` and ``chronos-*.yaml`` files to specify which instances belong to which deploy group
 
 #. Push your changes to the soa configs repo
-
-#. Regenerate your jenkins workflow one last time by running ``paasta generate-pipeline``
 
 Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` with the ``--deploy-group`` flag to manually mark each of your deploy groups.
 
