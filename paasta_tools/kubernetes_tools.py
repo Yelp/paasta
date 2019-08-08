@@ -85,6 +85,7 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.marathon_tools import AutoscalingParamsDict
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -169,6 +170,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
     service_account_name: str
+    autoscaling: AutoscalingParamsDict
 
 
 def load_kubernetes_service_config_no_cache(
@@ -795,6 +797,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
+        annotations = {"smartstack_registrations": json.dumps(self.get_registrations())}
+        metrics_provider = self.config_dict.get("autoscaling", {}).get(
+            "metrics_provider", ""
+        )
+        if metrics_provider in {"http", "uwsgi"}:
+            annotations["autoscaling"] = metrics_provider  # type: ignore
+
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
@@ -802,9 +811,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "yelp.com/paasta_instance": self.get_instance(),
                     "yelp.com/paasta_git_sha": code_sha,
                 },
-                annotations={
-                    "smartstack_registrations": json.dumps(self.get_registrations())
-                },
+                annotations=annotations,
             ),
             spec=V1PodSpec(
                 service_account_name=self.get_kubernetes_service_account_name(),
@@ -969,6 +976,7 @@ class KubeClient:
         self.policy = kube_client.PolicyV1beta1Api()
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
+        self.autoscaling = kube_client.AutoscalingV2beta1Api()
 
 
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:

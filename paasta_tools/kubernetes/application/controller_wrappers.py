@@ -7,7 +7,13 @@ from typing import Union
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
+from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1StatefulSet
+from kubernetes.client import V2beta1CrossVersionObjectReference
+from kubernetes.client import V2beta1HorizontalPodAutoscaler
+from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
+from kubernetes.client import V2beta1MetricSpec
+from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_deployment
@@ -188,14 +194,148 @@ class DeploymentWrapper(Application):
                 )
             )
         self.delete_pod_disruption_budget(kube_client)
+        self.delete_horizontal_pod_autoscaler(kube_client)
 
     def create(self, kube_client: KubeClient) -> None:
         create_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
+        self.sync_horizontal_pod_autoscaler(kube_client)
 
     def update(self, kube_client: KubeClient) -> None:
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
+        self.sync_horizontal_pod_autoscaler(kube_client)
+
+    def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
+        """
+        In order for autoscaling to work, there needs to be at least three configurations
+        min_instnace, max_instance, and instance
+        """
+        hpa_exists = self.exists_hpa(kube_client)
+        # NO autoscaling
+        if self.get_soa_config().get("instances", {}):
+            # Remove HPA if autoscaling is disabled
+            if hpa_exists:
+                self.delete_horizontal_pod_autoscaler(kube_client)
+                return
+        # Get autoscaling configurations
+        min_replicas = self.get_soa_config().get("min_instances")
+        max_replicas = self.get_soa_config().get("max_instances")
+        if not min_replicas or not max_replicas:
+            self.logging.error(
+                "min/max_instances are not specified. Autoscaling is not enabled."
+            )
+            return
+        metrics_provider = (
+            self.get_soa_config()
+            .get("autoscaling", {})
+            .get("metrics_provider", "mesos_cpu")
+        )
+        # TODO support multiple metrics
+        metrics = []
+        target = (
+            float(self.get_soa_config().get("autoscaling", {}).get("setpoint", "0.8"))
+            * 100
+        )
+        # TODO support bespoke
+        if (
+            self.get_soa_config().get("autoscaling", {}).get("decision_policy", "")
+            == "bespoke"
+        ):
+            return
+        elif metrics_provider == "mesos_cpu":
+            metrics.append(
+                V2beta1MetricSpec(
+                    type="Resource",
+                    resource=V2beta1ResourceMetricSource(
+                        name="cpu", target_average_utilization=target
+                    ),
+                )
+            )
+        elif metrics_provider == "http":
+            metrics.append(
+                V2beta1MetricSpec(
+                    type="Pods",
+                    resource=V2beta1ResourceMetricSource(
+                        name="http", target_average_value=target
+                    ),
+                )
+            )
+        elif metrics_provider == "uwsgi":
+            metrics.append(
+                V2beta1MetricSpec(
+                    type="Pods",
+                    resource=V2beta1ResourceMetricSource(
+                        name="uwsgi", target_average_value=target
+                    ),
+                )
+            )
+        else:
+            self.logging.error("Wrong metrics specified")
+            return
+
+        body = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name=self.item.metadata.name, namespace=self.item.metadata.namespace
+            ),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=max_replicas,
+                min_replicas=min_replicas,
+                metrics=metrics,
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    kind="Deployment", name=self.item.metadata.name
+                ),
+            ),
+        )
+        if hpa_exists:
+            kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
+                namespace=self.item.metadata.namespace, body=body, pretty=True
+            )
+        else:
+            kube_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler(
+                name=self.item.metadata.name,
+                namespace=self.item.metadata.namespace,
+                body=body,
+                pretty=True,
+            )
+
+    def exists_hpa(self, kube_client: KubeClient) -> bool:
+        try:
+            kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
+                name=self.item.metadata.name, namespace=self.item.metadata.namespace
+            )
+        except ApiException as e:
+            if e.status == 404:
+                return False
+            else:
+                raise e
+        return True
+
+    def delete_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
+        try:
+            kube_client.autoscaling.delete_namespaced_horizontal_pod_autoscaler(
+                name=self.item.metadata.name,
+                namespace=self.item.metadata.namespace,
+                body=V1DeleteOptions(),
+            )
+        except ApiException as e:
+            if e.status == 404:
+                # Deployment does not exist, nothing to delete but
+                # we can consider this a success.
+                self.logging.debug(
+                    "not deleting nonexistent HPA/{} from namespace/{}".format(
+                        self.item.metadata.name, self.item.metadata.namespace
+                    )
+                )
+            else:
+                raise e
+        else:
+            self.logging.info(
+                "deleted HPA/{} from namespace/{}".format(
+                    self.item.metadata.name, self.item.metadata.namespace
+                )
+            )
 
 
 class StatefulSetWrapper(Application):
