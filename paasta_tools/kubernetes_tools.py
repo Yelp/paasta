@@ -301,8 +301,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.service,
             instance=self.instance,
             cluster=self.cluster,
-            config_dict=dict(self.config_dict),
-            branch_dict=dict(self.branch_dict)
+            config_dict=self.config_dict.copy(),
+            branch_dict=self.branch_dict.copy()
             if self.branch_dict is not None
             else None,
             soa_dir=self.soa_dir,
@@ -1471,7 +1471,9 @@ def load_custom_resource_definitions(
     for custom_resource_dict in system_paasta_config.get_kubernetes_custom_resources():
         kube_kind = KubeKind(**custom_resource_dict.pop("kube_kind"))  # type: ignore
         custom_resources.append(
-            CustomResourceDefinition(kube_kind=kube_kind, **custom_resource_dict)
+            CustomResourceDefinition(  # type: ignore
+                kube_kind=kube_kind, **custom_resource_dict
+            )
         )
     return custom_resources
 

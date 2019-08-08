@@ -29,7 +29,7 @@ import yaml
 try:
     from yaml.cyaml import CSafeDumper as Dumper
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
-    Dumper = yaml.SafeDumper
+    Dumper = yaml.SafeDumper  # type: ignore
 
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context

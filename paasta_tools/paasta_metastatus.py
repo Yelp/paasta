@@ -271,12 +271,17 @@ def fill_table_rows_with_service_instance_stats(
     limiting_factor = "Unknown"
     # service_instance_stats.keys() should be a subset of resource_free_dict
     for rsrc_name, rsrc_amt_wanted in service_instance_stats.items():
-        if rsrc_amt_wanted > 0:
+        if rsrc_amt_wanted > 0:  # type: ignore
             # default=0 to indicate there is none of that resource
             rsrc_free = resource_free_dict.get(rsrc_name, 0)
-            if rsrc_free // rsrc_amt_wanted < num_service_instances_allowed:
+            if (
+                rsrc_free // rsrc_amt_wanted  # type: ignore
+                < num_service_instances_allowed  # type: ignore
+            ):
                 limiting_factor = rsrc_name
-                num_service_instances_allowed = rsrc_free // rsrc_amt_wanted
+                num_service_instances_allowed = (
+                    rsrc_free // rsrc_amt_wanted  # type: ignore
+                )
     table_rows[-1].append(
         "{:6} ; {}".format(int(num_service_instances_allowed), limiting_factor)
     )

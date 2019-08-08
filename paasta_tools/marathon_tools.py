@@ -479,8 +479,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             service=self.service,
             instance=self.instance,
             cluster=self.cluster,
-            config_dict=dict(self.config_dict),
-            branch_dict=dict(self.branch_dict)
+            config_dict=self.config_dict.copy(),
+            branch_dict=self.branch_dict.copy()
             if self.branch_dict is not None
             else None,
             soa_dir=self.soa_dir,
