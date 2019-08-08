@@ -7,7 +7,6 @@ Subpackages
 .. toctree::
 
     paasta_tools.api
-    paasta_tools.automatic_rollbacks
     paasta_tools.autoscaling
     paasta_tools.cli
     paasta_tools.deployd
