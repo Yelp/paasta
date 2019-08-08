@@ -1,3 +1,11 @@
+paasta-tools (0.85.40) xenial; urgency=medium
+
+  * 0.85.40 tagged with 'make release'
+    Commit: Merge pull request #2356 from Yelp/remove-generate-pipeline
+    Remove paasta generate-pipeline command
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 08 Aug 2019 10:10:02 -0700
+
 paasta-tools (0.85.39) xenial; urgency=medium
 
   * 0.85.39 tagged with 'make release'
