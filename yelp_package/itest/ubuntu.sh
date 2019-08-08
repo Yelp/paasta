@@ -55,7 +55,6 @@ fake_service_dos.all_fake"
 PAASTA_COMMANDS="list
 list-clusters
 check
-generate-pipeline
 emergency-stop
 emergency-start
 emergency-restart

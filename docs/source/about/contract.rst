@@ -105,7 +105,7 @@ Most services will want to use Jenkins to drive the deploy process. You can thin
     cook-image:
         docker build -t "$$DOCKER_TAG" .
 
-* yelpsoa-configs/<your service> MUST contain a deploy.yaml and SHOULD use paasta generate-pipeline to create Jenkins jobs based on that deploy.yaml
+* yelpsoa-configs/<your service> MUST contain a deploy.yaml and SHOULD use jenkins.yaml to create Jenkins pipelines based on that deploy.yaml.
 
 Manual Steps (Not Recommended)
 ------------------------------

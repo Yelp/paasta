@@ -153,7 +153,7 @@ class PaastaCheckMessages:
 
     DEPLOY_YAML_MISSING = failure(
         "No deploy.yaml exists, so your service cannot be deployed.\n  "
-        "Push a deploy.yaml and run `paasta generate-pipeline`.\n  "
+        "Please push a deploy.yaml.\n  "
         "More info:",
         "http://y/yelpsoa-configs",
     )
@@ -234,15 +234,6 @@ class PaastaCheckMessages:
         "The Makefile contains no reference to DOCKER_TAG. Make sure you\n"
         "specify a DOCKER_TAG and that your itest tags your docker image with $DOCKER_TAG.",
         "http://paasta.readthedocs.io/en/latest/about/contract.html",
-    )
-
-    PIPELINE_FOUND = success("Jenkins build pipeline found")
-
-    PIPELINE_MISSING = failure(
-        "Jenkins build pipeline missing. Please run "
-        "'paasta generate-pipeline'\n"
-        "  More info:",
-        "http://y/paasta-deploy",
     )
 
     SENSU_MONITORING_FOUND = success("monitoring.yaml found for Sensu monitoring")

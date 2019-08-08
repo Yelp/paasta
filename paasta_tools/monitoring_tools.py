@@ -149,27 +149,6 @@ def __get_monitoring_config_value(
     return overrides.get(key, service_default)
 
 
-def get_team_email_address(service, overrides=None, soa_dir=DEFAULT_SOA_DIR):
-    """Looks up the team email address from specific marathon or chronos config
-    (most specific) to monitoring.yaml, or the global Sensu team_data.json.
-    (least specific). Returns None if nothing is available.
-
-    This function is most useful for when you *really* need an email address to use
-    for non-Sensu applications. (chronos, jenkins, etc)
-
-    This function should *not* be used with Sensu stuff. Instead you should
-    leave `notification_email` absent and just let Sensu do its thing."""
-    if overrides is None:
-        overrides = {}
-    email_address = __get_monitoring_config_value(
-        "notification_email", overrides=overrides, service=service, soa_dir=soa_dir
-    )
-    if not email_address:
-        team = get_team(overrides=overrides, service=service)
-        email_address = get_sensu_team_data(team).get("notification_email", None)
-    return email_address
-
-
 def get_sensu_team_data(team):
     """Takes a team and returns the dictionary of Sensu configuration
     settings for that team. The data is in this format:
