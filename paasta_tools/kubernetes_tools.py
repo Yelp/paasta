@@ -104,7 +104,6 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SystemPaastaConfig
@@ -1476,35 +1475,3 @@ def load_custom_resource_definitions(
             )
         )
     return custom_resources
-
-
-def get_deployment_config(
-    kube_deployment: KubeDeployment, soa_dir: str, cluster: str
-) -> Optional["KubernetesDeploymentConfig"]:
-    try:
-        return load_kubernetes_service_config_no_cache(
-            service=kube_deployment.service,
-            instance=kube_deployment.instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-        )
-    except NoDeploymentsAvailable:
-        log.debug(
-            "No deployments found for %s.%s in cluster %s. Skipping."
-            % (
-                kube_deployment.service,
-                kube_deployment.instance,
-                load_system_paasta_config().get_cluster(),
-            )
-        )
-    except NoConfigurationForServiceError:
-        error_msg = (
-            "Could not read kubernetes configuration file for %s.%s in cluster %s"
-            % (
-                kube_deployment.service,
-                kube_deployment.instance,
-                load_system_paasta_config().get_cluster(),
-            )
-        )
-        log.error(error_msg)
-    return None
