@@ -157,7 +157,6 @@ class Application(ABC):
             return create_pod_disruption_budget(
                 kube_client=kube_client, pod_disruption_budget=pdr
             )
-            raise Exception("Unknown kubernetes object to update")
 
 
 class DeploymentWrapper(Application):
