@@ -307,6 +307,73 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
     assert retval == 2
 
 
+@patch.object(mark_for_deployment, "get_authors_to_be_notified", autospec=True)
+@patch.object(mark_for_deployment, "get_currently_deployed_sha", autospec=True)
+@patch.object(mark_for_deployment, "get_slack_client", autospec=True)
+@patch.object(mark_for_deployment, "load_system_paasta_config", autospec=True)
+def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
+    mock_load_system_paasta_config,
+    mock_get_slack_client,
+    mock_get_currently_deployed_sha,
+    mock_get_authors_to_be_notified,
+):
+    # get_authors should calculate authors since the production_deploy_group's
+    # current SHA, when available.
+    mock_get_currently_deployed_sha.return_value = "aaaaaaaa"
+    mark_for_deployment.MarkForDeploymentProcess(
+        service="service",
+        block=True,
+        auto_rollback=False,
+        deploy_info={"production_deploy_group": "prod"},
+        deploy_group=None,
+        commit="abc123512",
+        old_git_sha="asgdser23",
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
+        auto_rollback_delay=1,
+    )
+    mock_get_authors_to_be_notified.assert_called_once_with(
+        git_url=None, from_sha="aaaaaaaa", to_sha="abc123512"
+    )
+
+
+@patch.object(mark_for_deployment, "get_authors_to_be_notified", autospec=True)
+@patch.object(mark_for_deployment, "get_currently_deployed_sha", autospec=True)
+@patch.object(mark_for_deployment, "get_slack_client", autospec=True)
+@patch.object(mark_for_deployment, "load_system_paasta_config", autospec=True)
+def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
+    mock_load_system_paasta_config,
+    mock_get_slack_client,
+    mock_get_currently_deployed_sha,
+    mock_get_authors_to_be_notified,
+):
+    # When there's no production_deploy_group configured, get_authors should
+    # fall back to calculating authors using the previous SHA for this deploy
+    # group.
+    mark_for_deployment.MarkForDeploymentProcess(
+        service="service",
+        block=True,
+        auto_rollback=False,
+        # No production_deploy_group!
+        deploy_info={},
+        deploy_group=None,
+        commit="abc123512",
+        old_git_sha="asgdser23",
+        git_url=None,
+        soa_dir=None,
+        timeout=None,
+        auto_certify_delay=1,
+        auto_abandon_delay=1,
+        auto_rollback_delay=1,
+    )
+    mock_get_authors_to_be_notified.assert_called_once_with(
+        git_url=None, from_sha="asgdser23", to_sha="abc123512"
+    )
+
+
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)

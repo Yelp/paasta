@@ -468,8 +468,28 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.update_slack_thread(message)
 
     def get_authors(self) -> str:
+        # In order to avoid notifying people who aren't part of the current
+        # service push, we calculate authors based on commits different since
+        # the current production SHA, as opposed to the old SHA on this deploy
+        # group.
+        #
+        # This avoids situations such as:
+        #   * Notifying people from a previous push which went through stagef,
+        #     if the new push goes through stageg.
+        #   * Notifying everybody who has committed to a repo in the past year
+        #     when updating a "legacy" deploy group (e.g. for yelp-main).
+        prod_deploy_group = self.deploy_info.get("production_deploy_group")
+        from_sha = None
+        if prod_deploy_group is not None:
+            from_sha = get_currently_deployed_sha(
+                service=self.service, deploy_group=prod_deploy_group
+            )
+        # If there's no production deploy group, or the production deploy group
+        # has never been deployed to, just use the old SHA from this deploy group.
+        if from_sha is None:
+            from_sha = self.old_git_sha
         return get_authors_to_be_notified(
-            git_url=self.git_url, from_sha=self.old_git_sha, to_sha=self.commit
+            git_url=self.git_url, from_sha=from_sha, to_sha=self.commit
         )
 
     def ping_authors(self, message: str = None) -> None:
