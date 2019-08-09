@@ -1058,103 +1058,47 @@ def pick_slave_from_status(status, host=None):
         return slaves[0]
 
 
+INSTANCE_TYPE_HANDLERS = dict(
+    marathon=(get_service_instance_list, load_marathon_service_config),
+    chronos=(get_service_instance_list, load_chronos_job_config),
+    adhoc=(get_service_instance_list, load_adhoc_job_config),
+    kubernetes=(get_service_instance_list, load_kubernetes_service_config),
+    tron=(get_service_instance_list, load_tron_instance_config),
+    flink=(get_service_instance_list, load_flink_instance_config),
+    cassandracluster=(get_service_instance_list, load_cassandracluster_instance_config),
+)
+
+
 def get_instance_configs_for_service(
-    service: str, soa_dir: str, type_filter: Optional[Sequence[str]] = None
+    service: str,
+    soa_dir: str,
+    type_filter: Optional[Sequence[str]] = None,
+    clusters: Optional[Sequence[str]] = None,
+    instances: Optional[Sequence[str]] = None,
 ) -> Iterable[InstanceConfig]:
+    if not clusters:
+        clusters = list_clusters(service=service, soa_dir=soa_dir)
+
+    if type_filter is None:
+        type_filter = INSTANCE_TYPE_HANDLERS.keys()
+
     for cluster in list_clusters(service=service, soa_dir=soa_dir):
-        if type_filter is None:
-            type_filter = [
-                "marathon",
-                "chronos",
-                "adhoc",
-                "kubernetes",
-                "tron",
-                "flink",
-                "cassandracluster",
-            ]
-        if "marathon" in type_filter:
-            for _, instance in get_service_instance_list(
+        for instance_type, instance_handlers in INSTANCE_TYPE_HANDLERS.items():
+            if instance_type not in type_filter:
+                continue
+
+            instance_lister, instance_loader = instance_handlers
+
+            for _, instance in instance_lister(
                 service=service,
                 cluster=cluster,
-                instance_type="marathon",
                 soa_dir=soa_dir,
+                instance_type=instance_type,
             ):
-                yield load_marathon_service_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if "chronos" in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type="chronos",
-                soa_dir=soa_dir,
-            ):
-                yield load_chronos_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if "adhoc" in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service, cluster=cluster, instance_type="adhoc", soa_dir=soa_dir
-            ):
-                yield load_adhoc_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if "kubernetes" in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type="kubernetes",
-                soa_dir=soa_dir,
-            ):
-                yield load_kubernetes_service_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if "tron" in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service, cluster=cluster, instance_type="tron", soa_dir=soa_dir
-            ):
-                yield load_tron_instance_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if "flink" in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service, cluster=cluster, instance_type="flink", soa_dir=soa_dir
-            ):
-                yield load_flink_instance_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if "cassandracluster" in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type="cassandracluster",
-                soa_dir=soa_dir,
-            ):
-                yield load_cassandracluster_instance_config(
+                if instances and instance not in instances:
+                    continue
+
+                yield instance_loader(
                     service=service,
                     instance=instance,
                     cluster=cluster,

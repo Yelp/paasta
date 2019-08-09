@@ -812,12 +812,17 @@ def apply_args_filters(
         str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
 
+    scan_all_services = False
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
+        scan_all_services = True
+
+    if scan_all_services:
+        all_services = list_services(soa_dir=args.soa_dir)
+    else:
+        all_services = [args.service]
 
     filters = get_filters(args)
-
-    all_services = list_services(soa_dir=args.soa_dir)
 
     if args.service and args.service not in all_services:
         paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
@@ -830,13 +835,23 @@ def apply_args_filters(
                 paasta_print(PaastaColors.red(f"  {suggestion}"))
         return clusters_services_instances
 
+    if args.clusters:
+        clusters = args.clusters.split(",")
+    else:
+        clusters = list_clusters()
+
+    if args.instances:
+        instances = args.instances.split(",")
+    else:
+        instances = None
+
     i_count = 0
     for service in all_services:
         if args.service and service != args.service:
             continue
 
         for instance_conf in get_instance_configs_for_service(
-            service, soa_dir=args.soa_dir
+            service, soa_dir=args.soa_dir, clusters=clusters, instances=instances
         ):
             if all([f(instance_conf) for f in filters]):
                 cluster_service = clusters_services_instances[
@@ -846,10 +861,6 @@ def apply_args_filters(
                 i_count += 1
 
     if i_count == 0 and args.service and args.instances:
-        if args.clusters:
-            clusters = args.clusters.split(",")
-        else:
-            clusters = list_clusters()
         for service in args.service.split(","):
             verify_instances(args.instances, service, clusters)
 
@@ -882,18 +893,15 @@ def paasta_status(args,) -> int:
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 tasks.append(
-                    (
-                        report_status_for_cluster,
-                        dict(
-                            service=service,
-                            cluster=cluster,
-                            deploy_pipeline=deploy_pipeline,
-                            actual_deployments=actual_deployments,
-                            instance_whitelist=instances,
-                            system_paasta_config=system_paasta_config,
-                            verbose=args.verbose,
-                            use_api_endpoint=use_api_endpoint,
-                        ),
+                    lambda: report_status_for_cluster(
+                        service=service,
+                        cluster=cluster,
+                        deploy_pipeline=deploy_pipeline,
+                        actual_deployments=actual_deployments,
+                        instance_whitelist=instances,
+                        system_paasta_config=system_paasta_config,
+                        verbose=args.verbose,
+                        use_api_endpoint=use_api_endpoint,
                     )
                 )
             else:
@@ -901,7 +909,7 @@ def paasta_status(args,) -> int:
                 return_codes.append(1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
+        tasks = [executor.submit(t) for t in tasks]  # type: ignore
         for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
             paasta_print("\n".join(output))
