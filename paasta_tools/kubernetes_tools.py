@@ -684,7 +684,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 spec=V1PersistentVolumeClaimSpec(
                     # must be ReadWriteOnce for EBS
                     access_modes=["ReadWriteOnce"],
-                    storage_class_name=self.get_storage_class_name(),
+                    storage_class_name=self.get_storage_class_name(volume),
                     resources=V1ResourceRequirements(
                         requests={"storage": f"{volume['size']}Gi"}
                     ),
@@ -693,12 +693,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for volume in self.get_persistent_volumes()
         ]
 
-    def get_storage_class_name(self) -> str:
-        # TODO: once we support node affinity this method should return the
-        # name of the storage class for a particular AZ. We should also enforce
-        # that a storage class exists with the correct name (like we do for the
-        # paasta namespace object)
-        return "ebs-gp2-us-west-1a"
+    def get_storage_class_name(self, volume: PersistentVolume) -> str:
+        storage_class_name = volume.get("storage_class_name", "ebs")
+        if storage_class_name not in ["ebs", "ebs-slow"]:
+            log.warning(f"storage class {storage_class_name} is not supported")
+            storage_class_name = "ebs"
+        return storage_class_name
 
     def get_kubernetes_metadata(self, code_sha: str) -> V1ObjectMeta:
         return V1ObjectMeta(

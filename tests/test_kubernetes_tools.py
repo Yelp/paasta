@@ -958,14 +958,25 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             assert expected[1] in ret
             assert len(ret) == 2
 
-    def test_get_storage_class_name(self):
-        assert isinstance(self.deployment.get_storage_class_name(), str)
+    def test_get_storage_class_name_default(self):
+        pv = kubernetes_tools.PersistentVolume()
+        assert self.deployment.get_storage_class_name(pv) == "ebs"
+
+    def test_get_storage_class_name_wrong(self):
+        fake_sc = "fake_sc"
+        pv = kubernetes_tools.PersistentVolume(storage_class_name=fake_sc)
+        assert self.deployment.get_storage_class_name(pv) == "ebs"
+
+    def test_get_storage_class_name_correct(self):
+        for sc in ["ebs", "ebs-slow"]:
+            pv = kubernetes_tools.PersistentVolume(storage_class_name=sc)
+            assert self.deployment.get_storage_class_name(pv) == sc
 
     def test_get_persistent_volume_name(self):
-        assert (
-            self.deployment.get_persistent_volume_name({"container_path": "/blah/what"})
-            == "pv--slash-blahslash-what"
+        pv_name = self.deployment.get_persistent_volume_name(
+            {"container_path": "/blah/what"}
         )
+        assert pv_name == "pv--slash-blahslash-what"
 
 
 def test_get_kubernetes_services_running_here():

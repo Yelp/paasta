@@ -212,6 +212,7 @@ class AwsEbsVolume(VolumeWithMode):
 class PersistentVolume(VolumeWithMode):
     size: int
     container_path: str
+    storage_class_name: str
 
 
 class InstanceConfigDict(TypedDict, total=False):
