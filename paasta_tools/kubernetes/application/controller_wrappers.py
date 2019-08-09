@@ -115,8 +115,8 @@ class Application(ABC):
         self, kube_client: KubeClient
     ) -> V1beta1PodDisruptionBudget:
         pdr = pod_disruption_budget_for_service_instance(
-            service=self.item.service,
-            instance=self.item.instance,
+            service=self.kube_deployment.service,
+            instance=self.kube_deployment.instance,
             min_instances=self.soa_config.get_desired_instances()
             - max_unavailable(
                 instance_count=self.soa_config.get_desired_instances(),
