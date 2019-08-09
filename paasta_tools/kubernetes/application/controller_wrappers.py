@@ -213,7 +213,7 @@ class DeploymentWrapper(Application):
         """
         hpa_exists = self.exists_hpa(kube_client)
         # NO autoscaling
-        if self.get_soa_config().get("instances", {}):
+        if self.get_soa_config().get("instances"):
             # Remove HPA if autoscaling is disabled
             if hpa_exists:
                 self.delete_horizontal_pod_autoscaler(kube_client)
@@ -288,7 +288,7 @@ class DeploymentWrapper(Application):
                 ),
             ),
         )
-        if hpa_exists:
+        if not hpa_exists:
             kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
                 namespace=self.item.metadata.namespace, body=body, pretty=True
             )
