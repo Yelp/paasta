@@ -276,7 +276,7 @@ async def get_short_hostname_from_task(task: Task) -> str:
         return "Unknown"
 
 
-def get_first_status_timestamp(task: Task) -> Optional[str]:
+def get_first_status_timestamp(task: Task) -> Optional[float]:
     try:
         start_time_string = task["statuses"][0]["timestamp"]
         return float(start_time_string)
@@ -410,7 +410,7 @@ async def format_non_running_mesos_task_row(
 async def get_tail_lines_for_mesos_task(
     task: Task, get_short_task_id: Callable[[str], str], num_tail_lines: int
 ) -> MutableMapping[str, Sequence[str]]:
-    tail_lines_dict: Dict[str, List[str]] = {}
+    tail_lines_dict: MutableMapping[str, Sequence[str]] = {}
     mesos_cli_config = get_mesos_config()
 
     try:

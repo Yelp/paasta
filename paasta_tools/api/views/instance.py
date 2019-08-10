@@ -275,7 +275,7 @@ def marathon_job_status(
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
     verbose: int,
 ) -> MutableMapping[str, Any]:
-    job_status_fields = {
+    job_status_fields: MutableMapping[str, Any] = {
         "app_statuses": [],
         "app_count": len(marathon_apps_with_clients),
         "desired_state": job_config.get_desired_state(),
@@ -339,7 +339,7 @@ def marathon_app_status(
     app: MarathonApp,
     marathon_client: MarathonClient,
     dashboard_link: Optional[str],
-    deploy_status: marathon_tools.MarathonDeployStatus,
+    deploy_status: int,
     list_tasks: bool = False,
 ) -> MutableMapping[str, Any]:
     app_status = {
@@ -401,7 +401,7 @@ def marathon_smartstack_status(
         system_deploy_blacklist=settings.system_paasta_config.get_deploy_blacklist()
     )
     filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist, whitelist=[]
+        blacklist=monitoring_blacklist, whitelist=None
     )
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves, attribute=discover_location_type
@@ -419,7 +419,7 @@ def marathon_smartstack_status(
     expected_count_per_location = int(
         expected_smartstack_count / len(slave_hostname_by_location)
     )
-    smartstack_status = {
+    smartstack_status: MutableMapping[str, Any] = {
         "registration": registration,
         "expected_backends_per_location": expected_count_per_location,
         "locations": [],
@@ -498,7 +498,7 @@ def build_smartstack_backend_dict(
 async def marathon_mesos_status(
     service: str, instance: str, verbose: int
 ) -> MutableMapping[str, Any]:
-    mesos_status = {}
+    mesos_status: MutableMapping[str, Any] = {}
 
     job_id = marathon_tools.format_job_id(service, instance)
     job_id_filter_string = f"{job_id}{marathon_tools.MESOS_TASK_SPACER}"
