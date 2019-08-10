@@ -478,10 +478,11 @@ class WrappedMarkForDeploymentProcess(mark_for_deployment.MarkForDeploymentProce
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 def test_MarkForDeployProcess_happy_path(
-    mock_wait_for_deployment, mock_mark_for_deployment, mock_periodically_update_slack
+    mock_log, mock_wait_for_deployment, mock_mark_for_deployment, mock_periodically_update_slack
 ):
-
+    mock_log.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
         service="service",
         deploy_info=MagicMock(),
@@ -515,10 +516,13 @@ def test_MarkForDeployProcess_happy_path(
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
+@patch("paasta_tools.cli.cmds.wait_for_deployment._log", autospec=True)
 def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
-    mock_wait_for_deployment, mock_mark_for_deployment, mock_periodically_update_slack
+    mock__log1, mock__log2, mock_wait_for_deployment, mock_mark_for_deployment, mock_periodically_update_slack
 ):
-
+    mock__log1.return_value = None
+    mock__log2.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
         service="service",
         deploy_info=MagicMock(),

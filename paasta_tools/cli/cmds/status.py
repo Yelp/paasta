@@ -40,6 +40,8 @@ from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -812,28 +814,27 @@ def apply_args_filters(
         str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
 
-    scan_all_services = False
+    if args.service:
+        try:
+            validate_service_name(args.service, soa_dir=args.soa_dir)
+        except NoSuchService:
+            paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
+            all_services = list_services(soa_dir=args.soa_dir)
+            suggestions = difflib.get_close_matches(
+                args.service, all_services, n=5, cutoff=0.5
+            )
+            if suggestions:
+                paasta_print(PaastaColors.red(f"Did you mean any of these?"))
+                for suggestion in suggestions:
+                    paasta_print(PaastaColors.red(f"  {suggestion}"))
+            return clusters_services_instances
+
+        all_services = [args.service]
+    else:
+        all_services = list_services(soa_dir=args.soa_dir)
+
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
-        scan_all_services = True
-
-    if scan_all_services:
-        all_services = list_services(soa_dir=args.soa_dir)
-    else:
-        all_services = [args.service]
-
-    filters = get_filters(args)
-
-    if args.service and args.service not in all_services:
-        paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
-        suggestions = difflib.get_close_matches(
-            args.service, all_services, n=5, cutoff=0.5
-        )
-        if suggestions:
-            paasta_print(PaastaColors.red(f"Did you mean any of these?"))
-            for suggestion in suggestions:
-                paasta_print(PaastaColors.red(f"  {suggestion}"))
-        return clusters_services_instances
 
     if args.clusters:
         clusters = args.clusters.split(",")
@@ -844,6 +845,8 @@ def apply_args_filters(
         instances = args.instances.split(",")
     else:
         instances = None
+
+    filters = get_filters(args)
 
     i_count = 0
     for service in all_services:
