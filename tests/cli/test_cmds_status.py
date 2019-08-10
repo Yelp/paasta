@@ -1019,6 +1019,7 @@ def test_status_with_owner(
     assert mock_report_status.call_count == 2
 
 
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
@@ -1034,11 +1035,13 @@ def test_status_with_registration(
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
+    mock_list_clusters,
     system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_list_services.return_value = ["fakeservice", "otherservice"]
     cluster = "fake_cluster"
+    mock_list_clusters.return_value = [cluster]
     mock_get_planned_deployments.return_value = [
         "fakeservice.main",
         "fakeservice.not_main",
