@@ -10,8 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-"""
 import base64
 import copy
 import itertools
@@ -76,6 +74,8 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V2beta1HorizontalPodAutoscalerCondition
+from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.long_running_service_tools import host_passes_blacklist
@@ -120,6 +120,26 @@ CONFIG_HASH_BLACKLIST = {"replicas"}
 KUBE_DEPLOY_STATEGY_MAP = {"crossover": "RollingUpdate", "downthenup": "Recreate"}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 HACHECK_POD_NAME = "hacheck"
+
+
+# For detail, https://github.com/kubernetes-client/python/issues/553
+# This hack should be removed when the issue got fixed.
+# This is no better way to work around rn.
+
+
+class MonkeyPatchAutoScalingConditions(V2beta1HorizontalPodAutoscalerStatus):
+    @property
+    def conditions(self) -> Sequence[V2beta1HorizontalPodAutoscalerCondition]:
+        return super().conditions()
+
+    @conditions.setter
+    def conditions(
+        self, conditions: Optional[Sequence[V2beta1HorizontalPodAutoscalerCondition]]
+    ) -> None:
+        self._conditions = list() if conditions is None else conditions
+
+
+models.V2beta1HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
 
 
 class KubeKind(NamedTuple):

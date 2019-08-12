@@ -5,6 +5,7 @@ from kubernetes.client import V2beta1CrossVersionObjectReference
 from kubernetes.client import V2beta1HorizontalPodAutoscaler
 from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta1MetricSpec
+from kubernetes.client import V2beta1PodsMetricSource
 from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
@@ -237,8 +238,8 @@ def test_sync_horizontal_pod_autoscaler():
                 metrics=[
                     V2beta1MetricSpec(
                         type="Pods",
-                        resource=V2beta1ResourceMetricSource(
-                            name="http", target_average_value=50.0
+                        pods=V2beta1PodsMetricSource(
+                            metric_name="http", target_average_value=50.0
                         ),
                     )
                 ],
@@ -279,8 +280,8 @@ def test_sync_horizontal_pod_autoscaler():
                 metrics=[
                     V2beta1MetricSpec(
                         type="Pods",
-                        resource=V2beta1ResourceMetricSource(
-                            name="uwsgi", target_average_value=50.0
+                        pods=V2beta1PodsMetricSource(
+                            metric_name="uwsgi", target_average_value=50.0
                         ),
                     )
                 ],
