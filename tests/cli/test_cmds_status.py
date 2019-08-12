@@ -79,7 +79,9 @@ def test_figure_out_service_name_not_found(mock_validate_service_name, capfd):
 @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.cli.utils.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.utils.guess_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 def test_status_arg_service_not_found(
+    mock_list_services,
     mock_guess_service_name,
     mock_validate_service_name,
     mock_load_system_paasta_config,
@@ -88,6 +90,7 @@ def test_status_arg_service_not_found(
     system_paasta_config,
 ):
     # paasta_status with no args and non-service directory results in error
+    mock_list_services.return_value = []
     mock_guess_service_name.return_value = "not_a_service"
     error = NoSuchService("fake_service")
     mock_validate_service_name.side_effect = error
@@ -467,7 +470,11 @@ def test_report_status_calls_report_invalid_whitelist_values(
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_deploy_info", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_status_pending_pipeline_build_message(
+    mock_list_clusters,
+    mock_validate_service_name,
     mock_get_actual_deployments,
     mock_get_deploy_info,
     mock_figure_out_service_name,
@@ -479,6 +486,8 @@ def test_status_pending_pipeline_build_message(
 ):
     # If deployments.json is missing SERVICE, output the appropriate message
     service = "fake_service"
+    mock_list_clusters.return_value = ["cluster"]
+    mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = service
     mock_list_services.return_value = [service]
     pipeline = [{"instancename": "cluster.instance"}]
@@ -551,7 +560,11 @@ def test_get_deploy_info_does_not_exist(mock_read_deploy, capfd):
 @patch("paasta_tools.cli.cmds.status.get_actual_deployments", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True)
 @patch("paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_status_calls_sergeants(
+    mock_list_clusters,
+    mock_validate_service_name,
     mock_report_status,
     mock_get_planned_deployments,
     mock_get_actual_deployments,
@@ -563,6 +576,8 @@ def test_status_calls_sergeants(
 ):
     service = "fake_service"
     cluster = "fake_cluster"
+    mock_list_clusters.return_value = ["cluster1", "cluster2", "fake_cluster"]
+    mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = service
     mock_list_services.return_value = [service]
 
@@ -645,7 +660,11 @@ StatusArgs = namedtuple(
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_group(
+    mock_list_clusters,
+    mock_validate_service_name,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
@@ -660,6 +679,8 @@ def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_gro
         registration=None,
         verbose=False,
     )
+    mock_list_clusters.return_value = ["cluster1", "cluster2"]
+    mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
     mock_list_services.return_value = ["fake_service"]
     mock_inst1 = make_fake_instance_conf(
@@ -685,7 +706,11 @@ def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_gro
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_instances(
+    mock_list_clusters,
+    mock_validate_service_name,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
@@ -700,7 +725,8 @@ def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_inst
         registration=None,
         verbose=False,
     )
-
+    mock_list_clusters.return_value = ["cluster1", "cluster2"]
+    mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
     mock_list_services.return_value = ["fake_service"]
     mock_inst1 = make_fake_instance_conf(
@@ -806,7 +832,9 @@ def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_gro
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
 def test_apply_args_filters_clusters_and_instances(
+    mock_validate_service_name,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
@@ -821,6 +849,7 @@ def test_apply_args_filters_clusters_and_instances(
         registration=None,
         verbose=False,
     )
+    mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
     mock_list_services.return_value = ["fake_service"]
     mock_inst1 = make_fake_instance_conf(
@@ -871,7 +900,9 @@ def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
 def test_apply_args_filters_no_instances_found(
+    mock_validate_service_name,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
@@ -888,6 +919,7 @@ def test_apply_args_filters_no_instances_found(
         registration=None,
         verbose=False,
     )
+    mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
     mock_list_services.return_value = ["fake_service"]
     mock_get_instance_configs_for_service.return_value = [
@@ -1019,6 +1051,7 @@ def test_status_with_owner(
     assert mock_report_status.call_count == 2
 
 
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
@@ -1026,7 +1059,9 @@ def test_status_with_owner(
 @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.cli.cmds.status.report_status_for_cluster", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_planned_deployments", autospec=True)
+@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
 def test_status_with_registration(
+    mock_validate_service_name,
     mock_get_planned_deployments,
     mock_report_status,
     mock_load_system_paasta_config,
@@ -1034,11 +1069,14 @@ def test_status_with_registration(
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
+    mock_list_clusters,
     system_paasta_config,
 ):
+    mock_validate_service_name.return_value = None
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_list_services.return_value = ["fakeservice", "otherservice"]
     cluster = "fake_cluster"
+    mock_list_clusters.return_value = [cluster]
     mock_get_planned_deployments.return_value = [
         "fakeservice.main",
         "fakeservice.not_main",

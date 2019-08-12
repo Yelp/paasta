@@ -370,7 +370,11 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
+@patch("paasta_tools.cli.cmds.wait_for_deployment._log", autospec=True)
 def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
+    mock__log1,
+    mock__log2,
     mock_list_deploy_groups,
     mock_validate_git_sha_is_latest,
     mock_validate_git_sha,
@@ -379,6 +383,8 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock_load_system_paasta_config,
     system_paasta_config,
 ):
+    mock__log1.return_value = None
+    mock__log2.return_value = None
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
         mock_marathon_instance_config("some_instance")

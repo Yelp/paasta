@@ -43,6 +43,8 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
+from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -812,23 +814,41 @@ def apply_args_filters(
         str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
 
+    if args.service:
+        try:
+            validate_service_name(args.service, soa_dir=args.soa_dir)
+        except NoSuchService:
+            paasta_print(
+                PaastaColors.red(f'The service "{args.service}" does not exist.')
+            )
+            all_services = list_services(soa_dir=args.soa_dir)
+            suggestions = difflib.get_close_matches(
+                args.service, all_services, n=5, cutoff=0.5
+            )
+            if suggestions:
+                paasta_print(PaastaColors.red(f"Did you mean any of these?"))
+                for suggestion in suggestions:
+                    paasta_print(PaastaColors.red(f"  {suggestion}"))
+            return clusters_services_instances
+
+        all_services = [args.service]
+    else:
+        all_services = list_services(soa_dir=args.soa_dir)
+
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
 
+    if args.clusters:
+        clusters = args.clusters.split(",")
+    else:
+        clusters = list_clusters()
+
+    if args.instances:
+        instances = args.instances.split(",")
+    else:
+        instances = None
+
     filters = get_filters(args)
-
-    all_services = list_services(soa_dir=args.soa_dir)
-
-    if args.service and args.service not in all_services:
-        paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
-        suggestions = difflib.get_close_matches(
-            args.service, all_services, n=5, cutoff=0.5
-        )
-        if suggestions:
-            paasta_print(PaastaColors.red(f"Did you mean any of these?"))
-            for suggestion in suggestions:
-                paasta_print(PaastaColors.red(f"  {suggestion}"))
-        return clusters_services_instances
 
     i_count = 0
     for service in all_services:
@@ -836,7 +856,7 @@ def apply_args_filters(
             continue
 
         for instance_conf in get_instance_configs_for_service(
-            service, soa_dir=args.soa_dir
+            service, soa_dir=args.soa_dir, clusters=clusters, instances=instances
         ):
             if all([f(instance_conf) for f in filters]):
                 cluster_service = clusters_services_instances[
@@ -846,10 +866,6 @@ def apply_args_filters(
                 i_count += 1
 
     if i_count == 0 and args.service and args.instances:
-        if args.clusters:
-            clusters = args.clusters.split(",")
-        else:
-            clusters = list_clusters()
         for service in args.service.split(","):
             verify_instances(args.instances, service, clusters)
 
@@ -882,18 +898,15 @@ def paasta_status(args,) -> int:
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 tasks.append(
-                    (
-                        report_status_for_cluster,
-                        dict(
-                            service=service,
-                            cluster=cluster,
-                            deploy_pipeline=deploy_pipeline,
-                            actual_deployments=actual_deployments,
-                            instance_whitelist=instances,
-                            system_paasta_config=system_paasta_config,
-                            verbose=args.verbose,
-                            use_api_endpoint=use_api_endpoint,
-                        ),
+                    lambda: report_status_for_cluster(
+                        service=service,
+                        cluster=cluster,
+                        deploy_pipeline=deploy_pipeline,
+                        actual_deployments=actual_deployments,
+                        instance_whitelist=instances,
+                        system_paasta_config=system_paasta_config,
+                        verbose=args.verbose,
+                        use_api_endpoint=use_api_endpoint,
                     )
                 )
             else:
@@ -901,7 +914,7 @@ def paasta_status(args,) -> int:
                 return_codes.append(1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
+        tasks = [executor.submit(t) for t in tasks]  # type: ignore
         for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
             paasta_print("\n".join(output))
