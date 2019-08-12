@@ -1,3 +1,11 @@
+paasta-tools (0.85.41) xenial; urgency=medium
+
+  * 0.85.41 tagged with 'make release'
+    Commit: Merge pull request #2363 from Yelp/speedup-status  Speedup
+    paasta status for services with many instances
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 12 Aug 2019 06:37:49 -0700
+
 paasta-tools (0.85.40) xenial; urgency=medium
 
   * 0.85.40 tagged with 'make release'
