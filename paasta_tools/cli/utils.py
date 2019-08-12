@@ -28,10 +28,13 @@ from socket import gethostbyname_ex
 from typing import Callable
 from typing import Iterable
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+
+from collections import defaultdict
 
 import ephemeral_port_reserve
 from bravado.exception import HTTPError
@@ -846,6 +849,37 @@ def get_jenkins_build_output_url():
         build_output = build_output + "console"
     return build_output
 
+InstanceListerSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(Optional[str], "cluster"),
+        NamedArg(str, "instance_type"),
+        NamedArg(str, "soa_dir"),
+    ],
+    List[Tuple[str, str]],
+]
+
+InstanceLoaderSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(str, "instance"),
+        NamedArg(str, "cluster"),
+        NamedArg(bool, "load_deployments"),
+        NamedArg(str, "soa_dir"),
+    ],
+    InstanceConfig,
+]
+
+INSTANCE_TYPE_HANDLERS: Mapping[str, Tuple[InstanceListerSig, InstanceLoaderSig]] = defaultdict(
+    lambda: (None, None,),
+    marathon=(get_service_instance_list, load_marathon_service_config),
+    chronos=(get_service_instance_list, load_chronos_job_config),
+    adhoc=(get_service_instance_list, load_adhoc_job_config),
+    kubernetes=(get_service_instance_list, load_kubernetes_service_config),
+    tron=(get_service_instance_list, load_tron_instance_config),
+    flink=(get_service_instance_list, load_flink_instance_config),
+    cassandracluster=(get_service_instance_list, load_cassandracluster_instance_config),
+)
 
 def get_instance_config(
     service: str,
@@ -862,36 +896,14 @@ def get_instance_config(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
         )
 
-    instance_config_load_function: Callable[
-        [
-            NamedArg(str, "service"),
-            NamedArg(str, "instance"),
-            NamedArg(str, "cluster"),
-            NamedArg(bool, "load_deployments"),
-            NamedArg(str, "soa_dir"),
-        ],
-        InstanceConfig,
-    ]
-    if instance_type == "marathon":
-        instance_config_load_function = load_marathon_service_config
-    elif instance_type == "chronos":
-        instance_config_load_function = load_chronos_job_config
-    elif instance_type == "adhoc":
-        instance_config_load_function = load_adhoc_job_config
-    elif instance_type == "kubernetes":
-        instance_config_load_function = load_kubernetes_service_config
-    elif instance_type == "tron":
-        instance_config_load_function = load_tron_instance_config
-    elif instance_type == "flink":
-        instance_config_load_function = load_flink_instance_config
-    elif instance_type == "cassandracluster":
-        instance_config_load_function = load_cassandracluster_instance_config
-    else:
+    instance_config_loader = INSTANCE_TYPE_HANDLERS[instance_type][1]
+    if instance_config_loader is None:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
             % (instance, instance_type)
         )
-    return instance_config_load_function(
+
+    return instance_config_loader(
         service=service,
         instance=instance,
         cluster=cluster,
@@ -1058,21 +1070,10 @@ def pick_slave_from_status(status, host=None):
         return slaves[0]
 
 
-INSTANCE_TYPE_HANDLERS = dict(
-    marathon=(get_service_instance_list, load_marathon_service_config),
-    chronos=(get_service_instance_list, load_chronos_job_config),
-    adhoc=(get_service_instance_list, load_adhoc_job_config),
-    kubernetes=(get_service_instance_list, load_kubernetes_service_config),
-    tron=(get_service_instance_list, load_tron_instance_config),
-    flink=(get_service_instance_list, load_flink_instance_config),
-    cassandracluster=(get_service_instance_list, load_cassandracluster_instance_config),
-)
-
-
 def get_instance_configs_for_service(
     service: str,
     soa_dir: str,
-    type_filter: Optional[Sequence[str]] = None,
+    type_filter: Optional[Iterable[str]] = None,
     clusters: Optional[Sequence[str]] = None,
     instances: Optional[Sequence[str]] = None,
 ) -> Iterable[InstanceConfig]:
