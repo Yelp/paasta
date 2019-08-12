@@ -13,6 +13,7 @@ from kubernetes.client import V2beta1CrossVersionObjectReference
 from kubernetes.client import V2beta1HorizontalPodAutoscaler
 from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta1MetricSpec
+from kubernetes.client import V2beta1PodsMetricSource
 from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
@@ -37,6 +38,14 @@ class Application(ABC):
         item: Union[V1Deployment, V1StatefulSet],
         logging=logging.getLogger(__name__),
     ) -> None:
+        """
+        This Application wrapper is an interface for creating/deleting k8s deployments and statefulsets
+        soa_config is KubernetesDeploymentConfig. It is not loaded in init because it is not always required.
+        :param item: Kubernetes Object(V1Deployment/V1StatefulSet) that has already been filled up.
+        :param logging: where logs go
+        """
+        if not item.metadata.namespace:
+            item.metadata.namespace = "paasta"
         self.kube_deployment = KubeDeployment(
             service=item.metadata.labels["yelp.com/paasta_service"],
             instance=item.metadata.labels["yelp.com/paasta_instance"],
@@ -196,12 +205,21 @@ class DeploymentWrapper(Application):
         self.delete_pod_disruption_budget(kube_client)
         self.delete_horizontal_pod_autoscaler(kube_client)
 
+    def get_existing_app(self, kube_client: KubeClient):
+        return kube_client.deployments.read_namespaced_deployment(
+            name=self.item.metadata.name, namespace=self.item.metadata.namespace
+        )
+
     def create(self, kube_client: KubeClient) -> None:
         create_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
     def update(self, kube_client: KubeClient) -> None:
+        # If autoscaling is enabled, do not update replicas.
+        # In all other cases, replica is set to max(instances, min_instances)
+        if not self.get_soa_config().get("instances"):
+            self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
@@ -211,6 +229,9 @@ class DeploymentWrapper(Application):
         In order for autoscaling to work, there needs to be at least three configurations
         min_instnace, max_instance, and instance
         """
+        self.logging.info(
+            "Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+        )
         hpa_exists = self.exists_hpa(kube_client)
         # NO autoscaling
         if self.get_soa_config().get("instances"):
@@ -256,8 +277,8 @@ class DeploymentWrapper(Application):
             metrics.append(
                 V2beta1MetricSpec(
                     type="Pods",
-                    resource=V2beta1ResourceMetricSource(
-                        name="http", target_average_value=target
+                    pods=V2beta1PodsMetricSource(
+                        metric_name="http", target_average_value=target
                     ),
                 )
             )
@@ -265,8 +286,8 @@ class DeploymentWrapper(Application):
             metrics.append(
                 V2beta1MetricSpec(
                     type="Pods",
-                    resource=V2beta1ResourceMetricSource(
-                        name="uwsgi", target_average_value=target
+                    pods=V2beta1PodsMetricSource(
+                        metric_name="uwsgi", target_average_value=target
                     ),
                 )
             )
@@ -288,11 +309,18 @@ class DeploymentWrapper(Application):
                 ),
             ),
         )
+        self.logging.debug(body)
         if not hpa_exists:
+            self.logging.info(
+                "Creating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+            )
             kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
                 namespace=self.item.metadata.namespace, body=body, pretty=True
             )
         else:
+            self.logging.info(
+                "Updating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
+            )
             kube_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name,
                 namespace=self.item.metadata.namespace,
@@ -305,6 +333,12 @@ class DeploymentWrapper(Application):
             kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name, namespace=self.item.metadata.namespace
             )
+        except ValueError as e:
+            self.logging.error(
+                "Error occurs for {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace.  \
+                This could a bug in k8s. For detail: https://github.com/kubernetes-client/python/issues/415"
+            )
+            self.logging.error(e)
         except ApiException as e:
             if e.status == 404:
                 return False

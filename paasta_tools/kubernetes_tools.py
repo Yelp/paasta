@@ -672,7 +672,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """ For now if we have an EBS instance it means we can only have 1 instance
         since we can't attach to multiple instances. In the future we might support
         statefulsets which are clever enough to manage EBS for you"""
-        instances = super().get_desired_instances()
+
+        if self.get_desired_state() == "start":
+            instances = self.config_dict.get("instances") or self.get_min_instances()
+        else:
+            instances = 0
+            log.debug("Instance is set to stop. Returning '0' instances")
+
         if self.get_aws_ebs_volumes() and instances not in [1, 0]:
             raise Exception(
                 "Number of instances must be 1 or 0 if an EBS volume is defined."
