@@ -502,12 +502,11 @@ def test_modules_in_pkg():
     assert "cook_image" in ret
     assert "list_clusters" in ret
 
+
 @mock.patch("paasta_tools.cli.utils.INSTANCE_TYPE_HANDLERS", dict(), autospec=None)
 @mock.patch("paasta_tools.cli.utils.validate_service_instance", autospec=True)
-def test_get_instance_config_by_instance_type(
-    mock_validate_service_instance,
-):
-    instance_type = 'fake_type'
+def test_get_instance_config_by_instance_type(mock_validate_service_instance,):
+    instance_type = "fake_type"
     mock_validate_service_instance.return_value = instance_type
     mock_load_config = mock.MagicMock()
     mock_load_config.return_value = "fake_service_config"

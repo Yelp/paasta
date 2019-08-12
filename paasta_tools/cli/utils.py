@@ -22,6 +22,7 @@ import random
 import re
 import subprocess
 import sys
+from collections import defaultdict
 from shlex import quote
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -33,8 +34,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
-
-from collections import defaultdict
 
 import ephemeral_port_reserve
 from bravado.exception import HTTPError
@@ -849,6 +848,7 @@ def get_jenkins_build_output_url():
         build_output = build_output + "console"
     return build_output
 
+
 InstanceListerSig = Callable[
     [
         NamedArg(str, "service"),
@@ -870,8 +870,10 @@ InstanceLoaderSig = Callable[
     InstanceConfig,
 ]
 
-INSTANCE_TYPE_HANDLERS: Mapping[str, Tuple[InstanceListerSig, InstanceLoaderSig]] = defaultdict(
-    lambda: (None, None,),
+INSTANCE_TYPE_HANDLERS: Mapping[
+    str, Tuple[InstanceListerSig, InstanceLoaderSig]
+] = defaultdict(
+    lambda: (None, None),
     marathon=(get_service_instance_list, load_marathon_service_config),
     chronos=(get_service_instance_list, load_chronos_job_config),
     adhoc=(get_service_instance_list, load_adhoc_job_config),
@@ -880,6 +882,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, Tuple[InstanceListerSig, InstanceLoaderSig]
     flink=(get_service_instance_list, load_flink_instance_config),
     cassandracluster=(get_service_instance_list, load_cassandracluster_instance_config),
 )
+
 
 def get_instance_config(
     service: str,

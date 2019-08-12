@@ -40,11 +40,11 @@ from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import validate_service_name
-from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
+from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -818,7 +818,9 @@ def apply_args_filters(
         try:
             validate_service_name(args.service, soa_dir=args.soa_dir)
         except NoSuchService:
-            paasta_print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
+            paasta_print(
+                PaastaColors.red(f'The service "{args.service}" does not exist.')
+            )
             all_services = list_services(soa_dir=args.soa_dir)
             suggestions = difflib.get_close_matches(
                 args.service, all_services, n=5, cutoff=0.5
