@@ -898,15 +898,18 @@ def paasta_status(args,) -> int:
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 tasks.append(
-                    lambda: report_status_for_cluster(
-                        service=service,
-                        cluster=cluster,
-                        deploy_pipeline=deploy_pipeline,
-                        actual_deployments=actual_deployments,
-                        instance_whitelist=instances,
-                        system_paasta_config=system_paasta_config,
-                        verbose=args.verbose,
-                        use_api_endpoint=use_api_endpoint,
+                    (
+                        report_status_for_cluster,
+                        dict(
+                            service=service,
+                            cluster=cluster,
+                            deploy_pipeline=deploy_pipeline,
+                            actual_deployments=actual_deployments,
+                            instance_whitelist=instances,
+                            system_paasta_config=system_paasta_config,
+                            verbose=args.verbose,
+                            use_api_endpoint=use_api_endpoint,
+                        ),
                     )
                 )
             else:
@@ -914,7 +917,7 @@ def paasta_status(args,) -> int:
                 return_codes.append(1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        tasks = [executor.submit(t) for t in tasks]  # type: ignore
+        tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
         for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
             paasta_print("\n".join(output))
