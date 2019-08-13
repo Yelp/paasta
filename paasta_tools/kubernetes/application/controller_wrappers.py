@@ -118,7 +118,7 @@ class Application(ABC):
                     )
                 )
             else:
-                raise e
+                raise
         else:
             self.logging.info(
                 "deleted pod disruption budget/{} from namespace/{}".format(
@@ -195,7 +195,7 @@ class DeploymentWrapper(Application):
                     )
                 )
             else:
-                raise e
+                raise
         else:
             self.logging.info(
                 "deleted deploy/{} from namespace/{}".format(
@@ -263,6 +263,10 @@ class DeploymentWrapper(Application):
             self.get_soa_config().get("autoscaling", {}).get("decision_policy", "")
             == "bespoke"
         ):
+            self.logging.error(
+                f"Sorry, bespoke is not implemented yet. Please use a different decision \
+                policy if possible for {self.item.metadata.name}/name in namespace{self.item.metadata.namespace}"
+            )
             return
         elif metrics_provider == "mesos_cpu":
             metrics.append(
@@ -292,7 +296,10 @@ class DeploymentWrapper(Application):
                 )
             )
         else:
-            self.logging.error("Wrong metrics specified")
+            self.logging.error(
+                f"Wrong metrics specified: {metrics_provider} for\
+                {self.item.metadata.name}/name in namespace{self.item.metadata.namespace}"
+            )
             return
 
         body = V2beta1HorizontalPodAutoscaler(
@@ -312,14 +319,14 @@ class DeploymentWrapper(Application):
         self.logging.debug(body)
         if not hpa_exists:
             self.logging.info(
-                "Creating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+                f"Creating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}"
             )
             kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
                 namespace=self.item.metadata.namespace, body=body, pretty=True
             )
         else:
             self.logging.info(
-                "Updating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
+                f"Updating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
             )
             kube_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name,
@@ -329,22 +336,15 @@ class DeploymentWrapper(Application):
             )
 
     def exists_hpa(self, kube_client: KubeClient) -> bool:
-        try:
-            kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
-                name=self.item.metadata.name, namespace=self.item.metadata.namespace
+        return (
+            len(
+                kube_client.autoscaling.list_namespaced_horizontal_pod_autoscaler(
+                    field_selector=f"metadata.name={self.item.metadata.name}",
+                    namespace=self.item.metadata.namespace,
+                ).items
             )
-        except ValueError as e:
-            self.logging.error(
-                "Error occurs for {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace.  \
-                This could a bug in k8s. For detail: https://github.com/kubernetes-client/python/issues/415"
-            )
-            self.logging.error(e)
-        except ApiException as e:
-            if e.status == 404:
-                return False
-            else:
-                raise e
-        return True
+            > 0
+        )
 
     def delete_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         try:
@@ -358,12 +358,12 @@ class DeploymentWrapper(Application):
                 # Deployment does not exist, nothing to delete but
                 # we can consider this a success.
                 self.logging.debug(
-                    "not deleting nonexistent HPA/{} from namespace/{}".format(
+                    f"not deleting nonexistent HPA/{self.item.metadata.name} from namespace/{self.item.metadata.namespace}".format(
                         self.item.metadata.name, self.item.metadata.namespace
                     )
                 )
             else:
-                raise e
+                raise
         else:
             self.logging.info(
                 "deleted HPA/{} from namespace/{}".format(
@@ -393,7 +393,7 @@ class StatefulSetWrapper(Application):
                     )
                 )
             else:
-                raise e
+                raise
         else:
             self.logging.info(
                 "deleted statefulset/{} from namespace/{}".format(

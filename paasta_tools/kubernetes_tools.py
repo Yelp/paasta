@@ -695,9 +695,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if self.get_desired_state() == "start":
             instances = self.config_dict.get("instances") or self.get_min_instances()
-        else:
+        elif self.get_desired_state() == "stop":
             instances = 0
             log.debug("Instance is set to stop. Returning '0' instances")
+        else:
+            raise Exception(f"The state of {self.service}.{self.instance} is unknown.")
 
         if self.get_aws_ebs_volumes() and instances not in [1, 0]:
             raise Exception(
@@ -828,7 +830,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "metrics_provider", ""
         )
         if metrics_provider in {"http", "uwsgi"}:
-            annotations["autoscaling"] = metrics_provider  # type: ignore
+            annotations["autoscaling"] = metrics_provider
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
