@@ -1,3 +1,10 @@
+paasta-tools (0.85.43) xenial; urgency=medium
+
+  * 0.85.43 tagged with 'make release'
+    Commit: Merge branch "better_deployd_queue_metrics"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 13 Aug 2019 10:56:59 -0700
+
 paasta-tools (0.85.42) xenial; urgency=medium
 
   * 0.85.42 tagged with 'make release'
