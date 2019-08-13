@@ -7,7 +7,7 @@ hypothesis
 mock
 path.py
 pep8
-pre-commit==1.10.1
+pre-commit
 pylint
 pytest
 pytest-asyncio
