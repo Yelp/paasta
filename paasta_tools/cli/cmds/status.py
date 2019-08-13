@@ -74,6 +74,7 @@ from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -591,7 +592,7 @@ def marathon_smartstack_status_human(
     registration, expected_backends_per_location, locations
 ) -> List[str]:
     if len(locations) == 0:
-        return f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"
+        return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
 
     output = ["Smartstack:"]
     output.append(f"  Haproxy Service Name: {registration}")
@@ -602,14 +603,15 @@ def marathon_smartstack_status_human(
         )
         output.append(f"    {location.name} - {backend_status}")
 
-    if location.backends:
-        output.extend(build_smartstack_backends_table(location.backends))
+        if location.backends:
+            backends_table = build_smartstack_backends_table(location.backends)
+            output.extend([f"      {line}" for line in backends_table])
 
     return output
 
 
 def build_smartstack_backends_table(backends):
-    rows = [("      Name", "LastCheck", "LastChange", "Status")]
+    rows = [("Name", "LastCheck", "LastChange", "Status")]
     for backend in backends:
         if backend.status == "UP":
             status = PaastaColors.default(backend.status)
@@ -626,14 +628,16 @@ def build_smartstack_backends_table(backends):
             check_duration = str(backend.check_duration)
 
         row = (
-            f"      {backend.hostname}:{backend.port}",
+            f"{backend.hostname}:{backend.port}",
             f"{backend.check_status}/{backend.check_code} in {check_duration}ms",
             humanize.naturaltime(timedelta(seconds=backend.last_change)),
             status,
         )
 
         if not backend.has_associated_task:
-            row = tuple(PaastaColors.grey(col) for col in row)
+            row = tuple(
+                PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row
+            )
 
         rows.append(row)
 
