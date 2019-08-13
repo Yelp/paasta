@@ -26,6 +26,7 @@ class PaastaDeployWorker(PaastaThread):
         self.metrics = metrics_provider
         self.config = config
         self.cluster = self.config.get_cluster()
+        self.busy = False
         self.setup()
 
     def setup(self):
@@ -74,6 +75,7 @@ class PaastaDeployWorker(PaastaThread):
         self.log.info(f"{self.name} starting up")
         while True:
             service_instance = self.instances_to_bounce.get()
+            self.busy = True
             try:
                 bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(
                     service_instance
@@ -108,6 +110,7 @@ class PaastaDeployWorker(PaastaThread):
                     processed_count=service_instance.processed_count + 1,
                 )
                 self.instances_to_bounce.put(service_instance)
+            self.busy = False
             time.sleep(0.1)
 
     def process_service_instance(self, service_instance):
