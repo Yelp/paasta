@@ -230,7 +230,7 @@ class DeploymentWrapper(Application):
         min_instnace, max_instance, and instance
         """
         self.logging.info(
-            "Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+            f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
         )
         hpa_exists = self.exists_hpa(kube_client)
         # NO autoscaling
@@ -244,7 +244,7 @@ class DeploymentWrapper(Application):
         max_replicas = self.get_soa_config().get("max_instances")
         if not min_replicas or not max_replicas:
             self.logging.error(
-                "min/max_instances are not specified. Autoscaling is not enabled."
+                "Please specify min_instances and max_instances for autoscaling to work"
             )
             return
         metrics_provider = (
