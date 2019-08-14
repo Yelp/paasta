@@ -1174,7 +1174,7 @@ def test_paasta_status(system_paasta_config):
             instance="fake_instance",
             output=[],
             system_paasta_config=system_paasta_config,
-            verbose=False,
+            verbose=0,
         )
 
 

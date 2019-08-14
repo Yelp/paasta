@@ -217,10 +217,9 @@ def paasta_status_on_api_endpoint(
     if not client:
         paasta_print("Cannot get a paasta-api client")
         exit(1)
-    swagger_verbose = True if verbose > 0 else False
     try:
         status = client.service.status_instance(
-            service=service, instance=instance, verbose=swagger_verbose
+            service=service, instance=instance, verbose=verbose
         ).result()
     except HTTPError as exc:
         paasta_print(exc.response.text)

@@ -45,7 +45,17 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 HaproxyBackend = TypedDict(
-    "HaproxyBackend", {"pxname": str, "svname": str, "status": str}, total=False
+    "HaproxyBackend",
+    {
+        "check_code": str,
+        "check_duration": str,
+        "check_status": str,
+        "lastchg": str,
+        "pxname": str,
+        "svname": str,
+        "status": str,
+    },
+    total=False,
 )
 
 
