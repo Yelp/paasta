@@ -73,7 +73,7 @@ pysensu-yelp==0.4.1
 PyStaticConfiguration==0.10.3
 python-crontab==2.1.1
 python-dateutil==2.5.3
-python-iptables==0.14.0
+python-iptables==0.12.0
 python-utils==2.0.1
 pytimeparse==1.1.5
 pytz==2016.10
