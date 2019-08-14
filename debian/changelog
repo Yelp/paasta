@@ -1,3 +1,12 @@
+paasta-tools (0.85.46) xenial; urgency=medium
+
+  * 0.85.46 tagged with 'make release'
+    Commit: Merge pull request #2373 from Yelp/luisp/revert-iptables-
+    bump  Revert "Merge pull request #2369 from Yelp/bump-iptables-
+    latest"
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 14 Aug 2019 15:14:52 -0700
+
 paasta-tools (0.85.45) xenial; urgency=medium
 
   * 0.85.45 tagged with 'make release'
