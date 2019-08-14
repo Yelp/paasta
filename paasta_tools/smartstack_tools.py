@@ -17,7 +17,6 @@ import csv
 import socket
 from typing import cast
 from typing import Collection
-from typing import Container
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
@@ -60,7 +59,7 @@ HaproxyBackend = TypedDict(
 
 
 def retrieve_haproxy_csv(
-    synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str
+    synapse_host: str, synapse_port: int, synapse_haproxy_url_format: str, scope: str
 ) -> Iterable[Dict[str, str]]:
     """Retrieves the haproxy csv from the haproxy web interface
 
@@ -69,7 +68,7 @@ def retrieve_haproxy_csv(
     :returns reader: a csv.DictReader object
     """
     synapse_uri = synapse_haproxy_url_format.format(
-        host=synapse_host, port=synapse_port
+        host=synapse_host, port=synapse_port, scope=scope
     )
 
     # timeout after 1 second and retry 3 times
@@ -109,7 +108,7 @@ def get_backends(
 
 
 def get_multiple_backends(
-    services: Optional[Container[str]],
+    services: Optional[Collection[str]],
     synapse_host: str,
     synapse_port: int,
     synapse_haproxy_url_format: str,
@@ -125,10 +124,18 @@ def get_multiple_backends(
                        services or the requested service
     """
 
+    if services is not None and len(services) == 1:
+        scope, = services
+    else:
+        # Maybe if there's like two or three services we could make two queries, or find the longest common substring.
+        # For now let's just hope this is rare and fetch all data.
+        scope = ""
+
     reader = retrieve_haproxy_csv(
         synapse_host,
         synapse_port,
         synapse_haproxy_url_format=synapse_haproxy_url_format,
+        scope=scope,
     )
     backends = []
 

@@ -106,7 +106,9 @@ no_escape = re.compile(r"\x1B\[[0-9;]*[mK]")
 # named 'audit_log'
 AUDIT_LOG_STREAM = "stream_paasta-audit-log"
 
-DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
+DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = (
+    "http://{host:s}:{port:d}/;csv;norefresh;scope={scope:s}"
+)
 
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_ADD = 1
