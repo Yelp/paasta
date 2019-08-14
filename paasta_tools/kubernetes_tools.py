@@ -1166,7 +1166,8 @@ def filter_pods_by_service_instance(
     return [
         pod
         for pod in pod_list
-        if pod.metadata.labels["yelp.com/paasta_service"] == service
+        if pod.metadata.labels is not None
+        and pod.metadata.labels["yelp.com/paasta_service"] == service
         and pod.metadata.labels["yelp.com/paasta_instance"] == instance
     ]
 

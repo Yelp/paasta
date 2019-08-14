@@ -1551,8 +1551,13 @@ def test_filter_pods_for_service_instance():
             }
         )
     )
-    mock_pods = [mock_pod_1, mock_pod_2]
+    mock_pod_3 = mock.MagicMock(metadata=mock.MagicMock(labels=None))
+    mock_pods = [mock_pod_1, mock_pod_2, mock_pod_3]
     assert filter_pods_by_service_instance(mock_pods, "kurupt", "fm") == [mock_pod_1]
+    assert filter_pods_by_service_instance(mock_pods, "kurupt", "garage") == [
+        mock_pod_2
+    ]
+    assert filter_pods_by_service_instance(mock_pods, "kurupt", "non-existing") == []
 
 
 def test_is_pod_ready():
