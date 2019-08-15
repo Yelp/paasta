@@ -487,6 +487,7 @@ def create_mesos_non_running_tasks_table(non_running_tasks):
         )
 
         rows.append([task.id, task.hostname, deployed_at_string, task.state])
+        rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
 
     table = format_table(rows)
     return [PaastaColors.grey(formatted_row) for formatted_row in table]

@@ -1527,7 +1527,7 @@ class TestCreateMesosRunningTasksTable:
             cpu_used_seconds=Struct(value=1.2),
             duration_seconds=300,
             deployed_timestamp=1565567511,
-            tail_lines=[Struct()],
+            tail_lines=Struct(),
         )
 
     def test_create_mesos_running_tasks_table(
@@ -1584,14 +1584,18 @@ class TestCreateMesosRunningTasksTable:
         assert running_tasks_dict["CPU"] == PaastaColors.red("93.3%")
 
 
+@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-def test_mock_create_mesos_non_running_tasks_table(mock_naturaltime):
+def test_create_mesos_non_running_tasks_table(
+    mock_naturaltime, mock_format_tail_lines_for_mesos_task
+):
+    mock_format_tail_lines_for_mesos_task.return_value = ["tail line 1", "tail line 2"]
     mock_non_running_task = Struct(
         id="task_id",
         hostname="paasta.restaurant",
         deployed_timestamp=1564642800,
         state="Not running",
-        tail_lines=[Struct()],
+        tail_lines=Struct(),
     )
     output = create_mesos_non_running_tasks_table([mock_non_running_task])
     uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
@@ -1602,6 +1606,10 @@ def test_mock_create_mesos_non_running_tasks_table(mock_naturaltime):
         "Deployed at what localtime": f"2019-08-01T07:00 ({mock_naturaltime.return_value})",
         "Status": mock_non_running_task.state,
     }
+    assert uncolored_output[2:] == ["tail line 1", "tail line 2"]
+    mock_format_tail_lines_for_mesos_task.assert_called_once_with(
+        mock_non_running_task.tail_lines, mock_non_running_task.id
+    )
 
 
 @patch("paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True)
