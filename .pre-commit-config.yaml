@@ -31,21 +31,17 @@ repos:
     hooks:
     -   id: pyupgrade
         args: [--py36-plus]
--   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.7.7
-    hooks:
-    -   id: flake8
-        exclude: ^docs/source/conf.py$
--   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.4.3
-    hooks:
-    -   id: autopep8
 -   repo: https://github.com/psf/black
     rev: stable
     hooks:
     -   id: black
         language_version: python3.6
         args: ['--target-version', 'py36']
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.7
+    hooks:
+    -   id: flake8
+        exclude: ^docs/source/conf.py$
 -   repo: https://github.com/Yelp/detect-secrets
     rev: 0.9.1
     hooks:
