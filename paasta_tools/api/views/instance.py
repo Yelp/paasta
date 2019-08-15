@@ -330,14 +330,15 @@ def marathon_job_status(
     job_status_fields["running_instance_count"] = tasks_running
 
     if verbose > 0:
-        autoscaling_info = get_autoscaling_info(
-            marathon_apps_with_clients, job_config
-        )._asdict()
-        for field in ("current_utilization", "target_instances"):
-            if autoscaling_info[field] is None:
-                del autoscaling_info[field]
+        autoscaling_info = get_autoscaling_info(marathon_apps_with_clients, job_config)
+        if autoscaling_info is not None:
+            autoscaling_info_dict = autoscaling_info._asdict()
 
-        job_status_fields["autoscaling_info"] = autoscaling_info
+            for field in ("current_utilization", "target_instances"):
+                if autoscaling_info_dict[field] is None:
+                    del autoscaling_info_dict[field]
+
+            job_status_fields["autoscaling_info"] = autoscaling_info_dict
 
     return job_status_fields
 
