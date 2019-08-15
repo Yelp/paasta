@@ -14,7 +14,10 @@
 from behave import then
 from bravado import exception as bexception
 
+from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import paasta_print
 
 
 @then(
@@ -99,3 +102,22 @@ def marathon_dashboard(context, service, instance, cluster, shard):
             and marathon_dashboard_item["instance"] == instance
         ):
             assert marathon_dashboard_item["shard_url"] == shard_url
+
+
+@then('paasta status via the API for "{service}.{instance}" should run successfully')
+def paasta_status_via_api(context, service, instance):
+    output = []
+    system_paasta_config = load_system_paasta_config()
+    exit_code = paasta_status_on_api_endpoint(
+        cluster=system_paasta_config.get_cluster(),
+        service=service,
+        instance=instance,
+        output=output,
+        system_paasta_config=system_paasta_config,
+        verbose=0,
+    )
+    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
+    paasta_print()  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+    assert len(output) > 0
