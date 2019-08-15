@@ -417,37 +417,8 @@ def create_mesos_running_tasks_table(running_tasks):
     ]
     rows.append(table_header)
     for task in running_tasks:
-        if task.rss.value is not None and task.mem_limit.value is not None:
-            mem_percent = 100 * task.rss.value / task.mem_limit.value
-            mem_string = "%d/%dMB" % (
-                (task.rss.value / 1024 / 1024),
-                (task.mem_limit.value / 1024 / 1024),
-            )
-            if mem_percent > 90:
-                mem_string = PaastaColors.red(mem_string)
-        else:
-            mem_string = task.mem_limit.error_message
-
-        if (
-            task.cpu_shares.value is not None
-            and task.cpu_used_seconds.value is not None
-        ):
-            # The total time a task has been allocated is the total time the task has
-            # been running multiplied by the "shares" a task has.
-            # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
-            allocated_seconds = task.cpu_shares.value * task.duration_seconds
-            if allocated_seconds == 0:
-                cpu_string = "Undef"
-            else:
-                cpu_percent = round(
-                    100 * (task.cpu_used_seconds.value / allocated_seconds), 1
-                )
-                cpu_string = "%s%%" % cpu_percent
-                if cpu_percent > 90:
-                    cpu_string = PaastaColors.red(cpu_string)
-        else:
-            cpu_string = task.cpu_shares.error_message
-
+        mem_string = get_mesos_task_memory_string(task)
+        cpu_string = get_mesos_task_cpu_string(task)
         deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
         deployed_at_string = "{} ({})".format(
             deployed_at.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(deployed_at)
@@ -459,6 +430,44 @@ def create_mesos_running_tasks_table(running_tasks):
         rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
 
     return format_table(rows)
+
+
+def get_mesos_task_memory_string(task):
+    if task.rss.value is None or task.mem_limit.value is None:
+        return task.mem_limit.error_message
+    elif task.mem_limit.value == 0:
+        return "Undef"
+    else:
+        mem_percent = 100 * task.rss.value / task.mem_limit.value
+        mem_string = "%d/%dMB" % (
+            (task.rss.value / 1024 / 1024),
+            (task.mem_limit.value / 1024 / 1024),
+        )
+        if mem_percent > 90:
+            return PaastaColors.red(mem_string)
+        else:
+            return mem_string
+
+
+def get_mesos_task_cpu_string(task):
+    if task.cpu_shares.value is None or task.cpu_used_seconds.value is None:
+        return task.cpu_shares.error_message
+    else:
+        # The total time a task has been allocated is the total time the task has
+        # been running multiplied by the "shares" a task has.
+        # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
+        allocated_seconds = task.cpu_shares.value * task.duration_seconds
+        if allocated_seconds == 0:
+            return "Undef"
+        else:
+            cpu_percent = round(
+                100 * (task.cpu_used_seconds.value / allocated_seconds), 1
+            )
+            cpu_string = "%s%%" % cpu_percent
+            if cpu_percent > 90:
+                return PaastaColors.red(cpu_string)
+            else:
+                return cpu_string
 
 
 def create_mesos_non_running_tasks_table(non_running_tasks):
