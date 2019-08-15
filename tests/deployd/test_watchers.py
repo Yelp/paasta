@@ -530,7 +530,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
             mock_load_system_config.return_value = mock.Mock(
                 get_deployd_big_bounce_deadline=mock.Mock(return_value=100.0)
             )
-            fake_si = ("someservice", "someinstance")
+            fake_si = ("someservice", "someinstance", mock.Mock())
             mock_get_service_instances_needing_update.return_value = [fake_si]
             self.handler.process_default(mock_event)
             assert mock_load_system_config.called
@@ -658,7 +658,11 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         ):
             mock_list_instances.return_value = ["c137", "c138"]
             mock_get_service_instances_needing_update.return_value = [
-                ("universe", "c137")
+                (
+                    "universe",
+                    "c137",
+                    mock.Mock(get_bounce_start_deadline=mock.Mock(return_value=0)),
+                )
             ]
             self.handler.bounce_service("universe")
             mock_list_instances.assert_called_with(

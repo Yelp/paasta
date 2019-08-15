@@ -182,6 +182,9 @@
                 "bounce_priority": {
                     "type": "integer"
                 },
+                "bounce_start_deadline": {
+                    "type": "number"
+                },
                 "deploy_group": {
                     "type": "string"
                 },

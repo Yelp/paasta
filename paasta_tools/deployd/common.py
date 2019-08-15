@@ -19,6 +19,7 @@ from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import load_system_paasta_config
 
 BounceTimers = namedtuple(
@@ -100,7 +101,7 @@ def get_service_instances_needing_update(
     marathon_clients: MarathonClients,
     instances: Collection[Tuple[str, str]],
     cluster: str,
-) -> List[Tuple[str, str]]:
+) -> List[Tuple[str, str, MarathonServiceConfig]]:
     marathon_apps = {}
     for marathon_client in marathon_clients.get_all_clients():
         marathon_apps.update(
@@ -127,9 +128,9 @@ def get_service_instances_needing_update(
             )
             continue
         if app_id not in marathon_app_ids:
-            service_instances.append((service, instance))
+            service_instances.append((service, instance, config))
         elif marathon_apps[app_id].instances != config_app["instances"]:
-            service_instances.append((service, instance))
+            service_instances.append((service, instance, config))
     return service_instances
 
 
