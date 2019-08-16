@@ -1718,6 +1718,51 @@ def test_proportional_decision_policy_good_enough(
     )
 
 
+@mock.patch(
+    "paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.autoscaling.autoscaling_service_lib.time.time",
+    autospec=True,
+    return_value=61,
+)
+def test_proportional_decision_policy_moving_average(
+    mock_time, mock_fetch_historical_load, mock_save_historical_load
+):
+    common_kwargs = {
+        "zookeeper_path": "/test",
+        "current_instances": 10,
+        "min_instances": 5,
+        "max_instances": 15,
+        "num_healthy_instances": 10,
+        "forecast_policy": "moving_average",
+        "moving_average_window_seconds": 60,
+    }
+    mock_fetch_historical_load.return_value = [(0, 1), (1, 7), (60, 5)]
+
+    # average util: 6 = setpoint*num_healthy, no change
+    assert 0 == autoscaling_service_lib.proportional_decision_policy(
+        setpoint=0.6, utilization=0.6, **common_kwargs
+    )
+    # average util: 6 > setpoint*num_healthy, scale up
+    assert 2 == autoscaling_service_lib.proportional_decision_policy(
+        setpoint=0.5, utilization=0.6, **common_kwargs
+    )
+    # average util: 6 < setpoint*num_healthy, scale down
+    assert -1 == autoscaling_service_lib.proportional_decision_policy(
+        setpoint=0.7, utilization=0.6, **common_kwargs
+    )
+    # average util < setpoint*num_healthy, but util > setpoint, so don't scale down
+    assert 0 == autoscaling_service_lib.proportional_decision_policy(
+        setpoint=0.7, utilization=0.8, **common_kwargs
+    )
+
+
 def test_filter_autoscaling_tasks_considers_old_versions():
     marathon_apps = [
         mock.Mock(
