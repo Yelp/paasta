@@ -1,3 +1,12 @@
+paasta-tools (0.85.47) xenial; urgency=medium
+
+  * 0.85.47 tagged with 'make release'
+    Commit: Merge pull request #2375 from
+    Yelp/paasta_api_none_dashboard_link  make marathon status api handle
+    get_marathon_dashboard_links returnin…
+
+ -- Stuart Elston <selston@yelp.com>  Fri, 16 Aug 2019 10:11:51 -0700
+
 paasta-tools (0.85.46) xenial; urgency=medium
 
   * 0.85.46 tagged with 'make release'
