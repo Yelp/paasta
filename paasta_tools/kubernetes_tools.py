@@ -74,7 +74,13 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V2beta1CrossVersionObjectReference
+from kubernetes.client import V2beta1HorizontalPodAutoscaler
 from kubernetes.client import V2beta1HorizontalPodAutoscalerCondition
+from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
+from kubernetes.client import V2beta1MetricSpec
+from kubernetes.client import V2beta1PodsMetricSource
+from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 
@@ -352,6 +358,81 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "If service instance defines an EBS volume it must use a downthenup bounce_method"
             )
         return KUBE_DEPLOY_STATEGY_MAP[bounce_method]
+
+    def get_autoscaling_metric_spec(
+        self, name: str, namespace: str = "paasta"
+    ) -> V2beta1HorizontalPodAutoscaler:
+        min_replicas = self.get_min_instances()
+        max_replicas = self.get_max_instances()
+        if not min_replicas or not max_replicas:
+            log.error(
+                "Please specify min_instances and max_instances for autoscaling to work"
+            )
+            return
+        metrics_provider = self.config_dict.get("autoscaling", {}).get(
+            "metrics_provider", "mesos_cpu"
+        )
+        # TODO support multiple metrics
+        metrics = []
+        target = (
+            float(self.config_dict.get("autoscaling", {}).get("setpoint", "0.8")) * 100
+        )
+        # TODO support bespoke
+        if (
+            self.config_dict.get("autoscaling", {}).get("decision_policy", "")
+            == "bespoke"
+        ):
+            log.error(
+                f"Sorry, bespoke is not implemented yet. Please use a different decision \
+                policy if possible for {name}/name in namespace{namespace}"
+            )
+            return
+        elif metrics_provider == "mesos_cpu":
+            metrics.append(
+                V2beta1MetricSpec(
+                    type="Resource",
+                    resource=V2beta1ResourceMetricSource(
+                        name="cpu", target_average_utilization=target
+                    ),
+                )
+            )
+        elif metrics_provider == "http":
+            metrics.append(
+                V2beta1MetricSpec(
+                    type="Pods",
+                    pods=V2beta1PodsMetricSource(
+                        metric_name="http", target_average_value=target
+                    ),
+                )
+            )
+        elif metrics_provider == "uwsgi":
+            metrics.append(
+                V2beta1MetricSpec(
+                    type="Pods",
+                    pods=V2beta1PodsMetricSource(
+                        metric_name="uwsgi", target_average_value=target
+                    ),
+                )
+            )
+        else:
+            log.error(
+                f"Wrong metrics specified: {metrics_provider} for\
+                {name}/name in namespace{namespace}"
+            )
+            return
+
+        return V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(name=name, namespace=namespace),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=max_replicas,
+                min_replicas=min_replicas,
+                metrics=metrics,
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    kind="Deployment", name=name
+                ),
+            ),
+        )
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         strategy_type = self.get_bounce_method()
@@ -687,6 +768,31 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_sanitised_instance_name(self) -> str:
         return sanitise_kubernetes_name(self.get_instance())
+
+    def get_instances(self, with_limit: bool = True) -> int:
+        """
+        Return expected number of instances. If the controller is running, return
+        desired replicas. Otherwise, return the number of instances in yelpsoa_config
+        """
+        if self.get_max_instances() is not None:
+            try:
+                return kube_client.deployments.read_namespaced_deployment(
+                    name=f"{self.get_sanitised_service_name()}\
+                    -{self.get_sanitised_instance_name()}",
+                    namespace="paasta",
+                ).spec.replicas
+            except ApiException as e:
+                log.error(e)
+                log.debug(
+                    "Error occured when trying to connect to Kubernetes API, \
+                    returning max_instances (%d)"
+                    % self.get_max_instances()
+                )
+                return self.get_max_instances()
+        else:
+            instances = self.config_dict.get("instances", 1)
+            log.debug("Autoscaling not enabled, returning %d instances" % instances)
+            return instances
 
     def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance
@@ -1146,12 +1252,12 @@ def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
 
 
 def pod_disruption_budget_for_service_instance(
-    service: str, instance: str, min_instances: int
+    service: str, instance: str, max_unavailable: str
 ) -> V1beta1PodDisruptionBudget:
     return V1beta1PodDisruptionBudget(
         metadata=V1ObjectMeta(name=f"{service}-{instance}", namespace="paasta"),
         spec=V1beta1PodDisruptionBudgetSpec(
-            min_available=min_instances,
+            max_unavailable=max_unavailable,
             selector=V1LabelSelector(
                 match_labels={
                     "yelp.com/paasta_service": service,

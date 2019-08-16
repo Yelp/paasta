@@ -1262,12 +1262,12 @@ def test_max_unavailable(instances, bmf):
 
 def test_pod_disruption_budget_for_service_instance():
     x = pod_disruption_budget_for_service_instance(
-        service="foo", instance="bar", min_instances=10
+        service="foo", instance="bar", max_unavailable="10%"
     )
 
     assert x.metadata.name == "foo-bar"
     assert x.metadata.namespace == "paasta"
-    assert x.spec.min_available == 10
+    assert x.spec.max_unavailable == "10%"
     assert x.spec.selector.match_labels == {
         "yelp.com/paasta_service": "foo",
         "yelp.com/paasta_instance": "bar",

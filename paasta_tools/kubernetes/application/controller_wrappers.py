@@ -7,14 +7,7 @@ from typing import Union
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
-from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1StatefulSet
-from kubernetes.client import V2beta1CrossVersionObjectReference
-from kubernetes.client import V2beta1HorizontalPodAutoscaler
-from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta1MetricSpec
-from kubernetes.client import V2beta1PodsMetricSource
-from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_deployment
@@ -25,7 +18,6 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
-from paasta_tools.kubernetes_tools import max_unavailable
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
@@ -132,10 +124,8 @@ class Application(ABC):
         pdr = pod_disruption_budget_for_service_instance(
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
-            min_instances=self.soa_config.get_desired_instances()
-            - max_unavailable(
-                instance_count=self.soa_config.get_desired_instances(),
-                bounce_margin_factor=self.soa_config.get_bounce_margin_factor(),
+            max_unavailable="{}%".format(
+                int((1 - self.soa_config.get_bounce_margin_factor()) * 100)
             ),
         )
         try:
@@ -149,21 +139,10 @@ class Application(ABC):
                 raise
 
         if existing_pdr:
-            if existing_pdr.spec.min_available != pdr.spec.min_available:
-                # poddisruptionbudget objects are not mutable like most things in the kubernetes api,
-                # so we have to do a delete/replace.
-                # unfortunately we can't really do this transactionally, but I guess we'll just hope for the best?
-                logging.debug(
-                    f"existing poddisruptionbudget {pdr.metadata.name} is out of date; deleting"
-                )
-                kube_client.policy.delete_namespaced_pod_disruption_budget(
-                    name=pdr.metadata.name,
-                    namespace=pdr.metadata.namespace,
-                    body=V1DeleteOptions(),
-                )
-                logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
-                return create_pod_disruption_budget(
-                    kube_client=kube_client, pod_disruption_budget=pdr
+            if existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable:
+                logging.debug(f"Updating poddisruptionbudget {pdr.metadata.name}")
+                return kube_client.policy.patch_namespaced_pod_disruption_budget(
+                    name=pdr.metadata.name, namespace=pdr.metadata.namespace, body=pdr
                 )
             else:
                 logging.debug(f"poddisruptionbudget {pdr.metadata.name} up to date")
@@ -238,95 +217,21 @@ class DeploymentWrapper(Application):
             # Remove HPA if autoscaling is disabled
             if hpa_exists:
                 self.delete_horizontal_pod_autoscaler(kube_client)
-                return
-        # Get autoscaling configurations
-        min_replicas = self.get_soa_config().get("min_instances")
-        max_replicas = self.get_soa_config().get("max_instances")
-        if not min_replicas or not max_replicas:
-            self.logging.error(
-                "Please specify min_instances and max_instances for autoscaling to work"
-            )
             return
-        metrics_provider = (
-            self.get_soa_config()
-            .get("autoscaling", {})
-            .get("metrics_provider", "mesos_cpu")
-        )
-        # TODO support multiple metrics
-        metrics = []
-        target = (
-            float(self.get_soa_config().get("autoscaling", {}).get("setpoint", "0.8"))
-            * 100
-        )
-        # TODO support bespoke
-        if (
-            self.get_soa_config().get("autoscaling", {}).get("decision_policy", "")
-            == "bespoke"
-        ):
-            self.logging.error(
-                f"Sorry, bespoke is not implemented yet. Please use a different decision \
-                policy if possible for {self.item.metadata.name}/name in namespace{self.item.metadata.namespace}"
-            )
-            return
-        elif metrics_provider == "mesos_cpu":
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Resource",
-                    resource=V2beta1ResourceMetricSource(
-                        name="cpu", target_average_utilization=target
-                    ),
-                )
-            )
-        elif metrics_provider == "http":
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Pods",
-                    pods=V2beta1PodsMetricSource(
-                        metric_name="http", target_average_value=target
-                    ),
-                )
-            )
-        elif metrics_provider == "uwsgi":
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Pods",
-                    pods=V2beta1PodsMetricSource(
-                        metric_name="uwsgi", target_average_value=target
-                    ),
-                )
-            )
-        else:
-            self.logging.error(
-                f"Wrong metrics specified: {metrics_provider} for\
-                {self.item.metadata.name}/name in namespace{self.item.metadata.namespace}"
-            )
-            return
-
-        body = V2beta1HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name=self.item.metadata.name, namespace=self.item.metadata.namespace
-            ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
-                max_replicas=max_replicas,
-                min_replicas=min_replicas,
-                metrics=metrics,
-                scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name=self.item.metadata.name
-                ),
-            ),
+        body = self.soa_config.get_autoscaling_metric_spec(
+            name=self.item.metadata.name, namespace=self.item.metadata.namespace
         )
         self.logging.debug(body)
         if not hpa_exists:
             self.logging.info(
-                f"Creating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+                f"Creating new HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
             )
             kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
                 namespace=self.item.metadata.namespace, body=body, pretty=True
             )
         else:
             self.logging.info(
-                f"Updating new HPA for {metrics_provider} {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
+                f"Updating new HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
             )
             kube_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name,
