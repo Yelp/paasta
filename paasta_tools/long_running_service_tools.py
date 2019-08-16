@@ -48,7 +48,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     nerve_ns: str
     registrations: List[str]
     replication_threshold: int
-    bounce_priority: int
+    bounce_start_deadline: float
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
@@ -208,14 +208,8 @@ class LongRunningServiceConfig(InstanceConfig):
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
-    def get_bounce_priority(self) -> int:
-        """Gives a priority to each service instance which deployd will use to prioritise services.
-        Higher numbers are higher priority. This affects the order in which deployd workers pick
-        instances from the bounce queue.
-
-        NB: we multiply by -1 here because *internally* lower numbers are higher priority.
-        """
-        return self.config_dict.get("bounce_priority", 0) * -1
+    def get_bounce_start_deadline(self) -> float:
+        return self.config_dict.get("bounce_start_deadline", 0)
 
     def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested

@@ -249,12 +249,14 @@ instance MAY have:
     It doesn’t affect any other bounce method but crossover.
     See `the bounce docs <bouncing.html>`_ for a more detailed description.
 
-  * ``bounce_priority``: an integer priority that informs paasta-deployd which service
-    instances should take priority over each other. The default priority is 0 and higher numbers
-    are considered higher priority. For example: if there are three service instances that need
-    bouncing: the first with a ``bounce_priority`` -1, the second with no ``bounce_priority`` and the
-    third with ``bounce_priority`` 1. Then paasta-deployd will prioritise the bounce of the third
-    service instance, then the second service instance and finally the first service instance.
+  * ``bounce_start_deadline``: a floating point number of seconds to add to the deadline when deployd notices a change
+    to soa-configs or the marked-for-deployment version of an instance.
+    Defaults to 0. (deadline = now)
+    When deployd has a queue of instances to process, it will choose to process instances with a lower deadline first.
+    Set this to a large positive number to allow deployd to process other instances before this one, even if their
+      soa-configs change or mark-for-deployment happened after this one.
+    This setting only affects the first time deployd processes an instance after a change --
+      instances that need to be reprocessed will be reenqueued normally.
 
   * ``drain_method``: Controls the drain method; see `drain_lib
     <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for

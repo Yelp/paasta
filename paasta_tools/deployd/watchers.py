@@ -21,6 +21,7 @@ from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import deformat_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
@@ -276,7 +277,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             except ValueError:
                 self.log.error("Couldn't load public config, the JSON is invalid!")
                 return
-            service_instance_names: List[Tuple[str, str]] = []
+            service_instance_configs: List[Tuple[str, str, MarathonServiceConfig]] = []
             if new_config != self.public_config:
                 self.log.info(
                     "Public config has changed, now checking if it affects any services config shas."
@@ -287,16 +288,16 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                     instance_type="marathon",
                     soa_dir=DEFAULT_SOA_DIR,
                 )
-                service_instance_names = get_service_instances_needing_update(
+                service_instance_configs = get_service_instances_needing_update(
                     self.marathon_clients,
                     all_service_instances,
                     self.public_config.get_cluster(),
                 )
-            if service_instance_names:
+            if service_instance_configs:
                 self.log.info(
-                    f"{len(service_instance_names)} service instances affected. Doing a staggered bounce."
+                    f"{len(service_instance_configs)} service instances affected. Doing a staggered bounce."
                 )
-                for service, instance in service_instance_names:
+                for service, instance, config in service_instance_configs:
                     self.filewatcher.instances_to_bounce.put(
                         ServiceInstance(
                             service=service,
@@ -368,11 +369,12 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             cache=False,
         )
         self.log.debug(instances)
-        service_instances = [(service_name, instance) for instance in instances]
-        service_instances = get_service_instances_needing_update(
-            self.marathon_clients, service_instances, self.filewatcher.cluster
+        service_instance_configs = get_service_instances_needing_update(
+            self.marathon_clients,
+            [(service_name, instance) for instance in instances],
+            self.filewatcher.cluster,
         )
-        for service, instance in service_instances:
+        for service, instance, config in service_instance_configs:
             self.log.info(
                 f"{service}.{instance} has a new marathon app ID. Enqueuing it to be bounced."
             )
@@ -382,7 +384,7 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
                     service=service,
                     instance=instance,
                     cluster=self.filewatcher.cluster,
-                    bounce_by=now,
+                    bounce_by=now + config.get_bounce_start_deadline(),
                     wait_until=now,
                     watcher=type(self).__name__,
                     bounce_timers=None,
