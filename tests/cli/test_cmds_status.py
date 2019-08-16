@@ -1255,6 +1255,7 @@ class TestPrintMarathonStatus:
         )
         assert return_value == 0
 
+    @pytest.mark.parametrize("include_smartstack", [True, False])
     @pytest.mark.parametrize("include_autoscaling_info", [True, False])
     @patch("paasta_tools.cli.cmds.status.create_autoscaling_info_table", autospec=True)
     @patch(
@@ -1276,6 +1277,7 @@ class TestPrintMarathonStatus:
         mock_create_autoscaling_info_table,
         mock_marathon_status,
         include_autoscaling_info,
+        include_smartstack,
     ):
         mock_marathon_app_status_human.side_effect = lambda desired_app_id, app_status: [
             f"{app_status.id} status 1",
@@ -1297,6 +1299,8 @@ class TestPrintMarathonStatus:
         mock_marathon_status.app_statuses = [Struct(id="app_1"), Struct(id="app_2")]
         if include_autoscaling_info:
             mock_marathon_status.autoscaling_info = Struct()
+        if not include_smartstack:
+            mock_marathon_status.smartstack = None
 
         output = []
         print_marathon_status(
@@ -1319,9 +1323,9 @@ class TestPrintMarathonStatus:
             f"      app_2 status 2",
             f"    mesos status 1",
             f"    mesos status 2",
-            f"    smartstack status 1",
-            f"    smartstack status 2",
         ]
+        if include_smartstack:
+            expected_output += [f"    smartstack status 1", f"    smartstack status 2"]
 
         assert expected_output == output
 
@@ -1583,6 +1587,11 @@ class TestCreateMesosRunningTasksTable:
         running_tasks_dict = _formatted_table_to_dict(output)
         assert running_tasks_dict["CPU"] == PaastaColors.red("93.3%")
 
+    def test_tasks_are_none(
+        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
+    ):
+        assert len(create_mesos_running_tasks_table(None)) == 1  # just the header
+
 
 @patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -1610,6 +1619,10 @@ def test_create_mesos_non_running_tasks_table(
     mock_format_tail_lines_for_mesos_task.assert_called_once_with(
         mock_non_running_task.tail_lines, mock_non_running_task.id
     )
+
+
+def test_create_mesos_non_running_tasks_table_handles_nones():
+    assert len(create_mesos_non_running_tasks_table(None)) == 1  # just the header
 
 
 @patch("paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True)

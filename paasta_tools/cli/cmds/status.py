@@ -339,12 +339,13 @@ def print_marathon_status(
     )
     output.extend([f"    {line}" for line in mesos_status_human])
 
-    smartstack_status_human = marathon_smartstack_status_human(
-        marathon_status.smartstack.registration,
-        marathon_status.smartstack.expected_backends_per_location,
-        marathon_status.smartstack.locations,
-    )
-    output.extend([f"    {line}" for line in smartstack_status_human])
+    if marathon_status.smartstack is not None:
+        smartstack_status_human = marathon_smartstack_status_human(
+            marathon_status.smartstack.registration,
+            marathon_status.smartstack.expected_backends_per_location,
+            marathon_status.smartstack.locations,
+        )
+        output.extend([f"    {line}" for line in smartstack_status_human])
 
     return 0
 
@@ -416,7 +417,7 @@ def create_mesos_running_tasks_table(running_tasks):
         "Deployed at what localtime",
     ]
     rows.append(table_header)
-    for task in running_tasks:
+    for task in running_tasks or []:
         mem_string = get_mesos_task_memory_string(task)
         cpu_string = get_mesos_task_cpu_string(task)
         deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
@@ -480,7 +481,7 @@ def create_mesos_non_running_tasks_table(non_running_tasks):
     ]
     rows.append(table_header)
 
-    for task in non_running_tasks:
+    for task in non_running_tasks or []:
         deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
         deployed_at_string = "{} ({})".format(
             deployed_at.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(deployed_at)
