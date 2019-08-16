@@ -133,6 +133,17 @@ def test_instance_status_marathon(
     )
 
 
+@pytest.fixture
+def mock_service_config():
+    return marathon_tools.MarathonServiceConfig(
+        service="fake_service",
+        cluster="fake_cluster",
+        instance="fake_instance",
+        config_dict={"bounce_method": "fake_bounce"},
+        branch_dict=None,
+    )
+
+
 @mock.patch("paasta_tools.api.views.instance.marathon_app_status", autospec=True)
 @mock.patch(
     "paasta_tools.api.views.instance.marathon_tools.get_marathon_app_deploy_status",
@@ -147,14 +158,8 @@ def test_marathon_job_status(
     mock_get_autoscaling_info,
     mock_get_marathon_app_deploy_status,
     mock_marathon_app_status,
+    mock_service_config,
 ):
-    mock_service_config = marathon_tools.MarathonServiceConfig(
-        service="fake_service",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"bounce_method": "fake_bounce"},
-        branch_dict=None,
-    )
     mock_service_config.format_marathon_app_dict = lambda: {"id": "foo"}
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
 
@@ -194,14 +199,7 @@ def test_marathon_job_status(
     assert mock_marathon_app_status.call_count == 1
 
 
-def test_marathon_job_status_error():
-    mock_service_config = marathon_tools.MarathonServiceConfig(
-        service="fake_service",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"bounce_method": "fake_bounce"},
-        branch_dict=None,
-    )
+def test_marathon_job_status_error(mock_service_config):
     mock_service_config.format_marathon_app_dict = mock.Mock(
         side_effect=NoDockerImageError
     )
@@ -215,6 +213,37 @@ def test_marathon_job_status_error():
     )
 
     assert len(job_status["error_message"]) > 0
+
+
+@mock.patch("paasta_tools.api.views.instance.marathon_app_status", autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.instance.get_marathon_dashboard_links", autospec=True
+)
+@mock.patch(
+    "paasta_tools.api.views.instance.marathon_tools.get_marathon_app_deploy_status",
+    autospec=True,
+)
+def test_marathon_job_status_no_dashboard_links(
+    mock_get_marathon_app_deploy_status,
+    mock_get_marathon_dashboard_links,
+    mock_marathon_app_status,
+    mock_service_config,
+):
+    mock_service_config.format_marathon_app_dict = lambda: {"id": "foo"}
+    settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
+    mock_get_marathon_app_deploy_status.return_value = 0  # Running status
+    mock_app = mock.Mock(id="/foo", tasks_running=2)
+
+    mock_get_marathon_dashboard_links.return_value = None
+
+    # just make sure we don't throw an error
+    instance.marathon_job_status(
+        "fake_service",
+        "fake_instance",
+        mock_service_config,
+        marathon_apps_with_clients=[(mock_app, mock.Mock())],
+        verbose=0,
+    )
 
 
 @mock.patch(

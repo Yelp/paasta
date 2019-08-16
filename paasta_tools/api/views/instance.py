@@ -305,7 +305,7 @@ def marathon_job_status(
         app_status = marathon_app_status(
             app,
             marathon_client,
-            dashboard_links.get(marathon_client),
+            dashboard_links.get(marathon_client) if dashboard_links else None,
             deploy_status,
             list_tasks=verbose > 0,
         )
