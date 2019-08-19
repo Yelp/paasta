@@ -758,10 +758,10 @@ def _record_autoscaling_decision(
         level="debug",
     )
     meteorite_dims = {
-        "service_name": marathon_service_config.service,
-        "decision_policy": autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
+        "paasta_service": marathon_service_config.service,
         "paasta_cluster": marathon_service_config.cluster,
-        "instance_name": marathon_service_config.instance,
+        "paasta_instance": marathon_service_config.instance,
+        "decision_policy": autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
     }
     if yelp_meteorite:
         gauge = yelp_meteorite.create_gauge("paasta.service.instances", meteorite_dims)
