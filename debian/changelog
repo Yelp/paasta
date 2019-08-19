@@ -1,3 +1,11 @@
+paasta-tools (0.85.49) xenial; urgency=medium
+
+  * 0.85.49 tagged with 'make release'
+    Commit: Merge pull request #2372 from azretkenzhaliev/u/bayke/PAASTA-
+    15618  PAASTA-15618 Added a check if a pod is a paasta service
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Mon, 19 Aug 2019 03:35:52 -0700
+
 paasta-tools (0.85.48) xenial; urgency=medium
 
   * 0.85.48 tagged with 'make release'
