@@ -194,9 +194,9 @@ def proportional_decision_policy(
     if desired_number_instances < current_instances:
         if good_enough_window:
             _, high = good_enough_window
-            if utilization - offset >= high:
+            if utilization >= high:
                 desired_number_instances = current_instances
-        elif utilization - offset >= setpoint:
+        elif utilization >= setpoint:
             desired_number_instances = current_instances
 
     if good_enough_window:
