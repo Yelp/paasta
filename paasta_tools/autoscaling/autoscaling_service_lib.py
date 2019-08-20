@@ -145,6 +145,7 @@ def proportional_decision_policy(
     setpoint,
     utilization,
     num_healthy_instances,
+    persist_data: bool,
     noop=False,
     offset=0.0,
     forecast_policy="current",
@@ -182,7 +183,8 @@ def proportional_decision_policy(
 
     historical_load = fetch_historical_load(zk_path_prefix=zookeeper_path)
     historical_load.append((time.time(), current_load))
-    save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
+    if persist_data:
+        save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
 
@@ -539,6 +541,7 @@ def get_autoscaling_info(apps_with_clients, service_config):
                 current_instances=service_config.get_instances(),
                 marathon_service_config=service_config,
                 num_healthy_instances=len(marathon_tasks),
+                persist_data=False,
             )
         except MetricsProviderNoDataError:
             utilization = None
@@ -560,6 +563,7 @@ def get_new_instance_count(
     current_instances,
     marathon_service_config,
     num_healthy_instances,
+    persist_data: bool,
 ):
     autoscaling_decision_policy = get_decision_policy(
         autoscaling_params[DECISION_POLICY_KEY]
@@ -575,6 +579,7 @@ def get_new_instance_count(
         current_instances=current_instances,
         zookeeper_path=zookeeper_path,
         num_healthy_instances=num_healthy_instances,
+        persist_data=persist_data,
         **autoscaling_params,
     )
 
@@ -664,6 +669,7 @@ def autoscale_marathon_instance(
                 current_instances=current_instances,
                 marathon_service_config=marathon_service_config,
                 num_healthy_instances=num_healthy_instances,
+                persist_data=(not task_data_insufficient),
             )
             safe_downscaling_threshold = int(current_instances * 0.7)
             _record_autoscaling_decision(

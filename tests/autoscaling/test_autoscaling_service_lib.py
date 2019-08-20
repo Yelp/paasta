@@ -1390,6 +1390,7 @@ def test_get_new_instance_count():
             current_instances=4,
             marathon_service_config=mock_marathon_service_config,
             num_healthy_instances=4,
+            persist_data=False,
         )
         assert mock_decision_policy.called_with(
             error=0.1,
@@ -1416,6 +1417,7 @@ def test_get_new_instance_count():
             current_instances=10,
             marathon_service_config=mock_marathon_service_config,
             num_healthy_instances=10,
+            persist_data=False,
         )
         mock_marathon_service_config.limit_instance_count.assert_called_with(7)
 
@@ -1490,6 +1492,7 @@ def test_get_autoscaling_info():
             current_instances=4,
             marathon_service_config=mock_service_config,
             num_healthy_instances=1,
+            persist_data=False,
         )
         expected = autoscaling_service_lib.ServiceAutoscalingInfo(
             current_instances=4,
@@ -1560,17 +1563,11 @@ def test_serialize_historical_load_trims_oldest_data():
 
 
 @mock.patch(
-    "paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
     autospec=True,
     return_value=[],
 )
-def test_proportional_decision_policy(
-    mock_save_historical_load, mock_fetch_historical_load
-):
+def test_proportional_decision_policy(mock_fetch_historical_load):
 
     common_kwargs = {
         "zookeeper_path": "/test",
@@ -1579,6 +1576,7 @@ def test_proportional_decision_policy(
         "max_instances": 15,
         "num_healthy_instances": 10,
         "forecast_policy": "current",
+        "persist_data": False,
     }
 
     # if utilization == setpoint, delta should be 0.
@@ -1618,17 +1616,11 @@ def test_proportional_decision_policy(
 
 
 @mock.patch(
-    "paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
     autospec=True,
     return_value=[],
 )
-def test_proportional_decision_policy_nonzero_offset(
-    mock_save_historical_load, mock_fetch_historical_load
-):
+def test_proportional_decision_policy_nonzero_offset(mock_fetch_historical_load):
     common_kwargs = {
         "zookeeper_path": "/test",
         "current_instances": 10,
@@ -1637,6 +1629,7 @@ def test_proportional_decision_policy_nonzero_offset(
         "max_instances": 15,
         "forecast_policy": "current",
         "offset": 0.2,
+        "persist_data": False,
     }
 
     # if utilization == setpoint, delta should be 0.
@@ -1680,17 +1673,11 @@ def test_proportional_decision_policy_nonzero_offset(
 
 
 @mock.patch(
-    "paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
     autospec=True,
     return_value=[],
 )
-def test_proportional_decision_policy_good_enough(
-    mock_save_historical_load, mock_fetch_historical_load
-):
+def test_proportional_decision_policy_good_enough(mock_fetch_historical_load):
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
         zookeeper_path="/test",
         current_instances=100,
@@ -1702,6 +1689,7 @@ def test_proportional_decision_policy_good_enough(
         setpoint=0.50,
         utilization=0.54,
         good_enough_window=(0.45, 0.55),
+        persist_data=False,
     )
 
     assert 0 == autoscaling_service_lib.proportional_decision_policy(
@@ -1715,6 +1703,7 @@ def test_proportional_decision_policy_good_enough(
         setpoint=0.50,
         utilization=0.46,
         good_enough_window=(0.45, 0.55),
+        persist_data=False,
     )
 
 
