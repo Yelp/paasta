@@ -200,9 +200,10 @@ _main_http:
   registrations: ['foo.bar', 'bar.baz']
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -219,9 +220,10 @@ main:
     <<: *template
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -237,10 +239,11 @@ main_worker:
   healthcheck_mode: tcp
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
-    marathon_content = """
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
+        marathon_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -250,9 +253,10 @@ main_worker:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -267,9 +271,10 @@ valid:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
     marathon_content = """
 ---
@@ -281,9 +286,10 @@ this_is_okay_too_1:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
     marathon_content = """
 ---
@@ -295,9 +301,10 @@ dashes-are-okay-too:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
     marathon_content = """
 ---
@@ -309,9 +316,10 @@ main_worker_CAPITALS_INVALID:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    assert not validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert not validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
     marathon_content = """
 ---
@@ -323,9 +331,10 @@ $^&*()(&*^%&definitely_not_okay:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    assert not validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert not validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -343,10 +352,11 @@ main_worker:
   healthcheck_mode: cmd
 """
     mock_get_file_contents.return_value = marathon_content
-    assert not validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
-    marathon_content = """
+    for schema_type in ["marathon", "kubernetes"]:
+        assert not validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
+        marathon_content = """
 ---
 main_worker:
   cpus: 0.1
@@ -358,9 +368,10 @@ main_worker:
   healthcheck_cmd: '/bin/true'
 """
     mock_get_file_contents.return_value = marathon_content
-    assert validate_schema("unused_service_path.yaml", "marathon")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
+    for schema_type in ["marathon", "kubernetes"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+        output, _ = capsys.readouterr()
+        assert SCHEMA_VALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -375,10 +386,11 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     "page": false
 }
 """
-    assert not validate_schema("unused_service_path.json", "marathon")
+    for schema_type in ["marathon", "kubernetes"]:
+        assert not validate_schema("unused_service_path.json", schema_type)
 
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -403,10 +415,11 @@ main:
     security:
         outbound_firewall: bblock
 """
-    assert not validate_schema("unused_service_path.yaml", "marathon")
+    for schema_type in ["marathon", "kubernetes"]:
+        assert not validate_schema("unused_service_path.yaml", schema_type)
 
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -418,10 +431,11 @@ def test_marathon_validate_invalid_key_bad(mock_get_file_contents, capsys):
     }
 }
 """
-    assert not validate_schema("unused_service_path.json", "marathon")
+    for schema_type in ["marathon", "kubernetes"]:
+        assert not validate_schema("unused_service_path.json", schema_type)
 
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
