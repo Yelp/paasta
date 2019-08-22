@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from argparse import ArgumentTypeError
+
 import mock
 from pytest import raises
 
@@ -104,6 +106,32 @@ def test__get_secret_provider_for_service():
                 "vault_cluster_config": mock_config.get_vault_cluster_config.return_value
             },
         )
+
+
+def test_check_secret_name():
+    assert secret.check_secret_name("Yelp-Yay-2019_20_08") == "Yelp-Yay-2019_20_08"
+    assert secret.check_secret_name("KGZ-2019_20_08") == "KGZ-2019_20_08"
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("_HOPE_THIS_IS_OK")
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("--OK_OR_NOT")
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("-Is-This_OK")
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("That's a bad name...")
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("still.bad.name!")
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("youdidntconvincethisfunction&me")
+
+    with raises(ArgumentTypeError):
+        secret.check_secret_name("are_you_kidding?")
 
 
 def test_paasta_secret():
