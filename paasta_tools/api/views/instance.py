@@ -58,7 +58,7 @@ from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
 from paasta_tools.mesos.task import Task
-from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
+from paasta_tools.mesos_tools import filter_mesos_slaves_by_blacklist
 from paasta_tools.mesos_tools import (
     get_cached_list_of_not_running_tasks_from_frameworks,
 )
@@ -400,33 +400,38 @@ def marathon_smartstack_status(
     monitoring_blacklist = job_config.get_monitoring_blacklist(
         system_deploy_blacklist=settings.system_paasta_config.get_deploy_blacklist()
     )
-    filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist, whitelist=None
+
+    expected_slave_attributes = (
+        settings.system_paasta_config.get_expected_slave_attributes()
+    )
+    if expected_slave_attributes is None:
+        return []
+    fake_slaves = [{"attributes": a} for a in expected_slave_attributes]
+
+    filtered_slaves = filter_mesos_slaves_by_blacklist(
+        slaves=fake_slaves, blacklist=monitoring_blacklist, whitelist=None
     )
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves, attribute=discover_location_type
     )
 
     # rebuild the dict, replacing the slave object with just their hostname
-    slave_hostname_by_location = {
-        attribute_value: [slave["hostname"] for slave in slaves]
-        for attribute_value, slaves in grouped_slaves.items()
+    slave_locations = {
+        attribute_value for attribute_value, slaves in grouped_slaves.items()
     }
 
     expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
         service, instance, settings.cluster
     )
-    expected_count_per_location = int(
-        expected_smartstack_count / len(slave_hostname_by_location)
-    )
+    expected_count_per_location = int(expected_smartstack_count / len(slave_locations))
     smartstack_status: MutableMapping[str, Any] = {
         "registration": registration,
         "expected_backends_per_location": expected_count_per_location,
         "locations": [],
     }
 
-    for location, hosts in slave_hostname_by_location.items():
-        synapse_host = hosts[0]
+    for location in slave_locations:
+        synapse_host = tasks[0].host
         sorted_backends = sorted(
             get_backends(
                 registration,
