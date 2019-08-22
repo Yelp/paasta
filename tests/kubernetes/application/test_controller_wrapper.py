@@ -24,15 +24,12 @@ def test_ensure_pod_disruption_budget_create():
 
         mock_client = mock.MagicMock()
 
-        mock_pdr = mock.Mock()
-        mock_pdr.spec.max_unavailable = 10
-
         mock_client.policy.read_namespaced_pod_disruption_budget.side_effect = ApiException(
             status=404
         )
 
         app = mock.MagicMock()
-        app.soa_config.get_bounce_margin_factor.return_value = 10
+        app.soa_config.get_bounce_margin_factor.return_value = 0.1
         app.kube_deployment.service.return_value = "fake_service"
         app.kube_deployment.instance.return_value = "fake_instance"
         Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
@@ -58,7 +55,7 @@ def test_ensure_pod_disruption_budget_replaces_outdated():
         mock_client.policy.read_namespaced_pod_disruption_budget.return_value = mock_pdr
 
         app = mock.MagicMock()
-        app.soa_config.get_bounce_margin_factor.return_value = 10
+        app.soa_config.get_bounce_margin_factor.return_value = 0.1
         app.kube_deployment.service.return_value = "fake_service"
         app.kube_deployment.instance.return_value = "fake_instance"
         Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
@@ -71,7 +68,7 @@ def test_ensure_pod_disruption_budget_replaces_outdated():
 
 
 def test_sync_horizontal_pod_autoscaler():
-    mock_client = mock.MagicMock(autospec=True)
+    mock_client = mock.MagicMock()
     app = mock.MagicMock(autospec=True)
     app.item.metadata.name = "fake_name"
     app.item.metadata.namespace = "faasta"

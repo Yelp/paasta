@@ -361,14 +361,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_autoscaling_metric_spec(
         self, name: str, namespace: str = "paasta"
-    ) -> V2beta1HorizontalPodAutoscaler:
+    ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
         if not min_replicas or not max_replicas:
             log.error(
                 "Please specify min_instances and max_instances for autoscaling to work"
             )
-            return
+            return None
         metrics_provider = self.config_dict.get("autoscaling", {}).get(
             "metrics_provider", "mesos_cpu"
         )
@@ -377,7 +377,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         target = (
             float(self.config_dict.get("autoscaling", {}).get("setpoint", "0.8")) * 100
         )
-        # TODO support bespoke
+        # TODO support bespoke PAASTA-15680
         if (
             self.config_dict.get("autoscaling", {}).get("decision_policy", "")
             == "bespoke"
@@ -386,7 +386,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 f"Sorry, bespoke is not implemented yet. Please use a different decision \
                 policy if possible for {name}/name in namespace{namespace}"
             )
-            return
+            return None
         elif metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta1MetricSpec(
@@ -419,7 +419,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 f"Wrong metrics specified: {metrics_provider} for\
                 {name}/name in namespace{namespace}"
             )
-            return
+            return None
 
         return V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -777,9 +777,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.get_max_instances() is not None:
             try:
                 return kube_client.deployments.read_namespaced_deployment(
-                    name=f"{self.get_sanitised_service_name()}\
-                    -{self.get_sanitised_instance_name()}",
-                    namespace="paasta",
+                    name=self.get_sanitised_deployment_name(), namespace="paasta"
                 ).spec.replicas
             except ApiException as e:
                 log.error(e)

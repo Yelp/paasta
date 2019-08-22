@@ -205,8 +205,8 @@ class DeploymentWrapper(Application):
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
-        In order for autoscaling to work, there needs to be at least three configurations
-        min_instnace, max_instance, and instance
+        In order for autoscaling to work, there needs to be at least two configurations
+        min_instnace, max_instance, and there cannot be instance.
         """
         self.logging.info(
             f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
@@ -221,6 +221,11 @@ class DeploymentWrapper(Application):
         body = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name, namespace=self.item.metadata.namespace
         )
+        if not body:
+            raise Exception(
+                f"CRIT: autoscaling misconfigured for {self.kube_deployment.service}.\
+                    {self.kube_deployment.instance}. Please correct the configuration and  update pre-commit hook."
+            )
         self.logging.debug(body)
         if not hpa_exists:
             self.logging.info(
@@ -263,7 +268,7 @@ class DeploymentWrapper(Application):
                 # Deployment does not exist, nothing to delete but
                 # we can consider this a success.
                 self.logging.debug(
-                    f"not deleting nonexistent HPA/{self.item.metadata.name} from namespace/{self.item.metadata.namespace}".format(
+                    "not deleting nonexistent HPA/{self.item.metadata.name} from namespace/{self.item.metadata.namespace}".format(
                         self.item.metadata.name, self.item.metadata.namespace
                     )
                 )
