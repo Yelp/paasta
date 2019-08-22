@@ -396,13 +396,16 @@ def marathon_mesos_status_human(
         marathon_mesos_status_summary(running_task_count, expected_instance_count)
     )
 
-    output.append("  Running Tasks:")
-    running_tasks_table = create_mesos_running_tasks_table(running_tasks)
-    output.extend([f"    {line}" for line in running_tasks_table])
+    if running_tasks or non_running_tasks:
+        output.append("  Running Tasks:")
+        running_tasks_table = create_mesos_running_tasks_table(running_tasks)
+        output.extend([f"    {line}" for line in running_tasks_table])
 
-    output.append(PaastaColors.grey("  Non-running Tasks:"))
-    non_running_tasks_table = create_mesos_non_running_tasks_table(non_running_tasks)
-    output.extend([f"    {line}" for line in non_running_tasks_table])
+        output.append(PaastaColors.grey("  Non-running Tasks:"))
+        non_running_tasks_table = create_mesos_non_running_tasks_table(
+            non_running_tasks
+        )
+        output.extend([f"    {line}" for line in non_running_tasks_table])
 
     return output
 
