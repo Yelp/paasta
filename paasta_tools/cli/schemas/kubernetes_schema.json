@@ -318,25 +318,6 @@
                 "healthcheck_timeout_seconds": {
                     "type": "number",
                     "default": 10
-                },
-                "healthcheck_max_consecutive_failures": {
-                    "type": "integer",
-                    "default": 6
-                },
-                "healthcheck_uri": {
-                    "type": "string",
-                    "default": "/status"
-                },
-                "cpu_burst_add": {
-                    "type": "number",
-                    "minimum": 0.0,
-                    "exclusiveMinimum": false
-                },
-                "extra_docker_args": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
                 }
             }
         }
