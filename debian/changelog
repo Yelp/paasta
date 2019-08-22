@@ -1,3 +1,11 @@
+paasta-tools (0.85.50) xenial; urgency=medium
+
+  * 0.85.50 tagged with 'make release'
+    Commit: Merge pull request #2380 from Yelp/u/bayke/PAASTA-14239
+    Added alphanumeric validation for paasta cli --secret-name argument
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Thu, 22 Aug 2019 04:30:24 -0700
+
 paasta-tools (0.85.49) xenial; urgency=medium
 
   * 0.85.49 tagged with 'make release'
