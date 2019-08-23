@@ -1731,6 +1731,7 @@ def test_proportional_decision_policy_moving_average(
         "num_healthy_instances": 10,
         "forecast_policy": "moving_average",
         "moving_average_window_seconds": 60,
+        "persist_data": False,
     }
     mock_fetch_historical_load.return_value = [(0, 1), (1, 7), (60, 5)]
 
