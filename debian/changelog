@@ -1,3 +1,11 @@
+paasta-tools (0.85.52) xenial; urgency=medium
+
+  * 0.85.52 tagged with 'make release'
+    Commit: Merge branch
+    "dont_record_history_when_task_data_insufficient"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 23 Aug 2019 09:22:48 -0700
+
 paasta-tools (0.85.51) xenial; urgency=medium
 
   * 0.85.51 tagged with 'make release'

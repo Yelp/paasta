@@ -10,7 +10,6 @@ Submodules
    paasta_tools.deployd.leader
    paasta_tools.deployd.master
    paasta_tools.deployd.metrics
-   paasta_tools.deployd.queue
    paasta_tools.deployd.watchers
    paasta_tools.deployd.workers
 
