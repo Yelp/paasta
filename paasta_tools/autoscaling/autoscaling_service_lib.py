@@ -190,6 +190,17 @@ def proportional_decision_policy(
 
     desired_number_instances = int(round(predicted_load / (setpoint - offset)))
 
+    # Don't scale down if the current utilization >= the setpoint (or the high point of the good enough window)
+    # This prevents the case where the moving_average forcast_policy thinks the service needs to scale
+    #  down several times in a row due to under-utilization in the near past
+    if desired_number_instances < current_instances:
+        if good_enough_window:
+            _, high = good_enough_window
+            if utilization >= high:
+                desired_number_instances = current_instances
+        elif utilization >= setpoint:
+            desired_number_instances = current_instances
+
     if good_enough_window:
         low, high = good_enough_window
         predicted_load_per_instance_with_current_instances = (

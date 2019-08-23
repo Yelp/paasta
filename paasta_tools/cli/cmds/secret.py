@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import os
 import re
 import sys
@@ -24,6 +25,23 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
+
+
+SECRET_NAME_REGEX = r"([A-Za-z0-9_-]*)"
+
+
+def check_secret_name(secret_name_arg: str):
+    pattern = re.compile(SECRET_NAME_REGEX)
+    if (
+        not secret_name_arg.startswith("-")
+        and not secret_name_arg.startswith("_")
+        and "".join(pattern.findall(secret_name_arg)) == secret_name_arg
+    ):
+        return secret_name_arg
+    raise argparse.ArgumentTypeError(
+        "--secret-name argument should only contain letters, numbers, "
+        "dashes and underscores characters and cannot start from latter two"
+    )
 
 
 def add_subparser(subparsers):
@@ -43,6 +61,7 @@ def add_subparser(subparsers):
     secret_parser.add_argument(
         "-n",
         "--secret-name",
+        type=check_secret_name,
         required=True,
         help="The name of the secret to create/update, "
         "this is the name you will reference in your "
