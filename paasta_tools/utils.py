@@ -2408,11 +2408,13 @@ def get_umask() -> int:
 
 
 def get_user_agent() -> str:
-    user_agent = "PaaSTA Tools %s" % paasta_tools.__version__
-    if len(sys.argv) >= 1:
-        return user_agent + " " + os.path.basename(sys.argv[0])
+    base_name = os.path.basename(sys.argv[0])
+    if base_name == "gunicorn":
+        return f"{sys.argv[-1]} {paasta_tools.__version__}"
+    elif len(sys.argv) >= 1:
+        return f"{base_name} {paasta_tools.__version__}"
     else:
-        return user_agent
+        return f"PaaSTA Tools {paasta_tools.__version__}"
 
 
 @contextlib.contextmanager

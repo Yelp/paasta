@@ -1645,7 +1645,7 @@ class TestMarathonTools:
             )
             args, kwargs = client_patch.call_args
             assert "User-Agent" in kwargs["session"].headers
-            assert "PaaSTA" in kwargs["session"].headers["User-Agent"]
+            assert "py.test" in kwargs["session"].headers["User-Agent"]
 
     def test_list_all_marathon_app_ids(self):
         fakeapp1 = mock.Mock(id="/fake_app1")
