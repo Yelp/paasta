@@ -1,3 +1,12 @@
+paasta-tools (0.85.51) xenial; urgency=medium
+
+  * 0.85.51 tagged with 'make release'
+    Commit: Merge pull request #2383 from Yelp/omit_smartstack_in_api
+    add query param to omit smartstack information in paasta status api
+    r…
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 22 Aug 2019 18:36:20 -0700
+
 paasta-tools (0.85.50) xenial; urgency=medium
 
   * 0.85.50 tagged with 'make release'
