@@ -1561,6 +1561,7 @@ class TestCreateMesosRunningTasksTable:
         mock_running_task.mem_limit = Struct(
             value=None, error_message="Couldn't get memory"
         )
+        mock_running_task.rss = Struct(value=1, error_message=None)
         mock_running_task.cpu_shares = Struct(
             value=None, error_message="Couldn't get CPU"
         )

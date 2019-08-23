@@ -438,7 +438,7 @@ def create_mesos_running_tasks_table(running_tasks):
 
 def get_mesos_task_memory_string(task):
     if task.rss.value is None or task.mem_limit.value is None:
-        return task.mem_limit.error_message
+        return task.rss.error_message or task.mem_limit.error_message
     elif task.mem_limit.value == 0:
         return "Undef"
     else:
