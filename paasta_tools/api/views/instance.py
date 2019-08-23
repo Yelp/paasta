@@ -224,7 +224,11 @@ def kubernetes_job_status(
 
 
 def marathon_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: int,
+    omit_smartstack: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
 
@@ -246,22 +250,25 @@ def marathon_instance_status(
         )
     )
 
-    service_namespace_config = marathon_tools.load_service_namespace_config(
-        service=service,
-        namespace=job_config.get_nerve_namespace(),
-        soa_dir=settings.soa_dir,
-    )
-    if "proxy_port" in service_namespace_config:
-        tasks = [task for app, _ in matching_apps_with_clients for task in app.tasks]
-
-        mstatus["smartstack"] = marathon_smartstack_status(
-            service,
-            instance,
-            job_config,
-            service_namespace_config,
-            tasks,
-            should_return_individual_backends=verbose > 0,
+    if not omit_smartstack:
+        service_namespace_config = marathon_tools.load_service_namespace_config(
+            service=service,
+            namespace=job_config.get_nerve_namespace(),
+            soa_dir=settings.soa_dir,
         )
+        if "proxy_port" in service_namespace_config:
+            tasks = [
+                task for app, _ in matching_apps_with_clients for task in app.tasks
+            ]
+
+            mstatus["smartstack"] = marathon_smartstack_status(
+                service,
+                instance,
+                job_config,
+                service_namespace_config,
+                tasks,
+                should_return_individual_backends=verbose > 0,
+            )
 
     mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
 
@@ -645,6 +652,7 @@ def instance_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
+    omit_smartstack = request.swagger_data.get("omit_smartstack") or False
 
     instance_status: Dict[str, Any] = {}
     instance_status["service"] = service
@@ -684,7 +692,7 @@ def instance_status(request):
     try:
         if instance_type == "marathon":
             instance_status["marathon"] = marathon_instance_status(
-                instance_status, service, instance, verbose
+                instance_status, service, instance, verbose, omit_smartstack
             )
         elif instance_type == "chronos":
             if verbose:

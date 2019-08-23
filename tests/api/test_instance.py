@@ -37,6 +37,7 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
+@pytest.mark.parametrize("omit_smartstack", [True, False])
 @mock.patch("paasta_tools.api.views.instance.marathon_mesos_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.marathon_smartstack_status", autospec=True)
 @mock.patch(
@@ -68,6 +69,7 @@ def test_instance_status_marathon(
     mock_load_service_namespace_config,
     mock_marathon_smartstack_status,
     mock_marathon_mesos_status,
+    omit_smartstack,
 ):
     settings.cluster = "fake_cluster"
 
@@ -103,15 +105,18 @@ def test_instance_status_marathon(
         "service": "fake_service",
         "instance": "fake_instance",
         "verbose": 2,
+        "omit_smartstack": omit_smartstack,
     }
     response = instance.instance_status(request)
 
-    assert response["marathon"] == {
+    expected_response = {
         "marathon_job_status_field1": "field1_value",
         "marathon_job_status_field2": "field2_value",
-        "smartstack": mock_marathon_smartstack_status.return_value,
         "mesos": mock_marathon_mesos_status.return_value,
     }
+    if not omit_smartstack:
+        expected_response["smartstack"] = mock_marathon_smartstack_status.return_value
+    assert response["marathon"] == expected_response
 
     mock_marathon_job_status.assert_called_once_with(
         "fake_service",
@@ -120,17 +125,18 @@ def test_instance_status_marathon(
         mock_get_matching_apps_with_clients.return_value,
         2,
     )
-    mock_marathon_smartstack_status.assert_called_once_with(
-        "fake_service",
-        "fake_instance",
-        mock_service_config,
-        mock_load_service_namespace_config.return_value,
-        mock_app.tasks,
-        should_return_individual_backends=True,
-    )
     mock_marathon_mesos_status.assert_called_once_with(
         "fake_service", "fake_instance", 2
     )
+    if not omit_smartstack:
+        mock_marathon_smartstack_status.assert_called_once_with(
+            "fake_service",
+            "fake_instance",
+            mock_service_config,
+            mock_load_service_namespace_config.return_value,
+            mock_app.tasks,
+            should_return_individual_backends=True,
+        )
 
 
 @pytest.fixture

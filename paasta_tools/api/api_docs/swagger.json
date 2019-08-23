@@ -327,6 +327,13 @@
                         "required": false,
                         "type": "integer",
                         "format": "int32"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Omit smartstack information",
+                        "name": "omit_smartstack",
+                        "required": false,
+                        "type": "boolean"
                     }
                 ]
             }
