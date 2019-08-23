@@ -40,7 +40,9 @@ class fake_args:
     verbose = False
 
 
-def mock_status_instance_side_effect(service, instance):  # pragma: no cover (gevent)
+def mock_status_instance_side_effect(
+    service, instance, omit_smartstack
+):  # pragma: no cover (gevent)
     if instance in ["instance1", "instance6", "notaninstance", "api_error"]:
         # valid completed instance
         mock_mstatus = Mock(
