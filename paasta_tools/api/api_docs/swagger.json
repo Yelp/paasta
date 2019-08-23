@@ -804,10 +804,6 @@
                 "tail_lines": {
                     "$ref": "#/definitions/MesosTaskTailLines",
                     "description": "Stdout and stderr tail of the task"
-                },
-                "error_message": {
-                    "type": "string",
-                    "description": "Error message when fetching task information fails"
                 }
             }
         },
@@ -834,10 +830,6 @@
                 "tail_lines": {
                     "$ref": "#/definitions/MesosTaskTailLines",
                     "description": "Stdout and stderr tail of the task"
-                },
-                "error_message": {
-                    "type": "string",
-                    "description": "Error message when fetching task information fails"
                 }
             }
         },
