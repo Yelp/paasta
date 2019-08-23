@@ -1,3 +1,10 @@
+paasta-tools (0.85.53) xenial; urgency=medium
+
+  * 0.85.53 tagged with 'make release'
+    Commit: Merge branch "fix_tests" of github.com:Yelp/paasta
+
+ -- Evan Krall <krall@yelp.com>  Fri, 23 Aug 2019 14:14:32 -0700
+
 paasta-tools (0.85.52) xenial; urgency=medium
 
   * 0.85.52 tagged with 'make release'
