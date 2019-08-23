@@ -92,8 +92,6 @@ REAL_ROLLBACK_PRESS = {
 class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
     """A minimum-viable SlackDeploymentProcess subclass."""
 
-    slack_channel = "test"
-
     def status_code_by_state(self):
         return {}
 
@@ -119,7 +117,7 @@ class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
         return mock_client
 
     def get_slack_channel(self):
-        raise NotImplementedError()
+        return "#test"
 
     def get_deployment_name(self):
         return "deployment name"
@@ -129,6 +127,22 @@ class DummySlackDeploymentProcess(slack.SlackDeploymentProcess):
 
     def get_button_text(self, button, is_active):
         return f"{button} {is_active}"
+
+
+class ErrorSlackDeploymentProcess(DummySlackDeploymentProcess):
+    default_slack_channel = "#dne"
+
+    def get_slack_client(self):
+        mock_client = mock.Mock(spec=SlackClient)
+        mock_client.api_call.return_value = {"ok": False, "error": "uh oh"}
+        return mock_client
+
+
+def test_slack_errors_no_exceptions():
+    sdp = ErrorSlackDeploymentProcess()
+    # Make sure slack methods don't fail.
+    sdp.update_slack()
+    sdp.update_slack_thread("Hello world")
 
 
 def test_get_detail_slack_blocks_for_deployment_happy_path():
