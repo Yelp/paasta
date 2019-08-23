@@ -821,14 +821,6 @@ def test_is_task_data_insufficient():
     )
     assert ret
 
-    # Test more instances above threshold
-    ret = autoscaling_service_lib.is_task_data_insufficient(
-        fake_marathon_service_config,
-        [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) + 1),
-        10,
-    )
-    assert ret
-
     # Test more instances below threshold
     ret = autoscaling_service_lib.is_task_data_insufficient(
         fake_marathon_service_config,
@@ -844,14 +836,6 @@ def test_is_task_data_insufficient():
         10,
     )
     assert ret
-
-    # Test fewer above threshold
-    ret = autoscaling_service_lib.is_task_data_insufficient(
-        fake_marathon_service_config,
-        [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) + 1),
-        10,
-    )
-    assert not ret
 
 
 def test_autoscale_marathon_instance_aborts_when_wrong_number_tasks():
