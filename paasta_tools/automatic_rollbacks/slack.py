@@ -89,6 +89,8 @@ async def get_slack_events():
 
 
 class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
+    default_slack_channel: Optional[str] = None
+
     def __init__(self) -> None:
         super().__init__()
         self.human_readable_status = "Initializing..."
@@ -96,6 +98,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         self.last_action = None
         self.summary_blocks_str = ""
         self.detail_blocks_str = ""
+        self.slack_channel = self.get_slack_channel()
         self.send_initial_slack_message()
 
         asyncio.ensure_future(self.listen_for_slack_events(), loop=self.event_loop)
@@ -269,7 +272,27 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             "chat.postMessage", blocks=summary_blocks, channel=self.slack_channel
         )
         self.slack_ts = resp["message"]["ts"] if resp and resp["ok"] else None
-        self.slack_channel_id = resp["channel"]
+
+        self.slack_channel_id = resp.get("channel")
+        if not self.slack_channel_id:
+            log.warning(
+                f"Is '{self.slack_channel}' a valid channel name? No channel ID in response"
+            )
+            if (
+                self.default_slack_channel
+                and self.slack_channel != self.default_slack_channel
+            ):
+                log.warning(
+                    f"Falling back to default channel {self.default_slack_channel}"
+                )
+                self.slack_channel = self.default_slack_channel
+                self.send_initial_slack_message()
+                return
+            else:
+                log.error("Continuing without Slack")
+                self.slack_client = None
+                return
+
         if resp["ok"] is not True:
             log.error(f"Posting to slack failed: {resp['error']}")
 

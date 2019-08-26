@@ -403,6 +403,7 @@ class Progress:
 class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
+    default_slack_channel = DEFAULT_SLACK_CHANNEL
 
     def __init__(
         self,
@@ -444,9 +445,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
-        self.slack_ts = None
-        self.slack_channel = self.get_slack_channel()
-        self.slack_channel_id = None
         self.last_action = None
         self.slo_watchers = []
 
