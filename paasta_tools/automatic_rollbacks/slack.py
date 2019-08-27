@@ -239,6 +239,21 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
 
         return buttons
 
+    def slack_api_call(self, *args, **kwargs):
+        """Makes an api call to Slack via a client, if it exists. Non-Slack errors
+        such as JSONDecodeError are caught and returned.
+        """
+        if self.slack_client is None:
+            return {"ok": False, "error": "Slack client does not exist"}
+        else:
+            try:
+                resp = self.slack_client.api_call(*args, **kwargs)
+                return resp
+            except Exception as e:
+                # leaving error/warning logging to callers, only debug log here.
+                log.debug(f"Exception encountered when making Slack api call: {e}")
+                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
     def update_slack_thread(self, message, color=None):
         if self.slack_client is None:
             print(f"Would update the slack thread with: {message}")
@@ -246,14 +261,14 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         else:
             print(f"Updating slack thread with: {message}")
         if color:
-            resp = self.slack_client.api_call(
+            resp = self.slack_api_call(
                 "chat.postMessage",
                 channel=self.slack_channel,
                 attachments=[{"text": message, "color": color}],
                 thread_ts=self.slack_ts,
             )
         else:
-            resp = self.slack_client.api_call(
+            resp = self.slack_api_call(
                 "chat.postMessage",
                 channel=self.slack_channel,
                 text=message,
@@ -268,7 +283,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
             return
         summary_blocks = self.get_summary_blocks_for_deployment()
         detail_blocks = self.get_detail_slack_blocks_for_deployment()
-        resp = self.slack_client.api_call(
+        resp = self.slack_api_call(
             "chat.postMessage", blocks=summary_blocks, channel=self.slack_channel
         )
         self.slack_ts = resp["message"]["ts"] if resp and resp["ok"] else None
@@ -296,7 +311,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         if resp["ok"] is not True:
             log.error(f"Posting to slack failed: {resp['error']}")
 
-        resp = self.slack_client.api_call(
+        resp = self.slack_api_call(
             "chat.postMessage",
             blocks=detail_blocks,
             channel=self.slack_channel,
@@ -319,7 +334,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
         detail_blocks_str = json.dumps(detail_blocks, sort_keys=True)
 
         if self.summary_blocks_str != summary_blocks_str:
-            resp = self.slack_client.api_call(
+            resp = self.slack_api_call(
                 "chat.update",
                 channel=self.slack_channel_id,
                 blocks=summary_blocks,
@@ -332,7 +347,7 @@ class SlackDeploymentProcess(DeploymentProcess, abc.ABC):
                 log.error(f"Posting to slack failed: {resp['error']}")
 
         if self.detail_blocks_str != detail_blocks_str:
-            resp = self.slack_client.api_call(
+            resp = self.slack_api_call(
                 "chat.update",
                 channel=self.slack_channel_id,
                 blocks=detail_blocks,
