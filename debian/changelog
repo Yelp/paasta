@@ -1,3 +1,10 @@
+paasta-tools (0.85.54) xenial; urgency=medium
+
+  * 0.85.54 tagged with 'make release'
+    Commit: Merge branch "dont_worry_about_too_many_tasks"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 27 Aug 2019 14:50:28 -0700
+
 paasta-tools (0.85.53) xenial; urgency=medium
 
   * 0.85.53 tagged with 'make release'
