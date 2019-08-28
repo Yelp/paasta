@@ -37,6 +37,7 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
+@pytest.mark.parametrize("omit_mesos", [True, False])
 @pytest.mark.parametrize("omit_smartstack", [True, False])
 @mock.patch("paasta_tools.api.views.instance.marathon_mesos_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.marathon_smartstack_status", autospec=True)
@@ -70,6 +71,7 @@ def test_instance_status_marathon(
     mock_marathon_smartstack_status,
     mock_marathon_mesos_status,
     omit_smartstack,
+    omit_mesos,
 ):
     settings.cluster = "fake_cluster"
 
@@ -106,16 +108,18 @@ def test_instance_status_marathon(
         "instance": "fake_instance",
         "verbose": 2,
         "omit_smartstack": omit_smartstack,
+        "omit_mesos": omit_mesos,
     }
     response = instance.instance_status(request)
 
     expected_response = {
         "marathon_job_status_field1": "field1_value",
         "marathon_job_status_field2": "field2_value",
-        "mesos": mock_marathon_mesos_status.return_value,
     }
     if not omit_smartstack:
         expected_response["smartstack"] = mock_marathon_smartstack_status.return_value
+    if not omit_mesos:
+        expected_response["mesos"] = mock_marathon_mesos_status.return_value
     assert response["marathon"] == expected_response
 
     mock_marathon_job_status.assert_called_once_with(
@@ -125,9 +129,10 @@ def test_instance_status_marathon(
         mock_get_matching_apps_with_clients.return_value,
         2,
     )
-    mock_marathon_mesos_status.assert_called_once_with(
-        "fake_service", "fake_instance", 2
-    )
+    if not omit_mesos:
+        mock_marathon_mesos_status.assert_called_once_with(
+            "fake_service", "fake_instance", 2
+        )
     if not omit_smartstack:
         mock_marathon_smartstack_status.assert_called_once_with(
             "fake_service",

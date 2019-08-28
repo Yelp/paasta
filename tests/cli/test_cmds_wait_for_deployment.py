@@ -41,7 +41,7 @@ class fake_args:
 
 
 def mock_status_instance_side_effect(
-    service, instance, omit_smartstack
+    service, instance, omit_smartstack, omit_mesos
 ):  # pragma: no cover (gevent)
     if instance in ["instance1", "instance6", "notaninstance", "api_error"]:
         # valid completed instance
