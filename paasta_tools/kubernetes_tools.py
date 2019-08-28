@@ -814,6 +814,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     system_paasta_config=system_paasta_config,
                     service_namespace_config=service_namespace_config,
                 ),
+                node_selector={"yelp.com/pool": self.get_pool()},
                 restart_policy="Always",
                 volumes=self.get_pod_volumes(
                     docker_volumes=docker_volumes,
