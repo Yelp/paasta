@@ -161,3 +161,39 @@ def test_event_to_buttonpress_rollback():
     actual = slack.event_to_buttonpress(REAL_ROLLBACK_PRESS)
     assert actual.username == "kwa"
     assert actual.action == "rollback"
+
+
+def test_slack_api_call():
+    sdp = DummySlackDeploymentProcess()
+    slack_client = sdp.slack_client
+
+    resp = sdp.slack_api_call("some_arguments", other_arg=True)
+
+    assert resp["ok"]
+    assert (
+        mock.call("some_arguments", other_arg=True)
+        in slack_client.api_call.call_args_list
+    )
+
+
+def test_slack_api_call_no_client():
+    sdp = DummySlackDeploymentProcess()
+    sdp.slack_client = None
+
+    resp = sdp.slack_api_call("some_arguments")
+
+    assert not resp["ok"]
+    assert resp["error"] == "Slack client does not exist"
+
+
+def test_slack_api_call_error():
+    sdp = DummySlackDeploymentProcess()
+    slack_client = sdp.slack_client
+
+    with mock.patch.object(
+        slack_client, "api_call", side_effect=ValueError("error msg")
+    ):
+        resp = sdp.slack_api_call("some_arguments")
+
+    assert not resp["ok"]
+    assert resp["error"] == "ValueError: error msg"
