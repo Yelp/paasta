@@ -814,7 +814,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     system_paasta_config=system_paasta_config,
                     service_namespace_config=service_namespace_config,
                 ),
-                node_selector={"yelp.com/pool": self.get_pool()},
+                node_selector=self.get_node_selector(),
                 restart_policy="Always",
                 volumes=self.get_pod_volumes(
                     docker_volumes=docker_volumes,
@@ -822,6 +822,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ),
         )
+
+    def get_node_selector(self) -> Mapping[str, str]:
+        return {"yelp.com/pool": self.get_pool()}
 
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]
