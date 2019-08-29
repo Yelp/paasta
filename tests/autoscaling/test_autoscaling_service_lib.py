@@ -1748,6 +1748,7 @@ def test_proportional_decision_policy_moving_average(
         setpoint=0.50,
         utilization=0.46,
         good_enough_window=(0.45, 0.55),
+        persist_data=False,
     )
 
 
