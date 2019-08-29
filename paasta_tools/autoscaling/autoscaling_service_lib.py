@@ -142,6 +142,8 @@ def threshold_decision_policy(current_instances, error, **kwargs):
 def proportional_decision_policy(
     zookeeper_path,
     current_instances,
+    min_instances,
+    max_instances,
     setpoint,
     utilization,
     num_healthy_instances,
@@ -208,6 +210,11 @@ def proportional_decision_policy(
         )
         if low <= predicted_load_per_instance_with_current_instances <= high:
             desired_number_instances = current_instances
+
+    if desired_number_instances < min_instances:
+        desired_number_instances = min_instances
+    if desired_number_instances > max_instances:
+        desired_number_instances = max_instances
 
     return (
         desired_number_instances - current_instances
@@ -587,6 +594,8 @@ def get_new_instance_count(
     autoscaling_amount = autoscaling_decision_policy(
         utilization=utilization,
         error=error,
+        min_instances=marathon_service_config.get_min_instances(),
+        max_instances=marathon_service_config.get_max_instances(),
         current_instances=current_instances,
         zookeeper_path=zookeeper_path,
         num_healthy_instances=num_healthy_instances,
@@ -716,13 +725,6 @@ def autoscale_marathon_instance(
                         ),
                         level="event",
                     )
-            else:
-                write_to_log(
-                    config=marathon_service_config,
-                    line="Staying at %d instances (%s)"
-                    % (current_instances, humanize_error(error)),
-                    level="debug",
-                )
     except LockHeldException:
         log.warning(
             "Skipping autoscaling run for {service}.{instance} because the lock is held".format(
