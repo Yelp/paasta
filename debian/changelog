@@ -1,3 +1,10 @@
+paasta-tools (0.85.56) xenial; urgency=medium
+
+  * 0.85.56 tagged with 'make release'
+    Commit: Fix tests
+
+ -- Evan Krall <krall@yelp.com>  Wed, 28 Aug 2019 17:57:55 -0700
+
 paasta-tools (0.85.55) xenial; urgency=medium
 
   * 0.85.55 tagged with 'make release'
