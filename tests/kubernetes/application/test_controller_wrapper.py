@@ -1,16 +1,8 @@
 import mock
-from kubernetes.client import V1ObjectMeta
-from kubernetes.client import V2beta1CrossVersionObjectReference
-from kubernetes.client import V2beta1HorizontalPodAutoscaler
-from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta1MetricSpec
-from kubernetes.client import V2beta1PodsMetricSource
-from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
 def test_ensure_pod_disruption_budget_create():
@@ -69,34 +61,16 @@ def test_ensure_pod_disruption_budget_replaces_outdated():
 
 def test_sync_horizontal_pod_autoscaler():
     mock_client = mock.MagicMock()
-    app = mock.MagicMock(autospec=True)
+    app = mock.MagicMock()
     app.item.metadata.name = "fake_name"
     app.item.metadata.namespace = "faasta"
-    mock_config = mock.MagicMock(autospec=True)
 
     # helper Functions for mocking
     def setup_app(app, config_dict, exists_hpa):
         app.reset_mock()
         mock_client.reset_mock()
-        app.soa_config = mock_config
         app.get_soa_config.return_value = config_dict
-        app.soa_config.config_dict = config_dict
         app.exists_hpa.return_value = exists_hpa
-
-    def mock_get_autoscaling_metric_spec(name, namespace):
-        return KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            self=mock_config, name=name, namespace=namespace
-        )
-
-    def mock_max_instance():
-        return KubernetesDeploymentConfig.get_max_instances(self=mock_config)
-
-    def mock_min_instance():
-        return KubernetesDeploymentConfig.get_min_instances(self=mock_config)
-
-    mock_config.get_autoscaling_metric_spec = mock_get_autoscaling_metric_spec
-    mock_config.get_min_instances = mock_min_instance
-    mock_config.get_max_instances = mock_max_instance
 
     # Do nothing
     config_dict = {"instances": 1}
@@ -107,7 +81,7 @@ def test_sync_horizontal_pod_autoscaler():
         == 0
     )
     assert (
-        mock_client.autoscaling.update_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
@@ -121,167 +95,38 @@ def test_sync_horizontal_pod_autoscaler():
         == 0
     )
     assert (
-        mock_client.autoscaling.update_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 1
 
-    # Create new HPA with cpu
-    config_dict = {
-        "min_instances": 1,
-        "max_instances": 3,
-        "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": "0.5"},
-    }
+    # Create
+    config_dict = {}
     setup_app(app, config_dict, False)
     DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
     assert (
-        mock_client.autoscaling.update_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
     mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
-        body=V2beta1HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="faasta"),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta1MetricSpec(
-                        type="Resource",
-                        resource=V2beta1ResourceMetricSource(
-                            name="cpu", target_average_utilization=50.0
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
-                ),
-            ),
-        ),
+        body=app.soa_config.get_autoscaling_metric_spec.return_value,
         pretty=True,
     )
 
-    # Update new HPA with cpu
-    app.reset_mock()
-    mock_client.reset_mock()
-    config_dict = {
-        "min_instances": 1,
-        "max_instances": 3,
-        "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": "0.5"},
-    }
-
+    # Update
+    config_dict = {}
     setup_app(app, config_dict, True)
     DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
     assert (
-        mock_client.autoscaling.update_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
     mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
-        body=V2beta1HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="faasta"),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta1MetricSpec(
-                        type="Resource",
-                        resource=V2beta1ResourceMetricSource(
-                            name="cpu", target_average_utilization=50.0
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
-                ),
-            ),
-        ),
-        pretty=True,
         name="fake_name",
-    )
-
-    # update http
-    app.reset_mock()
-    mock_client.reset_mock()
-    config_dict = {
-        "min_instances": 1,
-        "max_instances": 3,
-        "autoscaling": {"metrics_provider": "http", "setpoint": "0.5"},
-    }
-
-    setup_app(app, config_dict, True)
-    DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
-    assert (
-        mock_client.autoscaling.update_namespaced_horizontal_pod_autoscaler.call_count
-        == 0
-    )
-    assert app.delete_horizontal_pod_autoscaler.call_count == 0
-    mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
-        namespace="faasta",
-        body=V2beta1HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="faasta"),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta1MetricSpec(
-                        type="Pods",
-                        pods=V2beta1PodsMetricSource(
-                            metric_name="http", target_average_value=50.0
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
-                ),
-            ),
-        ),
+        body=app.soa_config.get_autoscaling_metric_spec.return_value,
         pretty=True,
-        name="fake_name",
-    )
-
-    # update uwsgi
-    app.reset_mock()
-    mock_client.reset_mock()
-    config_dict = {
-        "min_instances": 1,
-        "max_instances": 3,
-        "autoscaling": {"metrics_provider": "uwsgi", "setpoint": "0.5"},
-    }
-
-    setup_app(app, config_dict, True)
-    DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
-    assert (
-        mock_client.autoscaling.update_namespaced_horizontal_pod_autoscaler.call_count
-        == 0
-    )
-    assert app.delete_horizontal_pod_autoscaler.call_count == 0
-    mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
-        namespace="faasta",
-        body=V2beta1HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="faasta"),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta1MetricSpec(
-                        type="Pods",
-                        pods=V2beta1PodsMetricSource(
-                            metric_name="uwsgi", target_average_value=50.0
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
-                ),
-            ),
-        ),
-        pretty=True,
-        name="fake_name",
     )

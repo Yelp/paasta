@@ -37,6 +37,12 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V2beta1CrossVersionObjectReference
+from kubernetes.client import V2beta1HorizontalPodAutoscaler
+from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
+from kubernetes.client import V2beta1MetricSpec
+from kubernetes.client import V2beta1PodsMetricSource
+from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools import kubernetes_tools
@@ -874,6 +880,110 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 },
                 name="kurupt-fm",
             )
+
+    def test_get_autoscaling_metric_spec(self):
+        mock_config = mock.MagicMock()
+
+        # with cpu
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": "0.5"},
+        }
+        mock_config.get_max_instances.return_value = 3
+        mock_config.get_min_instances.return_value = 1
+        mock_config.config_dict = config_dict
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name"
+        )
+        expected_res = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(name="fake_name", namespace="paasta"),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta1MetricSpec(
+                        type="Resource",
+                        resource=V2beta1ResourceMetricSource(
+                            name="cpu", target_average_utilization=50.0
+                        ),
+                    )
+                ],
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    kind="Deployment", name="fake_name"
+                ),
+            ),
+        )
+        assert expected_res == return_value
+
+        # with http
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {"metrics_provider": "http", "setpoint": "0.5"},
+        }
+
+        mock_config.get_max_instances.return_value = 3
+        mock_config.get_min_instances.return_value = 1
+        mock_config.config_dict = config_dict
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name"
+        )
+        expected_res = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(name="fake_name", namespace="paasta"),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta1MetricSpec(
+                        type="Pods",
+                        pods=V2beta1PodsMetricSource(
+                            metric_name="http", target_average_value=50.0
+                        ),
+                    )
+                ],
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    kind="Deployment", name="fake_name"
+                ),
+            ),
+        )
+        assert expected_res == return_value
+
+        # with uwsgi
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {"metrics_provider": "uwsgi", "setpoint": "0.5"},
+        }
+
+        mock_config.get_max_instances.return_value = 3
+        mock_config.get_min_instances.return_value = 1
+        mock_config.config_dict = config_dict
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name"
+        )
+        expected_res = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(name="fake_name", namespace="paasta"),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta1MetricSpec(
+                        type="Pods",
+                        pods=V2beta1PodsMetricSource(
+                            metric_name="uwsgi", target_average_value=50.0
+                        ),
+                    )
+                ],
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    kind="Deployment", name="fake_name"
+                ),
+            ),
+        )
+        assert expected_res == return_value
 
     def test_sanitize_for_config_hash(self):
         with mock.patch(
