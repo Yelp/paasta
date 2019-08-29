@@ -330,8 +330,15 @@
                     },
                     {
                         "in": "query",
-                        "description": "Omit smartstack information",
+                        "description": "Omit Smartstack information",
                         "name": "omit_smartstack",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Omit Mesos information",
+                        "name": "omit_mesos",
                         "required": false,
                         "type": "boolean"
                     }
