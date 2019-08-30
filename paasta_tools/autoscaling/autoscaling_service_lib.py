@@ -142,9 +142,12 @@ def threshold_decision_policy(current_instances, error, **kwargs):
 def proportional_decision_policy(
     zookeeper_path,
     current_instances,
+    min_instances,
+    max_instances,
     setpoint,
     utilization,
     num_healthy_instances,
+    persist_data: bool,
     noop=False,
     offset=0.0,
     forecast_policy="current",
@@ -182,7 +185,8 @@ def proportional_decision_policy(
 
     historical_load = fetch_historical_load(zk_path_prefix=zookeeper_path)
     historical_load.append((time.time(), current_load))
-    save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
+    if persist_data:
+        save_historical_load(historical_load, zk_path_prefix=zookeeper_path)
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
 
@@ -206,6 +210,11 @@ def proportional_decision_policy(
         )
         if low <= predicted_load_per_instance_with_current_instances <= high:
             desired_number_instances = current_instances
+
+    if desired_number_instances < min_instances:
+        desired_number_instances = min_instances
+    if desired_number_instances > max_instances:
+        desired_number_instances = max_instances
 
     return (
         desired_number_instances - current_instances
@@ -550,6 +559,7 @@ def get_autoscaling_info(apps_with_clients, service_config):
                 current_instances=service_config.get_instances(),
                 marathon_service_config=service_config,
                 num_healthy_instances=len(marathon_tasks),
+                persist_data=False,
             )
         except MetricsProviderNoDataError:
             utilization = None
@@ -571,6 +581,7 @@ def get_new_instance_count(
     current_instances,
     marathon_service_config,
     num_healthy_instances,
+    persist_data: bool,
 ):
     autoscaling_decision_policy = get_decision_policy(
         autoscaling_params[DECISION_POLICY_KEY]
@@ -583,9 +594,12 @@ def get_new_instance_count(
     autoscaling_amount = autoscaling_decision_policy(
         utilization=utilization,
         error=error,
+        min_instances=marathon_service_config.get_min_instances(),
+        max_instances=marathon_service_config.get_max_instances(),
         current_instances=current_instances,
         zookeeper_path=zookeeper_path,
         num_healthy_instances=num_healthy_instances,
+        persist_data=persist_data,
         **autoscaling_params,
     )
 
@@ -627,13 +641,7 @@ def get_utilization(
 def is_task_data_insufficient(
     marathon_service_config, marathon_tasks, current_instances
 ):
-    too_many_instances_running = len(marathon_tasks) > int(
-        (1 + MAX_TASK_DELTA) * current_instances
-    )
-    too_few_instances_running = len(marathon_tasks) < int(
-        (1 - MAX_TASK_DELTA) * current_instances
-    )
-    return too_many_instances_running or too_few_instances_running
+    return len(marathon_tasks) < int((1 - MAX_TASK_DELTA) * current_instances)
 
 
 def autoscale_marathon_instance(
@@ -675,6 +683,7 @@ def autoscale_marathon_instance(
                 current_instances=current_instances,
                 marathon_service_config=marathon_service_config,
                 num_healthy_instances=num_healthy_instances,
+                persist_data=(not task_data_insufficient),
             )
             safe_downscaling_threshold = int(current_instances * 0.7)
             _record_autoscaling_decision(
@@ -716,13 +725,6 @@ def autoscale_marathon_instance(
                         ),
                         level="event",
                     )
-            else:
-                write_to_log(
-                    config=marathon_service_config,
-                    line="Staying at %d instances (%s)"
-                    % (current_instances, humanize_error(error)),
-                    level="debug",
-                )
     except LockHeldException:
         log.warning(
             "Skipping autoscaling run for {service}.{instance} because the lock is held".format(

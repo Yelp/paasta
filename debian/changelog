@@ -1,3 +1,56 @@
+paasta-tools (0.85.56) xenial; urgency=medium
+
+  * 0.85.56 tagged with 'make release'
+    Commit: Fix tests
+
+ -- Evan Krall <krall@yelp.com>  Wed, 28 Aug 2019 17:57:55 -0700
+
+paasta-tools (0.85.55) xenial; urgency=medium
+
+  * 0.85.55 tagged with 'make release'
+    Commit: Merge branch "omit_mesos_in_api" of github.com:Yelp/paasta
+
+ -- Evan Krall <krall@yelp.com>  Wed, 28 Aug 2019 17:30:05 -0700
+
+paasta-tools (0.85.54) xenial; urgency=medium
+
+  * 0.85.54 tagged with 'make release'
+    Commit: Merge branch "dont_worry_about_too_many_tasks"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 27 Aug 2019 14:50:28 -0700
+
+paasta-tools (0.85.53) xenial; urgency=medium
+
+  * 0.85.53 tagged with 'make release'
+    Commit: Merge branch "fix_tests" of github.com:Yelp/paasta
+
+ -- Evan Krall <krall@yelp.com>  Fri, 23 Aug 2019 14:14:32 -0700
+
+paasta-tools (0.85.52) xenial; urgency=medium
+
+  * 0.85.52 tagged with 'make release'
+    Commit: Merge branch
+    "dont_record_history_when_task_data_insufficient"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 23 Aug 2019 09:22:48 -0700
+
+paasta-tools (0.85.51) xenial; urgency=medium
+
+  * 0.85.51 tagged with 'make release'
+    Commit: Merge pull request #2383 from Yelp/omit_smartstack_in_api
+    add query param to omit smartstack information in paasta status api
+    r…
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 22 Aug 2019 18:36:20 -0700
+
+paasta-tools (0.85.50) xenial; urgency=medium
+
+  * 0.85.50 tagged with 'make release'
+    Commit: Merge pull request #2380 from Yelp/u/bayke/PAASTA-14239
+    Added alphanumeric validation for paasta cli --secret-name argument
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Thu, 22 Aug 2019 04:30:24 -0700
+
 paasta-tools (0.85.49) xenial; urgency=medium
 
   * 0.85.49 tagged with 'make release'

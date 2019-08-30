@@ -327,6 +327,20 @@
                         "required": false,
                         "type": "integer",
                         "format": "int32"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Omit Smartstack information",
+                        "name": "omit_smartstack",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Omit Mesos information",
+                        "name": "omit_mesos",
+                        "required": false,
+                        "type": "boolean"
                     }
                 ]
             }
@@ -797,10 +811,6 @@
                 "tail_lines": {
                     "$ref": "#/definitions/MesosTaskTailLines",
                     "description": "Stdout and stderr tail of the task"
-                },
-                "error_message": {
-                    "type": "string",
-                    "description": "Error message when fetching task information fails"
                 }
             }
         },
@@ -827,10 +837,6 @@
                 "tail_lines": {
                     "$ref": "#/definitions/MesosTaskTailLines",
                     "description": "Stdout and stderr tail of the task"
-                },
-                "error_message": {
-                    "type": "string",
-                    "description": "Error message when fetching task information fails"
                 }
             }
         },

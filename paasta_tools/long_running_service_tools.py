@@ -241,7 +241,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_min_instances(self) -> int:
         return self.config_dict.get("min_instances", 1)
 
-    def get_max_instances(self) -> Optional[int]:
+    def get_max_instances(self) -> int:
         return self.config_dict.get("max_instances", None)
 
     def get_desired_instances(self) -> int:
