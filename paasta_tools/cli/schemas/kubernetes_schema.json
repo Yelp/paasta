@@ -209,7 +209,14 @@
                     "uniqueItems": true
                 },
                 "cmd": {
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array"
+                        }
+                    ]
                 },
                 "args": {
                     "type": "array",
