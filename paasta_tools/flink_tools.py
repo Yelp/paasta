@@ -167,7 +167,7 @@ def flink_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
     )
 
 
-def get_flink_config(
+def get_flink_status(
     kube_client: KubeClient, service: str, instance: str
 ) -> Optional[Mapping[str, Any]]:
     try:

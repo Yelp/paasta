@@ -161,7 +161,7 @@ def flink_instance_status(
     status: Optional[Mapping[str, Any]] = None
     client = settings.kubernetes_client
     if client is not None:
-        status = flink_tools.get_flink_config(
+        status = flink_tools.get_flink_status(
             kube_client=client, service=service, instance=instance
         )
     return status
