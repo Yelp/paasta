@@ -1,3 +1,12 @@
+paasta-tools (0.85.57) xenial; urgency=medium
+
+  * 0.85.57 tagged with 'make release'
+    Commit: Merge pull request #2394 from
+    Yelp/fix_unawaited_coroutines_in_async_ttl_cache  don"t create
+    coroutines that we never await in async_ttl_cache
+
+ -- Bronek Kozicki <bronek@yelp.com>  Wed, 04 Sep 2019 03:23:39 -0700
+
 paasta-tools (0.85.56) xenial; urgency=medium
 
   * 0.85.56 tagged with 'make release'
