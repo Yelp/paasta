@@ -327,6 +327,20 @@
                         "required": false,
                         "type": "integer",
                         "format": "int32"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Omit Smartstack information",
+                        "name": "omit_smartstack",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Omit Mesos information",
+                        "name": "omit_mesos",
+                        "required": false,
+                        "type": "boolean"
                     }
                 ]
             }
@@ -632,9 +646,12 @@
                     "properties": {
                         "status": {
                             "$ref": "#/definitions/InstanceStatusFlink"
+                        },
+                        "metadata": {
+                            "$ref": "#/definitions/InstanceMetadataFlink"
                         }
                     },
-                    "description": "Nullable Flink instance status"
+                    "description": "Nullable Flink instance status and metadata"
                 }
             }
         },
@@ -797,10 +814,6 @@
                 "tail_lines": {
                     "$ref": "#/definitions/MesosTaskTailLines",
                     "description": "Stdout and stderr tail of the task"
-                },
-                "error_message": {
-                    "type": "string",
-                    "description": "Error message when fetching task information fails"
                 }
             }
         },
@@ -827,10 +840,6 @@
                 "tail_lines": {
                     "$ref": "#/definitions/MesosTaskTailLines",
                     "description": "Stdout and stderr tail of the task"
-                },
-                "error_message": {
-                    "type": "string",
-                    "description": "Error message when fetching task information fails"
                 }
             }
         },
@@ -1184,6 +1193,10 @@
         "InstanceStatusFlink": {
             "type": "object",
             "description": "Flink instance status"
+        },
+        "InstanceMetadataFlink": {
+            "type": "object",
+            "description": "Flink instance metadata"
         },
         "InstanceTasks": {
             "type": "array",
