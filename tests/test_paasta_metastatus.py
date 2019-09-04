@@ -53,6 +53,10 @@ def test_main_no_marathon_servers():
         "paasta_tools.paasta_metastatus.get_mesos_leader",
         autospec=True,
         return_value="localhost",
+    ), patch(
+        "paasta_tools.paasta_metastatus.is_kubernetes_available",
+        autospec=True,
+        return_value=False,
     ):
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
@@ -92,6 +96,10 @@ def test_main_no_chronos_config():
         "paasta_tools.paasta_metastatus.get_mesos_leader",
         autospec=True,
         return_value="localhost",
+    ), patch(
+        "paasta_tools.paasta_metastatus.is_kubernetes_available",
+        autospec=True,
+        return_value=False,
     ):
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
