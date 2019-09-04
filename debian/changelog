@@ -1,3 +1,11 @@
+paasta-tools (0.85.58) xenial; urgency=medium
+
+  * 0.85.58 tagged with 'make release'
+    Commit: Revert "Pass commit to debItestUpload so we upload the same
+    version we test" (#2397)
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 04 Sep 2019 06:44:26 -0700
+
 paasta-tools (0.85.57) xenial; urgency=medium
 
   * 0.85.57 tagged with 'make release'
