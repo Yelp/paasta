@@ -727,15 +727,15 @@ def print_flink_status(
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
+    # Since metadata should be available no matter the state, we show it first. If this errors out
+    # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
-    config_sha = None
-    if metadata and metadata.labels:
-        config_sha = metadata.labels.get("yelp.com/paasta_config_sha")
-        if config_sha and config_sha.startswith("config"):
-            config_sha = config_sha[6:]
+    config_sha = metadata.labels.get("yelp.com/paasta_config_sha")
+    if config_sha is None:
+        raise ValueError(f"expected config sha on Flink, but received {metadata}")
+    if config_sha.startswith("config"):
+        config_sha = config_sha[6:]
 
-    # Since metadata should be available no matter the state, we show it before state
-    config_sha = config_sha or "(unknown)"
     output.append(f"    Config SHA: {config_sha}")
 
     if status.state != "running":
