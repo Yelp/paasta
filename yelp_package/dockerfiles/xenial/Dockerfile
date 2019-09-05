@@ -12,42 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:xenial
-
-RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-
-# Need Python 3.6
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
-
-RUN apt-get update > /dev/null && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        build-essential \
-        debhelper \
-        gdebi-core \
-        git \
-        libffi-dev \
-        libgpgme11 \
-        libssl-dev \
-        libyaml-dev \
-        python3.6-dev \
-        python-pip \
-        python-tox \
-        wget \
-        zsh > /dev/null \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN cd /tmp && \
-    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
+FROM yelp/paastatools_xenial_container
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
 COPY requirements.txt requirements.txt
 RUN virtualenv --python=python3.6 venv && venv/bin/pip install -r requirements.txt
-
 
 WORKDIR /work

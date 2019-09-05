@@ -12,23 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:xenial
-
-# Need Python 3.6
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
-
-RUN apt-get update > /dev/null && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        gcc \
-        git \
-        python3.6-dev \
-        libffi-dev \
-        libssl-dev \
-        libyaml-dev \
-        virtualenv > /dev/null \
-    && apt-get clean > /dev/null
+FROM yelp/paastatools_xenial_container
 
 WORKDIR /work
 

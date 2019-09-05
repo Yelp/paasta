@@ -32,21 +32,11 @@ else
 	ADD_VERSION_SUFFIX=dch -b -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
 endif
 
-build_%_docker:
-	[ -d ../dist ] || mkdir ../dist
-	docker pull "yelp/paastatools_$*_container" || true
-	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
-	if [ "$$TRAVIS_BRANCH" = "master" -a \
-	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
-	     "$$DOCKER_USERNAME" != "" ]; then \
-	  docker push "yelp/paastatools_$*_container"; \
-	fi
-
 .SECONDEXPANSION:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-package_%: build_$$*_docker
+package_%:
 	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old

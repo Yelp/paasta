@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:xenial
-
-RUN apt-get update > /dev/null && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y install \
-        git \
-        python2.7-dev \
-        libyaml-dev \
-        virtualenv > /dev/null && \
-    apt-get clean
+FROM yelp/paastatools_xenial_container
 
 RUN git clone git://github.com/Yelp/hacheck
 WORKDIR /hacheck

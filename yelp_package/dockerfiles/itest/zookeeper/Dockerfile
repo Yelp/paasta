@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:xenial
-
-RUN apt-get update > /dev/null && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-         zookeeper > /dev/null && \
-    apt-get clean
+FROM yelp/paastatools_xenial_container
 
 EXPOSE 2181
 CMD ["/usr/share/zookeeper/bin/zkServer.sh", "start-foreground"]

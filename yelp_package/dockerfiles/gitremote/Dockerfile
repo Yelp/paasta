@@ -1,4 +1,4 @@
-FROM ubuntu:xenial
+FROM yelp/paastatools_xenial_container
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         git \
