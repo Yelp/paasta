@@ -17,8 +17,11 @@ from typing import TypeVar
 T = TypeVar("T")
 
 
+# NOTE: this method is not thread-safe due to lack of locking while checking
+# and updating the cache
 def async_ttl_cache(
-    ttl: Optional[float] = 300, cleanup_self: bool = False
+    ttl: Optional[float] = 300, cleanup_self: bool = False, *,
+    cache: Optional[Dict] = None,
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
@@ -47,16 +50,16 @@ def async_ttl_cache(
             return value
 
     if cleanup_self:
-        cache: DefaultDict[Any, Dict] = defaultdict(dict)
+        instance_caches: DefaultDict[Any, Dict] = defaultdict(dict)
 
         def on_delete(w):
-            del cache[w]
+            del instance_caches[w]
 
         def outer(wrapped):
             @functools.wraps(wrapped)
             async def inner(self, *args, **kwargs):
                 w = weakref.ref(self, on_delete)
-                self_cache = cache[w]
+                self_cache = instance_caches[w]
                 return await call_or_get_from_cache(
                     self_cache, wrapped, (self,) + args, kwargs
                 )
@@ -64,7 +67,7 @@ def async_ttl_cache(
             return inner
 
     else:
-        cache2: Dict = {}  # Should be Dict[Any, T] but that doesn't work.
+        cache2: Dict = cache or {}  # Should be Dict[Any, T] but that doesn't work.
 
         def outer(wrapped):
             @functools.wraps(wrapped)

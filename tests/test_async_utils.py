@@ -1,4 +1,5 @@
 import asyncio
+import functools
 
 import mock
 import pytest
@@ -86,3 +87,22 @@ async def test_async_ttl_cache_returns_in_flight_future():
     await asyncio.wait([event_setter_future, future1, future2])
 
     assert future1.result() == future2.result() == 0
+
+
+@pytest.mark.asyncio
+async def test_async_ttl_cache_dont_overwrite_non_inf_ttl():
+    event = asyncio.Event()
+    return_values = iter(range(10))
+    
+    async def range_coroutine():
+        await event()
+        return next(return_values)
+
+    range_coroutine_future = asyncio.ensure_future(range_coroutine())
+    cache = {functools._make_key((), {}, typed=False): range_coroutine_future
+
+    cached_range_coroutine = async_ttl_cache(ttl=300)(range_coroutine)
+
+
+    import pdb; pdb.set_trace()
+    print()
