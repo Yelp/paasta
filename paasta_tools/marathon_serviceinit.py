@@ -27,9 +27,9 @@ from requests.exceptions import ReadTimeout
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
-from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.smartstack_tools import backend_is_up
@@ -442,16 +442,9 @@ def status_smartstack_backends(
     registration = job_config.get_registrations()[0]
 
     discover_location_type = service_namespace_config.get_discover()
-    monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=system_deploy_blacklist
-    )
-
-    filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist, whitelist=[]
-    )
 
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves, attribute=discover_location_type
+        slaves=get_slaves(), attribute=discover_location_type
     )
 
     # rebuild the dict, replacing the slave object

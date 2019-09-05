@@ -553,19 +553,13 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         :param instance_config: An instance of MarathonServiceConfig
         :returns: A dict {"uswest1-prod": [SmartstackHost(), SmartstackHost(), ...]}
         """
-        monitoring_blacklist = instance_config.get_monitoring_blacklist(
-            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist()
-        )
-        filtered_slaves = mesos_tools.filter_mesos_slaves_by_blacklist(
-            slaves=self._mesos_slaves, blacklist=monitoring_blacklist, whitelist=None
-        )
         discover_location_type = marathon_tools.load_service_namespace_config(
             service=instance_config.service,
             namespace=instance_config.instance,
             soa_dir=instance_config.soa_dir,
         ).get_discover()
         attribute_to_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-            slaves=filtered_slaves, attribute=discover_location_type
+            slaves=self._mesos_slaves, attribute=discover_location_type
         )
         ret: Dict[str, Sequence[SmartstackHost]] = {}
         for attr, slaves in attribute_to_slaves.items():
@@ -589,19 +583,13 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
         self, instance_config: InstanceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
 
-        monitoring_blacklist = instance_config.get_monitoring_blacklist(
-            system_deploy_blacklist=self._system_paasta_config.get_deploy_blacklist()
-        )
-        filtered_nodes = kubernetes_tools.filter_nodes_by_blacklist(
-            nodes=self.nodes, blacklist=monitoring_blacklist, whitelist=None
-        )
         discover_location_type = kubernetes_tools.load_service_namespace_config(
             service=instance_config.service,
             namespace=instance_config.instance,
             soa_dir=instance_config.soa_dir,
         ).get_discover()
         attribute_to_nodes = kubernetes_tools.get_nodes_grouped_by_attribute(
-            nodes=filtered_nodes, attribute=discover_location_type
+            nodes=self.nodes, attribute=discover_location_type
         )
         ret: Dict[str, Sequence[SmartstackHost]] = {}
         for attr, nodes in attribute_to_nodes.items():

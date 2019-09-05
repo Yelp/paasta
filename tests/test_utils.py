@@ -1601,26 +1601,6 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_desired_state() == "stop"
 
-    def test_monitoring_blacklist_default(self):
-        fake_conf = utils.InstanceConfig(
-            service="", cluster="", instance="", config_dict={}, branch_dict=None
-        )
-        assert fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[]) == []
-
-    def test_monitoring_blacklist_defaults_to_deploy_blacklist(self):
-        fake_deploy_blacklist = [("region", "fake_region")]
-        fake_conf = utils.InstanceConfig(
-            service="",
-            cluster="",
-            instance="",
-            config_dict={"deploy_blacklist": fake_deploy_blacklist},
-            branch_dict=None,
-        )
-        assert (
-            fake_conf.get_monitoring_blacklist(system_deploy_blacklist=[])
-            == fake_deploy_blacklist
-        )
-
     def test_deploy_blacklist_default(self):
         fake_conf = utils.InstanceConfig(
             service="", cluster="", instance="", config_dict={}, branch_dict=None
