@@ -10,6 +10,7 @@ from typing import Callable
 from typing import DefaultDict
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import TypeVar
 
 
@@ -17,7 +18,7 @@ T = TypeVar("T")
 
 
 def async_ttl_cache(
-    ttl: float = 300, cleanup_self: bool = False
+    ttl: Optional[float] = 300, cleanup_self: bool = False
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
@@ -25,7 +26,7 @@ def async_ttl_cache(
         key = functools._make_key(args, kwargs, typed=False)
         try:
             future, last_update = cache[key]
-            if ttl > 0 and time.time() - last_update > ttl:
+            if ttl is not None and time.time() - last_update > ttl:
                 raise KeyError
         except KeyError:
             future = asyncio.ensure_future(async_func(*args, **kwargs))
