@@ -15,11 +15,11 @@
 FROM ubuntu:xenial
 
 # Need Python 3.6
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
 
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gcc \
         git \
@@ -27,8 +27,8 @@ RUN apt-get update > /dev/null && \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
-        virtualenv > /dev/null \
-    && apt-get clean > /dev/null
+        virtualenv \
+    && apt-get clean
 
 WORKDIR /work
 

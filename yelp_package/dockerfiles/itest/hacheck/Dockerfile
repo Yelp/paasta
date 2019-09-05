@@ -14,12 +14,12 @@
 
 FROM ubuntu:xenial
 
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
         git \
         python2.7-dev \
         libyaml-dev \
-        virtualenv > /dev/null && \
+        virtualenv && \
     apt-get clean
 
 RUN git clone git://github.com/Yelp/hacheck

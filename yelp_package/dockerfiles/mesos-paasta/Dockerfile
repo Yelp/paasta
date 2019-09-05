@@ -1,13 +1,13 @@
 FROM examplecluster_mesosbase
 
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
         python-pip \
         python3.6-dev \
-        openssh-server > /dev/null && \
+        openssh-server && \
     apt-get clean
 
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd

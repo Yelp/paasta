@@ -18,11 +18,11 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
 # Need Python 3.6
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
 
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
         debhelper \
@@ -35,7 +35,7 @@ RUN apt-get update > /dev/null && \
         python3.6-dev \
         python-pip \
         wget \
-        zsh > /dev/null \
+        zsh \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && cd /tmp && \

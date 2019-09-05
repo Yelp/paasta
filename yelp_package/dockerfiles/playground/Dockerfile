@@ -1,12 +1,12 @@
 FROM examplecluster_itest_xenial
 
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         curl \
         docker.io \
         jq \
         openssh-server \
-        vim > /dev/null && \
+        vim && \
     apt-get clean
 
 RUN mkdir -p /var/log/paasta_logs /var/run/sshd /nail/etc

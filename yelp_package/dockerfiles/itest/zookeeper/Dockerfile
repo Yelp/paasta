@@ -14,9 +14,9 @@
 
 FROM ubuntu:xenial
 
-RUN apt-get update > /dev/null && \
+RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-         zookeeper > /dev/null && \
+         zookeeper && \
     apt-get clean
 
 EXPOSE 2181
