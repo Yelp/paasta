@@ -22,6 +22,7 @@ from datetime import datetime
 from datetime import timedelta
 from distutils.util import strtobool
 from itertools import groupby
+from typing import Any
 from typing import Callable
 from typing import DefaultDict
 from typing import Dict
@@ -246,10 +247,8 @@ def paasta_status_on_api_endpoint(
             cluster, service, instance, output, status.adhoc, verbose
         )
     elif status.flink is not None:
-        flink_status = status.flink.get("status")
-        flink_metadata = status.flink.get("metadata")
         return print_flink_status(
-            cluster, service, instance, output, flink_status, flink_metadata, verbose
+            cluster, service, instance, output, status.flink, verbose
         )
     elif status.chronos is not None:
         return print_chronos_status(output, status.chronos.output)
@@ -715,36 +714,29 @@ def status_kubernetes_job_human(
         )
 
 
-def _strip_config_prefix(config_sha: str) -> str:
-    prefix = "config"
-    prefix_len = len(prefix)
-    if len(config_sha) > prefix_len and config_sha[:prefix_len] == prefix:
-        return config_sha[prefix_len:]
-    return config_sha
-
-
 def print_flink_status(
     cluster: str,
     service: str,
     instance: str,
     output: List[str],
-    status,
-    metadata,
+    flink: Mapping[str, Any],
     verbose: int,
 ) -> int:
+    status = flink.get("status")
     if status is None:
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
 
+    metadata = flink.get("metadata")
     config_sha = None
-    if metadata is not None and metadata.labels is not None:
+    if metadata and metadata.labels:
         config_sha = metadata.labels.get("yelp.com/paasta_config_sha")
-        if config_sha is not None:
-            config_sha = _strip_config_prefix(config_sha)
+        if config_sha and config_sha.startswith("config"):
+            config_sha = config_sha[6:]
 
     # Since metadata should be available no matter the state, we show it before state
-    if config_sha is not None:
-        output.append(f"    Config SHA: {config_sha}")
+    config_sha = config_sha or "(unknown)"
+    output.append(f"    Config SHA: {config_sha}")
 
     if status.state != "running":
         output.append(
