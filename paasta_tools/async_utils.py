@@ -32,9 +32,19 @@ def async_ttl_cache(
             future = asyncio.ensure_future(async_func(*args, **kwargs))
             # set the timestamp to +infinity so that we always wait on the in-flight request.
             cache[key] = (future, float("Inf"))
-        value = await future
-        cache[key] = (future, time.time())
-        return value
+
+        try:
+            value = await future
+        except Exception:
+            # only update the cache if it's the same future we awaited and
+            # it hasn't already been updated by another coroutine
+            if cache[key] == (future, float("Inf")):
+                del cache[key]
+            raise
+        else:
+            if cache[key] == (future, float("Inf")):
+                cache[key] = (future, time.time())
+            return value
 
     if cleanup_self:
         cache: DefaultDict[Any, Dict] = defaultdict(dict)
