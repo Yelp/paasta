@@ -24,7 +24,7 @@ ircMsgResult(CHANNELS) {
 
     // Runs `make itest_${version}` and attempts to upload to apt server if not an automatically timed run
     // This will automatically break all the steps into stages for you
-    debItestUpload(PACKAGE_NAME, DIST, committish: commit)
+    debItestUpload(PACKAGE_NAME, DIST)
 
     ystage('Upload to PyPi') {
         node {

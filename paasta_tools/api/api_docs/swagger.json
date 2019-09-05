@@ -646,9 +646,12 @@
                     "properties": {
                         "status": {
                             "$ref": "#/definitions/InstanceStatusFlink"
+                        },
+                        "metadata": {
+                            "$ref": "#/definitions/InstanceMetadataFlink"
                         }
                     },
-                    "description": "Nullable Flink instance status"
+                    "description": "Nullable Flink instance status and metadata"
                 }
             }
         },
@@ -1190,6 +1193,10 @@
         "InstanceStatusFlink": {
             "type": "object",
             "description": "Flink instance status"
+        },
+        "InstanceMetadataFlink": {
+            "type": "object",
+            "description": "Flink instance metadata"
         },
         "InstanceTasks": {
             "type": "array",

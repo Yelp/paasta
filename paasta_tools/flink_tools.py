@@ -167,7 +167,7 @@ def flink_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
     )
 
 
-def get_flink_config(
+def get_flink_status(
     kube_client: KubeClient, service: str, instance: str
 ) -> Optional[Mapping[str, Any]]:
     try:
@@ -176,6 +176,22 @@ def get_flink_config(
         )
         status = co.get("status")
         return status
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
+
+
+def get_flink_metadata(
+    kube_client: KubeClient, service: str, instance: str
+) -> Optional[Mapping[str, Any]]:
+    try:
+        co = kube_client.custom.get_namespaced_custom_object(
+            **flink_custom_object_id(service, instance)
+        )
+        metadata = co.get("metadata")
+        return metadata
     except ApiException as e:
         if e.status == 404:
             return None

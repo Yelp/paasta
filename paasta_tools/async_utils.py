@@ -21,14 +21,14 @@ def async_ttl_cache(
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
-    async def call_or_get_from_cache(cache, coro, args, kwargs):
+    async def call_or_get_from_cache(cache, async_func, args, kwargs):
         key = functools._make_key(args, kwargs, typed=False)
         try:
             future, last_update = cache[key]
             if ttl > 0 and time.time() - last_update > ttl:
                 raise KeyError
         except KeyError:
-            future = asyncio.ensure_future(coro)
+            future = asyncio.ensure_future(async_func(*args, **kwargs))
             # set the timestamp to +infinity so that we always wait on the in-flight request.
             cache[key] = (future, float("Inf"))
         value = await future
@@ -47,7 +47,7 @@ def async_ttl_cache(
                 w = weakref.ref(self, on_delete)
                 self_cache = cache[w]
                 return await call_or_get_from_cache(
-                    self_cache, wrapped(self, *args, **kwargs), args, kwargs
+                    self_cache, wrapped, (self,) + args, kwargs
                 )
 
             return inner
@@ -58,9 +58,7 @@ def async_ttl_cache(
         def outer(wrapped):
             @functools.wraps(wrapped)
             async def inner(*args, **kwargs):
-                return await call_or_get_from_cache(
-                    cache2, wrapped(*args, **kwargs), args, kwargs
-                )
+                return await call_or_get_from_cache(cache2, wrapped, args, kwargs)
 
             return inner
 

@@ -161,10 +161,22 @@ def flink_instance_status(
     status: Optional[Mapping[str, Any]] = None
     client = settings.kubernetes_client
     if client is not None:
-        status = flink_tools.get_flink_config(
+        status = flink_tools.get_flink_status(
             kube_client=client, service=service, instance=instance
         )
     return status
+
+
+def flink_instance_metadata(
+    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
+) -> Optional[Mapping[str, Any]]:
+    metadata: Optional[Mapping[str, Any]] = None
+    client = settings.kubernetes_client
+    if client is not None:
+        metadata = flink_tools.get_flink_metadata(
+            kube_client=client, service=service, instance=instance
+        )
+    return metadata
 
 
 def kubernetes_instance_status(
@@ -726,10 +738,14 @@ def instance_status(request):
             )
         elif instance_type == "flink":
             status = flink_instance_status(instance_status, service, instance, verbose)
+            metadata = flink_instance_metadata(
+                instance_status, service, instance, verbose
+            )
+            instance_status["flink"] = {}
             if status is not None:
-                instance_status["flink"] = {"status": status}
-            else:
-                instance_status["flink"] = {}
+                instance_status["flink"]["status"] = status
+            if metadata is not None:
+                instance_status["flink"]["metadata"] = metadata
         else:
             error_message = (
                 f"Unknown instance_type {instance_type} of {service}.{instance}"
