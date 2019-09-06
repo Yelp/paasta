@@ -268,6 +268,21 @@ class TestBounceLib:
         expected = tasks[-1:]
         assert actual == expected
 
+    def test_get_happy_tasks_when_some_old_and_unknown(self):
+        """Only tasks with a passing healthcheck should be happy"""
+        fake_successful_healthcheck_results = [mock.Mock(alive=True)]
+        tasks = [
+            mock.Mock(health_check_results=None, started_at=0),
+            mock.Mock(health_check_results=fake_successful_healthcheck_results),
+            mock.Mock(health_check_results=fake_successful_healthcheck_results),
+        ]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        actual = bounce_lib.get_happy_tasks(
+            fake_app, "service", "namespace", self.fake_system_paasta_config()
+        )
+        expected = tasks
+        assert actual == expected
+
     def test_get_happy_tasks_with_multiple_healthchecks_success(self):
         """All tasks with at least one passing healthcheck should be happy"""
         fake_successful_healthcheck_results = [

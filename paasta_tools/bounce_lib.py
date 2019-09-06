@@ -301,9 +301,10 @@ def get_happy_tasks(
             continue
 
         # if there are health check results, check if at least one healthcheck is passing
+        # BUT if the task is "old" and Marathon forgot about its healthcheck, treat it as happy
         if not marathon_tools.is_task_healthy(
             task, require_all=False, default_healthy=True
-        ):
+        ) and not marathon_tools.is_old_task_missing_healthchecks(task, app):
             continue
 
         happy.append(task)
