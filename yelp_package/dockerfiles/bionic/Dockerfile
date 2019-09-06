@@ -13,6 +13,7 @@
 # limitations under the License.
 
 FROM ubuntu:bionic
+RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
 # RUN echo "deb http://repos.mesosphere.com/ubuntu bionic main" > /etc/apt/sources.list.d/mesosphere.list && \
