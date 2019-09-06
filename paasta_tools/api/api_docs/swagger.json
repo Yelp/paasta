@@ -1113,9 +1113,25 @@
                     "format": "int32",
                     "description": "The number of desired instances of the service"
                 },
+                "create_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp when this app was created"
+                },
+                "namespace": {
+                    "type": "string",
+                    "description": "The namespace this app is running"
+                },
+                "pods": {
+                    "type": "array",
+                    "description": "Pods associated to this app",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesPod"
+                    }
+                },
                 "error_message": {
                     "type": "string",
-                    "description": "Error message when a marathon job ID cannot be found"
+                    "description": "Error message when a kubernetes app ID cannot be found"
                 }
             },
             "required": [
@@ -1123,6 +1139,24 @@
                 "app_count",
                 "bounce_method"
             ]
+        },
+        "KubernetesPod": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "name of the pod in Kubernetes"
+                },
+                "deployed_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Time at which the pod was deployed"
+                },
+                "phase": {
+                    "type": "string",
+                    "description": "The status of the pod"
+                }
+            }
         },
         "InstanceStatusChronos": {
             "type": "object",
