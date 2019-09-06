@@ -1,3 +1,11 @@
+paasta-tools (0.86.1) xenial; urgency=medium
+
+  * 0.86.1 tagged with 'make release'
+    Commit: Merge pull request #2412 from Yelp/u/bronek/show_git_sha
+    Show git sha for flink
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 06 Sep 2019 10:08:59 -0700
+
 paasta-tools (0.86.0) xenial; urgency=medium
 
   * 0.86.0 tagged with 'make release'
