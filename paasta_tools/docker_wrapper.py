@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# flake8: noqa: E402
 """ Meant to be used by mesos-slave instead of the /usr/bin/docker executable
 directly This will parse the CLI arguments intended for docker, extract
 environment variable settings related to the actual node hostname and mesos
@@ -19,6 +20,15 @@ import os
 import re
 import socket
 import sys
+
+
+if "PATH" not in os.environ:
+    # This command is sometimes executed in a sanitized environment
+    # which does not have the path, which causes the following imports
+    # to fail.
+    # To compensate, we set a minimal path to get off the ground.
+    os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 
 from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
 from paasta_tools.firewall import firewall_flock
