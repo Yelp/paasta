@@ -22,6 +22,7 @@ from datetime import datetime
 from datetime import timedelta
 from distutils.util import strtobool
 from itertools import groupby
+from typing import Any
 from typing import Callable
 from typing import DefaultDict
 from typing import Dict
@@ -247,7 +248,7 @@ def paasta_status_on_api_endpoint(
         )
     elif status.flink is not None:
         return print_flink_status(
-            cluster, service, instance, output, status.flink.get("status"), verbose
+            cluster, service, instance, output, status.flink, verbose
         )
     elif status.chronos is not None:
         return print_chronos_status(output, status.chronos.output)
@@ -714,11 +715,28 @@ def status_kubernetes_job_human(
 
 
 def print_flink_status(
-    cluster: str, service: str, instance: str, output: List[str], status, verbose: int
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    flink: Mapping[str, Any],
+    verbose: int,
 ) -> int:
+    status = flink.get("status")
     if status is None:
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
         return 1
+
+    # Since metadata should be available no matter the state, we show it first. If this errors out
+    # then we cannot really do much to recover, because cluster is not in usable state anyway
+    metadata = flink.get("metadata")
+    config_sha = metadata.labels.get("yelp.com/paasta_config_sha")
+    if config_sha is None:
+        raise ValueError(f"expected config sha on Flink, but received {metadata}")
+    if config_sha.startswith("config"):
+        config_sha = config_sha[6:]
+
+    output.append(f"    Config SHA: {config_sha}")
 
     if status.state != "running":
         output.append(

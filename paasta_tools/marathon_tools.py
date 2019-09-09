@@ -37,6 +37,7 @@ from typing import Set
 from typing import Tuple
 from typing import TypeVar
 
+import pytz
 import requests
 import service_configuration_lib
 from marathon import MarathonClient
@@ -1536,11 +1537,16 @@ def is_old_task_missing_healthchecks(task: MarathonTask, app: MarathonApp) -> bo
     """
     health_checks = app.health_checks
     if not task.health_check_results and health_checks and task.started_at:
+        if task.started_at.tzinfo:
+            started_at_utc = task.started_at.astimezone(pytz.utc)
+        else:
+            started_at_utc = task.started_at.replace(tzinfo=pytz.utc)
+
         healthcheck_startup_time = datetime.timedelta(
             seconds=health_checks[0].grace_period_seconds
         ) + datetime.timedelta(seconds=health_checks[0].interval_seconds * 5)
-        is_task_old = (
-            task.started_at + healthcheck_startup_time < datetime.datetime.now()
+        is_task_old = started_at_utc + healthcheck_startup_time < datetime.datetime.now(
+            pytz.utc
         )
         return is_task_old
     return False
