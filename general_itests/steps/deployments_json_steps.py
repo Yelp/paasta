@@ -71,7 +71,9 @@ def generate_system_paasta_config(context):
     if not os.path.exists(system_paasta_config_dir):
         os.makedirs(system_paasta_config_dir)
     with open("%s/clusters.json" % system_paasta_config_dir, "w+") as f:
-        f.write(json.dumps({"clusters": ["test-cluster"]}))
+        print(
+            json.dumps({"clusters": ["test-cluster"]}, sort_keys=True, indent=4), file=f
+        )
 
 
 @when("paasta mark-for-deployments is run against the repo")
