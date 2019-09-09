@@ -822,16 +822,11 @@ def run_docker_container(
             "Running docker command:\n%s" % PaastaColors.grey(joined_docker_run_cmd)
         )
 
-    merged_env = {**os.environ, **environment}
-
     if interactive or not simulate_healthcheck:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
         wrapper_path = shutil.which("paasta_docker_wrapper")
-        # To properly simulate mesos, we pop the PATH, which is not available to
-        # The executor
-        merged_env.pop("PATH")
-        execlpe(wrapper_path, *docker_run_cmd, merged_env)
+        execlpe(wrapper_path, *docker_run_cmd, environment)
         # For testing, when execlpe is patched out and doesn't replace us, we
         # still want to bail out.
         return 0
@@ -839,7 +834,7 @@ def run_docker_container(
     container_started = False
     container_id = None
     try:
-        (returncode, output) = _run(docker_run_cmd, env=merged_env)
+        (returncode, output) = _run(docker_run_cmd, env=environment)
         if returncode != 0:
             paasta_print(
                 "Failure trying to start your container!"
