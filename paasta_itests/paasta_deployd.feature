@@ -74,7 +74,9 @@ Feature: paasta-deployd deploys apps
       And we set the instance count in zookeeper for service "test-service" instance "main" to 3
      Then we should see "test-service.main" listed in marathon after 45 seconds
      Then we should see the number of instances become 3
-     When we set the instance count in zookeeper for service "test-service" instance "main" to 4
+     # we are testing that even if the values written to ZK are outside the min/max bounds, the instances still get
+     # clamped to the right values.
+     When we set the instance count in zookeeper for service "test-service" instance "main" to 5
      Then we should see the number of instances become 4
 
   Scenario: deployd will scale down an app if the instance count changes in zk
