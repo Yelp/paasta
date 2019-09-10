@@ -842,7 +842,7 @@ def print_flink_status(
             fmt.format(
                 job_id=job_id,
                 job_name=job["name"].split(".", 2)[2],
-                state=job["state"],
+                state=(job.get("state") or "unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
