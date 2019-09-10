@@ -13,6 +13,7 @@
 # limitations under the License.
 
 FROM ubuntu:xenial
+RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 
 # Need Python 3.6
 RUN apt-get update > /dev/null && \

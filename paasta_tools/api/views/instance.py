@@ -686,7 +686,7 @@ def instance_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type != "flink" and instance_type != "tron":
+    if instance_type != "tron":
         try:
             actual_deployments = get_actual_deployments(service, settings.soa_dir)
         except Exception:
