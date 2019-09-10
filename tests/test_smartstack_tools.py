@@ -317,7 +317,6 @@ def test_get_replication_for_instance_mesos(
         },
     ]
     instance_config = mock.Mock(service="fake_service", instance="fake_instance")
-    instance_config.get_monitoring_blacklist.return_value = []
     instance_config.get_pool.return_value = "cool_pool"
     mock_get_replication_for_all_services.return_value = {
         "fake_service.fake_instance": 20
@@ -442,8 +441,6 @@ def mock_kube_replication_checker():
 
 def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
     with mock.patch(
-        "paasta_tools.kubernetes_tools.filter_nodes_by_blacklist", autospec=True
-    ) as mock_filter_nodes_by_blacklist, mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace_config, mock.patch(
         "paasta_tools.kubernetes_tools.get_nodes_grouped_by_attribute", autospec=True
@@ -476,9 +473,6 @@ def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
                 SmartstackHost(hostname="foo2", pool="default"),
             ]
         }
-        mock_get_nodes_grouped_by_attribute.assert_called_with(
-            nodes=mock_filter_nodes_by_blacklist.return_value, attribute="region"
-        )
 
 
 def test_get_allowed_locations_and_hosts(mock_replication_checker):

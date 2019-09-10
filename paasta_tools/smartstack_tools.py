@@ -582,12 +582,12 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
     def _get_allowed_locations_and_hosts(
         self, instance_config: InstanceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
-
         discover_location_type = kubernetes_tools.load_service_namespace_config(
             service=instance_config.service,
             namespace=instance_config.instance,
             soa_dir=instance_config.soa_dir,
         ).get_discover()
+
         attribute_to_nodes = kubernetes_tools.get_nodes_grouped_by_attribute(
             nodes=self.nodes, attribute=discover_location_type
         )
