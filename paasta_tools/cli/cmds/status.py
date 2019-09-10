@@ -776,11 +776,16 @@ def print_flink_status(
         )
     else:
         output.append(f"      Job Name                         State       Started")
+
     # Use only the most recent jobs
     unique_jobs = (
         sorted(jobs, key=lambda j: -j["start-time"])[0]
         for _, jobs in groupby(
-            sorted(status.jobs, key=lambda j: j["name"]), lambda j: j["name"]
+            sorted(
+                (j for j in status.jobs if j.get("name") and j.get("start-time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
         )
     )
     for job in unique_jobs:
