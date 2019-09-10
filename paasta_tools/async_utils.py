@@ -10,14 +10,20 @@ from typing import Callable
 from typing import DefaultDict
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import TypeVar
 
 
 T = TypeVar("T")
 
 
+# NOTE: this method is not thread-safe due to lack of locking while checking
+# and updating the cache
 def async_ttl_cache(
-    ttl: float = 300, cleanup_self: bool = False
+    ttl: Optional[float] = 300,
+    cleanup_self: bool = False,
+    *,
+    cache: Optional[Dict] = None,
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
@@ -25,27 +31,37 @@ def async_ttl_cache(
         key = functools._make_key(args, kwargs, typed=False)
         try:
             future, last_update = cache[key]
-            if ttl > 0 and time.time() - last_update > ttl:
+            if ttl is not None and time.time() - last_update > ttl:
                 raise KeyError
         except KeyError:
             future = asyncio.ensure_future(async_func(*args, **kwargs))
             # set the timestamp to +infinity so that we always wait on the in-flight request.
             cache[key] = (future, float("Inf"))
-        value = await future
-        cache[key] = (future, time.time())
-        return value
+
+        try:
+            value = await future
+        except Exception:
+            # only update the cache if it's the same future we awaited and
+            # it hasn't already been updated by another coroutine
+            if cache[key] == (future, float("Inf")):
+                del cache[key]
+            raise
+        else:
+            if cache[key] == (future, float("Inf")):
+                cache[key] = (future, time.time())
+            return value
 
     if cleanup_self:
-        cache: DefaultDict[Any, Dict] = defaultdict(dict)
+        instance_caches: DefaultDict[Any, Dict] = defaultdict(dict)
 
         def on_delete(w):
-            del cache[w]
+            del instance_caches[w]
 
         def outer(wrapped):
             @functools.wraps(wrapped)
             async def inner(self, *args, **kwargs):
                 w = weakref.ref(self, on_delete)
-                self_cache = cache[w]
+                self_cache = instance_caches[w]
                 return await call_or_get_from_cache(
                     self_cache, wrapped, (self,) + args, kwargs
                 )
@@ -53,7 +69,7 @@ def async_ttl_cache(
             return inner
 
     else:
-        cache2: Dict = {}  # Should be Dict[Any, T] but that doesn't work.
+        cache2: Dict = cache or {}  # Should be Dict[Any, T] but that doesn't work.
 
         def outer(wrapped):
             @functools.wraps(wrapped)
