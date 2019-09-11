@@ -129,10 +129,6 @@
                     "minimum": 0,
                     "exclusiveMinimum": false
                 },
-                "backoff_factor": {
-                    "type": "integer",
-                    "default": 2
-                },
                 "registrations": {
                     "type": "array",
                     "items": {
