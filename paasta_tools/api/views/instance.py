@@ -244,7 +244,7 @@ def kubernetes_job_status(
         app.status.ready_replicas if app.status.ready_replicas else 0
     )
     kstatus["create_timestamp"] = app.metadata.creation_timestamp.timestamp()
-    kstatus["namespace"] = app.metadata.namesapce
+    kstatus["namespace"] = app.metadata.namespace
 
 
 def marathon_instance_status(
