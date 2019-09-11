@@ -561,6 +561,7 @@ class TestTronTools:
             "executor": "paasta",
             "cpus": 2,
             "mem": 1200,
+            "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
             "extra_volumes": [
@@ -598,6 +599,7 @@ class TestTronTools:
             "executor": "mesos",
             "cpus": 2,
             "mem": 1200,
+            "disk": 42,
             "env": mock.ANY,
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
@@ -627,6 +629,7 @@ class TestTronTools:
             "executor": "paasta",
             "cpus": 2,
             "mem": 1200,
+            "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
             "extra_volumes": [
@@ -651,6 +654,7 @@ class TestTronTools:
             "executor": "mesos",
             "cpus": 2,
             "mem": 1200,
+            "disk": 42,
             "env": mock.ANY,
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}

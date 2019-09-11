@@ -1,3 +1,11 @@
+paasta-tools (0.86.3) xenial; urgency=medium
+
+  * 0.86.3 tagged with 'make release'
+    Commit: Merge pull request #2403 from Yelp/fix_async_ttl_cache  Stop
+    async_ttl_cache from caching failures
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 10 Sep 2019 13:46:59 -0700
+
 paasta-tools (0.86.2) xenial; urgency=medium
 
   * 0.86.2 tagged with 'make release'
