@@ -64,7 +64,7 @@ def base_api():
     """
     leader = get_mesos_leader()
 
-    def execute_request(method, endpoint, timeout=(3, 1), **kwargs):
+    def execute_request(method, endpoint, timeout=(3, 2), **kwargs):
         url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
         s = Session()
         s.auth = (get_principal(), get_secret())

@@ -479,6 +479,7 @@ def format_tron_action_dict(action_config):
     if executor == "mesos":
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
+        result["disk"] = action_config.get_disk()
         result["env"] = action_config.get_env()
         result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
         result["docker_parameters"] = [
