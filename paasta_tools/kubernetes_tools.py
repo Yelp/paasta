@@ -877,6 +877,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                         volume_claim_templates=self.get_volume_claim_templates(),
                         replicas=self.get_desired_instances(),
+                        revision_history_limit=0,
                         selector=V1LabelSelector(
                             match_labels={
                                 "yelp.com/paasta_service": self.get_service(),
@@ -901,6 +902,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                                 "yelp.com/paasta_instance": self.get_instance(),
                             }
                         ),
+                        revision_history_limit=0,
                         template=self.get_pod_template_spec(
                             code_sha=code_sha, system_paasta_config=system_paasta_config
                         ),
