@@ -422,7 +422,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         return V2beta1HorizontalPodAutoscaler(
-            api_version="autoscaling/v2beta1",
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(name=name, namespace=namespace),
             spec=V2beta1HorizontalPodAutoscalerSpec(
@@ -430,7 +429,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 min_replicas=min_replicas,
                 metrics=metrics,
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="extensions/v1beta1", kind="Deployment", name=name
+                    kind="Deployment", name=name
                 ),
             ),
         )
