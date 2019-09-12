@@ -610,7 +610,7 @@ def format_kubernetes_pod_table(pods):
         )
         hostname = f"{pod.host}" if pod.host is not None else "Unknown"
 
-        if pod.phase is None:
+        if pod.phase is None or pod.phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif pod.phase == "Running":
             health_check_status = PaastaColors.green("Healthy")

@@ -1597,7 +1597,7 @@ class TestFormatKubernetesPodTable:
         assert pod_table_dict["Host deployed to"] == "Unknown"
 
     def test_unhealthy(self, mock_naturaltime, mock_kubernetes_pod):
-        mock_kubernetes_pod.phase = "Pending"
+        mock_kubernetes_pod.phase = "Failed"
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")

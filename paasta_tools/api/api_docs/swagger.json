@@ -1131,7 +1131,7 @@
                 },
                 "error_message": {
                     "type": "string",
-                    "description": "Error message when a kubernetes app ID cannot be found"
+                    "description": "Error message when a kubernetes object (Deployment/Statefulset) cannot be found"
                 }
             },
             "required": [
