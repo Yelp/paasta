@@ -1762,6 +1762,23 @@ def test_create_mesos_non_running_tasks_table(
     )
 
 
+@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
+def test_create_mesos_non_running_tasks_table_handles_none_deployed_timestamp(
+    mock_format_tail_lines_for_mesos_task
+):
+    mock_non_running_task = Struct(
+        id="task_id",
+        hostname="paasta.restaurant",
+        deployed_timestamp=None,
+        state="Not running",
+        tail_lines=Struct(),
+    )
+    output = create_mesos_non_running_tasks_table([mock_non_running_task])
+    uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
+    task_dict = _formatted_table_to_dict(uncolored_output)
+    assert task_dict["Deployed at what localtime"] == "Unknown"
+
+
 def test_create_mesos_non_running_tasks_table_handles_nones():
     assert len(create_mesos_non_running_tasks_table(None)) == 1  # just the header
 
