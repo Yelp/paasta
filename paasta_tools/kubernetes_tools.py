@@ -422,6 +422,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         return V2beta1HorizontalPodAutoscaler(
+            api_version="autoscaling/v2beta1",
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(name=name, namespace=namespace),
             spec=V2beta1HorizontalPodAutoscalerSpec(
@@ -429,7 +430,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 min_replicas=min_replicas,
                 metrics=metrics,
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name=name
+                    api_version="extensions/v1beta1", kind="Deployment", name=name
                 ),
             ),
         )
@@ -873,6 +874,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                         volume_claim_templates=self.get_volume_claim_templates(),
                         replicas=self.get_desired_instances(),
+                        revision_history_limit=0,
                         selector=V1LabelSelector(
                             match_labels={
                                 "yelp.com/paasta_service": self.get_service(),
@@ -897,6 +899,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                                 "yelp.com/paasta_instance": self.get_instance(),
                             }
                         ),
+                        revision_history_limit=0,
                         template=self.get_pod_template_spec(
                             code_sha=code_sha, system_paasta_config=system_paasta_config
                         ),
