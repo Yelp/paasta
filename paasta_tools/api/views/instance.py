@@ -219,8 +219,18 @@ def kubernetes_job_status(
 ) -> None:
     app_id = job_config.get_sanitised_deployment_name()
     kstatus["app_id"] = app_id
+    kstatus["pods"] = []
     if verbose > 0:
-        kstatus["slaves"] = [pod.spec.node_name for pod in pod_list]
+        for pod in pod_list:
+            kstatus["pods"].append(
+                {
+                    "name": pod.metadata.name,
+                    "host": pod.spec.node_name,
+                    "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
+                    "phase": pod.status.phase,
+                }
+            )
+
     kstatus["expected_instance_count"] = job_config.get_instances()
 
     app = kubernetes_tools.get_kubernetes_app_by_name(app_id, client)
@@ -233,6 +243,8 @@ def kubernetes_job_status(
     kstatus["running_instance_count"] = (
         app.status.ready_replicas if app.status.ready_replicas else 0
     )
+    kstatus["create_timestamp"] = app.metadata.creation_timestamp.timestamp()
+    kstatus["namespace"] = app.metadata.namesapce
 
 
 def marathon_instance_status(
