@@ -603,6 +603,36 @@ def format_marathon_task_table(tasks):
     return format_table(rows)
 
 
+def format_kubernetes_pod_table(pods):
+    rows = [("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")]
+    for pod in pods:
+        local_deployed_datetime = datetime_from_utc_to_local(
+            datetime.fromtimestamp(pod.deployed_timestamp)
+        )
+        hostname = f"{pod.host}" if pod.host is not None else "Unknown"
+
+        if pod.phase is None or pod.phase == "Pending":
+            health_check_status = PaastaColors.grey("N/A")
+        elif pod.phase == "Running":
+            health_check_status = PaastaColors.green("Healthy")
+        else:
+            health_check_status = PaastaColors.red("Unhealthy")
+
+        rows.append(
+            (
+                pod.name,
+                hostname,
+                "{} ({})".format(
+                    local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
+                    humanize.naturaltime(local_deployed_datetime),
+                ),
+                health_check_status,
+            )
+        )
+
+    return format_table(rows)
+
+
 def marathon_smartstack_status_human(
     registration, expected_backends_per_location, locations
 ) -> List[str]:
@@ -849,6 +879,20 @@ def print_kubernetes_status(
             )
         )
     )
+    if kubernetes_status.create_timestamp:
+        create_datetime = datetime.fromtimestamp(kubernetes_status.create_timestamp)
+        output.append(
+            "      App created: {} ({}). Namespace: {}".format(
+                create_datetime,
+                humanize.naturaltime(create_datetime),
+                kubernetes_status.namespace,
+            )
+        )
+
+    if kubernetes_status.pods and len(kubernetes_status.pods) > 0:
+        output.append("      Pods:")
+        pods_table = format_kubernetes_pod_table(kubernetes_status.pods)
+        output.extend([f"        {line}" for line in pods_table])
     return 0
 
 
