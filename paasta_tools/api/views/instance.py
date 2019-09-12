@@ -434,9 +434,14 @@ def marathon_smartstack_status(
     monitoring_blacklist = job_config.get_monitoring_blacklist(
         system_deploy_blacklist=settings.system_paasta_config.get_deploy_blacklist()
     )
-    filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist, whitelist=None
-    )
+
+    try:
+        filtered_slaves = get_all_slaves_for_blacklist_whitelist(
+            blacklist=monitoring_blacklist, whitelist=None
+        )
+    except asyncio.TimeoutError:
+        return {"error_message": "Timed out getting list of agents from Mesos."}
+
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves, attribute=discover_location_type
     )
@@ -542,10 +547,8 @@ async def marathon_mesos_status(
             await get_cached_list_of_running_tasks_from_frameworks(),
             job_id=job_id_filter_string,
         )
-    except ReadTimeout:
-        return {
-            "error_message": "Error: talking to Mesos timed out. It may be overloaded."
-        }
+    except (ReadTimeout, asyncio.TimeoutError):
+        return {"error_message": "Talking to Mesos timed out. It may be overloaded."}
 
     mesos_status["running_task_count"] = len(running_and_active_tasks)
 
