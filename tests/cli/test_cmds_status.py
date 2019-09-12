@@ -1657,6 +1657,7 @@ def test_marathon_smartstack_status_human(
         registration="fake_service.fake_instance",
         expected_backends_per_location=5,
         locations=mock_locations,
+        error_message=None,
     )
     assert output == [
         "Smartstack:",
@@ -1672,9 +1673,21 @@ def test_marathon_smartstack_status_human(
 
 def test_marathon_smartstack_status_human_error():
     output = marathon_smartstack_status_human(
+        registration=None,
+        expected_backends_per_location=None,
+        locations=None,
+        error_message="uh oh!",
+    )
+    assert len(output) == 1
+    assert PaastaColors.red("uh oh!") in output[0]
+
+
+def test_marathon_smartstack_status_human_no_locations():
+    output = marathon_smartstack_status_human(
         registration="fake_service.fake_instance",
         expected_backends_per_location=1,
         locations=[],
+        error_message=None,
     )
     assert len(output) == 1
     assert "ERROR" in output[0]

@@ -345,6 +345,10 @@ def print_marathon_status(
             marathon_status.smartstack.registration,
             marathon_status.smartstack.expected_backends_per_location,
             marathon_status.smartstack.locations,
+            # TODO: this is just to avoid rollout issues where the client updates
+            # before the API server.  This can be removed after it first rolls
+            # out
+            getattr(marathon_status.smartstack, "error_message", None),
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
@@ -390,7 +394,7 @@ def marathon_mesos_status_human(
     non_running_tasks,
 ):
     if error_message:
-        return [PaastaColors.red(error_message)]
+        return [f"Mesos: {PaastaColors.red(error_message)}"]
 
     output = []
     output.append(
@@ -604,9 +608,11 @@ def format_marathon_task_table(tasks):
 
 
 def marathon_smartstack_status_human(
-    registration, expected_backends_per_location, locations
+    registration, expected_backends_per_location, locations, error_message
 ) -> List[str]:
-    if len(locations) == 0:
+    if error_message:
+        return [f"Smartstack: {PaastaColors.red(error_message)}"]
+    elif len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
 
     output = ["Smartstack:"]
