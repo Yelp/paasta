@@ -486,10 +486,14 @@ def create_mesos_non_running_tasks_table(non_running_tasks):
     rows.append(table_header)
 
     for task in non_running_tasks or []:
-        deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
-        deployed_at_string = "{} ({})".format(
-            deployed_at.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(deployed_at)
-        )
+        if task.deployed_timestamp is None:
+            deployed_at_string = "Unknown"
+        else:
+            deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
+            deployed_at_string = "{} ({})".format(
+                deployed_at.strftime("%Y-%m-%dT%H:%M"),
+                humanize.naturaltime(deployed_at),
+            )
 
         rows.append([task.id, task.hostname, deployed_at_string, task.state])
         rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
