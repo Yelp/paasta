@@ -175,7 +175,7 @@ def create_application_object(
         log.error(str(e))
         return False, None
 
-    app = None
+    app: Optional[Application] = None
     if isinstance(formatted_application, V1Deployment):
         app = DeploymentWrapper(formatted_application)
     elif isinstance(formatted_application, V1StatefulSet):
