@@ -776,7 +776,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """
         if self.get_max_instances() is not None:
             try:
-                return kube_client.deployments.read_namespaced_deployment(
+                return KubeClient().deployments.read_namespaced_deployment(
                     name=self.get_sanitised_deployment_name(), namespace="paasta"
                 ).spec.replicas
             except ApiException as e:
