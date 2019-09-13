@@ -253,6 +253,7 @@ def paasta_start_or_stop(args, desired_state):
                     soa_dir=soa_dir,
                     load_deployments=False,
                 )
+                print(service_config)
                 if isinstance(service_config, FlinkDeploymentConfig):
                     affected_flinks.append(service_config)
                     continue

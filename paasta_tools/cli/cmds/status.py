@@ -49,6 +49,7 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
@@ -81,6 +82,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    CassandraClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
@@ -1273,7 +1275,7 @@ def apply_args_filters(
     return clusters_services_instances
 
 
-def paasta_status(args,) -> int:
+def paasta_status(args) -> int:
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
@@ -1290,13 +1292,17 @@ def paasta_status(args,) -> int:
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
+            print(cluster, service, instances)
             all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
+            all_cassandra = all(
+                i == CassandraClusterDeploymentConfig for i in instances.values()
+            )
             actual_deployments: Mapping[str, str]
-            if all_flink:
+            if all_flink or all_cassandra:
                 actual_deployments = {}
             else:
                 actual_deployments = get_actual_deployments(service, soa_dir)
-            if all_flink or actual_deployments:
+            if all_flink or all_cassandra or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 tasks.append(
                     (
