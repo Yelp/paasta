@@ -1,0 +1,341 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml",
+    "type": "object",
+    "additionalProperties": false,
+    "minProperties": 1,
+    "patternProperties": {
+        "^_.*$": {
+            "type": "object",
+            "additionalProperties": true
+        },
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "allOf": [
+                {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "healthcheck_mode": {
+                                    "enum": [
+                                        "tcp",
+                                        "http",
+                                        "https"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "healthcheck_mode": {
+                                    "enum": [
+                                        "cmd"
+                                    ]
+                                },
+                                "healthcheck_cmd": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "healthcheck_cmd"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [
+                                        "noop",
+                                        "hacheck",
+                                        "test"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "drain_method": {
+                                    "enum": [
+                                        "http"
+                                    ]
+                                },
+                                "drain_method_params": {
+                                    "type": "object",
+                                    "properties": {
+                                        "drain": {
+                                            "type": "object"
+                                        },
+                                        "stop_draining": {
+                                            "type": "object"
+                                        },
+                                        "is_draining": {
+                                            "type": "object"
+                                        },
+                                        "is_safe_to_kill": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "required": [
+                                        "drain",
+                                        "stop_draining",
+                                        "is_draining",
+                                        "is_safe_to_kill"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "drain_method_params"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 0.25
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "default": 1024
+                },
+                "instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "min_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "max_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "registrations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "uniqueItems": true
+                },
+                "bounce_method": {
+                    "type": "string"
+                },
+                "bounce_health_params": {
+                    "type": "object",
+                    "properties": {
+                        "check_haproxy": {
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "min_task_uptime": {
+                            "type": "number"
+                        },
+                        "haproxy_min_fraction_up": {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "exclusiveMinimum": true,
+                            "exclusiveMaximum": false
+                        }
+                    }
+                },
+                "bounce_margin_factor": {
+                    "type": "number",
+                    "default": 1,
+                    "minimum": 0,
+                    "maximum": 1,
+                    "exclusiveMinimum": true,
+                    "exclusiveMaximum": false
+                },
+                "bounce_priority": {
+                    "type": "integer"
+                },
+                "deploy_group": {
+                    "type": "string"
+                },
+                "autoscaling": {
+                    "type": "object"
+                },
+                "service_account_name": {
+                    "type": "string"
+                },
+                "drain_method": {
+                    "enum": [
+                        "noop",
+                        "hacheck",
+                        "http",
+                        "test"
+                    ],
+                    "default": "noop"
+                },
+                "drain_method_params": {
+                    "type": "object"
+                },
+                "constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "extra_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "array"
+                    },
+                    "uniqueItems": true
+                },
+                "cmd": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array"
+                        }
+                    ]
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "env": {
+                    "type": "object",
+                    "patternProperties": {
+                        "^[a-zA-Z_]+[a-zA-Z0-9_]*$": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "extra_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "monitoring": {
+                    "type": "object",
+                    "properties": {
+                        "team": {
+                            "type": "string"
+                        },
+                        "page": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": true
+                },
+                "aws_ebs_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "persistent_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "size": {
+                                "type": "integer"
+                            },
+                            "mode": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "uniqueItems": true
+                },
+                "replication_threshold": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "net": {
+                    "type": "string"
+                },
+                "container_port": {
+                    "type": "number"
+                },
+                "deploy_blacklist": {
+                    "type": "array"
+                },
+                "deploy_whitelist": {
+                    "type": "array"
+                },
+                "monitoring_blacklist": {
+                    "type": "array"
+                },
+                "healthcheck_mode": {
+                    "enum": [
+                        "cmd",
+                        "tcp",
+                        "http",
+                        "https"
+                    ]
+                },
+                "healthcheck_cmd": {
+                    "type": "string",
+                    "default": "/bin/true"
+                },
+                "healthcheck_grace_period_seconds": {
+                    "type": "number",
+                    "default": 60
+                },
+                "healthcheck_interval_seconds": {
+                    "type": "number",
+                    "default": 10
+                },
+                "healthcheck_timeout_seconds": {
+                    "type": "number",
+                    "default": 10
+                },
+                "healthcheck_max_consecutive_failures": {
+                    "type": "integer",
+                    "default": 6
+                },
+                "healthcheck_uri": {
+                    "type": "string",
+                    "default": "/status"
+                },
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "exclusiveMinimum": false
+                }
+            }
+        }
+    }
+}
