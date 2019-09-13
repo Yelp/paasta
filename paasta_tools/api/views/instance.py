@@ -219,8 +219,18 @@ def kubernetes_job_status(
 ) -> None:
     app_id = job_config.get_sanitised_deployment_name()
     kstatus["app_id"] = app_id
+    kstatus["pods"] = []
     if verbose > 0:
-        kstatus["slaves"] = [pod.spec.node_name for pod in pod_list]
+        for pod in pod_list:
+            kstatus["pods"].append(
+                {
+                    "name": pod.metadata.name,
+                    "host": pod.spec.node_name,
+                    "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
+                    "phase": pod.status.phase,
+                }
+            )
+
     kstatus["expected_instance_count"] = job_config.get_instances()
 
     app = kubernetes_tools.get_kubernetes_app_by_name(app_id, client)
@@ -233,6 +243,8 @@ def kubernetes_job_status(
     kstatus["running_instance_count"] = (
         app.status.ready_replicas if app.status.ready_replicas else 0
     )
+    kstatus["create_timestamp"] = app.metadata.creation_timestamp.timestamp()
+    kstatus["namespace"] = app.metadata.namespace
 
 
 def marathon_instance_status(
@@ -422,9 +434,14 @@ def marathon_smartstack_status(
     monitoring_blacklist = job_config.get_monitoring_blacklist(
         system_deploy_blacklist=settings.system_paasta_config.get_deploy_blacklist()
     )
-    filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist, whitelist=None
-    )
+
+    try:
+        filtered_slaves = get_all_slaves_for_blacklist_whitelist(
+            blacklist=monitoring_blacklist, whitelist=None
+        )
+    except asyncio.TimeoutError:
+        return {"error_message": "Timed out getting list of agents from Mesos."}
+
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
         slaves=filtered_slaves, attribute=discover_location_type
     )
@@ -530,10 +547,8 @@ async def marathon_mesos_status(
             await get_cached_list_of_running_tasks_from_frameworks(),
             job_id=job_id_filter_string,
         )
-    except ReadTimeout:
-        return {
-            "error_message": "Error: talking to Mesos timed out. It may be overloaded."
-        }
+    except (ReadTimeout, asyncio.TimeoutError):
+        return {"error_message": "Talking to Mesos timed out. It may be overloaded."}
 
     mesos_status["running_task_count"] = len(running_and_active_tasks)
 

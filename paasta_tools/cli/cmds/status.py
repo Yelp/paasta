@@ -345,6 +345,10 @@ def print_marathon_status(
             marathon_status.smartstack.registration,
             marathon_status.smartstack.expected_backends_per_location,
             marathon_status.smartstack.locations,
+            # TODO: this is just to avoid rollout issues where the client updates
+            # before the API server.  This can be removed after it first rolls
+            # out
+            getattr(marathon_status.smartstack, "error_message", None),
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
@@ -390,7 +394,7 @@ def marathon_mesos_status_human(
     non_running_tasks,
 ):
     if error_message:
-        return [PaastaColors.red(error_message)]
+        return [f"Mesos: {PaastaColors.red(error_message)}"]
 
     output = []
     output.append(
@@ -486,10 +490,14 @@ def create_mesos_non_running_tasks_table(non_running_tasks):
     rows.append(table_header)
 
     for task in non_running_tasks or []:
-        deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
-        deployed_at_string = "{} ({})".format(
-            deployed_at.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(deployed_at)
-        )
+        if task.deployed_timestamp is None:
+            deployed_at_string = "Unknown"
+        else:
+            deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
+            deployed_at_string = "{} ({})".format(
+                deployed_at.strftime("%Y-%m-%dT%H:%M"),
+                humanize.naturaltime(deployed_at),
+            )
 
         rows.append([task.id, task.hostname, deployed_at_string, task.state])
         rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
@@ -603,10 +611,42 @@ def format_marathon_task_table(tasks):
     return format_table(rows)
 
 
+def format_kubernetes_pod_table(pods):
+    rows = [("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")]
+    for pod in pods:
+        local_deployed_datetime = datetime_from_utc_to_local(
+            datetime.fromtimestamp(pod.deployed_timestamp)
+        )
+        hostname = f"{pod.host}" if pod.host is not None else "Unknown"
+
+        if pod.phase is None or pod.phase == "Pending":
+            health_check_status = PaastaColors.grey("N/A")
+        elif pod.phase == "Running":
+            health_check_status = PaastaColors.green("Healthy")
+        else:
+            health_check_status = PaastaColors.red("Unhealthy")
+
+        rows.append(
+            (
+                pod.name,
+                hostname,
+                "{} ({})".format(
+                    local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
+                    humanize.naturaltime(local_deployed_datetime),
+                ),
+                health_check_status,
+            )
+        )
+
+    return format_table(rows)
+
+
 def marathon_smartstack_status_human(
-    registration, expected_backends_per_location, locations
+    registration, expected_backends_per_location, locations, error_message
 ) -> List[str]:
-    if len(locations) == 0:
+    if error_message:
+        return [f"Smartstack: {PaastaColors.red(error_message)}"]
+    elif len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
 
     output = ["Smartstack:"]
@@ -776,11 +816,16 @@ def print_flink_status(
         )
     else:
         output.append(f"      Job Name                         State       Started")
+
     # Use only the most recent jobs
     unique_jobs = (
         sorted(jobs, key=lambda j: -j["start-time"])[0]
         for _, jobs in groupby(
-            sorted(status.jobs, key=lambda j: j["name"]), lambda j: j["name"]
+            sorted(
+                (j for j in status.jobs if j.get("name") and j.get("start-time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
         )
     )
     for job in unique_jobs:
@@ -797,7 +842,7 @@ def print_flink_status(
             fmt.format(
                 job_id=job_id,
                 job_name=job["name"].split(".", 2)[2],
-                state=job["state"],
+                state=(job.get("state") or "unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
@@ -849,6 +894,20 @@ def print_kubernetes_status(
             )
         )
     )
+    if kubernetes_status.create_timestamp:
+        create_datetime = datetime.fromtimestamp(kubernetes_status.create_timestamp)
+        output.append(
+            "      App created: {} ({}). Namespace: {}".format(
+                create_datetime,
+                humanize.naturaltime(create_datetime),
+                kubernetes_status.namespace,
+            )
+        )
+
+    if kubernetes_status.pods and len(kubernetes_status.pods) > 0:
+        output.append("      Pods:")
+        pods_table = format_kubernetes_pod_table(kubernetes_status.pods)
+        output.extend([f"        {line}" for line in pods_table])
     return 0
 
 

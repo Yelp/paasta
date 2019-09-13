@@ -218,7 +218,7 @@ class MesosMaster:
     async def state_summary(self) -> MesosState:
         return await (await self.fetch("/master/state-summary")).json()
 
-    @async_ttl_cache(ttl=0, cleanup_self=True)
+    @async_ttl_cache(ttl=None, cleanup_self=True)
     async def slave(self, fltr):
         lst = await self.slaves(fltr)
 

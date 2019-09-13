@@ -32,6 +32,7 @@ from paasta_tools.cli.cmds.status import build_smartstack_backends_table
 from paasta_tools.cli.cmds.status import create_autoscaling_info_table
 from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
 from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
+from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import marathon_app_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_human
@@ -40,6 +41,7 @@ from paasta_tools.cli.cmds.status import marathon_smartstack_status_human
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
+from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.cmds.status import verify_instances
@@ -1183,6 +1185,25 @@ def mock_marathon_status():
     )
 
 
+@pytest.fixture
+def mock_kubernetes_status():
+    return Struct(
+        error_message=None,
+        desired_state="start",
+        desired_app_id="abc.def",
+        autoscaling_info=None,
+        app_id="fake_app_id",
+        app_count=1,
+        running_instance_count=2,
+        expected_instance_count=2,
+        deploy_status="Running",
+        bounce_method="crossover",
+        create_timestamp=1562963508,
+        namespace="paasta",
+        pods=[],
+    )
+
+
 def test_paasta_status_on_api_endpoint_marathon(
     system_paasta_config, mock_marathon_status
 ):
@@ -1330,6 +1351,85 @@ class TestPrintMarathonStatus:
         assert expected_output == output
 
 
+class TestPrintKubernetesStatus:
+    def test_error(self, mock_kubernetes_status):
+        mock_kubernetes_status.error_message = "Things went wrong"
+        output = []
+        return_value = print_kubernetes_status(
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            kubernetes_status=mock_kubernetes_status,
+        )
+
+        assert return_value == 1
+        assert output == ["Things went wrong"]
+
+    def test_successful_return_value(self, mock_kubernetes_status):
+        return_value = print_kubernetes_status(
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            kubernetes_status=mock_kubernetes_status,
+        )
+        assert return_value == 0
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch(
+        "paasta_tools.cli.cmds.status.kubernetes_app_deploy_status_human", autospec=True
+    )
+    @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
+    def test_output(
+        self,
+        mock_bouncing_status,
+        mock_desired_state,
+        mock_kubernetes_app_deploy_status_human,
+        mock_naturaltime,
+        mock_kubernetes_status,
+    ):
+        mock_bouncing_status.return_value = "Bouncing (crossover)"
+        mock_desired_state.return_value = "Started"
+        mock_kubernetes_app_deploy_status_human.return_value = "Running"
+        mock_naturaltime.return_value = "a month ago"
+        mock_kubernetes_status.pods = [
+            Struct(
+                name="app_1",
+                host="fake_host1",
+                deployed_timestamp=1562963508,
+                phase="Running",
+            ),
+            Struct(
+                name="app_2",
+                host="fake_host2",
+                deployed_timestamp=1562963510,
+                phase="Running",
+            ),
+        ]
+
+        output = []
+        print_kubernetes_status(
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            kubernetes_status=mock_kubernetes_status,
+        )
+
+        expected_output = [
+            f"    State:      {mock_bouncing_status.return_value} - Desired state: {mock_desired_state.return_value}",
+            f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances. Status: {mock_kubernetes_app_deploy_status_human.return_value}",
+        ]
+        expected_output += [
+            f"      App created: 2019-07-12 20:31:48 ({mock_naturaltime.return_value}). Namespace: paasta",
+            f"      Pods:",
+            f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
+            f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_2   fake_host2        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+        ]
+
+        assert expected_output == output
+
+
 def _formatted_table_to_dict(formatted_table):
     """Convert a single-row table with header to a dictionary"""
     headers = [
@@ -1467,6 +1567,46 @@ class TestFormatMarathonTaskTable:
         output = format_marathon_task_table([mock_marathon_task])
         task_table_dict = _formatted_table_to_dict(output)
         assert task_table_dict["Health"] == PaastaColors.grey("N/A")
+
+
+@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+class TestFormatKubernetesPodTable:
+    @pytest.fixture
+    def mock_kubernetes_pod(self):
+        return Struct(
+            name="abc123",
+            host="paasta.cloud",
+            deployed_timestamp=1565648600,
+            phase="Running",
+        )
+
+    def test_format_kubernetes_pod_table(self, mock_naturaltime, mock_kubernetes_pod):
+        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict == {
+            "Pod ID": "abc123",
+            "Host deployed to": "paasta.cloud",
+            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Health": PaastaColors.green("Healthy"),
+        }
+
+    def test_no_host(self, mock_naturaltime, mock_kubernetes_pod):
+        mock_kubernetes_pod.host = None
+        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Host deployed to"] == "Unknown"
+
+    def test_unhealthy(self, mock_naturaltime, mock_kubernetes_pod):
+        mock_kubernetes_pod.phase = "Failed"
+        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")
+
+    def test_no_health(self, mock_naturaltime, mock_kubernetes_pod):
+        mock_kubernetes_pod.phase = None
+        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.grey("N/A")
 
 
 @patch("paasta_tools.cli.cmds.status.create_mesos_running_tasks_table", autospec=True)
@@ -1622,6 +1762,23 @@ def test_create_mesos_non_running_tasks_table(
     )
 
 
+@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
+def test_create_mesos_non_running_tasks_table_handles_none_deployed_timestamp(
+    mock_format_tail_lines_for_mesos_task
+):
+    mock_non_running_task = Struct(
+        id="task_id",
+        hostname="paasta.restaurant",
+        deployed_timestamp=None,
+        state="Not running",
+        tail_lines=Struct(),
+    )
+    output = create_mesos_non_running_tasks_table([mock_non_running_task])
+    uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
+    task_dict = _formatted_table_to_dict(uncolored_output)
+    assert task_dict["Deployed at what localtime"] == "Unknown"
+
+
 def test_create_mesos_non_running_tasks_table_handles_nones():
     assert len(create_mesos_non_running_tasks_table(None)) == 1  # just the header
 
@@ -1657,6 +1814,7 @@ def test_marathon_smartstack_status_human(
         registration="fake_service.fake_instance",
         expected_backends_per_location=5,
         locations=mock_locations,
+        error_message=None,
     )
     assert output == [
         "Smartstack:",
@@ -1672,9 +1830,21 @@ def test_marathon_smartstack_status_human(
 
 def test_marathon_smartstack_status_human_error():
     output = marathon_smartstack_status_human(
+        registration=None,
+        expected_backends_per_location=None,
+        locations=None,
+        error_message="uh oh!",
+    )
+    assert len(output) == 1
+    assert PaastaColors.red("uh oh!") in output[0]
+
+
+def test_marathon_smartstack_status_human_no_locations():
+    output = marathon_smartstack_status_human(
         registration="fake_service.fake_instance",
         expected_backends_per_location=1,
         locations=[],
+        error_message=None,
     )
     assert len(output) == 1
     assert "ERROR" in output[0]

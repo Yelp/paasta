@@ -775,6 +775,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                             "yelp.com/paasta_service": mock_get_service.return_value,
                         }
                     ),
+                    revision_history_limit=0,
                     strategy=mock_get_deployment_strategy_config.return_value,
                     template=mock_get_pod_template_spec.return_value,
                 ),
@@ -808,6 +809,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                             "yelp.com/paasta_service": mock_get_service.return_value,
                         }
                     ),
+                    revision_history_limit=0,
                     template=mock_get_pod_template_spec.return_value,
                     volume_claim_templates=mock_get_volumes_claim_templates.return_value,
                 ),
