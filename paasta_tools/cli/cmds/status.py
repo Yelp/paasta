@@ -1292,7 +1292,6 @@ def paasta_status(args) -> int:
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            print(cluster, service, instances)
             all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
             all_cassandra = all(
                 i == CassandraClusterDeploymentConfig for i in instances.values()
