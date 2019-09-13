@@ -1,3 +1,14 @@
+paasta-tools (0.86.6) xenial; urgency=medium
+
+  * 0.86.6 tagged with 'make release'
+    Commit: Merge pull request #2402 from Yelp/PAASTA-
+    15613_nuke_monitoring_blacklist  Paasta 15613 nuke monitoring
+    blacklist
+
+    and  PAASTA-15626 add json schema for k8s schema for paasta validate
+
+ -- Fatima Zahra Elfilali <fzz@yelp.com>  Fri, 13 Sep 2019 13:34:05 -0700
+
 paasta-tools (0.86.5) xenial; urgency=medium
 
   * 0.86.5 tagged with 'make release'
