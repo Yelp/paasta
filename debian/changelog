@@ -1,3 +1,15 @@
+paasta-tools (0.86.4) xenial; urgency=medium
+
+  * 0.86.4 tagged with 'make release'
+    Commit: Also protect state fields
+    Commit: ignore incomplete jobs
+    Commit: Merge pull request #2424 from Yelp/handle_timeouts_better_
+    in_marathon_status_api handle asyncio.TimeoutError
+    Commit: Merge pull request #2419 from Yelp/handle_none_deployed_at
+    handle None deployed_timestamp for non-running mesos tasks
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 13 Sep 2019 04:32:23 -0700
+
 paasta-tools (0.86.3) xenial; urgency=medium
 
   * 0.86.3 tagged with 'make release'
