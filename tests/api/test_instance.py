@@ -472,7 +472,7 @@ class TestMarathonMesosStatus:
             "fake_service", "fake_instance", verbose=0
         )
         assert mesos_status == {
-            "error_message": "Error: talking to Mesos timed out. It may be overloaded."
+            "error_message": "Talking to Mesos timed out. It may be overloaded."
         }
 
     def test_verbose(self, mock_get_cached_list_of_running_tasks_from_frameworks):
