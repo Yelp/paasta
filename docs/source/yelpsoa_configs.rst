@@ -102,7 +102,7 @@ Marathon, Chronos, Tron, or ``paasta remote-run``.
 
       ``deploy_blacklist: [["region", "uswest1-prod"]]``
 
-   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
+   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region.
 
   * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
 
@@ -284,20 +284,6 @@ instance MAY have:
     * ``metrics_provider``: Which method PaaSTA will use to determine a service's utilization.
 
     * ``decision_policy``: Which method PaaSTA will use to determine when to autoscale a service.
-
-  * ``monitoring_blacklist``: A list of lists indicating a set of locations to
-    *not* monitor for Smartstack replication. For example:
-
-      ``monitoring_blacklist: [["region", "uswest1-prod"]]``
-
-   would indicate that PaaSTA should ignore the ``uswest1-prod`` region. PaaSTA
-   currently assumes that the instance count in *other* regions include
-   instances that would have otherwise gotten deployed to ``uswest1-prod``. In
-   other words, the ``monitoring_blacklist`` assumes that instances are not
-   deployed there as well. For example, suppose the total instance count was
-   10, and there are two regions, one of which is blacklisted.  The monitoring
-   logic will assume that there are no instances in the blacklisted region,
-   implying that we should expect all 10 in the non-blacklisted region.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value

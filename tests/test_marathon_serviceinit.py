@@ -521,16 +521,16 @@ def test_status_smartstack_backends_normal():
     }
 
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
     ) as mock_match_backends_and_tasks:
         fake_service_namespace_config = mock.Mock()
         fake_service_namespace_config.get_discover.return_value = "fake_discover"
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+
+        mock_get_slaves.return_value = [
             {"hostname": "fakehost", "attributes": {"fake_discover": "fakelocation"}}
         ]
 
@@ -598,16 +598,15 @@ def test_status_smartstack_backends_different_nerve_ns():
     }
 
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
     ) as mock_match_backends_and_tasks:
         fake_service_namespace_config = mock.Mock()
         fake_service_namespace_config.get_discover.return_value = "fake_discover"
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+        mock_get_slaves.return_value = [
             {"hostname": "fakehost", "attributes": {"fake_discover": "fakelocation"}}
         ]
 
@@ -657,12 +656,11 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
     tasks = mock.Mock()
     normal_count = 10
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist:
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves:
         fake_service_namespace_config = mock.Mock()
         fake_service_namespace_config.get_discover.return_value = "fake_discover"
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = {}
+        mock_get_slaves.return_value = {}
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -697,9 +695,8 @@ def test_status_smartstack_backends_multiple_locations():
         "check_duration": 1,
     }
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
@@ -709,13 +706,15 @@ def test_status_smartstack_backends_multiple_locations():
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [(fake_backend, good_task)]
         tasks = [good_task, other_task]
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+
+        mock_get_slaves.return_value = [
             {"hostname": "fakehost", "attributes": {"fake_discover": "fakelocation"}},
             {
                 "hostname": "fakeotherhost",
                 "attributes": {"fake_discover": "fakeotherlocation"},
             },
         ]
+
         actual = marathon_serviceinit.status_smartstack_backends(
             service=service,
             instance=instance,
@@ -765,9 +764,8 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
         "check_duration": 1,
     }
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
@@ -779,7 +777,7 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
         mock_get_backends.return_value = [fake_backend]
         mock_match_backends_and_tasks.return_value = [(fake_backend, good_task)]
         tasks = [good_task, other_task]
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+        mock_get_slaves.return_value = [
             {"hostname": "hostname1", "attributes": {"fake_discover": "fakelocation"}},
             {"hostname": "hostname2", "attributes": {"fake_discover": "fakelocation2"}},
         ]
@@ -844,9 +842,8 @@ def test_status_smartstack_backends_verbose_multiple_apps():
     }
 
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
@@ -860,7 +857,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             (None, other_task),
         ]
         tasks = [good_task, other_task]
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+        mock_get_slaves.return_value = [
             {"hostname": "hostname1", "attributes": {"fake_discover": "fakelocation"}}
         ]
         actual = marathon_serviceinit.status_smartstack_backends(
@@ -916,9 +913,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
         "check_duration": 1,
     }
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends",
         autospec=True,
         side_effect=[[fake_backend], [fake_other_backend]],
@@ -929,7 +925,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
     ):
         fake_service_namespace_config = mock.Mock()
         fake_service_namespace_config.get_discover.return_value = "fake_discover"
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+        mock_get_slaves.return_value = [
             {"hostname": "hostname1", "attributes": {"fake_discover": "fakelocation"}},
             {
                 "hostname": "hostname2",
@@ -964,9 +960,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             synapse_port=123456,
             synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
-        mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
-            blacklist=[], whitelist=[]
-        )
+        mock_get_slaves.assert_called_once_with()
         assert "fakelocation - %s" % PaastaColors.green("Healthy") in actual
         assert "hostname1:1001" in actual
         assert "fakeotherlocation - %s" % PaastaColors.green("Healthy") in actual
@@ -990,14 +984,13 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
         "check_duration": 1,
     }
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_mesos_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
     ) as mock_match_backends_and_tasks:
-        mock_get_mesos_slaves_for_blacklist_whitelist.return_value = [
+        mock_get_slaves.return_value = [
             {"hostname": "fake", "attributes": {"fake_discover": "fake_location_1"}}
         ]
         fake_service_namespace_config = mock.Mock()
@@ -1041,14 +1034,13 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
         "check_duration": 1,
     }
     with mock.patch(
-        "paasta_tools.marathon_serviceinit.get_all_slaves_for_blacklist_whitelist",
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
+        "paasta_tools.marathon_serviceinit.get_slaves", autospec=True
+    ) as mock_get_slaves, mock.patch(
         "paasta_tools.marathon_serviceinit.get_backends", autospec=True
     ) as mock_get_backends, mock.patch(
         "paasta_tools.marathon_serviceinit.match_backends_and_tasks", autospec=True
     ) as mock_match_backends_and_tasks:
-        mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+        mock_get_slaves.return_value = [
             {"hostname": "fake", "attributes": {"fake_discover": "fake_location_1"}}
         ]
         fake_service_namespace_config = mock.Mock()
