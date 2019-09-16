@@ -297,14 +297,19 @@ def get_happy_tasks(
                 continue
 
         # if there are healthchecks defined for the app but none have executed yet, then task is unhappy
-        if len(app.health_checks) > 0 and len(task.health_check_results) == 0:
+        # BUT if the task is "old" and Marathon forgot about its healthcheck due to a leader election,
+        # treat it as happy
+        if (
+            len(app.health_checks) > 0
+            and len(task.health_check_results) == 0
+            and not marathon_tools.is_old_task_missing_healthchecks(task, app)
+        ):
             continue
 
         # if there are health check results, check if at least one healthcheck is passing
-        # BUT if the task is "old" and Marathon forgot about its healthcheck, treat it as happy
         if not marathon_tools.is_task_healthy(
             task, require_all=False, default_healthy=True
-        ) and not marathon_tools.is_old_task_missing_healthchecks(task, app):
+        ):
             continue
 
         happy.append(task)
