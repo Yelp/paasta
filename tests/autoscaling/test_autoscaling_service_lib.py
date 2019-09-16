@@ -1254,6 +1254,7 @@ def test_filter_autoscaling_tasks():
         # Test healthy task
         mock_health_check = mock.Mock()
         mock_marathon_app = mock.Mock(
+            id="/fake-service.fake-instance.sha123.sha456",
             health_checks=[mock_health_check],
             tasks=[mock.Mock(id="fake-service.fake-instance.sha123.sha456.uuid")],
         )
@@ -1279,7 +1280,9 @@ def test_filter_autoscaling_tasks():
         mock_marathon_tasks = [mock.Mock(id="fake-service.fake-instance.sha123.sha456")]
         mock_health_check = mock.Mock()
         mock_marathon_app = mock.Mock(
-            health_checks=[mock_health_check], tasks=mock_marathon_tasks
+            id="/fake-service.fake-instance.sha123.sha456",
+            health_checks=[mock_health_check],
+            tasks=mock_marathon_tasks,
         )
         with raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.filter_autoscaling_tasks(
@@ -1294,7 +1297,11 @@ def test_filter_autoscaling_tasks():
             mock.Mock(id="fake-service.fake-instance.sha123.sha456.uuid")
         ]
         mock_health_check = mock.Mock()
-        mock_marathon_app = mock.Mock(health_checks=[], tasks=mock_marathon_tasks)
+        mock_marathon_app = mock.Mock(
+            id="/fake-service.fake-instance.sha123.sha456",
+            health_checks=[],
+            tasks=mock_marathon_tasks,
+        )
         ret = autoscaling_service_lib.filter_autoscaling_tasks(
             [mock_marathon_app],
             mock_mesos_tasks,
@@ -1315,7 +1322,9 @@ def test_filter_autoscaling_tasks():
         ]
         mock_health_check = mock.Mock()
         mock_marathon_app = mock.Mock(
-            health_checks=[mock_health_check], tasks=mock_marathon_tasks
+            id="/fake-service.fake-instance.sha123.sha456",
+            health_checks=[mock_health_check],
+            tasks=mock_marathon_tasks,
         )
         ret = autoscaling_service_lib.filter_autoscaling_tasks(
             [mock_marathon_app],

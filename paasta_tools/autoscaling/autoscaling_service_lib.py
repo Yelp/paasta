@@ -917,7 +917,9 @@ def filter_autoscaling_tasks(
     log.info("Inspecting %s for autoscaling" % job_id_prefix)
 
     relevant_tasks_by_app: Dict[MarathonApp, List[MarathonTask]] = {
-        app: app.tasks for app in marathon_apps if app.id.startswith(job_id_prefix)
+        app: app.tasks
+        for app in marathon_apps
+        if app.id.lstrip("/").startswith(job_id_prefix)
     }
 
     healthy_marathon_tasks: Dict[str, MarathonTask] = {}
@@ -937,7 +939,7 @@ def filter_autoscaling_tasks(
     if service_namespace_config.is_in_smartstack():
 
         for task in filter_tasks_in_smartstack(
-            [task for tasks in relevant_tasks_by_app.values() for task in tasks],
+            tasks=[task for tasks in relevant_tasks_by_app.values() for task in tasks],
             service=config.service,
             nerve_ns=config.get_nerve_namespace(),
             system_paasta_config=system_paasta_config,
