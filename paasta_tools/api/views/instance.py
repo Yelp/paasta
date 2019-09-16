@@ -159,12 +159,14 @@ def kubernetes_cr_status(cr_id: dict, verbose: int) -> Optional[Mapping[str, Any
     client = settings.kubernetes_client
     if client is not None:
         return kubernetes_tools.get_cr_status(kube_client=client, cr_id=cr_id)
+    return None
 
 
 def kubernetes_cr_metadata(cr_id: dict, verbose: int) -> Optional[Mapping[str, Any]]:
     client = settings.kubernetes_client
     if client is not None:
         return kubernetes_tools.get_cr_metadata(kube_client=client, cr_id=cr_id)
+    return None
 
 
 def kubernetes_instance_status(
