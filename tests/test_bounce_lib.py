@@ -15,6 +15,7 @@ import datetime
 
 import marathon
 import mock
+import pytz
 from requests.exceptions import ConnectionError
 from requests.exceptions import RequestException
 
@@ -230,14 +231,55 @@ class TestBounceLib:
 
     def test_get_happy_tasks_when_running_with_healthchecks_defined(self):
         """All running tasks with no health check results are unhealthy if the app defines healthchecks"""
-        tasks = [mock.Mock(health_check_results=[]) for _ in range(5)]
-        fake_app = mock.Mock(tasks=tasks, health_checks=["fake_healthcheck_definition"])
-        assert (
-            bounce_lib.get_happy_tasks(
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+        tasks = [
+            mock.Mock(
+                health_check_results=[],
+                started_at=(now - datetime.timedelta(minutes=i)),
+            )
+            for i in range(5)
+        ]
+        fake_app = mock.Mock(
+            tasks=tasks,
+            health_checks=[mock.Mock(grace_period_seconds=1234, interval_seconds=4321)],
+        )
+        with mock.patch(
+            "paasta_tools.marathon_tools.datetime.datetime",
+            now=lambda x: now,
+            autospec=True,
+        ):
+            assert (
+                bounce_lib.get_happy_tasks(
+                    fake_app, "service", "namespace", self.fake_system_paasta_config()
+                )
+                == []
+            )
+
+    def test_get_happy_tasks_when_some_old_and_unknown(self):
+        """Only tasks with a passing healthcheck should be happy"""
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+        fake_successful_healthcheck_results = [mock.Mock(alive=True)]
+        tasks = [
+            mock.Mock(
+                health_check_results=[], started_at=(now - datetime.timedelta(days=20))
+            ),
+            mock.Mock(health_check_results=fake_successful_healthcheck_results),
+            mock.Mock(health_check_results=fake_successful_healthcheck_results),
+        ]
+        fake_app = mock.Mock(
+            tasks=tasks,
+            health_checks=[mock.Mock(grace_period_seconds=1234, interval_seconds=4321)],
+        )
+        with mock.patch(
+            "paasta_tools.marathon_tools.datetime.datetime",
+            now=lambda x: now,
+            autospec=True,
+        ):
+            actual = bounce_lib.get_happy_tasks(
                 fake_app, "service", "namespace", self.fake_system_paasta_config()
             )
-            == []
-        )
+        expected = tasks
+        assert actual == expected
 
     def test_get_happy_tasks_when_all_healthy(self):
         """All tasks with only passing healthchecks should be happy"""
@@ -266,21 +308,6 @@ class TestBounceLib:
             fake_app, "service", "namespace", self.fake_system_paasta_config()
         )
         expected = tasks[-1:]
-        assert actual == expected
-
-    def test_get_happy_tasks_when_some_old_and_unknown(self):
-        """Only tasks with a passing healthcheck should be happy"""
-        fake_successful_healthcheck_results = [mock.Mock(alive=True)]
-        tasks = [
-            mock.Mock(health_check_results=None, started_at=0),
-            mock.Mock(health_check_results=fake_successful_healthcheck_results),
-            mock.Mock(health_check_results=fake_successful_healthcheck_results),
-        ]
-        fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        actual = bounce_lib.get_happy_tasks(
-            fake_app, "service", "namespace", self.fake_system_paasta_config()
-        )
-        expected = tasks
         assert actual == expected
 
     def test_get_happy_tasks_with_multiple_healthchecks_success(self):
