@@ -204,7 +204,10 @@ def test_format_custom_resource():
                     "yelp.com/paasta_cluster": "mycluster",
                     "yelp.com/paasta_config_sha": mock_get_config_hash.return_value,
                 },
-                "annotations": {"yelp.com/desired_state": "running"},
+                "annotations": {
+                    "yelp.com/desired_state": "running",
+                    "yelp.com/flink_dashboard_url": "http://flink.k8s.paasta-mycluster.yelp:31080/",
+                },
             },
             "spec": {"dummy": "conf"},
         }
