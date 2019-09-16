@@ -1,3 +1,12 @@
+paasta-tools (0.86.7) xenial; urgency=medium
+
+  * 0.86.7 tagged with 'make release'
+    Commit: Merge pull request #2430 from Yelp/drmorr/PAASTA-
+    15737/eternal-bounces-of-the-spotless-mind  trying to fix
+    get_happy_tasks/bouncing again
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 16 Sep 2019 16:31:43 -0700
+
 paasta-tools (0.86.6) xenial; urgency=medium
 
   * 0.86.6 tagged with 'make release'
