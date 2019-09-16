@@ -11,20 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import List
-from typing import Optional
-from typing import Any
 from typing import Mapping
-
-from kubernetes.client.rest import ApiException
+from typing import Optional
 
 import service_configuration_lib
 
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import InvalidJobNameError
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
 from paasta_tools.kubernetes_tools import sanitised_cr_name
-from paasta_tools.kubernetes_tools import get_cr_status
-from paasta_tools.kubernetes_tools import get_cr_metadata
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2

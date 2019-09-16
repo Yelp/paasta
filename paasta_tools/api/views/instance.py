@@ -41,10 +41,10 @@ from pyramid.view import view_config
 from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools import cassandracluster_tools
 from paasta_tools import chronos_serviceinit
 from paasta_tools import chronos_tools
 from paasta_tools import flink_tools
-from paasta_tools import cassandracluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_remote_run
