@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import io
+
 import mock
 from pytest import raises
 
@@ -18,7 +20,8 @@ from paasta_tools.cli.fsm import autosuggest
 
 
 class TestGetSmartstackProxyPortFromFile:
-    def test_multiple_stanzas_per_file(self):
+    @mock.patch("paasta_tools.cli.fsm.autosuggest.read_etc_services", autospec=True)
+    def test_multiple_stanzas_per_file(self, mock_read_etc_services):
         with mock.patch("builtins.open", autospec=True):
             with mock.patch(
                 "paasta_tools.cli.fsm.autosuggest.yaml", autospec=True
@@ -35,7 +38,8 @@ class TestGetSmartstackProxyPortFromFile:
 
 # Shamelessly copied from TestSuggestPort
 class TestSuggestSmartstackProxyPort:
-    def test_suggest_smartstack_proxy_port(self):
+    @mock.patch("paasta_tools.cli.fsm.autosuggest.read_etc_services", autospec=True)
+    def test_suggest_smartstack_proxy_port(self, mock_read_etc_services):
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
             ("fake_root1", "fake_dir1", ["smartstack.yaml"]),
@@ -73,7 +77,10 @@ class TestSuggestSmartstackProxyPort:
         # What we came here for: the actual output of the function under test
         assert actual == 20004  # The only available integer in [20001, 20004]
 
-    def test_suggest_smartstack_proxy_port_too_many_services(self):
+    @mock.patch("paasta_tools.cli.fsm.autosuggest.read_etc_services", autospec=True)
+    def test_suggest_smartstack_proxy_port_too_many_services(
+        self, mock_read_etc_services
+    ):
         """If all the ports are taken, we should raise an error"""
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
@@ -110,3 +117,23 @@ class TestSuggestSmartstackProxyPort:
                     "There are no more ports available in the range [20001, 20003]"
                     == str(exc.value)
                 )
+
+
+@mock.patch("paasta_tools.cli.fsm.autosuggest.read_etc_services", autospec=True)
+def test_get_inuse_ports_from_etc_services_parses_correctly(mock_read_etc_services):
+    input_services = """
+# by IANA and used in the real-world or are needed by a debian package.
+# If you need a huge list of used numbers please install the nmap package.
+
+tcpmux		1/tcp				# TCP port service multiplexer
+echo		7/tcp
+echo		7/udp
+discard		9/tcp		sink null
+discard		9/udp		sink null
+systat		11/tcp		users
+daytime		13/tcp
+"""
+    mock_read_etc_services.return_value = io.StringIO(input_services)
+    actual = autosuggest.get_inuse_ports_from_etc_services()
+    expected = {1, 7, 9, 11, 13}
+    assert actual == expected
