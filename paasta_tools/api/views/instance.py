@@ -666,7 +666,8 @@ async def get_mesos_non_running_task_dict(
 
 
 INSTANCE_TYPE_CR_ID = dict(
-    flink=flink_tools.cr_id, cassandracluster=cassandracluster_tools.cr_id
+    flink=flink_tools.cr_id,
+    cassandracluster=cassandracluster_tools.cr_id
 )
 
 
@@ -796,7 +797,7 @@ def instance_set_state(request,) -> None:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type in ["flink", "cassandracluster"]:
+    if instance_type in ["flink"]:
         try:
             cr_id_fn = cr_id_fn_for_instance_type(instance_type)
             kube_client = KubeClient()
