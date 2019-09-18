@@ -784,7 +784,7 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    dashboard_url = metadata.annotations.get("yelp.com/flink_dashboard_url")
+    dashboard_url = metadata.annotations.get("yelp.com/dashboard_url")
     dashboard_url += metadata.name
     if verbose:
         output.append(
