@@ -27,7 +27,6 @@ from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
-from typing import Tuple
 
 import yaml
 
@@ -219,9 +218,7 @@ def setup_custom_resources(
     return succeded
 
 
-def get_dashboard_url(
-    kind: str, service: str, instance: str, cluster: str
-) -> Tuple[Optional[str], Optional[str]]:
+def get_dashboard_url(kind: str, cluster: str) -> Optional[str]:
     system_paasta_config = load_system_paasta_config()
     dashboard_links = system_paasta_config.get_dashboard_links()
     if kind.lower() == "flink":
@@ -229,8 +226,10 @@ def get_dashboard_url(
         if flink_link is None:
             ingress_port = get_flink_ingress_port()
             flink_link = f"http://flink.k8s.paasta-{cluster}.yelp:{ingress_port}/"
-        return flink_link, "yelp.com/flink_dashboard_url"
-    return None, None
+        if flink_link[-1:] != "/":
+            flink_link += "/"
+        return flink_link
+    return None
 
 
 def format_custom_resource(
@@ -260,9 +259,9 @@ def format_custom_resource(
         },
         "spec": instance_config,
     }
-    url, selector = get_dashboard_url(kind, service, instance, cluster)
-    if url and selector:
-        resource["metadata"]["annotations"][selector] = url
+    url = get_dashboard_url(kind, cluster)
+    if url:
+        resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
     config_hash = get_config_hash(instance_config)
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     return resource
