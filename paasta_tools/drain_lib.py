@@ -297,12 +297,9 @@ class HTTPDrainMethod(DrainMethod):
                 acceptable_response_codes.add(int(series_str))
         return acceptable_response_codes
 
-    def check_response_code(self, status_code: int, success_codes_str: str) -> None:
+    def check_response_code(self, status_code: int, success_codes_str: str) -> bool:
         acceptable_response_codes = self.parse_success_codes(success_codes_str)
-        if status_code not in acceptable_response_codes:
-            raise StatusCodeNotAcceptableError(
-                "Status code %d not in %s", status_code, success_codes_str
-            )
+        return status_code in acceptable_response_codes
 
     async def issue_request(self, url_spec: UrlSpec, task: DrainTask) -> None:
         """Issue a request to the URL specified by url_spec regarding the task given."""
@@ -324,7 +321,12 @@ class HTTPDrainMethod(DrainMethod):
             ]
             res = await asyncio.gather(*reqs)
             for response in res:
-                self.check_response_code(response.status, url_spec["success_codes"])
+                if not self.check_response_code(
+                    response.status, url_spec["success_codes"]
+                ):
+                    raise StatusCodeNotAcceptableError(
+                        f"Unacceptable status code {response.status} not in {url_spec['success_codes']} when hitting {response.url}"
+                    )
 
     async def drain(self, task: DrainTask) -> None:
         return await self.issue_request(self.drain_url_spec, task)
