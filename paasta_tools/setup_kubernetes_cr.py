@@ -255,14 +255,15 @@ def format_custom_resource(
                 "yelp.com/paasta_instance": instance,
                 "yelp.com/paasta_cluster": cluster,
             },
-            "annotations": {"yelp.com/desired_state": "running"},
+            "annotations": {},
         },
         "spec": instance_config,
     }
     url = get_dashboard_url(kind, cluster)
     if url:
         resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
-    config_hash = get_config_hash(instance_config)
+    config_hash = get_config_hash(resource)
+    resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     return resource
 
