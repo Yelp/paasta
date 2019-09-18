@@ -193,6 +193,14 @@ def drain_tasks_and_find_tasks_to_kill(
                 return
             try:
                 await drain_method.drain(task)
+            except drain_lib.StatusCodeNotAcceptableError as e:
+                log_bounce_action(
+                    line=f"{bounce_method} bounce killing task {task.id} "
+                    f"due to exception when draining: {e}"
+                )
+                tasks_to_kill.add((task, client))
+            # Any other type of exception is really unexpected, so we need to log
+            # The whole traceback for later debugging
             except Exception:
                 log_bounce_action(
                     line=f"{bounce_method} bounce killing task {task.id} "
