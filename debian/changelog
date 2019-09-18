@@ -1,3 +1,10 @@
+paasta-tools (0.86.8) xenial; urgency=medium
+
+  * 0.86.8 tagged with 'make release'
+    Commit: Store flink dashboard url in metadata:annotations
+
+ -- Bronek Kozicki <bronek@yelp.com>  Wed, 18 Sep 2019 11:16:53 -0700
+
 paasta-tools (0.86.7) xenial; urgency=medium
 
   * 0.86.7 tagged with 'make release'
