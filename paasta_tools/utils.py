@@ -232,7 +232,6 @@ class InstanceConfigDict(TypedDict, total=False):
     monitoring: Dict[str, str]
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
-    monitoring_blacklist: UnsafeDeployBlacklist
     pool: str
     persistent_volumes: List[PersistentVolume]
     role: str
@@ -624,17 +623,6 @@ class InstanceConfig:
         the deploy blacklist."""
 
         return safe_deploy_whitelist(self.config_dict.get("deploy_whitelist"))
-
-    def get_monitoring_blacklist(
-        self, system_deploy_blacklist: DeployBlacklist
-    ) -> DeployBlacklist:
-        """The monitoring_blacklist is a list of tuples of (location type, location value), where the tuples indicate
-        which locations the user doesn't care to be monitored"""
-        return (
-            safe_deploy_blacklist(self.config_dict.get("monitoring_blacklist", []))
-            + self.get_deploy_blacklist()
-            + system_deploy_blacklist
-        )
 
     def get_docker_image(self) -> str:
         """Get the docker image name (with tag) for a given service branch from

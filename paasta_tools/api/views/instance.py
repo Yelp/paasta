@@ -58,7 +58,6 @@ from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
 from paasta_tools.mesos.task import Task
-from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import (
     get_cached_list_of_not_running_tasks_from_frameworks,
 )
@@ -67,6 +66,7 @@ from paasta_tools.mesos_tools import get_cpu_shares
 from paasta_tools.mesos_tools import get_first_status_timestamp
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_short_hostname_from_task
+from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.mesos_tools import get_tail_lines_for_mesos_task
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
@@ -421,19 +421,9 @@ def marathon_smartstack_status(
 ) -> Mapping[str, Any]:
     registration = job_config.get_registrations()[0]
     discover_location_type = service_namespace_config.get_discover()
-    monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=settings.system_paasta_config.get_deploy_blacklist()
-    )
-
-    try:
-        filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-            blacklist=monitoring_blacklist, whitelist=None
-        )
-    except asyncio.TimeoutError:
-        return {"error_message": "Timed out getting list of agents from Mesos."}
 
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves, attribute=discover_location_type
+        slaves=get_slaves(), attribute=discover_location_type
     )
 
     # rebuild the dict, replacing the slave object with just their hostname

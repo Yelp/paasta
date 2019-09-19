@@ -182,7 +182,7 @@ def validate_all_schemas(service_path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
-        for file_type in ["chronos", "marathon", "adhoc", "tron"]:
+        for file_type in ["chronos", "marathon", "adhoc", "tron", "kubernetes"]:
             if basename.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False
@@ -457,6 +457,5 @@ def paasta_validate(args):
     service = args.service
     soa_dir = args.yelpsoa_config_root
     service_path = get_service_path(service, soa_dir)
-
     if not paasta_validate_soa_configs(service_path):
         return 1

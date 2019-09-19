@@ -359,17 +359,14 @@ class TestMarathonAppStatus:
     "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
     autospec=True,
 )
-@mock.patch(
-    "paasta_tools.api.views.instance.get_all_slaves_for_blacklist_whitelist",
-    autospec=True,
-)
+@mock.patch("paasta_tools.api.views.instance.get_slaves", autospec=True)
 def test_marathon_smartstack_status(
-    mock_get_all_slaves_for_blacklist_whitelist,
+    mock_get_slaves,
     mock_get_expected_instance_count_for_namespace,
     mock_get_backends,
     mock_match_backends_and_tasks,
 ):
-    mock_get_all_slaves_for_blacklist_whitelist.return_value = [
+    mock_get_slaves.return_value = [
         {"hostname": "host1.paasta.party", "attributes": {"region": "us-north-3"}}
     ]
     mock_get_expected_instance_count_for_namespace.return_value = 2

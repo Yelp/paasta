@@ -1,3 +1,49 @@
+paasta-tools (0.86.8) xenial; urgency=medium
+
+  * 0.86.8 tagged with 'make release'
+    Commit: Store flink dashboard url in metadata:annotations
+
+ -- Bronek Kozicki <bronek@yelp.com>  Wed, 18 Sep 2019 11:16:53 -0700
+
+paasta-tools (0.86.7) xenial; urgency=medium
+
+  * 0.86.7 tagged with 'make release'
+    Commit: Merge pull request #2430 from Yelp/drmorr/PAASTA-
+    15737/eternal-bounces-of-the-spotless-mind  trying to fix
+    get_happy_tasks/bouncing again
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 16 Sep 2019 16:31:43 -0700
+
+paasta-tools (0.86.6) xenial; urgency=medium
+
+  * 0.86.6 tagged with 'make release'
+    Commit: Merge pull request #2402 from Yelp/PAASTA-
+    15613_nuke_monitoring_blacklist  Paasta 15613 nuke monitoring
+    blacklist
+
+    and  PAASTA-15626 add json schema for k8s schema for paasta validate
+
+ -- Fatima Zahra Elfilali <fzz@yelp.com>  Fri, 13 Sep 2019 13:34:05 -0700
+
+paasta-tools (0.86.5) xenial; urgency=medium
+
+  * 0.86.5 tagged with 'make release'
+    Commit: Merge branch "more_liberal_healthiness"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 13 Sep 2019 10:43:35 -0700
+
+paasta-tools (0.86.4) xenial; urgency=medium
+
+  * 0.86.4 tagged with 'make release'
+    Commit: Also protect state fields
+    Commit: ignore incomplete jobs
+    Commit: Merge pull request #2424 from Yelp/handle_timeouts_better_
+    in_marathon_status_api handle asyncio.TimeoutError
+    Commit: Merge pull request #2419 from Yelp/handle_none_deployed_at
+    handle None deployed_timestamp for non-running mesos tasks
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 13 Sep 2019 04:32:23 -0700
+
 paasta-tools (0.86.3) xenial; urgency=medium
 
   * 0.86.3 tagged with 'make release'

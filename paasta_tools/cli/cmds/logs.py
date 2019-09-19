@@ -929,6 +929,11 @@ class ScribeLogReader(LogReader):
                         "Don't Panic! This may or may not be a problem depending on if you expect there to be"
                     )
                     log.warning("output within this stream.")
+                elif "Failed to connect" in str(e):
+                    log.warning(
+                        f"Couldn't connect to Scribe to tail {stream_name} in {scribe_env}"
+                    )
+                    log.warning(f"Please be in {scribe_env} to tail this log.")
                 else:
                     raise
 
