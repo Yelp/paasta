@@ -44,14 +44,17 @@ async def test_async_ttl_cache_doesnt_cache_failures():
     assert await flaky_coroutine() is None
 
 
+class DataHolder:
+    def __init__(self, value):
+        self.value = value
+
+
 @pytest.mark.asyncio
 async def test_async_ttl_cache_returns_in_flight_future():
     return_values = iter(range(10))
-    condition = asyncio.Condition()
     event = asyncio.Event()
-
-    class WaitingCoroutines:
-        count = 0
+    condition = asyncio.Condition()
+    num_waiting_coroutines = DataHolder(value=0)
 
     # Wait until we have enough coroutines waiting to return a result.  This
     # ensures that dependent coroutines have a chance to get a future out of
@@ -65,7 +68,7 @@ async def test_async_ttl_cache_returns_in_flight_future():
     # wake range_coroutine
     async def event_setter():
         async with condition:
-            while WaitingCoroutines.count != 2:
+            while num_waiting_coroutines.value != 2:
                 await condition.wait()
             event.set()
 
@@ -77,7 +80,7 @@ async def test_async_ttl_cache_returns_in_flight_future():
     # coroutines are waiting.
     async def cache_waiter():
         async with condition:
-            WaitingCoroutines.count += 1
+            num_waiting_coroutines.value += 1
             condition.notify_all()
         return await range_coroutine()
 
@@ -126,11 +129,6 @@ async def test_async_ttl_cache_dont_overwrite_new_cache_entry():
 
     await asyncio.gather(awaiter(), cache_updater())
     assert cache[cache_key] == (new_range_coroutine_future, float("Inf"))
-
-
-class DataHolder:
-    def __init__(self, value):
-        self.value = value
 
 
 @pytest.mark.asyncio
