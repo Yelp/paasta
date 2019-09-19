@@ -109,15 +109,13 @@ class DeploymentProcess(abc.ABC):
         if self.state in self.status_code_by_state():
             self.event_loop.call_soon_threadsafe(self.finished_event.set)
 
-    def start_timer(self, timeout, trigger, message_verb):
+    def start_timer(self, timeout, trigger, message_verb, extra_text=""):
         self.cancel_timer()
-
         timer_start = time.time()
         timer_end = timer_start + timeout
-        formatted_time = datetime.datetime.fromtimestamp(timer_end)
-
+        formatted_time = datetime.datetime.fromtimestamp(timer_end).strftime("%X")
         self.notify_users(
-            f"Will {message_verb} in {timeout} seconds, (at {formatted_time})"
+            f"Will {message_verb} in {timeout} seconds, (at {formatted_time})! {extra_text}"
         )
 
         def times_up():
