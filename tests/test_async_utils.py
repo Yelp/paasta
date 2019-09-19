@@ -126,3 +126,43 @@ async def test_async_ttl_cache_dont_overwrite_new_cache_entry():
 
     await asyncio.gather(awaiter(), cache_updater())
     assert cache[cache_key] == (new_range_coroutine_future, float("Inf"))
+
+
+class DataHolder:
+    def __init__(self, value):
+        self.value = value
+
+
+@pytest.mark.asyncio
+async def test_async_ttl_cache_recover_if_cache_entry_removed():
+    """Ensure we handle the case where we encounter an exception in the cached
+    future but another coroutine awaiting the same future ran first and alraedy
+    deleted the cache entry"""
+    range_continue_event = asyncio.Event()
+    num_awaiters_awaiting = DataHolder(value=0)
+
+    class TestException(Exception):
+        pass
+
+    async def range_coroutine():
+        await range_continue_event.wait()
+        raise TestException
+
+    range_coroutine_future = asyncio.ensure_future(range_coroutine())
+    cache_key = functools._make_key((), {}, typed=False)
+    cache = {cache_key: (range_coroutine_future, float("Inf"))}
+
+    cached_range_coroutine = async_ttl_cache(cache=cache, ttl=0)(range_coroutine)
+
+    async def awaiter():
+        num_awaiters_awaiting.value += 1
+        if num_awaiters_awaiting.value == 2:
+            range_continue_event.set()
+
+        try:
+            await cached_range_coroutine()
+        except TestException:
+            pass
+
+    # should not raise a KeyError!
+    await asyncio.gather(awaiter(), awaiter())
