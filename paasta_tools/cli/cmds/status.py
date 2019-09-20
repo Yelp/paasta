@@ -35,6 +35,8 @@ from typing import Tuple
 from typing import Type
 
 import humanize
+from bravado.exception import BravadoConnectionError
+from bravado.exception import BravadoTimeoutError
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
@@ -230,6 +232,9 @@ def paasta_status_on_api_endpoint(
     except HTTPError as exc:
         paasta_print(exc.response.text)
         return exc.status_code
+    except (BravadoConnectionError, BravadoTimeoutError) as exc:
+        paasta_print(f"Could not connect to API: {exc.__class__.__name__}")
+        return 1
 
     output.append("    instance: %s" % PaastaColors.blue(instance))
     if status.git_sha != "":
