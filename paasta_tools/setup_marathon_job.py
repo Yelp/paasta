@@ -907,6 +907,7 @@ def main() -> None:
     requests_cache.install_cache("setup_marathon_jobs", backend="memory")
 
     system_paasta_config = load_system_paasta_config()
+
     clients = marathon_tools.get_marathon_clients(
         marathon_tools.get_marathon_servers(system_paasta_config)
     )

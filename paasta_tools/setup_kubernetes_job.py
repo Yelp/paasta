@@ -108,17 +108,34 @@ def setup_kube_deployments(
     service_instances: Sequence[str],
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
+
     if service_instances:
         existing_kube_deployments = set(list_all_deployments(kube_client))
         existing_apps = {
             (deployment.service, deployment.instance)
             for deployment in existing_kube_deployments
         }
+
     service_instances_with_valid_names = [
         decompose_job_id(service_instance)
         for service_instance in service_instances
         if validate_job_name(service_instance)
     ]
+
+    job_configs_apps = {}
+
+    for service_instance in service_instances_with_valid_names:
+        service_name, instance_name = service_instance.split(".")
+        job_config = [
+            load_kubernetes_service_config_no_cache(
+                service_name,
+                instance_name,
+                load_system_paasta_config().get_cluster(),
+                soa_dir=soa_dir,
+            )
+        ]
+        job_configs_apps.put(service_instance, job_config)
+
     applications = [
         create_application_object(
             kube_client=kube_client,
@@ -129,6 +146,9 @@ def setup_kube_deployments(
         for service_instance in service_instances_with_valid_names
     ]
 
+    # grab job_config and figure out wat to do about brutal
+
+    # app type is paasta_tools.kubernetes.application.controller_wrappers.DeploymentWrapper
     for _, app in applications:
         if (
             app
