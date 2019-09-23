@@ -325,11 +325,8 @@ def paasta_start_or_stop(args, desired_state):
                 return_val = 0
 
     if invalid_deploy_groups:
-        paasta_print(
-            "No branches found for %s in %s."
-            % (", ".join(invalid_deploy_groups), remote_refs)
-        )
-        paasta_print("Has %s been deployed there yet?" % service)
+        paasta_print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")
+        paasta_print(f"Has {service} been deployed there yet?")
         return_val = 1
 
     return return_val
