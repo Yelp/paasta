@@ -16,6 +16,7 @@ import concurrent.futures
 import difflib
 import os
 import sys
+import traceback
 from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
@@ -221,6 +222,7 @@ def paasta_status_on_api_endpoint(
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
 ) -> int:
+    output.append("    instance: %s" % PaastaColors.blue(instance))
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
         paasta_print("Cannot get a paasta-api client")
@@ -230,13 +232,19 @@ def paasta_status_on_api_endpoint(
             service=service, instance=instance, verbose=verbose
         ).result()
     except HTTPError as exc:
-        paasta_print(exc.response.text)
+        output.append(PaastaColors.red(exc.response.text))
         return exc.status_code
     except (BravadoConnectionError, BravadoTimeoutError) as exc:
-        paasta_print(f"Could not connect to API: {exc.__class__.__name__}")
+        output.append(
+            PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
+        )
+        return 1
+    except Exception:
+        tb = sys.exc_info()[2]
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.extend(line.strip() for line in traceback.format_tb(tb))
         return 1
 
-    output.append("    instance: %s" % PaastaColors.blue(instance))
     if status.git_sha != "":
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
