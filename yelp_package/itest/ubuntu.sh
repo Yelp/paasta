@@ -55,9 +55,6 @@ fake_service_dos.all_fake"
 PAASTA_COMMANDS="list
 list-clusters
 check
-emergency-stop
-emergency-start
-emergency-restart
 fsm
 info
 itest
