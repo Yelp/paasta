@@ -150,10 +150,7 @@ def print_marathon_message(desired_state):
 
 def print_chronos_message(desired_state):
     if desired_state == "start":
-        paasta_print(
-            "'Start' will tell Chronos to start scheduling the job. "
-            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
-        )
+        paasta_print("'Start' will tell Chronos to start scheduling the job.")
     elif desired_state == "stop":
         paasta_print(
             "'Stop' for a Chronos job will cause the job to be disabled until the "

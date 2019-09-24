@@ -13,9 +13,6 @@ Submodules
    paasta_tools.cli.cmds.docker_exec
    paasta_tools.cli.cmds.docker_inspect
    paasta_tools.cli.cmds.docker_stop
-   paasta_tools.cli.cmds.emergency_restart
-   paasta_tools.cli.cmds.emergency_start
-   paasta_tools.cli.cmds.emergency_stop
    paasta_tools.cli.cmds.fsm
    paasta_tools.cli.cmds.get_docker_image
    paasta_tools.cli.cmds.get_latest_deployment

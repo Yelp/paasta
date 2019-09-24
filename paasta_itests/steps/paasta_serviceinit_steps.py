@@ -199,41 +199,6 @@ def output_matches_pattern(context, pattern):
     assert re.search(pattern, context.output, re.MULTILINE)
 
 
-@when('we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
-def chronos_emergency_stop_job(context, service_instance):
-    cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} stop"
-    paasta_print("Running cmd %s" % cmd)
-    exit_code, output = _run(cmd)
-    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
-    paasta_print()  # sacrificial line for behave to eat instead of our output
-
-    assert exit_code == 0
-
-
-@when('we paasta_serviceinit emergency-start the service_instance "{service_instance}"')
-def chronos_emergency_start_job(context, service_instance):
-    cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} start"
-    paasta_print("Running cmd %s" % cmd)
-    exit_code, output = _run(cmd)
-    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
-    paasta_print()  # sacrificial line for behave to eat instead of our output
-
-    assert exit_code == 0
-
-
-@when(
-    'we paasta_serviceinit emergency-restart the service_instance "{service_instance}"'
-)
-def chronos_emergency_restart_job(context, service_instance):
-    cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} restart"
-    paasta_print("Running cmd %s" % cmd)
-    exit_code, output = _run(cmd)
-    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
-    paasta_print()  # sacrificial line for behave to eat instead of our output
-
-    assert exit_code == 0
-
-
 @when('we run paasta serviceinit "{command}" on "{job_id}"')
 def paasta_serviceinit_command(context, command, job_id):
     cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {job_id} {command}"
