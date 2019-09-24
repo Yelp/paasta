@@ -16,6 +16,7 @@ import concurrent.futures
 import difflib
 import os
 import sys
+import traceback
 from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
@@ -35,6 +36,8 @@ from typing import Tuple
 from typing import Type
 
 import humanize
+from bravado.exception import BravadoConnectionError
+from bravado.exception import BravadoTimeoutError
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
@@ -49,7 +52,6 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -220,6 +222,7 @@ def paasta_status_on_api_endpoint(
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
 ) -> int:
+    output.append("    instance: %s" % PaastaColors.blue(instance))
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
         paasta_print("Cannot get a paasta-api client")
@@ -229,10 +232,19 @@ def paasta_status_on_api_endpoint(
             service=service, instance=instance, verbose=verbose
         ).result()
     except HTTPError as exc:
-        paasta_print(exc.response.text)
+        output.append(PaastaColors.red(exc.response.text))
         return exc.status_code
+    except (BravadoConnectionError, BravadoTimeoutError) as exc:
+        output.append(
+            PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
+        )
+        return 1
+    except Exception:
+        tb = sys.exc_info()[2]
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.extend(line.strip() for line in traceback.format_tb(tb))
+        return 1
 
-    output.append("    instance: %s" % PaastaColors.blue(instance))
     if status.git_sha != "":
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
@@ -785,9 +797,8 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    dashboard_url = get_dashboard_url(
-        cluster=cluster, service=service, instance=instance
-    )
+    dashboard_url = metadata.annotations.get("yelp.com/dashboard_url")
+    dashboard_url += metadata.name
     if verbose:
         output.append(
             f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"

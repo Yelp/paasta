@@ -217,6 +217,5 @@ def set_flink_desired_state(
     return status
 
 
-def get_dashboard_url(cluster: str, service: str, instance: str) -> str:
-    sname = sanitised_name(service, instance)
-    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}"
+def get_flink_ingress_port() -> int:
+    return FLINK_INGRESS_PORT

@@ -21,6 +21,26 @@ If you have added a new python dependency you may need to run
 ``docker-compose build`` to re-build the containers. Then you can restart
 everything with ``docker-compose down && docker-compose run playground``.
 
+Getting Started
+---------------
+
+Mesos
+~~~~~
+To launch a running Mesos cluster, then run ``docker-compose run playground``
+and you'll be dropped into a shell with the paasta\_tools package installed in development mode.
+
+Kubernetes
+~~~~~~~~~~
+To instead launch a Kubernetes cluster, run
+
+::
+
+    cd example_cluster
+    ./dind-cluster-v1.13.sh clean
+    ./dind-cluster-v1.13.sh up
+    docker-compose -f docker-compose.k8s.yaml run playground
+
+
 Try it out
 ----------
 
@@ -40,12 +60,19 @@ the playground container:
     paasta push-to-registry -s hello-world -c `git rev-parse HEAD` --force
     paasta mark-for-deployment --git-url root@git:dockercloud-hello-world --commit `git rev-parse HEAD` --deploy-group testcluster.everything --service hello-world
 
-This mimics what jenkins would do to deploy a PaaSTA service. If you end
-up with some tasks that are stuck waiting it's probably because of
-capacity. So add some more slaves like:
-``docker-compose scale mesosslave=4``
 
-Some but not all the command line tools should work. Try:
+Scaling The Cluster
+-------------------
+If you want to add more capacity to the cluster, you can increase the number of Mesos agents/Kubernetes Nodes:
+
+``docker-compose scale mesosslave=4`` or
+``docker-compose scale kubernetes=4``
+
+
+Interacting with the cluster
+----------------------------
+
+Some but not all of the paasta command line tools should work. Try:
 
 ::
 

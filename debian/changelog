@@ -1,3 +1,28 @@
+paasta-tools (0.86.9) xenial; urgency=medium
+
+  * 0.86.9 tagged with 'make release'
+    Commit: Merge pull request #2435 from
+    Yelp/catch_more_http_api_errors  catch a couple more bravado errors
+    when getting paasta status from th…
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 24 Sep 2019 10:36:31 -0700
+
+paasta-tools (0.86.8) xenial; urgency=medium
+
+  * 0.86.8 tagged with 'make release'
+    Commit: Store flink dashboard url in metadata:annotations
+
+ -- Bronek Kozicki <bronek@yelp.com>  Wed, 18 Sep 2019 11:16:53 -0700
+
+paasta-tools (0.86.7) xenial; urgency=medium
+
+  * 0.86.7 tagged with 'make release'
+    Commit: Merge pull request #2430 from Yelp/drmorr/PAASTA-
+    15737/eternal-bounces-of-the-spotless-mind  trying to fix
+    get_happy_tasks/bouncing again
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 16 Sep 2019 16:31:43 -0700
+
 paasta-tools (0.86.6) xenial; urgency=medium
 
   * 0.86.6 tagged with 'make release'

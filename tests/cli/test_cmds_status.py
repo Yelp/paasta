@@ -1235,7 +1235,7 @@ def test_paasta_status_exception(system_paasta_config):
     with patch(
         "paasta_tools.cli.cmds.status.get_paasta_api_client", autospec=True
     ) as mock_get_paasta_api_client:
-        requests_response = Mock(status_code=500, reason="Internal Server Error")
+        requests_response = Mock(status_code=500, text="Internal Server Error")
         incoming_response = RequestsResponseAdapter(requests_response)
 
         mock_swagger_client = Mock()
