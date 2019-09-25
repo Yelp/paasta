@@ -502,7 +502,7 @@ def test_start_or_stop_bad_refs(
     }
     mock_confirm_to_continue.return_value = True
     assert args.command(args) == 1
-    assert "No branches found for" in capfd.readouterr()[0]
+    assert "deployed there yet?" in capfd.readouterr()[0]
 
 
 def test_cluster_list_defaults_to_all():

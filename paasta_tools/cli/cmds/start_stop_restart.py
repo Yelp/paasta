@@ -150,10 +150,7 @@ def print_marathon_message(desired_state):
 
 def print_chronos_message(desired_state):
     if desired_state == "start":
-        paasta_print(
-            "'Start' will tell Chronos to start scheduling the job. "
-            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
-        )
+        paasta_print("'Start' will tell Chronos to start scheduling the job.")
     elif desired_state == "stop":
         paasta_print(
             "'Stop' for a Chronos job will cause the job to be disabled until the "
@@ -328,11 +325,8 @@ def paasta_start_or_stop(args, desired_state):
                 return_val = 0
 
     if invalid_deploy_groups:
-        paasta_print(
-            "No branches found for %s in %s."
-            % (", ".join(invalid_deploy_groups), remote_refs)
-        )
-        paasta_print("Has %s been deployed there yet?" % service)
+        paasta_print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")
+        paasta_print(f"Has {service} been deployed there yet?")
         return_val = 1
 
     return return_val
