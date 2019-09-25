@@ -68,24 +68,6 @@
                 "net": {
                     "type": "string"
                 },
-                "ulimit": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "object",
-                        "properties": {
-                            "soft": {
-                                "type": "number"
-                            },
-                            "hard": {
-                                "type": "number"
-                            }
-                        },
-                        "required": [
-                            "soft"
-                        ],
-                        "additionalProperties": false
-                    }
-                },
                 "cap_add": {
                     "type": "array",
                     "items": {
