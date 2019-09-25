@@ -1,3 +1,11 @@
+paasta-tools (0.86.11) xenial; urgency=medium
+
+  * 0.86.11 tagged with 'make release'
+    Commit: Merge pull request #2439 from Yelp/PAASTA-
+    15610_deperecate_ulimit  deprecate_ulimit
+
+ -- Fatima Zahra Elfilali <fzz@yelp.com>  Wed, 25 Sep 2019 14:51:04 -0700
+
 paasta-tools (0.86.10) xenial; urgency=medium
 
   * 0.86.10 tagged with 'make release'
