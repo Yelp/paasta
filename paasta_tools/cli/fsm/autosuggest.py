@@ -37,6 +37,25 @@ def _get_smartstack_proxy_ports_from_file(root, file):
     return ports
 
 
+def read_etc_services():
+    with open("/etc/services") as fd:
+        return fd.readlines()
+
+
+def get_inuse_ports_from_etc_services():
+    ports = set()
+    for line in read_etc_services():
+        if line.startswith("#"):
+            continue
+        try:
+            p = line.split()[1]
+            port = int(p.split("/")[0])
+            ports.add(port)
+        except Exception:
+            pass
+    return ports
+
+
 def suggest_smartstack_proxy_port(
     yelpsoa_config_root, range_min=20000, range_max=21000
 ):
@@ -51,7 +70,7 @@ def suggest_smartstack_proxy_port(
                         available_proxy_ports.discard(used_port)
                 except Exception:
                     pass
-
+    available_proxy_ports.difference_update(get_inuse_ports_from_etc_services())
     try:
         return random.choice(list(available_proxy_ports))
     except IndexError:
