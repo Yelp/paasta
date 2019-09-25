@@ -171,16 +171,6 @@ instance MAY have:
     regardless to ensure the scheduler has adequate information for distributing
     tasks.
 
-  * ``ulimit``: Dictionary of ulimit values that are passed to Docker. Defaults
-    to empty dictionary. Each ulimit value is a dictionary with the soft limit
-    specified under the 'soft' key and the optional hard limit specified under
-    the 'hard' key. Ulimit values that are not set are inherited from the
-    default ulimits set on the Docker daemon. Example::
-
-      ulimit:
-        - nofile: {"soft": 1024, "hard": 2048}
-        - nice: {"soft": 20}
-
   * ``cap_add``: List of capabilities that are passed to Docker. Defaults
     to empty list. Example::
 
