@@ -31,10 +31,7 @@ from typing import Sequence
 from typing import Tuple
 
 import a_sync
-import gevent
-import requests
-from gevent import monkey
-from gevent import pool
+import aiohttp
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from marathon.models.app import MarathonApp
@@ -265,15 +262,17 @@ def deserialize_historical_load(historical_load_bytes):
     return historical_load
 
 
-def get_json_body_from_service(host, port, endpoint, timeout=2):
-    return requests.get(
-        f"http://{host}:{port}/{endpoint}",
-        headers={"User-Agent": get_user_agent()},
-        timeout=timeout,
-    ).json()
+async def get_json_body_from_service(host, port, endpoint, timeout=2):
+    async with aiohttp.ClientSession(
+        conn_timeout=timeout, read_timeout=timeout
+    ) as session:
+        async with session.get(
+            f"http://{host}:{port}/{endpoint}", headers={"User-Agent": get_user_agent()}
+        ) as response:
+            return await response.json()
 
 
-def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
+async def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
     """
     Gets the task utilization by fetching json from an http endpoint
     and applying a function that maps it to a utilization.
@@ -287,12 +286,11 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
     """
     try:
         return json_mapper(
-            get_json_body_from_service(task.host, task.ports[0], endpoint)
+            await get_json_body_from_service(task.host, task.ports[0], endpoint)
         )
-    except requests.exceptions.Timeout:
+    except aiohttp.ServerTimeoutError:
         # If we time out querying an endpoint, assume the task is fully loaded
         # This won't trigger in the event of DNS error or when a request is refused
-        # a requests.exception.ConnectionError is raised in those cases
         log.error(
             "Received a timeout when querying %s on %s:%s. Assuming the service "
             "is at full utilization." % (service, task.host, task.ports[0])
@@ -306,7 +304,8 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
         )
 
 
-def get_http_utilization_for_all_tasks(
+@a_sync.to_blocking
+async def get_http_utilization_for_all_tasks(
     marathon_service_config, marathon_tasks, endpoint, json_mapper
 ):
     """
@@ -326,19 +325,18 @@ def get_http_utilization_for_all_tasks(
     utilization = []
     service = marathon_service_config.get_service()
 
-    monkey.patch_socket()
-    gevent_pool = pool.Pool(20)
-    jobs = [
-        gevent_pool.spawn(
-            get_http_utilization_for_a_task, task, service, endpoint, json_mapper
+    futures = [
+        asyncio.ensure_future(
+            get_http_utilization_for_a_task(task, service, endpoint, json_mapper)
         )
         for task in marathon_tasks
     ]
-    gevent.joinall(jobs)
+    await asyncio.wait(futures)
 
-    for job in jobs:
-        if job.value is not None:
-            utilization.append(job.value)
+    for future in futures:
+        result = future.result()
+        if result is not None:
+            utilization.append(result)
 
     if not utilization:
         raise MetricsProviderNoDataError(
