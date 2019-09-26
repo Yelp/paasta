@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import concurrent.futures
 import difflib
 import os
@@ -1341,3 +1342,27 @@ def paasta_status(args,) -> int:
             return_codes.append(return_code)
 
     return max(return_codes)
+
+
+def main():
+    status_parser = argparse.ArgumentParser()
+    status_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        dest="verbose",
+        default=0,
+        help="Print out more output regarding the state of the service. "
+        "A second -v will also print the stdout/stderr tail.",
+    )
+    status_parser.add_argument(
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    add_instance_filter_arguments(status_parser)
+    args = status_parser.parse_args()
+    sys.exit(paasta_status(args))
