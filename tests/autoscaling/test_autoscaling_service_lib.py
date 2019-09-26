@@ -14,11 +14,11 @@
 from datetime import datetime
 from datetime import timedelta
 
+import aiohttp
 import asynctest
 import mock
+import pytest
 from kazoo.exceptions import NoNodeError
-from pytest import raises
-from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
@@ -208,7 +208,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
@@ -343,23 +343,25 @@ def test_mesos_cpu_metrics_provider():
         assert not mock_zk_client.return_value.set.called
 
 
-def test_get_json_body_from_service():
-    with mock.patch(
-        "paasta_tools.autoscaling.autoscaling_service_lib.requests.get", autospec=True
-    ) as mock_request_get:
-        mock_request_get.return_value = mock.Mock(
-            json=mock.Mock(return_value=mock.sentinel.json_body)
+@pytest.mark.asyncio
+async def test_get_json_body_from_service():
+    with asynctest.patch(
+        "paasta_tools.autoscaling.autoscaling_service_lib.aiohttp.ClientSession",
+        autospec=True,
+    ) as mock_client_session:
+        mock_get = mock_client_session.return_value.__aenter__.return_value.get
+        mock_get.return_value.__aenter__.return_value.json = asynctest.CoroutineMock(
+            return_value=mock.sentinel.json_body
         )
         assert (
-            autoscaling_service_lib.get_json_body_from_service(
+            await autoscaling_service_lib.get_json_body_from_service(
                 "fake-host", "fake-port", "fake-endpoint"
             )
             == mock.sentinel.json_body
         )
-        mock_request_get.assert_called_once_with(
-            "http://fake-host:fake-port/fake-endpoint",
-            headers={"User-Agent": mock.ANY},
-            timeout=2,
+        mock_client_session.assert_called_once_with(conn_timeout=2, read_timeout=2)
+        mock_get.assert_called_once_with(
+            "http://fake-host:fake-port/fake-endpoint", headers={"User-Agent": mock.ANY}
         )
 
 
@@ -369,7 +371,7 @@ def test_get_http_utilization_for_all_tasks():
     ]
     mock_json_mapper = mock.Mock(return_value=0.5)
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ):
@@ -388,9 +390,9 @@ def test_get_http_utilization_for_all_tasks_timeout():
     fake_marathon_tasks = [
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
-    mock_json_mapper = mock.Mock(side_effect=Timeout)
+    mock_json_mapper = mock.Mock(side_effect=aiohttp.ServerTimeoutError)
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ):
@@ -421,11 +423,11 @@ def test_get_http_utilization_for_all_tasks_no_data():
 
     with mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.log.error", autospec=True
-    ) as mock_log_error, mock.patch(
+    ) as mock_log_error, asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ):
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.get_http_utilization_for_all_tasks(
                 fake_marathon_service_config,
                 fake_marathon_tasks,
@@ -442,7 +444,7 @@ def test_http_metrics_provider():
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ) as mock_get_json_body_from_service:
@@ -460,7 +462,7 @@ def test_uwsgi_metrics_provider():
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ) as mock_get_json_body_from_service:
@@ -507,7 +509,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
@@ -1284,7 +1286,7 @@ def test_filter_autoscaling_tasks():
             health_checks=[mock_health_check],
             tasks=mock_marathon_tasks,
         )
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.filter_autoscaling_tasks(
                 [mock_marathon_app],
                 mock_mesos_tasks,
