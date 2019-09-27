@@ -93,7 +93,7 @@ def status_marathon_job(context, status, job_id):
         " exits with return code 0 and the correct output"
     )
 )
-def chronos_status_returns_healthy(context, service_instance):
+def paasta_status_returns_healthy(context, service_instance):
     cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} status"
     paasta_print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
@@ -111,7 +111,7 @@ def chronos_status_returns_healthy(context, service_instance):
         " exits with return code 0 and the correct output"
     )
 )
-def chronos_status_verbose_returns_healthy(context, service_instance):
+def paasta_status_verbose_returns_healthy(context, service_instance):
     cmd = f"python -m paasta_tools.paasta_serviceinit --soa-dir {context.soa_dir} {service_instance} status --verbose"
     paasta_print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
