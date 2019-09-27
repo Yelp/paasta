@@ -445,7 +445,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         "--vault-token-file",
-        help="Override vault token file, defaults to /root/.vault-token",
+        help="Override vault token file, defaults to %(default)s",
         type=str,
         dest="vault_token_file",
         required=False,
