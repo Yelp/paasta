@@ -48,7 +48,7 @@ def add_subparser(subparsers):
         default=120,
         dest="duration",
         type=int,
-        help="How long to pause the autoscaler for, defaults to 120 minutes",
+        help="How long to pause the autoscaler for, defaults to %(default)s minutes",
     )
     status_parser.add_argument(
         "-f",

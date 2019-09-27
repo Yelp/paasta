@@ -43,7 +43,7 @@ def parse_args():
     parser.add_argument(
         "-f",
         "--format",
-        help="Output format. Defaults to rfc1700",
+        help="Output format. Defaults to %(default)s",
         dest="output_format",
         choices=["rfc1700", "yaml", "json"],
         default="rfc1700",
