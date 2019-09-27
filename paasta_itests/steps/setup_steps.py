@@ -15,14 +15,12 @@ import json
 import os
 from tempfile import NamedTemporaryFile
 
-import chronos
 import yaml
 from behave import given
 from behave import when
 from bravado.client import SwaggerClient
 from itest_utils import get_service_connection_string
 
-from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
@@ -34,17 +32,12 @@ def _get_marathon_connection_string(service="marathon"):
     return "http://%s" % get_service_connection_string(service)
 
 
-def _get_chronos_connection_string():
-    return "http://%s" % get_service_connection_string("chronos")
-
-
 def _get_zookeeper_connection_string(chroot):
     return "zk://{}/{}".format(get_service_connection_string("zookeeper"), chroot)
 
 
 def setup_system_paasta_config():
     zk_connection_string = _get_zookeeper_connection_string("mesos-testcluster")
-    chronos_connection_string = _get_chronos_connection_string()
     system_paasta_config = utils.SystemPaastaConfig(
         {
             "cluster": "testcluster",
@@ -72,11 +65,6 @@ def setup_system_paasta_config():
                     "password": None,
                 },
             ],
-            "chronos_config": {
-                "user": None,
-                "password": None,
-                "url": [chronos_connection_string],
-            },
             "dashboard_links": {
                 "testcluster": {
                     "Marathon RO": [
@@ -97,19 +85,6 @@ def setup_marathon_clients():
     marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
     clients = marathon_tools.get_marathon_clients(marathon_servers)
     return (clients, marathon_servers, system_paasta_config)
-
-
-def setup_chronos_client():
-    connection_string = get_service_connection_string("chronos")
-    return chronos.connect(connection_string, scheduler_api_version=None)
-
-
-def setup_chronos_config():
-    system_paasta_config = setup_system_paasta_config()
-    chronos_config = chronos_tools.ChronosConfig(
-        system_paasta_config.get_chronos_config()
-    )
-    return chronos_config
 
 
 def get_paasta_api_url():
@@ -186,7 +161,7 @@ def working_paasta_cluster(context):
 
 @given("a working paasta cluster, with docker registry {docker_registry}")
 def working_paasta_cluster_with_registry(context, docker_registry):
-    """Adds a working marathon_clients and chronos client for the purposes of
+    """Adds a working marathon_clients for the purposes of
     interacting with them in the test."""
 
     if not hasattr(context, "marathon_clients"):
@@ -195,13 +170,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         )
     else:
         paasta_print("Marathon connections already established")
-
-    if not hasattr(context, "chronos_client"):
-        context.chronos_config = setup_chronos_config()
-        context.chronos_client = setup_chronos_client()
-        context.jobs = {}
-    else:
-        paasta_print("Chronos connection already established")
 
     if not hasattr(context, "paasta_api_client"):
         context.paasta_api_client = setup_paasta_api_client()
@@ -216,9 +184,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         context,
         {"marathon_servers": context.system_paasta_config.get_marathon_servers()},
         "marathon.json",
-    )
-    write_etc_paasta(
-        context, {"chronos_config": context.chronos_config}, "chronos.json"
     )
     write_etc_paasta(
         context,
@@ -283,72 +248,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         },
         "dashboard_links.json",
     )
-
-
-@given(
-    'we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"'
-)
-def write_soa_dir_chronos_instance(context, service, disabled, instance):
-    soa_dir = "/nail/etc/services/"
-    desired_disabled = disabled == "disabled"
-    if not os.path.exists(os.path.join(soa_dir, service)):
-        os.makedirs(os.path.join(soa_dir, service))
-    with open(
-        os.path.join(soa_dir, service, "chronos-%s.yaml" % context.cluster), "w"
-    ) as f:
-        f.write(
-            yaml.safe_dump(
-                {
-                    instance: {
-                        "schedule": "R0/2000-01-01T16:20:00Z/PT60S",  # R0 prevents the job from being scheduled automatically
-                        "cmd": 'echo "Taking a nap..." && sleep 60m && echo "Nap time over, back to work"',
-                        "monitoring": {"team": "fake_team"},
-                        "disabled": desired_disabled,
-                        "mem": 50,
-                        "disk": 10,
-                    }
-                }
-            )
-        )
-    context.soa_dir = soa_dir
-
-
-@given(
-    (
-        'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
-        ' "{instance}" and parent "{parent}"'
-    )
-)
-def write_soa_dir_dependent_chronos_instance(
-    context, service, disabled, instance, parent
-):
-    soa_dir = "/nail/etc/services/"
-    desired_disabled = disabled == "disabled"
-    if not os.path.exists(os.path.join(soa_dir, service)):
-        os.makedirs(os.path.join(soa_dir, service))
-    with open(
-        os.path.join(soa_dir, service, "chronos-%s.yaml" % context.cluster), "w"
-    ) as f:
-        (_, parent_instance, _, __) = decompose_job_id(parent)
-        f.write(
-            yaml.safe_dump(
-                {
-                    parent_instance: {
-                        "schedule": "R0/2000-01-01T16:20:00Z/PT60S",  # R0 prevents the job from being scheduled automatically
-                        "cmd": 'echo "Taking a nap..." && sleep 60m && echo "Nap time over, back to work"',
-                        "monitoring": {"team": "fake_team"},
-                        "disabled": desired_disabled,
-                    },
-                    instance: {
-                        "parents": [parent],
-                        "cmd": 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
-                        "monitoring": {"team": "fake_team"},
-                        "disabled": desired_disabled,
-                    },
-                }
-            )
-        )
-    context.soa_dir = soa_dir
 
 
 @given(

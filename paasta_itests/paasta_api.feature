@@ -17,13 +17,6 @@ Feature: paasta_api
     Then instance GET should return app_count "1" and an expected number of running instances for "test-service.main"
      And instance GET should return error code "404" for "test-service.non-existent"
 
-  Scenario: instance GET shows the chronos status of service.instance
-    Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with the enabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with enabled chronos instance "testinstance"
-     When we run setup_chronos_job for service_instance "testservice.testinstance"
-    Then instance GET should return chronos desired_state "Scheduled" for "testservice.testinstance"
-
   Scenario: High disk usage
     Given a working paasta cluster
     When an app with id "disktest" using high disk is launched

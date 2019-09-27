@@ -94,22 +94,6 @@ def _clean_up_marathon_apps(context):
                 time.sleep(0.5)
 
 
-def _clean_up_chronos_jobs(context):
-    """ If a chronos client object exists, delete any jobs and wait for them to die """
-    if hasattr(context, "chronos_client"):
-        while len(context.chronos_client.list()) > 0:
-            jobs = context.chronos_client.list()
-            for job in jobs:
-                paasta_print(
-                    "after_scenario: Job %s is present in chronos. Deleting."
-                    % job["name"]
-                )
-                context.chronos_client.delete(job["name"])
-            time.sleep(1)
-    if hasattr(context, "jobs"):
-        context.jobs = {}
-
-
 def _clean_up_mesos_cli_config(context):
     """If a mesos cli config file was written, clean it up."""
     if hasattr(context, "mesos_cli_config_filename"):
@@ -197,7 +181,6 @@ def _clean_up_event_loop(context):
 def after_scenario(context, scenario):
     _stop_deployd(context)
     _clean_up_marathon_apps(context)
-    _clean_up_chronos_jobs(context)
     _clean_up_maintenance(context)
     _clean_up_mesos_cli_config(context)
     _clean_up_soa_dir(context)

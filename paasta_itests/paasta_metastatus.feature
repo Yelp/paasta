@@ -40,13 +40,6 @@ Feature: paasta_metastatus describes the state of the paasta cluster
       And 3 tasks belonging to the app with id "cputest" are in the task list
      Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% CPUs available."
 
-  Scenario: With a launched chronos job
-    Given a working paasta cluster
-     When we create a trivial marathon app
-      And we create a trivial chronos job called "testjob"
-      And we wait for the chronos job stored as "testjob" to appear in the job list
-     Then paasta_metastatus -v exits with return code "0" and output "Enabled chronos jobs: 1"
-
 #  Scenario: Mesos master unreachable
 #    Given a working paasta cluster
 #     When all masters are unavailable
@@ -55,8 +48,6 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: paasta metastatus verbose succeeds
     Given a working paasta cluster
      When we create a trivial marathon app
-      And we create a trivial chronos job called "testjob"
-      And we wait for the chronos job stored as "testjob" to appear in the job list
      Then paasta_metastatus -v exits with return code "0" and output " "
      Then paasta_metastatus -vv exits with return code "0" and output " "
      Then paasta_metastatus -vvv exits with return code "0" and output "Hostname"
