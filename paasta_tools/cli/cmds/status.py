@@ -798,7 +798,6 @@ def print_flink_status(
         return 0
 
     dashboard_url = metadata.annotations.get("yelp.com/dashboard_url")
-    dashboard_url += metadata.name
     if verbose:
         output.append(
             f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"

@@ -217,5 +217,5 @@ def set_flink_desired_state(
     return status
 
 
-def get_flink_ingress_port() -> int:
-    return FLINK_INGRESS_PORT
+def get_flink_ingress_url_root(cluster: str) -> str:
+    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/"
