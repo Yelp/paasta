@@ -19,6 +19,8 @@ import datetime
 import logging
 from typing import Sequence
 
+import pysensu_yelp
+
 from paasta_tools import flink_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
@@ -26,7 +28,9 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.monitoring_tools import send_replication_event
 from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
+from paasta_tools.utils import is_under_replicated
 
 
 log = logging.getLogger(__name__)
@@ -53,6 +57,66 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
     )
 
 
+def send_event_if_not_enough_taskmanagers(
+    instance_config: FlinkDeploymentConfig,
+    expected_count: int,
+    num_reported: int,
+    strerror: str,
+) -> None:
+    under_replicated = False
+    if strerror is None:
+        crit_threshold = instance_config.get_replication_crit_percentage()
+        output = (
+            "Service %s has %d out of %d expected instances of %s reported by dashboard!\n"
+            + "(threshold: %d%%)"
+        ) % (
+            instance_config.job_id,
+            num_reported,
+            expected_count,
+            "taskmanager",
+            crit_threshold,
+        )
+        under_replicated, _ = is_under_replicated(
+            num_reported, expected_count, crit_threshold
+        )
+    else:
+        output = ("Dashboard of service %s is not available!\n" + "(%s)") % (
+            instance_config.job_id,
+            strerror,
+        )
+    if under_replicated or strerror:
+        output += (
+            "\n\n"
+            "What this alert means:\n"
+            "\n"
+            "  This alert means that the Flink service is not reporting the\n"
+            "  requested number of taskmanagers.\n"
+            "\n"
+            "Reasons this might be happening:\n"
+            "\n"
+            "  The service may simply be unhealthy. There also may not be enough resources\n"
+            "  in the cluster to support the requested instance count.\n"
+            "\n"
+            "Things you can do:\n"
+            "\n"
+            "  * Fix the cause of the unhealthy service. Try running:\n"
+            "\n"
+            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+        ) % {
+            "service": instance_config.service,
+            "instance": instance_config.instance,
+            "cluster": instance_config.cluster,
+        }
+        log.error(output)
+        status = pysensu_yelp.Status.CRITICAL
+    else:
+        log.info(output)
+        status = pysensu_yelp.Status.OK
+    send_replication_event(
+        instance_config=instance_config, status=status, output=output
+    )
+
+
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
     all_pods: Sequence[V1Pod],
@@ -70,7 +134,22 @@ def check_flink_service_health(
     num_healthy_jobmanagers = healthy_flink_containers_cnt(si_pods, "jobmanager")
     num_healthy_taskmanagers = healthy_flink_containers_cnt(si_pods, "taskmanager")
 
-    # TBD: check cnt according to Flink
+    strerror = None
+    reported_taskmanagers = None
+    try:
+        overview = flink_tools.get_flink_jobmanager_overview(
+            instance_config.service, instance_config.instance, instance_config.cluster
+        )
+        reported_taskmanagers = overview.get("taskmanagers", 0)
+    except ValueError as e:
+        strerror = str(e)
+
+    send_event_if_not_enough_taskmanagers(
+        instance_config=instance_config,
+        expected_count=taskmanagers_expected_cnt,
+        num_reported=reported_taskmanagers,
+        strerror=strerror,
+    )
 
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,

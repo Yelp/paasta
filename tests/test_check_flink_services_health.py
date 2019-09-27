@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+import pysensu_yelp
 import pytest
 
 from paasta_tools import check_flink_services_health
@@ -47,9 +48,15 @@ def test_check_flink_service_health(instance_config):
         autospec=True,
         return_value=1,
     ), mock.patch(
+        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+        autospec=True,
+        return_value={"taskmanagers": 3},
+    ), mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event_if_under_replication",
         autospec=True,
-    ) as mock_send_replication_event_if_under_replication:
+    ) as mock_send_replication_event_if_under_replication, mock.patch(
+        "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
+    ) as mock_send_replication_event:
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
@@ -77,3 +84,8 @@ def test_check_flink_service_health(instance_config):
             ),
         ]
         mock_send_replication_event_if_under_replication.assert_has_calls(expected)
+        mock_send_replication_event.assert_called_once_with(
+            instance_config=instance_config,
+            status=pysensu_yelp.Status.OK,
+            output="Service fake_service.fake_instance has 3 out of 3 expected instances of taskmanager reported by dashboard!\n(threshold: 90%)",
+        )
