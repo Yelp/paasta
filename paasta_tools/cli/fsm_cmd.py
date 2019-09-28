@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import contextlib
 import shutil
 import sys
@@ -50,10 +51,9 @@ def make_copyfile_symlink_aware():
         shutil.copymode = orig_copymode
 
 
-def add_subparser(subparsers):
-    fsm_parser = subparsers.add_parser(
+def parse_args():
+    fsm_parser = argparse.ArgumentParser(
         "fsm",
-        help="Generate boilerplate configs for a new PaaSTA Service",
         description=(
             "'paasta fsm' is used to generate example soa-configs, which is useful during initial "
             "service creation. Currently 'fsm' generates 'yelp-specific' configuration, but can still "
@@ -73,6 +73,7 @@ def add_subparser(subparsers):
         ),
     )
     fsm_parser.set_defaults(command=paasta_fsm)
+    return fsm_parser.parse_args()
 
 
 def get_paasta_config(yelpsoa_config_root):
@@ -110,3 +111,12 @@ def paasta_fsm(args):
     paasta_print("Customize Them If It Makes You Happy -- http://y/paasta For Details")
     paasta_print("Remember To Add, Commit, And Push When You're Done:")
     paasta_print()
+
+
+def main():
+    args = parse_args()
+    paasta_fsm(args)
+
+
+if __name__ == "__main__":
+    main()

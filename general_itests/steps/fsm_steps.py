@@ -21,7 +21,7 @@ from behave import then
 from behave import when
 from service_configuration_lib import read_services_configuration
 
-from paasta_tools.cli.cmds.fsm import paasta_fsm
+from paasta_tools.cli.fsm_cmd import paasta_fsm
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -47,7 +47,7 @@ def step_impl_when_fsm_auto(context):
 
     fake_args = mock.Mock(yelpsoa_config_root=context.fake_yelpsoa_configs)
     with mock.patch(
-        "paasta_tools.cli.cmds.fsm.load_system_paasta_config", autospec=True
+        "paasta_tools.cli.fsm_cmd.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config:
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             config={}, directory=context.fake_yelpsoa_configs
