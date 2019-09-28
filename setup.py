@@ -89,6 +89,7 @@ setup(
             "paasta=paasta_tools.cli.cli:main",
             "paasta-api=paasta_tools.api.api:main",
             "paasta-deployd=paasta_tools.deployd.master:main",
+            "paasta-fsm=paasta_tools.cli.fsm_cmd:main",
             "paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main",
             "paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main",
             "paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main",
