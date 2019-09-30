@@ -2386,15 +2386,18 @@ def atomic_file_write(target_path: str) -> Iterator[IO]:
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
 
-    with tempfile.NamedTemporaryFile(
-        dir=dirname, prefix=(".%s-" % basename), delete=False, mode="w"
-    ) as f:
-        temp_target_path = f.name
-        yield f
+    if target_path == "-":
+        yield sys.stdout
+    else:
+        with tempfile.NamedTemporaryFile(
+            dir=dirname, prefix=(".%s-" % basename), delete=False, mode="w"
+        ) as f:
+            temp_target_path = f.name
+            yield f
 
-    mode = 0o0666 & (~get_umask())
-    os.chmod(temp_target_path, mode)
-    os.rename(temp_target_path, target_path)
+        mode = 0o0666 & (~get_umask())
+        os.chmod(temp_target_path, mode)
+        os.rename(temp_target_path, target_path)
 
 
 class InvalidJobNameError(Exception):
