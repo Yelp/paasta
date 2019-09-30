@@ -656,8 +656,7 @@ async def get_mesos_non_running_task_dict(
 
 
 INSTANCE_TYPE_CR_ID = dict(
-    flink=flink_tools.cr_id,
-    cassandracluster=cassandracluster_tools.cr_id
+    flink=flink_tools.cr_id, cassandracluster=cassandracluster_tools.cr_id
 )
 
 
