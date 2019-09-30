@@ -1,3 +1,12 @@
+paasta-tools (0.86.12) xenial; urgency=medium
+
+  * 0.86.12 tagged with 'make release'
+    Commit: Merge pull request #2443 from
+    Yelp/u/bronek/flink_health_monitoring  Rename check_flink_services
+    and add single test
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 27 Sep 2019 07:17:35 -0700
+
 paasta-tools (0.86.11) xenial; urgency=medium
 
   * 0.86.11 tagged with 'make release'
