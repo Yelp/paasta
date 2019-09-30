@@ -34,7 +34,7 @@ Submodules
    paasta_tools.cassandracluster_tools
    paasta_tools.check_cassandracluster_services_replication
    paasta_tools.check_chronos_jobs
-   paasta_tools.check_flink_services_replication
+   paasta_tools.check_flink_services_health
    paasta_tools.check_kubernetes_api
    paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_marathon_services_replication

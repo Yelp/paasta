@@ -45,9 +45,7 @@ CheckServiceReplication = Callable[
 
 
 def parse_args() -> argparse.Namespace:
-    epilog = "PERCENTAGE is an integer value representing the percentage of available to expected instances"
-    parser = argparse.ArgumentParser(epilog=epilog)
-
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "-d",
         "--soa-dir",

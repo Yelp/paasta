@@ -255,11 +255,7 @@ listed below:
 * ``paasta start`` - sets the desired state of the service instance to
   'started'. In the case of long-running services, this will mean ensuring that
   the number of instances of your application matches that set in your
-  soa-configs. In the case of scheduled-tasks, this will ensure that your task
-  is enabled, and will be scheduled as normal. **Note** unless you have run
-  `paasta stop` or `paasta emergency-stop` against your instance, this will be
-  noop. Your service is started by default, and this command does not have to
-  be run for a service to run.
+  soa-configs.
 
 * ``paasta stop`` - sets the desired state of the service instance to 'stop'.
   The result of this for long running tasks is that your tasks are shutdown
@@ -271,21 +267,3 @@ listed below:
   you deploy a new version of your service. That means that if you run ``paasta
   stop`` and push a version of the docker image serving your service, then
   paasta will reset the effect of ``paasta stop``.
-
-
-* ``paasta emergency-start`` - In the case of long running services,
-  ``emergency-start`` will ensure that the number of running instances of a
-  service matches the desired instances; if this is already the case, then this
-  is a noop. In the case of a chronos job, then emergency start will trigger a
-  run of the job now, irrespective of whether one is scheduled to be run.  This
-  will not impact the schedule, and jobs will continue to run according to the
-  schedule thereafter. If the scheduled task has ``disabled: True`` in the
-  service's soa-configs, then this is no op.
-
-
-* ``paasta emergency-stop`` - In the case of long running services, any
-  instances of your service will be immediately killed, with no regard for
-  draining or a safe shutdown. PaaSTA will leave the number of desired
-  instances at 0 until you next deploy your service. In the case of scheduled
-  tasks, any in-flight tasks will be killed, and the job disabled until a new
-  version of the service is deployed.

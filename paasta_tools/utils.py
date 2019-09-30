@@ -226,7 +226,6 @@ class InstanceConfigDict(TypedDict, total=False):
     args: List[str]
     cfs_period_us: float
     cpu_burst_add: float
-    ulimit: Dict[str, Dict[str, Any]]
     cap_add: List
     env: Dict[str, str]
     monitoring: Dict[str, str]
@@ -410,28 +409,6 @@ class InstanceConfig:
     def get_extra_docker_args(self) -> Dict[str, str]:
         return self.config_dict.get("extra_docker_args", {})
 
-    def get_ulimit(self) -> Iterable[DockerParameter]:
-        """Get the --ulimit options to be passed to docker
-        Generated from the ulimit configuration option, which is a dictionary
-        of ulimit values. Each value is a dictionary itself, with the soft
-        limit stored under the 'soft' key and the optional hard limit stored
-        under the 'hard' key.
-
-        Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
-
-        :returns: A generator of ulimit options to be passed as --ulimit flags"""
-        for key, val in sorted(self.config_dict.get("ulimit", {}).items()):
-            soft = val.get("soft")
-            hard = val.get("hard")
-            if soft is None:
-                raise InvalidInstanceConfig(
-                    f"soft limit missing in ulimit configuration for {key}."
-                )
-            combined_val = "%i" % soft
-            if hard is not None:
-                combined_val += ":%i" % hard
-            yield {"key": "ulimit", "value": f"{key}={combined_val}"}
-
     def get_cap_add(self) -> Iterable[DockerParameter]:
         """Get the --cap-add options to be passed to docker
         Generated from the cap_add configuration option, which is a list of
@@ -492,7 +469,6 @@ class InstanceConfig:
         if extra_docker_args:
             for key, value in extra_docker_args.items():
                 parameters.extend([{"key": key, "value": value}])
-        parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         parameters.extend(self.get_docker_init())
         parameters.extend(self.get_cap_drop())

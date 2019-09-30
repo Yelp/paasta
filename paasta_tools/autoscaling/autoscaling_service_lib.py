@@ -22,17 +22,16 @@ from contextlib import contextmanager
 from datetime import datetime
 from math import ceil
 from math import floor
+from typing import Dict
 from typing import Iterator
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
 import a_sync
-import gevent
-import requests
-from gevent import monkey
-from gevent import pool
+import aiohttp
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from marathon.models.app import MarathonApp
@@ -41,10 +40,12 @@ from marathon.models.app import MarathonTask
 from paasta_tools.autoscaling.forecasting import get_forecast_policy
 from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
+from paasta_tools.bounce_lib import filter_tasks_in_smartstack
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
+from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import AutoscalingParamsDict
@@ -261,15 +262,17 @@ def deserialize_historical_load(historical_load_bytes):
     return historical_load
 
 
-def get_json_body_from_service(host, port, endpoint, timeout=2):
-    return requests.get(
-        f"http://{host}:{port}/{endpoint}",
-        headers={"User-Agent": get_user_agent()},
-        timeout=timeout,
-    ).json()
+async def get_json_body_from_service(host, port, endpoint, timeout=2):
+    async with aiohttp.ClientSession(
+        conn_timeout=timeout, read_timeout=timeout
+    ) as session:
+        async with session.get(
+            f"http://{host}:{port}/{endpoint}", headers={"User-Agent": get_user_agent()}
+        ) as response:
+            return await response.json()
 
 
-def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
+async def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
     """
     Gets the task utilization by fetching json from an http endpoint
     and applying a function that maps it to a utilization.
@@ -283,12 +286,11 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
     """
     try:
         return json_mapper(
-            get_json_body_from_service(task.host, task.ports[0], endpoint)
+            await get_json_body_from_service(task.host, task.ports[0], endpoint)
         )
-    except requests.exceptions.Timeout:
+    except aiohttp.ServerTimeoutError:
         # If we time out querying an endpoint, assume the task is fully loaded
         # This won't trigger in the event of DNS error or when a request is refused
-        # a requests.exception.ConnectionError is raised in those cases
         log.error(
             "Received a timeout when querying %s on %s:%s. Assuming the service "
             "is at full utilization." % (service, task.host, task.ports[0])
@@ -302,7 +304,8 @@ def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
         )
 
 
-def get_http_utilization_for_all_tasks(
+@a_sync.to_blocking
+async def get_http_utilization_for_all_tasks(
     marathon_service_config, marathon_tasks, endpoint, json_mapper
 ):
     """
@@ -322,19 +325,18 @@ def get_http_utilization_for_all_tasks(
     utilization = []
     service = marathon_service_config.get_service()
 
-    monkey.patch_socket()
-    gevent_pool = pool.Pool(20)
-    jobs = [
-        gevent_pool.spawn(
-            get_http_utilization_for_a_task, task, service, endpoint, json_mapper
+    futures = [
+        asyncio.ensure_future(
+            get_http_utilization_for_a_task(task, service, endpoint, json_mapper)
         )
         for task in marathon_tasks
     ]
-    gevent.joinall(jobs)
+    await asyncio.wait(futures)
 
-    for job in jobs:
-        if job.value is not None:
-            utilization.append(job.value)
+    for future in futures:
+        result = future.result()
+        if result is not None:
+            utilization.append(result)
 
     if not utilization:
         raise MetricsProviderNoDataError(
@@ -531,6 +533,7 @@ def get_autoscaling_info(apps_with_clients, service_config):
                 [app for (app, client) in apps_with_clients],
                 all_mesos_tasks,
                 service_config,
+                system_paasta_config,
             )
             utilization = get_utilization(
                 marathon_service_config=service_config,
@@ -870,6 +873,7 @@ def autoscale_service_configs(
                     [app for (app, client) in apps_with_clients],
                     all_mesos_tasks,
                     config,
+                    system_paasta_config,
                 )
                 autoscale_marathon_instance(
                     config,
@@ -887,32 +891,67 @@ def filter_autoscaling_tasks(
     marathon_apps: Sequence[MarathonApp],
     all_mesos_tasks: Sequence[Task],
     config: MarathonServiceConfig,
+    system_paasta_config: SystemPaastaConfig,
 ) -> Tuple[Mapping[str, MarathonTask], Sequence[Task]]:
+    """Find the tasks that are serving traffic. We care about this because many tasks have a period of high CPU when
+    they first start up, during which they warm up code, load and process data, etc., and we don't want this high load
+    to drag our overall load estimate upwards. Allowing these tasks to count towards overall load could cause a cycle of
+    scaling up, seeing high load due to new warming-up containers, scaling up, until we hit max_instances.
+
+    However, accidentally omitting a task that actually is serving traffic will cause us to underestimate load; this is
+    generally much worse than overestimating, since it can cause us to incorrectly scale down or refuse to scale up when
+    necessary. For this reason, we look at several sources of health information, and if they disagree, assume the task
+    is serving traffic.
+    """
     job_id_prefix = "{}{}".format(
         format_job_id(service=config.service, instance=config.instance),
         MESOS_TASK_SPACER,
     )
 
-    # Get a dict of healthy tasks, we assume tasks with no healthcheck defined
-    # are healthy. We assume tasks with no healthcheck results but a defined
-    # healthcheck to be unhealthy (unless they are "old" in which case we
-    # assume that marathon has screwed up and stopped healthchecking but that
-    # they are healthy
+    # Get a dict of healthy tasks, we assume tasks with no healthcheck defined are healthy.
+    # We assume tasks with no healthcheck results but a defined healthcheck to be unhealthy, unless they are "old" in
+    # which case we assume that Marathon has screwed up and stopped healthchecking but that they are healthy.
+
     log.info("Inspecting %s for autoscaling" % job_id_prefix)
-    marathon_tasks = {}
-    for app in marathon_apps:
-        for task in app.tasks:
-            if task.id.startswith(job_id_prefix) and (
+
+    relevant_tasks_by_app: Dict[MarathonApp, List[MarathonTask]] = {
+        app: app.tasks
+        for app in marathon_apps
+        if app.id.lstrip("/").startswith(job_id_prefix)
+    }
+
+    healthy_marathon_tasks: Dict[str, MarathonTask] = {}
+
+    for app, tasks in relevant_tasks_by_app.items():
+        for task in tasks:
+            if (
                 is_task_healthy(task)
                 or not app.health_checks
                 or is_old_task_missing_healthchecks(task, app)
             ):
-                marathon_tasks[task.id] = task
+                healthy_marathon_tasks[task.id] = task
 
-    if not marathon_tasks:
+    service_namespace_config = load_service_namespace_config(
+        service=config.service, namespace=config.get_nerve_namespace()
+    )
+    if service_namespace_config.is_in_smartstack():
+
+        for task in filter_tasks_in_smartstack(
+            tasks=[task for tasks in relevant_tasks_by_app.values() for task in tasks],
+            service=config.service,
+            nerve_ns=config.get_nerve_namespace(),
+            system_paasta_config=system_paasta_config,
+            max_hosts_to_query=20,
+            haproxy_min_fraction_up=0.01,  # Be very liberal. See docstring above for rationale.
+        ):
+            healthy_marathon_tasks[task.id] = task
+
+    if not healthy_marathon_tasks:
         raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
-    mesos_tasks = [task for task in all_mesos_tasks if task["id"] in marathon_tasks]
-    return (marathon_tasks, mesos_tasks)
+    mesos_tasks = [
+        task for task in all_mesos_tasks if task["id"] in healthy_marathon_tasks
+    ]
+    return (healthy_marathon_tasks, mesos_tasks)
 
 
 def write_to_log(config, line, level="event"):

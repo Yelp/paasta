@@ -20,7 +20,7 @@ autoscale_all_services
 check_marathon_services_replication
 check_kubernetes_api
 check_kubernetes_services_replication
-check_flink_services_replication
+check_flink_services_health
 check_cassandracluster_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
@@ -55,9 +55,6 @@ fake_service_dos.all_fake"
 PAASTA_COMMANDS="list
 list-clusters
 check
-emergency-stop
-emergency-start
-emergency-restart
 fsm
 info
 itest

@@ -14,11 +14,11 @@
 from datetime import datetime
 from datetime import timedelta
 
+import aiohttp
 import asynctest
 import mock
+import pytest
 from kazoo.exceptions import NoNodeError
-from pytest import raises
-from requests.exceptions import Timeout
 
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
@@ -208,7 +208,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
@@ -343,23 +343,25 @@ def test_mesos_cpu_metrics_provider():
         assert not mock_zk_client.return_value.set.called
 
 
-def test_get_json_body_from_service():
-    with mock.patch(
-        "paasta_tools.autoscaling.autoscaling_service_lib.requests.get", autospec=True
-    ) as mock_request_get:
-        mock_request_get.return_value = mock.Mock(
-            json=mock.Mock(return_value=mock.sentinel.json_body)
+@pytest.mark.asyncio
+async def test_get_json_body_from_service():
+    with asynctest.patch(
+        "paasta_tools.autoscaling.autoscaling_service_lib.aiohttp.ClientSession",
+        autospec=True,
+    ) as mock_client_session:
+        mock_get = mock_client_session.return_value.__aenter__.return_value.get
+        mock_get.return_value.__aenter__.return_value.json = asynctest.CoroutineMock(
+            return_value=mock.sentinel.json_body
         )
         assert (
-            autoscaling_service_lib.get_json_body_from_service(
+            await autoscaling_service_lib.get_json_body_from_service(
                 "fake-host", "fake-port", "fake-endpoint"
             )
             == mock.sentinel.json_body
         )
-        mock_request_get.assert_called_once_with(
-            "http://fake-host:fake-port/fake-endpoint",
-            headers={"User-Agent": mock.ANY},
-            timeout=2,
+        mock_client_session.assert_called_once_with(conn_timeout=2, read_timeout=2)
+        mock_get.assert_called_once_with(
+            "http://fake-host:fake-port/fake-endpoint", headers={"User-Agent": mock.ANY}
         )
 
 
@@ -369,7 +371,7 @@ def test_get_http_utilization_for_all_tasks():
     ]
     mock_json_mapper = mock.Mock(return_value=0.5)
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ):
@@ -388,9 +390,9 @@ def test_get_http_utilization_for_all_tasks_timeout():
     fake_marathon_tasks = [
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
-    mock_json_mapper = mock.Mock(side_effect=Timeout)
+    mock_json_mapper = mock.Mock(side_effect=aiohttp.ServerTimeoutError)
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ):
@@ -421,11 +423,11 @@ def test_get_http_utilization_for_all_tasks_no_data():
 
     with mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.log.error", autospec=True
-    ) as mock_log_error, mock.patch(
+    ) as mock_log_error, asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ):
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.get_http_utilization_for_all_tasks(
                 fake_marathon_service_config,
                 fake_marathon_tasks,
@@ -442,7 +444,7 @@ def test_http_metrics_provider():
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ) as mock_get_json_body_from_service:
@@ -460,7 +462,7 @@ def test_uwsgi_metrics_provider():
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
 
-    with mock.patch(
+    with asynctest.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.get_json_body_from_service",
         autospec=True,
     ) as mock_get_json_body_from_service:
@@ -507,7 +509,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.mesos_cpu_metrics_provider(
                 fake_marathon_service_config,
                 fake_system_paasta_config,
@@ -1227,6 +1229,7 @@ def test_autoscaling_is_paused():
 
 
 def test_filter_autoscaling_tasks():
+    fake_system_paasta_config = mock.MagicMock()
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service="fake-service",
         instance="fake-instance",
@@ -1253,11 +1256,15 @@ def test_filter_autoscaling_tasks():
         # Test healthy task
         mock_health_check = mock.Mock()
         mock_marathon_app = mock.Mock(
+            id="/fake-service.fake-instance.sha123.sha456",
             health_checks=[mock_health_check],
             tasks=[mock.Mock(id="fake-service.fake-instance.sha123.sha456.uuid")],
         )
         ret = autoscaling_service_lib.filter_autoscaling_tasks(
-            [mock_marathon_app], mock_mesos_tasks, fake_marathon_service_config
+            [mock_marathon_app],
+            mock_mesos_tasks,
+            fake_marathon_service_config,
+            fake_system_paasta_config,
         )
         assert ret == (
             {
@@ -1275,11 +1282,16 @@ def test_filter_autoscaling_tasks():
         mock_marathon_tasks = [mock.Mock(id="fake-service.fake-instance.sha123.sha456")]
         mock_health_check = mock.Mock()
         mock_marathon_app = mock.Mock(
-            health_checks=[mock_health_check], tasks=mock_marathon_tasks
+            id="/fake-service.fake-instance.sha123.sha456",
+            health_checks=[mock_health_check],
+            tasks=mock_marathon_tasks,
         )
-        with raises(autoscaling_service_lib.MetricsProviderNoDataError):
+        with pytest.raises(autoscaling_service_lib.MetricsProviderNoDataError):
             autoscaling_service_lib.filter_autoscaling_tasks(
-                [mock_marathon_app], mock_mesos_tasks, fake_marathon_service_config
+                [mock_marathon_app],
+                mock_mesos_tasks,
+                fake_marathon_service_config,
+                fake_system_paasta_config,
             )
 
         # Test no healthcheck defined
@@ -1287,9 +1299,16 @@ def test_filter_autoscaling_tasks():
             mock.Mock(id="fake-service.fake-instance.sha123.sha456.uuid")
         ]
         mock_health_check = mock.Mock()
-        mock_marathon_app = mock.Mock(health_checks=[], tasks=mock_marathon_tasks)
+        mock_marathon_app = mock.Mock(
+            id="/fake-service.fake-instance.sha123.sha456",
+            health_checks=[],
+            tasks=mock_marathon_tasks,
+        )
         ret = autoscaling_service_lib.filter_autoscaling_tasks(
-            [mock_marathon_app], mock_mesos_tasks, fake_marathon_service_config
+            [mock_marathon_app],
+            mock_mesos_tasks,
+            fake_marathon_service_config,
+            fake_system_paasta_config,
         )
         assert ret == (
             {"fake-service.fake-instance.sha123.sha456.uuid": mock_marathon_tasks[0]},
@@ -1305,10 +1324,15 @@ def test_filter_autoscaling_tasks():
         ]
         mock_health_check = mock.Mock()
         mock_marathon_app = mock.Mock(
-            health_checks=[mock_health_check], tasks=mock_marathon_tasks
+            id="/fake-service.fake-instance.sha123.sha456",
+            health_checks=[mock_health_check],
+            tasks=mock_marathon_tasks,
         )
         ret = autoscaling_service_lib.filter_autoscaling_tasks(
-            [mock_marathon_app], mock_mesos_tasks, fake_marathon_service_config
+            [mock_marathon_app],
+            mock_mesos_tasks,
+            fake_marathon_service_config,
+            fake_system_paasta_config,
         )
         assert ret == (
             {"fake-service.fake-instance.sha123.sha456.uuid": mock_marathon_tasks[0]},
@@ -1455,6 +1479,7 @@ def test_get_autoscaling_info():
             [mock_apps_with_clients[0][0]],
             mock_get_all_running_tasks.return_value,
             mock_service_config,
+            autoscaling_service_lib.load_system_paasta_config(),
         )
         mock_get_utilization.assert_called_with(
             marathon_service_config=mock_service_config,
@@ -1738,6 +1763,7 @@ def test_proportional_decision_policy_moving_average(
 
 
 def test_filter_autoscaling_tasks_considers_old_versions():
+    fake_system_paasta_config = mock.MagicMock()
     marathon_apps = [
         mock.Mock(
             tasks=[
@@ -1792,7 +1818,10 @@ def test_filter_autoscaling_tasks_considers_old_versions():
         autospec=True,
     ):
         actual = filter_autoscaling_tasks(
-            marathon_apps, all_mesos_tasks, service_config
+            marathon_apps,
+            all_mesos_tasks,
+            service_config,
+            system_paasta_config=fake_system_paasta_config,
         )
 
     assert actual == expected
@@ -1815,7 +1844,11 @@ def test_autoscale_service_configs():
         )
     ]
 
-    mock_app = mock.Mock(tasks=mock_marathon_tasks, health_checks=[mock.Mock()])
+    mock_app = mock.Mock(
+        id="fake-service.fake-instance.sha123.sha456",
+        tasks=mock_marathon_tasks,
+        health_checks=[mock.Mock()],
+    )
     mock_system_paasta_config = (mock.Mock(get_cluster=mock.Mock()),)
     with mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.autoscale_marathon_instance",

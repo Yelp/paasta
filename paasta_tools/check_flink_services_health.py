@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./check_flink_services_replication.py [options]
+Usage: ./check_flink_services_health.py [options]
 """
 import datetime
 import logging
@@ -53,7 +53,7 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
     )
 
 
-def check_flink_service_replication(
+def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
     all_pods: Sequence[V1Pod],
     smartstack_replication_checker: KubeSmartstackReplicationChecker,
@@ -95,6 +95,6 @@ def check_flink_service_replication(
 if __name__ == "__main__":
     main(
         flink_tools.FlinkDeploymentConfig,
-        check_flink_service_replication,
+        check_flink_service_health,
         namespace="paasta-flinks",
     )

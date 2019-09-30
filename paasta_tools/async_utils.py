@@ -41,13 +41,15 @@ def async_ttl_cache(
         try:
             value = await future
         except Exception:
-            # only update the cache if it's the same future we awaited and
+            # Only update the cache if it's the same future we awaited and
             # it hasn't already been updated by another coroutine
-            if cache[key] == (future, float("Inf")):
+            # Note also that we use get() in case the key was deleted from the
+            # cache by another coroutine
+            if cache.get(key) == (future, float("Inf")):
                 del cache[key]
             raise
         else:
-            if cache[key] == (future, float("Inf")):
+            if cache.get(key) == (future, float("Inf")):
                 cache[key] = (future, time.time())
             return value
 
