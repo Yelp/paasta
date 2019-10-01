@@ -20,7 +20,6 @@ import mock
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
 from mock import patch
-from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
@@ -378,60 +377,6 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     assert "fake_err_msg" in actual
 
 
-@mark.parametrize(
-    "test_case",
-    [
-        [
-            (["fake_master1", "fake_master2"], None),  # OK
-            ("fake_connectable_master", None),  # OK
-            (0, "OK"),  # OK
-        ],
-        [
-            ([], "Error in calculate_remote_masters"),  # Error
-            None,  # not called
-            None,  # not called
-        ],
-        [
-            (["fake_master1", "fake_master2"], None),  # OK
-            (None, "Error in find_connectable_master"),  # Error
-            None,  # not called
-        ],
-    ],
-)
-def test_execute_chronos_rerun_on_remote_master(test_case, system_paasta_config):
-
-    with patch(
-        "paasta_tools.cli.utils.calculate_remote_masters", autospec=True
-    ) as mock_calculate_remote_masters, patch(
-        "paasta_tools.cli.utils.find_connectable_master", autospec=True
-    ) as mock_find_connectable_master, patch(
-        "paasta_tools.cli.utils.run_chronos_rerun", autospec=True
-    ) as mock_run_chronos_rerun:
-        (
-            mock_calculate_remote_masters.return_value,
-            mock_find_connectable_master.return_value,
-            mock_run_chronos_rerun.return_value,
-        ) = test_case
-
-        outcome = utils.execute_chronos_rerun_on_remote_master(
-            "service", "instance", "cluster", system_paasta_config, verbose=1
-        )
-        # Always return an (rc, output) tuple
-        assert (
-            type(outcome) == tuple
-            and len(outcome) == 2
-            and type(outcome[0]) == int
-            and isinstance(outcome[1], str)
-        )
-        assert (
-            bool(mock_find_connectable_master.return_value)
-            == mock_find_connectable_master.called
-        )
-        assert (
-            bool(mock_run_chronos_rerun.return_value) == mock_run_chronos_rerun.called
-        )
-
-
 @patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.utils.list_services", autospec=True)
 def test_list_service_instances(mock_list_services, mock_list_instances):
@@ -533,47 +478,6 @@ def test_get_instance_config_unknown(mock_validate_service_instance,):
             soa_dir="fake_soa_dir",
         )
     assert mock_validate_service_instance.call_count == 1
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_run_chronos_rerun(mock_run):
-    mock_run.return_value = (0, "fake_output")
-    expected_command = (
-        "ssh -A -n -o StrictHostKeyChecking=no fake_master "
-        '\'sudo chronos_rerun -v -v "a_service an_instance" '
-        '"2016-04-08T02:37:27"\''
-    )
-
-    actual = utils.run_chronos_rerun(
-        "fake_master",
-        "a_service",
-        "an_instance",
-        verbose=2,
-        execution_date="2016-04-08T02:37:27",
-    )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert actual == mock_run.return_value
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_run_chronos_rerun_graph(mock_run):
-    mock_run.return_value = (0, "fake_output")
-    expected_command = (
-        "ssh -A -n -o StrictHostKeyChecking=no fake_master "
-        '\'sudo chronos_rerun --run-all-related-jobs -v -v "a_service an_instance" '
-        '"2016-04-08T02:37:27"\''
-    )
-
-    actual = utils.run_chronos_rerun(
-        "fake_master",
-        "a_service",
-        "an_instance",
-        verbose=2,
-        run_all_related_jobs=True,
-        execution_date="2016-04-08T02:37:27",
-    )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert actual == mock_run.return_value
 
 
 def test_get_subparser():

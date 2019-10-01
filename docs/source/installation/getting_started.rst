@@ -123,26 +123,6 @@ that interact with the Marathon API:
   and will alert the team responsible for the service if it becomes unhealthy to
   the point where manual intervention is required.
 
-Chronos
--------
-
-`Chronos <http://mesos.github.io/chronos/>`_ is a Mesos framework for running scheduled tasks.
-See the `official documentation <http://mesos.github.io/chronos/docs/getting-started.html>`__ for how to get started
-with Chronos.
-Then, see the `PaaSTA documentation <../yelpsoa_configs.html#chronos-[clustername].yaml>`_ for how to define Chronos jobs.
-
-PaaSTA has tools for synchronizing jobs with the Chronos API:
-
-* ``deploy_chronos_jobs``: This tool does the bouncing and initial setup of Chronos jobs that are defined in soa-configs.
-  This is idempotent, and should be run periodically on a box with a ``chronos.json`` file in the
-  `system paasta config <../system_configs.html>`_ directory (Usually ``/etc/paasta``).
-  We recommend running this frequently - delays between runs of this command will limit how quickly new versions of
-  services or changes to soa-configs are picked up.
-* ``cleanup_chronos_jobs``: Cleans up lost or abandoned Chronos jobs.
-* ``check_chronos_jobs``: Iterates over the current status of the Chronos jobs associated
-  with a service and alerts the team responsible when they start to fail.
-* ``list_chronos_jobs``: List all the chronos jobs in a cluster.
-
 SmartStack and Hacheck
 ----------------------
 
