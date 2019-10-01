@@ -47,7 +47,7 @@ Try it out
 The cluster includes a git remote and docker registry. The git remote
 contains an example repo but you can add more if you want.
 
-The mesos, marathon and chronos webuis are exposed on your docker host
+The mesos and marathon webuis are exposed on your docker host
 on port 5050, 8080, 8081. So load them up if you want to watch. Then in
 the playground container:
 

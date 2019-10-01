@@ -713,44 +713,6 @@ def execute_paasta_cluster_boost_on_remote_master(
     return (aggregated_code, aggregated_output)
 
 
-def run_chronos_rerun(master, service, instancename, **kwargs):
-    timeout = 60
-    verbose_flags = "-v " * kwargs["verbose"]
-    run_all_related_jobs_flag = (
-        "--run-all-related-jobs " if kwargs.get("run_all_related_jobs", False) else ""
-    )
-    force_disabled_flag = (
-        "--force-disabled " if kwargs.get("force_disabled", False) else ""
-    )
-    command = 'ssh -A -n -o StrictHostKeyChecking=no {} \'sudo chronos_rerun {}{}{}"{} {}" "{}"\''.format(
-        master,
-        run_all_related_jobs_flag,
-        force_disabled_flag,
-        verbose_flags,
-        service,
-        instancename,
-        kwargs["execution_date"],
-    )
-    return _run(command, timeout=timeout)
-
-
-def execute_chronos_rerun_on_remote_master(
-    service, instancename, cluster, system_paasta_config, **kwargs
-):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_chronos_rerun().
-    """
-    try:
-        return run_chronos_rerun(
-            connectable_master(cluster, system_paasta_config),
-            service,
-            instancename,
-            **kwargs,
-        )
-    except NoMasterError as e:
-        return (-1, str(e))
-
-
 def run_on_master(
     cluster,
     system_paasta_config,
