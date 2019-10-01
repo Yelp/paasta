@@ -1008,14 +1008,14 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(
-            secret_env_vars={"SOME": "SECRET(ref)"},
-            shared_secret_env_vars={"A": "SHAREDSECRET(ref1)"},
+            secret_env_vars={"SOME": "SECRET(_ref)"},
+            shared_secret_env_vars={"A": "SHAREDSECRET(_ref1)"},
         ) == [
             V1EnvVar(
                 name="SOME",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-kurupt-ref", key="ref", optional=False
+                        name="paasta-secret-kurupt---ref", key="_ref", optional=False
                     )
                 ),
             ),
@@ -1023,7 +1023,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 name="A",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret---shared-ref1", key="ref1", optional=False
+                        name="paasta-secret---shared---ref1",
+                        key="_ref1",
+                        optional=False,
                     )
                 ),
             ),
