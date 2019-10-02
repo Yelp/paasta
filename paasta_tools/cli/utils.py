@@ -680,6 +680,7 @@ def execute_paasta_cluster_boost_on_remote_master(
             master = connectable_master(cluster, system_paasta_config)
         except NoMasterError as e:
             result[cluster] = (255, str(e))
+            continue
 
         result[cluster] = run_paasta_cluster_boost(
             master=master,
