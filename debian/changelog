@@ -1,3 +1,11 @@
+paasta-tools (0.86.13) xenial; urgency=medium
+
+  * 0.86.13 tagged with 'make release'
+    Commit: Merge pull request #2450 from Yelp/fix-deployd-leader-bug
+    Fix duplicate leader bug
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 02 Oct 2019 02:24:06 -0700
+
 paasta-tools (0.86.12) xenial; urgency=medium
 
   * 0.86.12 tagged with 'make release'
