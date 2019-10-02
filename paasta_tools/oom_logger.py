@@ -39,6 +39,7 @@ from collections import namedtuple
 
 from docker.errors import APIError
 
+from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import get_docker_client
@@ -140,12 +141,16 @@ def log_to_paasta(log_line):
 
 def send_sfx_event(service, instance, cluster):
     if yelp_meteorite:
+        service_instance_config = get_instance_config(
+            service=service, instance=instance, cluster=cluster
+        )
         yelp_meteorite.events.emit_event(
             "paasta.service.oom_events",
             dimensions={
                 "paasta_cluster": cluster,
                 "paasta_instance": instance,
                 "paasta_service": service,
+                "paasta_pool": service_instance_config.get_pool(),
             },
         )
 

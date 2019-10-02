@@ -523,7 +523,7 @@ def test_autoscale_marathon_instance():
         service="fake-service",
         instance="fake-instance",
         cluster="fake-cluster",
-        config_dict={"min_instances": 1, "max_instances": 10},
+        config_dict={"min_instances": 1, "max_instances": 10, "pool": "some-pool-name"},
         branch_dict=None,
     )
     fake_system_paasta_config = mock.MagicMock()
@@ -563,6 +563,14 @@ def test_autoscale_marathon_instance():
             service="fake-service", instance="fake-instance", instance_count=2
         )
         mock_meteorite.create_gauge.call_count == 3
+        for call in mock_meteorite.create_gauge.call_args_list:
+            assert call[0][1] == {
+                "paasta_service": "fake-service",
+                "paasta_cluster": "fake-cluster",
+                "paasta_instance": "fake-instance",
+                "paasta_pool": "some-pool-name",
+                "decision_policy": "proportional",
+            }
         mock_json.dumps.call_count == 1
 
 
