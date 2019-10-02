@@ -352,11 +352,12 @@ class SLOSlackDeploymentProcess(SlackDeploymentProcess, abc.ABC):
             self.trigger("slos_stopped_failing")
         self.update_slack()
 
-    def start_auto_rollback_countdown(self) -> None:
+    def start_auto_rollback_countdown(self, extra_text) -> None:
         self.start_timer(
             self.get_auto_rollback_delay(),
             "rollback_slo_failure",
             "automatically roll back",
+            extra_text=extra_text,
         )
 
     def cancel_auto_rollback_countdown(self) -> None:
