@@ -64,4 +64,3 @@ class PaastaLeaderElection(Election):
         ]
         self.log.info(f"Thread info: {thread_info}")
         self.control.put("ABORT")
-        self.client.stop()
