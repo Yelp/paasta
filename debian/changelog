@@ -1,3 +1,11 @@
+paasta-tools (0.86.14) xenial; urgency=medium
+
+  * 0.86.14 tagged with 'make release'
+    Commit: Merge pull request #2453 from Yelp/add-paasta-pool-dim-to-
+    meteorite-log  Add paasta_pool dimension to paasta.service.* metrics
+
+ -- Aaron Tan <siruitan@yelp.com>  Thu, 03 Oct 2019 10:21:57 -0700
+
 paasta-tools (0.86.13) xenial; urgency=medium
 
   * 0.86.13 tagged with 'make release'
