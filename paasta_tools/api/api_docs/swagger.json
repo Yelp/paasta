@@ -1121,6 +1121,10 @@
                     "format": "float",
                     "description": "Unix timestamp when this app was created"
                 },
+                "smartstack": {
+                    "$ref": "#/definitions/SmartstackStatus",
+                    "description": "Status of the service in smartstack"
+                },
                 "namespace": {
                     "type": "string",
                     "description": "The namespace this app is running"
