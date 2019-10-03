@@ -18,7 +18,6 @@ import mock
 from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
-from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cli import main
 from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
@@ -1794,19 +1793,6 @@ def test_command_function_for_framework_for_marathon():
 
 @mock.patch("paasta_tools.cli.cmds.local_run.parse_time_variables", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.datetime", autospec=True)
-def test_command_function_for_framework_for_chronos(
-    mock_datetime, mock_parse_time_variables
-):
-    fake_date = mock.Mock()
-    mock_datetime.datetime.now.return_value = fake_date
-    mock_parse_time_variables.return_value = "foo"
-    fn = command_function_for_framework("chronos", fake_date)
-    fn("foo")
-    mock_parse_time_variables.assert_called_once_with("foo", fake_date)
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.parse_time_variables", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.datetime", autospec=True)
 def test_command_function_for_framework_for_tron(
     mock_datetime, mock_parse_time_variables
 ):
@@ -1844,27 +1830,6 @@ def test_get_local_run_environment_vars_marathon(mock_getfqdn,):
     assert actual["MARATHON_APP_RESOURCE_CPUS"] == "123"
     assert actual["MARATHON_APP_RESOURCE_MEM"] == "123"
     assert actual["MARATHON_APP_RESOURCE_DISK"] == "123"
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.socket.getfqdn",
-    autospec=True,
-    return_value="fake_host",
-)
-def test_get_local_run_environment_vars_chronos(mock_getfqdn,):
-    mock_instance_config = mock.MagicMock(spec_set=ChronosJobConfig)
-    mock_instance_config.get_mem.return_value = 123
-    mock_instance_config.get_disk.return_value = 123
-    mock_instance_config.get_cpus.return_value = 123
-    mock_instance_config.get_docker_image.return_value = "fake_docker_image"
-
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=None, framework="chronos"
-    )
-    assert "MARATHON_PORT" not in actual
-    assert actual["CHRONOS_RESOURCE_CPU"] == "123"
-    assert actual["CHRONOS_RESOURCE_MEM"] == "123"
-    assert actual["CHRONOS_RESOURCE_DISK"] == "123"
 
 
 @mock.patch(
