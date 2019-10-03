@@ -858,7 +858,7 @@ def print_flink_status(
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
         )
-        if job_id in status.exceptions:
+        if verbose and job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
             root_exception = exceptions["root-exception"]
             if root_exception is not None:

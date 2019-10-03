@@ -49,20 +49,6 @@ def run_paasta_metastatus_high_disk(context, app_id):
     )
 
 
-@when('a chronos job with name "{job_name}" is launched')
-def chronos_job_launched(context, job_name):
-    job = {
-        "async": False,
-        "command": "echo 1",
-        "epsilon": "PT15M",
-        "name": job_name,
-        "owner": "me@foo.com",
-        "disabled": False,
-        "schedule": "R/2014-01-01T00:00:00Z/PT60M",
-    }
-    context.chronos_client.add(job)
-
-
 @when('an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
     context.marathon_clients.current[0].create_app(

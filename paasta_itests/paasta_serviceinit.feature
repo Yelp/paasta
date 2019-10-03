@@ -8,26 +8,6 @@ Feature: paasta_serviceinit
       And we wait for "test-service.main" to launch exactly 1 tasks
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
-  Scenario: paasta_serviceinit can run status on chronos jobs
-    Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
-     When we run setup_chronos_job for service_instance "testservice.testinstance"
-     Then we should get exit code 0
-     When we store the name of the job for the service testservice and instance testinstance as myjob
-      And we wait for the chronos job stored as "myjob" to appear in the job list
-     Then paasta_serviceinit status for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
-
-  Scenario: paasta_serviceinit can run status --verbose on chronos jobs
-    Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
-     When we run setup_chronos_job for service_instance "testservice.testinstance"
-     Then we should get exit code 0
-     When we store the name of the job for the service testservice and instance testinstance as myjob
-      And we wait for the chronos job stored as "myjob" to appear in the job list
-     Then paasta_serviceinit status --verbose for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
-
   @skip
   Scenario: paasta_serviceinit can run status -vv to tail a mesos task stdout/stderr
     Given a working paasta cluster

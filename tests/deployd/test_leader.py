@@ -44,7 +44,6 @@ class TestPaastaLeaderElection(unittest.TestCase):
             assert self.election.waiting_for_reconnect
             self.election.connection_listener(KazooState.LOST)
             self.mock_control.put.assert_called_with("ABORT")
-            assert self.mock_client.stop.called
 
     def test_reconnection_listener(self):
         self.mock_client.state = KazooState.CONNECTED

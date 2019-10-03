@@ -118,7 +118,6 @@ services:
       MESOSMASTER_PORT: 'http://mesosmaster:5050'
       HACHECK_PORT: 'http://hacheck:6666'
       ZOOKEEPER_PORT: 'zk://zookeeper:2181'
-      CHRONOS_PORT: 'http://chronos:8081'
       API_PORT: 'http://paasta_api:5054'
       HTTPDRAIN_PORT: 'http://httpdrain:3000'
     volumes:
@@ -140,13 +139,6 @@ services:
     volumes:
       - ../:/work:rw
       - nail-etc:/nail/etc
-
-  chronos:
-    build: ../yelp_package/dockerfiles/itest/chronos/
-    ports:
-      - 8081
-    depends_on:
-      - zookeeper
 
   hacheck:
     build: ../yelp_package/dockerfiles/itest/hacheck/
