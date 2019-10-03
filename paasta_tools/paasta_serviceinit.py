@@ -22,10 +22,7 @@ from typing import Mapping
 from typing import Optional
 
 import requests_cache
-from chronos import ChronosClient
 
-from paasta_tools import chronos_serviceinit
-from paasta_tools import chronos_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_native_serviceinit
@@ -120,12 +117,10 @@ def get_deployment_version(
 class PaastaClients:
     _cached: bool
     _marathon: Optional[marathon_tools.MarathonClients]
-    _chronos: Optional[ChronosClient]
 
     def __init__(self, cached: bool = False) -> None:
         self._cached = cached
         self._marathon = None
-        self._chronos = None
 
     def marathon(self) -> marathon_tools.MarathonClients:
         if self._marathon is None:
@@ -135,14 +130,6 @@ class PaastaClients:
                 marathon_servers, cached=True
             )
         return self._marathon
-
-    def chronos(self) -> ChronosClient:
-        if self._chronos is None:
-            chronos_config = chronos_tools.load_chronos_config()
-            self._chronos = chronos_tools.get_chronos_client(
-                chronos_config, cached=self._cached
-            )
-        return self._chronos
 
 
 def main() -> None:
@@ -175,7 +162,7 @@ def main() -> None:
     actual_deployments = get_actual_deployments(service, args.soa_dir)
     clients = PaastaClients(cached=(command == "status"))
 
-    instance_types = ["marathon", "chronos", "paasta_native", "adhoc"]
+    instance_types = ["marathon", "paasta_native", "adhoc"]
     instance_types_map: Dict[str, List[str]] = {it: [] for it in instance_types}
     for instance in instances:
         try:
@@ -237,16 +224,6 @@ def main() -> None:
                         app_id=args.app_id,
                         clients=clients.marathon(),
                         job_config=job_configs[instance],
-                    )
-                elif instance_type == "chronos":
-                    return_code = chronos_serviceinit.perform_command(
-                        command=command,
-                        service=service,
-                        instance=instance,
-                        cluster=cluster,
-                        verbose=args.verbose,
-                        soa_dir=args.soa_dir,
-                        client=clients.chronos(),
                     )
                 elif instance_type == "paasta_native":
                     return_code = paasta_native_serviceinit.perform_command(

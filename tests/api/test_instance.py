@@ -24,7 +24,6 @@ from requests.exceptions import ReadTimeout
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
-from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_short_task_id
@@ -659,43 +658,6 @@ class TestGetMesosNonRunningTaskDict:
         mock_get_tail_lines.assert_called_once_with(mock_task, get_short_task_id, 100)
 
 
-@mock.patch("paasta_tools.chronos_tools.load_chronos_config", autospec=True)
-@mock.patch(
-    "paasta_tools.api.views.instance.chronos_tools.get_chronos_client", autospec=True
-)
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.get_actual_deployments", autospec=True)
-@mock.patch("paasta_tools.chronos_serviceinit.status_chronos_jobs", autospec=True)
-def test_chronos_instance_status(
-    mock_status_chronos_jobs,
-    mock_get_actual_deployments,
-    mock_validate_service_instance,
-    mock_get_chronos_client,
-    mock_load_chronos_config,
-):
-    settings.cluster = "fake_cluster"
-    mock_get_actual_deployments.return_value = {
-        "fake_cluster.fake_instance": "GIT_SHA",
-        "fake_cluster.fake_instance2": "GIT_SHA",
-        "fake_cluster2.fake_instance": "GIT_SHA",
-        "fake_cluster2.fake_instance2": "GIT_SHA",
-    }
-    mock_validate_service_instance.return_value = "chronos"
-
-    request = testing.DummyRequest()
-    request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
-
-    instance.instance_status(request)
-    assert mock_status_chronos_jobs.call_args == mock.call(
-        mock_get_chronos_client.return_value,
-        "fake_service",
-        "fake_instance",
-        "fake_cluster",
-        "/nail/etc/services",
-        0,
-    )
-
-
 @mock.patch("paasta_tools.api.views.instance.adhoc_instance_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.get_actual_deployments", autospec=True)
@@ -770,10 +732,6 @@ def test_instance_tasks(
 
     assert len(ret) == len(expected) and ids(expected) == ids(ret)
 
-    mock_instance_status.return_value = {"chronos": {}}
-    with pytest.raises(ApiFailure):
-        ret = instance.instance_tasks(mock_request)
-
 
 @mock.patch("paasta_tools.api.views.instance.add_executor_info", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.add_slave_info", autospec=True)
@@ -800,10 +758,6 @@ def test_instance_task(
     mock_add_executor_info.assert_called_with(mock_add_slave_info.return_value)
     expected = mock_add_executor_info.return_value._Task__items
     assert ret == expected
-
-    mock_instance_status.return_value = {"chronos": {}}
-    with pytest.raises(ApiFailure):
-        ret = instance.instance_task(mock_request)
 
 
 @mock.patch(
