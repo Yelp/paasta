@@ -20,6 +20,7 @@ import mock
 from bravado.exception import HTTPError
 from bravado.exception import HTTPNotFound
 from mock import patch
+from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
