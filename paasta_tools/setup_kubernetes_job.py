@@ -103,6 +103,30 @@ def validate_job_name(service_instance: str) -> bool:
     return True
 
 
+def _bounce_service_instance(
+    deploy_strategy: str,
+    app: DeploymentWrapper,
+    kube_client: KubeClient,
+    existing_apps: dict,
+    existing_kube_deployments: set,
+) -> None:
+
+    if deploy_strategy == "brutal":
+        app.deep_delete(kube_client)
+        app.create(kube_client)
+        return
+    if (
+        app
+        and (app.kube_deployment.service, app.kube_deployment.instance)
+        not in existing_apps
+    ):
+        app.create(kube_client)
+    elif app and app.kube_deployment not in existing_kube_deployments:
+        app.update(kube_client)
+    else:
+        log.debug(f"{app} is up to date, no action taken")
+
+
 def setup_kube_deployments(
     kube_client: KubeClient,
     service_instances: Sequence[str],
@@ -125,41 +149,32 @@ def setup_kube_deployments(
     job_configs_apps = {}
 
     for service_instance in service_instances_with_valid_names:
-        service_name, instance_name = service_instance.split(".")
-        job_config = [
-            load_kubernetes_service_config_no_cache(
-                service_name,
-                instance_name,
-                load_system_paasta_config().get_cluster(),
-                soa_dir=soa_dir,
-            )
-        ]
-        job_configs_apps.put(service_instance, job_config)
-
-    applications = [
-        create_application_object(
-            kube_client=kube_client,
-            service=service_instance[0],
-            instance=service_instance[1],
-            soa_dir=soa_dir,
+        service_name, instance_name, _, _ = service_instance
+        cluster = load_system_paasta_config().get_cluster()
+        job_kubernetes_config = load_kubernetes_service_config_no_cache(
+            service_name, instance_name, cluster, soa_dir=soa_dir
         )
-        for service_instance in service_instances_with_valid_names
-    ]
+        job_configs_apps[service_instance] = (
+            job_kubernetes_config,
+            create_application_object(
+                kube_client=kube_client,
+                service=service_name,
+                instance=instance_name,
+                soa_dir=soa_dir,
+            ),
+        )
 
-    # grab job_config and figure out wat to do about brutal
-
-    # app type is paasta_tools.kubernetes.application.controller_wrappers.DeploymentWrapper
-    for _, app in applications:
-        if (
-            app
-            and (app.kube_deployment.service, app.kube_deployment.instance)
-            not in existing_apps
-        ):
-            app.create(kube_client)
-        elif app and app.kube_deployment not in existing_kube_deployments:
-            app.update(kube_client)
-        else:
-            log.debug(f"{app} is up to date, no action taken")
+    applications = []
+    for item in job_configs_apps.items():
+        job_kubernetes_config, app = item[1]
+        applications.append(app)
+        _bounce_service_instance(
+            job_kubernetes_config.get_bounce_method(),
+            app[1],
+            kube_client,
+            existing_apps,
+            existing_kube_deployments,
+        )
 
     return (False, None) not in applications and len(
         service_instances_with_valid_names

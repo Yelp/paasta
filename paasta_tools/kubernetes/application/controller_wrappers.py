@@ -162,7 +162,9 @@ class DeploymentWrapper(Application):
         delete_options = V1DeleteOptions(propagation_policy="Foreground")
         try:
             kube_client.deployments.delete_namespaced_deployment(
-                self.item.metadata.name, self.item.metadata.namespace, delete_options
+                self.item.metadata.name,
+                self.item.metadata.namespace,
+                body=delete_options,
             )
         except ApiException as e:
             if e.status == 404:
@@ -268,7 +270,7 @@ class DeploymentWrapper(Application):
                 # Deployment does not exist, nothing to delete but
                 # we can consider this a success.
                 self.logging.debug(
-                    "not deleting nonexistent HPA/{self.item.metadata.name} from namespace/{self.item.metadata.namespace}".format(
+                    "not deleting nonexistent HPA/{} from namespace/{}".format(
                         self.item.metadata.name, self.item.metadata.namespace
                     )
                 )
@@ -290,7 +292,7 @@ class StatefulSetWrapper(Application):
         """
         delete_options = V1DeleteOptions(propagation_policy="Foreground")
         try:
-            kube_client.deployments.delete_namespaced_stateful_set(
+            kube_client.deployments.delete_namespaced_deployment(
                 self.item.metadata.name, self.item.metadata.namespace, delete_options
             )
         except ApiException as e:
