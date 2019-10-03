@@ -645,3 +645,50 @@ def test_pick_random_port():
         port3 = utils.pick_random_port("different_fake_service")
         assert port1 != port3
         assert 33000 <= port3 < 58000
+
+
+@patch("paasta_tools.cli.utils._log_audit", autospec=True)
+@patch("paasta_tools.cli.utils.run_paasta_cluster_boost", autospec=True)
+@patch("paasta_tools.cli.utils.connectable_master", autospec=True)
+@mark.parametrize(
+    "master_result,boost_result,expected_result",
+    [(utils.NoMasterError("error"), None, 1), (mock.Mock(), 1, 1), (mock.Mock(), 0, 0)],
+)
+def test_execute_paasta_cluster_boost_on_remote_master(
+    mock_connectable_master,
+    mock_boost,
+    mock_log,
+    master_result,
+    boost_result,
+    expected_result,
+):
+    mock_c1 = mock.Mock()
+    mock_connectable_master.side_effect = [mock_c1, master_result]
+    clusters = ["c1", "c2"]
+    mock_config = mock.Mock()
+    mock_boost.side_effect = [(0, ""), (boost_result, "")]
+
+    code, output = utils.execute_paasta_cluster_boost_on_remote_master(
+        clusters,
+        mock_config,
+        "do_action",
+        "a_pool",
+        duration=30,
+        override=False,
+        boost=2,
+        verbose=1,
+    )
+
+    shared_kwargs = dict(
+        action="do_action",
+        pool="a_pool",
+        duration=30,
+        override=False,
+        boost=2,
+        verbose=1,
+    )
+    expected_calls = [mock.call(master=mock_c1, **shared_kwargs)]
+    if not isinstance(master_result, utils.NoMasterError):
+        expected_calls.append(mock.call(master=master_result, **shared_kwargs))
+    assert mock_boost.call_args_list == expected_calls
+    assert code == expected_result
