@@ -440,23 +440,25 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method
-        bounce_method = self.config_dict.get("bounce_method")
+        bounce_method = self.config_dict.get("bounce_method", "")
         # get k8s equivalent
         strategy_type = self.get_bounce_method()
-        # brutal means a bounce margin factor of 0, do not call get_bounce_margin_factor
-        if bounce_method == "brutal":
-            strategy_type = "RollingUpdate"
-            rolling_update = V1RollingUpdateDeployment(
-                max_surge="100%", max_unavailable="100%"
-            )
-        elif strategy_type == "RollingUpdate":
+
+        if strategy_type == "RollingUpdate":
+            max_surge = "100%"
+            if bounce_method == "crossover":
+                max_unavailable = "{}%".format(
+                    int((1 - self.get_bounce_margin_factor()) * 100)
+                )
+            else:
+                # `brutal` bounce method means a bounce margin factor of 0, do not call get_bounce_margin_factor
+                max_unavailable = "100%"
+            rolling_update = V1RollingUpdateDeployment
+
             # this translates bounce_margin to k8s speak maxUnavailable
             # for now we keep max_surge 100% but we could customise later
             rolling_update = V1RollingUpdateDeployment(
-                max_surge="100%",
-                max_unavailable="{}%".format(
-                    int((1 - self.get_bounce_margin_factor()) * 100)
-                ),
+                max_surge=max_surge, max_unavailable=max_unavailable
             )
         else:
             rolling_update = None

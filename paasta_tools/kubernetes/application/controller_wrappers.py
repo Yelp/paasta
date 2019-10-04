@@ -1,6 +1,7 @@
 import logging
 from abc import ABC
 from abc import abstractmethod
+from time import sleep
 from typing import Optional
 from typing import Union
 
@@ -17,6 +18,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
+from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
@@ -196,9 +198,19 @@ class DeploymentWrapper(Application):
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
+    def deep_delete_and_wait(self, kube_client: KubeClient) -> None:
+        self.deep_delete(kube_client)
+        while self.kube_deployment in set(list_all_deployments(kube_client)):
+            self.logging.debug(
+                "waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
+            )
+            sleep(0.5)
+
     def update(self, kube_client: KubeClient) -> None:
         # If autoscaling is enabled, do not update replicas.
         # In all other cases, replica is set to max(instances, min_instances)
+        if self.get_soa_config().get("bounce_method", "") == "brutal":
+            self.deep_delete_and_wait(kube_client)
         if not self.get_soa_config().get("instances"):
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
