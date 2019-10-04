@@ -1,3 +1,12 @@
+paasta-tools (0.86.15) xenial; urgency=medium
+
+  * 0.86.15 tagged with 'make release'
+    Commit: Merge pull request #2447 from
+    Yelp/u/bronek/flink_health_monitoring  Verify number of taskmanagers
+    reported by Flink dashboard when monitoring
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 04 Oct 2019 07:39:56 -0700
+
 paasta-tools (0.86.14) xenial; urgency=medium
 
   * 0.86.14 tagged with 'make release'
