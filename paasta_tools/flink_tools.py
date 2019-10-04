@@ -244,5 +244,4 @@ def get_flink_jobmanager_overview(
         err = e.strerror
         raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
     except json.JSONDecodeError as e:
-        err = str(e)
-        raise ValueError(f"JSON decoding error from Jobmanager dashboard: {err}")
+        raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")

@@ -17,6 +17,7 @@ Usage: ./check_flink_services_health.py [options]
 """
 import datetime
 import logging
+from typing import Optional
 from typing import Sequence
 
 import pysensu_yelp
@@ -79,8 +80,8 @@ Things you can do:
 def send_event_if_not_enough_taskmanagers(
     instance_config: FlinkDeploymentConfig,
     expected_count: int,
-    num_reported: int,
-    strerror: str,
+    num_reported: Optional[int],
+    strerror: Optional[str],
 ) -> None:
     under_replicated = False
     if strerror is None:
