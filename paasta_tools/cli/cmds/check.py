@@ -168,7 +168,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
     deploy.yaml's steps look like. This is only so we can compare it 1-1
     with what deploy.yaml has for linting.
 
-    :param instance_type: one of 'marathon', 'chronos', 'adhoc'
+    :param instance_type: one of 'marathon', 'adhoc'
     :param service: the service name
     :param soa_dir: The SOA configuration directory to read from
 
@@ -199,7 +199,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
 
 
 def deployments_check(service, soa_dir):
-    """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
+    """Checks for consistency between deploy.yaml and the marathon yamls"""
     the_return = True
     pipeline_deploy_groups = get_pipeline_deploy_groups(
         service=service, soa_dir=soa_dir
@@ -236,7 +236,7 @@ def deployments_check(service, soa_dir):
             "%s There are some instance(s) in deploy.yaml that are not referenced"
             % x_mark()
         )
-        paasta_print("  by any marathon, chronos or adhoc instance:")
+        paasta_print("  by any marathon or adhoc instance:")
         paasta_print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_frameworks))))
         paasta_print(
             "  You should probably delete these deploy.yaml entries if they are unused."
@@ -245,9 +245,7 @@ def deployments_check(service, soa_dir):
 
     if the_return is True:
         paasta_print(
-            success(
-                "All entries in deploy.yaml correspond to a marathon, chronos or adhoc entry"
-            )
+            success("All entries in deploy.yaml correspond to a paasta instance")
         )
         for it in INSTANCE_TYPES:
             if len(framework_deploy_groups[it]) > 0:
