@@ -42,7 +42,7 @@ def emit_metrics_for_type(instance_type):
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    for thing in ["marathon", "chronos", "adhoc"]:
+    for thing in ["marathon", "adhoc"]:
         emit_metrics_for_type(thing)
 
 
