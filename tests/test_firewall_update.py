@@ -75,10 +75,7 @@ def test_parse_args_default_cron():
     firewall,
     "services_running_here",
     autospec=True,
-    return_value=(
-        ("myservice", "hassecurity", "02:42:a9:fe:00:0a", "1.1.1.1"),
-        ("myservice", "chronoswithsecurity", "02:42:a9:fe:00:0b", "2.2.2.2"),
-    ),
+    return_value=(("myservice", "hassecurity", "02:42:a9:fe:00:0a", "1.1.1.1"),),
 )
 def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
     soa_dir = tmpdir.mkdir("yelpsoa")
@@ -93,14 +90,6 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
     }
     myservice_dir.join("marathon-mycluster.yaml").write(yaml.safe_dump(marathon_config))
 
-    chronos_config = {
-        "chronoswithsecurity": {
-            "dependencies_reference": "my_ref",
-            "security": {"outbound_firewall": "block"},
-        }
-    }
-    myservice_dir.join("chronos-mycluster.yaml").write(yaml.safe_dump(chronos_config))
-
     dependencies_config = {
         "my_ref": [
             {"well-known": "internet"},
@@ -114,14 +103,8 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
         soa_dir=str(soa_dir)
     )
     assert dict(result) == {
-        "mydependency.depinstance": {
-            ("myservice", "hassecurity"),
-            ("myservice", "chronoswithsecurity"),
-        },
-        "another.one": {
-            ("myservice", "hassecurity"),
-            ("myservice", "chronoswithsecurity"),
-        },
+        "mydependency.depinstance": {("myservice", "hassecurity")},
+        "another.one": {("myservice", "hassecurity")},
     }
 
 

@@ -48,7 +48,7 @@ def mock_get_running_mesos_docker_containers():
                 "HostConfig": {"NetworkMode": "bridge"},
                 "Labels": {
                     "paasta_service": "myservice",
-                    "paasta_instance": "chronoswithsecurity",
+                    "paasta_instance": "hassecurity2",
                 },
                 "NetworkSettings": {
                     "Networks": {
@@ -75,7 +75,7 @@ def mock_get_running_mesos_docker_containers():
 def test_services_running_here():
     assert tuple(firewall.services_running_here()) == (
         ("myservice", "hassecurity", "02:42:a9:fe:00:0a", "1.1.1.1"),
-        ("myservice", "chronoswithsecurity", "02:42:a9:fe:00:0b", "2.2.2.2"),
+        ("myservice", "hassecurity2", "02:42:a9:fe:00:0b", "2.2.2.2"),
     )
 
 
