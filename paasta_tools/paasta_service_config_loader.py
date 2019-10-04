@@ -109,7 +109,7 @@ class PaastaServiceConfigLoader:
 
         :param cluster: The cluster name
         :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
-        :returns: an iterator that yields instances of MarathonServiceConfig, ChronosJobConfig and etc.
+        :returns: an iterator that yields instances of MarathonServiceConfig, etc.
         :raises NotImplementedError: when it doesn't know how to create a config for instance_type
         """
         if (cluster, instance_type_class) not in self._framework_configs:
