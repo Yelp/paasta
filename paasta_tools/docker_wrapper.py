@@ -336,8 +336,8 @@ def main(argv=None):
     if env_args.get("PIN_TO_NUMA_NODE"):
         argv = append_cpuset_args(argv, env_args)
 
-    # Marathon sets MESOS_TASK_ID whereas Chronos sets mesos_task_id
-    mesos_task_id = env_args.get("MESOS_TASK_ID") or env_args.get("mesos_task_id")
+    # Marathon sets MESOS_TASK_ID
+    mesos_task_id = env_args.get("MESOS_TASK_ID")
 
     if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)

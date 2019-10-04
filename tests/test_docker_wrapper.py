@@ -252,9 +252,9 @@ class TestGenerateHostname:
 
     def test_symbols(self):
         hostname = docker_wrapper.generate_hostname(
-            "first.part.matters", "chronos:can_do!s0me weird-stuff"
+            "first.part.matters", "anything:can_do!s0me weird-stuff"
         )
-        assert hostname == "first-chronos-can-do-s0me-weird-stuff"
+        assert hostname == "first-anything-can-do-s0me-weird-stuff"
 
     def test_no_dashes_on_end(self):
         assert docker_wrapper.generate_hostname("beep", "foobar-") == "beep-foobar"
@@ -309,43 +309,6 @@ class TestMain:
                 "run",
                 "--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c",
                 "--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c",
-            )
-        ]
-
-    def test_chronos(self, mock_execlp):
-        argv = [
-            "docker",
-            "run",
-            "--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:",
-        ]
-        with mock.patch.object(socket, "getfqdn", return_value="myhostname"):
-            docker_wrapper.main(argv)
-        assert mock_execlp.mock_calls == [
-            mock.call(
-                "docker",
-                "docker",
-                "run",
-                "--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-fe",
-                "--env=mesos_task_id=ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:",
-            )
-        ]
-
-    def test_chronos_with_envs(self, mock_execlp):
-        argv = ["docker", "run", "--env=mesos_task_id"]
-        envs = {
-            "mesos_task_id": "ct:1487804100000:0:thirdparty_feeds thirdparty_feeds-cloudflare-all:"
-        }
-        with patch_environ(envs), mock.patch.object(
-            socket, "getfqdn", return_value="myhostname"
-        ):
-            docker_wrapper.main(argv)
-        assert mock_execlp.mock_calls == [
-            mock.call(
-                "docker",
-                "docker",
-                "run",
-                "--hostname=myhostname-ct-1487804100000-0-thirdparty-feeds-thirdparty-fe",
-                "--env=mesos_task_id",
             )
         ]
 
