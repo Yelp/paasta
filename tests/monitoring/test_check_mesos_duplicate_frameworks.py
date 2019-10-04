@@ -29,7 +29,7 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
         autospec=True,
     ) as mock_get_mesos_master:
         mock_opts = mock.MagicMock()
-        mock_opts.check = "marathon,chronos"
+        mock_opts.check = "marathon"
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = asynctest.CoroutineMock(
@@ -38,7 +38,6 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
                 "frameworks": [
                     {"name": "marathon"},
                     {"name": "marathon1"},
-                    {"name": "chronos"},
                     {"name": "foobar"},
                     {"name": "foobar"},
                 ]
@@ -51,7 +50,6 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
         out, err = capfd.readouterr()
         assert "OK" in out
         assert "Framework: marathon count: 2" in out
-        assert "Framework: chronos count: 1" in out
         assert "foobar" not in out
         assert error.value.code == 0
 
@@ -65,7 +63,7 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
         autospec=True,
     ) as mock_get_mesos_master:
         mock_opts = mock.MagicMock()
-        mock_opts.check = "marathon,chronos"
+        mock_opts.check = "marathon"
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = asynctest.CoroutineMock(
@@ -75,7 +73,6 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
                     {"name": "marathon"},
                     {"name": "marathon1"},
                     {"name": "marathon1"},
-                    {"name": "chronos"},
                     {"name": "foobar"},
                     {"name": "foobar"},
                 ]
@@ -90,6 +87,5 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
             "CRITICAL: There are 2 connected marathon1 frameworks! (Expected 1)" in out
         )
         assert "marathon" in out
-        assert "chronos" in out
         assert "foobar" not in out
         assert error.value.code == 2
