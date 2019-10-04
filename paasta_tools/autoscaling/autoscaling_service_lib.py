@@ -775,6 +775,7 @@ def _record_autoscaling_decision(
         "paasta_service": marathon_service_config.service,
         "paasta_cluster": marathon_service_config.cluster,
         "paasta_instance": marathon_service_config.instance,
+        "paasta_pool": marathon_service_config.get_pool(),
         "decision_policy": autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
     }
     if yelp_meteorite:

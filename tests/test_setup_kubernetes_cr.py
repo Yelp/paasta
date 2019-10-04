@@ -212,7 +212,7 @@ def test_format_custom_resource():
                 },
                 "annotations": {
                     "yelp.com/desired_state": "running",
-                    "yelp.com/dashboard_url": "http://flink.k8s.paasta-mycluster.yelp:31080/",
+                    "yelp.com/dashboard_url": "http://flink.k8s.paasta-mycluster.yelp:31080/kurupt--fm-radio--station",
                 },
             },
             "spec": {"dummy": "conf"},
@@ -244,9 +244,14 @@ def test_paasta_config_flink_dashboard_url():
             },
             "",
         )
-        expected = "http://flink.paasta-mycluster.yelp/"
+        expected = "http://flink.paasta-mycluster.yelp/kurupt--fm-radio--station"
         assert (
-            setup_kubernetes_cr.get_dashboard_url(kind="flink", cluster="mycluster")
+            setup_kubernetes_cr.get_dashboard_url(
+                kind="flink",
+                service="kurupt_fm",
+                instance="radio_station",
+                cluster="mycluster",
+            )
             == expected
         )
 
