@@ -57,6 +57,25 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
     )
 
 
+def _event_explanation() -> str:
+    return """
+What this alert means:
+
+  This alert means that the Flink dashboard is not reporting the expected
+  number of taskmanagers.
+
+Reasons this might be happening:
+
+  The service may simply be unhealthy. There also may not be enough resources
+  in the cluster to support the requested instance count.
+
+Things you can do:
+
+  * Fix the cause of the unhealthy service. Try running:
+
+"""
+
+
 def send_event_if_not_enough_taskmanagers(
     instance_config: FlinkDeploymentConfig,
     expected_count: int,
@@ -85,22 +104,8 @@ def send_event_if_not_enough_taskmanagers(
             strerror,
         )
     if under_replicated or strerror:
+        output += _event_explanation()
         output += (
-            "\n\n"
-            "What this alert means:\n"
-            "\n"
-            "  This alert means that the Flink service is not reporting the\n"
-            "  requested number of taskmanagers.\n"
-            "\n"
-            "Reasons this might be happening:\n"
-            "\n"
-            "  The service may simply be unhealthy. There also may not be enough resources\n"
-            "  in the cluster to support the requested instance count.\n"
-            "\n"
-            "Things you can do:\n"
-            "\n"
-            "  * Fix the cause of the unhealthy service. Try running:\n"
-            "\n"
             "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
         ) % {
             "service": instance_config.service,
