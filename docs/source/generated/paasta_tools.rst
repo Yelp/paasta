@@ -40,8 +40,6 @@ Submodules
    paasta_tools.check_oom_events
    paasta_tools.check_services_replication_tools
    paasta_tools.check_spark_jobs
-   paasta_tools.chronos_serviceinit
-   paasta_tools.chronos_tools
    paasta_tools.cleanup_kubernetes_cr
    paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_kubernetes_jobs
@@ -65,7 +63,6 @@ Submodules
    paasta_tools.hacheck
    paasta_tools.iptables
    paasta_tools.kubernetes_tools
-   paasta_tools.list_chronos_jobs
    paasta_tools.list_kubernetes_service_instances
    paasta_tools.list_marathon_service_instances
    paasta_tools.list_tron_namespaces
