@@ -1264,28 +1264,6 @@ class TestChronosTools:
             )
             assert result["container"]["network"] == "HOST"
 
-    def test_list_job_names(self):
-        fake_name = "vegetables"
-        fake_job_1 = "carrot"
-        fake_job_2 = "celery"
-        fake_cluster = "broccoli"
-        fake_dir = "/nail/home/veggies"
-        fake_job_config = {
-            fake_job_1: self.fake_config_dict,
-            fake_job_2: self.fake_config_dict,
-        }
-        expected = [(fake_name, fake_job_1), (fake_name, fake_job_2)]
-        with mock.patch(
-            "service_configuration_lib.read_extra_service_information",
-            autospec=True,
-            return_value=fake_job_config,
-        ) as read_extra_info_patch:
-            actual = chronos_tools.list_job_names(fake_name, fake_cluster, fake_dir)
-            read_extra_info_patch.assert_called_once_with(
-                fake_name, "chronos-broccoli", soa_dir=fake_dir
-            )
-            assert sorted(expected) == sorted(actual)
-
     def test_get_chronos_jobs_for_cluster(self):
         with mock.patch(
             "paasta_tools.chronos_tools.get_services_for_cluster",

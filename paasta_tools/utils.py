@@ -118,7 +118,6 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
     "marathon",
-    "chronos",
     "paasta_native",
     "adhoc",
     "kubernetes",
@@ -562,7 +561,7 @@ class InstanceConfig:
             if args is None:
                 return args
             else:
-                # TODO validation stuff like this should be moved into a check_* like in chronos tools
+                # TODO validation stuff like this should be moved into a check_*
                 raise InvalidInstanceConfig(
                     "Instance configuration can specify cmd or args, but not both."
                 )
@@ -1038,10 +1037,6 @@ LOG_COMPONENTS = OrderedDict(
                 "color": PaastaColors.magenta,
                 "help": "Logs from Marathon for the service",
             },
-        ),
-        (
-            "chronos",
-            {"color": PaastaColors.red, "help": "Logs from Chronos for the service"},
         ),
         (
             "app_output",
@@ -1692,7 +1687,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
     auto_hostname_unique_size: int
-    chronos_config: ChronosConfig
     cluster: str
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
@@ -2075,12 +2069,6 @@ class SystemPaastaConfig:
 
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
-
-    def get_chronos_config(self) -> ChronosConfig:
-        """Get the chronos config
-
-        :returns: The chronos config dictionary"""
-        return self.config_dict.get("chronos_config", {})
 
     def get_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get("marathon_servers", [])
@@ -2561,7 +2549,7 @@ def list_clusters(
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
-    Includes every cluster that has a ``marathon-*.yaml`` or ``chronos-*.yaml`` file associated with it.
+    Includes every cluster that has a ``marathon-*.yaml`` or ``tron-*.yaml`` file associated with it.
 
     :param service: The service name. If unspecified, clusters running any service will be included.
     :returns: A sorted list of cluster names
@@ -2686,7 +2674,7 @@ def get_service_instance_list_no_cache(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2732,7 +2720,7 @@ def get_service_instance_list(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2747,7 +2735,7 @@ def get_services_for_cluster(
     """Retrieve all services and instances defined to run in a cluster.
 
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, instance)
     """
@@ -3039,7 +3027,6 @@ def deploy_blacklist_to_constraints(
     """Converts a blacklist of locations into marathon appropriate constraints.
 
     https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
-    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#unlike-constraint
 
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
@@ -3057,7 +3044,6 @@ def deploy_whitelist_to_constraints(
     """Converts a whitelist of locations into marathon appropriate constraints
 
     https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
-    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#like-constraint
 
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints
