@@ -629,10 +629,6 @@
                     "$ref": "#/definitions/InstanceStatusKubernetes",
                     "description": "Kubernetes instance status"
                 },
-                "chronos": {
-                    "$ref": "#/definitions/InstanceStatusChronos",
-                    "description": "Chronos instance status"
-                },
                 "tron": {
                     "$ref": "#/definitions/InstanceStatusTron",
                     "description": "Tron instance status"
@@ -1158,16 +1154,6 @@
                 "phase": {
                     "type": "string",
                     "description": "The status of the pod"
-                }
-            }
-        },
-        "InstanceStatusChronos": {
-            "type": "object",
-            "description": "Result of `paasta status` command for chronos job",
-            "properties": {
-                "output": {
-                    "type": "string",
-                    "description": "Output from `paasta status` command"
                 }
             }
         },
