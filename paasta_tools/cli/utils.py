@@ -44,7 +44,6 @@ from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
-from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
@@ -193,8 +192,6 @@ class PaastaCheckMessages:
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
-
-    CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
 
     ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
 
@@ -838,7 +835,6 @@ INSTANCE_TYPE_HANDLERS: Mapping[
 ] = defaultdict(
     lambda: (None, None),
     marathon=(get_service_instance_list, load_marathon_service_config),
-    chronos=(get_service_instance_list, load_chronos_job_config),
     adhoc=(get_service_instance_list, load_adhoc_job_config),
     kubernetes=(get_service_instance_list, load_kubernetes_service_config),
     tron=(get_service_instance_list, load_tron_instance_config),
@@ -856,7 +852,7 @@ def get_instance_config(
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
     """ Returns the InstanceConfig object for whatever type of instance
-    it is. (chronos or marathon) """
+    it is. (marathon) """
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
