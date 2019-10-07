@@ -1,3 +1,62 @@
+paasta-tools (0.86.15) xenial; urgency=medium
+
+  * 0.86.15 tagged with 'make release'
+    Commit: Merge pull request #2447 from
+    Yelp/u/bronek/flink_health_monitoring  Verify number of taskmanagers
+    reported by Flink dashboard when monitoring
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 04 Oct 2019 07:39:56 -0700
+
+paasta-tools (0.86.14) xenial; urgency=medium
+
+  * 0.86.14 tagged with 'make release'
+    Commit: Merge pull request #2453 from Yelp/add-paasta-pool-dim-to-
+    meteorite-log  Add paasta_pool dimension to paasta.service.* metrics
+
+ -- Aaron Tan <siruitan@yelp.com>  Thu, 03 Oct 2019 10:21:57 -0700
+
+paasta-tools (0.86.13) xenial; urgency=medium
+
+  * 0.86.13 tagged with 'make release'
+    Commit: Merge pull request #2450 from Yelp/fix-deployd-leader-bug
+    Fix duplicate leader bug
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Wed, 02 Oct 2019 02:24:06 -0700
+
+paasta-tools (0.86.12) xenial; urgency=medium
+
+  * 0.86.12 tagged with 'make release'
+    Commit: Merge pull request #2443 from
+    Yelp/u/bronek/flink_health_monitoring  Rename check_flink_services
+    and add single test
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 27 Sep 2019 07:17:35 -0700
+
+paasta-tools (0.86.11) xenial; urgency=medium
+
+  * 0.86.11 tagged with 'make release'
+    Commit: Merge pull request #2439 from Yelp/PAASTA-
+    15610_deperecate_ulimit  deprecate_ulimit
+
+ -- Fatima Zahra Elfilali <fzz@yelp.com>  Wed, 25 Sep 2019 14:51:04 -0700
+
+paasta-tools (0.86.10) xenial; urgency=medium
+
+  * 0.86.10 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    fix_more_liberal_healthchecks
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Sep 2019 13:00:45 -0700
+
+paasta-tools (0.86.9) xenial; urgency=medium
+
+  * 0.86.9 tagged with 'make release'
+    Commit: Merge pull request #2435 from
+    Yelp/catch_more_http_api_errors  catch a couple more bravado errors
+    when getting paasta status from th…
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 24 Sep 2019 10:36:31 -0700
+
 paasta-tools (0.86.8) xenial; urgency=medium
 
   * 0.86.8 tagged with 'make release'

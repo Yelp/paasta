@@ -262,20 +262,12 @@ def paasta_status_on_api_endpoint(
         return print_flink_status(
             cluster, service, instance, output, status.flink, verbose
         )
-    elif status.chronos is not None:
-        return print_chronos_status(output, status.chronos.output)
     else:
         paasta_print(
             "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
             % instance
         )
         return 0
-
-
-def print_chronos_status(output, status_output):
-    for line in status_output.rstrip().split("\n"):
-        output.append("    %s" % line)
-    return 0
 
 
 def print_adhoc_status(
@@ -798,7 +790,6 @@ def print_flink_status(
         return 0
 
     dashboard_url = metadata.annotations.get("yelp.com/dashboard_url")
-    dashboard_url += metadata.name
     if verbose:
         output.append(
             f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
@@ -858,7 +849,7 @@ def print_flink_status(
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
         )
-        if job_id in status.exceptions:
+        if verbose and job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
             root_exception = exceptions["root-exception"]
             if root_exception is not None:

@@ -118,7 +118,6 @@ log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
     "marathon",
-    "chronos",
     "paasta_native",
     "adhoc",
     "kubernetes",
@@ -226,7 +225,6 @@ class InstanceConfigDict(TypedDict, total=False):
     args: List[str]
     cfs_period_us: float
     cpu_burst_add: float
-    ulimit: Dict[str, Dict[str, Any]]
     cap_add: List
     env: Dict[str, str]
     monitoring: Dict[str, str]
@@ -410,28 +408,6 @@ class InstanceConfig:
     def get_extra_docker_args(self) -> Dict[str, str]:
         return self.config_dict.get("extra_docker_args", {})
 
-    def get_ulimit(self) -> Iterable[DockerParameter]:
-        """Get the --ulimit options to be passed to docker
-        Generated from the ulimit configuration option, which is a dictionary
-        of ulimit values. Each value is a dictionary itself, with the soft
-        limit stored under the 'soft' key and the optional hard limit stored
-        under the 'hard' key.
-
-        Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
-
-        :returns: A generator of ulimit options to be passed as --ulimit flags"""
-        for key, val in sorted(self.config_dict.get("ulimit", {}).items()):
-            soft = val.get("soft")
-            hard = val.get("hard")
-            if soft is None:
-                raise InvalidInstanceConfig(
-                    f"soft limit missing in ulimit configuration for {key}."
-                )
-            combined_val = "%i" % soft
-            if hard is not None:
-                combined_val += ":%i" % hard
-            yield {"key": "ulimit", "value": f"{key}={combined_val}"}
-
     def get_cap_add(self) -> Iterable[DockerParameter]:
         """Get the --cap-add options to be passed to docker
         Generated from the cap_add configuration option, which is a list of
@@ -492,7 +468,6 @@ class InstanceConfig:
         if extra_docker_args:
             for key, value in extra_docker_args.items():
                 parameters.extend([{"key": key, "value": value}])
-        parameters.extend(self.get_ulimit())
         parameters.extend(self.get_cap_add())
         parameters.extend(self.get_docker_init())
         parameters.extend(self.get_cap_drop())
@@ -586,7 +561,7 @@ class InstanceConfig:
             if args is None:
                 return args
             else:
-                # TODO validation stuff like this should be moved into a check_* like in chronos tools
+                # TODO validation stuff like this should be moved into a check_*
                 raise InvalidInstanceConfig(
                     "Instance configuration can specify cmd or args, but not both."
                 )
@@ -1062,10 +1037,6 @@ LOG_COMPONENTS = OrderedDict(
                 "color": PaastaColors.magenta,
                 "help": "Logs from Marathon for the service",
             },
-        ),
-        (
-            "chronos",
-            {"color": PaastaColors.red, "help": "Logs from Chronos for the service"},
         ),
         (
             "app_output",
@@ -1716,7 +1687,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
     auto_hostname_unique_size: int
-    chronos_config: ChronosConfig
     cluster: str
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
@@ -2101,12 +2071,6 @@ class SystemPaastaConfig:
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
 
-    def get_chronos_config(self) -> ChronosConfig:
-        """Get the chronos config
-
-        :returns: The chronos config dictionary"""
-        return self.config_dict.get("chronos_config", {})
-
     def get_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get("marathon_servers", [])
 
@@ -2414,15 +2378,18 @@ def atomic_file_write(target_path: str) -> Iterator[IO]:
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
 
-    with tempfile.NamedTemporaryFile(
-        dir=dirname, prefix=(".%s-" % basename), delete=False, mode="w"
-    ) as f:
-        temp_target_path = f.name
-        yield f
+    if target_path == "-":
+        yield sys.stdout
+    else:
+        with tempfile.NamedTemporaryFile(
+            dir=dirname, prefix=(".%s-" % basename), delete=False, mode="w"
+        ) as f:
+            temp_target_path = f.name
+            yield f
 
-    mode = 0o0666 & (~get_umask())
-    os.chmod(temp_target_path, mode)
-    os.rename(temp_target_path, target_path)
+        mode = 0o0666 & (~get_umask())
+        os.chmod(temp_target_path, mode)
+        os.rename(temp_target_path, target_path)
 
 
 class InvalidJobNameError(Exception):
@@ -2586,7 +2553,7 @@ def list_clusters(
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
-    Includes every cluster that has a ``marathon-*.yaml`` or ``chronos-*.yaml`` file associated with it.
+    Includes every cluster that has a ``marathon-*.yaml`` or ``tron-*.yaml`` file associated with it.
 
     :param service: The service name. If unspecified, clusters running any service will be included.
     :returns: A sorted list of cluster names
@@ -2711,7 +2678,7 @@ def get_service_instance_list_no_cache(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2757,7 +2724,7 @@ def get_service_instance_list(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2772,7 +2739,7 @@ def get_services_for_cluster(
     """Retrieve all services and instances defined to run in a cluster.
 
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, instance)
     """
@@ -3064,7 +3031,6 @@ def deploy_blacklist_to_constraints(
     """Converts a blacklist of locations into marathon appropriate constraints.
 
     https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
-    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#unlike-constraint
 
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
@@ -3082,7 +3048,6 @@ def deploy_whitelist_to_constraints(
     """Converts a whitelist of locations into marathon appropriate constraints
 
     https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
-    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#like-constraint
 
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints

@@ -39,8 +39,8 @@ def sort_by_ec2_fitness(instances):
           considered to be least healthy
         - next, instances are ranked according to whether they have events planned. an event
           planned marks against your fitness.
-        - next, instances are sorted according to the number of chronos tasks running on them.
-          we can't drain chronos tasks, so make an effort to avoid disrupting them.
+        - next, instances are sorted according to the number of batch tasks running on them.
+          we can't drain batch tasks, so make an effort to avoid disrupting them.
         - finally, instances are sorted according to the number of total tasks they have. those with
           the hightest total task are considered fittest, because it's painful to drain them.
     """

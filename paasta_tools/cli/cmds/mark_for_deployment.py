@@ -261,9 +261,9 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha):
         if authors == "":
             return ""
         else:
-            slacky_authors = ", ".join([f"<@{a}>" for a in authors.split()])
+            slacky_authors = ", ".join({f"<@{a}>" for a in authors.split()})
             log.debug(f"Authors: {slacky_authors}")
-            return f"Authors: {slacky_authors}"
+            return f"^ {slacky_authors}"
     else:
         return f"(Could not get authors: {authors})"
 
@@ -695,10 +695,16 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def disable_auto_rollbacks(self):
         self.cancel_auto_rollback_countdown()
         self.auto_rollback = False
+        self.update_slack_status(
+            f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
+        )
 
     def enable_auto_rollbacks(self):
         self.auto_rollback = True
         self.auto_rollbacks_ever_enabled = True
+        self.update_slack_status(
+            f"Automatic rollback enabled for this deploy. Will watch for failures and rollback when necessary. To set this permanently, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
+        )
 
     def auto_rollbacks_enabled(self) -> bool:
         """This getter exists so it can be a condition on transitions, since those need to be callables."""
@@ -914,8 +920,13 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self) -> None:
-        super().start_auto_rollback_countdown()
+    def start_auto_rollback_countdown(self, extra_text="") -> None:
+        cancel_button_text = self.get_button_text(
+            "disable_auto_rollbacks", is_active=False
+        )
+        super().start_auto_rollback_countdown(
+            extra_text=f'Click "{cancel_button_text}" to cancel this!'
+        )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
 

@@ -30,7 +30,8 @@ from typing import Sequence
 
 import yaml
 
-from paasta_tools.flink_tools import get_flink_ingress_port
+from paasta_tools.flink_tools import get_flink_ingress_url_root
+from paasta_tools.flink_tools import sanitised_name as flink_sanitised_name
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -218,16 +219,18 @@ def setup_custom_resources(
     return succeded
 
 
-def get_dashboard_url(kind: str, cluster: str) -> Optional[str]:
+def get_dashboard_url(
+    kind: str, service: str, instance: str, cluster: str
+) -> Optional[str]:
     system_paasta_config = load_system_paasta_config()
     dashboard_links = system_paasta_config.get_dashboard_links()
     if kind.lower() == "flink":
         flink_link = dashboard_links.get(cluster, {}).get("Flink")
         if flink_link is None:
-            ingress_port = get_flink_ingress_port()
-            flink_link = f"http://flink.k8s.paasta-{cluster}.yelp:{ingress_port}/"
+            flink_link = get_flink_ingress_url_root(cluster)
         if flink_link[-1:] != "/":
             flink_link += "/"
+        flink_link += flink_sanitised_name(service, instance)
         return flink_link
     return None
 
@@ -259,7 +262,7 @@ def format_custom_resource(
         },
         "spec": instance_config,
     }
-    url = get_dashboard_url(kind, cluster)
+    url = get_dashboard_url(kind, service, instance, cluster)
     if url:
         resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
     config_hash = get_config_hash(resource)

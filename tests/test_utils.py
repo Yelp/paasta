@@ -752,7 +752,7 @@ def test_missing_cluster_configs_are_ignored():
     fake_soa_dir = "/nail/etc/services"
     fake_cluster_configs = [
         "/nail/etc/services/service1/marathon-cluster1.yaml",
-        "/nail/etc/services/service2/chronos-cluster2.yaml",
+        "/nail/etc/services/service2/marathon-cluster2.yaml",
     ]
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
@@ -777,7 +777,7 @@ def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = "/nail/etc/services"
     fake_soa_cluster_configs = [
         ["cluster1", "/nail/etc/services/service1/marathon-cluster1.yaml"],
-        ["cluster2", "/nail/etc/services/service1/chronos-cluster2.yaml"],
+        ["cluster2", "/nail/etc/services/service1/marathon-cluster2.yaml"],
     ]
     expected = ["cluster1", "cluster2"]
     with mock.patch(
@@ -794,7 +794,7 @@ def test_list_clusters_with_service():
     fake_service = "fake_service"
     fake_soa_cluster_configs = [
         ["cluster1", "/nail/etc/services/service1/marathon-cluster1.yaml"],
-        ["cluster2", "/nail/etc/services/service1/chronos-cluster2.yaml"],
+        ["cluster2", "/nail/etc/services/service1/marathon-cluster2.yaml"],
     ]
     expected = ["cluster1", "cluster2"]
     with mock.patch(
@@ -812,8 +812,8 @@ def test_list_clusters_ignores_bogus_clusters():
     fake_cluster_configs = [
         "/nail/etc/services/service1/marathon-cluster1.yaml",
         "/nail/etc/services/service1/marathon-PROD.yaml",
-        "/nail/etc/services/service1/chronos-cluster2.yaml",
-        "/nail/etc/services/service1/chronos-SHARED.yaml",
+        "/nail/etc/services/service1/marathon-cluster2.yaml",
+        "/nail/etc/services/service1/marathon-SHARED.yaml",
     ]
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
@@ -869,8 +869,6 @@ def test_get_service_instance_list():
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
-        (fake_name, fake_instance_1),
-        (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
@@ -890,7 +888,7 @@ def test_get_service_instance_list():
             fake_name, "marathon-16floz", soa_dir=fake_dir
         )
         read_extra_info_patch.assert_any_call(
-            fake_name, "chronos-16floz", soa_dir=fake_dir
+            fake_name, "tron-16floz", soa_dir=fake_dir
         )
         read_extra_info_patch.assert_any_call(
             fake_name, "paasta_native-16floz", soa_dir=fake_dir
@@ -907,7 +905,7 @@ def test_get_service_instance_list():
         read_extra_info_patch.assert_any_call(
             fake_name, "cassandracluster-16floz", soa_dir=fake_dir
         )
-        assert read_extra_info_patch.call_count == 8
+        assert read_extra_info_patch.call_count == 7
         assert sorted(expected) == sorted(actual)
 
 
@@ -919,7 +917,6 @@ def test_get_service_instance_list_ignores_underscore():
     fake_dir = "/nail/home/hipster"
     fake_job_config: Dict[str, Dict] = {fake_instance_1: {}, fake_instance_2: {}}
     expected = [
-        (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
@@ -1306,10 +1303,6 @@ class TestInstanceConfig:
                 "cfs_period_us": 200000,
                 "cpus": 1,
                 "mem": 1024,
-                "ulimit": {
-                    "nofile": {"soft": 1024, "hard": 2048},
-                    "nice": {"soft": 20},
-                },
                 "cap_add": ["IPC_LOCK", "SYS_PTRACE"],
             },
             branch_dict=None,
@@ -1320,8 +1313,6 @@ class TestInstanceConfig:
             {"key": "cpu-quota", "value": "600000"},
             {"key": "label", "value": "paasta_service=fake_name"},
             {"key": "label", "value": "paasta_instance=fake_instance"},
-            {"key": "ulimit", "value": "nice=20"},
-            {"key": "ulimit", "value": "nofile=1024:2048"},
             {"key": "cap-add", "value": "IPC_LOCK"},
             {"key": "cap-add", "value": "SYS_PTRACE"},
             {"key": "init", "value": "true"},
@@ -1402,27 +1393,6 @@ class TestInstanceConfig:
             service="", instance="", cluster="", config_dict={}, branch_dict=None
         )
         assert fake_conf.get_gpus() is None
-
-    def test_get_ulimit_in_config(self):
-        fake_conf = utils.InstanceConfig(
-            service="",
-            instance="",
-            cluster="",
-            config_dict={
-                "ulimit": {"nofile": {"soft": 1024, "hard": 2048}, "nice": {"soft": 20}}
-            },
-            branch_dict=None,
-        )
-        assert list(fake_conf.get_ulimit()) == [
-            {"key": "ulimit", "value": "nice=20"},
-            {"key": "ulimit", "value": "nofile=1024:2048"},
-        ]
-
-    def test_get_ulimit_default(self):
-        fake_conf = utils.InstanceConfig(
-            service="", instance="", cluster="", config_dict={}, branch_dict=None
-        )
-        assert list(fake_conf.get_ulimit()) == []
 
     def test_get_cap_add_in_config(self):
         fake_conf = utils.InstanceConfig(
@@ -1944,7 +1914,6 @@ def test_deploy_blacklist_to_constraints():
 
 def test_validate_service_instance_valid_marathon():
     mock_marathon_instances = [("service1", "main"), ("service1", "main2")]
-    mock_chronos_instances = [("service1", "worker"), ("service1", "tailer")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -1952,7 +1921,7 @@ def test_validate_service_instance_valid_marathon():
     with mock.patch(
         "paasta_tools.utils.get_service_instance_list",
         autospec=True,
-        side_effect=[mock_marathon_instances, mock_chronos_instances],
+        side_effect=[mock_marathon_instances],
     ):
         assert (
             utils.validate_service_instance(
@@ -1962,29 +1931,8 @@ def test_validate_service_instance_valid_marathon():
         )
 
 
-def test_validate_service_instance_valid_chronos():
-    mock_marathon_instances = [("service1", "main"), ("service1", "main2")]
-    mock_chronos_instances = [("service1", "worker"), ("service1", "tailer")]
-    my_service = "service1"
-    my_instance = "worker"
-    fake_cluster = "fake_cluster"
-    fake_soa_dir = "fake_soa_dir"
-    with mock.patch(
-        "paasta_tools.utils.get_service_instance_list",
-        autospec=True,
-        side_effect=[mock_marathon_instances, mock_chronos_instances],
-    ):
-        assert (
-            utils.validate_service_instance(
-                my_service, my_instance, fake_cluster, fake_soa_dir
-            )
-            == "chronos"
-        )
-
-
 def test_validate_service_instance_invalid():
     mock_marathon_instances = [("service1", "main1"), ("service1", "main2")]
-    mock_chronos_instances = [("service1", "main1_batch"), ("service1", "tailer")]
     mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
@@ -2000,7 +1948,6 @@ def test_validate_service_instance_invalid():
         autospec=True,
         side_effect=[
             mock_marathon_instances,
-            mock_chronos_instances,
             mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,

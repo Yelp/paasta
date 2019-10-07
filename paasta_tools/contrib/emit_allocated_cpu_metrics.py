@@ -22,6 +22,7 @@ def emit_metrics_for_type(instance_type):
             "paasta_service": service_instance_config.service,
             "paasta_cluster": service_instance_config.cluster,
             "paasta_instance": service_instance_config.instance,
+            "paasta_pool": service_instance_config.get_pool(),
         }
 
         log.info(f"Emitting paasta.service.* with dimensions {dimensions}")
@@ -41,7 +42,7 @@ def emit_metrics_for_type(instance_type):
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    for thing in ["marathon", "chronos", "adhoc"]:
+    for thing in ["marathon", "adhoc"]:
         emit_metrics_for_type(thing)
 
 

@@ -13,9 +13,6 @@ Submodules
    paasta_tools.cli.cmds.docker_exec
    paasta_tools.cli.cmds.docker_inspect
    paasta_tools.cli.cmds.docker_stop
-   paasta_tools.cli.cmds.emergency_restart
-   paasta_tools.cli.cmds.emergency_start
-   paasta_tools.cli.cmds.emergency_stop
    paasta_tools.cli.cmds.fsm
    paasta_tools.cli.cmds.get_docker_image
    paasta_tools.cli.cmds.get_latest_deployment
@@ -31,7 +28,6 @@ Submodules
    paasta_tools.cli.cmds.performance_check
    paasta_tools.cli.cmds.push_to_registry
    paasta_tools.cli.cmds.remote_run
-   paasta_tools.cli.cmds.rerun
    paasta_tools.cli.cmds.rollback
    paasta_tools.cli.cmds.secret
    paasta_tools.cli.cmds.security_check

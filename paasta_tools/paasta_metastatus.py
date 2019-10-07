@@ -24,7 +24,6 @@ from typing import Sequence
 from typing import Tuple
 
 import a_sync
-import chronos
 from marathon.exceptions import MarathonError
 from mypy_extensions import TypedDict
 
@@ -33,8 +32,6 @@ from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
 from paasta_tools.autoscaling.autoscaling_cluster_lib import (
     get_autoscaling_info_for_all_resources,
 )
-from paasta_tools.chronos_tools import get_chronos_client
-from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import is_kubernetes_available
 from paasta_tools.kubernetes_tools import KubeClient
@@ -336,7 +333,6 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
     mesos_available = is_mesos_available()
     kube_available = is_kubernetes_available()
 
-    chronos_config = None
     args = parse_args(argv)
 
     system_paasta_config = load_system_paasta_config()
@@ -387,38 +383,17 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
             )
         ]
 
-    # Check to see if Chronos should be running here by checking for config
-    chronos_config = load_chronos_config()
-
-    if chronos_config:
-        chronos_client = get_chronos_client(chronos_config, cached=True)
-        try:
-            chronos_results = metastatus_lib.get_chronos_status(chronos_client)
-        except (chronos.ChronosAPIError) as e:
-            paasta_print(
-                PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e)
-            )
-            raise FatalError(2)
-    else:
-        chronos_results = [
-            metastatus_lib.HealthCheckResult(
-                message="Chronos is not configured to run here", healthy=True
-            )
-        ]
-
     mesos_ok = all(metastatus_lib.status_for_results(all_mesos_results))
     marathon_ok = all(metastatus_lib.status_for_results(marathon_results))
     kube_ok = all(metastatus_lib.status_for_results(kube_results))
-    chronos_ok = all(metastatus_lib.status_for_results(chronos_results))
 
     mesos_summary = metastatus_lib.generate_summary_for_check("Mesos", mesos_ok)
     marathon_summary = metastatus_lib.generate_summary_for_check(
         "Marathon", marathon_ok
     )
     kube_summary = metastatus_lib.generate_summary_for_check("Kubernetes", kube_ok)
-    chronos_summary = metastatus_lib.generate_summary_for_check("Chronos", chronos_ok)
 
-    healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
+    healthy_exit = True if all([mesos_ok, marathon_ok]) else False
 
     paasta_print(f"Master paasta_tools version: {__version__}")
     paasta_print("Mesos leader: %s" % get_mesos_leader())
@@ -516,9 +491,6 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
 
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
-    metastatus_lib.print_results_for_healthchecks(
-        chronos_summary, chronos_ok, chronos_results, args.verbose
-    )
 
     if not healthy_exit:
         raise FatalError(2)

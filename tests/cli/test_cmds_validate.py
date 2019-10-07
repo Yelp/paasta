@@ -17,7 +17,6 @@ import mock
 import pytest
 from mock import patch
 
-import paasta_tools.chronos_tools
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
@@ -26,7 +25,6 @@ from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
 from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
-from paasta_tools.cli.cmds.validate import validate_chronos_dependencies
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_tron
@@ -36,7 +34,6 @@ from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 @patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_all_schemas", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_chronos_dependencies", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_tron", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.get_service_path", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_service_path", autospec=True)
@@ -44,7 +41,6 @@ def test_paasta_validate_calls_everything(
     mock_check_service_path,
     mock_get_service_path,
     mock_validate_tron,
-    mock_validate_chronos_dependencies,
     mock_validate_all_schemas,
     mock_validate_paasta_objects,
     mock_validate_unique_instance_names,
@@ -54,7 +50,6 @@ def test_paasta_validate_calls_everything(
     mock_check_service_path.return_value = True
     mock_get_service_path.return_value = "unused_path"
     mock_validate_all_schemas.return_value = True
-    mock_validate_chronos_dependencies.return_value = True
     mock_validate_tron.return_value = True
     mock_validate_paasta_objects.return_value = True
     mock_validate_unique_instance_names.return_value = True
@@ -66,14 +61,12 @@ def test_paasta_validate_calls_everything(
     paasta_validate(args)
 
     assert mock_validate_all_schemas.called
-    assert mock_validate_chronos_dependencies.called
     assert mock_validate_tron.called
     assert mock_validate_unique_instance_names.called
     assert mock_validate_paasta_objects.called
 
 
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.get_services_for_cluster", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
@@ -81,7 +74,6 @@ def test_validate_paasta_objects(
     mock_path_to_soa_dir_service,
     mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_services_for_cluster,
     mock_get_instance_config,
     capsys,
 ):
@@ -90,14 +82,13 @@ def test_validate_paasta_objects(
     fake_instance = "fake-instance"
     fake_cluster = "penguin"
 
-    mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.validate.return_value = ["Something is wrong!"]
+    mock_paasta_instance = mock.Mock(autospec=True)
+    mock_paasta_instance.validate.return_value = ["Something is wrong!"]
 
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
     mock_list_clusters.return_value = [fake_cluster]
     mock_list_all_instances_for_service.return_value = [fake_instance]
-    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
-    mock_get_instance_config.return_value = mock_chronos_job
+    mock_get_instance_config.return_value = mock_paasta_instance
 
     assert validate_paasta_objects("fake-service-path") is False, capsys
     captured = capsys.readouterr()
@@ -163,11 +154,6 @@ def is_schema(schema):
 
 def test_get_schema_marathon_found():
     schema = get_schema("marathon")
-    is_schema(schema)
-
-
-def test_get_schema_chronos_found():
-    schema = get_schema("chronos")
     is_schema(schema)
 
 
@@ -436,222 +422,6 @@ def test_marathon_validate_invalid_key_bad(mock_get_file_contents, capsys):
 
         output, _ = capsys.readouterr()
         assert SCHEMA_INVALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_chronos_validate_schema_list_hashes_good(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
-{
-    "daily_job": {
-        "schedule": "bar"
-    },
-    "wheekly": {
-        "schedule": "baz"
-    }
-}
-"""
-    assert validate_schema("unused_service_path.json", "chronos")
-
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
-    mock_get_file_contents, capsys
-):
-    mock_get_file_contents.return_value = """
-{
-    "daily_job": {
-        "schedule": "bar"
-    },
-    "page": false
-}
-"""
-    assert not validate_schema("unused_service_path.json", "chronos")
-
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_chronos_validate_schema_security_good(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
-some_batch:
-    schedule: foo
-    dependencies_reference: main
-    security:
-        outbound_firewall: block
-"""
-    assert validate_schema("unused_service_path.yaml", "chronos")
-
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_chronos_validate_schema_security_bad(mock_get_file_contents, capsys):
-    mock_get_file_contents.return_value = """
-some_batch:
-    schedule: foo
-    dependencies_reference: main
-    security:
-        outbound_firewall: bblock
-"""
-    assert not validate_schema("unused_service_path.yaml", "chronos")
-
-    output, _ = capsys.readouterr()
-    assert SCHEMA_INVALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_services_for_cluster", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.load_chronos_job_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_failing_chronos_job_self_dependent(
-    mock_path_to_soa_dir_service,
-    mock_load_chronos_job_config,
-    mock_list_all_instances_for_service,
-    mock_list_clusters,
-    mock_get_services_for_cluster,
-    capsys,
-):
-    fake_service = "fake-service"
-    fake_instance = "fake-instance"
-    fake_cluster = "penguin"
-    chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
-
-    mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = [
-        f"{fake_service}{chronos_spacer}{fake_instance}"
-    ]
-    mock_chronos_job.validate.return_value = []
-
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
-    mock_list_clusters.return_value = [fake_cluster]
-    mock_list_all_instances_for_service.return_value = [fake_instance]
-    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
-    mock_load_chronos_job_config.return_value = mock_chronos_job
-
-    assert not validate_chronos_dependencies("fake_service_path")
-
-    output, _ = capsys.readouterr()
-    expected_output = "Job fake-service.fake-instance cannot depend on itself"
-    assert expected_output in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_services_for_cluster", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.load_chronos_job_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_failing_chronos_job_missing_parent(
-    mock_path_to_soa_dir_service,
-    mock_load_chronos_job_config,
-    mock_list_all_instances_for_service,
-    mock_list_clusters,
-    mock_get_services_for_cluster,
-    capsys,
-):
-    fake_service = "fake-service"
-    fake_instance = "fake-instance"
-    fake_cluster = "penguin"
-    chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
-
-    mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = [
-        "{}{}{}".format(fake_service, chronos_spacer, "parent-1")
-    ]
-    mock_chronos_job.validate.return_value = []
-
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
-    mock_list_clusters.return_value = [fake_cluster]
-    mock_list_all_instances_for_service.return_value = [fake_instance]
-    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
-    mock_load_chronos_job_config.return_value = mock_chronos_job
-
-    assert not validate_chronos_dependencies("fake_service_path")
-
-    output, _ = capsys.readouterr()
-    expected_output = "Parent job fake-service.parent-1 could not be found"
-    assert expected_output in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_services_for_cluster", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.load_chronos_job_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_chronos_valid_instance(
-    mock_path_to_soa_dir_service,
-    mock_load_chronos_job_config,
-    mock_list_all_instances_for_service,
-    mock_list_clusters,
-    mock_get_services_for_cluster,
-    capsys,
-):
-    fake_service = "fake-service"
-    fake_instance = "fake-instance"
-    fake_cluster = "penguin"
-
-    mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = None
-    mock_chronos_job.validate.return_value = []
-
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
-    mock_list_clusters.return_value = [fake_cluster]
-    mock_list_all_instances_for_service.return_value = [fake_instance]
-    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
-    mock_load_chronos_job_config.return_value = mock_chronos_job
-
-    assert validate_chronos_dependencies("fake_service_path")
-
-    output, _ = capsys.readouterr()
-    assert "chronos instances are valid" in output
-
-
-@patch("paasta_tools.chronos_tools.TMP_JOB_IDENTIFIER", "tmp", autospec=None)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_dependencies_chronos_tmp_job(mock_path_to_soa_dir_service, capsys):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "tmp")
-    assert validate_chronos_dependencies("fake_path/tmp") is False
-    assert (
-        "Services using scheduled tasks cannot be named tmp, as it clashes"
-        " with the identifier used for temporary jobs"
-    ) in capsys.readouterr()[0]
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_tron_validate_schema_good(mock_get_file_contents, capsys):
-    tron_content = """
-test_job:
-  node: batch_box
-  service: my_service
-  deploy_group: prod
-  allow_overlap: false
-  monitoring:
-    team: my_team
-  schedule:
-    type: cron
-    value: "0 7 * * 5"
-  actions:
-    first:
-      command: echo hello world
-    second:
-      command: sleep 10
-      expected_runtime: 15 sec
-      executor: paasta
-      cluster: paasta-cluster-1
-      cpus: 0.5
-      mem: 100
-      disk: 500
-      pool: custom
-"""
-    mock_get_file_contents.return_value = tron_content
-    assert validate_schema("unused_service_path.yaml", "tron")
-    output, _ = capsys.readouterr()
-    assert SCHEMA_VALID in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)

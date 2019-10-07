@@ -29,7 +29,6 @@ import requests
 from docker import errors
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
-from paasta_tools.chronos_tools import parse_time_variables
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
@@ -44,6 +43,7 @@ from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
@@ -445,7 +445,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         "--vault-token-file",
-        help="Override vault token file, defaults to /root/.vault-token",
+        help="Override vault token file, defaults to %(default)s",
         type=str,
         dest="vault_token_file",
         required=False,
@@ -622,17 +622,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env["MARATHON_APP_LABELS"] = ""
         env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
         env["MARATHON_HOST"] = hostname
-    elif framework == "chronos":
-        env["CHRONOS_RESOURCE_DISK"] = str(instance_config.get_disk())
-        env["CHRONOS_RESOURCE_CPU"] = str(instance_config.get_cpus())
-        env["CHRONOS_RESOURCE_MEM"] = str(instance_config.get_mem())
-        env["CHRONOS_JOB_OWNER"] = "simulated-owner"
-        env["CHRONOS_JOB_RUN_TIME"] = str(int(time.time()))
-        env["CHRONOS_JOB_NAME"] = "{} {}".format(
-            instance_config.get_service(), instance_config.get_instance()
-        )
-        env["CHRONOS_JOB_RUN_ATTEMPT"] = str(0)
-        env["mesos_task_id"] = "ct:simulated-task-id"
     return env
 
 
@@ -917,10 +906,6 @@ def command_function_for_framework(framework, date):
     def format_marathon_command(cmd):
         return cmd
 
-    def format_chronos_command(cmd):
-        interpolated_command = parse_time_variables(cmd, date)
-        return interpolated_command
-
     def format_tron_command(cmd: str) -> str:
         interpolated_command = parse_time_variables(cmd, date)
         return interpolated_command
@@ -928,9 +913,7 @@ def command_function_for_framework(framework, date):
     def format_adhoc_command(cmd):
         return cmd
 
-    if framework == "chronos":
-        return format_chronos_command
-    elif framework == "marathon":
+    if framework == "marathon":
         return format_marathon_command
     elif framework == "adhoc":
         return format_adhoc_command

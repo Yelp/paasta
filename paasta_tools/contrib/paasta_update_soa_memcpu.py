@@ -48,7 +48,7 @@ def parse_args(argv):
     parser.add_argument(
         "-f",
         "--file-splunk",
-        help="Splunk csv from which to pull data. Defaults to paasta_overprovision_alerts_fired.csv",
+        help="Splunk csv from which to pull data. Defaults to %(default)s",
         dest="file_splunk",
         default="paasta_overprovision_alerts_fired.csv",
     )

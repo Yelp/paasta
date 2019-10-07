@@ -60,27 +60,6 @@ def env_var_in_output(context, var, val):
     assert f"{var}={val}" in context.output
 
 
-@when("we run paasta local-run in non-interactive mode on a chronos job")
-def local_run_on_chronos_job(context):
-    with Path("fake_simple_service"):
-        # The local-run invocation here is designed to run and return a sentinel
-        # exit code that we can look out for. It also sleeps a few seconds
-        # because the local-run code currently crashes when the docker
-        # container dies before it gets a chance to lookup the containerid
-        # (which causes jenkins flakes) The sleep can be removed once local-run
-        # understands that containers can die quickly.
-        local_run_cmd = (
-            "paasta local-run "
-            "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
-            "--service fake_simple_service "
-            "--cluster test-cluster "
-            "--instance chronos_job "
-            "--build "
-            "--cmd '/bin/sh -c \"sleep 2s && exit 42\"'"
-        )
-        context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
-
-
 @when("we run paasta local-run on an interactive job")
 def local_run_on_adhoc_job(context):
     with Path("fake_simple_service"):
@@ -90,22 +69,6 @@ def local_run_on_adhoc_job(context):
             "--service fake_simple_service "
             "--cluster test-cluster "
             "--instance sample_adhoc_job "
-            "--build "
-        )
-        context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
-
-
-@when(
-    "we run paasta local-run in non-interactive mode on a chronos job with cmd set to 'echo hello && sleep 5'"
-)
-def local_run_on_chronos_job_with_cmd(context):
-    with Path("fake_simple_service"):
-        local_run_cmd = (
-            "paasta local-run "
-            "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
-            "--service fake_simple_service "
-            "--cluster test-cluster "
-            "--instance chronos_job_with_cmd "
             "--build "
         )
         context.return_code, context.output = _run(command=local_run_cmd, timeout=90)

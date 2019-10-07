@@ -5,7 +5,7 @@ Deploy Groups
 What are deploy groups?:
 ========================
 
-Deploy groups are a way to allow chronos jobs and marathon services to share docker containers, git branches and deployment steps. Deploy groups also shorten your jenkins pipeline and make it run faster (or save you time if you manually mark your changes for deployment)!
+Deploy groups are a way to allow tron jobs and marathon services to share docker containers, git branches and deployment steps. Deploy groups also shorten your jenkins pipeline and make it run faster (or save you time if you manually mark your changes for deployment)!
 
 Deploy groups work by linking together multiple paasta instances under a single deployment step in ``deploy.yaml``.
 
@@ -47,7 +47,7 @@ Now let’s take a look at how instances are linked to a deploy group by taking 
      instances: 3
      deploy_group: dev-stage.everything
 
-This is repeated for each ``marathon-*.yaml`` and ``chronos-*.yaml`` file. In example_service, we create three different files - ``marathon-PROD.yaml``, ``marathon-STAGE.yaml`` and ``marathon-DEV.yaml`` and use symlinks to create the files we need. This is similar to the current ``marathon-SHARED.yaml`` file. Feel free to look at example_service in ``yelpsoa_configs`` for an example on how to use deploy groups.
+This is repeated for each ``marathon-*.yaml`` and ``tron-*.yaml`` file. In example_service, we create three different files - ``marathon-PROD.yaml``, ``marathon-STAGE.yaml`` and ``marathon-DEV.yaml`` and use symlinks to create the files we need. This is similar to the current ``marathon-SHARED.yaml`` file. Feel free to look at example_service in ``yelpsoa_configs`` for an example on how to use deploy groups.
 
 If no value for ``deploy_group`` is given, it defaults to ``CLUSTER_NAME.INSTANCE_NAME``. This is to support legacy services that don't use deploy groups.
 
@@ -77,7 +77,7 @@ Existing service
 
 #. Remove the deployment steps that were replaced by deploy groups from ``deploy.yaml``
 
-#. Edit your service's ``marathon-*.yaml`` and ``chronos-*.yaml`` files to specify which instances belong to which deploy group
+#. Edit your service's ``marathon-*.yaml`` and ``tron-*.yaml`` files to specify which instances belong to which deploy group
 
 #. Push your changes to the soa configs repo
 
@@ -96,6 +96,6 @@ No changes are required -- your service should work as-is. Since the default dep
 How to remove a specific instance from a deploy group
 -----------------------------------------------------
 
-Edit that instance's ``marathon-CLUSTER_NAME.yaml`` or ``chronos-CLUSTER_NAME.yaml`` file and remove the ``deploy_group`` line from the instance you want to deploy separately. Then, add another deployment step to ``deploy.yaml`` to deploy the instance using the ``CLUSTER_NAME.INSTANCE_NAME`` idiom. Finally, follow the steps to recreate your jenkins pipeline.
+Edit that instance's ``marathon-CLUSTER_NAME.yaml`` or ``tron-CLUSTER_NAME.yaml`` file and remove the ``deploy_group`` line from the instance you want to deploy separately. Then, add another deployment step to ``deploy.yaml`` to deploy the instance using the ``CLUSTER_NAME.INSTANCE_NAME`` idiom. Finally, follow the steps to recreate your jenkins pipeline.
 
 Alternatively, you can assign the instance to a deploy group that only contains that one instance -- this is what the above steps are doing implicitly, as the default deploy group is ``CLUSTER_NAME.INSTANCE_NAME``.

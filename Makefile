@@ -67,3 +67,11 @@ clean:
 	find . -name '__pycache__' -delete
 	rm -rf .tox
 	rm -rf .paasta
+
+yelpy: ## Installs the yelp-internal packages into the default tox environment
+	.tox/py36-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt -r ./extra-linux-requirements.txt
+
+
+.PHONY: help
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

@@ -560,12 +560,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         for k, v in secret_env_vars.items():
             service = self.get_sanitised_service_name()
             secret = get_secret_name_from_ref(v)
+            sanitised_secret = sanitise_kubernetes_name(secret)
             ret.append(
                 V1EnvVar(
                     name=k,
                     value_from=V1EnvVarSource(
                         secret_key_ref=V1SecretKeySelector(
-                            name=f"paasta-secret-{service}-{secret}",
+                            name=f"paasta-secret-{service}-{sanitised_secret}",
                             key=secret,
                             optional=False,
                         )
@@ -575,12 +576,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         for k, v in shared_secret_env_vars.items():
             service = sanitise_kubernetes_name(SHARED_SECRET_SERVICE)
             secret = get_secret_name_from_ref(v)
+            sanitised_secret = sanitise_kubernetes_name(secret)
             ret.append(
                 V1EnvVar(
                     name=k,
                     value_from=V1EnvVarSource(
                         secret_key_ref=V1SecretKeySelector(
-                            name=f"paasta-secret-{service}-{secret}",
+                            name=f"paasta-secret-{service}-{sanitised_secret}",
                             key=secret,
                             optional=False,
                         )
