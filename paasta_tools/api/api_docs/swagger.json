@@ -330,8 +330,8 @@
                     },
                     {
                         "in": "query",
-                        "description": "Omit Smartstack information",
-                        "name": "omit_smartstack",
+                        "description": "Include Smartstack information",
+                        "name": "include_smartstack",
                         "required": false,
                         "type": "boolean"
                     },

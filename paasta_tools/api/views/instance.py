@@ -188,7 +188,7 @@ def kubernetes_instance_status(
     service: str,
     instance: str,
     verbose: int,
-    omit_smartstack: bool,
+    include_smartstack: bool,
 ) -> Mapping[str, Any]:
     kstatus: Dict[str, Any] = {}
     job_config = kubernetes_tools.load_kubernetes_service_config(
@@ -216,7 +216,7 @@ def kubernetes_instance_status(
             pod_list=pod_list,
         )
 
-        if not omit_smartstack:
+        if include_smartstack:
             service_namespace_config = kubernetes_tools.load_service_namespace_config(
                 service=service,
                 namespace=job_config.get_nerve_namespace(),
@@ -276,7 +276,7 @@ def marathon_instance_status(
     service: str,
     instance: str,
     verbose: int,
-    omit_smartstack: bool,
+    include_smartstack: bool,
     omit_mesos: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
@@ -299,7 +299,7 @@ def marathon_instance_status(
         )
     )
 
-    if not omit_smartstack:
+    if include_smartstack:
         service_namespace_config = marathon_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
@@ -784,7 +784,9 @@ def instance_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
-    omit_smartstack = request.swagger_data.get("omit_smartstack") or False
+    include_smartstack = request.swagger_data.get("include_smartstack")
+    if include_smartstack is None:
+        include_smartstack = True
     omit_mesos = request.swagger_data.get("omit_mesos") or False
 
     instance_status: Dict[str, Any] = {}
@@ -829,7 +831,7 @@ def instance_status(request):
                 service,
                 instance,
                 verbose,
-                omit_smartstack=omit_smartstack,
+                include_smartstack=include_smartstack,
                 omit_mesos=omit_mesos,
             )
         elif instance_type == "chronos":
@@ -851,7 +853,7 @@ def instance_status(request):
                 service,
                 instance,
                 verbose,
-                omit_smartstack=omit_smartstack,
+                include_smartstack=include_smartstack,
             )
         elif instance_type == "tron":
             instance_status["tron"] = tron_instance_status(

@@ -40,7 +40,7 @@ class fake_args:
     verbose = False
 
 
-def mock_status_instance_side_effect(service, instance, omit_smartstack, omit_mesos):
+def mock_status_instance_side_effect(service, instance, include_smartstack, omit_mesos):
     if instance in ["instance1", "instance6", "notaninstance", "api_error"]:
         # valid completed instance
         mock_mstatus = Mock(
