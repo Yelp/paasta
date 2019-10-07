@@ -28,7 +28,6 @@ Submodules
    paasta_tools.cli.cmds.performance_check
    paasta_tools.cli.cmds.push_to_registry
    paasta_tools.cli.cmds.remote_run
-   paasta_tools.cli.cmds.rerun
    paasta_tools.cli.cmds.rollback
    paasta_tools.cli.cmds.secret
    paasta_tools.cli.cmds.security_check

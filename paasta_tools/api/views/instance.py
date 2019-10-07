@@ -42,8 +42,6 @@ from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import cassandracluster_tools
-from paasta_tools import chronos_serviceinit
-from paasta_tools import chronos_tools
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
@@ -85,18 +83,6 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
-
-
-def chronos_instance_status(
-    service: str, instance: str, verbose: int
-) -> Dict[str, Any]:
-    chronos_config = chronos_tools.load_chronos_config()
-    client = chronos_tools.get_chronos_client(chronos_config)
-    return {
-        "output": chronos_serviceinit.status_chronos_jobs(
-            client, service, instance, settings.cluster, settings.soa_dir, verbose
-        )
-    }
 
 
 def tron_instance_status(
@@ -722,15 +708,6 @@ def instance_status(request):
                 omit_smartstack=omit_smartstack,
                 omit_mesos=omit_mesos,
             )
-        elif instance_type == "chronos":
-            if verbose:
-                instance_status["chronos"] = chronos_instance_status(
-                    service, instance, 1
-                )
-            else:
-                instance_status["chronos"] = chronos_instance_status(
-                    service, instance, 0
-                )
         elif instance_type == "adhoc":
             instance_status["adhoc"] = adhoc_instance_status(
                 instance_status, service, instance, verbose
