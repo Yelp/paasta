@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import namedtuple
+from contextlib import contextmanager
 from queue import Empty
 from queue import PriorityQueue
 from queue import Queue
@@ -9,6 +10,8 @@ from threading import Event
 from threading import Thread
 from typing import Any
 from typing import Collection
+from typing import Generator
+from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -30,11 +33,12 @@ BaseServiceInstance = namedtuple(
     [
         "service",
         "instance",
+        "watcher",
+        "cluster",
         "bounce_by",
         "wait_until",
-        "watcher",
-        "bounce_timers",
         "failures",
+        "bounce_timers",
         "processed_count",
     ],
 )
@@ -59,6 +63,7 @@ class ServiceInstance(BaseServiceInstance):
             _cls=_cls,
             service=service,
             instance=instance,
+            cluster=cluster,
             watcher=watcher,
             bounce_by=bounce_by,
             wait_until=wait_until,
@@ -193,6 +198,24 @@ class DelayDeadlineQueue:
 
                 self.unavailable_service_instances_modify.wait(timeout=timeout)
 
-    def get(self, block: bool = True, timeout: float = None) -> ServiceInstance:
-        _, si = self.available_service_instances.get(block=block, timeout=timeout)
-        return si
+    @contextmanager
+    def get(
+        self, block: bool = True, timeout: float = None
+    ) -> Generator[ServiceInstance, None, None]:
+        bounce_by, si = self.available_service_instances.get(
+            block=block, timeout=timeout
+        )
+        try:
+            yield si
+        except Exception:
+            self.available_service_instances.put((bounce_by, si))
+
+    def get_available_service_instances(
+        self
+    ) -> Iterable[Tuple[float, ServiceInstance]]:
+        return self.available_service_instances.queue
+
+    def get_unavailable_service_instances(
+        self
+    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        return self.unavailable_service_instances.queue

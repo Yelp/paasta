@@ -74,42 +74,42 @@ class PaastaDeployWorker(PaastaThread):
         might put them on the bounce_later queue for future processing"""
         self.log.info(f"{self.name} starting up")
         while True:
-            service_instance = self.instances_to_bounce.get()
-            self.busy = True
-            try:
-                bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(
-                    service_instance
-                )
-            except Exception as e:
-                self.log.error(
-                    f"{self.name} Worker failed to process service instance and will retry. "
-                    f"Caused by exception: {format(e)}"
-                )
-                return_code = -2
-                bounce_timers = service_instance.bounce_timers
-            failures = service_instance.failures
-            if return_code != 0:
-                failures = service_instance.failures + 1
-                bounce_again_in_seconds = exponential_back_off(
-                    failures=failures,
-                    factor=self.config.get_deployd_worker_failure_backoff_factor(),
-                    base=2,
-                    max_time=6000,
-                )
-            if bounce_again_in_seconds:
-                bounce_by = int(time.time()) + bounce_again_in_seconds
-                service_instance = ServiceInstance(
-                    service=service_instance.service,
-                    instance=service_instance.instance,
-                    cluster=self.config.get_cluster(),
-                    bounce_by=bounce_by,
-                    wait_until=bounce_by,
-                    watcher=self.name,
-                    bounce_timers=bounce_timers,
-                    failures=failures,
-                    processed_count=service_instance.processed_count + 1,
-                )
-                self.instances_to_bounce.put(service_instance)
+            with self.instances_to_bounce.get() as service_instance:
+                self.busy = True
+                try:
+                    bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(
+                        service_instance
+                    )
+                except Exception as e:
+                    self.log.error(
+                        f"{self.name} Worker failed to process service instance and will retry. "
+                        f"Caused by exception: {format(e)}"
+                    )
+                    return_code = -2
+                    bounce_timers = service_instance.bounce_timers
+                failures = service_instance.failures
+                if return_code != 0:
+                    failures = service_instance.failures + 1
+                    bounce_again_in_seconds = exponential_back_off(
+                        failures=failures,
+                        factor=self.config.get_deployd_worker_failure_backoff_factor(),
+                        base=2,
+                        max_time=6000,
+                    )
+                if bounce_again_in_seconds:
+                    bounce_by = int(time.time()) + bounce_again_in_seconds
+                    service_instance = ServiceInstance(
+                        service=service_instance.service,
+                        instance=service_instance.instance,
+                        cluster=self.config.get_cluster(),
+                        bounce_by=bounce_by,
+                        wait_until=bounce_by,
+                        watcher=self.name,
+                        bounce_timers=bounce_timers,
+                        failures=failures,
+                        processed_count=service_instance.processed_count + 1,
+                    )
+                    self.instances_to_bounce.put(service_instance)
             self.busy = False
             time.sleep(0.1)
 

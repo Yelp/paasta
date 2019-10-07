@@ -1736,6 +1736,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     deployd_startup_bounce_deadline: float
     deployd_startup_oracle_enabled: bool
     deployd_worker_failure_backoff_factor: int
+    deployd_use_zk_queue: bool
     disabled_watchers: List
     docker_registry: str
     dockercfg_location: str
@@ -2209,6 +2210,9 @@ class SystemPaastaConfig:
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
         return self.config_dict.get("deployd_log_level", "INFO")
+
+    def get_deployd_use_zk_queue(self) -> bool:
+        return self.config_dict.get("deployd_use_zk_queue", False)
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""

@@ -56,7 +56,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
             self.mock_instances_to_bounce,
             "westeros-prod",
             zookeeper_client=self.mock_zk,
-            config=mock.Mock(),
+            config=mock.Mock(get_cluster=mock.Mock(return_value="clustername")),
         )
 
     def test_watch_folder(self):
@@ -170,6 +170,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 BaseServiceInstance(
                     service="service",
                     instance="instance",
+                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     bounce_timers=None,
@@ -188,6 +189,7 @@ class TestAutoscalerWatcher(unittest.TestCase):
                 BaseServiceInstance(
                     service="service",
                     instance="instance",
+                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     bounce_timers=None,
@@ -325,7 +327,8 @@ class TestMaintenanceWatcher(unittest.TestCase):
         self.mock_instances_to_bounce = mock.Mock()
         self.mock_marathon_client = mock.Mock()
         mock_config = mock.Mock(
-            get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20)
+            get_deployd_maintenance_polling_frequency=mock.Mock(return_value=20),
+            get_cluster=mock.Mock(return_value="clustername"),
         )
         with mock.patch(
             "paasta_tools.deployd.watchers.get_marathon_clients_from_config",
@@ -430,6 +433,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
                 BaseServiceInstance(
                     service="universe",
                     instance="c137",
+                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     watcher=self.watcher.__class__.__name__,
@@ -440,6 +444,7 @@ class TestMaintenanceWatcher(unittest.TestCase):
                 BaseServiceInstance(
                     service="universe",
                     instance="c139",
+                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     watcher=self.watcher.__class__.__name__,
@@ -552,7 +557,7 @@ class TestPublicConfigEventHandler(unittest.TestCase):
 class TestYelpSoaEventHandler(unittest.TestCase):
     def setUp(self):
         self.handler = YelpSoaEventHandler()
-        self.mock_filewatcher = mock.Mock()
+        self.mock_filewatcher = mock.Mock(cluster="clustername")
         with mock.patch(
             "paasta_tools.deployd.watchers.get_marathon_clients_from_config",
             autospec=True,
@@ -679,6 +684,7 @@ class TestYelpSoaEventHandler(unittest.TestCase):
             expected_si = BaseServiceInstance(
                 service="universe",
                 instance="c137",
+                cluster="clustername",
                 bounce_by=1,
                 wait_until=1,
                 watcher="YelpSoaEventHandler",

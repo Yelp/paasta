@@ -12,7 +12,11 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 
 class TestPaastaDeployWorker(unittest.TestCase):
     def setUp(self):
-        self.mock_instances_to_bounce = mock.Mock()
+        self.mock_instances_to_bounce = mock.Mock(
+            get=mock.Mock(
+                return_value=mock.Mock(__enter__=mock.Mock(), __exit__=mock.Mock())
+            )
+        )
         self.mock_metrics = mock.Mock()
         mock_config = mock.Mock(
             get_cluster=mock.Mock(return_value="westeros-prod"),
@@ -84,7 +88,9 @@ class TestPaastaDeployWorker(unittest.TestCase):
             mock_si = mock.Mock(
                 service="universe", instance="c137", failures=0, processed_count=0
             )
-            self.mock_instances_to_bounce.get.return_value = mock_si
+            self.mock_instances_to_bounce.get.return_value.__enter__.return_value = (
+                mock_si
+            )
             with raises(LoopBreak):
                 self.worker.run()
             mock_process_service_instance.assert_called_with(self.worker, mock_si)
@@ -97,6 +103,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             mock_queued_si = BaseServiceInstance(
                 service="universe",
                 instance="c137",
+                cluster="westeros-prod",
                 bounce_by=61,
                 wait_until=61,
                 watcher="Worker1",
@@ -112,11 +119,14 @@ class TestPaastaDeployWorker(unittest.TestCase):
             mock_si = mock.Mock(
                 service="universe", instance="c137", failures=0, processed_count=0
             )
-            self.mock_instances_to_bounce.get.return_value = mock_si
+            self.mock_instances_to_bounce.get.return_value.__enter__.return_value = (
+                mock_si
+            )
             mock_process_service_instance.side_effect = Exception
             mock_queued_si = BaseServiceInstance(
                 service="universe",
                 instance="c137",
+                cluster="westeros-prod",
                 bounce_by=61,
                 wait_until=61,
                 watcher="Worker1",

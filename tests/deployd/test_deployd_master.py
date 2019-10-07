@@ -56,6 +56,7 @@ class TestDeployDaemon(unittest.TestCase):
                 get_cluster=mock.Mock(return_value="westeros-prod"),
                 get_log_writer=mock.Mock(return_value={"driver": None}),
                 get_deployd_startup_oracle_enabled=mock.Mock(return_value=False),
+                get_deployd_use_zk_queue=mock.Mock(return_value=False),
             )
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
@@ -252,6 +253,7 @@ class TestDeployDaemon(unittest.TestCase):
                     BaseServiceInstance(
                         service="universe",
                         instance="c138",
+                        cluster="westeros-prod",
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,
@@ -264,6 +266,7 @@ class TestDeployDaemon(unittest.TestCase):
                     BaseServiceInstance(
                         service="universe",
                         instance="c137",
+                        cluster="westeros-prod",
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,

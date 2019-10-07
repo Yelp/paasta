@@ -7,6 +7,7 @@ import time
 from queue import Empty
 
 import service_configuration_lib
+from kazoo.client import KazooClient
 
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import DelayDeadlineQueue
@@ -16,6 +17,7 @@ from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import QueueAndWorkerMetrics
+from paasta_tools.deployd.queue import ZKDelayDeadlineQueue
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.list_marathon_service_instances import (
     get_service_instances_that_need_bouncing,
@@ -46,9 +48,17 @@ class DeployDaemon(PaastaThread):
         self.config = load_system_paasta_config()
         self.setup_logging()
         self.metrics = get_metrics_interface("paasta.deployd")
-        self.instances_to_bounce = DelayDeadlineQueue()
+        self.setup_instances_to_bounce()
         self.control = PaastaQueue("ControlQueue")
         self.marathon_clients = get_marathon_clients_from_config()
+
+    def setup_instances_to_bounce(self):
+        if self.config.get_deployd_use_zk_queue():
+            zk_client = KazooClient(hosts=self.config.get_zk_hosts())
+            zk_client.start()
+            self.instances_to_bounce = ZKDelayDeadlineQueue(client=zk_client)
+        else:
+            self.instances_to_bounce = DelayDeadlineQueue()
 
     def setup_logging(self):
         root_logger = logging.getLogger()

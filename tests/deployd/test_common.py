@@ -52,6 +52,7 @@ def make_si(wait_until, bounce_by):
     return BaseServiceInstance(
         service="service",
         instance="instance",
+        cluster="westeros-prod",
         bounce_by=bounce_by,
         wait_until=wait_until,
         watcher="watcher",
@@ -86,11 +87,13 @@ class TestDelayDeadlineQueue:
 
     def test_get_empty(self, queue):
         with raises(Empty):
-            queue.get(block=False)
+            with queue.get(block=False) as result:
+                print(f"Should have raised, got {result}")
 
         start_time = time.time()
         with raises(Empty):
-            queue.get(timeout=0.01)
+            with queue.get(timeout=0.01) as result:
+                print(f"Should have raised, got {result}")
         assert time.time() > start_time + 0.01
 
     def test_get(self, queue):
@@ -98,7 +101,8 @@ class TestDelayDeadlineQueue:
             queue.available_service_instances, "get", autospec=True
         ) as mock_available_service_instances_get:
             mock_available_service_instances_get.side_effect = [(2, "human"), Empty]
-            assert queue.get(block=False) == "human"
+            with queue.get(block=False) as result:
+                assert result == "human"
 
     def test_dont_block_indefinitely_when_wait_until_is_in_future(self, queue):
         """Regression test for a specific bug in the first implementation of DelayDeadlineQueue"""
@@ -106,17 +110,20 @@ class TestDelayDeadlineQueue:
         queue.put(make_si(wait_until=time.time() + 100, bounce_by=time.time() + 100))
         # an immediate get should fail.
         with raises(Empty):
-            queue.get(block=False)
+            with queue.get(block=False) as result:
+                print(f"Should have raised, got {result}")
         # a get with a short timeout should fail.
         with raises(Empty):
-            queue.get(timeout=0.001)
+            with queue.get(timeout=0.0001) as result:
+                print(f"Should have raised, got {result}")
 
         wait_until = time.time() + 0.01
         queue.put(make_si(wait_until=wait_until, bounce_by=wait_until))
         # but if we wait a short while it should return.
-        queue.get(
+        with queue.get(
             timeout=1.0
-        )  # This timeout is only there so that if this test fails it doesn't take forever.
+        ):  # This timeout is only there so that if this test fails it doesn't take forever.
+            pass
         assert time.time() > wait_until
 
     def test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
@@ -129,8 +136,9 @@ class TestDelayDeadlineQueue:
 
         def time_get():
             start_time = time.time()
-            si = queue.get(timeout=1.0)
-            return time.time() - start_time, si
+            with queue.get(timeout=1.0) as si:
+                pass
+            return (time.time() - start_time, si)
 
         fut1 = tpe.submit(time_get)
         fut2 = tpe.submit(time_get)
@@ -144,7 +152,7 @@ class TestDelayDeadlineQueue:
         si3 = make_si(wait_until=begin + 0.02, bounce_by=begin + 0.02)
         queue.put(si3)
 
-        times = sorted([x.result() for x in [fut1, fut2, fut3]])
+        times = sorted([x.result(timeout=2.0) for x in [fut1, fut2, fut3]])
         assert times[0][0] < 0.01
         assert times[0][1] == si1
         assert 0.01 < times[1][0] < 0.02
@@ -177,6 +185,7 @@ class TestServiceInstance(unittest.TestCase):
         expected = BaseServiceInstance(
             service="universe",
             instance="c137",
+            cluster="westeros-prod",
             watcher="mywatcher",
             bounce_by=0,
             wait_until=0,
@@ -189,6 +198,7 @@ class TestServiceInstance(unittest.TestCase):
         expected = BaseServiceInstance(
             service="universe",
             instance="c137",
+            cluster="westeros-prod",
             watcher="mywatcher",
             bounce_by=0,
             wait_until=0,

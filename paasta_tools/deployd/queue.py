@@ -1,13 +1,23 @@
+import json
+import time
 import uuid
 from contextlib import contextmanager
+from queue import Empty
 from threading import Condition
+from typing import Iterable
+from typing import Tuple
 
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
 
+from paasta_tools.deployd.common import ServiceInstance
 
-class DistributedQueue:
-    def __init__(self, client, path):
+DEPLOYD_QUEUE_ROOT = "/paasta-deployd-queue"
+MAX_SLEEP_TIME = 3600
+
+
+class ZKDelayDeadlineQueue:
+    def __init__(self, client, path=DEPLOYD_QUEUE_ROOT):
         self.client = client
         self.id = uuid.uuid4().hex.encode()
 
@@ -19,54 +29,54 @@ class DistributedQueue:
         self.local_state_condition = Condition()
         self.entry_nodes = []
         self.locked_entry_nodes = set()
-        self.update_local_state(None)
+        self._update_local_state(None)
 
-    def update_local_state(self, event):
+    def _update_local_state(self, event):
         with self.local_state_condition:
-            print("refreshing state")
-            if event is not None:
-                print(f"  event: {event}")
             entry_nodes = self.client.retry(
                 self.client.get_children,
                 self.entries_path,
-                watch=self.update_local_state,
+                watch=self._update_local_state,
             )
             self.entry_nodes = sorted(entry_nodes)
             self.locked_entry_nodes = set(
                 self.client.retry(
                     self.client.get_children,
                     self.locks_path,
-                    watch=self.update_local_state,
+                    watch=self._update_local_state,
                 )
             )
             self.local_state_condition.notify()
 
-    def qsize(self):
-        return len(self.entry_nodes)
+    def _format_timestamp(self, timestamp: float):
+        if not isinstance(timestamp, float):
+            raise TypeError("timestamp must be int or float")
+        if not (0 < timestamp < 9999999999.9995):
+            raise ValueError("timestamp must be between 0 and 9999999999.9995")
 
-    @property
-    def queue(self):
-        return self.entry_nodes
+        formatted = f"{timestamp:014.3f}"
+        assert len(formatted) == 14
+
+        return formatted
 
     # TODO: should priority just be a string?  can make it length 20 for two priorities?  or even make that configurable?
-    def put(self, value, priority):
-        self._check_put_arguments(value, priority)
+    def put(self, si: ServiceInstance):
+        bounce_by = self._format_timestamp(si.bounce_by)
+        wait_until = self._format_timestamp(si.wait_until)
+
         self.client.create(
-            f"{self.entries_path}/entry-{priority:010d}-", value=value, sequence=True
+            f"{self.entries_path}/entry-{bounce_by}-{wait_until}-",
+            value=json.dumps(si._asdict()).encode("utf-8"),
+            sequence=True,
         )
 
-    def _check_put_arguments(self, value, priority=100):
-        if not isinstance(value, bytes):
-            raise TypeError(f"value must be a byte string (got type {type(value)})")
-        elif not isinstance(priority, int):
-            raise TypeError(f"priority must be an int (got type {type(priority)})")
-        elif priority < 0 or priority > 9999999999:
-            raise ValueError(
-                f"priority must be between 0 and 9999999999 (got {priority})"
-            )
-
     @contextmanager
-    def get(self):  # TODO: timeout?
+    def get(self, block: bool = True, timeout: float = float("inf")):
+        self._update_local_state(None)
+        if not block:
+            timeout = 0.0
+        timeout_timestamp = time.time() + timeout
+
         entry = None
         with self.local_state_condition:
             while True:
@@ -76,29 +86,60 @@ class DistributedQueue:
                     if entry is not None:
                         break
 
-                self.local_state_condition.wait()
+                next_upcoming_wait_until = self._get_next_upcoming_wait_until()
+                cond_wait_until = min(
+                    timeout_timestamp,
+                    next_upcoming_wait_until,
+                    time.time() + MAX_SLEEP_TIME,
+                )
+                hit_timeout = not self.local_state_condition.wait(
+                    timeout=cond_wait_until - time.time()
+                )
+                if hit_timeout and time.time() >= timeout_timestamp:
+                    raise Empty()
 
         entry_data, entry_stat = entry
 
         try:
-            yield entry_data
+            yield self._parse_data(entry_data)
         except Exception:
             self._release(first_available_entry_node)
             raise
         else:
             self._consume(first_available_entry_node)
 
+    def _parse_data(self, entry_data: bytes) -> ServiceInstance:
+        return ServiceInstance(**json.loads(entry_data.decode("utf-8")))
+
+    def _parse_entry_node(self, path: str) -> Tuple[float, float]:
+        basename = path.split("/")[-1]
+        _, priority, wait_until, _ = basename.split("-", maxsplit=4)
+        return float(priority), float(wait_until)
+
     def _get_first_available_entry_node(self):
         for entry_node in self.entry_nodes:
             if entry_node not in self.locked_entry_nodes:
-                return entry_node
+                _, wait_until = self._parse_entry_node(entry_node)
+                now = time.time()
+                if wait_until <= now:
+                    return entry_node
         return None
 
-    def _lock_and_get_entry(self, entry_node):
+    def _get_next_upcoming_wait_until(self) -> float:
+        next_upcoming_wait_until = float("inf")
+        for entry_node in self.entry_nodes:
+            if entry_node not in self.locked_entry_nodes:
+                _, wait_until = self._parse_entry_node(entry_node)
+                next_upcoming_wait_until = min(next_upcoming_wait_until, wait_until)
+        return next_upcoming_wait_until
+
+    def _lock_and_get_entry(self, entry_node: str):
         try:
             lock_path = f"{self.locks_path}/{entry_node}"
+            self.locked_entry_nodes.add(entry_node)
             self.client.create(lock_path, value=self.id, ephemeral=True)
         except NodeExistsError:
+            self.locked_entry_nodes.add(entry_node)
             return None
 
         try:
@@ -107,7 +148,7 @@ class DistributedQueue:
             self.client.delete(lock_path)
             return None
 
-    def _consume(self, entry_node):
+    def _consume(self, entry_node: str):
         # necessary in case we lose connection at some point
         if not self._holds_lock(entry_node):
             return  # TODO: log?
@@ -115,13 +156,35 @@ class DistributedQueue:
             transaction.delete(f"{self.locks_path}/{entry_node}")
             transaction.delete(f"{self.entries_path}/{entry_node}")
 
-    def _holds_lock(self, entry_node):
+    def _holds_lock(self, entry_node: str):
         lock_path = f"{self.locks_path}/{entry_node}"
         self.client.sync(lock_path)
         value, stat = self.client.retry(self.client.get, lock_path)
         return value == self.id
 
-    def _release(self, entry_node):
+    def _release(self, entry_node: str):
         if not self._holds_lock(entry_node):
             return
         self.client.delete(f"{self.locks_path}/{entry_node}")
+
+    def get_available_service_instances(
+        self
+    ) -> Iterable[Tuple[float, ServiceInstance]]:
+        self._update_local_state(None)
+        for entry_node in self.entry_nodes:
+            if entry_node not in self.locked_entry_nodes:
+                deadline, wait_until = self._parse_entry_node(entry_node)
+                now = time.time()
+                if wait_until <= now:
+                    yield (deadline, entry_node)
+
+    def get_unavailable_service_instances(
+        self
+    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        self._update_local_state(None)
+        for entry_node in self.entry_nodes:
+            if entry_node not in self.locked_entry_nodes:
+                deadline, wait_until = self._parse_entry_node(entry_node)
+                now = time.time()
+                if wait_until > now:
+                    yield (wait_until, deadline, entry_node)

@@ -71,19 +71,15 @@ class QueueAndWorkerMetrics(MetricsThread):
         )
 
     def run_once(self) -> None:
-        self.instances_to_bounce_later_gauge.set(
-            self.queue.unavailable_service_instances.qsize()
-        )
-        self.instances_to_bounce_now_gauge.set(
-            self.queue.available_service_instances.qsize()
-        )
-
         currently_available_instances = tuple(
-            self.queue.available_service_instances.queue
+            self.queue.get_available_service_instances()
         )
         currently_unavailable_instances = tuple(
-            self.queue.unavailable_service_instances.queue
+            self.queue.get_unavailable_service_instances()
         )
+
+        self.instances_to_bounce_later_gauge.set(len(currently_available_instances))
+        self.instances_to_bounce_now_gauge.set(len(currently_unavailable_instances))
 
         available_deadlines = [
             deadline for deadline, _ in currently_available_instances
