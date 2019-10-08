@@ -25,7 +25,6 @@ from bravado.exception import HTTPError
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.api.client import get_paasta_api_client
-from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
@@ -148,19 +147,6 @@ def print_marathon_message(desired_state):
         )
 
 
-def print_chronos_message(desired_state):
-    if desired_state == "start":
-        paasta_print(
-            "'Start' will tell Chronos to start scheduling the job. "
-            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
-        )
-    elif desired_state == "stop":
-        paasta_print(
-            "'Stop' for a Chronos job will cause the job to be disabled until the "
-            "next deploy or a 'start' command is issued."
-        )
-
-
 def print_flink_message(desired_state):
     if desired_state == "start":
         paasta_print("'Start' will tell Flink operator to start the cluster.")
@@ -234,7 +220,6 @@ def paasta_start_or_stop(args, desired_state):
 
     invalid_deploy_groups = []
     marathon_message_printed = False
-    chronos_message_printed = False
     affected_flinks = []
 
     if args.clusters is None or args.instances is None:
@@ -283,12 +268,6 @@ def paasta_start_or_stop(args, desired_state):
                     ):
                         print_marathon_message(desired_state)
                         marathon_message_printed = True
-                    elif (
-                        isinstance(service_config, ChronosJobConfig)
-                        and not chronos_message_printed
-                    ):
-                        print_chronos_message(desired_state)
-                        chronos_message_printed = True
 
                     issue_state_change_for_service(
                         service_config=service_config,
@@ -328,11 +307,8 @@ def paasta_start_or_stop(args, desired_state):
                 return_val = 0
 
     if invalid_deploy_groups:
-        paasta_print(
-            "No branches found for %s in %s."
-            % (", ".join(invalid_deploy_groups), remote_refs)
-        )
-        paasta_print("Has %s been deployed there yet?" % service)
+        paasta_print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")
+        paasta_print(f"Has {service} been deployed there yet?")
         return_val = 1
 
     return return_val

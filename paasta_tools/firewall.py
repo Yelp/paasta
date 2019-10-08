@@ -287,7 +287,7 @@ def _cidr_rules(conf):
 
 def services_running_here():
     """Generator helper that yields (service, instance, mac address) of both
-    marathon and chronos tasks.
+    marathon tasks.
     """
     for container in get_running_mesos_docker_containers():
         if container["HostConfig"]["NetworkMode"] != "bridge":

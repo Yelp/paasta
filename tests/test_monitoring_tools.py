@@ -15,7 +15,6 @@ import mock
 import pysensu_yelp
 import pytest
 
-from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import compose_job_id
@@ -41,19 +40,6 @@ class TestMonitoring_Tools:
     )
     job_page = False
     fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
-        service="myservicename",
-        cluster="myclustername",
-        instance="myinstance",
-        config_dict={
-            "team": "job_test_team",
-            "runbook": "y/job_test_runbook",
-            "tip": "job_test_tip",
-            "notification_email": "job_test_notification_email",
-            "page": job_page,
-        },
-        branch_dict=None,
-    )
-    fake_chronos_job_config = chronos_tools.ChronosJobConfig(
         service="myservicename",
         cluster="myclustername",
         instance="myinstance",

@@ -10,11 +10,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 from typing import Any
 from typing import List
 from typing import Mapping
 from typing import Optional
 
+import requests
 import service_configuration_lib
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -32,6 +34,7 @@ from paasta_tools.utils import load_v2_deployments_json
 
 
 FLINK_INGRESS_PORT = 31080
+FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
 
 
 class TaskManagerConfig(TypedDict, total=False):
@@ -217,6 +220,28 @@ def set_flink_desired_state(
     return status
 
 
-def get_dashboard_url(cluster: str, service: str, instance: str) -> str:
-    sname = sanitised_name(service, instance)
-    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}"
+def get_flink_ingress_url_root(cluster: str) -> str:
+    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/"
+
+
+def _dashboard_get(service: str, instance: str, cluster: str, path: str) -> str:
+    root = get_flink_ingress_url_root(cluster)
+    name = sanitised_name(service, instance)
+    url = f"{root}{name}/{path}"
+    response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    return response.text
+
+
+def get_flink_jobmanager_overview(
+    service: str, instance: str, cluster: str
+) -> Mapping[str, Any]:
+    try:
+        response = _dashboard_get(service, instance, cluster, "overview")
+        return json.loads(response)
+    except requests.RequestException as e:
+        url = e.request.url
+        err = e.strerror
+        raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")

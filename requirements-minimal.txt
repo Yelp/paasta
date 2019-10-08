@@ -6,7 +6,6 @@ boto3
 botocore
 bravado >= 10.2.0
 choice >= 0.1
-chronos-python >= 1.2.0
 cookiecutter >= 1.4.0
 croniter
 # Don't update this unless you have confirmed the client works with
@@ -14,7 +13,6 @@ croniter
 docker-py >= 1.2.3
 dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
-gevent >= 1.1.1
 graphviz
 gunicorn
 humanize >= 0.5.1

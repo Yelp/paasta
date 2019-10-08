@@ -44,7 +44,6 @@ from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
-from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
@@ -193,8 +192,6 @@ class PaastaCheckMessages:
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
-
-    CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
 
     ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
 
@@ -680,6 +677,7 @@ def execute_paasta_cluster_boost_on_remote_master(
             master = connectable_master(cluster, system_paasta_config)
         except NoMasterError as e:
             result[cluster] = (255, str(e))
+            continue
 
         result[cluster] = run_paasta_cluster_boost(
             master=master,
@@ -711,44 +709,6 @@ def execute_paasta_cluster_boost_on_remote_master(
             aggregated_code = 1
         aggregated_output += f"\n{cluster}: \n{output}\n"
     return (aggregated_code, aggregated_output)
-
-
-def run_chronos_rerun(master, service, instancename, **kwargs):
-    timeout = 60
-    verbose_flags = "-v " * kwargs["verbose"]
-    run_all_related_jobs_flag = (
-        "--run-all-related-jobs " if kwargs.get("run_all_related_jobs", False) else ""
-    )
-    force_disabled_flag = (
-        "--force-disabled " if kwargs.get("force_disabled", False) else ""
-    )
-    command = 'ssh -A -n -o StrictHostKeyChecking=no {} \'sudo chronos_rerun {}{}{}"{} {}" "{}"\''.format(
-        master,
-        run_all_related_jobs_flag,
-        force_disabled_flag,
-        verbose_flags,
-        service,
-        instancename,
-        kwargs["execution_date"],
-    )
-    return _run(command, timeout=timeout)
-
-
-def execute_chronos_rerun_on_remote_master(
-    service, instancename, cluster, system_paasta_config, **kwargs
-):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_chronos_rerun().
-    """
-    try:
-        return run_chronos_rerun(
-            connectable_master(cluster, system_paasta_config),
-            service,
-            instancename,
-            **kwargs,
-        )
-    except NoMasterError as e:
-        return (-1, str(e))
 
 
 def run_on_master(
@@ -875,7 +835,6 @@ INSTANCE_TYPE_HANDLERS: Mapping[
 ] = defaultdict(
     lambda: (None, None),
     marathon=(get_service_instance_list, load_marathon_service_config),
-    chronos=(get_service_instance_list, load_chronos_job_config),
     adhoc=(get_service_instance_list, load_adhoc_job_config),
     kubernetes=(get_service_instance_list, load_kubernetes_service_config),
     tron=(get_service_instance_list, load_tron_instance_config),
@@ -893,7 +852,7 @@ def get_instance_config(
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
     """ Returns the InstanceConfig object for whatever type of instance
-    it is. (chronos or marathon) """
+    it is. (marathon) """
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir

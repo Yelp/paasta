@@ -41,8 +41,6 @@ from pyramid.view import view_config
 from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
-from paasta_tools import chronos_serviceinit
-from paasta_tools import chronos_tools
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
@@ -58,7 +56,6 @@ from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
 from paasta_tools.mesos.task import Task
-from paasta_tools.mesos_tools import get_all_slaves_for_blacklist_whitelist
 from paasta_tools.mesos_tools import (
     get_cached_list_of_not_running_tasks_from_frameworks,
 )
@@ -67,6 +64,7 @@ from paasta_tools.mesos_tools import get_cpu_shares
 from paasta_tools.mesos_tools import get_first_status_timestamp
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import get_short_hostname_from_task
+from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.mesos_tools import get_tail_lines_for_mesos_task
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
@@ -85,18 +83,6 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
-
-
-def chronos_instance_status(
-    service: str, instance: str, verbose: int
-) -> Dict[str, Any]:
-    chronos_config = chronos_tools.load_chronos_config()
-    client = chronos_tools.get_chronos_client(chronos_config)
-    return {
-        "output": chronos_serviceinit.status_chronos_jobs(
-            client, service, instance, settings.cluster, settings.soa_dir, verbose
-        )
-    }
 
 
 def tron_instance_status(
@@ -431,14 +417,9 @@ def marathon_smartstack_status(
 ) -> Mapping[str, Any]:
     registration = job_config.get_registrations()[0]
     discover_location_type = service_namespace_config.get_discover()
-    monitoring_blacklist = job_config.get_monitoring_blacklist(
-        system_deploy_blacklist=settings.system_paasta_config.get_deploy_blacklist()
-    )
-    filtered_slaves = get_all_slaves_for_blacklist_whitelist(
-        blacklist=monitoring_blacklist, whitelist=None
-    )
+
     grouped_slaves = get_mesos_slaves_grouped_by_attribute(
-        slaves=filtered_slaves, attribute=discover_location_type
+        slaves=get_slaves(), attribute=discover_location_type
     )
 
     # rebuild the dict, replacing the slave object with just their hostname
@@ -542,10 +523,8 @@ async def marathon_mesos_status(
             await get_cached_list_of_running_tasks_from_frameworks(),
             job_id=job_id_filter_string,
         )
-    except ReadTimeout:
-        return {
-            "error_message": "Error: talking to Mesos timed out. It may be overloaded."
-        }
+    except (ReadTimeout, asyncio.TimeoutError):
+        return {"error_message": "Talking to Mesos timed out. It may be overloaded."}
 
     mesos_status["running_task_count"] = len(running_and_active_tasks)
 
@@ -727,15 +706,6 @@ def instance_status(request):
                 omit_smartstack=omit_smartstack,
                 omit_mesos=omit_mesos,
             )
-        elif instance_type == "chronos":
-            if verbose:
-                instance_status["chronos"] = chronos_instance_status(
-                    service, instance, 1
-                )
-            else:
-                instance_status["chronos"] = chronos_instance_status(
-                    service, instance, 0
-                )
         elif instance_type == "adhoc":
             instance_status["adhoc"] = adhoc_instance_status(
                 instance_status, service, instance, verbose

@@ -144,14 +144,6 @@ def main():
         condquit(rc, "docker inspect %s" % container_id)
         docker_inspect_data = json.loads(output)
         environment = docker_env_to_dict(docker_inspect_data[0]["Config"]["Env"])
-        if "CHRONOS_JOB_NAME" in environment:
-            paasta_print(
-                "# WARNING! {} is a chronos job ({}), skipping".format(
-                    container_id, environment["CHRONOS_JOB_NAME"]
-                )
-            )
-            paasta_print()
-            continue
         if not has_all_paasta_env(environment):
             paasta_print(
                 "# WARNING: %s is not a paasta container, skipping)" % (container_id)

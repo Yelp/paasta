@@ -16,6 +16,7 @@ import concurrent.futures
 import difflib
 import os
 import sys
+import traceback
 from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
@@ -35,6 +36,8 @@ from typing import Tuple
 from typing import Type
 
 import humanize
+from bravado.exception import BravadoConnectionError
+from bravado.exception import BravadoTimeoutError
 from bravado.exception import HTTPError
 from service_configuration_lib import read_deploy
 
@@ -49,7 +52,6 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import get_dashboard_url
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -220,6 +222,7 @@ def paasta_status_on_api_endpoint(
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
 ) -> int:
+    output.append("    instance: %s" % PaastaColors.blue(instance))
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
         paasta_print("Cannot get a paasta-api client")
@@ -229,10 +232,19 @@ def paasta_status_on_api_endpoint(
             service=service, instance=instance, verbose=verbose
         ).result()
     except HTTPError as exc:
-        paasta_print(exc.response.text)
+        output.append(PaastaColors.red(exc.response.text))
         return exc.status_code
+    except (BravadoConnectionError, BravadoTimeoutError) as exc:
+        output.append(
+            PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
+        )
+        return 1
+    except Exception:
+        tb = sys.exc_info()[2]
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.extend(line.strip() for line in traceback.format_tb(tb))
+        return 1
 
-    output.append("    instance: %s" % PaastaColors.blue(instance))
     if status.git_sha != "":
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
@@ -250,20 +262,12 @@ def paasta_status_on_api_endpoint(
         return print_flink_status(
             cluster, service, instance, output, status.flink, verbose
         )
-    elif status.chronos is not None:
-        return print_chronos_status(output, status.chronos.output)
     else:
         paasta_print(
             "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
             % instance
         )
         return 0
-
-
-def print_chronos_status(output, status_output):
-    for line in status_output.rstrip().split("\n"):
-        output.append("    %s" % line)
-    return 0
 
 
 def print_adhoc_status(
@@ -345,6 +349,10 @@ def print_marathon_status(
             marathon_status.smartstack.registration,
             marathon_status.smartstack.expected_backends_per_location,
             marathon_status.smartstack.locations,
+            # TODO: this is just to avoid rollout issues where the client updates
+            # before the API server.  This can be removed after it first rolls
+            # out
+            getattr(marathon_status.smartstack, "error_message", None),
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
@@ -390,7 +398,7 @@ def marathon_mesos_status_human(
     non_running_tasks,
 ):
     if error_message:
-        return [PaastaColors.red(error_message)]
+        return [f"Mesos: {PaastaColors.red(error_message)}"]
 
     output = []
     output.append(
@@ -638,9 +646,11 @@ def format_kubernetes_pod_table(pods):
 
 
 def marathon_smartstack_status_human(
-    registration, expected_backends_per_location, locations
+    registration, expected_backends_per_location, locations, error_message
 ) -> List[str]:
-    if len(locations) == 0:
+    if error_message:
+        return [f"Smartstack: {PaastaColors.red(error_message)}"]
+    elif len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
 
     output = ["Smartstack:"]
@@ -779,9 +789,7 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    dashboard_url = get_dashboard_url(
-        cluster=cluster, service=service, instance=instance
-    )
+    dashboard_url = metadata.annotations.get("yelp.com/dashboard_url")
     if verbose:
         output.append(
             f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
@@ -810,11 +818,16 @@ def print_flink_status(
         )
     else:
         output.append(f"      Job Name                         State       Started")
+
     # Use only the most recent jobs
     unique_jobs = (
         sorted(jobs, key=lambda j: -j["start-time"])[0]
         for _, jobs in groupby(
-            sorted(status.jobs, key=lambda j: j["name"]), lambda j: j["name"]
+            sorted(
+                (j for j in status.jobs if j.get("name") and j.get("start-time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
         )
     )
     for job in unique_jobs:
@@ -831,12 +844,12 @@ def print_flink_status(
             fmt.format(
                 job_id=job_id,
                 job_name=job["name"].split(".", 2)[2],
-                state=job["state"],
+                state=(job.get("state") or "unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
         )
-        if job_id in status.exceptions:
+        if verbose and job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
             root_exception = exceptions["root-exception"]
             if root_exception is not None:

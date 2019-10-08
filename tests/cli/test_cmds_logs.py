@@ -370,59 +370,6 @@ def test_marathon_log_line_passes_filter_fails_invalid_json():
     )
 
 
-def test_chronos_log_line_passes_filter_fails_invalid_json():
-    assert not logs.chronos_log_line_passes_filter(
-        "{ abcd }", None, None, None, None, None
-    )
-
-
-def test_chronos_log_line_passes_filter_true_when_service_name_in_string():
-    service = "fake_service"
-    levels = []
-    components = []
-    clusters = []
-    instances = []
-    line = format_log_line(
-        "fake_level",
-        clusters,
-        service,
-        "fake_instance",
-        "chronos",
-        "fake message with service name %s" % service,
-    )
-    with mock.patch(
-        "paasta_tools.chronos_tools.compose_job_id", autospec=True
-    ) as format_job_id_patch:
-        format_job_id_patch.return_value = service
-        assert logs.chronos_log_line_passes_filter(
-            line, levels, service, components, clusters, instances
-        )
-
-
-def test_chronos_log_line_passes_filter_false_when_service_name_missing():
-    service = "fake_service"
-    levels = []
-    components = []
-    clusters = []
-    instances = []
-    line = format_log_line(
-        "fake_level",
-        clusters,
-        service,
-        "fake_instance",
-        "chronos",
-        "fake message without service name",
-    )
-
-    with mock.patch(
-        "paasta_tools.chronos_tools.compose_job_id", autospec=True
-    ) as format_job_id_patch:
-        format_job_id_patch.return_value = service
-        assert not logs.chronos_log_line_passes_filter(
-            line, levels, service, components, clusters, instances
-        )
-
-
 def test_extract_utc_timestamp_from_log_line_ok():
     fake_timestamp = "2015-07-22T10:38:46-07:00"
     fake_utc_timestamp = isodate.parse_datetime("2015-07-22T17:38:46.000000")
@@ -464,33 +411,6 @@ def test_parse_marathon_log_line_ok():
         }
     )
     assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(
-        expected
-    )
-
-
-def test_parse_chronos_log_line_fail():
-    assert "" == logs.parse_chronos_log_line("fake timestamp", None, None)
-
-
-def test_parse_chronos_log_line_ok():
-    fake_timestamp = "2015-07-22T10:38:46-07:00"
-    fake_utc_timestamp = "2015-07-22T17:38:46.000000"
-    fake_service = "fake_service"
-
-    line = "%s this is a fake syslog test message" % fake_timestamp
-    clusters = ["fake_cluster"]
-    expected = json.dumps(
-        {
-            "timestamp": fake_utc_timestamp,
-            "component": "chronos",
-            "cluster": clusters[0],
-            "service": fake_service,
-            "instance": "ALL",
-            "level": "event",
-            "message": line,
-        }
-    )
-    assert sorted(logs.parse_chronos_log_line(line, clusters, fake_service)) == sorted(
         expected
     )
 
@@ -761,15 +681,7 @@ def test_prettify_log_line_valid_json_requested_level_is_only_event():
 
 def test_scribereader_run_code_over_scribe_envs():
     clusters = ["fake_cluster1", "fake_cluster2"]
-    components = [
-        "build",
-        "deploy",
-        "monitoring",
-        "marathon",
-        "chronos",
-        "stdout",
-        "stderr",
-    ]
+    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
 
     callback = mock.MagicMock()
 
@@ -787,7 +699,7 @@ def test_scribereader_run_code_over_scribe_envs():
         )
 
         # See comment in test_scribereader_print_last_n_logs for where this figure comes from
-        assert callback.call_count == 14
+        assert callback.call_count == 10
 
 
 def test_scribereader_print_last_n_logs():
@@ -795,15 +707,7 @@ def test_scribereader_print_last_n_logs():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["main"]
-    components = [
-        "build",
-        "deploy",
-        "monitoring",
-        "marathon",
-        "chronos",
-        "stdout",
-        "stderr",
-    ]
+    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
 
     with mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
@@ -828,20 +732,17 @@ def test_scribereader_print_last_n_logs():
             service, 100, levels, components, clusters, instances, raw_mode=False
         )
 
-        # one call per component per environment except marathon and chronos which run 1/env/cluster
+        # one call per component per environment except marathon which runs 1/env/cluster
         # Defaults:
         #    env1, env2                = 2
         # marathon:
-        #    env1: cluster1 cluster2   = 2
-        #    env2: cluster1 cluster2   = 2
-        # chronos:
         #    env1: cluster1 cluster2   = 2
         #    env2: cluster1 cluster2   = 2
         # stdout:
         #    env1, env2                = 2
         # stderr:
         #    env1, env2                = 2
-        assert mock_scribereader.get_stream_tailer.call_count == 14
+        assert mock_scribereader.get_stream_tailer.call_count == 10
 
 
 def test_scribereader_print_logs_by_time():
@@ -849,15 +750,7 @@ def test_scribereader_print_logs_by_time():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["main"]
-    components = [
-        "build",
-        "deploy",
-        "monitoring",
-        "marathon",
-        "chronos",
-        "stdout",
-        "stderr",
-    ]
+    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
 
     with mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
@@ -892,7 +785,7 @@ def test_scribereader_print_logs_by_time():
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
-        assert mock_scribereader.get_stream_reader.call_count == 14
+        assert mock_scribereader.get_stream_reader.call_count == 10
 
         start_time, end_time = logs.generate_start_end_time("3d", "2d")
         logs.ScribeLogReader(cluster_map={}).print_logs_by_time(
@@ -907,13 +800,13 @@ def test_scribereader_print_logs_by_time():
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
-        assert mock_scribereader.get_stream_reader.call_count == 14 * 2
+        assert mock_scribereader.get_stream_reader.call_count == 10 * 2
 
 
 def test_tail_paasta_logs_ctrl_c_in_queue_get():
     service = "fake_service"
     levels = ["fake_level1", "fake_level2"]
-    components = ["deploy", "monitoring", "chronos", "stdout", "stderr"]
+    components = ["deploy", "monitoring", "stdout", "stderr"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["fake_instance1", "fake_instance2"]
     with mock.patch(

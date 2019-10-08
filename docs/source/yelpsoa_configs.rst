@@ -102,7 +102,7 @@ Marathon, Chronos, Tron, or ``paasta remote-run``.
 
       ``deploy_blacklist: [["region", "uswest1-prod"]]``
 
-   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
+   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region.
 
   * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
 
@@ -170,16 +170,6 @@ instance MAY have:
     may or may not be enforced, but services should set their ``disk`` setting
     regardless to ensure the scheduler has adequate information for distributing
     tasks.
-
-  * ``ulimit``: Dictionary of ulimit values that are passed to Docker. Defaults
-    to empty dictionary. Each ulimit value is a dictionary with the soft limit
-    specified under the 'soft' key and the optional hard limit specified under
-    the 'hard' key. Ulimit values that are not set are inherited from the
-    default ulimits set on the Docker daemon. Example::
-
-      ulimit:
-        - nofile: {"soft": 1024, "hard": 2048}
-        - nice: {"soft": 20}
 
   * ``cap_add``: List of capabilities that are passed to Docker. Defaults
     to empty list. Example::
@@ -285,20 +275,6 @@ instance MAY have:
 
     * ``decision_policy``: Which method PaaSTA will use to determine when to autoscale a service.
 
-  * ``monitoring_blacklist``: A list of lists indicating a set of locations to
-    *not* monitor for Smartstack replication. For example:
-
-      ``monitoring_blacklist: [["region", "uswest1-prod"]]``
-
-   would indicate that PaaSTA should ignore the ``uswest1-prod`` region. PaaSTA
-   currently assumes that the instance count in *other* regions include
-   instances that would have otherwise gotten deployed to ``uswest1-prod``. In
-   other words, the ``monitoring_blacklist`` assumes that instances are not
-   deployed there as well. For example, suppose the total instance count was
-   10, and there are two regions, one of which is blacklisted.  The monitoring
-   logic will assume that there are no instances in the blacklisted region,
-   implying that we should expect all 10 in the non-blacklisted region.
-
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value
     to determine the order in which to build & deploy deploy groups. Defaults to
@@ -389,121 +365,6 @@ out of the load balancer, so it justifies having less sensitive thresholds.
     explanation of the problem, and the program terminates.
 
 .. _doc: deploy_groups.html
-
-``chronos-[clustername].yaml``
-------------------------------
-
-The yaml where Chronos jobs are defined. Top-level keys are the job names.
-
-NB: Yelp maintains its own fork of Chronos at https://github.com/Yelp/chronos,
-and this is the version deployed in the paasta clusters at Yelp. The fork is
-based off the 2.4 release of upstream Chronos. The most notable change is the
-support for specifying schedules in crontab format, but also contains various
-stability fixes. We have not backported any of the new features to hit 3.0.
-Consequently, the list shown here is the most accurate documentation of
-supported fields; the docs upstream may describe keys that are not supported or
-have different behaviour to those mentioned here.
-
-Each job configuration MUST specify the following options:
-
-  * One of ``schedule`` and ``parents``. If both are present, then ``schedule``
-    takes precedence and ``parents`` is ignored.
-
-Each job configuration MAY specify the following options:
-
-  * Anything in the `Common Settings`_.
-
-  * Anything in the `Placement Options (Constraints)`_.
-
-  * ``schedule``: When the job should run. This can be in either ISO8601 notation,
-    or in cron notation.  For more details about ISO8601 formats, see the
-    `wikipedia page <https://en.wikipedia.org/wiki/ISO_8601>`_; for more details on the Cron format,
-    see `crontab(5) <http://man7.org/linux/man-pages/man5/crontab.5.html>`_. Note that
-    the extensions mentioned in that page are *not* supported at this time.
-
-    * **Note:** Although Chronos supports an empty start time to indicate that
-      the job should start immediately, we do not allow this. In a situation
-      such as restarting Chronos, all jobs with empty start times would start
-      simultaneously, causing serious performance degradation and ignoring the
-      fact that the job may have just run.
-
-    * **Warning**: Chronos does *not* allow overlapping jobs. If a job has a
-      ``schedule`` set to repeat every hour, and the task takes longer than
-      an hour, Chronos will *not* schedule the next task while the previous
-      one is still running. (if N starts and overflows to the next time slot,
-      N+1 and any future runs will be canceled until N finishes)
-
-  * ``parents``: An array of parents jobs. If specified, then the job will not run
-    until *all* of the jobs in this array have completed. The parents jobs should be
-    in the form of ``service.instance``. For example::
-
-        cat myservice/chronos-testcluster.yml
-        ---
-        job_one:
-          schedule: R/2014-10-10T18:32:00Z/PT60M
-
-        job_two:
-          schedule: R/2014-10-10T19:32:00Z/PT60M
-
-        child_job:
-          parents:
-            - myservice.parent_one
-            - myservice.parent_two
-
-
-
-  * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
-    Additionally ``cmd`` strings with time or date strings that Tron
-    understands will be interpreted and replaced. ``shortdate``, ``year``,
-    ``month``, ``day``, and ``daynumber`` are supported. Read more in the
-    official `tron documentation
-    <http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc>`_
-    for more information on how to use these variables.
-
-    * **WARNING**: Chronos ``cmd`` parsing is done via `python string
-      replacement
-      <https://docs.python.org/2/library/string.html#format-string-syntax>`_,
-      which means that the special character strings like ``%`` must
-      be escaped in order to be used literally.
-
-  * ``args``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it
-    will still run the job if the time is within this interval. The value must
-    be formatted like an ISO 8601 Duration. See:
-    https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S',
-    indicating that a job may be launched up to a minute late.
-
-  * ``retries``: Number of retries to attempt if a command returns a
-    non-zero exit status. Defaults to 2.
-
-  * ``net``: Specify which kind of
-    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
-    instances of this service should be launched using. Defaults to ``'bridge'``.
-
-  * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
-
-  * ``bounce_method``: Controls what happens to the old version(s) of a job
-    when a new version is deployed. Currently the only option is ``graceful``,
-    which disable the old versions but allows them to finish their current run.
-    If unspecified, defaults to ``graceful``.
-
-  * ``monitoring``: See the `monitoring.yaml`_ section for details.
-
-  * ``deploy_group``: Same as ``deploy_group`` for marathon-\*.yaml.
-
-  * ``schedule_time_zone``: The time zone name to use when scheduling the job.
-    Unlike schedule, this is specified in the tz database format, not the ISO 8601 format.
-
-    * This field takes precedence over any time zone specified in schedule.
-    * See list of `tz database time zones <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`_.
-    * For example, the effective time zone for the following is America/Los_Angeles::
-
-
-        ---
-        main:
-          schedule: R/2014-10-10T18:32:00Z/PT60M
-          schedule_time_zone: America/Los_Angeles
 
 ``tron-[tron-clustername].yaml``
 --------------------------------
@@ -941,13 +802,13 @@ An example of a service that only pages on a cluster called "prod"::
       monitoring:
          page: true
 
-A service that pages everywhere, but only makes a ticket for a chronos job::
+A service that pages everywhere, but only makes a ticket for a tron job::
 
     # monitoring.yaml
     team: backend
     page: true
 
-    # chronos-prod.yaml
+    # tron-prod.yaml
     nightly_batch:
       schedule: .....
       monitoring:

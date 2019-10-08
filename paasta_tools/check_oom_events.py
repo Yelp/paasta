@@ -22,7 +22,6 @@ from random import choice
 from pysensu_yelp import Status
 
 from paasta_tools import monitoring_tools
-from paasta_tools.chronos_tools import compose_check_name_for_service_instance
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -37,6 +36,10 @@ except ImportError:
 OOM_EVENTS_STREAM = "tmp_paasta_oom_events"
 
 OOMEvent = namedtuple("OOMEvent", ["hostname", "container_id", "process_name"])
+
+
+def compose_check_name_for_service_instance(check_name, service, instance):
+    return f"{check_name}.{service}.{instance}"
 
 
 def parse_args(args):

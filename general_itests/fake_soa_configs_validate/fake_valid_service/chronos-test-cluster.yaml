@@ -1,7 +1,0 @@
----
-chronos_job:
-  cpus: .1
-  mem: 100
-  disk: 250.2
-  schedule: 'R/2015-08-14T10:00:00+00:00/PT10M'
-  deploy_group: fake_deploy_group

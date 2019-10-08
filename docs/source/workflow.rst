@@ -24,59 +24,7 @@ Scheduled Jobs
 Scheduled tasks are those tasks that are periodically run, and are not expected
 to run continuously. Due to their ephemeral nature, they often do not expose a TCP port.
 
-PaaSTA uses `Chronos <yelpsoa_configs.html#chronos-clustername-yaml>`_ to define
-the command these scheduled jobs should execute, as well as their RAM, CPU, environment
-variables, etc.
-
-PaaSTA supports jobs being triggered by both a schedule, and by the completion
-of other jobs.  The jobs that are required to complete before another job can
-start are defined in a job's definition with the ``parents`` field. The ``parents`` field and
-``schedule`` field are mutually exclusive; that is to say a job cannot specify both a
-schedule and parents.
-
-Notes on running scheduled jobs with PaaSTA:
- * PaaSTA (more specifically, Chronos) only supports running one 'instance' of
-   a job at one time. That is to say if I have a job scheduled to run every
-   24H, but one 'run' of that job takes longer than 24 hours, then when the job
-   is next scheduled to be run, it will not do so.
- * A job cannot be run at a schedule more frequent than 1 minute.
- * A job *can* specify cross-service dependencies. That is, a ``parent`` job can belong to a different
-   service to that it is triggering.
-
-
-Alternative names: scheduled tasks, scheduled batches, cron jobs (Note: Chronos does not support cron-syntax)
-
-Re Running Failed Jobs
-""""""""""""""""""""""
-
-If a Scheduled Job is required to be 'rerun', then this can be achieved using
-the ``paasta rerun`` command.  This allows you to run a job in the context of
-another date.
-
-An example might be:
- * Assume I have a job, ``my-job``, which belongs to the service ``myservice``.
- * In the service's ``chronos-testcluster.yaml`` file, the ``schedule`` field is set to ``R/2014-09-25T00:00:00Z/PT24H``.
- * The run for my job yesterday failed due to a third party outage.
- * The command for my job includes a tron style datestring. ``cmd: ./run-job --date %(shortdate-14)s``.
-
-If the date today is ``2016-04-26``, I can rerun the job for yesterday with the
-command:
-
-``$ paasta rerun --service myservice --instance my-job -c test-cluster -d
-2016-04-25T00:00:00``
-
-The cmd string in the job will be interpolated as it would have been at the time
-provided by the ``-d`` parameter, and the job will be run once.
-
-Notes on rerunning jobs:
-
-  * Rerunning a job has no impact on the regular schedule of a job.
-  * You can view information about a rerun job with ``paasta status``.
-  * The result of the job is kept for 24 Hours after it's completion.
-  * If the job being rerun is listed in any other job's ``parents`` field,
-    that is, there are other dependent jobs defined in the cluster that only
-    start once the job being rerun has completed, they will *not* be triggered once the rerun
-    job has completed. Each downstream job must be rerun individually.
+You can schedule jobs on PaaSTA using `Tron <yelpsoa_configs.html#tron-tron-clustername-yaml>`_.
 
 Adhoc Tasks
 ^^^^^^^^^^^
@@ -255,11 +203,7 @@ listed below:
 * ``paasta start`` - sets the desired state of the service instance to
   'started'. In the case of long-running services, this will mean ensuring that
   the number of instances of your application matches that set in your
-  soa-configs. In the case of scheduled-tasks, this will ensure that your task
-  is enabled, and will be scheduled as normal. **Note** unless you have run
-  `paasta stop` or `paasta emergency-stop` against your instance, this will be
-  noop. Your service is started by default, and this command does not have to
-  be run for a service to run.
+  soa-configs.
 
 * ``paasta stop`` - sets the desired state of the service instance to 'stop'.
   The result of this for long running tasks is that your tasks are shutdown
@@ -271,21 +215,3 @@ listed below:
   you deploy a new version of your service. That means that if you run ``paasta
   stop`` and push a version of the docker image serving your service, then
   paasta will reset the effect of ``paasta stop``.
-
-
-* ``paasta emergency-start`` - In the case of long running services,
-  ``emergency-start`` will ensure that the number of running instances of a
-  service matches the desired instances; if this is already the case, then this
-  is a noop. In the case of a chronos job, then emergency start will trigger a
-  run of the job now, irrespective of whether one is scheduled to be run.  This
-  will not impact the schedule, and jobs will continue to run according to the
-  schedule thereafter. If the scheduled task has ``disabled: True`` in the
-  service's soa-configs, then this is no op.
-
-
-* ``paasta emergency-stop`` - In the case of long running services, any
-  instances of your service will be immediately killed, with no regard for
-  draining or a safe shutdown. PaaSTA will leave the number of desired
-  instances at 0 until you next deploy your service. In the case of scheduled
-  tasks, any in-flight tasks will be killed, and the job disabled until a new
-  version of the service is deployed.

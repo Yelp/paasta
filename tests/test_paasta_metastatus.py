@@ -29,13 +29,9 @@ def test_main_no_marathon_servers():
         autospec=True,
         return_value={},
     ), patch(
-        "paasta_tools.paasta_metastatus.load_chronos_config", autospec=True
-    ), patch(
         "paasta_tools.paasta_metastatus.is_mesos_available",
         autospec=True,
         return_value=True,
-    ), patch(
-        "paasta_tools.metrics.metastatus_lib.get_chronos_status", autospec=True
     ), patch(
         "paasta_tools.paasta_metastatus.get_mesos_master", autospec=True
     ) as get_mesos_master, patch(
@@ -65,50 +61,6 @@ def test_main_no_marathon_servers():
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
 
-        with raises(SystemExit) as excinfo:
-            paasta_metastatus.main(())
-        assert excinfo.value.code == 0
-
-
-def test_main_no_chronos_config():
-    with patch(
-        "paasta_tools.paasta_metastatus.load_system_paasta_config", autospec=True
-    ), patch(
-        "paasta_tools.paasta_metastatus.is_mesos_available",
-        autospec=True,
-        return_value=True,
-    ), patch(
-        "paasta_tools.paasta_metastatus.load_chronos_config", autospec=True
-    ) as load_chronos_config_patch, patch(
-        "paasta_tools.paasta_metastatus.get_mesos_master", autospec=True
-    ) as get_mesos_master, patch(
-        "paasta_tools.metrics.metastatus_lib.get_mesos_state_status",
-        autospec=True,
-        return_value=([("fake_output", True)]),
-    ) as get_mesos_state_status_patch, patch(
-        "paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health",
-        autospec=True,
-    ) as get_mesos_resource_utilization_health_patch, patch(
-        "paasta_tools.metrics.metastatus_lib.get_marathon_status",
-        autospec=True,
-        return_value=([HealthCheckResult(message="fake_output", healthy=True)]),
-    ), patch(
-        "paasta_tools.paasta_metastatus.get_mesos_leader",
-        autospec=True,
-        return_value="localhost",
-    ), patch(
-        "paasta_tools.paasta_metastatus.is_kubernetes_available",
-        autospec=True,
-        return_value=False,
-    ):
-        fake_master = Mock(autospace=True)
-        fake_master.state.return_value = {}
-        get_mesos_master.return_value = fake_master
-
-        get_mesos_state_status_patch.return_value = []
-        get_mesos_resource_utilization_health_patch.return_value = []
-
-        load_chronos_config_patch.return_value = {}
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main(())
         assert excinfo.value.code == 0
@@ -124,8 +76,6 @@ def test_main_marathon_jsondecode_error():
     ), patch(
         "paasta_tools.marathon_tools.get_marathon_servers", autospec=True
     ) as get_marathon_status_patch, patch(
-        "paasta_tools.paasta_metastatus.load_chronos_config", autospec=True
-    ), patch(
         "paasta_tools.paasta_metastatus.get_mesos_master", autospec=True
     ) as get_mesos_master, patch(
         "paasta_tools.metrics.metastatus_lib.get_mesos_state_status",

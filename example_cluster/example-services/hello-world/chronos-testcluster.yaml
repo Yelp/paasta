@@ -1,7 +1,0 @@
-test_chronos:
-  deploy_group: testcluster.everything
-  cpus: 0.1
-  mem: 100
-  disk: 10
-  cmd: 'echo "HELLO WORLD!!!"'
-  schedule: 'R/2016-07-28T00:00:00Z/PT2M'

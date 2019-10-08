@@ -32,7 +32,6 @@ from kubernetes.client import V1Node
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter
 
-from paasta_tools import chronos_tools
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_pod_status
@@ -72,10 +71,6 @@ class ResourceUtilization(NamedTuple):
     metric: str
     total: int
     free: int
-
-
-HIGH_QUEUE_GAUGE = "org.apache.mesos.chronos.scheduler.jobs.TaskManager.highQueueSize"
-QUEUE_GAUGE = "org.apache.mesos.chronos.scheduler.jobs.TaskManager.queueSize"
 
 
 def get_num_masters() -> int:
@@ -424,7 +419,7 @@ def assert_kube_pods_running(kube_client: KubeClient,) -> HealthCheckResult:
 
 
 def assert_no_duplicate_frameworks(
-    state: MesosState, framework_list: Sequence[str] = ["marathon", "chronos"]
+    state: MesosState, framework_list: Sequence[str] = ["marathon"]
 ) -> HealthCheckResult:
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
@@ -904,9 +899,7 @@ def get_mesos_state_status(mesos_state: MesosState,) -> Sequence[HealthCheckResu
     """
     return [
         assert_quorum_size(),
-        assert_no_duplicate_frameworks(
-            state=mesos_state, framework_list=["marathon", "chronos"]
-        ),
+        assert_no_duplicate_frameworks(state=mesos_state, framework_list=["marathon"]),
     ]
 
 
@@ -963,41 +956,6 @@ def get_marathon_status(
     return run_healthchecks_with_param(
         clients,
         [assert_marathon_apps, assert_marathon_tasks, assert_marathon_deployments],
-    )
-
-
-def assert_chronos_scheduled_jobs(client):
-    """
-    :returns: a tuple of a string and a bool containing representing if it is ok or not
-    """
-    num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-    healthy = num_jobs != 0
-    return HealthCheckResult(
-        message="Enabled chronos jobs: %d" % num_jobs, healthy=healthy
-    )
-
-
-def assert_chronos_queued_jobs(client):
-    high_priority_queue_size = client.metrics()["gauges"][HIGH_QUEUE_GAUGE]["value"]
-    normal_priority_queue_size = client.metrics()["gauges"][QUEUE_GAUGE]["value"]
-    all_jobs_queued = high_priority_queue_size + normal_priority_queue_size
-    num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-
-    try:
-        perc_used = percent_used(num_jobs, all_jobs_queued)
-    except ZeroDivisionError:
-        perc_used = 0
-    return HealthCheckResult(
-        message=f"Jobs Queued: {all_jobs_queued} ({perc_used}%)", healthy=True
-    )
-
-
-def get_chronos_status(chronos_client):
-    """Gather information about chronos.
-    :return: string containing the status
-    """
-    return run_healthchecks_with_param(
-        chronos_client, [assert_chronos_scheduled_jobs, assert_chronos_queued_jobs]
     )
 
 

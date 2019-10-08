@@ -16,6 +16,7 @@ import pytest
 
 from paasta_tools import setup_kubernetes_cr
 from paasta_tools.kubernetes_tools import KubeCustomResource
+from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_main():
@@ -191,7 +192,12 @@ def test_setup_custom_resources():
 def test_format_custom_resource():
     with mock.patch(
         "paasta_tools.setup_kubernetes_cr.get_config_hash", autospec=True
-    ) as mock_get_config_hash:
+    ) as mock_get_config_hash, mock.patch(
+        "paasta_tools.setup_kubernetes_cr.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+            {"dashboard_links": {}}, ""
+        )
         expected = {
             "apiVersion": "yelp.com/v1",
             "kind": "flink",
@@ -204,7 +210,10 @@ def test_format_custom_resource():
                     "yelp.com/paasta_cluster": "mycluster",
                     "yelp.com/paasta_config_sha": mock_get_config_hash.return_value,
                 },
-                "annotations": {"yelp.com/desired_state": "running"},
+                "annotations": {
+                    "yelp.com/desired_state": "running",
+                    "yelp.com/dashboard_url": "http://flink.k8s.paasta-mycluster.yelp:31080/kurupt--fm-radio--station",
+                },
             },
             "spec": {"dummy": "conf"},
         }
@@ -218,6 +227,30 @@ def test_format_custom_resource():
                 version="v1",
                 group="yelp.com",
                 namespace="paasta-flinks",
+            )
+            == expected
+        )
+
+
+def test_paasta_config_flink_dashboard_url():
+    with mock.patch(
+        "paasta_tools.setup_kubernetes_cr.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+            {
+                "dashboard_links": {
+                    "mycluster": {"Flink": "http://flink.paasta-mycluster.yelp"}
+                }
+            },
+            "",
+        )
+        expected = "http://flink.paasta-mycluster.yelp/kurupt--fm-radio--station"
+        assert (
+            setup_kubernetes_cr.get_dashboard_url(
+                kind="flink",
+                service="kurupt_fm",
+                instance="radio_station",
+                cluster="mycluster",
             )
             == expected
         )

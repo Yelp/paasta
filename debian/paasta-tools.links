@@ -1,8 +1,7 @@
 opt/venvs/paasta-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
 opt/venvs/paasta-tools/bin/autoscale_all_services.py usr/bin/autoscale_all_services
 opt/venvs/paasta-tools/bin/check_capacity.py usr/bin/check_capacity
-opt/venvs/paasta-tools/bin/check_chronos_has_jobs.py usr/bin/check_chronos_has_jobs
-opt/venvs/paasta-tools/bin/check_flink_services_replication.py usr/bin/check_flink_services_replication
+opt/venvs/paasta-tools/bin/check_flink_services_health.py usr/bin/check_flink_services_health
 opt/venvs/paasta-tools/bin/check_cassandracluster_services_replication.py usr/bin/check_cassandracluster_services_replication
 opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
@@ -28,17 +27,9 @@ opt/venvs/paasta-tools/bin/kill_orphaned_docker_containers.py usr/bin/kill_orpha
 opt/venvs/paasta-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 opt/venvs/paasta-tools/bin/paasta-api usr/bin/paasta-api
 opt/venvs/paasta-tools/bin/paasta_autoscale_cluster usr/bin/paasta_autoscale_cluster
-opt/venvs/paasta-tools/bin/paasta_check_chronos_jobs usr/bin/check_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_check_chronos_jobs usr/bin/paasta_check_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_chronos_rerun usr/bin/chronos_rerun
-opt/venvs/paasta-tools/bin/paasta_chronos_rerun usr/bin/paasta_chronos_rerun
-opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/cleanup_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_cleanup_chronos_jobs usr/bin/paasta_cleanup_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
 opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/paasta_cleanup_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_cluster_boost.py usr/bin/paasta_cluster_boost
-opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/deploy_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_deploy_chronos_jobs usr/bin/paasta_deploy_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/paasta_deploy_tron_jobs
 opt/venvs/paasta-tools/bin/paasta-deployd usr/bin/paasta-deployd
 opt/venvs/paasta-tools/bin/paasta_docker_wrapper usr/bin/paasta_docker_wrapper
@@ -46,8 +37,6 @@ opt/venvs/paasta-tools/bin/paasta_dump_locally_running_services usr/bin/paasta_d
 opt/venvs/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
 opt/venvs/paasta-tools/bin/paasta_firewall_logging usr/bin/paasta_firewall_logging
 opt/venvs/paasta-tools/bin/paasta_firewall_update usr/bin/paasta_firewall_update
-opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/list_chronos_jobs
-opt/venvs/paasta-tools/bin/paasta_list_chronos_jobs usr/bin/paasta_list_chronos_jobs
 opt/venvs/paasta-tools/bin/paasta_list_kubernetes_service_instances usr/bin/paasta_list_kubernetes_service_instances
 opt/venvs/paasta-tools/bin/paasta_list_tron_namespaces usr/bin/paasta_list_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_maintenance.py usr/bin/paasta_maintenance
@@ -56,8 +45,6 @@ opt/venvs/paasta-tools/bin/paasta_oom_logger usr/bin/paasta_oom_logger
 opt/venvs/paasta-tools/bin/paasta_remote_run.py usr/bin/paasta_remote_run
 opt/venvs/paasta-tools/bin/paasta_secrets_sync.py usr/bin/paasta_secrets_sync
 opt/venvs/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
-opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/paasta_setup_chronos_job
-opt/venvs/paasta-tools/bin/paasta_setup_chronos_job usr/bin/setup_chronos_job
 opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron_namespace
 opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh usr/share/bash-completion/completions/paasta
 opt/venvs/paasta-tools/bin/paasta usr/bin/paasta

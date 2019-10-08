@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
+    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml",
     "type": "object",
     "additionalProperties": false,
     "minProperties": 1,
@@ -114,11 +114,6 @@
                     "exclusiveMinimum": true,
                     "default": 1024
                 },
-                "gpus": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
-                },
                 "instances": {
                     "type": "integer",
                     "minimum": 0,
@@ -133,14 +128,6 @@
                     "type": "integer",
                     "minimum": 0,
                     "exclusiveMinimum": false
-                },
-                "backoff_factor": {
-                    "type": "integer",
-                    "default": 2
-                },
-                "max_launch_delay_seconds": {
-                    "type": "integer",
-                    "default": 300
                 },
                 "registrations": {
                     "type": "array",
@@ -182,17 +169,14 @@
                 "bounce_priority": {
                     "type": "integer"
                 },
-                "bounce_start_deadline": {
-                    "type": "number"
-                },
                 "deploy_group": {
                     "type": "string"
                 },
                 "autoscaling": {
                     "type": "object"
                 },
-                "sfn_autoscaling": {
-                    "type": "object"
+                "service_account_name": {
+                    "type": "string"
                 },
                 "drain_method": {
                     "enum": [
@@ -220,11 +204,15 @@
                     },
                     "uniqueItems": true
                 },
-                "pool": {
-                    "type": "string"
-                },
                 "cmd": {
-                    "type": "string"
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array"
+                        }
+                    ]
                 },
                 "args": {
                     "type": "array",
@@ -240,6 +228,12 @@
                         }
                     },
                     "additionalProperties": false
+                },
+                "cap_add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "extra_volumes": {
                     "type": "array",
@@ -260,6 +254,35 @@
                     },
                     "additionalProperties": true
                 },
+                "aws_ebs_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "persistent_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "size": {
+                                "type": "integer"
+                            },
+                            "mode": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "uniqueItems": true
+                },
+                "replication_threshold": {
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "net": {
                     "type": "string"
                 },
@@ -270,6 +293,9 @@
                     "type": "array"
                 },
                 "deploy_whitelist": {
+                    "type": "array"
+                },
+                "monitoring_blacklist": {
                     "type": "array"
                 },
                 "healthcheck_mode": {
@@ -304,60 +330,10 @@
                     "type": "string",
                     "default": "/status"
                 },
-                "marathon_shard": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "previous_marathon_shards": {
-                    "type": "array"
-                },
-                "replication_threshold": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "cap_add": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "cfs_period_us": {
-                    "type": "integer",
-                    "minimum": "1000",
-                    "maximum": "1000000",
-                    "exclusiveMinimum": false
-                },
                 "cpu_burst_add": {
                     "type": "number",
                     "minimum": 0.0,
                     "exclusiveMinimum": false
-                },
-                "host_port": {
-                    "type": "integer",
-                    "default": 0,
-                    "minimum": 0,
-                    "maximum": 65535,
-                    "exclusiveMinimum": false
-                },
-                "dependencies_reference": {
-                    "type": "string"
-                },
-                "extra_docker_args": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "security": {
-                    "type": "object",
-                    "properties": {
-                        "outbound_firewall": {
-                            "enum": [
-                                "block",
-                                "monitor"
-                            ]
-                        }
-                    }
                 }
             }
         }
