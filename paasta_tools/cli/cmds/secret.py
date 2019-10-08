@@ -169,9 +169,10 @@ def is_service_folder(soa_dir, service_name):
 def _get_secret_provider_for_service(service_name, cluster_names=None):
     if not is_service_folder(os.getcwd(), service_name):
         paasta_print(
+            "{} not found.\n"
             "You must run this tool from the root of your local yelpsoa checkout\n"
             "The tool modifies files in yelpsoa-configs that you must then commit\n"
-            "and push back to git."
+            "and push back to git.".format(os.path.join(service_name, "service.yaml"))
         )
         sys.exit(1)
     system_paasta_config = load_system_paasta_config()
