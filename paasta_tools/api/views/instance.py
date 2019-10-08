@@ -277,7 +277,7 @@ def marathon_instance_status(
     instance: str,
     verbose: int,
     include_smartstack: bool,
-    omit_mesos: bool,
+    include_mesos: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
 
@@ -319,7 +319,7 @@ def marathon_instance_status(
                 should_return_individual_backends=verbose > 0,
             )
 
-    if not omit_mesos:
+    if include_mesos:
         mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
 
     return mstatus
@@ -787,7 +787,9 @@ def instance_status(request):
     include_smartstack = request.swagger_data.get("include_smartstack")
     if include_smartstack is None:
         include_smartstack = True
-    omit_mesos = request.swagger_data.get("omit_mesos") or False
+    include_mesos = request.swagger_data.get("include_mesos")
+    if include_mesos is None:
+        include_mesos = True
 
     instance_status: Dict[str, Any] = {}
     instance_status["service"] = service
@@ -832,7 +834,7 @@ def instance_status(request):
                 instance,
                 verbose,
                 include_smartstack=include_smartstack,
-                omit_mesos=omit_mesos,
+                include_mesos=include_mesos,
             )
         elif instance_type == "chronos":
             if verbose:

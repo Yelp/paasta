@@ -337,8 +337,8 @@
                     },
                     {
                         "in": "query",
-                        "description": "Omit Mesos information",
-                        "name": "omit_mesos",
+                        "description": "Include Mesos information",
+                        "name": "include_mesos",
                         "required": false,
                         "type": "boolean"
                     }
