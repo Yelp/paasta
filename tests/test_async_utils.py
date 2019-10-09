@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import weakref
 
 import mock
 import pytest
@@ -164,3 +165,38 @@ async def test_async_ttl_cache_recover_if_cache_entry_removed():
 
     # should not raise a KeyError!
     await asyncio.gather(awaiter(), awaiter())
+
+
+@pytest.mark.asyncio
+async def test_async_ttl_cache_for_class_members_doesnt_leak_mem():
+    """Ensure that we aren't leaking memory"""
+
+    x = 42
+
+    class TestClass:
+        @async_ttl_cache(ttl=None, cleanup_self=True)
+        async def f(self):
+            return x
+
+    # `instance_caches` from `async_ttl_cache()` applied to `TestClass.f`.
+    instance_caches = TestClass.f.__closure__[1].cell_contents
+
+    o1 = TestClass()
+    w1 = weakref.ref(o1)
+    assert w1() is not None
+    assert await o1.f() == x
+    assert len(instance_caches) == 1
+    assert list(instance_caches.keys())[0]() == o1
+    del o1
+    assert len(instance_caches) == 0
+    assert w1() is None
+
+    o2, o3, o4 = TestClass(), TestClass(), TestClass()
+    assert await o2.f() == x
+    assert await o3.f() == x
+    assert await o4.f() == x
+    assert len(instance_caches) == 3
+    del o2, o4
+    assert len(instance_caches) == 1
+    del o3
+    assert len(instance_caches) == 0

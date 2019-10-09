@@ -27,8 +27,10 @@ def async_ttl_cache(
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
-    async def call_or_get_from_cache(cache, async_func, args, kwargs):
-        key = functools._make_key(args, kwargs, typed=False)
+    async def call_or_get_from_cache(
+        cache, async_func, args_without_self, args, kwargs
+    ):
+        key = functools._make_key(args_without_self, kwargs, typed=False)
         try:
             future, last_update = cache[key]
             if ttl is not None and time.time() - last_update > ttl:
@@ -65,7 +67,7 @@ def async_ttl_cache(
                 w = weakref.ref(self, on_delete)
                 self_cache = instance_caches[w]
                 return await call_or_get_from_cache(
-                    self_cache, wrapped, (self,) + args, kwargs
+                    self_cache, wrapped, args, (self,) + args, kwargs
                 )
 
             return inner
@@ -76,7 +78,7 @@ def async_ttl_cache(
         def outer(wrapped):
             @functools.wraps(wrapped)
             async def inner(*args, **kwargs):
-                return await call_or_get_from_cache(cache2, wrapped, args, kwargs)
+                return await call_or_get_from_cache(cache2, wrapped, args, args, kwargs)
 
             return inner
 
