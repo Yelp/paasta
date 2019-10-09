@@ -31,7 +31,7 @@ from typing import Sequence
 import yaml
 
 from paasta_tools.flink_tools import get_flink_ingress_url_root
-from paasta_tools.flink_tools import sanitised_name as flink_sanitised_name
+from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -230,7 +230,7 @@ def get_dashboard_url(
             flink_link = get_flink_ingress_url_root(cluster)
         if flink_link[-1:] != "/":
             flink_link += "/"
-        flink_link += flink_sanitised_name(service, instance)
+        flink_link += sanitised_cr_name(service, instance)
         return flink_link
     return None
 
