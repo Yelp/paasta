@@ -27,10 +27,13 @@ def async_ttl_cache(
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
-    async def call_or_get_from_cache(
-        cache, async_func, args_without_self, args, kwargs
-    ):
-        key = functools._make_key(args_without_self, kwargs, typed=False)
+    async def call_or_get_from_cache(cache, async_func, args_for_key, args, kwargs):
+        # Please note that anything which is put into `key` will be in the
+        # cache forever, potentially causing memory leaks.  The most common
+        # case is the `self` arg pointing to a huge object.  To mitigate that
+        # we're using `args_for_key`, which is supposed not contain any huge
+        # objects.
+        key = functools._make_key(args_for_key, kwargs, typed=False)
         try:
             future, last_update = cache[key]
             if ttl is not None and time.time() - last_update > ttl:
