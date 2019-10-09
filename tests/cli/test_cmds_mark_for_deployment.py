@@ -423,7 +423,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
-@patch("paasta_tools.automatic_rollbacks.slack.get_slack_events", autospec=True)
+@patch("sticht.slack.get_slack_events", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
@@ -535,7 +535,7 @@ class WrappedMarkForDeploymentProcess(mark_for_deployment.MarkForDeploymentProce
         self.state_history.append(self.state)
         super().after_state_change(*args, **kwargs)
 
-    def start_slo_watcher_threads(self, service):
+    def start_slo_watcher_threads(self, service, soa_dir):
         pass
 
 
