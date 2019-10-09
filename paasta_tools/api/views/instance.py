@@ -85,6 +85,10 @@ from paasta_tools.utils import validate_service_instance
 log = logging.getLogger(__name__)
 
 
+INSTANCE_TYPES_K8S = {"flink", "cassandracluster"}
+INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
+
+
 def tron_instance_status(
     instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
 ) -> Mapping[str, Any]:
@@ -720,7 +724,7 @@ def instance_status(request):
             instance_status["tron"] = tron_instance_status(
                 instance_status, service, instance, verbose
             )
-        elif instance_type in ["flink", "cassandracluster"]:
+        elif instance_type in INSTANCE_TYPES_K8S:
             cr_id_fn = cr_id_fn_for_instance_type(instance_type)
             cr_id = cr_id_fn(service, instance)
             status = kubernetes_cr_status(cr_id, verbose)
@@ -763,7 +767,7 @@ def instance_set_state(request,) -> None:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type in ["flink"]:
+    if instance_type in INSTANCE_TYPES_WITH_SET_STATE:
         try:
             cr_id_fn = cr_id_fn_for_instance_type(instance_type)
             kube_client = KubeClient()
@@ -773,10 +777,17 @@ def instance_set_state(request,) -> None:
                 desired_state=desired_state,
             )
         except ApiException as e:
-            error_message = f"Error while setting state {desired_state} of {service}.{instance}: {e}"
+            error_message = (
+                f"Error while setting state {desired_state} of "
+                f"{service}.{instance}: {e}"
+            )
             raise ApiFailure(error_message, 500)
     else:
-        error_message = f"Unknown instance_type {instance_type} of {service}.{instance}"
+        error_message = (
+            f"instance_type {instance_type} of {service}.{instance} doesn't "
+            f"support set_state, must be in INSTANCE_TYPES_WITH_SET_STATE, "
+            f"currently: {INSTANCE_TYPES_WITH_SET_STATE}"
+        )
         raise ApiFailure(error_message, 404)
 
 
