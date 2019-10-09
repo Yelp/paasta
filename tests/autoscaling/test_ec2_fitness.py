@@ -166,7 +166,7 @@ def test_sort_by_fitness():
     # we expect this order for the following reason:
     # mock_slave_1 is impaired and so should be killed asap
     # mock_slave_2 has an upcoming event
-    # mock_slave_5 and mock_slave_4 have the fewest chronos tasks, and so should be killed before
-    # mock_slave_3 (we cant drain chronos tasks, so try and save them)
+    # mock_slave_5 and mock_slave_4 have the fewest batch tasks, and so should be killed before
+    # mock_slave_3 (we cant drain batch tasks, so try and save them)
     # mock_slave_5 has fewer tasks than mock_slave_4, and so is a better candidate for killing
     assert ret == [mock_slave_3, mock_slave_4, mock_slave_5, mock_slave_2, mock_slave_1]

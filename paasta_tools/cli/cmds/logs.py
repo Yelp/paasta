@@ -44,7 +44,6 @@ except ImportError:
 
 from pytimeparse.timeparse import timeparse
 
-from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
@@ -331,22 +330,6 @@ def parse_marathon_log_line(line, clusters, service):
         )
 
 
-def parse_chronos_log_line(line, clusters, service):
-    utc_timestamp = extract_utc_timestamp_from_log_line(line)
-    if not utc_timestamp:
-        return ""
-    else:
-        return format_log_line(
-            level="event",
-            cluster=clusters[0],
-            service=service,
-            instance="ALL",
-            component="chronos",
-            line=line.strip(),
-            timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
-        )
-
-
 def marathon_log_line_passes_filter(
     line,
     levels,
@@ -370,31 +353,6 @@ def marathon_log_line_passes_filter(
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return format_job_id(service, "") in parsed_line.get("message", "")
-
-
-def chronos_log_line_passes_filter(
-    line,
-    levels,
-    service,
-    components,
-    clusters,
-    instances,
-    start_time=None,
-    end_time=None,
-):
-    """Given a (JSON-formatted) log line where the message is a Marathon log line,
-    return True if the line should be displayed given the provided service; return False
-    otherwise."""
-    try:
-        parsed_line = json.loads(line)
-    except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
-        return False
-
-    timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
-    if not check_timestamp_in_range(timestamp, start_time, end_time):
-        return False
-    return chronos_tools.compose_job_id(service, "") in parsed_line.get("message", "")
 
 
 def print_log(line, requested_levels, raw_mode=False):
@@ -592,12 +550,6 @@ class ScribeLogReader(LogReader):
             filter_fn=marathon_log_line_passes_filter,
             parse_fn=parse_marathon_log_line,
         ),
-        "chronos": ScribeComponentStreamInfo(
-            per_cluster=True,
-            stream_name_fn=lambda service, cluster: "stream_chronos_%s" % cluster,
-            filter_fn=chronos_log_line_passes_filter,
-            parse_fn=parse_chronos_log_line,
-        ),
     }
 
     def __init__(self, cluster_map):
@@ -791,12 +743,11 @@ class ScribeLogReader(LogReader):
     ):
         aggregated_logs: List[Dict[str, Any]] = []
 
-        if "marathon" in components or "chronos" in components:
+        if "marathon" in components:
             paasta_print(
                 PaastaColors.red(
-                    "Warning, you have chosen to get marathon or chronos logs based "
-                    "on time. This command may take a dozen minutes or so to run "
-                    "because marathon and chronos are on shared streams.\n"
+                    "Warning, you have chosen to get marathon logs based "
+                    "on time. This command may take a dozen minutes or so to run.\n"
                 ),
                 file=sys.stderr,
             )
