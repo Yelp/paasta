@@ -3,11 +3,9 @@ import functools
 import time
 import weakref
 from collections import defaultdict
-from typing import Any
 from typing import AsyncIterable
 from typing import Awaitable
 from typing import Callable
-from typing import DefaultDict
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -59,7 +57,7 @@ def async_ttl_cache(
             return value
 
     if cleanup_self:
-        instance_caches: DefaultDict[Any, Dict] = defaultdict(dict)
+        instance_caches: Dict = cache if cache is not None else defaultdict(dict)
 
         def on_delete(w):
             del instance_caches[w]
@@ -76,7 +74,7 @@ def async_ttl_cache(
             return inner
 
     else:
-        cache2: Dict = cache or {}  # Should be Dict[Any, T] but that doesn't work.
+        cache2: Dict = cache if cache is not None else {}  # Should be Dict[Any, T] but that doesn't work.
 
         def outer(wrapped):
             @functools.wraps(wrapped)
