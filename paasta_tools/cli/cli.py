@@ -17,6 +17,7 @@
 import argparse
 import logging
 import sys
+import warnings
 
 import argcomplete
 import pkg_resources
@@ -115,6 +116,7 @@ def main(argv=None):
     Ensure we kill any child pids before we quit
     """
     logging.basicConfig()
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
     try:
         args, parser = parse_args(argv)
         if args.command is None:
