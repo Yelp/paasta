@@ -1,3 +1,10 @@
+paasta-tools (0.87.0) xenial; urgency=medium
+
+  * 0.87.0 tagged with 'make release'
+    Commit: Merge branch "sticht"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 09 Oct 2019 13:55:20 -0700
+
 paasta-tools (0.86.16) xenial; urgency=medium
 
   * 0.86.16 tagged with 'make release'
