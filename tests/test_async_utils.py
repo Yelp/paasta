@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import weakref
+from collections import defaultdict
 
 import mock
 import pytest
@@ -172,14 +173,12 @@ async def test_async_ttl_cache_for_class_members_doesnt_leak_mem():
     """Ensure that we aren't leaking memory"""
 
     x = 42
+    instance_caches = defaultdict(dict)
 
     class TestClass:
-        @async_ttl_cache(ttl=None, cleanup_self=True)
+        @async_ttl_cache(ttl=None, cleanup_self=True, cache=instance_caches)
         async def f(self):
             return x
-
-    # `instance_caches` from `async_ttl_cache()` applied to `TestClass.f`.
-    instance_caches = TestClass.f.__closure__[1].cell_contents
 
     o1 = TestClass()
     w1 = weakref.ref(o1)
