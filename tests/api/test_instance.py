@@ -436,7 +436,12 @@ def test_marathon_smartstack_status(
 @mock.patch(
     "paasta_tools.api.views.instance.kubernetes_tools.get_all_nodes", autospec=True
 )
+@mock.patch(
+    "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
+    autospec=True,
+)
 def test_kubernetes_smartstack_status(
+    mock_get_expected_instance_count_for_namespace,
     mock_get_all_nodes,
     mock_kube_smartstack_replication_checker,
     mock_get_backends,
@@ -450,6 +455,7 @@ def test_kubernetes_smartstack_status(
         "us-north-3": [SmartstackHost(hostname="host1.paasta.party", pool="default")]
     }
 
+    mock_get_expected_instance_count_for_namespace.return_value = 2
     mock_backend = HaproxyBackend(
         status="UP",
         svname="host1_1.2.3.4:123",
@@ -480,7 +486,7 @@ def test_kubernetes_smartstack_status(
     )
     assert smartstack_status == {
         "registration": "fake_service.fake_instance",
-        "expected_backends_per_location": 1,
+        "expected_backends_per_location": 2,
         "locations": [
             {
                 "name": "us-north-3",

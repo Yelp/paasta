@@ -56,6 +56,7 @@ from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_inf
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
@@ -519,7 +520,12 @@ def kubernetes_smartstack_status(
         job_config
     )
 
-    expected_smartstack_count = job_config.get_instances()
+    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
+        service=service,
+        namespace=instance,
+        cluster=settings.cluster,
+        instance_type_class=KubernetesDeploymentConfig,
+    )
     expected_count_per_location = int(
         expected_smartstack_count / len(node_hostname_by_location)
     )
