@@ -1,3 +1,11 @@
+paasta-tools (0.87.1) xenial; urgency=medium
+
+  * 0.87.1 tagged with 'make release'
+    Commit: Merge pull request #2465 from Yelp/drmorr/PAASTA-
+    15874/fix_deprecation_warnings  silence deprecation warnings
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 09 Oct 2019 16:40:01 -0700
+
 paasta-tools (0.87.0) xenial; urgency=medium
 
   * 0.87.0 tagged with 'make release'
