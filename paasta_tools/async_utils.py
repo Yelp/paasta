@@ -3,11 +3,9 @@ import functools
 import time
 import weakref
 from collections import defaultdict
-from typing import Any
 from typing import AsyncIterable
 from typing import Awaitable
 from typing import Callable
-from typing import DefaultDict
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -27,8 +25,13 @@ def async_ttl_cache(
 ) -> Callable[
     [Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]  # wrapped  # inner
 ]:
-    async def call_or_get_from_cache(cache, async_func, args, kwargs):
-        key = functools._make_key(args, kwargs, typed=False)
+    async def call_or_get_from_cache(cache, async_func, args_for_key, args, kwargs):
+        # Please note that anything which is put into `key` will be in the
+        # cache forever, potentially causing memory leaks.  The most common
+        # case is the `self` arg pointing to a huge object.  To mitigate that
+        # we're using `args_for_key`, which is supposed not contain any huge
+        # objects.
+        key = functools._make_key(args_for_key, kwargs, typed=False)
         try:
             future, last_update = cache[key]
             if ttl is not None and time.time() - last_update > ttl:
@@ -54,7 +57,7 @@ def async_ttl_cache(
             return value
 
     if cleanup_self:
-        instance_caches: DefaultDict[Any, Dict] = defaultdict(dict)
+        instance_caches: Dict = cache if cache is not None else defaultdict(dict)
 
         def on_delete(w):
             del instance_caches[w]
@@ -65,18 +68,18 @@ def async_ttl_cache(
                 w = weakref.ref(self, on_delete)
                 self_cache = instance_caches[w]
                 return await call_or_get_from_cache(
-                    self_cache, wrapped, (self,) + args, kwargs
+                    self_cache, wrapped, args, (self,) + args, kwargs
                 )
 
             return inner
 
     else:
-        cache2: Dict = cache or {}  # Should be Dict[Any, T] but that doesn't work.
+        cache2: Dict = cache if cache is not None else {}  # Should be Dict[Any, T] but that doesn't work.
 
         def outer(wrapped):
             @functools.wraps(wrapped)
             async def inner(*args, **kwargs):
-                return await call_or_get_from_cache(cache2, wrapped, args, kwargs)
+                return await call_or_get_from_cache(cache2, wrapped, args, args, kwargs)
 
             return inner
 
