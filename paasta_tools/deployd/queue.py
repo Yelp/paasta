@@ -59,7 +59,6 @@ class ZKDelayDeadlineQueue:
 
         return formatted
 
-    # TODO: should priority just be a string?  can make it length 20 for two priorities?  or even make that configurable?
     def put(self, si: ServiceInstance):
         bounce_by = self._format_timestamp(si.bounce_by)
         wait_until = self._format_timestamp(si.wait_until)
@@ -72,7 +71,6 @@ class ZKDelayDeadlineQueue:
 
     @contextmanager
     def get(self, block: bool = True, timeout: float = float("inf")):
-        self._update_local_state(None)
         if not block:
             timeout = 0.0
         timeout_timestamp = time.time() + timeout
@@ -170,21 +168,25 @@ class ZKDelayDeadlineQueue:
     def get_available_service_instances(
         self
     ) -> Iterable[Tuple[float, ServiceInstance]]:
-        self._update_local_state(None)
-        for entry_node in self.entry_nodes:
-            if entry_node not in self.locked_entry_nodes:
-                deadline, wait_until = self._parse_entry_node(entry_node)
-                now = time.time()
-                if wait_until <= now:
-                    yield (deadline, entry_node)
+        results = []
+        with self.local_state_condition:
+            for entry_node in self.entry_nodes:
+                if entry_node not in self.locked_entry_nodes:
+                    deadline, wait_until = self._parse_entry_node(entry_node)
+                    now = time.time()
+                    if wait_until <= now:
+                        results.append((deadline, entry_node))
+        return results
 
     def get_unavailable_service_instances(
         self
     ) -> Iterable[Tuple[float, float, ServiceInstance]]:
-        self._update_local_state(None)
-        for entry_node in self.entry_nodes:
-            if entry_node not in self.locked_entry_nodes:
-                deadline, wait_until = self._parse_entry_node(entry_node)
-                now = time.time()
-                if wait_until > now:
-                    yield (wait_until, deadline, entry_node)
+        results = []
+        with self.local_state_condition:
+            for entry_node in self.entry_nodes:
+                if entry_node not in self.locked_entry_nodes:
+                    deadline, wait_until = self._parse_entry_node(entry_node)
+                    now = time.time()
+                    if wait_until > now:
+                        results.append((wait_until, deadline, entry_node))
+        return results

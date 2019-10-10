@@ -42,6 +42,14 @@ class TestDelayDeadlineQueue:
     def test_put_then_get_single_threaded(self, queue):
         si = make_si(wait_until=time.time() - 0.01, bounce_by=time.time())
         queue.put(si)
+        # block=false or a really short timeout would fail here, as we have to wait for queue's watchers to be notified
+        # by ZK that something has changed.
+        with queue.get(timeout=1.0) as result:
+            assert result == si
+
+        # Non-blocking get should return results immediately if we force _update_local_state.
+        queue.put(si)
+        queue._update_local_state(None)
         with queue.get(block=False) as result:
             assert result == si
 
@@ -51,6 +59,15 @@ class TestDelayDeadlineQueue:
 
         si = make_si(wait_until=time.time() - 0.01, bounce_by=time.time())
         queue1.put(si)
+
+        # block=false or a really short timeout would fail here, as we have to wait for queue2's watchers to be notified
+        # by ZK that something has changed.
+        with queue2.get(timeout=1.0) as result:
+            assert result == si
+
+        # Non-blocking get should return results immediately if we force _update_local_state.
+        queue1.put(si)
+        queue2._update_local_state(None)
         with queue2.get(block=False) as result:
             assert result == si
 
