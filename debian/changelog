@@ -1,3 +1,26 @@
+paasta-tools (0.87.1) xenial; urgency=medium
+
+  * 0.87.1 tagged with 'make release'
+    Commit: Merge pull request #2465 from Yelp/drmorr/PAASTA-
+    15874/fix_deprecation_warnings  silence deprecation warnings
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 09 Oct 2019 16:40:01 -0700
+
+paasta-tools (0.87.0) xenial; urgency=medium
+
+  * 0.87.0 tagged with 'make release'
+    Commit: Merge branch "sticht"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 09 Oct 2019 13:55:20 -0700
+
+paasta-tools (0.86.16) xenial; urgency=medium
+
+  * 0.86.16 tagged with 'make release'
+    Commit: Merge pull request #2461 from Yelp/fix-mem-leak-again  Fix
+    memory leak, again
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 09 Oct 2019 05:42:27 -0700
+
 paasta-tools (0.86.15) xenial; urgency=medium
 
   * 0.86.15 tagged with 'make release'

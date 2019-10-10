@@ -827,7 +827,7 @@ async def get_mesos_task_count_by_slave(
     slaves_list: Sequence[Dict] = None,
     pool: Optional[str] = None,
 ) -> List[Dict]:
-    """Get counts of running tasks per mesos slave. Also include separate count of chronos tasks
+    """Get counts of running tasks per mesos slave. Also include separate count of batch tasks
 
     :param mesos_state: mesos state dict
     :param slaves_list: a list of slave dicts to count running tasks for.
@@ -879,7 +879,7 @@ async def get_mesos_task_count_by_slave(
     for slave in slaves_with_counts:
         log.debug(
             "Slave: {}, running {} tasks, "
-            "including {} chronos tasks".format(
+            "including {} batch tasks".format(
                 slave["task_counts"].slave["hostname"],
                 slave["task_counts"].count,
                 slave["task_counts"].batch_count,

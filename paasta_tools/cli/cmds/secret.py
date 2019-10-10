@@ -65,7 +65,7 @@ def add_subparser(subparsers):
         required=True,
         help="The name of the secret to create/update, "
         "this is the name you will reference in your "
-        "services marathon/chronos yaml files and should "
+        "services yaml files and should "
         "be unique per service.",
     )
 

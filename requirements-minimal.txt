@@ -6,7 +6,6 @@ boto3
 botocore
 bravado >= 10.2.0
 choice >= 0.1
-chronos-python >= 1.2.0
 cookiecutter >= 1.4.0
 croniter
 # Don't update this unless you have confirmed the client works with
@@ -47,6 +46,7 @@ sensu-plugin
 service-configuration-lib >= 0.12.0
 signalfx
 slackclient >= 1.2.1
+sticht >= 1.1.0
 syslogmp
 task-processing
 thriftpy

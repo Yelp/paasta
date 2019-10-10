@@ -1,7 +1,0 @@
-# Invalid with validation error: "The specified epsilon value "foo" does not conform to ISO8601 format."
----
-chronos_job:
-  cpus: .1
-  mem: 100
-  disk: 200
-  epsilon: foo

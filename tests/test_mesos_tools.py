@@ -578,13 +578,13 @@ async def test_get_mesos_task_count_by_slave():
     with asynctest.patch(
         "paasta_tools.mesos_tools.get_all_running_tasks", autospec=True
     ) as mock_get_all_running_tasks:
-        mock_chronos = mock.Mock()
-        mock_chronos.name = "chronos"
+        mock_tron = mock.Mock()
+        mock_tron.name = "tron"
         mock_marathon = mock.Mock()
         mock_marathon.name = "marathon"
         mock_task1 = mock.Mock()
         mock_task1.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
-        mock_task1.framework = asynctest.CoroutineMock(return_value=mock_chronos)
+        mock_task1.framework = asynctest.CoroutineMock(return_value=mock_tron)
         mock_task2 = mock.Mock()
         mock_task2.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
         mock_task2.framework = asynctest.CoroutineMock(return_value=mock_marathon)
@@ -965,7 +965,7 @@ def test_mesos_services_running_here():
                     ],
                 },
                 {
-                    "name": "chronos",
+                    "name": "tron",
                     "executors": [
                         {
                             "id": "c.main",
