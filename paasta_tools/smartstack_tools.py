@@ -14,6 +14,7 @@
 import abc
 import collections
 import csv
+import logging
 import socket
 from typing import cast
 from typing import Collection
@@ -43,6 +44,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
+log = logging.getLogger(__name__)
 HaproxyBackend = TypedDict(
     "HaproxyBackend",
     {
@@ -479,6 +481,7 @@ class SmartstackReplicationChecker(abc.ABC):
         instance_pool = instance_config.get_pool()
         for location, hosts in attribute_host_dict.items():
             hostname = self._get_first_host_in_pool(hosts, instance_pool)
+            log.debug("Getting replication info from host %s", hostname)
             replication_info[location] = self._get_replication_info(
                 location, hostname, instance_config
             )
