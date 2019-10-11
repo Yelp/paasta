@@ -1,3 +1,11 @@
+paasta-tools (0.87.2) xenial; urgency=medium
+
+  * 0.87.2 tagged with 'make release'
+    Commit: Fix a bug when instance is 0 in setup_kubernetes_jobs
+    (#2469)  Fix a bug when instance is 0 in setup_kubernetes_jobs
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Fri, 11 Oct 2019 11:59:24 -0700
+
 paasta-tools (0.87.1) xenial; urgency=medium
 
   * 0.87.1 tagged with 'make release'
