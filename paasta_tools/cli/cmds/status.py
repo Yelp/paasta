@@ -345,7 +345,7 @@ def print_marathon_status(
     output.extend([f"    {line}" for line in mesos_status_human])
 
     if marathon_status.smartstack is not None:
-        smartstack_status_human = marathon_smartstack_status_human(
+        smartstack_status_human = get_smartstack_status_human(
             marathon_status.smartstack.registration,
             marathon_status.smartstack.expected_backends_per_location,
             marathon_status.smartstack.locations,
@@ -645,7 +645,7 @@ def format_kubernetes_pod_table(pods):
     return format_table(rows)
 
 
-def marathon_smartstack_status_human(
+def get_smartstack_status_human(
     registration, expected_backends_per_location, locations, error_message
 ) -> List[str]:
     if error_message:
@@ -910,6 +910,15 @@ def print_kubernetes_status(
         output.append("      Pods:")
         pods_table = format_kubernetes_pod_table(kubernetes_status.pods)
         output.extend([f"        {line}" for line in pods_table])
+
+    if kubernetes_status.smartstack is not None:
+        smartstack_status_human = get_smartstack_status_human(
+            kubernetes_status.smartstack.registration,
+            kubernetes_status.smartstack.expected_backends_per_location,
+            kubernetes_status.smartstack.locations,
+            getattr(kubernetes_status.smartstack, "error_message", None),
+        )
+        output.extend([f"    {line}" for line in smartstack_status_human])
     return 0
 
 

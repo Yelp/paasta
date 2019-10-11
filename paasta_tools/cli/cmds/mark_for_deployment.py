@@ -1023,8 +1023,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             status = api.service.status_instance(
                 service=cluster_data.service,
                 instance=instance,
-                omit_smartstack=True,
-                omit_mesos=True,
+                include_smartstack=False,
+                include_mesos=False,
             ).result()
         except HTTPError as e:
             if e.response.status_code == 404:
