@@ -197,7 +197,7 @@ class DeploymentWrapper(Application):
     def update(self, kube_client: KubeClient) -> None:
         # If autoscaling is enabled, do not update replicas.
         # In all other cases, replica is set to max(instances, min_instances)
-        if not self.get_soa_config().get("instances") is None:
+        if self.get_soa_config().get("instances") is not None:
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
