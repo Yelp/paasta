@@ -6,17 +6,16 @@ from pytest import fixture
 from pytest import raises
 from zake.fake_client import FakeClient
 
-from paasta_tools.deployd.common import BaseServiceInstance
+from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.queue import ZKDelayDeadlineQueue
 
 
 def make_si(wait_until, bounce_by):
     """Just using mock.Mock(wait_until=wait_until, bounce_by=bounce_by) mostly works, but our PriorityQueues
     occasionally will compare two ServiceInstances directly, and Mocks aren't comparable unless you define an __eq__."""
-    return BaseServiceInstance(
+    return ServiceInstance(
         service="service",
         instance="instance",
-        cluster="cluster",
         bounce_by=bounce_by,
         wait_until=wait_until,
         watcher="watcher",

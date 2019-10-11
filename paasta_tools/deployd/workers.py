@@ -101,7 +101,6 @@ class PaastaDeployWorker(PaastaThread):
                     service_instance = ServiceInstance(
                         service=service_instance.service,
                         instance=service_instance.instance,
-                        cluster=self.config.get_cluster(),
                         bounce_by=bounce_by,
                         wait_until=bounce_by,
                         watcher=self.name,

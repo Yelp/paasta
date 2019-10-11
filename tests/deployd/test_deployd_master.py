@@ -5,7 +5,7 @@ from queue import Empty
 import mock
 from pytest import raises
 
-from paasta_tools.deployd.common import BaseServiceInstance
+from paasta_tools.deployd.common import ServiceInstance
 
 
 class FakePyinotify:  # pragma: no cover
@@ -250,10 +250,9 @@ class TestDeployDaemon(unittest.TestCase):
             )
             calls = [
                 mock.call(
-                    BaseServiceInstance(
+                    ServiceInstance(
                         service="universe",
                         instance="c138",
-                        cluster="westeros-prod",
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,
@@ -263,10 +262,9 @@ class TestDeployDaemon(unittest.TestCase):
                     )
                 ),
                 mock.call(
-                    BaseServiceInstance(
+                    ServiceInstance(
                         service="universe",
                         instance="c137",
-                        cluster="westeros-prod",
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,

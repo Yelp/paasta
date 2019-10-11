@@ -192,7 +192,6 @@ class DeployDaemon(PaastaThread):
                     service=service,
                     instance=instance,
                     watcher="daemon_start",
-                    cluster=self.config.get_cluster(),
                     bounce_by=time.time()
                     + self.config.get_deployd_startup_bounce_deadline(),
                     wait_until=time.time(),
@@ -215,7 +214,6 @@ class DeployDaemon(PaastaThread):
                 ServiceInstance(
                     service=service,
                     instance=instance,
-                    cluster=self.config.get_cluster(),
                     watcher=type(self).__name__,
                     bounce_by=now,
                     wait_until=now,

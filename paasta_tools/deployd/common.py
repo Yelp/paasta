@@ -13,6 +13,7 @@ from typing import Collection
 from typing import Generator
 from typing import Iterable
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
@@ -28,49 +29,17 @@ from paasta_tools.utils import load_system_paasta_config
 BounceTimers = namedtuple(
     "BounceTimers", ["processed_by_worker", "setup_marathon", "bounce_length"]
 )
-BaseServiceInstance = namedtuple(
-    "ServiceInstance",
-    [
-        "service",
-        "instance",
-        "watcher",
-        "cluster",
-        "bounce_by",
-        "wait_until",
-        "failures",
-        "bounce_timers",
-        "processed_count",
-    ],
-)
 
 
-class ServiceInstance(BaseServiceInstance):
-    __slots__ = ()
-
-    def __new__(
-        _cls,
-        service: str,
-        instance: str,
-        watcher: str,
-        cluster: str,
-        bounce_by: float,
-        wait_until: float,
-        failures: int = 0,
-        bounce_timers: Optional[BounceTimers] = None,
-        processed_count: int = 0,
-    ) -> "ServiceInstance":
-        return super().__new__(  # type: ignore
-            _cls=_cls,
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            watcher=watcher,
-            bounce_by=bounce_by,
-            wait_until=wait_until,
-            failures=failures,
-            bounce_timers=bounce_timers,
-            processed_count=processed_count,
-        )
+class ServiceInstance(NamedTuple):
+    service: str
+    instance: str
+    watcher: str
+    bounce_by: float
+    wait_until: float
+    failures: int = 0
+    bounce_timers: Optional[BounceTimers] = None
+    processed_count: int = 0
 
 
 class PaastaThread(Thread):

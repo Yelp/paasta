@@ -5,7 +5,6 @@ import mock
 from pytest import raises
 from requests.exceptions import RequestException
 
-from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import ServiceInstance
 
 
@@ -167,10 +166,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
             )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
             self.mock_instances_to_bounce.put.assert_called_with(
-                BaseServiceInstance(
+                ServiceInstance(
                     service="service",
                     instance="instance",
-                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     bounce_timers=None,
@@ -186,10 +184,9 @@ class TestAutoscalerWatcher(unittest.TestCase):
             )
             self.watcher.process_node_event(mock.Mock(), mock.Mock(), mock_event)
             self.mock_instances_to_bounce.put.assert_called_with(
-                BaseServiceInstance(
+                ServiceInstance(
                     service="service",
                     instance="instance",
-                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     bounce_timers=None,
@@ -430,10 +427,9 @@ class TestMaintenanceWatcher(unittest.TestCase):
             ]
             ret = self.watcher.get_at_risk_service_instances(["host1"])
             expected = [
-                BaseServiceInstance(
+                ServiceInstance(
                     service="universe",
                     instance="c137",
-                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     watcher=self.watcher.__class__.__name__,
@@ -441,10 +437,9 @@ class TestMaintenanceWatcher(unittest.TestCase):
                     failures=0,
                     processed_count=0,
                 ),
-                BaseServiceInstance(
+                ServiceInstance(
                     service="universe",
                     instance="c139",
-                    cluster="clustername",
                     bounce_by=1,
                     wait_until=1,
                     watcher=self.watcher.__class__.__name__,
@@ -548,7 +543,6 @@ class TestPublicConfigEventHandler(unittest.TestCase):
                 service="someservice",
                 instance="someinstance",
                 watcher="PublicConfigEventHandler",
-                cluster=mock.ANY,
                 bounce_by=101.0,
                 wait_until=1.0,
             )
@@ -681,10 +675,9 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                 [("universe", "c137"), ("universe", "c138")],
                 self.handler.filewatcher.cluster,
             )
-            expected_si = BaseServiceInstance(
+            expected_si = ServiceInstance(
                 service="universe",
                 instance="c137",
-                cluster="clustername",
                 bounce_by=1,
                 wait_until=1,
                 watcher="YelpSoaEventHandler",

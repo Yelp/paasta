@@ -67,11 +67,9 @@ class AutoscalerWatcher(PaastaWatcher):
         self.log.info(
             f"Number of instances changed for {service}.{instance} by the autoscaler."
         )
-        # https://github.com/python/mypy/issues/2852
-        service_instance = ServiceInstance(  # type: ignore
+        service_instance = ServiceInstance(
             service=service,
             instance=instance,
-            cluster=self.config.get_cluster(),
             bounce_by=time.time(),
             wait_until=time.time(),
             bounce_timers=None,
@@ -229,12 +227,10 @@ class MaintenanceWatcher(PaastaWatcher):
                     for si in service_instances
                 ]
             ):
-                # https://github.com/python/mypy/issues/2852
                 service_instances.append(
-                    ServiceInstance(  # type: ignore
+                    ServiceInstance(
                         service=service,
                         instance=instance,
-                        cluster=self.config.get_cluster(),
                         bounce_by=time.time(),
                         wait_until=time.time(),
                         watcher=type(self).__name__,
@@ -303,7 +299,6 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                             service=service,
                             instance=instance,
                             watcher=type(self).__name__,
-                            cluster=self.public_config.get_cluster(),
                             bounce_by=time.time()
                             + self.public_config.get_deployd_big_bounce_deadline(),
                             wait_until=time.time(),
@@ -380,10 +375,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             )
             now = time.time()
             self.filewatcher.instances_to_bounce.put(
-                ServiceInstance(  # type: ignore
+                ServiceInstance(
                     service=service,
                     instance=instance,
-                    cluster=self.filewatcher.cluster,
                     bounce_by=now + config.get_bounce_start_deadline(),
                     wait_until=now,
                     watcher=type(self).__name__,

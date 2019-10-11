@@ -3,8 +3,8 @@ import unittest
 import mock
 from pytest import raises
 
-from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import BounceTimers
+from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.workers import BounceResults
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
@@ -100,10 +100,9 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 bounce_again_in_seconds=60, return_code=1, bounce_timers=mock_timers
             )
             mock_process_service_instance.return_value = mock_bounce_results
-            mock_queued_si = BaseServiceInstance(
+            mock_queued_si = ServiceInstance(
                 service="universe",
                 instance="c137",
-                cluster="westeros-prod",
                 bounce_by=61,
                 wait_until=61,
                 watcher="Worker1",
@@ -123,10 +122,9 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 mock_si
             )
             mock_process_service_instance.side_effect = Exception
-            mock_queued_si = BaseServiceInstance(
+            mock_queued_si = ServiceInstance(
                 service="universe",
                 instance="c137",
-                cluster="westeros-prod",
                 bounce_by=61,
                 wait_until=61,
                 watcher="Worker1",

@@ -7,7 +7,6 @@ import mock
 from pytest import fixture
 from pytest import raises
 
-from paasta_tools.deployd.common import BaseServiceInstance
 from paasta_tools.deployd.common import DelayDeadlineQueue
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import get_marathon_clients_from_config
@@ -49,10 +48,9 @@ class TestPaastaQueue(unittest.TestCase):
 def make_si(wait_until, bounce_by):
     """Just using mock.Mock(wait_until=wait_until, bounce_by=bounce_by) mostly works, but our PriorityQueues
     occasionally will compare two ServiceInstances directly, and Mocks aren't comparable unless you define an __eq__."""
-    return BaseServiceInstance(
+    return ServiceInstance(
         service="service",
         instance="instance",
-        cluster="westeros-prod",
         bounce_by=bounce_by,
         wait_until=wait_until,
         watcher="watcher",
@@ -172,20 +170,18 @@ class TestDelayDeadlineQueue:
 
 class TestServiceInstance(unittest.TestCase):
     def setUp(self):
-        self.service_instance = ServiceInstance(  # type: ignore
+        self.service_instance = ServiceInstance(
             service="universe",
             instance="c137",
             watcher="mywatcher",
-            cluster="westeros-prod",
             bounce_by=0,
             wait_until=0,
         )
 
     def test___new__(self):
-        expected = BaseServiceInstance(
+        expected = ServiceInstance(
             service="universe",
             instance="c137",
-            cluster="westeros-prod",
             watcher="mywatcher",
             bounce_by=0,
             wait_until=0,
@@ -195,10 +191,9 @@ class TestServiceInstance(unittest.TestCase):
         )
         assert self.service_instance == expected
 
-        expected = BaseServiceInstance(
+        expected = ServiceInstance(
             service="universe",
             instance="c137",
-            cluster="westeros-prod",
             watcher="mywatcher",
             bounce_by=0,
             wait_until=0,
@@ -206,13 +201,11 @@ class TestServiceInstance(unittest.TestCase):
             bounce_timers=None,
             processed_count=0,
         )
-        # https://github.com/python/mypy/issues/2852
         assert (
-            ServiceInstance(  # type: ignore
+            ServiceInstance(
                 service="universe",
                 instance="c137",
                 watcher="mywatcher",
-                cluster="westeros-prod",
                 bounce_by=0,
                 wait_until=0,
             )
