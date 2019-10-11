@@ -680,7 +680,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
                 )
             ),
-            name=self.get_sanitised_deployment_name(),
+            name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[V1ContainerPort(container_port=self.get_container_port())],
             security_context=self.get_security_context(),
