@@ -35,6 +35,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import Type
 from typing import TypeVar
 
 import pytz
@@ -1362,7 +1363,11 @@ def create_complete_config(
 
 
 def get_expected_instance_count_for_namespace(
-    service: str, namespace: str, cluster: str = None, soa_dir: str = DEFAULT_SOA_DIR
+    service: str,
+    namespace: str,
+    cluster: str = None,
+    instance_type_class: Type[LongRunningServiceConfig] = MarathonServiceConfig,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> int:
     """Get the number of expected instances for a namespace, based on the number
     of instances set to run on that namespace as specified in Marathon service
@@ -1370,6 +1375,7 @@ def get_expected_instance_count_for_namespace(
 
     :param service: The service's name
     :param namespace: The namespace for that service to check
+    instance_type_class: The type of the instance, options are MarathonServiceConfig and KubernetesDeploymentConfig,
     :param soa_dir: The SOA configuration directory to read from
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
@@ -1380,7 +1386,7 @@ def get_expected_instance_count_for_namespace(
         service=service, soa_dir=soa_dir, load_deployments=False
     )
     for job_config in pscl.instance_configs(
-        cluster=cluster, instance_type_class=MarathonServiceConfig
+        cluster=cluster, instance_type_class=instance_type_class
     ):
         if f"{service}.{namespace}" in job_config.get_registrations():
             total_expected += job_config.get_instances()

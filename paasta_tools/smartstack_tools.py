@@ -29,6 +29,7 @@ from typing import TypeVar
 
 import requests
 from kubernetes.client import V1Node
+from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
 from paasta_tools import kubernetes_tools
@@ -432,6 +433,41 @@ def match_backends_and_tasks(
     return backend_task_pairs
 
 
+def match_backends_and_pods(
+    backends: Iterable[HaproxyBackend], pods: Iterable[V1Pod]
+) -> List[Tuple[Optional[HaproxyBackend], Optional[V1Pod]]]:
+    """Returns tuples of matching (backend, pod) pairs, as matched by IP. Each backend will be listed exactly
+    once. If a backend does not match with a pod, (backend, None) will be included.
+    If a pod's IP does not match with any backends, (None, pod) will be included.
+
+    :param backends: An iterable of haproxy backend dictionaries, e.g. the list returned by
+                     smartstack_tools.get_multiple_backends.
+    :param pods: An iterable of V1Pod objects.
+    """
+
+    # { ip : [backend1, backend2], ... }
+    backends_by_ip: DefaultDict[str, List[HaproxyBackend]] = collections.defaultdict(
+        list
+    )
+    backend_pod_pairs = []
+
+    for backend in backends:
+        ip, port, _ = ip_port_hostname_from_svname(backend["svname"])
+        backends_by_ip[ip].append(backend)
+
+    for pod in pods:
+        ip = pod.status.pod_ip
+        for backend in backends_by_ip.pop(ip, [None]):
+            backend_pod_pairs.append((backend, pod))
+
+    # we've been popping in the above loop, so anything left didn't match a k8s pod.
+    for backends in backends_by_ip.values():
+        for backend in backends:
+            backend_pod_pairs.append((backend, None))
+
+    return backend_pod_pairs
+
+
 _MesosSlaveDict = TypeVar(
     "_MesosSlaveDict", bound=Dict
 )  # no type has been defined in mesos_tools for these yet.
@@ -449,7 +485,7 @@ class SmartstackReplicationChecker(abc.ABC):
     only once per location and reuse it in all subsequent calls of
     SmartstackReplicationChecker.get_replication_for_instance().
 
-    _get_allowed_locations_and_hosts must be implemented in sub class
+    get_allowed_locations_and_hosts must be implemented in sub class
     """
 
     def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
@@ -461,7 +497,7 @@ class SmartstackReplicationChecker(abc.ABC):
         self._cache: Dict[str, Dict[str, int]] = {}
 
     @abc.abstractmethod
-    def _get_allowed_locations_and_hosts(
+    def get_allowed_locations_and_hosts(
         self, instance_config: InstanceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
         pass
@@ -475,18 +511,16 @@ class SmartstackReplicationChecker(abc.ABC):
         :returns: a dict {'location_type': {'service.instance': int}}
         """
         replication_info = {}
-        attribute_host_dict = self._get_allowed_locations_and_hosts(instance_config)
+        attribute_host_dict = self.get_allowed_locations_and_hosts(instance_config)
         instance_pool = instance_config.get_pool()
         for location, hosts in attribute_host_dict.items():
-            hostname = self._get_first_host_in_pool(hosts, instance_pool)
+            hostname = self.get_first_host_in_pool(hosts, instance_pool)
             replication_info[location] = self._get_replication_info(
                 location, hostname, instance_config
             )
         return replication_info
 
-    def _get_first_host_in_pool(
-        self, hosts: Sequence[SmartstackHost], pool: str
-    ) -> str:
+    def get_first_host_in_pool(self, hosts: Sequence[SmartstackHost], pool: str) -> str:
         for host in hosts:
             if host.pool == pool:
                 return host.hostname
@@ -544,7 +578,7 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         self._mesos_slaves = mesos_slaves
         super().__init__(system_paasta_config=system_paasta_config)
 
-    def _get_allowed_locations_and_hosts(
+    def get_allowed_locations_and_hosts(
         self, instance_config: InstanceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
@@ -579,7 +613,7 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
         self.nodes = nodes
         super().__init__(system_paasta_config=system_paasta_config)
 
-    def _get_allowed_locations_and_hosts(
+    def get_allowed_locations_and_hosts(
         self, instance_config: InstanceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
         discover_location_type = kubernetes_tools.load_service_namespace_config(

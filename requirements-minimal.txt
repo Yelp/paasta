@@ -46,6 +46,7 @@ sensu-plugin
 service-configuration-lib >= 0.12.0
 signalfx
 slackclient >= 1.2.1
+sticht >= 1.1.0
 syslogmp
 task-processing
 thriftpy

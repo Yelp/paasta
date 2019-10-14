@@ -38,11 +38,11 @@ from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
+from sticht import state_machine
+from sticht.slo import SLOSlackDeploymentProcess
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
-from paasta_tools.automatic_rollbacks import state_machine
-from paasta_tools.automatic_rollbacks.slo import SLOSlackDeploymentProcess
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -448,7 +448,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.last_action = None
         self.slo_watchers = []
 
-        self.start_slo_watcher_threads(self.service)
+        self.start_slo_watcher_threads(self.service, self.soa_dir)
         # Initialize Slack threads and send the first message
         super().__init__()
         self.ping_authors()
@@ -1023,8 +1023,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             status = api.service.status_instance(
                 service=cluster_data.service,
                 instance=instance,
-                omit_smartstack=True,
-                omit_mesos=True,
+                include_smartstack=False,
+                include_mesos=False,
             ).result()
         except HTTPError as e:
             if e.response.status_code == 404:

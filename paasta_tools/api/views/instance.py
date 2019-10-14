@@ -26,8 +26,10 @@ from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import Tuple
+from typing import Union
 
 import a_sync
 import isodate
@@ -52,6 +54,7 @@ from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_inf
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
@@ -75,6 +78,8 @@ from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import HaproxyBackend
+from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
+from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -166,7 +171,11 @@ def flink_instance_metadata(
 
 
 def kubernetes_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
+    instance_status: Mapping[str, Any],
+    service: str,
+    instance: str,
+    verbose: int,
+    include_smartstack: bool,
 ) -> Mapping[str, Any]:
     kstatus: Dict[str, Any] = {}
     job_config = kubernetes_tools.load_kubernetes_service_config(
@@ -193,6 +202,22 @@ def kubernetes_instance_status(
             verbose=verbose,
             pod_list=pod_list,
         )
+
+        if include_smartstack:
+            service_namespace_config = kubernetes_tools.load_service_namespace_config(
+                service=service,
+                namespace=job_config.get_nerve_namespace(),
+                soa_dir=settings.soa_dir,
+            )
+            if "proxy_port" in service_namespace_config:
+                kstatus["smartstack"] = kubernetes_smartstack_status(
+                    service,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    pod_list,
+                    should_return_individual_backends=verbose > 0,
+                )
     return kstatus
 
 
@@ -238,8 +263,8 @@ def marathon_instance_status(
     service: str,
     instance: str,
     verbose: int,
-    omit_smartstack: bool,
-    omit_mesos: bool,
+    include_smartstack: bool,
+    include_mesos: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
 
@@ -261,7 +286,7 @@ def marathon_instance_status(
         )
     )
 
-    if not omit_smartstack:
+    if include_smartstack:
         service_namespace_config = marathon_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
@@ -281,7 +306,7 @@ def marathon_instance_status(
                 should_return_individual_backends=verbose > 0,
             )
 
-    if not omit_mesos:
+    if include_mesos:
         mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
 
     return mstatus
@@ -461,6 +486,66 @@ def marathon_smartstack_status(
     return smartstack_status
 
 
+def kubernetes_smartstack_status(
+    service: str,
+    instance: str,
+    job_config: kubernetes_tools.KubernetesDeploymentConfig,
+    service_namespace_config: ServiceNamespaceConfig,
+    pods: Sequence[V1Pod],
+    should_return_individual_backends: bool = False,
+) -> Mapping[str, Any]:
+
+    registration = job_config.get_registrations()[0]
+    instance_pool = job_config.get_pool()
+
+    smartstack_replication_checker = KubeSmartstackReplicationChecker(
+        nodes=kubernetes_tools.get_all_nodes(settings.kubernetes_client),
+        system_paasta_config=settings.system_paasta_config,
+    )
+    node_hostname_by_location = smartstack_replication_checker.get_allowed_locations_and_hosts(
+        job_config
+    )
+
+    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
+        service=service,
+        namespace=instance,
+        cluster=settings.cluster,
+        instance_type_class=KubernetesDeploymentConfig,
+    )
+    expected_count_per_location = int(
+        expected_smartstack_count / len(node_hostname_by_location)
+    )
+    smartstack_status: MutableMapping[str, Any] = {
+        "registration": registration,
+        "expected_backends_per_location": expected_count_per_location,
+        "locations": [],
+    }
+
+    for location, hosts in node_hostname_by_location.items():
+        synapse_host = smartstack_replication_checker.get_first_host_in_pool(
+            hosts, instance_pool
+        )
+        sorted_backends = sorted(
+            get_backends(
+                registration,
+                synapse_host=synapse_host,
+                synapse_port=settings.system_paasta_config.get_synapse_port(),
+                synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
+            ),
+            key=lambda backend: backend["status"],
+            reverse=True,  # put 'UP' backends above 'MAINT' backends
+        )
+
+        matched_backends_and_pods = match_backends_and_pods(sorted_backends, pods)
+        location_dict = build_smartstack_location_dict(
+            location, matched_backends_and_pods, should_return_individual_backends
+        )
+        smartstack_status["locations"].append(location_dict)
+
+    return smartstack_status
+
+
+@overload
 def build_smartstack_location_dict(
     location: str,
     matched_backends_and_tasks: List[
@@ -468,6 +553,25 @@ def build_smartstack_location_dict(
     ],
     should_return_individual_backends: bool = False,
 ) -> MutableMapping[str, Any]:
+    ...
+
+
+@overload
+def build_smartstack_location_dict(
+    location: str,
+    matched_backends_and_tasks: List[Tuple[Optional[HaproxyBackend], Optional[V1Pod]]],
+    should_return_individual_backends: bool = False,
+) -> MutableMapping[str, Any]:
+    ...
+
+
+def build_smartstack_location_dict(
+    location: str,
+    matched_backends_and_tasks=List[
+        Tuple[Optional[HaproxyBackend], Optional[Union[MarathonTask, V1Pod]]]
+    ],
+    should_return_individual_backends: bool = False,
+):
     running_backends_count = 0
     backends = []
     for backend, task in matched_backends_and_tasks:
@@ -485,8 +589,22 @@ def build_smartstack_location_dict(
     }
 
 
+@overload
 def build_smartstack_backend_dict(
     smartstack_backend: HaproxyBackend, task: Optional[MarathonTask]
+) -> MutableMapping[str, Any]:
+    ...
+
+
+@overload
+def build_smartstack_backend_dict(
+    smartstack_backend: HaproxyBackend, task: V1Pod
+) -> MutableMapping[str, Any]:
+    ...
+
+
+def build_smartstack_backend_dict(
+    smartstack_backend: HaproxyBackend, task: Union[V1Pod, Optional[MarathonTask]]
 ) -> MutableMapping[str, Any]:
     svname = smartstack_backend["svname"]
     hostname = svname.split("_")[0]
@@ -658,8 +776,12 @@ def instance_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
-    omit_smartstack = request.swagger_data.get("omit_smartstack") or False
-    omit_mesos = request.swagger_data.get("omit_mesos") or False
+    include_smartstack = request.swagger_data.get("include_smartstack")
+    if include_smartstack is None:
+        include_smartstack = True
+    include_mesos = request.swagger_data.get("include_mesos")
+    if include_mesos is None:
+        include_mesos = True
 
     instance_status: Dict[str, Any] = {}
     instance_status["service"] = service
@@ -703,8 +825,8 @@ def instance_status(request):
                 service,
                 instance,
                 verbose,
-                omit_smartstack=omit_smartstack,
-                omit_mesos=omit_mesos,
+                include_smartstack=include_smartstack,
+                include_mesos=include_mesos,
             )
         elif instance_type == "adhoc":
             instance_status["adhoc"] = adhoc_instance_status(
@@ -712,7 +834,11 @@ def instance_status(request):
             )
         elif instance_type == "kubernetes":
             instance_status["kubernetes"] = kubernetes_instance_status(
-                instance_status, service, instance, verbose
+                instance_status,
+                service,
+                instance,
+                verbose,
+                include_smartstack=include_smartstack,
             )
         elif instance_type == "tron":
             instance_status["tron"] = tron_instance_status(

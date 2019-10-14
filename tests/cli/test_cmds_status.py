@@ -34,10 +34,10 @@ from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
 from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
+from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import marathon_app_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
-from paasta_tools.cli.cmds.status import marathon_smartstack_status_human
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
@@ -1201,6 +1201,11 @@ def mock_kubernetes_status():
         create_timestamp=1562963508,
         namespace="paasta",
         pods=[],
+        smartstack=Struct(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=1,
+            locations=[],
+        ),
     )
 
 
@@ -1279,9 +1284,7 @@ class TestPrintMarathonStatus:
     @pytest.mark.parametrize("include_smartstack", [True, False])
     @pytest.mark.parametrize("include_autoscaling_info", [True, False])
     @patch("paasta_tools.cli.cmds.status.create_autoscaling_info_table", autospec=True)
-    @patch(
-        "paasta_tools.cli.cmds.status.marathon_smartstack_status_human", autospec=True
-    )
+    @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.marathon_mesos_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.marathon_app_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.status_marathon_job_human", autospec=True)
@@ -1294,7 +1297,7 @@ class TestPrintMarathonStatus:
         mock_status_marathon_job_human,
         mock_marathon_app_status_human,
         mock_marathon_mesos_status_human,
-        mock_marathon_smartstack_status_human,
+        mock_get_smartstack_status_human,
         mock_create_autoscaling_info_table,
         mock_marathon_status,
         include_autoscaling_info,
@@ -1308,7 +1311,7 @@ class TestPrintMarathonStatus:
             "mesos status 1",
             "mesos status 2",
         ]
-        mock_marathon_smartstack_status_human.return_value = [
+        mock_get_smartstack_status_human.return_value = [
             "smartstack status 1",
             "smartstack status 2",
         ]
@@ -1374,6 +1377,7 @@ class TestPrintKubernetesStatus:
         )
         assert return_value == 0
 
+    @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch(
         "paasta_tools.cli.cmds.status.kubernetes_app_deploy_status_human", autospec=True
@@ -1386,6 +1390,7 @@ class TestPrintKubernetesStatus:
         mock_desired_state,
         mock_kubernetes_app_deploy_status_human,
         mock_naturaltime,
+        mock_get_smartstack_status_human,
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
@@ -1785,7 +1790,7 @@ def test_create_mesos_non_running_tasks_table_handles_nones():
 
 @patch("paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True)
 @patch("paasta_tools.cli.cmds.status.build_smartstack_backends_table", autospec=True)
-def test_marathon_smartstack_status_human(
+def test_get_smartstack_status_human(
     mock_build_smartstack_backends_table, mock_haproxy_backend_report
 ):
     mock_locations = [
@@ -1810,7 +1815,7 @@ def test_marathon_smartstack_status_human(
         f"{backend.hostname}" for backend in backends
     ]
 
-    output = marathon_smartstack_status_human(
+    output = get_smartstack_status_human(
         registration="fake_service.fake_instance",
         expected_backends_per_location=5,
         locations=mock_locations,
@@ -1828,8 +1833,8 @@ def test_marathon_smartstack_status_human(
     ]
 
 
-def test_marathon_smartstack_status_human_error():
-    output = marathon_smartstack_status_human(
+def test_get_smartstack_status_human_error():
+    output = get_smartstack_status_human(
         registration=None,
         expected_backends_per_location=None,
         locations=None,
@@ -1839,8 +1844,8 @@ def test_marathon_smartstack_status_human_error():
     assert PaastaColors.red("uh oh!") in output[0]
 
 
-def test_marathon_smartstack_status_human_no_locations():
-    output = marathon_smartstack_status_human(
+def test_get_smartstack_status_human_no_locations():
+    output = get_smartstack_status_human(
         registration="fake_service.fake_instance",
         expected_backends_per_location=1,
         locations=[],

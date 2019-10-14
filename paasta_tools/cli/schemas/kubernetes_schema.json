@@ -114,6 +114,11 @@
                     "exclusiveMinimum": true,
                     "default": 1024
                 },
+                "gpus": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
                 "instances": {
                     "type": "integer",
                     "minimum": 0,
@@ -128,6 +133,14 @@
                     "type": "integer",
                     "minimum": 0,
                     "exclusiveMinimum": false
+                },
+                "backoff_factor": {
+                    "type": "integer",
+                    "default": 2
+                },
+                "max_launch_delay_seconds": {
+                    "type": "integer",
+                    "default": 300
                 },
                 "registrations": {
                     "type": "array",
@@ -175,6 +188,9 @@
                 "autoscaling": {
                     "type": "object"
                 },
+                "sfn_autoscaling": {
+                    "type": "object"
+                },
                 "service_account_name": {
                     "type": "string"
                 },
@@ -203,6 +219,9 @@
                         "type": "array"
                     },
                     "uniqueItems": true
+                },
+                "pool": {
+                    "type": "string"
                 },
                 "cmd": {
                     "oneOf": [
@@ -254,6 +273,13 @@
                     },
                     "additionalProperties": true
                 },
+                "marathon_shard": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "previous_marathon_shards": {
+                    "type": "array"
+                },
                 "aws_ebs_volumes": {
                     "type": "array",
                     "items": {
@@ -282,6 +308,12 @@
                 "replication_threshold": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "cfs_period_us": {
+                    "type": "integer",
+                    "minimum": "1000",
+                    "maximum": "1000000",
+                    "exclusiveMinimum": false
                 },
                 "net": {
                     "type": "string"
@@ -334,6 +366,33 @@
                     "type": "number",
                     "minimum": 0.0,
                     "exclusiveMinimum": false
+                },
+                "host_port": {
+                    "type": "integer",
+                    "default": 0,
+                    "minimum": 0,
+                    "maximum": 65535,
+                    "exclusiveMinimum": false
+                },
+                "dependencies_reference": {
+                    "type": "string"
+                },
+                "extra_docker_args": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "security": {
+                    "type": "object",
+                    "properties": {
+                        "outbound_firewall": {
+                            "enum": [
+                                "block",
+                                "monitor"
+                            ]
+                        }
+                    }
                 }
             }
         }
