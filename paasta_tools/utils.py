@@ -3270,8 +3270,8 @@ def set_paasta_print_file(file: Any) -> Iterator[None]:
 
 
 def paasta_print(*args: Any, **kwargs: Any) -> None:
-    f = kwargs.pop("file", sys.stdout)
-    f = getattr(TLS, "paasta_print_file", f)
+    f = kwargs.pop("file", sys.stdout) or sys.stdout
+    f = getattr(TLS, "paasta_print_file", f) or f
     buf = getattr(f, "buffer", None)
     # Here we're assuming that the file object works with strings and its
     # `buffer` works with bytes. So, if the file object doesn't have `buffer`,
