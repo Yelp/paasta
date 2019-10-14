@@ -28,6 +28,10 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
+# Broken out into a constant so that we don't get drift between this and the code in paasta_deployd_steps.py that
+# searches for this message.
+DEAD_DEPLOYD_WORKER_MESSAGE = "Detected a dead worker, starting a replacement thread"
+
 
 class AddHostnameFilter(logging.Filter):
     def __init__(self):
@@ -160,7 +164,7 @@ class DeployDaemon(PaastaThread):
         live_workers = len([worker for worker in self.workers if worker.is_alive()])
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
-            self.log.error("Detected a dead worker, starting a replacement thread")
+            self.log.error(DEAD_DEPLOYD_WORKER_MESSAGE)
             worker_no = len(self.workers) + 1
             worker = PaastaDeployWorker(
                 worker_no, self.instances_to_bounce, self.config, self.metrics

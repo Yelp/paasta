@@ -49,7 +49,7 @@ class ZKDelayDeadlineQueue:
             self.local_state_condition.notify()
 
     def _format_timestamp(self, timestamp: float):
-        if not isinstance(timestamp, float):
+        if not isinstance(timestamp, (int, float)):
             raise TypeError(f"timestamp must be int or float, got {timestamp!r}")
         if not (0 < timestamp < 9999999999.9995):
             raise ValueError(
