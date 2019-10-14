@@ -211,7 +211,7 @@ class DeploymentWrapper(Application):
         # In all other cases, replica is set to max(instances, min_instances)
         if self.get_soa_config().get("bounce_method", "") == "brutal":
             self.deep_delete_and_wait(kube_client)
-        if not self.get_soa_config().get("instances"):
+        if self.get_soa_config().get("instances") is not None:
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
@@ -227,7 +227,7 @@ class DeploymentWrapper(Application):
         )
         hpa_exists = self.exists_hpa(kube_client)
         # NO autoscaling
-        if self.get_soa_config().get("instances"):
+        if self.get_soa_config().get("instances") is not None:
             # Remove HPA if autoscaling is disabled
             if hpa_exists:
                 self.delete_horizontal_pod_autoscaler(kube_client)
@@ -237,8 +237,8 @@ class DeploymentWrapper(Application):
         )
         if not body:
             raise Exception(
-                f"CRIT: autoscaling misconfigured for {self.kube_deployment.service}.\
-                    {self.kube_deployment.instance}. Please correct the configuration and  update pre-commit hook."
+                f"CRIT: autoscaling misconfigured for {self.kube_deployment.service}."
+                + f"{self.kube_deployment.instance}.Please correct the configuration and update pre-commit hook."
             )
         self.logging.debug(body)
         if not hpa_exists:

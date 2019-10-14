@@ -22,6 +22,7 @@ from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
+from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.smartstack_tools import SmartstackHost
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
@@ -260,6 +261,50 @@ def test_match_backends_and_tasks():
         assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
 
 
+def test_match_backends_and_pods():
+    backends = [
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.4:31000_box4",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.5:31000_box5",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.6:31000_box6",
+            "status": "UP",
+        },
+        {
+            "pxname": "servicename.main",
+            "svname": "10.50.2.8:31000_box8",
+            "status": "UP",
+        },
+    ]
+
+    good_pod1 = mock.Mock(status=mock.Mock(pod_ip="10.50.2.4"))
+    good_pod2 = mock.Mock(status=mock.Mock(pod_ip="10.50.2.5"))
+    bad_pod = mock.Mock(status=mock.Mock(pod_ip="10.50.2.7"))
+    pods = [good_pod1, good_pod2, bad_pod]
+
+    expected = [
+        (backends[0], good_pod1),
+        (backends[1], good_pod2),
+        (None, bad_pod),
+        (backends[2], None),
+        (backends[3], None),
+    ]
+    actual = match_backends_and_pods(backends, pods)
+
+    def keyfunc(t):
+        return tuple(sorted((t[0] or {}).items())), t[1]
+
+    assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
+
+
 @mock.patch("paasta_tools.smartstack_tools.get_multiple_backends", autospec=True)
 def test_get_replication_for_all_services(mock_get_multiple_backends):
     mock_get_multiple_backends.return_value = [
@@ -464,7 +509,7 @@ def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
         mock_get_nodes_grouped_by_attribute.return_value = {
             "us-west-1": [mock_node_1, mock_node_2]
         }
-        ret = mock_kube_replication_checker._get_allowed_locations_and_hosts(
+        ret = mock_kube_replication_checker.get_allowed_locations_and_hosts(
             mock_instance_config
         )
         assert ret == {
@@ -476,17 +521,17 @@ def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
 
 
 def test_get_allowed_locations_and_hosts(mock_replication_checker):
-    mock_replication_checker._get_allowed_locations_and_hosts(
+    mock_replication_checker.get_allowed_locations_and_hosts(
         instance_config=mock.Mock()
     )
 
 
 def test_get_replication_for_instance(mock_replication_checker):
     with mock.patch(
-        "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_allowed_locations_and_hosts",
+        "paasta_tools.smartstack_tools.SmartstackReplicationChecker.get_allowed_locations_and_hosts",
         autospec=True,
     ) as mock_get_allowed_locations_and_hosts, mock.patch(
-        "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_first_host_in_pool",
+        "paasta_tools.smartstack_tools.SmartstackReplicationChecker.get_first_host_in_pool",
         autospec=True,
     ) as mock_get_first_host_in_pool, mock.patch(
         "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_replication_info",
@@ -513,11 +558,11 @@ def test_get_first_host_in_pool(mock_replication_checker):
     mock_host_2 = mock.Mock(hostname="host456", pool="default")
     mock_host_3 = mock.Mock(hostname="host789", pool="special")
     mock_hosts = [mock_host_0, mock_host_1, mock_host_2, mock_host_3]
-    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, "default")
+    ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "default")
     assert ret == "host123"
-    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, "special")
+    ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "special")
     assert ret == "host789"
-    ret = mock_replication_checker._get_first_host_in_pool(mock_hosts, "what")
+    ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "what")
     assert ret == "host0"
 
 

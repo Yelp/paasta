@@ -5,6 +5,7 @@ import a_sync
 import simplejson as json
 
 from paasta_tools import mesos_tools
+from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 
@@ -38,8 +39,11 @@ def get_paasta_service_instance_from_task(task):
 
 
 async def get_pool_from_task(task):
-    attributes = (await task.slave())["attributes"]
-    return attributes.get("pool", "default")
+    try:
+        attributes = (await task.slave())["attributes"]
+        return attributes.get("pool", "default")
+    except SlaveDoesNotExist:
+        return None
 
 
 @a_sync.to_blocking
