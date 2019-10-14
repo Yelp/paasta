@@ -50,9 +50,11 @@ class ZKDelayDeadlineQueue:
 
     def _format_timestamp(self, timestamp: float):
         if not isinstance(timestamp, float):
-            raise TypeError("timestamp must be int or float")
+            raise TypeError(f"timestamp must be int or float, got {timestamp!r}")
         if not (0 < timestamp < 9999999999.9995):
-            raise ValueError("timestamp must be between 0 and 9999999999.9995")
+            raise ValueError(
+                f"timestamp must be between 0 and 9999999999.9995, got {timestamp}"
+            )
 
         formatted = f"{timestamp:014.3f}"
         assert len(formatted) == 14
