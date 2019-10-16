@@ -1302,15 +1302,12 @@ def paasta_status(args) -> int:
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
-            all_cassandra = all(
-                i == CassandraClusterDeploymentConfig for i in instances.values()
-            )
             actual_deployments: Mapping[str, str]
-            if all_flink or all_cassandra:
+            if all_flink:
                 actual_deployments = {}
             else:
                 actual_deployments = get_actual_deployments(service, soa_dir)
-            if all_flink or all_cassandra or actual_deployments:
+            if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
                 tasks.append(
                     (

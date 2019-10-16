@@ -174,7 +174,7 @@ def get_flink_ingress_url_root(cluster: str) -> str:
 
 def _dashboard_get(service: str, instance: str, cluster: str, path: str) -> str:
     root = get_flink_ingress_url_root(cluster)
-    name = sanitised_name(service, instance)
+    name = sanitised_cr_name(service, instance)
     url = f"{root}{name}/{path}"
     response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
     response.raise_for_status()
