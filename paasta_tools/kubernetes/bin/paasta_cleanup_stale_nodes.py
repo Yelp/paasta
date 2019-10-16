@@ -122,8 +122,6 @@ def terminate_nodes(
 def is_node_ready(node: V1Node) -> bool:
     for condition in node.status.conditions:
         if condition.type == "Ready":
-            if condition.status == "Unknown":
-                return False
             return condition.status == "True"
     log.error(
         f"no KubeletReady condition found for node {node.metadata.name}. Conditions {node.status.conditions}"
