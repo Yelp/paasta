@@ -1,21 +1,21 @@
 import time
 from typing import List
 
-from paasta_tools.deployd.common import DelayDeadlineQueue
+from paasta_tools.deployd.common import DelayDeadlineQueueProtocol
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.metrics.metrics_lib import BaseMetrics
 
 
 class MetricsThread(PaastaThread):
-    def __init__(self, metrics_provider):
+    def __init__(self, metrics_provider: BaseMetrics) -> None:
         super().__init__()
         self.metrics = metrics_provider
 
-    def run_once(self):
+    def run_once(self) -> None:
         raise NotImplementedError()
 
-    def run(self):
+    def run(self) -> None:
         while True:
             last_run_time = time.time()
             self.run_once()
@@ -25,7 +25,7 @@ class MetricsThread(PaastaThread):
 class QueueAndWorkerMetrics(MetricsThread):
     def __init__(
         self,
-        queue: DelayDeadlineQueue,
+        queue: DelayDeadlineQueueProtocol,
         workers: List[PaastaDeployWorker],
         cluster: str,
         metrics_provider: BaseMetrics,

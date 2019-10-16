@@ -25,7 +25,7 @@ def make_si(wait_until, bounce_by):
     )
 
 
-class TestDelayDeadlineQueue:
+class TestZKDelayDeadlineQueue:
     @fixture
     def queue(self):
         client = FakeClient()

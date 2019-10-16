@@ -1,24 +1,35 @@
 import datetime
 import time
-from collections import namedtuple
+from typing import NamedTuple
 
 import humanize
 
 from paasta_tools import marathon_tools
 from paasta_tools.deployd.common import BounceTimers
+from paasta_tools.deployd.common import DelayDeadlineQueueProtocol
 from paasta_tools.deployd.common import exponential_back_off
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.metrics.metrics_lib import BaseMetrics
 from paasta_tools.setup_marathon_job import deploy_marathon_service
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
-BounceResults = namedtuple(
-    "BounceResults", ["bounce_again_in_seconds", "return_code", "bounce_timers"]
-)
+
+class BounceResults(NamedTuple):
+    bounce_again_in_seconds: float
+    return_code: int
+    bounce_timers: BounceTimers
 
 
 class PaastaDeployWorker(PaastaThread):
-    def __init__(self, worker_number, instances_to_bounce, config, metrics_provider):
+    def __init__(
+        self,
+        worker_number: int,
+        instances_to_bounce: DelayDeadlineQueueProtocol,
+        config: SystemPaastaConfig,
+        metrics_provider: BaseMetrics,
+    ) -> None:
         super().__init__()
         self.daemon = True
         self.name = f"Worker{worker_number}"
@@ -29,7 +40,7 @@ class PaastaDeployWorker(PaastaThread):
         self.busy = False
         self.setup()
 
-    def setup(self):
+    def setup(self) -> None:
         system_paasta_config = load_system_paasta_config()
         self.marathon_servers = marathon_tools.get_marathon_servers(
             system_paasta_config
@@ -38,7 +49,7 @@ class PaastaDeployWorker(PaastaThread):
             self.marathon_servers
         )
 
-    def setup_timers(self, service_instance):
+    def setup_timers(self, service_instance: ServiceInstance) -> BounceTimers:
         bounce_timers = service_instance.bounce_timers
         if bounce_timers:
             bounce_timers.processed_by_worker.stop()
@@ -69,7 +80,7 @@ class PaastaDeployWorker(PaastaThread):
             bounce_length=bounce_length_timer,
         )
 
-    def run(self):
+    def run(self) -> None:
         """Takes things from the to_bounce_now queue, processes them, then
         might put them on the bounce_later queue for future processing"""
         self.log.info(f"{self.name} starting up")
@@ -112,7 +123,9 @@ class PaastaDeployWorker(PaastaThread):
             self.busy = False
             time.sleep(0.1)
 
-    def process_service_instance(self, service_instance):
+    def process_service_instance(
+        self, service_instance: ServiceInstance
+    ) -> BounceResults:
         bounce_timers = self.setup_timers(service_instance)
         human_bounce_by = humanize.naturaldelta(
             datetime.timedelta(seconds=(time.time() - service_instance.bounce_by))

@@ -1,6 +1,5 @@
 import logging
 import time
-from collections import namedtuple
 from contextlib import contextmanager
 from queue import Empty
 from queue import PriorityQueue
@@ -17,6 +16,8 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
+from typing_extensions import Protocol
+
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import get_marathon_clients
@@ -24,11 +25,14 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.metrics.metrics_lib import TimerProtocol
 from paasta_tools.utils import load_system_paasta_config
 
-BounceTimers = namedtuple(
-    "BounceTimers", ["processed_by_worker", "setup_marathon", "bounce_length"]
-)
+
+class BounceTimers(NamedTuple):
+    processed_by_worker: TimerProtocol
+    setup_marathon: TimerProtocol
+    bounce_length: TimerProtocol
 
 
 class ServiceInstance(NamedTuple):
@@ -115,7 +119,31 @@ def get_marathon_clients_from_config() -> MarathonClients:
     return marathon_clients
 
 
-class DelayDeadlineQueue:
+class DelayDeadlineQueueProtocol(Protocol):
+    def __init__(self) -> None:
+        ...
+
+    def put(self, si: ServiceInstance) -> None:
+        ...
+
+    @contextmanager
+    def get(
+        self, block: bool = True, timeout: float = None
+    ) -> Generator[ServiceInstance, None, None]:
+        ...
+
+    def get_available_service_instances(
+        self
+    ) -> Iterable[Tuple[float, ServiceInstance]]:
+        ...
+
+    def get_unavailable_service_instances(
+        self
+    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        ...
+
+
+class DelayDeadlineQueue(DelayDeadlineQueueProtocol):
     """Entries into this queue have both a wait_until and a bounce_by. Before wait_until, get() will not return an entry.
     get() returns the entry whose wait_until has passed and which has the lowest bounce_by."""
 

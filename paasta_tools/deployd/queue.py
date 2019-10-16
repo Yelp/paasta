@@ -4,20 +4,29 @@ import uuid
 from contextlib import contextmanager
 from queue import Empty
 from threading import Condition
+from typing import Generator
 from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Set
 from typing import Tuple
 
+from kazoo.client import KazooClient
 from kazoo.exceptions import NodeExistsError
 from kazoo.exceptions import NoNodeError
+from kazoo.protocol.states import WatchedEvent
+from kazoo.protocol.states import ZnodeStat
 
+from paasta_tools.deployd.common import BounceTimers
+from paasta_tools.deployd.common import DelayDeadlineQueueProtocol
 from paasta_tools.deployd.common import ServiceInstance
 
 DEPLOYD_QUEUE_ROOT = "/paasta-deployd-queue"
 MAX_SLEEP_TIME = 3600
 
 
-class ZKDelayDeadlineQueue:
-    def __init__(self, client, path=DEPLOYD_QUEUE_ROOT):
+class ZKDelayDeadlineQueue(DelayDeadlineQueueProtocol):
+    def __init__(self, client: KazooClient, path: str = DEPLOYD_QUEUE_ROOT) -> None:
         self.client = client
         self.id = uuid.uuid4().hex.encode()
 
@@ -27,11 +36,11 @@ class ZKDelayDeadlineQueue:
             self.client.ensure_path(path)
 
         self.local_state_condition = Condition()
-        self.entry_nodes = []
-        self.locked_entry_nodes = set()
+        self.entry_nodes: List[str] = []
+        self.locked_entry_nodes: Set[str] = set()
         self._update_local_state(None)
 
-    def _update_local_state(self, event):
+    def _update_local_state(self, event: WatchedEvent) -> None:
         with self.local_state_condition:
             entry_nodes = self.client.retry(
                 self.client.get_children,
@@ -48,7 +57,7 @@ class ZKDelayDeadlineQueue:
             )
             self.local_state_condition.notify()
 
-    def _format_timestamp(self, timestamp: float):
+    def _format_timestamp(self, timestamp: float) -> str:
         if not isinstance(timestamp, (int, float)):
             raise TypeError(f"timestamp must be int or float, got {timestamp!r}")
         if not (0 < timestamp < 9999999999.9995):
@@ -61,18 +70,24 @@ class ZKDelayDeadlineQueue:
 
         return formatted
 
-    def put(self, si: ServiceInstance):
+    def put(self, si: ServiceInstance) -> None:
         bounce_by = self._format_timestamp(si.bounce_by)
         wait_until = self._format_timestamp(si.wait_until)
 
         self.client.create(
             f"{self.entries_path}/entry-{bounce_by}-{wait_until}-",
-            value=json.dumps(si._asdict()).encode("utf-8"),
+            value=self._serialize_si(si),
             sequence=True,
         )
 
+    def _serialize_si(self, si: ServiceInstance) -> bytes:
+        si_dict = si._asdict()
+        return json.dumps(si_dict).encode("utf-8")
+
     @contextmanager
-    def get(self, block: bool = True, timeout: float = float("inf")):
+    def get(
+        self, block: bool = True, timeout: float = float("inf")
+    ) -> Generator[ServiceInstance, None, None]:
         if not block:
             timeout = 0.0
         timeout_timestamp = time.time() + timeout
@@ -109,14 +124,15 @@ class ZKDelayDeadlineQueue:
             self._consume(first_available_entry_node)
 
     def _parse_data(self, entry_data: bytes) -> ServiceInstance:
-        return ServiceInstance(**json.loads(entry_data.decode("utf-8")))
+        si_dict = json.loads(entry_data.decode("utf-8"))
+        return ServiceInstance(**si_dict)
 
     def _parse_entry_node(self, path: str) -> Tuple[float, float]:
         basename = path.split("/")[-1]
         _, priority, wait_until, _ = basename.split("-", maxsplit=4)
         return float(priority), float(wait_until)
 
-    def _get_first_available_entry_node(self):
+    def _get_first_available_entry_node(self) -> Optional[str]:
         for entry_node in self.entry_nodes:
             if entry_node not in self.locked_entry_nodes:
                 _, wait_until = self._parse_entry_node(entry_node)
@@ -133,7 +149,7 @@ class ZKDelayDeadlineQueue:
                 next_upcoming_wait_until = min(next_upcoming_wait_until, wait_until)
         return next_upcoming_wait_until
 
-    def _lock_and_get_entry(self, entry_node: str):
+    def _lock_and_get_entry(self, entry_node: str) -> Optional[Tuple[bytes, ZnodeStat]]:
         try:
             lock_path = f"{self.locks_path}/{entry_node}"
             self.locked_entry_nodes.add(entry_node)
@@ -148,7 +164,7 @@ class ZKDelayDeadlineQueue:
             self.client.delete(lock_path)
             return None
 
-    def _consume(self, entry_node: str):
+    def _consume(self, entry_node: str) -> None:
         # necessary in case we lose connection at some point
         if not self._holds_lock(entry_node):
             return  # TODO: log?
@@ -156,31 +172,18 @@ class ZKDelayDeadlineQueue:
             transaction.delete(f"{self.locks_path}/{entry_node}")
             transaction.delete(f"{self.entries_path}/{entry_node}")
 
-    def _holds_lock(self, entry_node: str):
+    def _holds_lock(self, entry_node: str) -> bool:
         lock_path = f"{self.locks_path}/{entry_node}"
         self.client.sync(lock_path)
         value, stat = self.client.retry(self.client.get, lock_path)
         return value == self.id
 
-    def _release(self, entry_node: str):
+    def _release(self, entry_node: str) -> None:
         if not self._holds_lock(entry_node):
             return
         self.client.delete(f"{self.locks_path}/{entry_node}")
 
-    def get_available_service_instances(
-        self
-    ) -> Iterable[Tuple[float, ServiceInstance]]:
-        results = []
-        with self.local_state_condition:
-            for entry_node in self.entry_nodes:
-                if entry_node not in self.locked_entry_nodes:
-                    deadline, wait_until = self._parse_entry_node(entry_node)
-                    now = time.time()
-                    if wait_until <= now:
-                        results.append((deadline, entry_node))
-        return results
-
-    def get_unavailable_service_instances(
+    def _get_all_unlocked_service_instances(
         self
     ) -> Iterable[Tuple[float, float, ServiceInstance]]:
         results = []
@@ -188,7 +191,23 @@ class ZKDelayDeadlineQueue:
             for entry_node in self.entry_nodes:
                 if entry_node not in self.locked_entry_nodes:
                     deadline, wait_until = self._parse_entry_node(entry_node)
-                    now = time.time()
-                    if wait_until > now:
-                        results.append((wait_until, deadline, entry_node))
+                    data, _ = self.client.get(f"{self.entries_path}/{entry_node}")
+                    si = self._parse_data(data)
+                    results.append((deadline, wait_until, si))
         return results
+
+    def get_available_service_instances(
+        self
+    ) -> Iterable[Tuple[float, ServiceInstance]]:
+        now = time.time()
+        for deadline, wait_until, si in self._get_all_unlocked_service_instances():
+            if wait_until <= now:
+                yield (deadline, si)
+
+    def get_unavailable_service_instances(
+        self
+    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        now = time.time()
+        for deadline, wait_until, si in self._get_all_unlocked_service_instances():
+            if wait_until > now:
+                yield (wait_until, deadline, si)

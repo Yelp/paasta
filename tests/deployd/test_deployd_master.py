@@ -24,6 +24,9 @@ class FakePyinotify:  # pragma: no cover
     def Notifier():
         pass
 
+    class Event:
+        pass
+
 
 # This module is only available on linux
 # and we will be mocking it in the unit tests anyway
