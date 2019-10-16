@@ -691,7 +691,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
                 )
             ),
-            name=self.get_sanitised_deployment_name(),
+            name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[V1ContainerPort(container_port=self.get_container_port())],
             security_context=self.get_security_context(),
@@ -815,7 +815,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         statefulsets which are clever enough to manage EBS for you"""
 
         if self.get_desired_state() == "start":
-            instances = self.config_dict.get("instances") or self.get_min_instances()
+            instances = self.config_dict.get("instances", self.get_min_instances())
         elif self.get_desired_state() == "stop":
             instances = 0
             log.debug("Instance is set to stop. Returning '0' instances")
@@ -1639,3 +1639,46 @@ def load_custom_resource_definitions(
             )
         )
     return custom_resources
+
+
+def sanitised_cr_name(service: str, instance: str) -> str:
+    sanitised_service = sanitise_kubernetes_name(service)
+    sanitised_instance = sanitise_kubernetes_name(instance)
+    return f"{sanitised_service}-{sanitised_instance}"
+
+
+def get_cr(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
+    try:
+        return kube_client.custom.get_namespaced_custom_object(**cr_id)
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
+
+
+def get_cr_status(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
+    return (get_cr(kube_client, cr_id) or {}).get("status")
+
+
+def get_cr_metadata(
+    kube_client: KubeClient, cr_id: dict
+) -> Optional[Mapping[str, Any]]:
+    return (get_cr(kube_client, cr_id) or {}).get("metadata")
+
+
+def set_cr_desired_state(
+    kube_client: KubeClient, cr_id: dict, desired_state: str
+) -> str:
+    cr = kube_client.custom.get_namespaced_custom_object(**cr_id)
+    if cr.get("status", {}).get("state") == desired_state:
+        return cr["status"]
+
+    if "metadata" not in cr:
+        cr["metadata"] = {}
+    if "annotations" not in cr["metadata"]:
+        cr["metadata"]["annotations"] = {}
+    cr["metadata"]["annotations"]["yelp.com/desired_state"] = desired_state
+    kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
+    status = cr.get("status")
+    return status

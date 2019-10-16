@@ -277,6 +277,8 @@ def paasta_start_or_stop(args, desired_state):
 
     return_val = 0
 
+    # TODO: Refactor to discover if set_state is available for given
+    #       instance_type in API
     if affected_flinks:
         print_flink_message(desired_state)
         csi = defaultdict(lambda: defaultdict(list))

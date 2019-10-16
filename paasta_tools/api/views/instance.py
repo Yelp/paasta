@@ -43,6 +43,7 @@ from pyramid.view import view_config
 from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools import cassandracluster_tools
 from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
@@ -52,7 +53,6 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
-from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
@@ -82,6 +82,8 @@ from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
+from paasta_tools.utils import INSTANCE_TYPES_K8S
+from paasta_tools.utils import INSTANCE_TYPES_WITH_SET_STATE
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import TimeoutError
@@ -146,28 +148,18 @@ def adhoc_instance_status(
     return status
 
 
-def flink_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
-) -> Optional[Mapping[str, Any]]:
-    status: Optional[Mapping[str, Any]] = None
+def kubernetes_cr_status(cr_id: dict, verbose: int) -> Optional[Mapping[str, Any]]:
     client = settings.kubernetes_client
     if client is not None:
-        status = flink_tools.get_flink_status(
-            kube_client=client, service=service, instance=instance
-        )
-    return status
+        return kubernetes_tools.get_cr_status(kube_client=client, cr_id=cr_id)
+    return None
 
 
-def flink_instance_metadata(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
-) -> Optional[Mapping[str, Any]]:
-    metadata: Optional[Mapping[str, Any]] = None
+def kubernetes_cr_metadata(cr_id: dict, verbose: int) -> Optional[Mapping[str, Any]]:
     client = settings.kubernetes_client
     if client is not None:
-        metadata = flink_tools.get_flink_metadata(
-            kube_client=client, service=service, instance=instance
-        )
-    return metadata
+        return kubernetes_tools.get_cr_metadata(kube_client=client, cr_id=cr_id)
+    return None
 
 
 def kubernetes_instance_status(
@@ -769,6 +761,18 @@ async def get_mesos_non_running_task_dict(
     return task_dict
 
 
+INSTANCE_TYPE_CR_ID = dict(
+    flink=flink_tools.cr_id, cassandracluster=cassandracluster_tools.cr_id
+)
+
+
+def cr_id_fn_for_instance_type(instance_type: str):
+    if instance_type not in INSTANCE_TYPE_CR_ID:
+        raise ApiFailure(f"Error looking up cr_id function for {instance_type}", 500)
+
+    return INSTANCE_TYPE_CR_ID[instance_type]
+
+
 @view_config(
     route_name="service.instance.status", request_method="GET", renderer="json"
 )
@@ -844,16 +848,16 @@ def instance_status(request):
             instance_status["tron"] = tron_instance_status(
                 instance_status, service, instance, verbose
             )
-        elif instance_type == "flink":
-            status = flink_instance_status(instance_status, service, instance, verbose)
-            metadata = flink_instance_metadata(
-                instance_status, service, instance, verbose
-            )
-            instance_status["flink"] = {}
+        elif instance_type in INSTANCE_TYPES_K8S:
+            cr_id_fn = cr_id_fn_for_instance_type(instance_type)
+            cr_id = cr_id_fn(service, instance)
+            status = kubernetes_cr_status(cr_id, verbose)
+            metadata = kubernetes_cr_metadata(cr_id, verbose)
+            instance_status[instance_type] = {}
             if status is not None:
-                instance_status["flink"]["status"] = status
+                instance_status[instance_type]["status"] = status
             if metadata is not None:
-                instance_status["flink"]["metadata"] = metadata
+                instance_status[instance_type]["metadata"] = metadata
         else:
             error_message = (
                 f"Unknown instance_type {instance_type} of {service}.{instance}"
@@ -887,20 +891,27 @@ def instance_set_state(request,) -> None:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type == "flink":
+    if instance_type in INSTANCE_TYPES_WITH_SET_STATE:
         try:
+            cr_id_fn = cr_id_fn_for_instance_type(instance_type)
             kube_client = KubeClient()
-            set_flink_desired_state(
+            kubernetes_tools.set_cr_desired_state(
                 kube_client=kube_client,
-                service=service,
-                instance=instance,
+                cr_id=cr_id_fn(service=service, instance=instance),
                 desired_state=desired_state,
             )
         except ApiException as e:
-            error_message = f"Error while setting state {desired_state} of {service}.{instance}: {e}"
+            error_message = (
+                f"Error while setting state {desired_state} of "
+                f"{service}.{instance}: {e}"
+            )
             raise ApiFailure(error_message, 500)
     else:
-        error_message = f"Unknown instance_type {instance_type} of {service}.{instance}"
+        error_message = (
+            f"instance_type {instance_type} of {service}.{instance} doesn't "
+            f"support set_state, must be in INSTANCE_TYPES_WITH_SET_STATE, "
+            f"currently: {INSTANCE_TYPES_WITH_SET_STATE}"
+        )
         raise ApiFailure(error_message, 404)
 
 

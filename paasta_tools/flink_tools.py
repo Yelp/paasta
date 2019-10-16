@@ -18,13 +18,11 @@ from typing import Optional
 
 import requests
 import service_configuration_lib
-from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import InvalidJobNameError
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
@@ -154,70 +152,20 @@ def load_flink_instance_config(
     )
 
 
-def sanitised_name(service: str, instance: str) -> str:
-    sanitised_service = sanitise_kubernetes_name(service)
-    sanitised_instance = sanitise_kubernetes_name(instance)
-    return f"{sanitised_service}-{sanitised_instance}"
-
-
-def flink_custom_object_id(service: str, instance: str) -> Mapping[str, str]:
+# TODO: read this from CRD in service configs
+def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
         namespace="paasta-flinks",
         plural="flinks",
-        name=sanitised_name(service, instance),
+        name=sanitised_cr_name(service, instance),
     )
 
 
-def get_flink_status(
-    kube_client: KubeClient, service: str, instance: str
-) -> Optional[Mapping[str, Any]]:
-    try:
-        co = kube_client.custom.get_namespaced_custom_object(
-            **flink_custom_object_id(service, instance)
-        )
-        status = co.get("status")
-        return status
-    except ApiException as e:
-        if e.status == 404:
-            return None
-        else:
-            raise
-
-
-def get_flink_metadata(
-    kube_client: KubeClient, service: str, instance: str
-) -> Optional[Mapping[str, Any]]:
-    try:
-        co = kube_client.custom.get_namespaced_custom_object(
-            **flink_custom_object_id(service, instance)
-        )
-        metadata = co.get("metadata")
-        return metadata
-    except ApiException as e:
-        if e.status == 404:
-            return None
-        else:
-            raise
-
-
-def set_flink_desired_state(
-    kube_client: KubeClient, service: str, instance: str, desired_state: str
-) -> str:
-    co_id = flink_custom_object_id(service, instance)
-    co = kube_client.custom.get_namespaced_custom_object(**co_id)
-    if co.get("status", {}).get("state") == desired_state:
-        return co["status"]
-
-    if "metadata" not in co:
-        co["metadata"] = {}
-    if "annotations" not in co["metadata"]:
-        co["metadata"]["annotations"] = {}
-    co["metadata"]["annotations"]["yelp.com/desired_state"] = desired_state
-    kube_client.custom.replace_namespaced_custom_object(**co_id, body=co)
-    status = co.get("status")
-    return status
+def get_dashboard_url(cluster: str, service: str, instance: str) -> str:
+    sname = sanitised_cr_name(service, instance)
+    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}"
 
 
 def get_flink_ingress_url_root(cluster: str) -> str:
@@ -226,7 +174,7 @@ def get_flink_ingress_url_root(cluster: str) -> str:
 
 def _dashboard_get(service: str, instance: str, cluster: str, path: str) -> str:
     root = get_flink_ingress_url_root(cluster)
-    name = sanitised_name(service, instance)
+    name = sanitised_cr_name(service, instance)
     url = f"{root}{name}/{path}"
     response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
     response.raise_for_status()
