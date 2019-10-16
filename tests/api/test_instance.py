@@ -16,11 +16,13 @@ import datetime
 import asynctest
 import mock
 import pytest
+from kubernetes.client import V1Pod
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 from pyramid import testing
 from requests.exceptions import ReadTimeout
 
+from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
@@ -31,13 +33,14 @@ from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
 from paasta_tools.smartstack_tools import HaproxyBackend
+from paasta_tools.smartstack_tools import SmartstackHost
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 
-@pytest.mark.parametrize("omit_mesos", [True, False])
-@pytest.mark.parametrize("omit_smartstack", [True, False])
+@pytest.mark.parametrize("include_mesos", [False, True])
+@pytest.mark.parametrize("include_smartstack", [False, True])
 @mock.patch("paasta_tools.api.views.instance.marathon_mesos_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.marathon_smartstack_status", autospec=True)
 @mock.patch(
@@ -69,8 +72,8 @@ def test_instance_status_marathon(
     mock_load_service_namespace_config,
     mock_marathon_smartstack_status,
     mock_marathon_mesos_status,
-    omit_smartstack,
-    omit_mesos,
+    include_smartstack,
+    include_mesos,
 ):
     settings.cluster = "fake_cluster"
 
@@ -106,8 +109,8 @@ def test_instance_status_marathon(
         "service": "fake_service",
         "instance": "fake_instance",
         "verbose": 2,
-        "omit_smartstack": omit_smartstack,
-        "omit_mesos": omit_mesos,
+        "include_smartstack": include_smartstack,
+        "include_mesos": include_mesos,
     }
     response = instance.instance_status(request)
 
@@ -115,9 +118,9 @@ def test_instance_status_marathon(
         "marathon_job_status_field1": "field1_value",
         "marathon_job_status_field2": "field2_value",
     }
-    if not omit_smartstack:
+    if include_smartstack:
         expected_response["smartstack"] = mock_marathon_smartstack_status.return_value
-    if not omit_mesos:
+    if include_mesos:
         expected_response["mesos"] = mock_marathon_mesos_status.return_value
     assert response["marathon"] == expected_response
 
@@ -128,11 +131,11 @@ def test_instance_status_marathon(
         mock_get_matching_apps_with_clients.return_value,
         2,
     )
-    if not omit_mesos:
+    if include_mesos:
         mock_marathon_mesos_status.assert_called_once_with(
             "fake_service", "fake_instance", 2
         )
-    if not omit_smartstack:
+    if include_smartstack:
         mock_marathon_smartstack_status.assert_called_once_with(
             "fake_service",
             "fake_instance",
@@ -398,6 +401,86 @@ def test_marathon_smartstack_status(
         mock_service_config,
         mock_service_namespace_config,
         tasks=[mock_task],
+        should_return_individual_backends=True,
+    )
+    assert smartstack_status == {
+        "registration": "fake_service.fake_instance",
+        "expected_backends_per_location": 2,
+        "locations": [
+            {
+                "name": "us-north-3",
+                "running_backends_count": 1,
+                "backends": [
+                    {
+                        "hostname": "host1",
+                        "port": 123,
+                        "status": "UP",
+                        "check_status": "L7OK",
+                        "check_code": "0",
+                        "last_change": 9876,
+                        "has_associated_task": True,
+                        "check_duration": 1,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+@mock.patch("paasta_tools.api.views.instance.match_backends_and_pods", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.get_backends", autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.instance.KubeSmartstackReplicationChecker", autospec=True
+)
+@mock.patch(
+    "paasta_tools.api.views.instance.kubernetes_tools.get_all_nodes", autospec=True
+)
+@mock.patch(
+    "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
+    autospec=True,
+)
+def test_kubernetes_smartstack_status(
+    mock_get_expected_instance_count_for_namespace,
+    mock_get_all_nodes,
+    mock_kube_smartstack_replication_checker,
+    mock_get_backends,
+    mock_match_backends_and_pods,
+):
+    mock_get_all_nodes.return_value = [
+        {"hostname": "host1.paasta.party", "attributes": {"region": "us-north-3"}}
+    ]
+
+    mock_kube_smartstack_replication_checker.return_value.get_allowed_locations_and_hosts.return_value = {
+        "us-north-3": [SmartstackHost(hostname="host1.paasta.party", pool="default")]
+    }
+
+    mock_get_expected_instance_count_for_namespace.return_value = 2
+    mock_backend = HaproxyBackend(
+        status="UP",
+        svname="host1_1.2.3.4:123",
+        check_status="L7OK",
+        check_code="0",
+        check_duration="1",
+        lastchg="9876",
+    )
+    mock_pod = mock.create_autospec(V1Pod)
+    mock_match_backends_and_pods.return_value = [(mock_backend, mock_pod)]
+
+    mock_job_config = kubernetes_tools.KubernetesDeploymentConfig(
+        service="fake_service",
+        cluster="fake_cluster",
+        instance="fake_instance",
+        config_dict={"bounce_method": "fake_bounce"},
+        branch_dict=None,
+    )
+    mock_service_namespace_config = ServiceNamespaceConfig()
+
+    smartstack_status = instance.kubernetes_smartstack_status(
+        "fake_service",
+        "fake_instance",
+        mock_job_config,
+        mock_service_namespace_config,
+        pods=[mock_pod],
         should_return_individual_backends=True,
     )
     assert smartstack_status == {

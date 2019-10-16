@@ -1,3 +1,18 @@
+paasta-tools (0.87.3) xenial; urgency=medium
+
+  * 0.87.3 tagged with 'make release'
+    Commit: fix the bug that cannot replica cannot be 0 (#2474)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 15 Oct 2019 16:40:50 -0700
+
+paasta-tools (0.87.2) xenial; urgency=medium
+
+  * 0.87.2 tagged with 'make release'
+    Commit: Fix a bug when instance is 0 in setup_kubernetes_jobs
+    (#2469)  Fix a bug when instance is 0 in setup_kubernetes_jobs
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Fri, 11 Oct 2019 11:59:24 -0700
+
 paasta-tools (0.87.1) xenial; urgency=medium
 
   * 0.87.1 tagged with 'make release'

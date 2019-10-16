@@ -680,7 +680,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
                 )
             ),
-            name=self.get_sanitised_deployment_name(),
+            name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
             ports=[V1ContainerPort(container_port=self.get_container_port())],
             security_context=self.get_security_context(),
@@ -804,7 +804,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         statefulsets which are clever enough to manage EBS for you"""
 
         if self.get_desired_state() == "start":
-            instances = self.config_dict.get("instances") or self.get_min_instances()
+            instances = self.config_dict.get("instances", self.get_min_instances())
         elif self.get_desired_state() == "stop":
             instances = 0
             log.debug("Instance is set to stop. Returning '0' instances")

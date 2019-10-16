@@ -495,7 +495,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         period_seconds=10,
                         timeout_seconds=10,
                     ),
-                    name="kurupt-fm",
+                    name="fm",
                     ports=[V1ContainerPort(container_port=8888)],
                     volume_mounts=mock_get_volume_mounts.return_value,
                 ),

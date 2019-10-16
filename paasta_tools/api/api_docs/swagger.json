@@ -330,15 +330,15 @@
                     },
                     {
                         "in": "query",
-                        "description": "Omit Smartstack information",
-                        "name": "omit_smartstack",
+                        "description": "Include Smartstack information",
+                        "name": "include_smartstack",
                         "required": false,
                         "type": "boolean"
                     },
                     {
                         "in": "query",
-                        "description": "Omit Mesos information",
-                        "name": "omit_mesos",
+                        "description": "Include Mesos information",
+                        "name": "include_mesos",
                         "required": false,
                         "type": "boolean"
                     }
@@ -1116,6 +1116,10 @@
                     "type": "number",
                     "format": "float",
                     "description": "Unix timestamp when this app was created"
+                },
+                "smartstack": {
+                    "$ref": "#/definitions/SmartstackStatus",
+                    "description": "Status of the service in smartstack"
                 },
                 "namespace": {
                     "type": "string",
