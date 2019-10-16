@@ -82,16 +82,14 @@ from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
+from paasta_tools.utils import INSTANCE_TYPES_K8S
+from paasta_tools.utils import INSTANCE_TYPES_WITH_SET_STATE
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
-
-
-INSTANCE_TYPES_K8S = {"flink", "cassandracluster"}
-INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 
 
 def tron_instance_status(
