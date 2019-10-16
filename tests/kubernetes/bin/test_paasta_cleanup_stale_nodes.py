@@ -3,10 +3,10 @@ import pytest
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes.bin.cleanup_nodes import does_instance_exist
-from paasta_tools.kubernetes.bin.cleanup_nodes import main
-from paasta_tools.kubernetes.bin.cleanup_nodes import nodes_for_cleanup
-from paasta_tools.kubernetes.bin.cleanup_nodes import terminate_nodes
+from paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes import does_instance_exist
+from paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes import main
+from paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes import nodes_for_cleanup
+from paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes import terminate_nodes
 
 
 def test_nodes_for_cleanup():
