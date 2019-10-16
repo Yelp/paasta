@@ -31,7 +31,6 @@ from typing import Sequence
 import yaml
 
 from paasta_tools.flink_tools import get_flink_ingress_url_root
-from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -41,6 +40,7 @@ from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
