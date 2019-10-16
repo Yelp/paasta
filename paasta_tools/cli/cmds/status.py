@@ -44,6 +44,7 @@ from service_configuration_lib import read_deploy
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -83,6 +84,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    CassandraClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
@@ -1282,7 +1284,7 @@ def apply_args_filters(
     return clusters_services_instances
 
 
-def paasta_status(args,) -> int:
+def paasta_status(args) -> int:
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir

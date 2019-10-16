@@ -125,6 +125,8 @@ INSTANCE_TYPES = (
     "flink",
     "cassandracluster",
 )
+INSTANCE_TYPES_K8S = {"flink", "cassandracluster"}
+INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 
 
 class TimeCacheEntry(TypedDict):
