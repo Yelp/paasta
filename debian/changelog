@@ -1,3 +1,18 @@
+paasta-tools (0.87.4) xenial; urgency=medium
+
+  * 0.87.4 tagged with 'make release'
+    Commit: Merge pull request #2426 from Yelp/cassandra-cmds  Support
+    cassandracluster in paasta status and start/stop/restart
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 16 Oct 2019 03:40:08 -0700
+
+paasta-tools (0.87.3) xenial; urgency=medium
+
+  * 0.87.3 tagged with 'make release'
+    Commit: fix the bug that cannot replica cannot be 0 (#2474)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 15 Oct 2019 16:40:50 -0700
+
 paasta-tools (0.87.2) xenial; urgency=medium
 
   * 0.87.2 tagged with 'make release'

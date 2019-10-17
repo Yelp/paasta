@@ -44,6 +44,7 @@ from service_configuration_lib import read_deploy
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -83,6 +84,7 @@ from paasta_tools.utils import SystemPaastaConfig
 
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    CassandraClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
@@ -349,10 +351,6 @@ def print_marathon_status(
             marathon_status.smartstack.registration,
             marathon_status.smartstack.expected_backends_per_location,
             marathon_status.smartstack.locations,
-            # TODO: this is just to avoid rollout issues where the client updates
-            # before the API server.  This can be removed after it first rolls
-            # out
-            getattr(marathon_status.smartstack, "error_message", None),
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
@@ -646,11 +644,9 @@ def format_kubernetes_pod_table(pods):
 
 
 def get_smartstack_status_human(
-    registration, expected_backends_per_location, locations, error_message
+    registration, expected_backends_per_location, locations
 ) -> List[str]:
-    if error_message:
-        return [f"Smartstack: {PaastaColors.red(error_message)}"]
-    elif len(locations) == 0:
+    if len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
 
     output = ["Smartstack:"]
@@ -916,7 +912,6 @@ def print_kubernetes_status(
             kubernetes_status.smartstack.registration,
             kubernetes_status.smartstack.expected_backends_per_location,
             kubernetes_status.smartstack.locations,
-            getattr(kubernetes_status.smartstack, "error_message", None),
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
     return 0
@@ -1289,7 +1284,7 @@ def apply_args_filters(
     return clusters_services_instances
 
 
-def paasta_status(args,) -> int:
+def paasta_status(args) -> int:
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir

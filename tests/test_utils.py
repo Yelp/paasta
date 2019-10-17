@@ -28,6 +28,13 @@ from pytest import raises
 from paasta_tools import utils
 
 
+def test_instance_types_integrity():
+    for it in utils.INSTANCE_TYPES_K8S:
+        assert it in utils.INSTANCE_TYPES
+    for it in utils.INSTANCE_TYPES_WITH_SET_STATE:
+        assert it in utils.INSTANCE_TYPES
+
+
 def test_get_git_url_provided_by_serviceyaml():
     service = "giiiiiiiiiiit"
     expected = "git@some_random_host:foobar"

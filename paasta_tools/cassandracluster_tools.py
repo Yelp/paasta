@@ -11,12 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import List
+from typing import Mapping
 from typing import Optional
 
 import service_configuration_lib
 
 from paasta_tools.kubernetes_tools import InvalidJobNameError
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
+from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
@@ -139,4 +141,15 @@ def load_cassandracluster_instance_config(
         config_dict=general_config,
         branch_dict=branch_dict,
         soa_dir=soa_dir,
+    )
+
+
+# TODO: read this from CRD in service configs
+def cr_id(service: str, instance: str) -> Mapping[str, str]:
+    return dict(
+        group="yelp.com",
+        version="v1alpha1",
+        namespace="paasta-cassandraclusters",
+        plural="cassandraclusters",
+        name=sanitised_cr_name(service, instance),
     )
