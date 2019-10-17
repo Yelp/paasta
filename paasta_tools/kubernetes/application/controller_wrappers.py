@@ -1,4 +1,5 @@
 import logging
+import threading
 from abc import ABC
 from abc import abstractmethod
 from time import sleep
@@ -198,22 +199,35 @@ class DeploymentWrapper(Application):
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
-    def deep_delete_and_wait(self, kube_client: KubeClient) -> None:
+    def deep_delete_and_create(self, kube_client: KubeClient) -> None:
+        self.logging.debug(
+            f"Deep Delete {self.kube_deployment.service} {self.kube_deployment.instance}."
+        )
         self.deep_delete(kube_client)
         while self.kube_deployment in set(list_all_deployments(kube_client)):
             self.logging.debug(
-                "waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
+                f"waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
             )
             sleep(0.5)
+        self.logging.debug(
+            f"{self.kube_deployment.service} {self.kube_deployment.instance} are deleted, creating new one."
+        )
+        create_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        self.logging.debug(
+            f"Finished creating {self.kube_deployment.service} {self.kube_deployment.instance}"
+        )
 
     def update(self, kube_client: KubeClient) -> None:
         # If autoscaling is enabled, do not update replicas.
         # In all other cases, replica is set to max(instances, min_instances)
         if self.get_soa_config().get("bounce_method", "") == "brutal":
-            self.deep_delete_and_wait(kube_client)
+            threading.Thread(
+                target=self.deep_delete_and_create, args=[KubeClient()]
+            ).start()
         if self.get_soa_config().get("instances") is not None:
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        self.logging.debug("calling ensure blabla")
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
