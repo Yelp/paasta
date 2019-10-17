@@ -1,5 +1,6 @@
 import datetime
 import time
+import traceback
 from typing import NamedTuple
 
 import humanize
@@ -19,7 +20,6 @@ from paasta_tools.utils import SystemPaastaConfig
 class BounceResults(NamedTuple):
     bounce_again_in_seconds: float
     return_code: int
-    bounce_timers: BounceTimers
 
 
 class PaastaDeployWorker(PaastaThread):
@@ -50,18 +50,13 @@ class PaastaDeployWorker(PaastaThread):
         )
 
     def setup_timers(self, service_instance: ServiceInstance) -> BounceTimers:
-        bounce_timers = service_instance.bounce_timers
-        if bounce_timers:
-            bounce_timers.processed_by_worker.stop()
-            bounce_length_timer = bounce_timers.bounce_length
-        else:
-            bounce_length_timer = self.metrics.create_timer(
-                "bounce_length_timer",
-                service=service_instance.service,
-                instance=service_instance.instance,
-                paasta_cluster=self.cluster,
-            )
-            bounce_length_timer.start()
+        bounce_length_timer = self.metrics.create_timer(
+            "bounce_length_timer",
+            service=service_instance.service,
+            instance=service_instance.instance,
+            paasta_cluster=self.cluster,
+        )
+
         processed_by_worker_timer = self.metrics.create_timer(
             "processed_by_worker",
             service=service_instance.service,
@@ -88,16 +83,15 @@ class PaastaDeployWorker(PaastaThread):
             with self.instances_to_bounce.get() as service_instance:
                 self.busy = True
                 try:
-                    bounce_again_in_seconds, return_code, bounce_timers = self.process_service_instance(
+                    bounce_again_in_seconds, return_code = self.process_service_instance(
                         service_instance
                     )
-                except Exception as e:
+                except Exception:
                     self.log.error(
                         f"{self.name} Worker failed to process service instance and will retry. "
-                        f"Caused by exception: {format(e)}"
+                        f"Caused by exception: {traceback.format_exc()}"
                     )
                     return_code = -2
-                    bounce_timers = service_instance.bounce_timers
                 failures = service_instance.failures
                 if return_code != 0:
                     failures = service_instance.failures + 1
@@ -115,9 +109,10 @@ class PaastaDeployWorker(PaastaThread):
                         bounce_by=bounce_by,
                         wait_until=bounce_by,
                         watcher=self.name,
-                        bounce_timers=bounce_timers,
                         failures=failures,
                         processed_count=service_instance.processed_count + 1,
+                        bounce_start_time=service_instance.bounce_start_time,
+                        enqueue_time=time.time(),
                     )
                     self.instances_to_bounce.put(service_instance)
             self.busy = False
@@ -127,6 +122,11 @@ class PaastaDeployWorker(PaastaThread):
         self, service_instance: ServiceInstance
     ) -> BounceResults:
         bounce_timers = self.setup_timers(service_instance)
+        if service_instance.enqueue_time is not None:
+            bounce_timers.processed_by_worker.record(
+                time.time() - service_instance.enqueue_time
+            )
+
         human_bounce_by = humanize.naturaldelta(
             datetime.timedelta(seconds=(time.time() - service_instance.bounce_by))
         )
@@ -148,7 +148,6 @@ class PaastaDeployWorker(PaastaThread):
             f"{self.name} setup marathon completed with exit code {return_code} for {service_instance.service}.{service_instance.instance}"
         )  # noqa E501
         if bounce_again_in_seconds:
-            bounce_timers.processed_by_worker.start()
             self.log.info(
                 f"{self.name} {service_instance.service}.{service_instance.instance} not in steady state so bouncing again in {bounce_again_in_seconds}"
             )  # noqa E501
@@ -157,5 +156,7 @@ class PaastaDeployWorker(PaastaThread):
                 f"{self.name} {service_instance.service}.{service_instance.instance} in steady state"
             )
             if service_instance.processed_count > 0:
-                bounce_timers.bounce_length.stop()
-        return BounceResults(bounce_again_in_seconds, return_code, bounce_timers)
+                bounce_timers.bounce_length.record(
+                    time.time() - service_instance.bounce_start_time
+                )
+        return BounceResults(bounce_again_in_seconds, return_code)

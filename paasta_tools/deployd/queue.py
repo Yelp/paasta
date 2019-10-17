@@ -17,7 +17,6 @@ from kazoo.exceptions import NoNodeError
 from kazoo.protocol.states import WatchedEvent
 from kazoo.protocol.states import ZnodeStat
 
-from paasta_tools.deployd.common import BounceTimers
 from paasta_tools.deployd.common import DelayDeadlineQueueProtocol
 from paasta_tools.deployd.common import ServiceInstance
 
@@ -124,8 +123,18 @@ class ZKDelayDeadlineQueue(DelayDeadlineQueueProtocol):
             self._consume(first_available_entry_node)
 
     def _parse_data(self, entry_data: bytes) -> ServiceInstance:
+        now = time.time()
+        defaults = {
+            "watcher": "unknown",
+            "bounce_by": now,
+            "wait_until": now,
+            "enqueue_time": now,
+            "bounce_start_time": now,
+            "failures": 0,
+        }
         si_dict = json.loads(entry_data.decode("utf-8"))
-        return ServiceInstance(**si_dict)
+        merged = {**defaults, **si_dict}
+        return ServiceInstance(**merged)  # type: ignore
 
     def _parse_entry_node(self, path: str) -> Tuple[float, float]:
         basename = path.split("/")[-1]

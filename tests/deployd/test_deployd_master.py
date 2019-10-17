@@ -259,9 +259,10 @@ class TestDeployDaemon(unittest.TestCase):
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,
-                        bounce_timers=None,
                         failures=0,
                         processed_count=0,
+                        enqueue_time=1,
+                        bounce_start_time=1,
                     )
                 ),
                 mock.call(
@@ -271,9 +272,10 @@ class TestDeployDaemon(unittest.TestCase):
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,
-                        bounce_timers=None,
                         failures=0,
                         processed_count=0,
+                        enqueue_time=1,
+                        bounce_start_time=1,
                     )
                 ),
             ]

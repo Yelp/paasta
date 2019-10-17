@@ -91,9 +91,10 @@ class AutoscalerWatcher(PaastaWatcher):
             instance=instance,
             bounce_by=time.time(),
             wait_until=time.time(),
-            bounce_timers=None,
             watcher=type(self).__name__,
             failures=0,
+            enqueue_time=time.time(),
+            bounce_start_time=time.time(),
         )
         self.instances_to_bounce.put(service_instance)
 
@@ -277,8 +278,9 @@ class MaintenanceWatcher(PaastaWatcher):
                         bounce_by=time.time(),
                         wait_until=time.time(),
                         watcher=type(self).__name__,
-                        bounce_timers=None,
                         failures=0,
+                        enqueue_time=time.time(),
+                        bounce_start_time=time.time(),
                     )
                 )
         return service_instances
@@ -346,6 +348,8 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                             bounce_by=time.time()
                             + self.public_config.get_deployd_big_bounce_deadline(),
                             wait_until=time.time(),
+                            enqueue_time=time.time(),
+                            bounce_start_time=time.time(),
                         )
                     )
 
@@ -425,7 +429,8 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
                     bounce_by=now + config.get_bounce_start_deadline(),
                     wait_until=now,
                     watcher=type(self).__name__,
-                    bounce_timers=None,
                     failures=0,
+                    enqueue_time=time.time(),
+                    bounce_start_time=time.time(),
                 )
             )

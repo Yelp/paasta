@@ -174,10 +174,11 @@ class TestAutoscalerWatcher(unittest.TestCase):
                     instance="instance",
                     bounce_by=1,
                     wait_until=1,
-                    bounce_timers=None,
                     watcher=self.watcher.__class__.__name__,
                     failures=0,
                     processed_count=0,
+                    enqueue_time=1,
+                    bounce_start_time=1,
                 )
             )
 
@@ -192,10 +193,11 @@ class TestAutoscalerWatcher(unittest.TestCase):
                     instance="instance",
                     bounce_by=1,
                     wait_until=1,
-                    bounce_timers=None,
                     watcher=self.watcher.__class__.__name__,
                     failures=0,
                     processed_count=0,
+                    enqueue_time=1,
+                    bounce_start_time=1,
                 )
             )
 
@@ -436,9 +438,10 @@ class TestMaintenanceWatcher(unittest.TestCase):
                     bounce_by=1,
                     wait_until=1,
                     watcher=self.watcher.__class__.__name__,
-                    bounce_timers=None,
                     failures=0,
                     processed_count=0,
+                    enqueue_time=1,
+                    bounce_start_time=1,
                 ),
                 ServiceInstance(
                     service="universe",
@@ -446,9 +449,10 @@ class TestMaintenanceWatcher(unittest.TestCase):
                     bounce_by=1,
                     wait_until=1,
                     watcher=self.watcher.__class__.__name__,
-                    bounce_timers=None,
                     failures=0,
                     processed_count=0,
+                    enqueue_time=1,
+                    bounce_start_time=1,
                 ),
             ]
             assert ret == expected
@@ -548,6 +552,8 @@ class TestPublicConfigEventHandler(unittest.TestCase):
                 watcher="PublicConfigEventHandler",
                 bounce_by=101.0,
                 wait_until=1.0,
+                enqueue_time=1.0,
+                bounce_start_time=1.0,
             )
 
 
@@ -684,9 +690,10 @@ class TestYelpSoaEventHandler(unittest.TestCase):
                 bounce_by=1,
                 wait_until=1,
                 watcher="YelpSoaEventHandler",
-                bounce_timers=None,
                 failures=0,
                 processed_count=0,
+                enqueue_time=1,
+                bounce_start_time=1,
             )
             self.mock_filewatcher.instances_to_bounce.put.assert_called_with(
                 expected_si

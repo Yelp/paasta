@@ -42,7 +42,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.worker.setup()
 
     def test_setup_timers(self):
-        mock_si = mock.Mock(bounce_timers=None, service="universe", instance="c137")
+        mock_si = mock.Mock(service="universe", instance="c137")
         ret = self.worker.setup_timers(mock_si)
         calls = [
             mock.call(
@@ -51,7 +51,6 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 paasta_cluster="westeros-prod",
                 instance="c137",
             ),
-            mock.call().start(),
             mock.call(
                 "processed_by_worker",
                 service="universe",
@@ -79,25 +78,26 @@ class TestPaastaDeployWorker(unittest.TestCase):
             "paasta_tools.deployd.workers.PaastaDeployWorker.process_service_instance",
             autospec=True,
         ) as mock_process_service_instance:
-            mock_timers = mock.Mock()
             mock_bounce_results = BounceResults(
-                bounce_again_in_seconds=None, return_code=0, bounce_timers=mock_timers
+                bounce_again_in_seconds=None, return_code=0
             )
             mock_process_service_instance.return_value = mock_bounce_results
             mock_sleep.side_effect = LoopBreak
             mock_si = mock.Mock(
-                service="universe", instance="c137", failures=0, processed_count=0
+                service="universe",
+                instance="c137",
+                failures=0,
+                processed_count=0,
+                bounce_start_time=123456789.0,
             )
-            self.mock_instances_to_bounce.get.return_value.__enter__.return_value = (
-                mock_si
-            )
+            self.mock_instances_to_bounce.get().__enter__.return_value = mock_si
             with raises(LoopBreak):
                 self.worker.run()
             mock_process_service_instance.assert_called_with(self.worker, mock_si)
             assert not self.mock_instances_to_bounce.put.called
 
             mock_bounce_results = BounceResults(
-                bounce_again_in_seconds=60, return_code=1, bounce_timers=mock_timers
+                bounce_again_in_seconds=60, return_code=1
             )
             mock_process_service_instance.return_value = mock_bounce_results
             mock_queued_si = ServiceInstance(
@@ -106,9 +106,10 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 bounce_by=61,
                 wait_until=61,
                 watcher="Worker1",
-                bounce_timers=mock_timers,
                 failures=1,
                 processed_count=1,
+                bounce_start_time=123456789.0,
+                enqueue_time=1,
             )
             with raises(LoopBreak):
                 self.worker.run()
@@ -116,7 +117,11 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.mock_instances_to_bounce.put.assert_called_with(mock_queued_si)
 
             mock_si = mock.Mock(
-                service="universe", instance="c137", failures=0, processed_count=0
+                service="universe",
+                instance="c137",
+                failures=0,
+                processed_count=0,
+                bounce_start_time=123456789.0,
             )
             self.mock_instances_to_bounce.get.return_value.__enter__.return_value = (
                 mock_si
@@ -128,9 +133,10 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 bounce_by=61,
                 wait_until=61,
                 watcher="Worker1",
-                bounce_timers=mock_si.bounce_timers,
                 failures=1,
                 processed_count=1,
+                bounce_start_time=123456789.0,
+                enqueue_time=1,
             )
             with raises(LoopBreak):
                 self.worker.run()
@@ -164,9 +170,11 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 processed_count=0,
                 bounce_by=0,
+                enqueue_time=1.0,
+                bounce_start_time=1.0,
             )
             ret = self.worker.process_service_instance(mock_si)
-            expected = BounceResults(None, 0, mock_setup_timers.return_value)
+            expected = BounceResults(None, 0)
             assert ret == expected
             mock_setup_timers.assert_called_with(self.worker, mock_si)
             assert mock_setup_timers.return_value.setup_marathon.start.called
@@ -178,8 +186,6 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 marathon_apps_with_clients=None,
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
-            assert not mock_setup_timers.return_value.processed_by_worker.start.called
-            assert not mock_setup_timers.return_value.bounce_length.stop.called
 
             mock_si = mock.Mock(
                 service="universe",
@@ -187,10 +193,10 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 processed_count=1,
                 bounce_by=0,
+                enqueue_time=1.0,
+                bounce_start_time=1.0,
             )
-            mock_setup_timers.return_value.bounce_length.stop.reset_mock()
             ret = self.worker.process_service_instance(mock_si)
-            assert mock_setup_timers.return_value.bounce_length.stop.called
 
             mock_si = mock.Mock(
                 service="universe",
@@ -198,11 +204,12 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 failures=0,
                 processed_count=1,
                 bounce_by=0,
+                enqueue_time=1.0,
+                bounce_start_time=1.0,
             )
             mock_deploy_marathon_service.return_value = (0, 60)
-            mock_setup_timers.return_value.bounce_length.stop.reset_mock()
             ret = self.worker.process_service_instance(mock_si)
-            expected = BounceResults(60, 0, mock_setup_timers.return_value)
+            expected = BounceResults(60, 0)
             assert ret == expected
             mock_setup_timers.assert_called_with(self.worker, mock_si)
             assert mock_setup_timers.return_value.setup_marathon.start.called
@@ -214,8 +221,6 @@ class TestPaastaDeployWorker(unittest.TestCase):
                 marathon_apps_with_clients=None,
             )
             assert mock_setup_timers.return_value.setup_marathon.stop.called
-            assert mock_setup_timers.return_value.processed_by_worker.start.called
-            assert not mock_setup_timers.return_value.bounce_length.stop.called
 
 
 class LoopBreak(Exception):

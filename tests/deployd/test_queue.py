@@ -19,9 +19,10 @@ def make_si(wait_until, bounce_by):
         bounce_by=bounce_by,
         wait_until=wait_until,
         watcher="watcher",
-        bounce_timers=None,
         failures=0,
         processed_count=0,
+        bounce_start_time=1.0,
+        enqueue_time=2.0,
     )
 
 

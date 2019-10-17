@@ -205,8 +205,9 @@ class DeployDaemon(PaastaThread):
                     bounce_by=time.time()
                     + self.config.get_deployd_startup_bounce_deadline(),
                     wait_until=time.time(),
-                    bounce_timers=None,
                     failures=0,
+                    bounce_start_time=time.time(),
+                    enqueue_time=time.time(),
                 )
             )
 
@@ -227,8 +228,9 @@ class DeployDaemon(PaastaThread):
                     watcher=type(self).__name__,
                     bounce_by=now,
                     wait_until=now,
-                    bounce_timers=None,
                     failures=0,
+                    bounce_start_time=time.time(),
+                    enqueue_time=time.time(),
                 )
             )
 

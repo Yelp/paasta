@@ -54,9 +54,10 @@ def make_si(wait_until, bounce_by):
         bounce_by=bounce_by,
         wait_until=wait_until,
         watcher="watcher",
-        bounce_timers=None,
         failures=0,
         processed_count=0,
+        enqueue_time=1,
+        bounce_start_time=1,
     )
 
 
@@ -165,51 +166,6 @@ class TestDelayDeadlineQueue:
         queue.put(make_si(wait_until=time.time() + 100, bounce_by=time.time() + 100))
         self.test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
             queue
-        )
-
-
-class TestServiceInstance(unittest.TestCase):
-    def setUp(self):
-        self.service_instance = ServiceInstance(
-            service="universe",
-            instance="c137",
-            watcher="mywatcher",
-            bounce_by=0,
-            wait_until=0,
-        )
-
-    def test___new__(self):
-        expected = ServiceInstance(
-            service="universe",
-            instance="c137",
-            watcher="mywatcher",
-            bounce_by=0,
-            wait_until=0,
-            failures=0,
-            bounce_timers=None,
-            processed_count=0,
-        )
-        assert self.service_instance == expected
-
-        expected = ServiceInstance(
-            service="universe",
-            instance="c137",
-            watcher="mywatcher",
-            bounce_by=0,
-            wait_until=0,
-            failures=0,
-            bounce_timers=None,
-            processed_count=0,
-        )
-        assert (
-            ServiceInstance(
-                service="universe",
-                instance="c137",
-                watcher="mywatcher",
-                bounce_by=0,
-                wait_until=0,
-            )
-            == expected
         )
 
 

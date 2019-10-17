@@ -13,7 +13,6 @@ from typing import Generator
 from typing import Iterable
 from typing import List
 from typing import NamedTuple
-from typing import Optional
 from typing import Tuple
 
 from typing_extensions import Protocol
@@ -41,8 +40,9 @@ class ServiceInstance(NamedTuple):
     watcher: str
     bounce_by: float
     wait_until: float
+    enqueue_time: float
+    bounce_start_time: float
     failures: int = 0
-    bounce_timers: Optional[BounceTimers] = None
     processed_count: int = 0
 
 
