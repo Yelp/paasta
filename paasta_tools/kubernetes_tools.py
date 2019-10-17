@@ -396,7 +396,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 V2beta1MetricSpec(
                     type="Resource",
                     resource=V2beta1ResourceMetricSource(
-                        name="cpu", target_average_utilization=target
+                        name="cpu", target_average_utilization=int(target)
                     ),
                 )
             )
