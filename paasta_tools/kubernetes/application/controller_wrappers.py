@@ -204,15 +204,48 @@ class DeploymentWrapper(Application):
             f"Deep Delete {self.kube_deployment.service} {self.kube_deployment.instance}."
         )
         self.deep_delete(kube_client)
+        self.logging.debug(
+            f"waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
+        )
+        timer = 0
         while self.kube_deployment in set(list_all_deployments(kube_client)):
-            self.logging.debug(
-                f"waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
-            )
+
             sleep(0.5)
+            timer += 0.5
+            if timer >= 3600:
+                try:
+                    self.logging.debug(
+                        f"Force kill {self.kube_deployment.service} {self.kube_deployment.instance}."
+                    )
+                    kube_client.core.delete_namespace(
+                        self.item.metadata.name,
+                        body=V1DeleteOptions(),
+                        grace_period_seconds=0,
+                    )
+                except ApiException as e:
+                    if e.status == 404:
+                        # Deployment does not exist, nothing to delete but
+                        # we can consider this a success.
+                        self.logging.debug(
+                            "not deleting nonexistent deploy/{} from namespace/{}".format(
+                                self.item.metadata.name, self.item.metadata.namespace
+                            )
+                        )
+                    else:
+                        raise
+                else:
+                    self.logging.info(
+                        "deleted deploy/{} from namespace/{}".format(
+                            self.item.metadata.name, self.item.metadata.namespace
+                        )
+                    )
+                finally:
+                    break
+
         self.logging.debug(
             f"{self.kube_deployment.service} {self.kube_deployment.instance} are deleted, creating new one."
         )
-        create_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        self.create(kube_client=kube_client)
         self.logging.debug(
             f"Finished creating {self.kube_deployment.service} {self.kube_deployment.instance}"
         )
@@ -224,6 +257,7 @@ class DeploymentWrapper(Application):
             threading.Thread(
                 target=self.deep_delete_and_create, args=[KubeClient()]
             ).start()
+            return
         if self.get_soa_config().get("instances") is not None:
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
