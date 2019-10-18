@@ -1,3 +1,17 @@
+paasta-tools (0.87.5) xenial; urgency=medium
+
+  * 0.87.5 tagged with 'make release'
+    Commit: Make a paasta secret error message more verbose
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 18 Oct 2019 03:56:05 -0700
+
+paasta-tools (0.87.5) xenial; urgency=medium
+
+  * 0.87.5 tagged with 'make release'
+    Commit: Make a paasta secret error message more verbose
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 18 Oct 2019 03:55:50 -0700
+
 paasta-tools (0.87.4) xenial; urgency=medium
 
   * 0.87.4 tagged with 'make release'
