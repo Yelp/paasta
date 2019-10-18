@@ -15,6 +15,7 @@ Submodules
 .. toctree::
 
    paasta_tools.cli.cli
+   paasta_tools.cli.fsm_cmd
    paasta_tools.cli.utils
 
 Module contents
