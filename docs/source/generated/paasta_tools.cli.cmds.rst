@@ -10,7 +10,6 @@ Submodules
    paasta_tools.cli.cmds.boost
    paasta_tools.cli.cmds.check
    paasta_tools.cli.cmds.cook_image
-   paasta_tools.cli.cmds.docker_exec
    paasta_tools.cli.cmds.docker_inspect
    paasta_tools.cli.cmds.docker_stop
    paasta_tools.cli.cmds.get_docker_image
