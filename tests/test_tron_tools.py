@@ -587,6 +587,10 @@ class TestTronTools:
 
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -644,7 +648,12 @@ class TestTronTools:
             cluster="paasta-dev",
         )
 
-        result = tron_tools.format_tron_action_dict(action_config)
+        with mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
             "command": "echo something",
