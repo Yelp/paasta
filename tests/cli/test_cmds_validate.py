@@ -25,7 +25,6 @@ from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
 from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
-from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_tron
@@ -56,7 +55,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_unique_instance_names.return_value = True
 
     args = mock.MagicMock()
-    args.service = "test"
+    args.service = None
     args.soa_dir = None
 
     paasta_validate(args)
@@ -113,18 +112,10 @@ def test_validate_unknown_service():
     paasta_validate(args) == 1
 
 
-def test_validate_service_name():
-    args = mock.MagicMock()
-    args.service = "aa________________________________a"
-    args.yelpsoa_config_root = "unused"
-    paasta_validate(args) == 1
-
-
 def test_validate_unknown_service_service_path():
     service_path = "unused/path"
-    service = "unused"
 
-    assert not paasta_validate_soa_configs(service, service_path)
+    assert not paasta_validate_soa_configs(service_path)
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
@@ -199,17 +190,6 @@ _main_http:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-def test_validate_instance_names(mock_get_file_contents, capsys):
-    fake_instances = {
-        "a_________________________________________a": {},
-        "b_________________________________________b": {},
-    }
-    assert not validate_instance_names(fake_instances, "fake_path")
-    output, _ = capsys.readouterr()
-    assert "Length of instance name" in output
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)

@@ -30,7 +30,6 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
@@ -109,39 +108,6 @@ def get_schema(file_type):
     return json.loads(schema)
 
 
-def validate_instance_names(config_file_object, file_path):
-    errors = []
-    for instance_name in config_file_object:
-        if (
-            not instance_name.startswith("_")
-            and len(sanitise_kubernetes_name(instance_name)) > 63
-        ):
-            errors.append(instance_name)
-    if errors:
-        error_string = "\n".join(errors)
-        paasta_print(
-            failure(
-                f"Length of instance name \n{error_string}\n should be no more than 63."
-                + " Note _ is replaced with -- due to Kubernetes restriction",
-                "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
-            )
-        )
-    return len(errors) == 0
-
-
-def validate_service_name(service):
-    if len(sanitise_kubernetes_name(service)) > 63:
-        paasta_print(
-            failure(
-                f"Length of service name {service} should be no more than 63."
-                + " Note _ is replaced with - due to Kubernetes restriction",
-                "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
-            )
-        )
-        return False
-    return True
-
-
 def validate_schema(file_path, file_type):
     """Check if the specified config file has a valid schema
 
@@ -173,10 +139,6 @@ def validate_schema(file_path, file_type):
         raise
     try:
         validator.validate(config_file_object)
-        if file_type == "kubernetes" and not validate_instance_names(
-            config_file_object, file_path
-        ):
-            return
     except ValidationError:
         paasta_print(f"{SCHEMA_INVALID}: {file_path}")
 
@@ -390,15 +352,12 @@ def validate_unique_instance_names(service_path):
     return check_passed
 
 
-def paasta_validate_soa_configs(service, service_path):
+def paasta_validate_soa_configs(service_path):
     """Analyze the service in service_path to determine if the conf files are valid
 
     :param service_path: Path to directory containing soa conf yaml files for service
     """
     if not check_service_path(service_path):
-        return False
-
-    if not validate_service_name(service):
         return False
 
     returncode = True
@@ -426,5 +385,5 @@ def paasta_validate(args):
     service = args.service
     soa_dir = args.yelpsoa_config_root
     service_path = get_service_path(service, soa_dir)
-    if not paasta_validate_soa_configs(service, service_path):
+    if not paasta_validate_soa_configs(service_path):
         return 1
