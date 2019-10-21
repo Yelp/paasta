@@ -257,6 +257,9 @@ def format_custom_resource(
                 "yelp.com/paasta_service": service,
                 "yelp.com/paasta_instance": instance,
                 "yelp.com/paasta_cluster": cluster,
+                "paasta.yelp.com/service": service,
+                "paasta.yelp.com/instance": instance,
+                "paasta.yelp.com/cluster": cluster,
             },
             "annotations": {},
         },
@@ -267,7 +270,9 @@ def format_custom_resource(
         resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
     config_hash = get_config_hash(resource)
     resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"
+    resource["metadata"]["annotations"]["paasta.yelp.com/desired_state"] = "running"
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
+    resource["metadata"]["labels"]["paasta.yelp.com/config_sha"] = config_hash
     return resource
 
 

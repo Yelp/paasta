@@ -773,6 +773,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         match_labels={
                             "yelp.com/paasta_instance": mock_get_instance.return_value,
                             "yelp.com/paasta_service": mock_get_service.return_value,
+                            "paasta.yelp.com/instance": mock_get_instance.return_value,
+                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -807,6 +809,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         match_labels={
                             "yelp.com/paasta_instance": mock_get_instance.return_value,
                             "yelp.com/paasta_service": mock_get_service.return_value,
+                            "paasta.yelp.com/instance": mock_get_instance.return_value,
+                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -851,6 +855,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         "yelp.com/paasta_git_sha": "aaaa123",
                         "yelp.com/paasta_instance": mock_get_instance.return_value,
                         "yelp.com/paasta_service": mock_get_service.return_value,
+                        "paasta.yelp.com/git_sha": "aaaa123",
+                        "paasta.yelp.com/instance": mock_get_instance.return_value,
+                        "paasta.yelp.com/service": mock_get_service.return_value,
                     },
                     annotations={"smartstack_registrations": '["kurupt.fm"]'},
                 ),
@@ -880,6 +887,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     "yelp.com/paasta_git_sha": "aaa123",
                     "yelp.com/paasta_instance": mock_get_instance.return_value,
                     "yelp.com/paasta_service": mock_get_service.return_value,
+                    "paasta.yelp.com/git_sha": "aaa123",
+                    "paasta.yelp.com/instance": mock_get_instance.return_value,
+                    "paasta.yelp.com/service": mock_get_service.return_value,
                 },
                 name="kurupt-fm",
             )
@@ -1116,6 +1126,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "fm",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "fm",
                         },
                         "annotations": {"smartstack_registrations": "[]"},
                     },
@@ -1128,6 +1140,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "garage",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "garage",
                         },
                         "annotations": {"smartstack_registrations": "[]"},
                     },
@@ -1140,6 +1154,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "grindah",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "grindah",
                         },
                         "annotations": {"smartstack_registrations": "[]"},
                     },
@@ -1152,6 +1168,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "beats",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "beats",
                         },
                         "annotations": {},
                     },
@@ -1323,6 +1341,10 @@ def test_list_all_deployments():
                     "yelp.com/paasta_instance": "fm",
                     "yelp.com/paasta_git_sha": "a12345",
                     "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "fm",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
                 }
             )
         ),
@@ -1333,6 +1355,10 @@ def test_list_all_deployments():
                     "yelp.com/paasta_instance": "am",
                     "yelp.com/paasta_git_sha": "a12345",
                     "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "am",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
                 }
             )
         ),
@@ -1386,6 +1412,8 @@ def test_pod_disruption_budget_for_service_instance():
     assert x.spec.selector.match_labels == {
         "yelp.com/paasta_service": "foo",
         "yelp.com/paasta_instance": "bar",
+        "paasta.yelp.com/service": "foo",
+        "paasta.yelp.com/instance": "bar",
     }
 
 
@@ -1477,6 +1505,9 @@ def test_list_custom_resources():
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "fm",
                             "yelp.com/paasta_config_sha": "con123",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "fm",
+                            "paasta.yelp.com/config_sha": "con123",
                         },
                         "name": "foo",
                         "namespace": "bar",
@@ -1610,6 +1641,8 @@ def test_get_active_shas_for_service():
                 labels={
                     "yelp.com/paasta_config_sha": "a123",
                     "yelp.com/paasta_git_sha": "b456",
+                    "paasta.yelp.com/config_sha": "a123",
+                    "paasta.yelp.com/git_sha": "b456",
                 }
             )
         ),
@@ -1618,6 +1651,8 @@ def test_get_active_shas_for_service():
                 labels={
                     "yelp.com/paasta_config_sha": "a123!!!",
                     "yelp.com/paasta_git_sha": "b456!!!",
+                    "paasta.yelp.com/config_sha": "a123!!!",
+                    "paasta.yelp.com/git_sha": "b456!!!",
                 }
             )
         ),
@@ -1626,6 +1661,8 @@ def test_get_active_shas_for_service():
                 labels={
                     "yelp.com/paasta_config_sha": "a123!!!",
                     "yelp.com/paasta_git_sha": "b456!!!",
+                    "paasta.yelp.com/config_sha": "a123!!!",
+                    "paasta.yelp.com/git_sha": "b456!!!",
                 }
             )
         ),
@@ -1655,6 +1692,8 @@ def test_filter_pods_for_service_instance():
             labels={
                 "yelp.com/paasta_service": "kurupt",
                 "yelp.com/paasta_instance": "fm",
+                "paasta.yelp.com/service": "kurupt",
+                "paasta.yelp.com/instance": "fm",
             }
         )
     )
@@ -1663,6 +1702,8 @@ def test_filter_pods_for_service_instance():
             labels={
                 "yelp.com/paasta_service": "kurupt",
                 "yelp.com/paasta_instance": "garage",
+                "paasta.yelp.com/service": "kurupt",
+                "paasta.yelp.com/instance": "garage",
             }
         )
     )
