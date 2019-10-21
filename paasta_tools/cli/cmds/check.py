@@ -326,7 +326,7 @@ def paasta_check(args):
     deployments_check(service, soa_dir)
     sensu_check(service, service_path, soa_dir)
     smartstack_check(service, service_path, soa_dir)
-    paasta_validate_soa_configs(service_path)
+    paasta_validate_soa_configs(service, service_path)
 
 
 def read_dockerfile_lines(path):
