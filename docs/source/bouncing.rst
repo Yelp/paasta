@@ -104,6 +104,8 @@ combined with a limited cluster size.
 .. image:: bounce_upthendown.png
    :scale: 100%
 
+**Note**: This is deprecated on kubernetes.
+
 downthenup
 """"""""""
 
