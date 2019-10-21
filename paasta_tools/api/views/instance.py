@@ -795,8 +795,9 @@ def instance_status(request):
             service, instance, settings.cluster, settings.soa_dir
         )
     except NoConfigurationForServiceError:
-        error_message = "deployment key %s not found" % ".".join(
-            [settings.cluster, instance]
+        error_message = (
+            "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
+            % ".".join([settings.cluster, instance])
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -813,8 +814,9 @@ def instance_status(request):
         version = get_deployment_version(actual_deployments, settings.cluster, instance)
         # exit if the deployment key is not found
         if not version:
-            error_message = "deployment key %s not found" % ".".join(
-                [settings.cluster, instance]
+            error_message = (
+                "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
+                % ".".join([settings.cluster, instance])
             )
             raise ApiFailure(error_message, 404)
 
