@@ -1,3 +1,11 @@
+paasta-tools (0.87.6) xenial; urgency=medium
+
+  * 0.87.6 tagged with 'make release'
+    Commit: Merge pull request #2480 from Yelp/use-http-for-paasta-
+    status-by-default  Use HTTP for paasta status by default
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Mon, 21 Oct 2019 06:38:14 -0700
+
 paasta-tools (0.87.5) xenial; urgency=medium
 
   * 0.87.5 tagged with 'make release'
