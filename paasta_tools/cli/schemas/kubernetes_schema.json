@@ -150,7 +150,11 @@
                     "uniqueItems": true
                 },
                 "bounce_method": {
-                    "type": "string"
+                    "enum": [
+                        "crossover",
+                        "brutal",
+                        "downtheup"
+                    ]
                 },
                 "bounce_health_params": {
                     "type": "object",
