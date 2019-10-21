@@ -189,7 +189,9 @@ def get_flink_jobmanager_overview(
         return json.loads(response)
     except requests.RequestException as e:
         url = e.request.url
-        err = e.strerror
+        err = e.response or str(e)
         raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
+    except ConnectionError as e:
+        raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")
