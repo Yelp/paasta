@@ -1,3 +1,11 @@
+paasta-tools (0.87.7) xenial; urgency=medium
+
+  * 0.87.7 tagged with 'make release'
+    Commit: Merge pull request #2483 from
+    Yelp/u/bronek/improved_flink_overview_error  Improve error reporting
+
+ -- Bronek Kozicki <bronek@yelp.com>  Mon, 21 Oct 2019 07:01:59 -0700
+
 paasta-tools (0.87.6) xenial; urgency=medium
 
   * 0.87.6 tagged with 'make release'
