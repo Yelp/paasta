@@ -110,21 +110,23 @@ def get_schema(file_type):
 
 
 def validate_instance_names(config_file_object, file_path):
-    return_code = True
+    errors = []
     for instance_name in config_file_object:
         if (
             not instance_name.startswith("_")
             and len(sanitise_kubernetes_name(instance_name)) > 63
         ):
-            return_code = False
-            paasta_print(
-                failure(
-                    f"Length of instance name {instance_name} should be no more than 63."
-                    + " Note _ is replaced with - due to Kubernetes restriction",
-                    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
-                )
+            errors.append(instance_name)
+    if errors:
+        error_string = "\n".join(errors)
+        paasta_print(
+            failure(
+                f"Length of instance name \n{error_string}\n should be no more than 63."
+                + " Note _ is replaced with -- due to Kubernetes restriction",
+                "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
             )
-    return return_code
+        )
+    return len(errors) == 0
 
 
 def validate_service_name(service):
