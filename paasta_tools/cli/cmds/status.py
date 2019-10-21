@@ -1294,7 +1294,7 @@ def paasta_status(args) -> int:
         # bool will throw a ValueError if it doesn't recognize $USE_API_ENDPOINT
         use_api_endpoint = bool(strtobool(os.environ["USE_API_ENDPOINT"]))
     else:
-        use_api_endpoint = False
+        use_api_endpoint = True
 
     return_codes = [0]
     tasks = []
