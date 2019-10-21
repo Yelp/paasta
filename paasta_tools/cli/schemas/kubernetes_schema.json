@@ -153,7 +153,7 @@
                     "enum": [
                         "crossover",
                         "brutal",
-                        "downtheup"
+                        "downthenup"
                     ]
                 },
                 "bounce_health_params": {
