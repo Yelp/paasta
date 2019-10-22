@@ -1,3 +1,11 @@
+paasta-tools (0.87.10) xenial; urgency=medium
+
+  * 0.87.10 tagged with 'make release'
+    Commit: Merge pull request #2493 from
+    Yelp/u/bronek/cleanup_after_2426  Remove unused function
+
+ -- Bronek Kozicki <bronek@yelp.com>  Tue, 22 Oct 2019 07:40:07 -0700
+
 paasta-tools (0.87.9) xenial; urgency=medium
 
   * 0.87.9 tagged with 'make release'
