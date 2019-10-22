@@ -430,7 +430,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 min_replicas=min_replicas,
                 metrics=metrics,
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name=name
+                    api_version="extensions/v1beta1", kind="Deployment", name=name
                 ),
             ),
         )
