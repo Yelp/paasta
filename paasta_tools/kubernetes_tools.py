@@ -888,8 +888,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             match_labels={
                                 "yelp.com/paasta_service": self.get_service(),
                                 "yelp.com/paasta_instance": self.get_instance(),
-                                "paasta.yelp.com/service": self.get_service(),
-                                "paasta.yelp.com/instance": self.get_instance(),
                             }
                         ),
                         template=self.get_pod_template_spec(
@@ -908,8 +906,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             match_labels={
                                 "yelp.com/paasta_service": self.get_service(),
                                 "yelp.com/paasta_instance": self.get_instance(),
-                                "paasta.yelp.com/service": self.get_service(),
-                                "paasta.yelp.com/instance": self.get_instance(),
                             }
                         ),
                         revision_history_limit=0,
@@ -1287,8 +1283,6 @@ def pod_disruption_budget_for_service_instance(
                 match_labels={
                     "yelp.com/paasta_service": service,
                     "yelp.com/paasta_instance": instance,
-                    "paasta.yelp.com/service": service,
-                    "paasta.yelp.com/instance": instance,
                 }
             ),
         ),

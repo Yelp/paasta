@@ -773,8 +773,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         match_labels={
                             "yelp.com/paasta_instance": mock_get_instance.return_value,
                             "yelp.com/paasta_service": mock_get_service.return_value,
-                            "paasta.yelp.com/instance": mock_get_instance.return_value,
-                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -827,8 +825,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         match_labels={
                             "yelp.com/paasta_instance": mock_get_instance.return_value,
                             "yelp.com/paasta_service": mock_get_service.return_value,
-                            "paasta.yelp.com/instance": mock_get_instance.return_value,
-                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
