@@ -301,7 +301,7 @@ def test_reconcile_kubernetes_resource():
             "metadata": {
                 "labels": {
                     "yelp.com/paasta_config_sha": "conf123",
-                    "paasta.yelp.com/config_sha": "conf123"
+                    "paasta.yelp.com/config_sha": "conf123",
                 },
                 "name": "foo",
                 "namespace": "paasta-flinks",
