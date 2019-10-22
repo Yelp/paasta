@@ -926,6 +926,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
             complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
             complete_config.spec.template.metadata.labels[
+                "yelp.com/paasta_config_sha"
+            ] = config_hash
+            complete_config.spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ] = config_hash
         except Exception as e:

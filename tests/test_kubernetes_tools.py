@@ -783,11 +783,29 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
-            ret.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
             )
-            ret.spec.template.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
 
             mock_get_deployment_strategy_config.side_effect = Exception(
@@ -819,11 +837,29 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
-            ret.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
             )
-            ret.spec.template.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
 
     def test_get_pod_template_spec(self):
