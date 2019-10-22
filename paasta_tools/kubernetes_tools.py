@@ -805,7 +805,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         statefulsets which are clever enough to manage EBS for you"""
 
         if self.get_desired_state() == "start":
-            instances = self.config_dict.get("instances", self.get_min_instances())
+            instances = self.config_dict.get("instances", self.get_max_instances())
         elif self.get_desired_state() == "stop":
             instances = 0
             log.debug("Instance is set to stop. Returning '0' instances")
