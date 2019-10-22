@@ -1,3 +1,12 @@
+paasta-tools (0.87.8) xenial; urgency=medium
+
+  * 0.87.8 tagged with 'make release'
+    Commit: remove duplicate requirement (#2492)  if it is in
+    requirements{.txt, -minimal.txt} then it doesn"t also need to be in
+    requirements-dev*
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 22 Oct 2019 06:24:00 -0700
+
 paasta-tools (0.87.7) xenial; urgency=medium
 
   * 0.87.7 tagged with 'make release'
