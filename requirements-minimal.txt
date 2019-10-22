@@ -3,6 +3,7 @@ aiohttp >= 3.5.4
 argcomplete >= 0.8.1
 boto
 boto3
+boto3-type-annotations
 botocore
 bravado >= 10.2.0
 choice >= 0.1
