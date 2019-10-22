@@ -914,7 +914,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
+                    api_version="extensions/v1beta1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -948,7 +950,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
+                    api_version="extensions/v1beta1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -982,7 +986,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
+                    api_version="extensions/v1beta1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
