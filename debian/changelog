@@ -1,3 +1,10 @@
+paasta-tools (0.87.9) xenial; urgency=medium
+
+  * 0.87.9 tagged with 'make release'
+    Commit: fix broken package link (#2494)
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 22 Oct 2019 07:16:23 -0700
+
 paasta-tools (0.87.8) xenial; urgency=medium
 
   * 0.87.8 tagged with 'make release'
