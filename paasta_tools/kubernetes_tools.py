@@ -64,6 +64,7 @@ from kubernetes.client import V1Pod
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
@@ -1313,6 +1314,15 @@ def list_matching_deployments(
         kube_client,
         f"yelp.com/paasta_instance={instance},yelp.com/paasta_service={service}",
     )
+
+
+def replicasets_for_service_instance(
+    service: str, instance: str, kube_client: KubeClient
+) -> Sequence[V1ReplicaSet]:
+    return kube_client.deployments.list_namespaced_replica_set(
+        namespace="paasta",
+        label_selector=f"yelp.com/paasta_service={service},yelp.com/paasta_instance={instance}",
+    ).items
 
 
 def pods_for_service_instance(
