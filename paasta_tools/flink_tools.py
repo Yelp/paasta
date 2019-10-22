@@ -163,11 +163,6 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     )
 
 
-def get_dashboard_url(cluster: str, service: str, instance: str) -> str:
-    sname = sanitised_cr_name(service, instance)
-    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/{sname}"
-
-
 def get_flink_ingress_url_root(cluster: str) -> str:
     return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/"
 
@@ -189,7 +184,9 @@ def get_flink_jobmanager_overview(
         return json.loads(response)
     except requests.RequestException as e:
         url = e.request.url
-        err = e.strerror
+        err = e.response or str(e)
         raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
+    except ConnectionError as e:
+        raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")

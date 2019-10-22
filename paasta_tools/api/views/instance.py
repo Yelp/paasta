@@ -34,6 +34,7 @@ from typing import Union
 import a_sync
 import isodate
 from kubernetes.client import V1Pod
+from kubernetes.client import V1ReplicaSet
 from kubernetes.client.rest import ApiException
 from marathon import MarathonClient
 from marathon.models.app import MarathonApp
@@ -179,6 +180,9 @@ def kubernetes_instance_status(
         pod_list = kubernetes_tools.pods_for_service_instance(
             job_config.service, job_config.instance, client
         )
+        replicaset_list = kubernetes_tools.replicasets_for_service_instance(
+            job_config.service, job_config.instance, client
+        )
         active_shas = kubernetes_tools.get_active_shas_for_service(pod_list)
         kstatus["app_count"] = max(
             len(active_shas["config_sha"]), len(active_shas["git_sha"])
@@ -193,6 +197,7 @@ def kubernetes_instance_status(
             job_config=job_config,
             verbose=verbose,
             pod_list=pod_list,
+            replicaset_list=replicaset_list,
         )
 
         if include_smartstack:
@@ -218,11 +223,13 @@ def kubernetes_job_status(
     client: kubernetes_tools.KubeClient,
     job_config: kubernetes_tools.KubernetesDeploymentConfig,
     pod_list: Sequence[V1Pod],
+    replicaset_list: Sequence[V1ReplicaSet],
     verbose: int,
 ) -> None:
     app_id = job_config.get_sanitised_deployment_name()
     kstatus["app_id"] = app_id
     kstatus["pods"] = []
+    kstatus["replicasets"] = []
     if verbose > 0:
         for pod in pod_list:
             kstatus["pods"].append(
@@ -231,6 +238,15 @@ def kubernetes_job_status(
                     "host": pod.spec.node_name,
                     "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
                     "phase": pod.status.phase,
+                }
+            )
+        for replicaset in replicaset_list:
+            kstatus["replicasets"].append(
+                {
+                    "name": replicaset.metadata.name,
+                    "replicas": replicaset.spec.replicas,
+                    "ready_replicas": replicaset.status.ready_replicas,
+                    "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
                 }
             )
 
@@ -795,8 +811,9 @@ def instance_status(request):
             service, instance, settings.cluster, settings.soa_dir
         )
     except NoConfigurationForServiceError:
-        error_message = "deployment key %s not found" % ".".join(
-            [settings.cluster, instance]
+        error_message = (
+            "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
+            % ".".join([settings.cluster, instance])
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -813,8 +830,9 @@ def instance_status(request):
         version = get_deployment_version(actual_deployments, settings.cluster, instance)
         # exit if the deployment key is not found
         if not version:
-            error_message = "deployment key %s not found" % ".".join(
-                [settings.cluster, instance]
+            error_message = (
+                "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
+                % ".".join([settings.cluster, instance])
             )
             raise ApiFailure(error_message, 404)
 

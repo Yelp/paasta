@@ -1125,6 +1125,13 @@
                     "type": "string",
                     "description": "The namespace this app is running"
                 },
+                "replicasets": {
+                    "type": "array",
+                    "description": "ReplicaSets associated to this app",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesReplicaSet"
+                    }
+                },
                 "pods": {
                     "type": "array",
                     "description": "Pods associated to this app",
@@ -1142,6 +1149,30 @@
                 "app_count",
                 "bounce_method"
             ]
+        },
+        "KubernetesReplicaSet": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "name of the replicaset in Kubernetes"
+                },
+                "ready_replicas": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "number of ready replicas for the replicaset"
+                },
+                "replicas": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "number of desired replicas for the replicaset"
+                },
+                "create_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Time at which the replicaset was created"
+                }
+            }
         },
         "KubernetesPod": {
             "type": "object",

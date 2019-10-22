@@ -1,3 +1,43 @@
+paasta-tools (0.87.10) xenial; urgency=medium
+
+  * 0.87.10 tagged with 'make release'
+    Commit: Merge pull request #2493 from
+    Yelp/u/bronek/cleanup_after_2426  Remove unused function
+
+ -- Bronek Kozicki <bronek@yelp.com>  Tue, 22 Oct 2019 07:40:07 -0700
+
+paasta-tools (0.87.9) xenial; urgency=medium
+
+  * 0.87.9 tagged with 'make release'
+    Commit: fix broken package link (#2494)
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 22 Oct 2019 07:16:23 -0700
+
+paasta-tools (0.87.8) xenial; urgency=medium
+
+  * 0.87.8 tagged with 'make release'
+    Commit: remove duplicate requirement (#2492)  if it is in
+    requirements{.txt, -minimal.txt} then it doesn"t also need to be in
+    requirements-dev*
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 22 Oct 2019 06:24:00 -0700
+
+paasta-tools (0.87.7) xenial; urgency=medium
+
+  * 0.87.7 tagged with 'make release'
+    Commit: Merge pull request #2483 from
+    Yelp/u/bronek/improved_flink_overview_error  Improve error reporting
+
+ -- Bronek Kozicki <bronek@yelp.com>  Mon, 21 Oct 2019 07:01:59 -0700
+
+paasta-tools (0.87.6) xenial; urgency=medium
+
+  * 0.87.6 tagged with 'make release'
+    Commit: Merge pull request #2480 from Yelp/use-http-for-paasta-
+    status-by-default  Use HTTP for paasta status by default
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Mon, 21 Oct 2019 06:38:14 -0700
+
 paasta-tools (0.87.5) xenial; urgency=medium
 
   * 0.87.5 tagged with 'make release'

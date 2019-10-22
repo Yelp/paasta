@@ -64,6 +64,7 @@ from kubernetes.client import V1Pod
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
@@ -433,7 +434,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 min_replicas=min_replicas,
                 metrics=metrics,
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name=name
+                    api_version="extensions/v1beta1", kind="Deployment", name=name
                 ),
             ),
         )
@@ -1310,6 +1311,15 @@ def list_matching_deployments(
     )
 
 
+def replicasets_for_service_instance(
+    service: str, instance: str, kube_client: KubeClient
+) -> Sequence[V1ReplicaSet]:
+    return kube_client.deployments.list_namespaced_replica_set(
+        namespace="paasta",
+        label_selector=f"yelp.com/paasta_service={service},yelp.com/paasta_instance={instance}",
+    ).items
+
+
 def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient
 ) -> Sequence[V1Pod]:
@@ -1330,8 +1340,8 @@ def filter_pods_by_service_instance(
         pod
         for pod in pod_list
         if pod.metadata.labels is not None
-        and pod.metadata.labels["yelp.com/paasta_service"] == service
-        and pod.metadata.labels["yelp.com/paasta_instance"] == instance
+        and pod.metadata.labels.get("yelp.com/paasta_service", "") == service
+        and pod.metadata.labels.get("yelp.com/paasta_instance", "") == instance
     ]
 
 

@@ -1,6 +1,5 @@
 astroid
 asynctest
-boto3-type-annotations
 docutils
 flake8
 freezegun
