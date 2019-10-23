@@ -1645,7 +1645,10 @@ def create_kubernetes_secret_signature(
 
 
 def sanitise_kubernetes_name(service: str,) -> str:
-    return service.replace("_", "--")
+    name = service.replace("_", "--")
+    if name.startswith("--"):
+        name = name.replace("--", "underscore-", 1)
+    return name
 
 
 def load_custom_resource_definitions(
