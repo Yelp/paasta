@@ -1,3 +1,11 @@
+paasta-tools (0.87.12) xenial; urgency=medium
+
+  * 0.87.12 tagged with 'make release'
+    Commit: Merge pull request #2484 from Yelp/k8s-disk-quota  Set disk
+    quota for k8s
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 23 Oct 2019 07:51:05 -0700
+
 paasta-tools (0.87.11) xenial; urgency=medium
 
   * 0.87.11 tagged with 'make release'
