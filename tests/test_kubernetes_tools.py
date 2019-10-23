@@ -1444,8 +1444,6 @@ def test_pod_disruption_budget_for_service_instance():
     assert x.spec.selector.match_labels == {
         "yelp.com/paasta_service": "foo",
         "yelp.com/paasta_instance": "bar",
-        "paasta.yelp.com/service": "foo",
-        "paasta.yelp.com/instance": "bar",
     }
 
 
