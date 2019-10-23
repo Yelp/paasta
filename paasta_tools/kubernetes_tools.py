@@ -616,8 +616,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             limits={
                 "cpu": self.get_cpus() + self.get_cpu_burst_add(),
                 "memory": f"{self.get_mem()}Mi",
+                "ephemeral-storage": f"{self.get_disk()}Mi",
             },
-            requests={"cpu": self.get_cpus(), "memory": f"{self.get_mem()}Mi"},
+            requests={
+                "cpu": self.get_cpus(),
+                "memory": f"{self.get_mem()}Mi",
+                "ephemeral-storage": f"{self.get_disk()}Mi",
+            },
         )
 
     def get_liveness_probe(

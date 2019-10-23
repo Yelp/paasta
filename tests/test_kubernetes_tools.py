@@ -433,10 +433,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem",
             autospec=True,
             return_value=2048,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_disk",
+            autospec=True,
+            return_value=4096,
         ):
             assert self.deployment.get_resource_requirements() == V1ResourceRequirements(
-                limits={"cpu": 1.3, "memory": "2048Mi"},
-                requests={"cpu": 0.3, "memory": "2048Mi"},
+                limits={"cpu": 1.3, "memory": "2048Mi", "ephemeral-storage": "4096Mi"},
+                requests={
+                    "cpu": 0.3,
+                    "memory": "2048Mi",
+                    "ephemeral-storage": "4096Mi",
+                },
             )
 
     def test_get_kubernetes_containers(self):
