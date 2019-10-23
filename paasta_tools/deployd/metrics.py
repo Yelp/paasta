@@ -72,10 +72,10 @@ class QueueAndWorkerMetrics(MetricsThread):
 
     def run_once(self) -> None:
         currently_available_instances = tuple(
-            self.queue.get_available_service_instances()
+            self.queue.get_available_service_instances(fetch_service_instances=False)
         )
         currently_unavailable_instances = tuple(
-            self.queue.get_unavailable_service_instances()
+            self.queue.get_unavailable_service_instances(fetch_service_instances=False)
         )
 
         self.instances_to_bounce_later_gauge.set(len(currently_available_instances))

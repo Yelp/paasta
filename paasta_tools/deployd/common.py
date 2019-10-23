@@ -13,6 +13,7 @@ from typing import Generator
 from typing import Iterable
 from typing import List
 from typing import NamedTuple
+from typing import Optional
 from typing import Tuple
 
 from typing_extensions import Protocol
@@ -133,13 +134,13 @@ class DelayDeadlineQueueProtocol(Protocol):
         ...
 
     def get_available_service_instances(
-        self
-    ) -> Iterable[Tuple[float, ServiceInstance]]:
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, Optional[ServiceInstance]]]:
         ...
 
     def get_unavailable_service_instances(
-        self
-    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, float, Optional[ServiceInstance]]]:
         ...
 
 
@@ -208,11 +209,17 @@ class DelayDeadlineQueue(DelayDeadlineQueueProtocol):
             self.available_service_instances.put((bounce_by, si))
 
     def get_available_service_instances(
-        self
-    ) -> Iterable[Tuple[float, ServiceInstance]]:
-        return self.available_service_instances.queue
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, Optional[ServiceInstance]]]:
+        return [
+            (bounce_by, (si if fetch_service_instances else None))
+            for bounce_by, si in self.available_service_instances.queue
+        ]
 
     def get_unavailable_service_instances(
-        self
-    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
-        return self.unavailable_service_instances.queue
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, float, Optional[ServiceInstance]]]:
+        return [
+            (wait_until, bounce_by, (si if fetch_service_instances else None))
+            for wait_until, bounce_by, si in self.unavailable_service_instances.queue
+        ]

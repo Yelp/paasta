@@ -193,30 +193,37 @@ class ZKDelayDeadlineQueue(DelayDeadlineQueueProtocol):
         self.client.delete(f"{self.locks_path}/{entry_node}")
 
     def _get_all_unlocked_service_instances(
-        self
-    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, float, Optional[ServiceInstance]]]:
         results = []
         with self.local_state_condition:
             for entry_node in self.entry_nodes:
                 if entry_node not in self.locked_entry_nodes:
                     deadline, wait_until = self._parse_entry_node(entry_node)
-                    data, _ = self.client.get(f"{self.entries_path}/{entry_node}")
-                    si = self._parse_data(data)
+                    if fetch_service_instances:
+                        data, _ = self.client.get(f"{self.entries_path}/{entry_node}")
+                        si = self._parse_data(data)
+                    else:
+                        si = None
                     results.append((deadline, wait_until, si))
         return results
 
     def get_available_service_instances(
-        self
-    ) -> Iterable[Tuple[float, ServiceInstance]]:
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, Optional[ServiceInstance]]]:
         now = time.time()
-        for deadline, wait_until, si in self._get_all_unlocked_service_instances():
+        for deadline, wait_until, si in self._get_all_unlocked_service_instances(
+            fetch_service_instances
+        ):
             if wait_until <= now:
                 yield (deadline, si)
 
     def get_unavailable_service_instances(
-        self
-    ) -> Iterable[Tuple[float, float, ServiceInstance]]:
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, float, Optional[ServiceInstance]]]:
         now = time.time()
-        for deadline, wait_until, si in self._get_all_unlocked_service_instances():
+        for deadline, wait_until, si in self._get_all_unlocked_service_instances(
+            fetch_service_instances
+        ):
             if wait_until > now:
                 yield (wait_until, deadline, si)
