@@ -15,6 +15,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -207,41 +208,43 @@ class DeploymentWrapper(Application):
         self.logging.debug(
             f"waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
         )
+
         timer = 0
-        while self.kube_deployment in set(list_all_deployments(kube_client)):
+        while (
+            self.kube_deployment in set(list_all_deployments(kube_client))
+            and timer < 60
+        ):
+            sleep(1)
+            timer += 1
 
-            sleep(0.5)
-            timer += 0.5
-            if timer >= 3600:
-                try:
+        if timer >= 60 and self.kube_deployment in set(
+            list_all_deployments(kube_client)
+        ):
+            try:
+                force_delete_pods(
+                    self.item.metadata.name,
+                    self.kube_deployment.service,
+                    self.kube_deployment.instance,
+                    self.item.metadata.namespace,
+                    kube_client,
+                )
+            except ApiException as e:
+                if e.status == 404:
+                    # Deployment does not exist, nothing to delete but
+                    # we can consider this a success.
                     self.logging.debug(
-                        f"Force kill {self.kube_deployment.service} {self.kube_deployment.instance}."
-                    )
-                    kube_client.core.delete_namespace(
-                        self.item.metadata.name,
-                        body=V1DeleteOptions(),
-                        grace_period_seconds=0,
-                    )
-                except ApiException as e:
-                    if e.status == 404:
-                        # Deployment does not exist, nothing to delete but
-                        # we can consider this a success.
-                        self.logging.debug(
-                            "not deleting nonexistent deploy/{} from namespace/{}".format(
-                                self.item.metadata.name, self.item.metadata.namespace
-                            )
+                        "not deleting nonexistent deploy/{} from namespace/{}".format(
+                            self.kube_deployment.service, self.item.metadata.namespace
                         )
-                    else:
-                        raise
+                    )
                 else:
-                    self.logging.info(
-                        "deleted deploy/{} from namespace/{}".format(
-                            self.item.metadata.name, self.item.metadata.namespace
-                        )
-                    )
-                finally:
-                    break
-
+                    raise
+        else:
+            self.logging.info(
+                "deleted deploy/{} from namespace/{}".format(
+                    self.kube_deployment.service, self.item.metadata.namespace
+                )
+            )
         self.logging.debug(
             f"{self.kube_deployment.service} {self.kube_deployment.instance} are deleted, creating new one."
         )

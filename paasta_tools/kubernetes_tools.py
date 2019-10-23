@@ -1135,6 +1135,26 @@ class KubeClient:
         self.autoscaling = kube_client.AutoscalingV2beta1Api()
 
 
+def force_delete_pods(
+    service: str,
+    paasta_service: str,
+    instance: str,
+    namespace: str,
+    kube_client: KubeClient,
+):
+    all_pods = pods_for_service_instance(paasta_service, instance, kube_client)
+    pods_to_delete = filter_pods_by_service_instance(all_pods, paasta_service, instance)
+    delete_options = V1DeleteOptions()
+    kube_client.deployments.delete_namespaced_deployment(
+        service, namespace, body=delete_options
+    )
+    delete_options.grace_period_seconds = 0
+    for pod in pods_to_delete:
+        kube_client.core.delete_namespaced_pod(
+            pod.metadata.name, namespace, body=delete_options, grace_period_seconds=0
+        )
+
+
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(name=namespace, labels={"name": namespace})
