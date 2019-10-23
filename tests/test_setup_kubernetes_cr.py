@@ -209,10 +209,16 @@ def test_format_custom_resource():
                     "yelp.com/paasta_instance": "radio_station",
                     "yelp.com/paasta_cluster": "mycluster",
                     "yelp.com/paasta_config_sha": mock_get_config_hash.return_value,
+                    "paasta.yelp.com/service": "kurupt_fm",
+                    "paasta.yelp.com/instance": "radio_station",
+                    "paasta.yelp.com/cluster": "mycluster",
+                    "paasta.yelp.com/config_sha": mock_get_config_hash.return_value,
                 },
                 "annotations": {
                     "yelp.com/desired_state": "running",
                     "yelp.com/dashboard_url": "http://flink.k8s.paasta-mycluster.yelp:31080/kurupt--fm-radio--station",
+                    "paasta.yelp.com/desired_state": "running",
+                    "paasta.yelp.com/dashboard_url": "http://flink.k8s.paasta-mycluster.yelp:31080/kurupt--fm-radio--station",
                 },
             },
             "spec": {"dummy": "conf"},
@@ -293,7 +299,10 @@ def test_reconcile_kubernetes_resource():
         # instance up to date, do nothing
         mock_format_custom_resource.return_value = {
             "metadata": {
-                "labels": {"yelp.com/paasta_config_sha": "conf123"},
+                "labels": {
+                    "yelp.com/paasta_config_sha": "conf123",
+                    "paasta.yelp.com/config_sha": "conf123",
+                },
                 "name": "foo",
                 "namespace": "paasta-flinks",
             }

@@ -627,8 +627,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             limits={
                 "cpu": self.get_cpus() + self.get_cpu_burst_add(),
                 "memory": f"{self.get_mem()}Mi",
+                "ephemeral-storage": f"{self.get_disk()}Mi",
             },
-            requests={"cpu": self.get_cpus(), "memory": f"{self.get_mem()}Mi"},
+            requests={
+                "cpu": self.get_cpus(),
+                "memory": f"{self.get_mem()}Mi",
+                "ephemeral-storage": f"{self.get_disk()}Mi",
+            },
         )
 
     def get_liveness_probe(
@@ -862,6 +867,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": code_sha,
+                "paasta.yelp.com/service": self.get_service(),
+                "paasta.yelp.com/instance": self.get_instance(),
+                "paasta.yelp.com/git_sha": code_sha,
             },
         )
 
@@ -929,8 +937,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 force_bounce=self.get_force_bounce(),
             )
             complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
+            complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
             complete_config.spec.template.metadata.labels[
                 "yelp.com/paasta_config_sha"
+            ] = config_hash
+            complete_config.spec.template.metadata.labels[
+                "paasta.yelp.com/config_sha"
             ] = config_hash
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
@@ -962,6 +974,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "yelp.com/paasta_service": self.get_service(),
                     "yelp.com/paasta_instance": self.get_instance(),
                     "yelp.com/paasta_git_sha": code_sha,
+                    "paasta.yelp.com/service": self.get_service(),
+                    "paasta.yelp.com/instance": self.get_instance(),
+                    "paasta.yelp.com/git_sha": code_sha,
                 },
                 annotations=annotations,
             ),
@@ -1562,7 +1577,10 @@ def create_secret(
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{sanitised_secret}",
-                labels={"yelp.com/paasta_service": service},
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
             ),
             data={
                 secret: base64.b64encode(
@@ -1587,7 +1605,10 @@ def update_secret(
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{sanitised_secret}",
-                labels={"yelp.com/paasta_service": service},
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
             ),
             data={
                 secret: base64.b64encode(
@@ -1629,7 +1650,10 @@ def update_kubernetes_secret_signature(
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{secret}-signature",
-                labels={"yelp.com/paasta_service": service},
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
             ),
             data={"signature": secret_signature},
         ),
@@ -1646,7 +1670,10 @@ def create_kubernetes_secret_signature(
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{secret}-signature",
-                labels={"yelp.com/paasta_service": service},
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
             ),
             data={"signature": secret_signature},
         ),
@@ -1709,6 +1736,7 @@ def set_cr_desired_state(
     if "annotations" not in cr["metadata"]:
         cr["metadata"]["annotations"] = {}
     cr["metadata"]["annotations"]["yelp.com/desired_state"] = desired_state
+    cr["metadata"]["annotations"]["paasta.yelp.com/desired_state"] = desired_state
     kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
     status = cr.get("status")
     return status
