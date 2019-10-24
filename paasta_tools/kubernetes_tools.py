@@ -1653,7 +1653,7 @@ def sanitise_kubernetes_name(service: str,) -> str:
     name = service.replace("_", "--")
     if name.startswith("--"):
         name = name.replace("--", "underscore-", 1)
-    return name
+    return name.lower()
 
 
 def load_custom_resource_definitions(
