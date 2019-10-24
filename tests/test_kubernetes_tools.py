@@ -433,10 +433,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_mem",
             autospec=True,
             return_value=2048,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_disk",
+            autospec=True,
+            return_value=4096,
         ):
             assert self.deployment.get_resource_requirements() == V1ResourceRequirements(
-                limits={"cpu": 1.3, "memory": "2048Mi"},
-                requests={"cpu": 0.3, "memory": "2048Mi"},
+                limits={"cpu": 1.3, "memory": "2048Mi", "ephemeral-storage": "4096Mi"},
+                requests={
+                    "cpu": 0.3,
+                    "memory": "2048Mi",
+                    "ephemeral-storage": "4096Mi",
+                },
             )
 
     def test_get_kubernetes_containers(self):
@@ -608,7 +616,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ]
         mock_aws_ebs_volumes = [
             {
-                "volume_id": "vol-ZZZZZZZZZZZZZZZZZ",
+                "volume_id": "vol-zzzzzzzzzzzzzzzzz",
                 "fs_type": "ext4",
                 "container_path": "/nail/qux",
             }
@@ -624,9 +632,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             ),
             V1Volume(
                 aws_elastic_block_store=V1AWSElasticBlockStoreVolumeSource(
-                    volume_id="vol-ZZZZZZZZZZZZZZZZZ", fs_type="ext4", read_only=False
+                    volume_id="vol-zzzzzzzzzzzzzzzzz", fs_type="ext4", read_only=False
                 ),
-                name="aws-ebs--vol-ZZZZZZZZZZZZZZZZZ",
+                name="aws-ebs--vol-zzzzzzzzzzzzzzzzz",
             ),
         ]
         assert (
@@ -781,11 +789,29 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
-            ret.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
             )
-            ret.spec.template.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
 
             mock_get_deployment_strategy_config.side_effect = Exception(
@@ -815,11 +841,29 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             assert ret == expected
-            ret.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
             )
-            ret.spec.template.metadata.labels.__setitem__.assert_called_with(
-                "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
+            )
+            assert (
+                mock.call(
+                    "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
+                )
+                in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
 
     def test_get_pod_template_spec(self):
@@ -851,6 +895,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         "yelp.com/paasta_git_sha": "aaaa123",
                         "yelp.com/paasta_instance": mock_get_instance.return_value,
                         "yelp.com/paasta_service": mock_get_service.return_value,
+                        "paasta.yelp.com/git_sha": "aaaa123",
+                        "paasta.yelp.com/instance": mock_get_instance.return_value,
+                        "paasta.yelp.com/service": mock_get_service.return_value,
                     },
                     annotations={"smartstack_registrations": '["kurupt.fm"]'},
                 ),
@@ -880,6 +927,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     "yelp.com/paasta_git_sha": "aaa123",
                     "yelp.com/paasta_instance": mock_get_instance.return_value,
                     "yelp.com/paasta_service": mock_get_service.return_value,
+                    "paasta.yelp.com/git_sha": "aaa123",
+                    "paasta.yelp.com/instance": mock_get_instance.return_value,
+                    "paasta.yelp.com/service": mock_get_service.return_value,
                 },
                 name="kurupt-fm",
             )
@@ -916,7 +966,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
+                    api_version="extensions/v1beta1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -954,7 +1006,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
+                    api_version="extensions/v1beta1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -991,7 +1045,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    kind="Deployment", name="fake_name"
+                    api_version="extensions/v1beta1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -1036,14 +1092,14 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(
-            secret_env_vars={"SOME": "SECRET(_ref)"},
+            secret_env_vars={"SOME": "SECRET(a_ref)"},
             shared_secret_env_vars={"A": "SHAREDSECRET(_ref1)"},
         ) == [
             V1EnvVar(
                 name="SOME",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-kurupt---ref", key="_ref", optional=False
+                        name="paasta-secret-kurupt-a--ref", key="a_ref", optional=False
                     )
                 ),
             ),
@@ -1051,7 +1107,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 name="A",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret---shared---ref1",
+                        name="paasta-secret-underscore-shared-underscore-ref1",
                         key="_ref1",
                         optional=False,
                     )
@@ -1144,6 +1200,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "fm",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "fm",
                         },
                         "annotations": {"smartstack_registrations": "[]"},
                     },
@@ -1156,6 +1214,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "garage",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "garage",
                         },
                         "annotations": {"smartstack_registrations": "[]"},
                     },
@@ -1168,6 +1228,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "grindah",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "grindah",
                         },
                         "annotations": {"smartstack_registrations": "[]"},
                     },
@@ -1180,6 +1242,8 @@ def test_get_kubernetes_services_running_here():
                         "labels": {
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "beats",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "beats",
                         },
                         "annotations": {},
                     },
@@ -1351,6 +1415,10 @@ def test_list_all_deployments():
                     "yelp.com/paasta_instance": "fm",
                     "yelp.com/paasta_git_sha": "a12345",
                     "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "fm",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
                 }
             )
         ),
@@ -1361,6 +1429,10 @@ def test_list_all_deployments():
                     "yelp.com/paasta_instance": "am",
                     "yelp.com/paasta_git_sha": "a12345",
                     "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "am",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
                 }
             )
         ),
@@ -1505,6 +1577,9 @@ def test_list_custom_resources():
                             "yelp.com/paasta_service": "kurupt",
                             "yelp.com/paasta_instance": "fm",
                             "yelp.com/paasta_config_sha": "con123",
+                            "paasta.yelp.com/service": "kurupt",
+                            "paasta.yelp.com/instance": "fm",
+                            "paasta.yelp.com/config_sha": "con123",
                         },
                         "name": "foo",
                         "namespace": "bar",
@@ -1638,6 +1713,8 @@ def test_get_active_shas_for_service():
                 labels={
                     "yelp.com/paasta_config_sha": "a123",
                     "yelp.com/paasta_git_sha": "b456",
+                    "paasta.yelp.com/config_sha": "a123",
+                    "paasta.yelp.com/git_sha": "b456",
                 }
             )
         ),
@@ -1646,6 +1723,8 @@ def test_get_active_shas_for_service():
                 labels={
                     "yelp.com/paasta_config_sha": "a123!!!",
                     "yelp.com/paasta_git_sha": "b456!!!",
+                    "paasta.yelp.com/config_sha": "a123!!!",
+                    "paasta.yelp.com/git_sha": "b456!!!",
                 }
             )
         ),
@@ -1654,6 +1733,8 @@ def test_get_active_shas_for_service():
                 labels={
                     "yelp.com/paasta_config_sha": "a123!!!",
                     "yelp.com/paasta_git_sha": "b456!!!",
+                    "paasta.yelp.com/config_sha": "a123!!!",
+                    "paasta.yelp.com/git_sha": "b456!!!",
                 }
             )
         ),
@@ -1683,6 +1764,8 @@ def test_filter_pods_for_service_instance():
             labels={
                 "yelp.com/paasta_service": "kurupt",
                 "yelp.com/paasta_instance": "fm",
+                "paasta.yelp.com/service": "kurupt",
+                "paasta.yelp.com/instance": "fm",
             }
         )
     )
@@ -1691,11 +1774,14 @@ def test_filter_pods_for_service_instance():
             labels={
                 "yelp.com/paasta_service": "kurupt",
                 "yelp.com/paasta_instance": "garage",
+                "paasta.yelp.com/service": "kurupt",
+                "paasta.yelp.com/instance": "garage",
             }
         )
     )
     mock_pod_3 = mock.MagicMock(metadata=mock.MagicMock(labels=None))
-    mock_pods = [mock_pod_1, mock_pod_2, mock_pod_3]
+    mock_pod_4 = mock.MagicMock(metadata=mock.MagicMock(labels={"some": "thing"}))
+    mock_pods = [mock_pod_1, mock_pod_2, mock_pod_3, mock_pod_4]
     assert filter_pods_by_service_instance(mock_pods, "kurupt", "fm") == [mock_pod_1]
     assert filter_pods_by_service_instance(mock_pods, "kurupt", "garage") == [
         mock_pod_2
@@ -1846,7 +1932,10 @@ def test_maybe_add_yelp_prefix():
 
 def test_sanitise_kubernetes_name():
     assert sanitise_kubernetes_name("my_service") == "my--service"
+    assert sanitise_kubernetes_name("MY_SERVICE") == "my--service"
     assert sanitise_kubernetes_name("myservice") == "myservice"
+    assert sanitise_kubernetes_name("_shared") == "underscore-shared"
+    assert sanitise_kubernetes_name("_shared_thing") == "underscore-shared--thing"
 
 
 def test_create_kubernetes_secret_signature():

@@ -116,6 +116,7 @@ def setup_kube_crd(
         if "labels" not in metadata:
             metadata["labels"] = {}
         metadata["labels"]["yelp.com/paasta_service"] = service
+        metadata["labels"]["paasta.yelp.com/service"] = service
         desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get("apiVersion"),
             kind=crd_config.get("kind"),
@@ -150,7 +151,7 @@ def setup_kube_crd(
                         pass
                     else:
                         raise err
-            log.info(f"deployed {existing_crd.metadata.name} for {cluster}:{service}")
+            log.info(f"deployed {desired_crd.metadata['name']} for {cluster}:{service}")
         except ApiException as exc:
             log.error(
                 f"error deploying crd for {cluster}:{service}, "

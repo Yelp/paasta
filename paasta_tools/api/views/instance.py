@@ -46,6 +46,7 @@ from requests.exceptions import ReadTimeout
 import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import cassandracluster_tools
 from paasta_tools import flink_tools
+from paasta_tools import kafkacluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_remote_run
@@ -778,7 +779,9 @@ async def get_mesos_non_running_task_dict(
 
 
 INSTANCE_TYPE_CR_ID = dict(
-    flink=flink_tools.cr_id, cassandracluster=cassandracluster_tools.cr_id
+    flink=flink_tools.cr_id,
+    cassandracluster=cassandracluster_tools.cr_id,
+    kafkacluster=kafkacluster_tools.cr_id,
 )
 
 

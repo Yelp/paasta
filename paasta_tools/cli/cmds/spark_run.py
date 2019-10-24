@@ -332,6 +332,15 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
     return cmd
 
 
+def get_smart_paasta_instance_name(instance):
+    if os.environ.get("TRON_JOB_NAMESPACE"):
+        tron_job = os.environ.get("TRON_JOB_NAME")
+        tron_action = os.environ.get("TRON_ACTION")
+        return f"{tron_job}.{tron_action}"
+    else:
+        return f"{instance}_{get_username()}"
+
+
 def get_default_event_log_dir(access_key, secret_key):
     if access_key is None:
         log.warning(
@@ -484,8 +493,8 @@ def get_spark_config(
         "spark.master": "mesos://%s" % mesos_address,
         "spark.ui.port": spark_ui_port,
         "spark.executorEnv.PAASTA_SERVICE": args.service,
-        "spark.executorEnv.PAASTA_INSTANCE": "{}_{}".format(
-            args.instance, get_username()
+        "spark.executorEnv.PAASTA_INSTANCE": get_smart_paasta_instance_name(
+            args.instance
         ),
         "spark.executorEnv.PAASTA_CLUSTER": args.cluster,
         "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",

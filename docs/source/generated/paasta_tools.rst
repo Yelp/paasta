@@ -61,6 +61,7 @@ Submodules
    paasta_tools.graceful_app_drain
    paasta_tools.hacheck
    paasta_tools.iptables
+   paasta_tools.kafkacluster_tools
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances
    paasta_tools.list_marathon_service_instances

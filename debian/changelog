@@ -1,3 +1,67 @@
+paasta-tools (0.87.15) xenial; urgency=medium
+
+  * 0.87.15 tagged with 'make release'
+    Commit: Merge pull request #2499 from Yelp/fix-secret-name-again
+    Ensure secret names are lower case for k8s
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 24 Oct 2019 08:45:07 -0700
+
+paasta-tools (0.87.14) xenial; urgency=medium
+
+  * 0.87.14 tagged with 'make release'
+    Commit: fix syntax error
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 24 Oct 2019 02:53:16 -0700
+
+paasta-tools (0.87.13) xenial; urgency=medium
+
+  * 0.87.13 tagged with 'make release'
+    Commit: Allow check_oom_events to optionally make tickets. PAASTA-
+    15879
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 24 Oct 2019 01:29:00 -0700
+
+paasta-tools (0.87.12) xenial; urgency=medium
+
+  * 0.87.12 tagged with 'make release'
+    Commit: Merge pull request #2484 from Yelp/k8s-disk-quota  Set disk
+    quota for k8s
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 23 Oct 2019 07:51:05 -0700
+
+paasta-tools (0.87.11) xenial; urgency=medium
+
+  * 0.87.11 tagged with 'make release'
+    Commit: Merge pull request #2490 from Yelp/drmorr/TRON-
+    1302/paasta_spark_run_uses_tron_vars  make PAASTA_INSTANCE tron-
+    aware
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 22 Oct 2019 16:32:29 -0700
+
+paasta-tools (0.87.10) xenial; urgency=medium
+
+  * 0.87.10 tagged with 'make release'
+    Commit: Merge pull request #2493 from
+    Yelp/u/bronek/cleanup_after_2426  Remove unused function
+
+ -- Bronek Kozicki <bronek@yelp.com>  Tue, 22 Oct 2019 07:40:07 -0700
+
+paasta-tools (0.87.9) xenial; urgency=medium
+
+  * 0.87.9 tagged with 'make release'
+    Commit: fix broken package link (#2494)
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 22 Oct 2019 07:16:23 -0700
+
+paasta-tools (0.87.8) xenial; urgency=medium
+
+  * 0.87.8 tagged with 'make release'
+    Commit: remove duplicate requirement (#2492)  if it is in
+    requirements{.txt, -minimal.txt} then it doesn"t also need to be in
+    requirements-dev*
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 22 Oct 2019 06:24:00 -0700
+
 paasta-tools (0.87.7) xenial; urgency=medium
 
   * 0.87.7 tagged with 'make release'
