@@ -361,7 +361,11 @@ def test_get_container_name(mock_get_username, mock_randint):
 @mock.patch("paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run", autospec=True, return_value=(0, "/tmpdir")
+)
 def test_configure_and_run_command_uses_cmd_from_config(
+    mock_run,
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
@@ -410,7 +414,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         instance=args.instance,
         framework="marathon",
         docker_url=docker_url,
-        volumes=[],
+        volumes=["/tmpdir:/mnt/mesos/sandbox:rw"],
         interactive=args.interactive,
         command=mock_get_instance_config.return_value.get_cmd.return_value,
         healthcheck=args.healthcheck,
@@ -429,7 +433,11 @@ def test_configure_and_run_command_uses_cmd_from_config(
 @mock.patch("paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run", autospec=True, return_value=(0, "/tmpdir")
+)
 def test_configure_and_run_uses_bash_by_default_when_interactive(
+    mock_run,
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
@@ -476,7 +484,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         instance=args.instance,
         framework="marathon",
         docker_url=docker_url,
-        volumes=[],
+        volumes=["/tmpdir:/mnt/mesos/sandbox:rw"],
         interactive=args.interactive,
         command="bash",
         healthcheck=args.healthcheck,
@@ -496,7 +504,11 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
 @mock.patch("paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run", autospec=True, return_value=(0, "/tmpdir")
+)
 def test_configure_and_run_pulls_image_when_asked(
+    mock_run,
     mock_validate_service_instance,
     mock_get_instance_config,
     mock_run_docker_container,
@@ -550,7 +562,7 @@ def test_configure_and_run_pulls_image_when_asked(
         instance=args.instance,
         framework="marathon",
         docker_url="fake_registry/fake_image",
-        volumes=[],
+        volumes=["/tmpdir:/mnt/mesos/sandbox:rw"],
         interactive=args.interactive,
         command="bash",
         healthcheck=args.healthcheck,
@@ -579,7 +591,11 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         return_value=0,
     ) as mock_run_docker_container, mock.patch(
         "paasta_tools.cli.cmds.local_run.get_default_interactive_config", autospec=True
-    ) as mock_get_default_interactive_config:
+    ) as mock_get_default_interactive_config, mock.patch(
+        "paasta_tools.cli.cmds.local_run._run",
+        autospec=True,
+        return_value=(0, "/tmpdir"),
+    ):
         mock_stdin.isatty.return_value = True
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -620,7 +636,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             instance="interactive",
             framework="adhoc",
             docker_url="fake_hash",
-            volumes=[],
+            volumes=["/tmpdir:/mnt/mesos/sandbox:rw"],
             interactive=True,
             command="bash",
             healthcheck=args.healthcheck,
@@ -1854,7 +1870,10 @@ def test_get_local_run_environment_vars_other(mock_getfqdn,):
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.os.path.exists", return_value=True, autospec=True
 )
-def test_volumes_are_deduped(mock_exists):
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run", autospec=True, return_value=(0, "/tmpdir")
+)
+def test_volumes_are_deduped(mock_run, mock_exists):
     with mock.patch(
         "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
     ) as mock_run_docker_container, mock.patch(
@@ -1903,13 +1922,19 @@ def test_volumes_are_deduped(mock_exists):
             args=mock.Mock(yelpsoa_config_root="/blurp/durp"),
         )
         args, kwargs = mock_run_docker_container.call_args
-        assert kwargs["volumes"] == ["/hostPath:/containerPath:ro"]
+        assert kwargs["volumes"] == [
+            "/tmpdir:/mnt/mesos/sandbox:rw",
+            "/hostPath:/containerPath:ro",
+        ]
 
 
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.os.path.exists", return_value=False, autospec=True
 )
-def test_missing_volumes_skipped(mock_exists):
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run", autospec=True, return_value=(0, "/tmpdir")
+)
+def test_missing_volumes_skipped(mock_run, mock_exists):
     with mock.patch(
         "paasta_tools.cli.cmds.local_run.run_docker_container", autospec=True
     ) as mock_run_docker_container, mock.patch(
@@ -1958,7 +1983,7 @@ def test_missing_volumes_skipped(mock_exists):
             args=mock.Mock(yelpsoa_config_root="/blurp/durp"),
         )
         args, kwargs = mock_run_docker_container.call_args
-        assert kwargs["volumes"] == []
+        assert kwargs["volumes"] == ["/tmpdir:/mnt/mesos/sandbox:rw"]
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.is_secret_ref", autospec=True)

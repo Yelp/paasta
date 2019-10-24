@@ -65,6 +65,9 @@ from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 
+MESOS_SANDBOX_DIR = "/mnt/mesos/sandbox"
+
+
 def parse_date(date_string):
     return datetime.datetime.strptime(date_string, "%Y-%m-%d")
 
@@ -603,7 +606,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
     fake_taskid = uuid.uuid4()
     env = {
         "HOST": hostname,
-        "MESOS_SANDBOX": "/mnt/mesos/sandbox",
+        "MESOS_SANDBOX": MESOS_SANDBOX_DIR,
         "MESOS_CONTAINER_NAME": "localrun-%s" % fake_taskid,
         "MESOS_TASK_ID": str(fake_taskid),
         "PAASTA_DOCKER_IMAGE": docker_image,
@@ -953,7 +956,8 @@ def configure_and_run_docker_container(
         return 1
 
     soa_dir = args.yelpsoa_config_root
-    volumes = list()
+    (mktemp_rc, mktemp_output) = _run("mktemp -d")
+    volumes = [f"{mktemp_output}:{MESOS_SANDBOX_DIR}:rw"] if mktemp_rc == 0 else []
     load_deployments = (docker_url is None or pull_image) and not docker_sha
     interactive = args.interactive
 
