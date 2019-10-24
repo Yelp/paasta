@@ -12,6 +12,10 @@ Duplication can be reduced by using YAML `anchors and merges <https://gist.githu
 PaaSTA will **not** attempt to run any definition prefixed with ``_``,
 so you are free to use them for YAML templates.
 
+**Note** that service names (the name of the folder where your config file is located) should be no more than 63 characters.
+For kubernetes services(config files with kubernetes as prefix), the instance names should be no more than 63 characters as well.
+_ is counted as two character. We convert _  to -- because underscore is not allowed in kubernetes pod names.
+
 Example::
 
     _template: &template

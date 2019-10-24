@@ -45,6 +45,7 @@ from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.flink_tools import load_flink_instance_config
+from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.tron_tools import load_tron_instance_config
@@ -840,6 +841,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[
     tron=(get_service_instance_list, load_tron_instance_config),
     flink=(get_service_instance_list, load_flink_instance_config),
     cassandracluster=(get_service_instance_list, load_cassandracluster_instance_config),
+    kafkacluster=(get_service_instance_list, load_kafkacluster_instance_config),
 )
 
 

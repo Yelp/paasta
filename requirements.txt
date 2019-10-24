@@ -9,6 +9,7 @@ attrs==17.4.0
 binaryornot==0.4.4
 boto==2.48.0
 boto3==1.4.7
+boto3-type-annotations==0.3.1
 botocore==1.7.21
 bravado==10.4.1
 bravado-core==5.12.1

@@ -6,6 +6,7 @@ Submodules
 
 .. toctree::
 
+   paasta_tools.kubernetes.bin.paasta_cleanup_stale_nodes
    paasta_tools.kubernetes.bin.paasta_secrets_sync
 
 Module contents

@@ -53,6 +53,7 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.marathon_serviceinit import bouncing_status_human
@@ -85,6 +86,7 @@ from paasta_tools.utils import SystemPaastaConfig
 HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
+    KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
@@ -643,6 +645,33 @@ def format_kubernetes_pod_table(pods):
     return format_table(rows)
 
 
+def format_kubernetes_replicaset_table(replicasets):
+    rows = [("ReplicaSet Name", "Ready / Desired", "Created at what localtime")]
+    for replicaset in replicasets:
+        local_created_datetime = datetime_from_utc_to_local(
+            datetime.fromtimestamp(replicaset.create_timestamp)
+        )
+
+        replica_status = f"{replicaset.ready_replicas}/{replicaset.replicas}"
+        if replicaset.ready_replicas >= replicaset.replicas:
+            replica_status = PaastaColors.green(replica_status)
+        else:
+            replica_status = PaastaColors.red(replica_status)
+
+        rows.append(
+            (
+                replicaset.name,
+                replica_status,
+                "{} ({})".format(
+                    local_created_datetime.strftime("%Y-%m-%dT%H:%M"),
+                    humanize.naturaltime(local_created_datetime),
+                ),
+            )
+        )
+
+    return format_table(rows)
+
+
 def get_smartstack_status_human(
     registration, expected_backends_per_location, locations
 ) -> List[str]:
@@ -906,6 +935,13 @@ def print_kubernetes_status(
         output.append("      Pods:")
         pods_table = format_kubernetes_pod_table(kubernetes_status.pods)
         output.extend([f"        {line}" for line in pods_table])
+
+    if kubernetes_status.replicasets and len(kubernetes_status.replicasets) > 0:
+        output.append("      ReplicaSets:")
+        replicasets_table = format_kubernetes_replicaset_table(
+            kubernetes_status.replicasets
+        )
+        output.extend([f"        {line}" for line in replicasets_table])
 
     if kubernetes_status.smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
@@ -1294,7 +1330,7 @@ def paasta_status(args) -> int:
         # bool will throw a ValueError if it doesn't recognize $USE_API_ENDPOINT
         use_api_endpoint = bool(strtobool(os.environ["USE_API_ENDPOINT"]))
     else:
-        use_api_endpoint = False
+        use_api_endpoint = True
 
     return_codes = [0]
     tasks = []

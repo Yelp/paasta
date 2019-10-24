@@ -876,6 +876,8 @@ def test_get_service_instance_list():
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
+        (fake_name, fake_instance_1),
+        (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
         (fake_name, fake_instance_2),
@@ -912,7 +914,10 @@ def test_get_service_instance_list():
         read_extra_info_patch.assert_any_call(
             fake_name, "cassandracluster-16floz", soa_dir=fake_dir
         )
-        assert read_extra_info_patch.call_count == 7
+        read_extra_info_patch.assert_any_call(
+            fake_name, "kafkacluster-16floz", soa_dir=fake_dir
+        )
+        assert read_extra_info_patch.call_count == 8
         assert sorted(expected) == sorted(actual)
 
 
@@ -924,6 +929,7 @@ def test_get_service_instance_list_ignores_underscore():
     fake_dir = "/nail/home/hipster"
     fake_job_config: Dict[str, Dict] = {fake_instance_1: {}, fake_instance_2: {}}
     expected = [
+        (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
         (fake_name, fake_instance_1),
@@ -1946,6 +1952,7 @@ def test_validate_service_instance_invalid():
     mock_tron_instances = [("service1", "job.action")]
     mock_flink_instances = [("service1", "flink")]
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
+    mock_kafkacluster_instances = [("service1", "kafkacluster")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -1961,6 +1968,7 @@ def test_validate_service_instance_invalid():
             mock_tron_instances,
             mock_flink_instances,
             mock_cassandracluster_instances,
+            mock_kafkacluster_instances,
         ],
     ):
         with raises(

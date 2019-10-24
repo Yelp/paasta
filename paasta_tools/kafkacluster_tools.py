@@ -10,15 +10,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
-from typing import Any
 from typing import List
 from typing import Mapping
 from typing import Optional
 
-import requests
 import service_configuration_lib
-from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import InvalidJobNameError
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
@@ -31,29 +27,21 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_v2_deployments_json
 
 
-FLINK_INGRESS_PORT = 31080
-FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
+class KafkaClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
+    replicas: int
 
 
-class TaskManagerConfig(TypedDict, total=False):
-    instances: int
+class KafkaClusterDeploymentConfig(LongRunningServiceConfig):
+    config_dict: KafkaClusterDeploymentConfigDict
 
-
-class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
-    taskmanager: TaskManagerConfig
-
-
-class FlinkDeploymentConfig(LongRunningServiceConfig):
-    config_dict: FlinkDeploymentConfigDict
-
-    config_filename_prefix = "flink"
+    config_filename_prefix = "kafkacluster"
 
     def __init__(
         self,
         service: str,
         cluster: str,
         instance: str,
-        config_dict: FlinkDeploymentConfigDict,
+        config_dict: KafkaClusterDeploymentConfigDict,
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
@@ -67,17 +55,21 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
+    def get_instances(self, with_limit: bool = True) -> int:
+        return self.config_dict.get("replicas", 1)
+
     def validate(
         self,
         params: List[str] = [
             "cpus",
-            "mem",
             "security",
             "dependencies_reference",
             "deploy_group",
         ],
     ) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
+        # TODO: add mem back to this list once we fix PAASTA-15582 and
+        # move to using the same units as flink/marathon etc.
         error_msgs = super().validate(params=params)
 
         if error_msgs:
@@ -87,14 +79,14 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             return []
 
 
-def load_flink_instance_config(
+def load_kafkacluster_instance_config(
     service: str,
     instance: str,
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> FlinkDeploymentConfig:
-    """Read a service instance's configuration for Flink.
+) -> KafkaClusterDeploymentConfig:
+    """Read a service instance's configuration for KafkaCluster.
 
     If a branch isn't specified for a config, the 'branch' key defaults to
     paasta-${cluster}.${instance}.
@@ -109,9 +101,9 @@ def load_flink_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    flink_conf_file = "flink-%s" % cluster
+    kafkacluster_conf_file = "kafkacluster-%s" % cluster
     instance_configs = service_configuration_lib.read_extra_service_information(
-        service, flink_conf_file, soa_dir=soa_dir
+        service, kafkacluster_conf_file, soa_dir=soa_dir
     )
 
     if instance.startswith("_"):
@@ -120,7 +112,7 @@ def load_flink_instance_config(
         )
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            f"{instance} not found in config file {soa_dir}/{service}/{flink_conf_file}.yaml."
+            f"{instance} not found in config file {soa_dir}/{service}/{kafkacluster_conf_file}.yaml."
         )
 
     general_config = deep_merge_dictionaries(
@@ -130,7 +122,7 @@ def load_flink_instance_config(
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        temp_instance_config = FlinkDeploymentConfig(
+        temp_instance_config = KafkaClusterDeploymentConfig(
             service=service,
             cluster=cluster,
             instance=instance,
@@ -142,7 +134,7 @@ def load_flink_instance_config(
         deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
-    return FlinkDeploymentConfig(
+    return KafkaClusterDeploymentConfig(
         service=service,
         cluster=cluster,
         instance=instance,
@@ -157,36 +149,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
-        namespace="paasta-flinks",
-        plural="flinks",
+        namespace="paasta-kafkaclusters",
+        plural="kafkaclusters",
         name=sanitised_cr_name(service, instance),
     )
-
-
-def get_flink_ingress_url_root(cluster: str) -> str:
-    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/"
-
-
-def _dashboard_get(service: str, instance: str, cluster: str, path: str) -> str:
-    root = get_flink_ingress_url_root(cluster)
-    name = sanitised_cr_name(service, instance)
-    url = f"{root}{name}/{path}"
-    response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    return response.text
-
-
-def get_flink_jobmanager_overview(
-    service: str, instance: str, cluster: str
-) -> Mapping[str, Any]:
-    try:
-        response = _dashboard_get(service, instance, cluster, "overview")
-        return json.loads(response)
-    except requests.RequestException as e:
-        url = e.request.url
-        err = e.response or str(e)
-        raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
-    except ConnectionError as e:
-        raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")

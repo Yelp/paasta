@@ -166,7 +166,6 @@ def send_sensu_event(instance, oom_events, args):
     monitoring_overrides.update(
         {
             "page": False,
-            "ticket": False,
             "alert_after": "0m",
             "realert_every": args.realert_every,
             "runbook": "y/check-oom-events",

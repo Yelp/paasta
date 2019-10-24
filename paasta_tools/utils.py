@@ -124,8 +124,9 @@ INSTANCE_TYPES = (
     "tron",
     "flink",
     "cassandracluster",
+    "kafkacluster",
 )
-INSTANCE_TYPES_K8S = {"flink", "cassandracluster"}
+INSTANCE_TYPES_K8S = {"flink", "cassandracluster", "kafkacluster"}
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 
 

@@ -33,6 +33,7 @@ from paasta_tools.cli.cmds.status import create_autoscaling_info_table
 from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
 from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
+from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import marathon_app_status_human
@@ -631,7 +632,7 @@ def test_status_calls_sergeants(
         cluster=cluster,
         instance_whitelist={"fi": mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
-        use_api_endpoint=False,
+        use_api_endpoint=True,
         verbose=False,
     )
 
@@ -1143,7 +1144,7 @@ def test_status_with_registration(
             "instance2": mock_inst_2.__class__,
         },
         system_paasta_config=system_paasta_config,
-        use_api_endpoint=False,
+        use_api_endpoint=True,
         verbose=args.verbose,
     )
 
@@ -1201,6 +1202,7 @@ def mock_kubernetes_status():
         create_timestamp=1562963508,
         namespace="paasta",
         pods=[],
+        replicasets=[],
         smartstack=Struct(
             registration="fake_service.fake_instance",
             expected_backends_per_location=1,
@@ -1411,6 +1413,14 @@ class TestPrintKubernetesStatus:
                 phase="Running",
             ),
         ]
+        mock_kubernetes_status.replicasets = [
+            Struct(
+                name="replicaset_1",
+                replicas=3,
+                ready_replicas=2,
+                create_timestamp=1562963508,
+            )
+        ]
 
         output = []
         print_kubernetes_status(
@@ -1430,6 +1440,9 @@ class TestPrintKubernetesStatus:
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
             f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
             f"        app_2   fake_host2        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"      ReplicaSets:",
+            f"        ReplicaSet Name  Ready / Desired  Created at what localtime",
+            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})",
         ]
 
         assert expected_output == output
@@ -1585,6 +1598,12 @@ class TestFormatKubernetesPodTable:
             phase="Running",
         )
 
+    @pytest.fixture
+    def mock_kubernetes_replicaset(self):
+        return Struct(
+            name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600
+        )
+
     def test_format_kubernetes_pod_table(self, mock_naturaltime, mock_kubernetes_pod):
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
@@ -1593,6 +1612,17 @@ class TestFormatKubernetesPodTable:
             "Host deployed to": "paasta.cloud",
             "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
             "Health": PaastaColors.green("Healthy"),
+        }
+
+    def test_format_kubernetes_replicaset_table(
+        self, mock_naturaltime, mock_kubernetes_replicaset
+    ):
+        output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
+        replicaset_table_dict = _formatted_table_to_dict(output)
+        assert replicaset_table_dict == {
+            "ReplicaSet Name": "abc123",
+            "Ready / Desired": PaastaColors.green("3/3"),
+            "Created at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
         }
 
     def test_no_host(self, mock_naturaltime, mock_kubernetes_pod):
