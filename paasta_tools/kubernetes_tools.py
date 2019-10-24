@@ -1156,14 +1156,10 @@ def force_delete_pods(
     instance: str,
     namespace: str,
     kube_client: KubeClient,
-):
-    all_pods = pods_for_service_instance(paasta_service, instance, kube_client)
-    pods_to_delete = filter_pods_by_service_instance(all_pods, paasta_service, instance)
+) -> None:
+    # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
+    pods_to_delete = pods_for_service_instance(paasta_service, instance, kube_client)
     delete_options = V1DeleteOptions()
-    kube_client.deployments.delete_namespaced_deployment(
-        service, namespace, body=delete_options
-    )
-    delete_options.grace_period_seconds = 0
     for pod in pods_to_delete:
         kube_client.core.delete_namespaced_pod(
             pod.metadata.name, namespace, body=delete_options, grace_period_seconds=0

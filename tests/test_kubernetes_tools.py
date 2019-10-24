@@ -11,6 +11,7 @@ from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1Capabilities
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1DeploymentStrategy
@@ -55,6 +56,7 @@ from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
+from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
@@ -94,6 +96,49 @@ from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
+
+
+def test_force_delete_pods():
+    mock_pod_1 = mock.MagicMock(
+        metadata=mock.MagicMock(
+            labels={
+                "yelp.com/paasta_service": "srv1",
+                "yelp.com/paasta_instance": "instance1",
+                "paasta.yelp.com/service": "srv1",
+                "paasta.yelp.com/instance": "instance1",
+            }
+        )
+    )
+    mock_pod_2 = mock.MagicMock(
+        metadata=mock.MagicMock(
+            labels={
+                "yelp.com/paasta_service": "srv1",
+                "yelp.com/paasta_instance": "instance1",
+                "paasta.yelp.com/service": "srv1",
+                "paasta.yelp.com/instance": "instance1",
+            }
+        )
+    )
+    mock_pod_1.metadata.name = "pod_1"
+    mock_pod_2.metadata.name = "pod_2"
+    mock_pods = [mock_pod_1, mock_pod_2]
+    mock_client = mock.Mock()
+
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+        return_value=mock_pods,
+    ):
+        force_delete_pods("srv1", "srv1", "instance1", "namespace", mock_client)
+        body = V1DeleteOptions()
+
+        assert mock_client.core.delete_namespaced_pod.call_count == 2
+        assert mock_client.core.delete_namespaced_pod.call_args_list[0] == mock.call(
+            "pod_1", "namespace", body=body, grace_period_seconds=0
+        )
+        assert mock_client.core.delete_namespaced_pod.call_args_list[1] == mock.call(
+            "pod_2", "namespace", body=body, grace_period_seconds=0
+        )
 
 
 def test_load_kubernetes_service_config_no_cache():

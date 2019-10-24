@@ -201,14 +201,7 @@ class DeploymentWrapper(Application):
         self.sync_horizontal_pod_autoscaler(kube_client)
 
     def deep_delete_and_create(self, kube_client: KubeClient) -> None:
-        self.logging.debug(
-            f"Deep Delete {self.kube_deployment.service} {self.kube_deployment.instance}."
-        )
         self.deep_delete(kube_client)
-        self.logging.debug(
-            f"waiting for instance {self.kube_deployment.service} {self.kube_deployment.instance} to die."
-        )
-
         timer = 0
         while (
             self.kube_deployment in set(list_all_deployments(kube_client))
@@ -245,13 +238,7 @@ class DeploymentWrapper(Application):
                     self.kube_deployment.service, self.item.metadata.namespace
                 )
             )
-        self.logging.debug(
-            f"{self.kube_deployment.service} {self.kube_deployment.instance} are deleted, creating new one."
-        )
         self.create(kube_client=kube_client)
-        self.logging.debug(
-            f"Finished creating {self.kube_deployment.service} {self.kube_deployment.instance}"
-        )
 
     def update(self, kube_client: KubeClient) -> None:
         # If autoscaling is enabled, do not update replicas.
@@ -264,7 +251,6 @@ class DeploymentWrapper(Application):
         if self.get_soa_config().get("instances") is not None:
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
-        self.logging.debug("calling ensure blabla")
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
