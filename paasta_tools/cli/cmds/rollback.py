@@ -21,7 +21,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
+from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.remote_git import list_remote_refs
+from paasta_tools.utils import _log_audit
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
@@ -30,6 +32,7 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import parse_timestamp
+from paasta_tools.utils import RollbackTypes
 
 
 def add_subparser(subparsers):
@@ -206,14 +209,22 @@ def paasta_rollback(args):
     returncode = 0
 
     for deploy_group in deploy_groups:
-        returncode = max(
-            mark_for_deployment(
-                git_url=git_url,
-                service=service,
-                deploy_group=deploy_group,
-                commit=commit,
-            ),
-            returncode,
+        rolled_back_from = get_currently_deployed_sha(service, deploy_group)
+        returncode |= mark_for_deployment(
+            git_url=git_url, service=service, deploy_group=deploy_group, commit=commit
         )
+
+        # we could also gate this by the return code from m-f-d, but we probably care more about someone wanting to
+        # rollback than we care about if the underlying machinery was successfully able to complete the request
+        if rolled_back_from != commit:
+            audit_action_details = {
+                "rolled_back_from": rolled_back_from,
+                "rolled_back_to": commit,
+                "rollback_type": RollbackTypes.USER_INITIATED_ROLLBACK.value,
+                "deploy_group": deploy_group,
+            }
+            _log_audit(
+                action="rollback", action_details=audit_action_details, service=service
+            )
 
     return returncode

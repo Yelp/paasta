@@ -37,6 +37,7 @@ import threading
 import time
 import warnings
 from collections import OrderedDict
+from enum import Enum
 from fnmatch import fnmatch
 from functools import lru_cache
 from functools import wraps
@@ -128,6 +129,11 @@ INSTANCE_TYPES = (
 )
 INSTANCE_TYPES_K8S = {"flink", "cassandracluster", "kafkacluster"}
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
+
+
+class RollbackTypes(Enum):
+    AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
+    USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
 
 class TimeCacheEntry(TypedDict):
