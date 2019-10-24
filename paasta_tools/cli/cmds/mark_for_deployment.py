@@ -29,6 +29,7 @@ from queue import Queue
 from threading import Event
 from threading import Thread
 from typing import Collection
+from typing import Dict
 from typing import Iterator
 from typing import Mapping
 from typing import Optional
@@ -66,6 +67,7 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
 
@@ -604,6 +606,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_button_clicked",
+                "before": self.log_user_rollback,
             }
             yield {
                 "source": self.rollback_states,
@@ -614,6 +617,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_slo_failure",
+                "before": self.log_slo_rollback,
             }
             yield {
                 "source": self.rollback_states,
@@ -933,6 +937,34 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def deploy_group_is_set_to_notify(self, notify_type):
         return deploy_group_is_set_to_notify(
             self.deploy_info, self.deploy_group, notify_type
+        )
+
+    def __build_rollback_audit_details(
+        self, rollback_type: RollbackTypes
+    ) -> Dict[str, str]:
+        return {
+            "rolled_back_from": self.commit,
+            "rolled_back_to": self.old_git_sha,
+            "rollback_type": rollback_type.value,
+            "deploy_group": self.deploy_group,
+        }
+
+    def log_slo_rollback(self) -> None:
+        _log_audit(
+            action="rollback",
+            action_details=self.__build_rollback_audit_details(
+                RollbackTypes.AUTOMATIC_SLO_ROLLBACK
+            ),
+            service=self.service,
+        )
+
+    def log_user_rollback(self) -> None:
+        _log_audit(
+            action="rollback",
+            action_details=self.__build_rollback_audit_details(
+                RollbackTypes.USER_INITIATED_ROLLBACK
+            ),
+            service=self.service,
         )
 
 
