@@ -21,8 +21,11 @@ from paasta_tools.cli.cmds.rollback import get_git_shas_for_service
 from paasta_tools.cli.cmds.rollback import list_previously_deployed_shas
 from paasta_tools.cli.cmds.rollback import paasta_rollback
 from paasta_tools.cli.cmds.rollback import validate_given_deploy_groups
+from paasta_tools.utils import RollbackTypes
 
 
+@patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_sha", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
@@ -34,6 +37,8 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_get_git_url,
     mock_figure_out_service_name,
     mock_list_deploy_groups,
+    mock_log_audit,
+    mock_get_currently_deployed_sha,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-l", "fake_deploy_group1"]
@@ -48,6 +53,7 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_figure_out_service_name.return_value = fake_args.service
     mock_list_deploy_groups.return_value = [fake_args.deploy_groups]
     mock_mark_for_deployment.return_value = 0
+    mock_get_currently_deployed_sha.return_value = "1234" * 10
 
     assert paasta_rollback(fake_args) == 0
 
@@ -58,7 +64,26 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
         commit=fake_args.commit,
     )
 
+    # ensure that we logged each deploy group that was rolled back AND that we logged things correctly
+    mock_log_audit.call_count == len(fake_args.deploy_groups)
+    for call_args in mock_log_audit.call_args_list:
+        _, call_kwargs = call_args
+        assert call_kwargs["action"] == "rollback"
+        assert (
+            call_kwargs["action_details"]["rolled_back_from"]
+            == mock_get_currently_deployed_sha.return_value
+        )
+        assert call_kwargs["action_details"]["rolled_back_to"] == fake_args.commit
+        assert (
+            call_kwargs["action_details"]["rollback_type"]
+            == RollbackTypes.USER_INITIATED_ROLLBACK.value
+        )
+        assert call_kwargs["action_details"]["deploy_group"] in fake_args.deploy_groups
+        assert call_kwargs["service"] == fake_args.service
 
+
+@patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_sha", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
@@ -70,6 +95,8 @@ def test_paasta_rollback_with_force(
     mock_get_git_url,
     mock_figure_out_service_name,
     mock_list_deploy_groups,
+    mock_log_audit,
+    mock_get_currently_deployed_sha,
 ):
     fake_args, _ = parse_args(
         [
@@ -93,6 +120,7 @@ def test_paasta_rollback_with_force(
     mock_figure_out_service_name.return_value = fake_args.service
     mock_list_deploy_groups.return_value = [fake_args.deploy_groups]
     mock_mark_for_deployment.return_value = 0
+    mock_get_currently_deployed_sha.return_value = "1234" * 10
 
     assert paasta_rollback(fake_args) == 0
 
@@ -102,8 +130,26 @@ def test_paasta_rollback_with_force(
         service=mock_figure_out_service_name.return_value,
         commit=fake_args.commit,
     )
+    # ensure that we logged each deploy group that was rolled back AND that we logged things correctly
+    mock_log_audit.call_count == len(fake_args.deploy_groups)
+    for call_args in mock_log_audit.call_args_list:
+        _, call_kwargs = call_args
+        assert call_kwargs["action"] == "rollback"
+        assert (
+            call_kwargs["action_details"]["rolled_back_from"]
+            == mock_get_currently_deployed_sha.return_value
+        )
+        assert call_kwargs["action_details"]["rolled_back_to"] == fake_args.commit
+        assert (
+            call_kwargs["action_details"]["rollback_type"]
+            == RollbackTypes.USER_INITIATED_ROLLBACK.value
+        )
+        assert call_kwargs["action_details"]["deploy_group"] in fake_args.deploy_groups
+        assert call_kwargs["service"] == fake_args.service
 
 
+@patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_sha", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
@@ -115,6 +161,8 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
     mock_get_git_url,
     mock_figure_out_service_name,
     mock_list_deploy_groups,
+    mock_log_audit,
+    mock_get_currently_deployed_sha,
 ):
     fake_args, _ = parse_args(["rollback", "-s", "fakeservice", "-k", "abcd" * 10])
 
@@ -130,6 +178,7 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
         "fake_cluster.fake_instance",
     ]
     mock_mark_for_deployment.return_value = 0
+    mock_get_currently_deployed_sha.return_value = "1234" * 10
 
     assert paasta_rollback(fake_args) == 0
 
@@ -151,7 +200,27 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
     assert all([x in expected for x in mock_mark_for_deployment.mock_calls])
     assert mock_mark_for_deployment.call_count == len(expected)
 
+    mock_log_audit.call_count == len(fake_args.deploy_groups)
+    for call_args in mock_log_audit.call_args_list:
+        _, call_kwargs = call_args
+        assert call_kwargs["action"] == "rollback"
+        assert (
+            call_kwargs["action_details"]["rolled_back_from"]
+            == mock_get_currently_deployed_sha.return_value
+        )
+        assert call_kwargs["action_details"]["rolled_back_to"] == fake_args.commit
+        assert (
+            call_kwargs["action_details"]["rollback_type"]
+            == RollbackTypes.USER_INITIATED_ROLLBACK.value
+        )
+        assert (
+            call_kwargs["action_details"]["deploy_group"]
+            in mock_list_deploy_groups.return_value
+        )
+        assert call_kwargs["service"] == fake_args.service
 
+
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
@@ -161,6 +230,7 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
     mock_get_git_url,
     mock_figure_out_service_name,
     mock_list_deploy_groups,
+    mock_log_audit,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-l", "wrong_deploy_group"]
@@ -172,8 +242,10 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
 
     assert paasta_rollback(fake_args) == 1
     assert not mock_mark_for_deployment.called
+    assert not mock_log_audit.called
 
 
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
@@ -185,6 +257,7 @@ def test_paasta_rollback_git_sha_was_not_marked_before(
     mock_get_git_url,
     mock_figure_out_service_name,
     mock_list_deploy_groups,
+    mock_log_audit,
 ):
     fake_args, _ = parse_args(
         ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-l", "fake_deploy_group1"]
@@ -202,8 +275,11 @@ def test_paasta_rollback_git_sha_was_not_marked_before(
 
     assert paasta_rollback(fake_args) == 1
     assert not mock_mark_for_deployment.called
+    assert not mock_log_audit.called
 
 
+@patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_sha", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
@@ -215,6 +291,8 @@ def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
     mock_get_git_url,
     mock_figure_out_service_name,
     mock_list_deploy_groups,
+    mock_log_audit,
+    mock_get_currently_deployed_sha,
 ):
     fake_args, _ = parse_args(
         [
@@ -239,6 +317,7 @@ def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
     mock_figure_out_service_name.return_value = fake_args.service
     mock_list_deploy_groups.return_value = fake_deploy_groups
     mock_mark_for_deployment.return_value = 0
+    mock_get_currently_deployed_sha.return_value = "1234" * 10
 
     assert paasta_rollback(fake_args) == 0
 
@@ -254,6 +333,25 @@ def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
 
     mock_mark_for_deployment.assert_has_calls(expected, any_order=True)
     assert mock_mark_for_deployment.call_count == len(fake_deploy_groups)
+
+    mock_log_audit.call_count == len(fake_args.deploy_groups)
+    for call_args in mock_log_audit.call_args_list:
+        _, call_kwargs = call_args
+        assert call_kwargs["action"] == "rollback"
+        assert (
+            call_kwargs["action_details"]["rolled_back_from"]
+            == mock_get_currently_deployed_sha.return_value
+        )
+        assert call_kwargs["action_details"]["rolled_back_to"] == fake_args.commit
+        assert (
+            call_kwargs["action_details"]["rollback_type"]
+            == RollbackTypes.USER_INITIATED_ROLLBACK.value
+        )
+        assert (
+            call_kwargs["action_details"]["deploy_group"]
+            in mock_list_deploy_groups.return_value
+        )
+        assert call_kwargs["service"] == fake_args.service
 
 
 def test_validate_given_deploy_groups_no_arg():
