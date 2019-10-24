@@ -489,18 +489,15 @@ def get_spark_config(
         cluster=args.cluster
     )
     mesos_address = "{}:{}".format(find_mesos_leader(cluster_fqdn), MESOS_MASTER_PORT)
+    paasta_instance = get_smart_paasta_instance_name(args.instance)
     non_user_args = {
         "spark.master": "mesos://%s" % mesos_address,
         "spark.ui.port": spark_ui_port,
         "spark.executorEnv.PAASTA_SERVICE": args.service,
-        "spark.executorEnv.PAASTA_INSTANCE": get_smart_paasta_instance_name(
-            args.instance
-        ),
+        "spark.executorEnv.PAASTA_INSTANCE": paasta_instance,
         "spark.executorEnv.PAASTA_CLUSTER": args.cluster,
         "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
-        "spark.mesos.executor.docker.parameters": "label=paasta_service={},label=paasta_instance={}_{}".format(
-            args.service, args.instance, get_username()
-        ),
+        "spark.mesos.executor.docker.parameters": f"label=paasta_service={args.service},label=paasta_instance={paasta_instance}",
         "spark.mesos.executor.docker.volumes": ",".join(volumes),
         "spark.mesos.executor.docker.image": docker_img,
         "spark.mesos.principal": "spark",
