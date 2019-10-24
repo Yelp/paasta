@@ -1,3 +1,10 @@
+paasta-tools (0.88.0) xenial; urgency=medium
+
+  * 0.88.0 tagged with 'make release'
+    Commit: Merge branch "zookeeper_queue"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 24 Oct 2019 13:35:51 -0700
+
 paasta-tools (0.87.16) xenial; urgency=medium
 
   * 0.87.16 tagged with 'make release'
