@@ -55,7 +55,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def nodes_for_cleanup(ec2_client: Client, nodes: Sequence[V1Node]) -> List[V1Node]:
-    not_ready = [node for node in nodes if not is_node_ready(node)]
+    not_ready = [
+        node
+        for node in nodes
+        if not is_node_ready(node)
+        and "node-role.kubernetes.io/master" not in node.metadata.labels]
     terminated = terminated_nodes(ec2_client, not_ready)
     return terminated
 
