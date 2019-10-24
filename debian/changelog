@@ -1,3 +1,11 @@
+paasta-tools (0.87.16) xenial; urgency=medium
+
+  * 0.87.16 tagged with 'make release'
+    Commit: Merge pull request #2455 from Yelp/PAASTA-
+    15597_bounce_brutally_b8s  Paasta 15597 k8s brutal bounce
+
+ -- Fatima Zahra Elfilali <fzz@yelp.com>  Thu, 24 Oct 2019 12:54:08 -0700
+
 paasta-tools (0.87.15) xenial; urgency=medium
 
   * 0.87.15 tagged with 'make release'
