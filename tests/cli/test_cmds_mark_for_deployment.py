@@ -145,6 +145,7 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     new=1.0,
     autospec=False,
 )
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
@@ -168,6 +169,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_mark_for_deployment,
     mock_validate_service_name,
     mock_get_slack_client,
+    mock__log_audit,
     mock_periodically_update_slack,
 ):
     class FakeArgsRollback(FakeArgs):
@@ -216,8 +218,12 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     )
     mock_do_wait_for_deployment.assert_any_call(mock.ANY, target_commit="old-sha")
     assert mock_do_wait_for_deployment.call_count == 2
+    # in normal usage, this would also be called once per m-f-d, but we mock that out above
+    # so _log_audit is only called as part of handling the rollback
+    assert mock__log_audit.call_count == len(mock_list_deploy_groups.return_value)
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
@@ -231,7 +237,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     mock_mark_for_deployment,
     mock_get_slack_client,
     mock_get_authors,
-    mock_periodically_update_slack,
+    mock__log_audit,
 ):
     mock_get_authors.return_value = 0, "fakeuser1 fakeuser2"
     mfdp = mark_for_deployment.MarkForDeploymentProcess(
@@ -262,6 +268,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     assert mock_wait_for_deployment.call_count == 1
     assert mfdp.state == "deploy_errored"
     assert retval == 2
+    assert not mock__log_audit.called
 
 
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
