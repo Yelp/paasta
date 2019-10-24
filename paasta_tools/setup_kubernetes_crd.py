@@ -151,7 +151,7 @@ def setup_kube_crd(
                         pass
                     else:
                         raise err
-            log.info(f"deployed {desired_crd.metadata["name"]} for {cluster}:{service}")
+            log.info(f"deployed {desired_crd.metadata['name']} for {cluster}:{service}")
         except ApiException as exc:
             log.error(
                 f"error deploying crd for {cluster}:{service}, "
