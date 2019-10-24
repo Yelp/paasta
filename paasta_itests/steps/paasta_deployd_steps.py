@@ -16,6 +16,7 @@ from itest_utils import get_service_connection_string
 from kazoo.exceptions import NodeExistsError
 from steps.setup_steps import modify_configs
 
+from paasta_tools.deployd.master import DEAD_DEPLOYD_WORKER_MESSAGE
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import decompose_job_id
@@ -53,15 +54,27 @@ def start_deployd(context):
         if time.time() > timeout:
             raise Exception("deployd never ran")
 
+    context.num_workers_crashed = 0
+
     def dont_let_stderr_buffer():
         while True:
             line = context.daemon.stderr.readline()
             if not line:
                 return
+            if DEAD_DEPLOYD_WORKER_MESSAGE.encode("utf-8") in line:
+                context.num_workers_crashed += 1
             paasta_print(f"deployd stderr: {line}")
 
     threading.Thread(target=dont_let_stderr_buffer).start()
     time.sleep(5)
+
+
+@then("no workers should have crashed")
+def no_workers_should_crash(context):
+    if context.num_workers_crashed > 0:
+        raise Exception(
+            f"Expected no workers to crash, found {context.num_workers_crashed} stderr lines matching {DEAD_DEPLOYD_WORKER_MESSAGE!r}"
+        )
 
 
 @then("paasta-deployd can be stopped")

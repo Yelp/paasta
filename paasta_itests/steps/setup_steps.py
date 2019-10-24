@@ -248,6 +248,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         },
         "dashboard_links.json",
     )
+    write_etc_paasta(context, {"deployd_use_zk_queue": True}, "deployd.json")
 
 
 @given(

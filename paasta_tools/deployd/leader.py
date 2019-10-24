@@ -1,7 +1,10 @@
 import logging
 import threading
 import time
+from typing import Any
+from typing import Callable
 
+from kazoo.client import KazooClient
 from kazoo.client import KazooState
 from kazoo.exceptions import ConnectionClosedError
 from kazoo.recipe.election import Election
@@ -10,7 +13,7 @@ from paasta_tools.deployd.common import PaastaThread
 
 
 class PaastaLeaderElection(Election):
-    def __init__(self, client, *args, **kwargs):
+    def __init__(self, client: KazooClient, *args: Any, **kwargs: Any) -> None:
         self.client = client
         self.control = kwargs.pop("control")
         super().__init__(self.client, *args, **kwargs)
@@ -18,18 +21,18 @@ class PaastaLeaderElection(Election):
         self.waiting_for_reconnect = False
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         name = ".".join([__name__, type(self).__name__])
         return logging.getLogger(name)
 
-    def run(self, func, *args, **kwargs):
+    def run(self, func: Callable, *args: Any, **kwargs: Any) -> None:
         try:
             super().run(func, *args, **kwargs)
         except ConnectionClosedError:
             self.log.error("Zookeeper connection closed so can't tidy up!")
             return
 
-    def connection_listener(self, state):
+    def connection_listener(self, state: KazooState) -> None:
         self.log.warning(f"Zookeeper connection transitioned to: {state}")
         if state == KazooState.SUSPENDED:
             self.log.warning(
@@ -44,7 +47,7 @@ class PaastaLeaderElection(Election):
             self.log.error("Leadership lost, quitting!")
             self._terminate()
 
-    def reconnection_listener(self):
+    def reconnection_listener(self) -> None:
         attempts = 0
         while attempts < 5:
             if self.client.state == KazooState.CONNECTED:
@@ -57,7 +60,7 @@ class PaastaLeaderElection(Election):
         self.log.error("Connection did not recover, abdicating!")
         self._terminate()
 
-    def _terminate(self):
+    def _terminate(self) -> None:
         thread_info = [
             {"alive": t.is_alive(), "daemon": t.daemon, "name": t.__class__.__name__}
             for t in threading.enumerate()
