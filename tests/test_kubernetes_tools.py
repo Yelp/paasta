@@ -1064,14 +1064,14 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(
-            secret_env_vars={"SOME": "SECRET(_ref)"},
+            secret_env_vars={"SOME": "SECRET(a_ref)"},
             shared_secret_env_vars={"A": "SHAREDSECRET(_ref1)"},
         ) == [
             V1EnvVar(
                 name="SOME",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-kurupt---ref", key="_ref", optional=False
+                        name="paasta-secret-kurupt-a--ref", key="a_ref", optional=False
                     )
                 ),
             ),
@@ -1079,7 +1079,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 name="A",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret---shared---ref1",
+                        name="paasta-secret-underscore-shared-underscore-ref1",
                         key="_ref1",
                         optional=False,
                     )
@@ -1905,6 +1905,8 @@ def test_maybe_add_yelp_prefix():
 def test_sanitise_kubernetes_name():
     assert sanitise_kubernetes_name("my_service") == "my--service"
     assert sanitise_kubernetes_name("myservice") == "myservice"
+    assert sanitise_kubernetes_name("_shared") == "underscore-shared"
+    assert sanitise_kubernetes_name("_shared_thing") == "underscore-shared--thing"
 
 
 def test_create_kubernetes_secret_signature():
