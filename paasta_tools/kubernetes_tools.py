@@ -124,7 +124,11 @@ log = logging.getLogger(__name__)
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 CONFIG_HASH_BLACKLIST = {"replicas"}
-KUBE_DEPLOY_STATEGY_MAP = {"crossover": "RollingUpdate", "downthenup": "Recreate"}
+KUBE_DEPLOY_STATEGY_MAP = {
+    "crossover": "RollingUpdate",
+    "brutal": "RollingUpdate",  # Added for backwards compatibility with marathon app configs
+    "downthenup": "Recreate",
+}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 HACHECK_POD_NAME = "hacheck"
 
