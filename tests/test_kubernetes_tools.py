@@ -616,7 +616,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ]
         mock_aws_ebs_volumes = [
             {
-                "volume_id": "vol-ZZZZZZZZZZZZZZZZZ",
+                "volume_id": "vol-zzzzzzzzzzzzzzzzz",
                 "fs_type": "ext4",
                 "container_path": "/nail/qux",
             }
@@ -632,9 +632,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             ),
             V1Volume(
                 aws_elastic_block_store=V1AWSElasticBlockStoreVolumeSource(
-                    volume_id="vol-ZZZZZZZZZZZZZZZZZ", fs_type="ext4", read_only=False
+                    volume_id="vol-zzzzzzzzzzzzzzzzz", fs_type="ext4", read_only=False
                 ),
-                name="aws-ebs--vol-ZZZZZZZZZZZZZZZZZ",
+                name="aws-ebs--vol-zzzzzzzzzzzzzzzzz",
             ),
         ]
         assert (
@@ -1904,6 +1904,7 @@ def test_maybe_add_yelp_prefix():
 
 def test_sanitise_kubernetes_name():
     assert sanitise_kubernetes_name("my_service") == "my--service"
+    assert sanitise_kubernetes_name("MY_SERVICE") == "my--service"
     assert sanitise_kubernetes_name("myservice") == "myservice"
     assert sanitise_kubernetes_name("_shared") == "underscore-shared"
     assert sanitise_kubernetes_name("_shared_thing") == "underscore-shared--thing"
