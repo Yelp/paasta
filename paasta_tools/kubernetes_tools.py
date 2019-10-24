@@ -124,7 +124,11 @@ log = logging.getLogger(__name__)
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 CONFIG_HASH_BLACKLIST = {"replicas"}
-KUBE_DEPLOY_STATEGY_MAP = {"crossover": "RollingUpdate", "downthenup": "Recreate"}
+KUBE_DEPLOY_STATEGY_MAP = {
+    "crossover": "RollingUpdate",
+    "downthenup": "Recreate",
+    "brutal": "RollingUpdate",
+}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 HACHECK_POD_NAME = "hacheck"
 
@@ -436,24 +440,31 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
+        # get soa defined bounce_method
+        bounce_method = self.config_dict.get("bounce_method", "")
+        # get k8s equivalent
         strategy_type = self.get_bounce_method()
-        rolling_update: Optional[V1RollingUpdateDeployment]
+
         if strategy_type == "RollingUpdate":
+            max_surge = "100%"
+            if bounce_method == "crossover":
+                max_unavailable = "{}%".format(
+                    int((1 - self.get_bounce_margin_factor()) * 100)
+                )
+            else:
+                # `brutal` bounce method means a bounce margin factor of 0, do not call get_bounce_margin_factor
+                max_unavailable = "100%"
+            rolling_update = V1RollingUpdateDeployment
+
             # this translates bounce_margin to k8s speak maxUnavailable
             # for now we keep max_surge 100% but we could customise later
             rolling_update = V1RollingUpdateDeployment(
-                max_surge="100%",
-                max_unavailable="{}%".format(
-                    int((1 - self.get_bounce_margin_factor()) * 100)
-                ),
+                max_surge=max_surge, max_unavailable=max_unavailable
             )
         else:
             rolling_update = None
 
-        strategy = V1DeploymentStrategy(
-            type=strategy_type, rolling_update=rolling_update
-        )
-        return strategy
+        return V1DeploymentStrategy(type=strategy_type, rolling_update=rolling_update)
 
     def get_sanitised_volume_name(self, volume_name: str) -> str:
         """I know but we really aren't allowed many characters..."""
@@ -1137,6 +1148,22 @@ class KubeClient:
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
         self.autoscaling = kube_client.AutoscalingV2beta1Api()
+
+
+def force_delete_pods(
+    service: str,
+    paasta_service: str,
+    instance: str,
+    namespace: str,
+    kube_client: KubeClient,
+) -> None:
+    # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
+    pods_to_delete = pods_for_service_instance(paasta_service, instance, kube_client)
+    delete_options = V1DeleteOptions()
+    for pod in pods_to_delete:
+        kube_client.core.delete_namespaced_pod(
+            pod.metadata.name, namespace, body=delete_options, grace_period_seconds=0
+        )
 
 
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
