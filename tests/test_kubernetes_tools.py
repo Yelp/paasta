@@ -979,18 +979,20 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 name="kurupt-fm",
             )
 
-    def test_get_autoscaling_metric_spec(self):
-        mock_config = mock.MagicMock()
-
+    def test_get_autoscaling_metric_spec_mesos_cpu(self):
         # with cpu
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": "0.5"},
+            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
         }
-        mock_config.get_max_instances.return_value = 3
-        mock_config.get_min_instances.return_value = 1
-        mock_config.config_dict = config_dict
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name"
         )
@@ -1017,16 +1019,20 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
         assert expected_res == return_value
 
+    def test_get_autoscaling_metric_spec_http(self):
         # with http
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "http", "setpoint": "0.5"},
+            "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
         }
-
-        mock_config.get_max_instances.return_value = 3
-        mock_config.get_min_instances.return_value = 1
-        mock_config.config_dict = config_dict
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name"
         )
@@ -1053,16 +1059,19 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
         assert expected_res == return_value
 
-        # with uwsgi
+    def test_get_autoscaling_metric_spec_uwsgi(self):
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "uwsgi", "setpoint": "0.5"},
+            "autoscaling": {"metrics_provider": "uwsgi", "setpoint": 0.5},
         }
-
-        mock_config.get_max_instances.return_value = 3
-        mock_config.get_min_instances.return_value = 1
-        mock_config.config_dict = config_dict
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name"
         )
@@ -1087,6 +1096,25 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             ),
         )
+        assert expected_res == return_value
+
+    def test_get_autoscaling_metric_spec_bespoke(self):
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {"metrics_provider": "bespoke", "setpoint": 0.5},
+        }
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name"
+        )
+        expected_res = None
         assert expected_res == return_value
 
     def test_sanitize_for_config_hash(self):

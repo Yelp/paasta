@@ -3,14 +3,7 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
-
-
-# helper Functions for mocking
-def setup_app(mock_client, app, config_dict, exists_hpa):
-    app.reset_mock()
-    mock_client.reset_mock()
-    app.get_soa_config.return_value = config_dict
-    app.exists_hpa.return_value = exists_hpa
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
 def test_brutal_bounce():
@@ -33,7 +26,7 @@ def test_brutal_bounce():
             app.item.metadata.namespace = "faasta"
 
             # we do NOT call deep_delete_and_create
-            setup_app(mock_client, app, {}, True)
+            app = setup_app({}, True)
             DeploymentWrapper.update(self=app, kube_client=mock_client)
 
             assert mock_deep_delete_and_create.call_count == 0
@@ -41,8 +34,8 @@ def test_brutal_bounce():
             # we call deep_delete_and_create: when bounce_method is brutal
             config_dict = {"instances": 1, "bounce_method": "brutal"}
 
-            setup_app(mock_client, app, config_dict, True)
-            DeploymentWrapper.update(self=app, kube_client=mock_client)
+            app = setup_app(config_dict, True)
+            app.update(kube_client=mock_client)
 
             mock_deep_delete_and_create.assert_called_once_with(
                 target=app.deep_delete_and_create, args=[mock_cloned_client]
@@ -103,16 +96,31 @@ def test_ensure_pod_disruption_budget_replaces_outdated():
         )
 
 
-def test_sync_horizontal_pod_autoscaler():
-    mock_client = mock.MagicMock()
-    app = mock.MagicMock()
-    app.item.metadata.name = "fake_name"
-    app.item.metadata.namespace = "faasta"
+def setup_app(config_dict, exists_hpa):
+    item = mock.MagicMock()
+    item.metadata.name = "fake_name"
+    item.metadata.namespace = "faasta"
 
+    app = DeploymentWrapper(item=item)
+    app.soa_config = KubernetesDeploymentConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict=config_dict,
+        branch_dict=None,
+    )
+
+    app.exists_hpa = mock.Mock(return_value=exists_hpa)
+    app.delete_horizontal_pod_autoscaler = mock.Mock(return_value=None)
+    return app
+
+
+def test_sync_horizontal_pod_autoscaler_no_autoscaling():
+    mock_client = mock.MagicMock()
     # Do nothing
     config_dict = {"instances": 1}
-    setup_app(mock_client, app, config_dict, False)
-    DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
+    app = setup_app(config_dict, False)
+    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -123,10 +131,13 @@ def test_sync_horizontal_pod_autoscaler():
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
 
+
+def test_sync_horizontal_pod_autoscaler_delete_hpa_when_no_autoscaling():
+    mock_client = mock.MagicMock()
     # old HPA got removed so delete
     config_dict = {"instances": 1}
-    setup_app(mock_client, app, config_dict, True)
-    DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
+    app = setup_app(config_dict, True)
+    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -137,10 +148,13 @@ def test_sync_horizontal_pod_autoscaler():
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 1
 
+
+def test_sync_horizontal_pod_autoscaler_create_hpa():
+    mock_client = mock.MagicMock()
     # Create
-    config_dict = {}
-    setup_app(mock_client, app, config_dict, False)
-    DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
+    config_dict = {"max_instances": 3}
+    app = setup_app(config_dict, False)
+    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -148,14 +162,17 @@ def test_sync_horizontal_pod_autoscaler():
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
     mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
-        body=app.soa_config.get_autoscaling_metric_spec.return_value,
+        body=app.soa_config.get_autoscaling_metric_spec("fake_name", "faasta"),
         pretty=True,
     )
 
+
+def test_sync_horizontal_pod_autoscaler_update_hpa():
+    mock_client = mock.MagicMock()
     # Update
-    config_dict = {}
-    setup_app(mock_client, app, config_dict, True)
-    DeploymentWrapper.sync_horizontal_pod_autoscaler(self=app, kube_client=mock_client)
+    config_dict = {"max_instances": 3}
+    app = setup_app(config_dict, True)
+    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -164,6 +181,24 @@ def test_sync_horizontal_pod_autoscaler():
     mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
         name="fake_name",
-        body=app.soa_config.get_autoscaling_metric_spec.return_value,
+        body=app.soa_config.get_autoscaling_metric_spec("fake_name", "faasta"),
         pretty=True,
     )
+
+
+def test_sync_horizontal_pod_autoscaler_bespoke_autoscaler():
+    mock_client = mock.MagicMock()
+
+    # Do nothing
+    config_dict = {"max_instances": 3, "autoscaling": {"decision_policy": "bespoke"}}
+    app = setup_app(config_dict, False)
+    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
+    assert (
+        mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
+        == 0
+    )
+    assert (
+        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
+        == 0
+    )
+    assert app.delete_horizontal_pod_autoscaler.call_count == 0
