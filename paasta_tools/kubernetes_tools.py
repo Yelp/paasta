@@ -1387,7 +1387,7 @@ def filter_pods_by_service_instance(
 
 def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
     ready_conditions = [
-        cond.status == "True" for cond in it.status.conditions if cond.type == "Ready"
+        cond.status == "True" for cond in it.status.conditions or [] if cond.type == "Ready"
     ]
     return all(ready_conditions) if ready_conditions else False
 
