@@ -15,7 +15,7 @@ def test_nodes_for_cleanup():
         autospec=True,
     ) as mock_terminated_nodes:
         m1, m2, m3 = mock.MagicMock(), mock.MagicMock(), mock.MagicMock()
-        m4 = mock.Mock()
+        m4 = mock.MagicMock()
         m4.metadata.labels = {"node-role.kubernetes.io/master": ""}
         mock_ec2_client = mock.Mock()
         mock_terminated_nodes.return_value = [m2, m3]
