@@ -949,6 +949,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 spec=V1PodSpec(
                     service_account_name=None,
                     containers=mock_get_kubernetes_containers.return_value,
+                    share_process_namespace=True,
                     node_selector={"yelp.com/pool": "default"},
                     restart_policy="Always",
                     volumes=[],

@@ -1022,6 +1022,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     system_paasta_config=system_paasta_config,
                     service_namespace_config=service_namespace_config,
                 ),
+                share_process_namespace=True,
                 node_selector=self.get_node_selector(),
                 restart_policy="Always",
                 volumes=self.get_pod_volumes(
