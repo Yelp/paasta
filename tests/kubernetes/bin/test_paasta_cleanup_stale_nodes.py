@@ -15,9 +15,11 @@ def test_nodes_for_cleanup():
         autospec=True,
     ) as mock_terminated_nodes:
         m1, m2, m3 = mock.MagicMock(), mock.MagicMock(), mock.MagicMock()
-        mock_client = mock.Mock()
+        m4 = mock.MagicMock()
+        m4.metadata.labels = {"node-role.kubernetes.io/master": ""}
+        mock_ec2_client = mock.Mock()
         mock_terminated_nodes.return_value = [m2, m3]
-        for_cleanup = nodes_for_cleanup(mock_client, [m1, m2, m3])
+        for_cleanup = nodes_for_cleanup(mock_ec2_client, [m1, m2, m3, m4])
         assert for_cleanup == [m2, m3]
 
 
@@ -120,14 +122,21 @@ def test_main():
         m1 = mock.MagicMock(metadata=mock.Mock())
         m2 = mock.Mock(metadata=mock.Mock())
         m3 = mock.Mock(metadata=mock.Mock())
+        m4 = mock.Mock(metadata=mock.Mock())
 
-        for i, m in enumerate([m1, m2, m3]):
+        for i, m in enumerate([m1, m2, m3, m4]):
             m.metadata.name = f"m{i+1}"
-            m.metadata.labels = {
-                "failure-domain.beta.kubernetes.io/region": "us-west-1"
-            }
+            if i < 3:
+                m.metadata.labels = {
+                    "failure-domain.beta.kubernetes.io/region": "us-west-1"
+                }
+            else:
+                m.metadata.labels = {
+                    "failure-domain.beta.kubernetes.io/region": "us-west-1",
+                    "node-role.kubernetes.io/master": "",
+                }
 
-        mock_get_all_nodes.return_value = [m1, m2, m3]
+        mock_get_all_nodes.return_value = [m1, m2, m3, m4]
         mock_nodes_for_cleanup.return_value = [m2, m3]
         mock_terminate_nodes.return_value = (["m2"], [("m3", mock.MagicMock())])
 
