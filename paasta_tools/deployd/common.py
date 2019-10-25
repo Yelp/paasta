@@ -1,6 +1,6 @@
 import logging
 import time
-from collections import namedtuple
+from contextlib import contextmanager
 from queue import Empty
 from queue import PriorityQueue
 from queue import Queue
@@ -9,9 +9,14 @@ from threading import Event
 from threading import Thread
 from typing import Any
 from typing import Collection
+from typing import Generator
+from typing import Iterable
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
+
+from typing_extensions import Protocol
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import get_all_marathon_apps
@@ -20,52 +25,31 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.metrics.metrics_lib import TimerProtocol
 from paasta_tools.utils import load_system_paasta_config
 
-BounceTimers = namedtuple(
-    "BounceTimers", ["processed_by_worker", "setup_marathon", "bounce_length"]
-)
-BaseServiceInstance = namedtuple(
-    "ServiceInstance",
-    [
-        "service",
-        "instance",
-        "bounce_by",
-        "wait_until",
-        "watcher",
-        "bounce_timers",
-        "failures",
-        "processed_count",
-    ],
-)
+
+class BounceTimers(NamedTuple):
+    processed_by_worker: TimerProtocol
+    setup_marathon: TimerProtocol
+    bounce_length: TimerProtocol
 
 
-class ServiceInstance(BaseServiceInstance):
-    __slots__ = ()
+class ServiceInstance(NamedTuple):
+    service: str
+    instance: str
+    watcher: str
+    bounce_by: float
+    wait_until: float
+    enqueue_time: float
+    bounce_start_time: float
+    failures: int = 0
+    processed_count: int = 0
 
-    def __new__(
-        _cls,
-        service: str,
-        instance: str,
-        watcher: str,
-        cluster: str,
-        bounce_by: float,
-        wait_until: float,
-        failures: int = 0,
-        bounce_timers: Optional[BounceTimers] = None,
-        processed_count: int = 0,
-    ) -> "ServiceInstance":
-        return super().__new__(  # type: ignore
-            _cls=_cls,
-            service=service,
-            instance=instance,
-            watcher=watcher,
-            bounce_by=bounce_by,
-            wait_until=wait_until,
-            failures=failures,
-            bounce_timers=bounce_timers,
-            processed_count=processed_count,
-        )
+
+# Hack to make the default values for ServiceInstance work on python 3.6.0. (typing.NamedTuple gained default values in
+# python 3.6.1.)
+ServiceInstance.__new__.__defaults__ = (0, 0)
 
 
 class PaastaThread(Thread):
@@ -141,7 +125,31 @@ def get_marathon_clients_from_config() -> MarathonClients:
     return marathon_clients
 
 
-class DelayDeadlineQueue:
+class DelayDeadlineQueueProtocol(Protocol):
+    def __init__(self) -> None:
+        ...
+
+    def put(self, si: ServiceInstance) -> None:
+        ...
+
+    @contextmanager
+    def get(
+        self, block: bool = True, timeout: float = None
+    ) -> Generator[ServiceInstance, None, None]:
+        ...
+
+    def get_available_service_instances(
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, Optional[ServiceInstance]]]:
+        ...
+
+    def get_unavailable_service_instances(
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, float, Optional[ServiceInstance]]]:
+        ...
+
+
+class DelayDeadlineQueue(DelayDeadlineQueueProtocol):
     """Entries into this queue have both a wait_until and a bounce_by. Before wait_until, get() will not return an entry.
     get() returns the entry whose wait_until has passed and which has the lowest bounce_by."""
 
@@ -193,6 +201,30 @@ class DelayDeadlineQueue:
 
                 self.unavailable_service_instances_modify.wait(timeout=timeout)
 
-    def get(self, block: bool = True, timeout: float = None) -> ServiceInstance:
-        _, si = self.available_service_instances.get(block=block, timeout=timeout)
-        return si
+    @contextmanager
+    def get(
+        self, block: bool = True, timeout: float = None
+    ) -> Generator[ServiceInstance, None, None]:
+        bounce_by, si = self.available_service_instances.get(
+            block=block, timeout=timeout
+        )
+        try:
+            yield si
+        except Exception:
+            self.available_service_instances.put((bounce_by, si))
+
+    def get_available_service_instances(
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, Optional[ServiceInstance]]]:
+        return [
+            (bounce_by, (si if fetch_service_instances else None))
+            for bounce_by, si in self.available_service_instances.queue
+        ]
+
+    def get_unavailable_service_instances(
+        self, fetch_service_instances: bool
+    ) -> Iterable[Tuple[float, float, Optional[ServiceInstance]]]:
+        return [
+            (wait_until, bounce_by, (si if fetch_service_instances else None))
+            for wait_until, bounce_by, si in self.unavailable_service_instances.queue
+        ]

@@ -5,7 +5,7 @@ from queue import Empty
 import mock
 from pytest import raises
 
-from paasta_tools.deployd.common import BaseServiceInstance
+from paasta_tools.deployd.common import ServiceInstance
 
 
 class FakePyinotify:  # pragma: no cover
@@ -22,6 +22,9 @@ class FakePyinotify:  # pragma: no cover
 
     @property
     def Notifier():
+        pass
+
+    class Event:
         pass
 
 
@@ -56,6 +59,7 @@ class TestDeployDaemon(unittest.TestCase):
                 get_cluster=mock.Mock(return_value="westeros-prod"),
                 get_log_writer=mock.Mock(return_value={"driver": None}),
                 get_deployd_startup_oracle_enabled=mock.Mock(return_value=False),
+                get_deployd_use_zk_queue=mock.Mock(return_value=False),
             )
             mock_config_getter.return_value = mock_config
             self.deployd = DeployDaemon()
@@ -249,27 +253,29 @@ class TestDeployDaemon(unittest.TestCase):
             )
             calls = [
                 mock.call(
-                    BaseServiceInstance(
+                    ServiceInstance(
                         service="universe",
                         instance="c138",
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,
-                        bounce_timers=None,
                         failures=0,
                         processed_count=0,
+                        enqueue_time=1,
+                        bounce_start_time=1,
                     )
                 ),
                 mock.call(
-                    BaseServiceInstance(
+                    ServiceInstance(
                         service="universe",
                         instance="c137",
                         watcher="DeployDaemon",
                         bounce_by=1,
                         wait_until=1,
-                        bounce_timers=None,
                         failures=0,
                         processed_count=0,
+                        enqueue_time=1,
+                        bounce_start_time=1,
                     )
                 ),
             ]

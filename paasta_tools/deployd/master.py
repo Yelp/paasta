@@ -5,17 +5,23 @@ import socket
 import sys
 import time
 from queue import Empty
+from typing import Any
+from typing import List
+from typing import Type
 
 import service_configuration_lib
+from kazoo.client import KazooClient
 
 from paasta_tools.deployd import watchers
 from paasta_tools.deployd.common import DelayDeadlineQueue
+from paasta_tools.deployd.common import DelayDeadlineQueueProtocol
 from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.leader import PaastaLeaderElection
 from paasta_tools.deployd.metrics import QueueAndWorkerMetrics
+from paasta_tools.deployd.queue import ZKDelayDeadlineQueue
 from paasta_tools.deployd.workers import PaastaDeployWorker
 from paasta_tools.list_marathon_service_instances import (
     get_service_instances_that_need_bouncing,
@@ -26,19 +32,23 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
+# Broken out into a constant so that we don't get drift between this and the code in paasta_deployd_steps.py that
+# searches for this message.
+DEAD_DEPLOYD_WORKER_MESSAGE = "Detected a dead worker, starting a replacement thread"
+
 
 class AddHostnameFilter(logging.Filter):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.hostname = socket.gethostname()
 
-    def filter(self, record):
+    def filter(self, record: Any) -> bool:
         record.hostname = self.hostname
         return True
 
 
 class DeployDaemon(PaastaThread):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.started = False
         self.daemon = True
@@ -46,11 +56,21 @@ class DeployDaemon(PaastaThread):
         self.config = load_system_paasta_config()
         self.setup_logging()
         self.metrics = get_metrics_interface("paasta.deployd")
-        self.instances_to_bounce = DelayDeadlineQueue()
+        self.setup_instances_to_bounce()
         self.control = PaastaQueue("ControlQueue")
         self.marathon_clients = get_marathon_clients_from_config()
 
-    def setup_logging(self):
+    def setup_instances_to_bounce(self) -> None:
+        if self.config.get_deployd_use_zk_queue():
+            zk_client = KazooClient(hosts=self.config.get_zk_hosts())
+            zk_client.start()
+            self.instances_to_bounce: DelayDeadlineQueueProtocol = ZKDelayDeadlineQueue(
+                client=zk_client
+            )
+        else:
+            self.instances_to_bounce = DelayDeadlineQueue()
+
+    def setup_logging(self) -> None:
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, self.config.get_deployd_log_level()))
         handler = logging.StreamHandler()
@@ -63,7 +83,7 @@ class DeployDaemon(PaastaThread):
             )
         )
 
-    def run(self):
+    def run(self) -> None:
         self.log.info("paasta-deployd starting up...")
         startup_counter = self.metrics.create_counter(
             "process_started", paasta_cluster=self.config.get_cluster()
@@ -82,7 +102,7 @@ class DeployDaemon(PaastaThread):
             self.log.info("Leadership given up, exiting...")
 
     @property
-    def watcher_threads_enabled(self):
+    def watcher_threads_enabled(self) -> List[Type[watchers.PaastaWatcher]]:
         disabled_watchers = self.config.get_disabled_watchers()
         watcher_classes = [
             obj[1]
@@ -94,7 +114,7 @@ class DeployDaemon(PaastaThread):
         ]
         return enabled_watchers
 
-    def startup(self):
+    def startup(self) -> None:
         self.is_leader = True
         self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
         leader_counter = self.metrics.create_counter(
@@ -122,7 +142,7 @@ class DeployDaemon(PaastaThread):
         self.log.info("Startup finished!")
         self.main_loop()
 
-    def main_loop(self):
+    def main_loop(self) -> None:
         while True:
             try:
                 message = self.control.get(block=False)
@@ -140,17 +160,17 @@ class DeployDaemon(PaastaThread):
             self.check_and_start_workers()
             time.sleep(0.1)
 
-    def all_watchers_running(self):
+    def all_watchers_running(self) -> bool:
         return all([watcher.is_alive() for watcher in self.watcher_threads])
 
-    def all_workers_dead(self):
+    def all_workers_dead(self) -> bool:
         return all([not worker.is_alive() for worker in self.workers])
 
-    def check_and_start_workers(self):
+    def check_and_start_workers(self) -> None:
         live_workers = len([worker for worker in self.workers if worker.is_alive()])
         number_of_dead_workers = self.config.get_deployd_number_workers() - live_workers
         for i in range(number_of_dead_workers):
-            self.log.error("Detected a dead worker, starting a replacement thread")
+            self.log.error(DEAD_DEPLOYD_WORKER_MESSAGE)
             worker_no = len(self.workers) + 1
             worker = PaastaDeployWorker(
                 worker_no, self.instances_to_bounce, self.config, self.metrics
@@ -158,11 +178,11 @@ class DeployDaemon(PaastaThread):
             worker.start()
             self.workers.append(worker)
 
-    def stop(self):
+    def stop(self) -> None:
         self.control.put("ABORT")
 
-    def start_workers(self):
-        self.workers = []
+    def start_workers(self) -> None:
+        self.workers: List[PaastaDeployWorker] = []
         for i in range(self.config.get_deployd_number_workers()):
             worker = PaastaDeployWorker(
                 i, self.instances_to_bounce, self.config, self.metrics
@@ -170,7 +190,7 @@ class DeployDaemon(PaastaThread):
             worker.start()
             self.workers.append(worker)
 
-    def add_all_services(self):
+    def add_all_services(self) -> None:
         instances = get_services_for_cluster(
             cluster=self.config.get_cluster(),
             instance_type="marathon",
@@ -182,16 +202,16 @@ class DeployDaemon(PaastaThread):
                     service=service,
                     instance=instance,
                     watcher="daemon_start",
-                    cluster=self.config.get_cluster(),
                     bounce_by=time.time()
                     + self.config.get_deployd_startup_bounce_deadline(),
                     wait_until=time.time(),
-                    bounce_timers=None,
                     failures=0,
+                    bounce_start_time=time.time(),
+                    enqueue_time=time.time(),
                 )
             )
 
-    def prioritise_bouncing_services(self):
+    def prioritise_bouncing_services(self) -> None:
         service_instances = get_service_instances_that_need_bouncing(
             self.marathon_clients, DEFAULT_SOA_DIR
         )
@@ -205,16 +225,16 @@ class DeployDaemon(PaastaThread):
                 ServiceInstance(
                     service=service,
                     instance=instance,
-                    cluster=self.config.get_cluster(),
                     watcher=type(self).__name__,
                     bounce_by=now,
                     wait_until=now,
-                    bounce_timers=None,
                     failures=0,
+                    bounce_start_time=time.time(),
+                    enqueue_time=time.time(),
                 )
             )
 
-    def start_watchers(self):
+    def start_watchers(self) -> None:
         """ should block until all threads happy"""
         self.watcher_threads = [
             watcher(
@@ -250,7 +270,7 @@ class DeployDaemon(PaastaThread):
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     dd = DeployDaemon()
     dd.start()
     while dd.is_alive():

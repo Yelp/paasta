@@ -18,7 +18,7 @@ class TestQueueAndWorkerMetrics(unittest.TestCase):
 
     def test_all_metrics(self):
         with mock.patch("time.time", autospec=True, return_value=10):
-            self.mock_queue.available_service_instances.queue = [
+            self.mock_queue.get_available_service_instances.return_value = [
                 (0, mock.Mock()),
                 (1, mock.Mock()),
                 (2, mock.Mock()),
@@ -36,7 +36,7 @@ class TestQueueAndWorkerMetrics(unittest.TestCase):
                 # 3600+
                 (3611, mock.Mock()),
             ]
-            self.mock_queue.unavailable_service_instances.queue = [
+            self.mock_queue.get_unavailable_service_instances.return_value = [
                 (15, 75, mock.Mock())
             ]
             self.metrics.run_once()

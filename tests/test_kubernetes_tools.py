@@ -11,6 +11,7 @@ from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1Capabilities
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1DeploymentStrategy
@@ -55,6 +56,7 @@ from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
+from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
@@ -94,6 +96,49 @@ from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
+
+
+def test_force_delete_pods():
+    mock_pod_1 = mock.MagicMock(
+        metadata=mock.MagicMock(
+            labels={
+                "yelp.com/paasta_service": "srv1",
+                "yelp.com/paasta_instance": "instance1",
+                "paasta.yelp.com/service": "srv1",
+                "paasta.yelp.com/instance": "instance1",
+            }
+        )
+    )
+    mock_pod_2 = mock.MagicMock(
+        metadata=mock.MagicMock(
+            labels={
+                "yelp.com/paasta_service": "srv1",
+                "yelp.com/paasta_instance": "instance1",
+                "paasta.yelp.com/service": "srv1",
+                "paasta.yelp.com/instance": "instance1",
+            }
+        )
+    )
+    mock_pod_1.metadata.name = "pod_1"
+    mock_pod_2.metadata.name = "pod_2"
+    mock_pods = [mock_pod_1, mock_pod_2]
+    mock_client = mock.Mock()
+
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+        return_value=mock_pods,
+    ):
+        force_delete_pods("srv1", "srv1", "instance1", "namespace", mock_client)
+        body = V1DeleteOptions()
+
+        assert mock_client.core.delete_namespaced_pod.call_count == 2
+        assert mock_client.core.delete_namespaced_pod.call_args_list[0] == mock.call(
+            "pod_1", "namespace", body=body, grace_period_seconds=0
+        )
+        assert mock_client.core.delete_namespaced_pod.call_args_list[1] == mock.call(
+            "pod_2", "namespace", body=body, grace_period_seconds=0
+        )
 
 
 def test_load_kubernetes_service_config_no_cache():
@@ -934,18 +979,20 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 name="kurupt-fm",
             )
 
-    def test_get_autoscaling_metric_spec(self):
-        mock_config = mock.MagicMock()
-
+    def test_get_autoscaling_metric_spec_mesos_cpu(self):
         # with cpu
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": "0.5"},
+            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
         }
-        mock_config.get_max_instances.return_value = 3
-        mock_config.get_min_instances.return_value = 1
-        mock_config.config_dict = config_dict
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name"
         )
@@ -972,16 +1019,20 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
         assert expected_res == return_value
 
+    def test_get_autoscaling_metric_spec_http(self):
         # with http
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "http", "setpoint": "0.5"},
+            "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
         }
-
-        mock_config.get_max_instances.return_value = 3
-        mock_config.get_min_instances.return_value = 1
-        mock_config.config_dict = config_dict
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name"
         )
@@ -1008,16 +1059,19 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         )
         assert expected_res == return_value
 
-        # with uwsgi
+    def test_get_autoscaling_metric_spec_uwsgi(self):
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "uwsgi", "setpoint": "0.5"},
+            "autoscaling": {"metrics_provider": "uwsgi", "setpoint": 0.5},
         }
-
-        mock_config.get_max_instances.return_value = 3
-        mock_config.get_min_instances.return_value = 1
-        mock_config.config_dict = config_dict
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name"
         )
@@ -1042,6 +1096,25 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             ),
         )
+        assert expected_res == return_value
+
+    def test_get_autoscaling_metric_spec_bespoke(self):
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {"metrics_provider": "bespoke", "setpoint": 0.5},
+        }
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name"
+        )
+        expected_res = None
         assert expected_res == return_value
 
     def test_sanitize_for_config_hash(self):
@@ -1787,6 +1860,9 @@ def test_is_pod_ready():
             conditions=[mock.MagicMock(type="Another", status="False")]
         )
     )
+    assert not is_pod_ready(mock_pod)
+
+    mock_pod = mock.MagicMock(status=mock.MagicMock())
     assert not is_pod_ready(mock_pod)
 
 

@@ -1,6 +1,8 @@
 import logging
+import threading
 from abc import ABC
 from abc import abstractmethod
+from time import sleep
 from typing import Optional
 from typing import Union
 
@@ -13,10 +15,11 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
+from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
+from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
@@ -89,9 +92,6 @@ class Application(ABC):
         :param kube_client:
         """
         pass
-
-    def get_soa_config(self) -> KubernetesDeploymentConfigDict:
-        return self.soa_config.config_dict
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
@@ -196,14 +196,66 @@ class DeploymentWrapper(Application):
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
+    def deep_delete_and_create(self, kube_client: KubeClient) -> None:
+        self.deep_delete(kube_client)
+        timer = 0
+        while (
+            self.kube_deployment in set(list_all_deployments(kube_client))
+            and timer < 60
+        ):
+            sleep(1)
+            timer += 1
+
+        if timer >= 60 and self.kube_deployment in set(
+            list_all_deployments(kube_client)
+        ):
+            try:
+                force_delete_pods(
+                    self.item.metadata.name,
+                    self.kube_deployment.service,
+                    self.kube_deployment.instance,
+                    self.item.metadata.namespace,
+                    kube_client,
+                )
+            except ApiException as e:
+                if e.status == 404:
+                    # Deployment does not exist, nothing to delete but
+                    # we can consider this a success.
+                    self.logging.debug(
+                        "not deleting nonexistent deploy/{} from namespace/{}".format(
+                            self.kube_deployment.service, self.item.metadata.namespace
+                        )
+                    )
+                else:
+                    raise
+        else:
+            self.logging.info(
+                "deleted deploy/{} from namespace/{}".format(
+                    self.kube_deployment.service, self.item.metadata.namespace
+                )
+            )
+        self.create(kube_client=kube_client)
+
     def update(self, kube_client: KubeClient) -> None:
-        # If autoscaling is enabled, do not update replicas.
+        # If HPA is enabled, do not update replicas.
         # In all other cases, replica is set to max(instances, min_instances)
-        if self.get_soa_config().get("instances") is not None:
+        if self.soa_config.config_dict.get("bounce_method", "") == "brutal":
+            threading.Thread(
+                target=self.deep_delete_and_create, args=[KubeClient()]
+            ).start()
+            return
+        if self.should_have_hpa() is None:
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
+
+    def should_have_hpa(self):
+        return (
+            self.soa_config.get_max_instances() is not None
+            # with bespoke autoscaler, setup_kubernetes_job sets the number of instances directly; no HPA is required.
+            and self.soa_config.get_autoscaling_params()["decision_policy"] != "bespoke"
+        )
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
@@ -215,11 +267,12 @@ class DeploymentWrapper(Application):
         )
         hpa_exists = self.exists_hpa(kube_client)
         # NO autoscaling
-        if self.get_soa_config().get("instances") is not None:
+        if not self.should_have_hpa():
             # Remove HPA if autoscaling is disabled
             if hpa_exists:
                 self.delete_horizontal_pod_autoscaler(kube_client)
             return
+
         body = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name, namespace=self.item.metadata.namespace
         )

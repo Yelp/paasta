@@ -33,4 +33,5 @@ Sphinx==1.4.1
 toml==0.9.4
 virtualenv==16.2.0
 wrapt==1.10.8
+zake==0.2.2
 zipp==0.5.2

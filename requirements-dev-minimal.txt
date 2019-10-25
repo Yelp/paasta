@@ -13,3 +13,4 @@ pytest
 pytest-asyncio
 requirements-tools
 Sphinx
+zake

@@ -7,6 +7,7 @@ Feature: paasta-deployd deploys apps
       And we have a deployments.json for the service "test-service" with enabled instance "main"
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
+      And no workers should have crashed
 
   Scenario: deployd will re-deploy an app if its marathon-*.yaml changes
     Given a working paasta cluster
@@ -21,6 +22,7 @@ Feature: paasta-deployd deploys apps
      Then we should not see the old version listed in marathon after 70 seconds
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
+      And no workers should have crashed
 
   Scenario: deployd will re-deploy an app if its deployment.json is updated
     Given a working paasta cluster
@@ -34,6 +36,7 @@ Feature: paasta-deployd deploys apps
      Then we should not see the old version listed in marathon after 70 seconds
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
+      And no workers should have crashed
 
   Scenario: deployd will re-deploy an app if a secret json file is updated and the secret's HMAC changes
     Given a working paasta cluster
@@ -49,6 +52,7 @@ Feature: paasta-deployd deploys apps
      Then we should not see the old version listed in marathon after 70 seconds
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
+      And no workers should have crashed
 
   Scenario: deployd will re-deploy an app if the public config changes
     Given a working paasta cluster
@@ -62,6 +66,7 @@ Feature: paasta-deployd deploys apps
      Then we should not see the old version listed in marathon after 70 seconds
      Then we should see "test-service.main" listed in marathon after 60 seconds
      Then we can run get_app
+      And no workers should have crashed
 
   Scenario: deployd will scale up an app if the instance count changes in zk
     Given a working paasta cluster
@@ -78,6 +83,7 @@ Feature: paasta-deployd deploys apps
      # clamped to the right values.
      When we set the instance count in zookeeper for service "test-service" instance "main" to 5
      Then we should see the number of instances become 4
+      And no workers should have crashed
 
   Scenario: deployd will scale down an app if the instance count changes in zk
     Given a working paasta cluster
@@ -93,6 +99,7 @@ Feature: paasta-deployd deploys apps
      Then we should see the number of instances become 3
      When we set the instance count in zookeeper for service "test-service" instance "main" to 2
      Then we should see the number of instances become 2
+      And no workers should have crashed
 
   Scenario: deployd will scale up an app if the instance count changes in zk even if other keys are created in zk first.
     # See PAASTA-14172: we had a bug where we fail to instantiate the appropriate watcher
@@ -110,6 +117,7 @@ Feature: paasta-deployd deploys apps
      Then we should see the number of instances become 3
      When we set the instance count in zookeeper for service "test-service" instance "main" to 4
      Then we should see the number of instances become 4
+      And no workers should have crashed
 
   Scenario: deployd starts and only one leader
     Given a working paasta cluster
@@ -130,3 +138,4 @@ Feature: paasta-deployd deploys apps
      Then we should see the number of instances become 2
      When we set the "instances" field of the marathon config for service "test-service" and instance "main" to the integer 3
      Then we should see the number of instances become 3
+      And no workers should have crashed

@@ -30,6 +30,9 @@ class TimerProtocol(Protocol):
     def stop(self) -> None:
         raise NotImplementedError()
 
+    def record(self, value: float) -> None:
+        raise NotImplementedError()
+
 
 class GaugeProtocol(Protocol):
     def set(self, value: Union[int, float]) -> None:
@@ -101,6 +104,9 @@ class Timer(TimerProtocol):
 
     def stop(self) -> None:
         log.debug("timer {} stop at {}".format(self.name, time.time()))
+
+    def record(self, value: float) -> None:
+        log.debug(f"timer {self.name} record value {value}")
 
 
 class Gauge(GaugeProtocol):

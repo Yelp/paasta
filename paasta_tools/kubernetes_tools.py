@@ -124,7 +124,11 @@ log = logging.getLogger(__name__)
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 CONFIG_HASH_BLACKLIST = {"replicas"}
-KUBE_DEPLOY_STATEGY_MAP = {"crossover": "RollingUpdate", "downthenup": "Recreate"}
+KUBE_DEPLOY_STATEGY_MAP = {
+    "crossover": "RollingUpdate",
+    "downthenup": "Recreate",
+    "brutal": "RollingUpdate",
+}
 KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 HACHECK_POD_NAME = "hacheck"
 
@@ -360,6 +364,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return KUBE_DEPLOY_STATEGY_MAP[bounce_method]
 
+    def get_autoscaling_params(self) -> AutoscalingParamsDict:
+        default_params: AutoscalingParamsDict = {
+            "metrics_provider": "mesos_cpu",
+            "decision_policy": "proportional",
+            "setpoint": 0.8,
+        }
+        return deep_merge_dictionaries(
+            overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
+            defaults=default_params,
+        )
+
     def get_autoscaling_metric_spec(
         self, name: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
@@ -367,22 +382,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         max_replicas = self.get_max_instances()
         if not min_replicas or not max_replicas:
             log.error(
-                "Please specify min_instances and max_instances for autoscaling to work"
+                f"Please specify min_instances and max_instances for autoscaling to work: {min_replicas}, {max_replicas}"
             )
             return None
-        metrics_provider = self.config_dict.get("autoscaling", {}).get(
-            "metrics_provider", "mesos_cpu"
-        )
+
+        autoscaling_params = self.get_autoscaling_params()
+        metrics_provider = autoscaling_params["metrics_provider"]
         # TODO support multiple metrics
         metrics = []
-        target = (
-            float(self.config_dict.get("autoscaling", {}).get("setpoint", "0.8")) * 100
-        )
+        target = autoscaling_params["setpoint"] * 100
         # TODO support bespoke PAASTA-15680
-        if (
-            self.config_dict.get("autoscaling", {}).get("decision_policy", "")
-            == "bespoke"
-        ):
+        if autoscaling_params["decision_policy"] == "bespoke":
             log.error(
                 f"Sorry, bespoke is not implemented yet. Please use a different decision \
                 policy if possible for {name}/name in namespace{namespace}"
@@ -436,24 +446,31 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
+        # get soa defined bounce_method
+        bounce_method = self.config_dict.get("bounce_method", "")
+        # get k8s equivalent
         strategy_type = self.get_bounce_method()
-        rolling_update: Optional[V1RollingUpdateDeployment]
+
         if strategy_type == "RollingUpdate":
+            max_surge = "100%"
+            if bounce_method == "crossover":
+                max_unavailable = "{}%".format(
+                    int((1 - self.get_bounce_margin_factor()) * 100)
+                )
+            else:
+                # `brutal` bounce method means a bounce margin factor of 0, do not call get_bounce_margin_factor
+                max_unavailable = "100%"
+            rolling_update = V1RollingUpdateDeployment
+
             # this translates bounce_margin to k8s speak maxUnavailable
             # for now we keep max_surge 100% but we could customise later
             rolling_update = V1RollingUpdateDeployment(
-                max_surge="100%",
-                max_unavailable="{}%".format(
-                    int((1 - self.get_bounce_margin_factor()) * 100)
-                ),
+                max_surge=max_surge, max_unavailable=max_unavailable
             )
         else:
             rolling_update = None
 
-        strategy = V1DeploymentStrategy(
-            type=strategy_type, rolling_update=rolling_update
-        )
-        return strategy
+        return V1DeploymentStrategy(type=strategy_type, rolling_update=rolling_update)
 
     def get_sanitised_volume_name(self, volume_name: str) -> str:
         """I know but we really aren't allowed many characters..."""
@@ -810,7 +827,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         statefulsets which are clever enough to manage EBS for you"""
 
         if self.get_desired_state() == "start":
-            instances = self.config_dict.get("instances", self.get_min_instances())
+            max_instances = self.get_max_instances()
+            instances = (
+                max_instances
+                if max_instances is not None
+                else self.config_dict.get("instances", 1)
+            )
         elif self.get_desired_state() == "stop":
             instances = 0
             log.debug("Instance is set to stop. Returning '0' instances")
@@ -951,9 +973,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             system_volumes=system_paasta_config.get_volumes()
         )
         annotations = {"smartstack_registrations": json.dumps(self.get_registrations())}
-        metrics_provider = self.config_dict.get("autoscaling", {}).get(
-            "metrics_provider", ""
-        )
+        metrics_provider = self.get_autoscaling_params()["metrics_provider"]
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
 
@@ -1137,6 +1157,22 @@ class KubeClient:
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
         self.autoscaling = kube_client.AutoscalingV2beta1Api()
+
+
+def force_delete_pods(
+    service: str,
+    paasta_service: str,
+    instance: str,
+    namespace: str,
+    kube_client: KubeClient,
+) -> None:
+    # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
+    pods_to_delete = pods_for_service_instance(paasta_service, instance, kube_client)
+    delete_options = V1DeleteOptions()
+    for pod in pods_to_delete:
+        kube_client.core.delete_namespaced_pod(
+            pod.metadata.name, namespace, body=delete_options, grace_period_seconds=0
+        )
 
 
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
@@ -1351,7 +1387,7 @@ def filter_pods_by_service_instance(
 
 def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
     ready_conditions = [
-        cond.status == "True" for cond in it.status.conditions if cond.type == "Ready"
+        cond.status == "True" for cond in it.status.conditions or [] if cond.type == "Ready"
     ]
     return all(ready_conditions) if ready_conditions else False
 
