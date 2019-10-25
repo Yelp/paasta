@@ -1,3 +1,13 @@
+paasta-tools (0.88.3) xenial; urgency=medium
+
+  * 0.88.3 tagged with 'make release'
+    Commit: Merge pull request #2508 from Yelp/u/bronek/fix-fix-is-ready-
+    check  Fix is ready check, Formatting fix
+    Commit: Add ignore for mypy error (#2507)
+    Commit: fix NoneType is not iterable in _is_ready check (#2506)
+
+ -- Bronek Kozicki <bronek@yelp.com>  Fri, 25 Oct 2019 07:44:43 -0700
+
 paasta-tools (0.88.2) xenial; urgency=medium
 
   * 0.88.2 tagged with 'make release'
