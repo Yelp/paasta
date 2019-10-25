@@ -49,7 +49,7 @@ class ServiceInstance(NamedTuple):
 
 # Hack to make the default values for ServiceInstance work on python 3.6.0. (typing.NamedTuple gained default values in
 # python 3.6.1.)
-ServiceInstance.__new__.__defaults__ = (0, 0)
+ServiceInstance.__new__.__defaults__ = (0, 0)  # type: ignore
 
 
 class PaastaThread(Thread):
