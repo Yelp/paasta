@@ -1862,6 +1862,9 @@ def test_is_pod_ready():
     )
     assert not is_pod_ready(mock_pod)
 
+    mock_pod = mock.MagicMock(status=mock.MagicMock())
+    assert not is_pod_ready(mock_pod)
+
 
 def test_is_node_ready():
     mock_node = mock.MagicMock(
