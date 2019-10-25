@@ -59,7 +59,8 @@ def nodes_for_cleanup(ec2_client: Client, nodes: Sequence[V1Node]) -> List[V1Nod
         node
         for node in nodes
         if not is_node_ready(node)
-        and "node-role.kubernetes.io/master" not in node.metadata.labels]
+        and "node-role.kubernetes.io/master" not in node.metadata.labels
+    ]
     terminated = terminated_nodes(ec2_client, not_ready)
     return terminated
 
