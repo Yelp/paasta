@@ -1,0 +1,46 @@
+# This is an example Dockerfile to run your service in PaaSTA!
+# It satisfies the PaaSTA contract.
+FROM    ubuntu:bionic
+
+# python and uwsgi deps
+RUN     apt-get update \
+        && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            awscli \
+            g++ \
+            git \
+            libatlas-base-dev \
+            libxml2 \
+            libyaml-0-2 \
+            lsb-release \
+            make \
+            openssh-client \
+            python3.7-dev \
+            python3-pip \
+            python-setuptools \
+            virtualenv \
+        && apt-get clean
+
+RUN     /usr/bin/pip3 install supervisor tox
+COPY    tox.ini requirements.txt requirements-bootstrap.txt /code/
+
+RUN     mkdir /home/nobody
+ENV     HOME /home/nobody
+
+# Code is COPY'ed here after the pip install above, so that code changes do not
+# break the preceding cache layer.
+COPY    . /code
+RUN     chown nobody /code
+RUN     cd code && tox -e virtualenv_run && virtualenv_run/bin/pip install -eexamples/clusterman_metrics
+
+RUN     ln -s /code/clusterman/supervisord/fetch_clusterman_signal /usr/bin/fetch_clusterman_signal
+RUN     ln -s /code/clusterman/supervisord/run_clusterman_signal /usr/bin/run_clusterman_signal
+
+RUN     install -d --owner=nobody /code/logs
+
+# Create /nail/run to store the batch PID file
+RUN     mkdir -p /nail/run && chown -R nobody /nail/run
+
+# For sake of security, don't run your service as a privileged user
+USER    nobody
+WORKDIR /code
+ENV     BASEPATH=/code PATH=/code/virtualenv_run/bin:$PATH

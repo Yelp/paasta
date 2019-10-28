@@ -1,0 +1,47 @@
+version: "2"
+
+services:
+  zookeeper:
+    image: zookeeper
+    environment:
+      ZK_CONFIG: tickTime=2000,initLimit=10,syncLimit=5,maxClientCnxns=128,forceSync=no,clientPort=2181
+      ZK_ID: 1
+  mesosmaster:
+    image: mesosphere/mesos:1.5.0
+    ports:
+      - 5050
+      - 5054
+    command: 'mesos-master --zk=zk://zookeeper:2181/mesos-testcluster --registry=in_memory --quorum=1 --authenticate --authenticate_agents --work_dir=/tmp/mesos --credentials=/etc/mesos-secrets'
+    depends_on:
+      - zookeeper
+    volumes:
+      - ./mesos-secrets:/etc/mesos-secrets
+  mesosagent:
+    image: mesosphere/mesos:1.5.0
+    expose:
+      - 5051
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./mesos-agent-secret:/etc/mesos-agent-secret
+    environment:
+      CLUSTER: testcluster
+      MESOS_SYSTEMD_ENABLE_SUPPORT: "false"
+    command: 'mesos-agent --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus:20;mem:2048;disk:2000;ports:[31000-31100];cpus(taskproc):10;mem(taskproc):1024;disk(taskproc):1000;ports(taskproc):[31200-31500]" --credential=/etc/mesos-agent-secret --containerizers=docker --docker=/usr/bin/docker --work_dir=/tmp/mesos --attributes="region:fakeregion;pool:default" --no-docker_kill_orphans --log_dir=/var/log/mesos'
+    depends_on:
+      - mesosmaster
+      - zookeeper
+  moto-ec2:
+    build: ./moto/
+    ports:
+      - 5000
+    command: 'ec2'
+  moto-s3:
+    build: ./moto/
+    ports:
+      - 5000
+    command: 's3'
+  moto-dynamodb:
+    build: ./moto/
+    ports:
+      - 5000
+    command: 'dynamodb2'

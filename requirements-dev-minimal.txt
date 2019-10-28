@@ -1,0 +1,15 @@
+behave>=1.2.6
+coverage
+flake8
+ipdb
+pre-commit
+pyhamcrest
+pytest
+requirements-tools
+mock
+moto>=1.1.24
+mypy
+sphinx>=1.6.6
+sphinx-rtd-theme
+sphinxcontrib-programoutput
+sphinx-autodoc-annotation

@@ -1,0 +1,9 @@
+Source: clusterman
+Maintainer: Distsys Compute <compute-infra@yelp.com>
+Build-Depends:
+    dh-virtualenv,
+
+Package: clusterman
+Depends: python3.6, ${misc:Depends}, ${python:Depends}, ${shlibs:Depends}
+Architecture: any
+Description: Mesos cluster scaling and management - y/clusterman

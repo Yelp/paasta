@@ -1,0 +1,679 @@
+clusterman (4.3.2) xenial bionic; urgency=low
+
+  * Bumping to v4.3.2 as v4.3.1 was already on remote
+
+ -- gabrielv <gabrielv@yelp.com>  Wed, 23 Oct 2019 03:55:35 -0700
+
+clusterman (4.3.1) xenial bionic; urgency=low
+
+  * Report the right instance weight when instance type differs from LC
+    instance type
+
+ -- gabrielv <gabrielv@yelp.com>  Wed, 23 Oct 2019 03:27:02 -0700
+
+clusterman (4.3.0) xenial bionic; urgency=low
+
+  * works in non-Yelpy environment
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 16 Oct 2019 13:08:12 -0700
+
+clusterman (4.2.0) xenial bionic; urgency=low
+
+  * Rolling ASGs
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 07 Oct 2019 14:10:30 -0700
+
+clusterman (4.1.0) xenial bionic; urgency=low
+
+  * enable/disable command line tools
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 18 Sep 2019 14:08:40 -0700
+
+clusterman (4.0.1) xenial bionic; urgency=low
+
+  * fix regression in metrics collector with scheduler tag
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 23 Aug 2019 15:44:37 -0700
+
+clusterman (4.0.0) xenial bionic; urgency=low
+
+  * Kubernetes support
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 15 Aug 2019 08:24:28 -0700
+
+clusterman (3.6.2) xenial bionic; urgency=low
+
+  * make warning queue urls optional in the drainer
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Mon, 12 Aug 2019 13:16:18 -0700
+
+clusterman (3.6.1) xenial bionic; urgency=low
+
+  * fix config file bug
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 16 Jul 2019 09:20:47 -0700
+
+clusterman (3.6.0) xenial bionic; urgency=low
+
+  * remove global max_weight_to_add/remove in config files
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 15 Jul 2019 15:21:47 -0700
+
+clusterman (3.5.2) xenial bionic; urgency=low
+
+  * Add new r5 and m5 instance types
+
+ -- Darwin <darwin@yelp.com>  Mon, 01 Jul 2019 12:04:21 -0700
+
+clusterman (3.5.1) xenial bionic; urgency=low
+
+  * Refactor expected config format to allow specification of cluster type (Mesos vs Kubernetes)
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 27 Jun 2019 16:50:35 -0700
+
+clusterman (3.4.1) xenial bionic; urgency=low
+
+  * Build shell completiosn for cli (part 2)
+
+ -- Darwin <darwin@yelp.com>  Mon, 10 Jun 2019 13:58:57 -0700
+
+clusterman (3.4.0) xenial bionic; urgency=low
+
+  * Adding GPU resource to the autoscaler
+  * reverted shell completions for cli
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 30 May 2019 10:09:43 -0700
+
+clusterman (3.3.1) xenial bionic; urgency=low
+
+  * Build shell completions for cli
+
+ -- Darwin <darwin@yelp.com>  Wed, 29 May 2019 15:09:12 -0700
+
+clusterman (3.3.0) xenial bionic; urgency=low
+
+  * remove support for trusty
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 21 May 2019 13:39:22 -0700
+
+clusterman (3.2.2) trusty xenial bionic; urgency=medium
+
+  * Build for bionic
+
+ -- Darwin <darwin@yelp.com>  Thu, 09 May 2019 15:49:32 -0700
+
+clusterman (3.2.1) trusty; urgency=low
+
+  * minor bugfix
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 08 Apr 2019 12:02:36 -0700
+
+clusterman (3.2.0) trusty; urgency=low
+
+  * refactor of interactions between the Mesos cluster and AWS
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 08 Apr 2019 11:20:34 -0700
+
+clusterman (3.1.3) trusty; urgency=low
+
+  * fixing bug in the draining code
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 20 Feb 2019 15:14:14 -0800
+
+clusterman (3.1.2) trusty; urgency=low
+
+  * fixing build bugs (again)
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 20 Feb 2019 09:24:27 -0800
+
+clusterman (3.1.1) trusty; urgency=low
+
+  * fixing build bugs
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 20 Feb 2019 09:00:24 -0800
+
+clusterman (3.1.0) trusty; urgency=low
+
+  * added support for ec2fleet
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 19 Feb 2019 15:45:20 -0800
+
+clusterman (3.0.5) trusty; urgency=low
+
+  * allow max_tasks_to_kill to be infinite
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 23 Jan 2019 11:28:28 -0800
+
+clusterman (3.0.4) trusty; urgency=low
+
+  * Log more context for ASG LaunchConfiguration error
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 04 Jan 2019 15:22:04 -0800
+
+clusterman (3.0.3) trusty; urgency=low
+
+  * Remove instance protection from auto scaling groups
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Wed, 02 Jan 2019 15:02:45 -0800
+
+clusterman (3.0.2) trusty; urgency=low
+
+  * Prevent auto scaling resource groups from protecting unowned instances
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 21 Dec 2018 11:13:16 -0800
+
+clusterman (3.0.1) trusty; urgency=low
+
+  * Add support to scale auto scaling groups
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Mon, 10 Dec 2018 13:46:34 -0800
+
+clusterman (3.0.0) trusty; urgency=low
+
+  * Use supervisord to manage signal processes
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 30 Nov 2018 15:04:35 -0800
+
+clusterman (2.11.2) trusty; urgency=low
+
+  * Remove SHA from generated .deb
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 26 Nov 2018 13:44:51 -0800
+
+clusterman (2.11.1) trusty; urgency=low
+
+  * added new instance types
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 26 Nov 2018 10:48:39 -0800
+
+clusterman (2.11.0) trusty; urgency=low
+
+  * added new 'overprovisioned' option to the simulator
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 07 Nov 2018 08:54:35 -0800
+
+clusterman (2.10.4) trusty; urgency=low
+
+  * can handle 0 capacity in clusters
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 18 Oct 2018 16:01:12 -0700
+
+clusterman (2.10.3) trusty; urgency=low
+
+  * Send app name to signal
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 15 Oct 2018 21:07:12 -0700
+
+clusterman (2.10.2) trusty; urgency=low
+
+  * improvements to logging
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 05 Oct 2018 10:48:21 -0700
+
+clusterman (2.10.1) trusty; urgency=low
+
+  * read signals repo location from srv-configs
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 11 Sep 2018 13:22:45 -0700
+
+clusterman (2.10.0) trusty; urgency=low
+
+  * use a GSI in dynamodb for querying regex'ed metric names
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 06 Sep 2018 14:08:34 -0700
+
+clusterman (2.9.5) trusty; urgency=low
+
+  * temporary fix for EBS-backed instances in the simulator
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 13 Aug 2018 09:31:30 -0700
+
+clusterman (2.9.4) trusty; urgency=low
+
+  * minor fixes; don't require --pool for default
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 10 Aug 2018 11:17:45 -0700
+
+clusterman (2.9.3) trusty; urgency=low
+
+  * remove cpus_per_weight from srv-configs
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 06 Aug 2018 14:06:40 -0700
+
+clusterman (2.9.2) trusty; urgency=low
+
+  * fixing mypy
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 31 Jul 2018 15:11:27 -0700
+
+clusterman (2.9.1) trusty; urgency=low
+
+  * fix the clusterman simulate command
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 31 Jul 2018 15:05:26 -0700
+
+clusterman (2.9.0) trusty; urgency=low
+
+  * improve the output from clusterman status
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 31 Jul 2018 15:02:36 -0700
+
+clusterman (2.8.8) trusty; urgency=low
+
+  * Fix trusty pkgbuild issue
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 20 Jul 2018 10:46:24 -0700
+
+clusterman (2.8.7) trusty; urgency=low
+
+  * Fix Clusterman CLI KeyError
+  * Some other minor changes
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 20 Jul 2018 08:52:45 -0700
+
+clusterman (2.8.6) trusty; urgency=low
+
+  * Show instance weight in status.
+  * Append / to s3 prefix so we don't load mesosstage2 SFRs for the mesosstage cluster.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 10 Jul 2018 13:36:35 -0700
+
+clusterman (2.8.5) trusty; urgency=low
+
+  * Handle stale resource groups
+
+ -- Evan Krall <krall@yelp.com>  Tue, 10 Jul 2018 10:39:33 -0700
+
+clusterman (2.8.4) trusty; urgency=low
+
+  * disable writing/reading from metrics index
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 03 Jul 2018 15:30:30 -0700
+
+clusterman (2.8.3) trusty; urgency=low
+
+  * c5d/m5d instance types
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 29 Jun 2018 11:59:58 -0700
+
+clusterman (2.8.2) trusty; urgency=low
+
+  * Ignore cancelled* SFRs for now, until we know how to deal with them.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 14 Jun 2018 21:17:28 -0700
+
+clusterman (2.8.1) trusty; urgency=low
+
+  * remove DNS lookups from pool manager
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 11 Jun 2018 13:49:02 -0700
+
+clusterman (2.8.0) trusty; urgency=low
+
+  * signals restart on failure
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 11 Jun 2018 09:59:13 -0700
+
+clusterman (2.7.0) trusty; urgency=low
+
+  * refactor signals into own class for more modularity
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 06 Jun 2018 15:46:58 -0700
+
+clusterman (2.6.0) trusty; urgency=low
+
+  * pass time into metrics client
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 24 May 2018 09:22:38 -0700
+
+clusterman (2.5.2) trusty; urgency=low
+
+  * fixed bugs in clusterman_metrics
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 10 May 2018 14:07:13 -0700
+
+clusterman (2.5.1) trusty; urgency=low
+
+  * fix simulation bug in metrics client
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 09 May 2018 16:52:41 -0700
+
+clusterman (2.5.0) trusty; urgency=low
+
+  * using the caching metrics client
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 09 May 2018 16:09:15 -0700
+
+clusterman (2.4.1) trusty; urgency=low
+
+  * fix termination bug for instances missing AZ
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 04 May 2018 03:45:57 -0700
+
+clusterman (2.4.0) trusty; urgency=low
+
+  * add join delay parameters for the simulator
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 03 May 2018 10:53:44 -0700
+
+clusterman (2.3.1) trusty; urgency=low
+
+  * fixed bug in the simulator code
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 20 Apr 2018 12:01:33 -0700
+
+clusterman (2.3.0) trusty; urgency=low
+
+  * refactor, replace --role with --pool
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 18 Apr 2018 16:46:53 -0700
+
+clusterman (2.2.1) trusty; urgency=low
+
+  * added new aws instance types, some other small changes, sensu alerting
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 10 Apr 2018 13:23:37 -0700
+
+clusterman (2.2.0) trusty; urgency=low
+
+  * Add simulation compare feature
+  * Add "allocated CPUs" feature to the simulator
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 29 Mar 2018 16:44:06 -0700
+
+clusterman (2.1.0) trusty; urgency=low
+
+  * Improve reports output from simulator
+  * Bugfixes in the simulated autoscaler
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 08 Mar 2018 14:52:00 -0800
+
+clusterman (2.0.3) trusty; urgency=low
+
+  * Use clusterman_metrics v1.0.1
+
+ -- Chien-An Lai <chl@yelp.com>  Wed, 28 Feb 2018 13:15:14 -0800
+
+clusterman (2.0.2) trusty; urgency=low
+
+  * Dummy version bump 2
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 27 Feb 2018 12:02:03 -0800
+
+clusterman (2.0.1) trusty; urgency=low
+
+  * Dummy version bump
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 27 Feb 2018 10:39:23 -0800
+
+clusterman (2.0.0) trusty; urgency=low
+
+  * Re-organize configuration layout for clusters and roles
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 26 Feb 2018 13:32:32 -0800
+
+clusterman (1.3.2) trusty; urgency=low
+
+  * Fix bug with threads for signal logging
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 23 Feb 2018 10:16:10 -0800
+
+clusterman (1.3.1) trusty; urgency=low
+
+  * fix bug for clusterman simulator*
+
+ -- Chien-An Lai <chl@yelp.com>  Thu, 22 Feb 2018 13:06:10 -0800
+
+clusterman (1.3.0) trusty; urgency=low
+
+  * improve clusterman logging from signals
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 21 Feb 2018 16:14:02 -0800
+
+clusterman (1.2.0) trusty; urgency=low
+
+  * add "min/max" commands to clusterman manage
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 13 Feb 2018 16:22:05 -0800
+
+clusterman (1.1.0) trusty; urgency=low
+
+  * apply scaling limits to "manage" command
+  * fix up issues around aws.region
+  * other minor bugfixes
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 07 Feb 2018 15:04:44 -0800
+
+clusterman (1.0.2) trusty; urgency=low
+
+  * Fixed/improved logging output
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 29 Jan 2018 15:44:15 -0800
+
+clusterman (1.0.1) trusty; urgency=low
+
+  * minor bugfixes and doc updates
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 26 Jan 2018 10:29:41 -0800
+
+clusterman (1.0.0) trusty; urgency=low
+
+  * reload on signal code changes
+  * use sockets layer to communicate with signals
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 25 Jan 2018 12:55:18 -0800
+
+clusterman (0.10.2) trusty; urgency=low
+
+  * Improved output for autoscaler/manage logging
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 22 Jan 2018 15:39:48 -0800
+
+clusterman (0.10.1) trusty; urgency=low
+
+  * fixed bug with `clusterman manage`
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 18 Jan 2018 14:35:20 -0800
+
+clusterman (0.10.0) trusty; urgency=low
+
+  * added --dry-run flag to `clusterman manage`
+  * fixed bug in prune_excess_fulfilled_capacity
+  * fixed bug in _idle_agents_by_market with every instance orphaned
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 02 Jan 2018 11:47:33 -0800
+
+clusterman (0.9.2) trusty; urgency=low
+
+  * Use FQDN + redirect endpoint to find Mesos master
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 28 Dec 2017 10:50:59 -0800
+
+clusterman (0.9.1) trusty; urgency=low
+
+  * Load multiple SFRs into the simulator
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 21 Dec 2017 14:28:34 -0800
+
+clusterman (0.9.0) trusty; urgency=low
+
+  * simulator can create and use an Autoscaler object
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 19 Dec 2017 13:32:53 -0800
+
+clusterman (0.8.4) trusty; urgency=low
+
+  * orphaned instances are considered for termination during scale-down
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 14 Dec 2017 15:41:44 -0800
+
+clusterman (0.8.3) trusty; urgency=low
+
+  * Revert to old Mesos HTTP API
+  * Unpin botocore
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 14 Dec 2017 13:44:26 -0800
+
+clusterman (0.8.2) trusty; urgency=low
+
+  * allow env-specific module configs
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 08 Dec 2017 16:42:43 -0800
+
+clusterman (0.8.1) trusty; urgency=low
+
+  * minor config loading changes; now smartstack services file can be
+    configured
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 06 Dec 2017 15:21:48 -0800
+
+clusterman (0.8.0) trusty; urgency=low
+
+  * improvements to ``clusterman status`` command
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 04 Dec 2017 13:24:02 -0800
+
+clusterman (0.7.4) trusty; urgency=low
+
+  * watch for changes in srv-configs
+
+ -- Chien-An Lai <chl@yelp.com>  Mon, 27 Nov 2017 15:03:42 -0800
+
+clusterman (0.7.3) trusty; urgency=low
+
+  * fix ec2_describe_instances doesn't filter issue
+
+ -- Chien-An Lai <chl@yelp.com>  Mon, 13 Nov 2017 18:37:59 -0800
+
+clusterman (0.7.2) trusty; urgency=low
+
+  * Add minimum target capacity of 1 for each resource group
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 13 Nov 2017 15:36:54 -0800
+
+clusterman (0.7.1) trusty; urgency=low
+
+  * Bug fix in detection of idle agents for scaling down:
+    previously all agents in the cluster were considered idle
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 09 Nov 2017 12:56:42 -0800
+
+clusterman (0.7.0) trusty; urgency=low
+
+  * Revised scale-down logic in the MesosRoleManager: target capacity
+    is always set to the desired capacity, and the fulfilled capacity
+    will slowly be brought down to match
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 01 Nov 2017 15:36:37 -0700
+
+clusterman (0.6.3) trusty; urgency=low
+
+  * Fix FilterLimitExceeded bug for ec2_describe_instances
+
+ -- Chien-An Lai <chl@yelp.com>  Tue, 31 Oct 2017 16:17:22 -0700
+
+clusterman (0.6.2) trusty; urgency=low
+
+  * Fix RequestLimitExceeded bug for `clusterman status`
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 30 Oct 2017 13:13:15 -0700
+
+clusterman (0.6.1) trusty; urgency=low
+
+  * Bugfix with --cluster argument
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 27 Oct 2017 08:29:23 -0700
+
+clusterman (0.6.0) trusty; urgency=low
+
+  * clusterman manage/status require --cluster argument
+  * removed custom role config option for manage/status
+  * clusterman simulate uses --cluster
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 26 Oct 2017 13:40:41 -0700
+
+clusterman (0.5.0) trusty; urgency=low
+
+  * added clusterman manage command-line tool
+  * added clusterman status command-line tool
+  * mesos role manager to interact with AWS clusters
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 24 Oct 2017 16:58:33 -0700
+
+clusterman (0.4.6) trusty; urgency=low
+
+  * make SpotFleet object be able to modify capacity upwards
+
+ -- Chien-An Lai <chl@yelp.com>  Thu, 19 Oct 2017 13:35:40 -0700
+
+clusterman (0.4.5) trusty; urgency=low
+
+  * make tools/generate-data be able to generate capacity data
+
+ -- Chien-An Lai <chl@yelp.com>  Thu, 12 Oct 2017 13:11:10 -0700
+
+clusterman (0.4.4) trusty; urgency=low
+
+  * reinstated debian package code
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 11 Oct 2017 14:53:53 -0700
+
+clusterman (0.4.3) trusty; urgency=low
+
+  * report generation flag bugfix
+
+ -- Chien-An Lai <chl@yelp.com>  Fri, 9 Oct 2017 16:43:57 -0700
+
+clusterman (0.4.2) trusty; urgency=low
+
+  * mesos pool resource group interface added
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 6 Oct 2017 15:58:13 -0700
+
+clusterman (0.4.1) trusty; urgency=low
+
+  * import publicly accessible objects from clusterman_metrics directly
+
+ -- Chien-An Lai <chl@yelp.com>  Fri, 6 Oct 2017 15:44:43 -0700
+
+clusterman (0.4.0) trusty; urgency=low
+
+  * updated code to work with new AWS pricing model
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 22 Sep 2017 17:57:56 -0700
+
+clusterman (0.3.0) trusty; urgency=low
+
+  * use the SimulationClient for fake cluster capacity data
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 20 Sep 2017 11:34:34 -0700
+
+clusterman (0.2.1) trusty; urgency=low
+
+  * modifications to revoke charges when AWS terminates instances
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 12 Sep 2017 12:14:31 -0700
+
+clusterman (0.2.0) trusty; urgency=low
+
+  * initial SignalFX backfill code
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 17 Aug 2017 14:28:10 -0700
+
+clusterman (0.1.0) trusty; urgency=low
+
+  * generate and load fake data
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 03 Aug 2017 16:04:59 -0700
+
+clusterman (0.0.2) trusty; urgency=low
+
+  * simulate command for spot pricing
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 31 Jul 2017 14:33:47 -0700
+
+clusterman (0.0.1) trusty; urgency=low
+
+  * Initial release.
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 10 Jul 2017 12:22:29 -0700

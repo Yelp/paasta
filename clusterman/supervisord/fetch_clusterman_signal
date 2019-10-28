@@ -1,0 +1,15 @@
+#!/bin/bash
+
+source /etc/boto_cfg/clusterman.sh
+
+# don't set -ex until after executing the above so we don't leak keys in the logs
+set -ex
+source /etc/lsb-release  # gives us DISTRIB_CODENAME
+
+SIGNAL_DIR=${2:-.}
+VERSIONS=(${CMAN_VERSIONS_TO_FETCH})
+version="clusterman_signals_${VERSIONS[$1]}"
+mkdir -p ${SIGNAL_DIR}/${version}
+cd ${SIGNAL_DIR}/${version}
+aws ${AWS_ENDPOINT_URL_ARGS} s3 cp "s3://${CMAN_SIGNALS_BUCKET}/${DISTRIB_CODENAME}/${version}.tar.gz" .
+tar -xzf "${version}.tar.gz"

@@ -1,0 +1,8 @@
+---
+# For more documentation on what this file does and what you can tweak:
+# http://y/jenkinsfile
+
+types: [paasta, debian]
+overrides:
+  debian:
+    platforms: [xenial, bionic]

@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+%:
+	dh $@ --with python-virtualenv
+
+override_dh_virtualenv:
+	dh_virtualenv --index-url='https://pypi.yelpcorp.com/simple' --python python3.7 --preinstall=pip-custom-platform --pip-tool=pip-custom-platform

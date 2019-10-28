@@ -1,0 +1,12 @@
+scribe_port: 1463
+scribe_retry_interval: 10
+
+monk_stream_prefix: '_clog.'
+scribe_disable: false
+preferred_backend: 'monk'
+monk_disable: false
+monk_timeout_ms: 10000
+monk_host: 'monk-leaf'
+monk_port: 6000
+scribe_host: 'RandomHost'
+use_schematizer: true

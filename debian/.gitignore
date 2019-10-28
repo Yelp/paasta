@@ -1,0 +1,9 @@
+*
+!.gitignore
+!changelog
+!compat
+!control
+!copyright
+!rules
+!clusterman.install
+!clusterman.links

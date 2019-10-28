@@ -1,0 +1,49 @@
+repos:
+-   repo: git@git.yelpcorp.com:mirrors/pre-commit/pre-commit-hooks
+    sha: v0.9.4
+    hooks:
+    -   id: double-quote-string-fixer
+        language_version: python3.6
+    -   id: trailing-whitespace
+        language_version: python3.6
+    -   id: end-of-file-fixer
+        language_version: python3.6
+        exclude: ^\.activate\.sh$
+    -   id: autopep8-wrapper
+        language_version: python3.6
+        args: [-i, --max-line-length=131]
+    -   id: check-yaml
+        language_version: python3.6
+    -   id: debug-statements
+        language_version: python3.6
+        exclude: ^itests/environment.py$
+    -   id: name-tests-test
+        language_version: python3.6
+    -   id: check-added-large-files
+        language_version: python3.6
+        exclude: ^(\.activate\.sh|.*clusterman_signals_acceptance\.tar\.gz)$
+    -   id: check-byte-order-marker
+        language_version: python3.6
+    -   id: fix-encoding-pragma
+        args: [--remove]
+        language_version: python3.6
+    -   id: flake8
+        language_version: python3.6
+        exclude: ^docs/.*
+        args: ['--ignore=E121,E123,E126,E133,E226,E241,E242,E704,W503,W504,W505,W605']
+-   repo: git@git.yelpcorp.com:mirrors/asottile/reorder_python_imports
+    sha: v0.3.5
+    hooks:
+    -   id: reorder-python-imports
+        args: [
+            --remove-import, 'from __future__ import absolute_import',
+            --remove-import, 'from __future__ import print_function',
+            --remove-import, 'from __future__ import unicode_literals',
+        ]
+        language_version: python3.6
+-   repo: git@git.yelpcorp.com:mirrors/asottile/pyupgrade
+    sha: v1.2.0
+    hooks:
+    -   id: pyupgrade
+        args: [--py3-plus]
+        language_version: python3.6

@@ -1,0 +1,26 @@
+from typing import TypeVar
+
+from typing_extensions import Protocol
+
+
+T = TypeVar('T')
+
+
+class XValueDiff(Protocol[T]):
+    def __mul__(self, other: int) -> 'XValueDiff[T]': ...
+
+    def __truediv__(self, other: 'XValueDiff[T]') -> float: ...
+
+
+class XValue(Protocol[T]):
+    def __add__(self, other: XValueDiff[T]) -> 'XValue[T]': ...
+
+    def __sub__(self, other: 'XValue[T]') -> XValueDiff[T]: ...
+
+    def __floordiv__(self, other: 'XValue[T]') -> float: ...
+
+    def __lt__(self, other: 'XValue[T]') -> bool: ...
+
+    def __ge__(self, other: 'XValue[T]') -> bool: ...
+
+    def __mod__(self, other: 'XValue[T]') -> int: ...

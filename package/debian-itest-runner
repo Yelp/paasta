@@ -1,0 +1,35 @@
+#!/bin/bash
+ACCEPTANCE_DIR=$(pwd)/../acceptance
+
+source ${ACCEPTANCE_DIR}/utils.sh
+trap cleanup SIGINT
+
+DISTRIB_CODENAME=$1
+PACKAGE_NAME=$2
+PACKAGE_VERSION=$3
+CONTAINER_NAME=clusterman_debian_itest_${DISTRIB_CODENAME}
+if [ "${EXTRA_VOLUME_MOUNTS}" ]; then
+    EXTRA_FLAGS="-v ${EXTRA_VOLUME_MOUNTS}"
+fi
+
+setup_networks
+
+docker run -t -v "$(pwd)/itest:/itest:rw" -v "$(pwd)/dist:/dist:ro" \
+    -v "${ACCEPTANCE_DIR}/run_instance.py:/itest/run_instance.py:ro" \
+	-v "${ACCEPTANCE_DIR}/autoscaler_config.tmpl:/itest/autoscaler_config.tmpl:ro" \
+	-v "${ACCEPTANCE_DIR}/srv-configs:/nail/srv/configs:ro" \
+	-v "${ACCEPTANCE_DIR}/clusterman.sh:/etc/boto_cfg/clusterman.sh:ro" \
+	-v "${ACCEPTANCE_DIR}/clusterman.json:/etc/boto_cfg/clusterman.json:ro" \
+	-v "${ACCEPTANCE_DIR}/clusterman.json:/etc/boto_cfg/clusterman_metrics.json:ro" \
+    -v "${ACCEPTANCE_DIR}/${DISTRIB_CODENAME}/clusterman_signals_acceptance.tar.gz:/itest/${DISTRIB_CODENAME}/clusterman_signals_acceptance.tar.gz" \
+    ${EXTRA_FLAGS} \
+    --name "${CONTAINER_NAME}" \
+    "ubuntu:${DISTRIB_CODENAME}" sleep infinity &
+
+while [ -z "${CONTAINER}" ]; do CONTAINER=$(docker ps | egrep "${CONTAINER_NAME}" | cut -d' ' -f1); done
+
+docker network connect "clusterman_${DISTRIB_CODENAME}_default" "${CONTAINER}"
+docker network connect "clusterman_${DISTRIB_CODENAME}_acceptance" "${CONTAINER}"
+docker exec -it "${CONTAINER}" /itest/ubuntu.sh "${PACKAGE_NAME}" "${PACKAGE_VERSION}"
+cleanup
+docker rm "${CONTAINER_NAME}"

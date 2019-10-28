@@ -1,0 +1,18 @@
+sfrs:
+    - sfr-5c87f608-8fa8-48d9-8a78-8887a16509e0
+    - sfr-a83610ec-5589-4258-bbd2-dad14f2acaa1
+    - sfr-e8807b39-7041-4997-8a31-4a292514d26b
+
+# configs:
+#     - "LaunchSpecifications":
+#           - "InstanceType": "c4.8xlarge"
+#             "SubnetId": "subnet-b47bb7d1"
+#             "SpotPrice": 10
+#             "WeightedCapacity": 4
+#       "AllocationStrategy": "diversified"
+#     - "LaunchSpecifications":
+#           - "InstanceType": "c3.8xlarge"
+#             "SubnetId": "subnet-b47bb7d1"
+#             "SpotPrice": 10
+#             "WeightedCapacity": 4
+#       "AllocationStrategy": "diversified"

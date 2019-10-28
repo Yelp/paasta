@@ -1,0 +1,1 @@
+alias cman_debug='python -m clusterman.batch.autoscaler_bootstrap start --no-daemon'

@@ -1,0 +1,49 @@
+---
+# run `clusterman generate-data -i metrics.yaml` to regenerate metrics.json.gz, used in the acceptance tests
+metadata:
+    spot_prices|aws_availability_zone=us-west-2a,aws_instance_type=m3.large: &spot_prices
+        start_time: "2017-12-01T08:00:00Z"
+        end_time: "2017-12-01T09:00:00Z"
+
+        frequency: 1m
+        values:
+            distribution: randint
+            params:
+                a: 1
+                b: 2
+
+
+    spot_prices|aws_availability_zone=us-west-2b,aws_instance_type=m3.large: *spot_prices
+    spot_prices|aws_availability_zone=us-west-2c,aws_instance_type=m3.large: *spot_prices
+
+    target_capacity|cluster=docker,pool=default.mesos: &capacity
+        start_time: "2017-12-01T08:00:00Z"
+        end_time: "2017-12-01T09:00:00Z"
+
+        frequency: 1m
+        values:
+            distribution: randint
+            params:
+                a: 1
+                b: 10
+
+    fulfilled_capacity|cluster=docker,pool=default.mesos:
+        start_time: "2017-12-01T08:00:00Z"
+        end_time: "2017-12-01T09:00:00Z"
+
+        dict_keys:
+            - <m3.large, us-west-2a>
+            - <m3.large, us-west-2b>
+            - <m3.large, us-west-2c>
+
+        frequency: 1m
+        values:
+            distribution: randint
+            params:
+                a: 1
+                b: 10
+
+system_metrics:
+    cpus_allocated|cluster=docker,pool=default.mesos: *capacity
+    mem_allocated|cluster=docker,pool=default.mesos: *capacity
+    disk_allocated|cluster=docker,pool=default.mesos: *capacity

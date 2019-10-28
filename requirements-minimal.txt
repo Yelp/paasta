@@ -1,0 +1,21 @@
+arrow<=0.14.6  # need to restrict for now because of https://github.com/crsmithdev/arrow/issues/612
+boto3
+botocore
+cached-property
+colorlog
+colorama
+humanfriendly
+jsonpickle
+kubernetes
+matplotlib>=3.1.1
+mypy-extensions
+numpy>=1.16
+parsedatetime
+PyStaticConfiguration
+PyYAML>=5.1
+requests>=2.22.0
+retry
+signalfx
+simplejson
+sortedcontainers
+typing-extensions

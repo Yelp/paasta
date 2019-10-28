@@ -1,0 +1,3 @@
+opt/venvs/clusterman/bin/clusterman usr/bin/clusterman
+opt/venvs/clusterman/bin/fetch_clusterman_signal usr/bin/fetch_clusterman_signal
+opt/venvs/clusterman/bin/run_clusterman_signal usr/bin/run_clusterman_signal

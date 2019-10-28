@@ -1,0 +1,4 @@
+dynamodb:
+    ttl_days: 732
+
+access_key_file: '/etc/boto_cfg/clusterman_metrics.json'

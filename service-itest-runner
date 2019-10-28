@@ -1,0 +1,54 @@
+#!/bin/bash
+
+source acceptance/utils.sh
+trap cleanup SIGINT
+
+BATCH=$1
+ARGS=$2
+STATUS_EXECUTABLE=${3:-$BATCH}
+IMAGE_NAME="clusterman-dev-$(whoami)"
+
+docker inspect --type=image "${IMAGE_NAME}" > /dev/null || \
+    IMAGE_NAME="docker-paasta.yelpcorp.com:443/services-clusterman:paasta-$(git rev-parse HEAD)"
+DISTRIB_CODENAME=$(docker run -t "${IMAGE_NAME}" lsb_release -cs | tr -d '\n\r')
+
+if [ "${EXTRA_VOLUME_MOUNTS}" ]; then
+    EXTRA_FLAGS="-v ${EXTRA_VOLUME_MOUNTS}"
+fi
+
+setup_networks
+
+docker run -t -v "$(pwd)/acceptance/srv-configs:/nail/srv/configs:ro" \
+    ${EXTRA_FLAGS} \
+    -v "$(pwd)/acceptance/clusterman.sh:/etc/boto_cfg/clusterman.sh:ro" \
+    -v "$(pwd)/acceptance/clusterman.json:/etc/boto_cfg/clusterman.json:ro" \
+    -v "$(pwd)/acceptance/clusterman.json:/etc/boto_cfg/clusterman_metrics.json:ro" \
+    "${IMAGE_NAME}" sleep infinity &
+while [ -z "${CONTAINER}" ]; do CONTAINER=$(docker ps | egrep "${IMAGE_NAME}" | cut -d' ' -f1); done
+docker network connect "clusterman_${DISTRIB_CODENAME}_default" "${CONTAINER}"
+docker network connect "clusterman_${DISTRIB_CODENAME}_acceptance" "${CONTAINER}"
+docker exec -e "DISTRIB_CODENAME=${DISTRIB_CODENAME}" -e ACCEPTANCE_ROOT=/code/acceptance --user=0 "${CONTAINER}" python acceptance/run_instance.py
+docker exec -t --user=0 \
+    -e CMAN_CLUSTER=docker \
+    -e CMAN_POOL=default \
+    -e CMAN_SCHEDULER=mesos \
+    "${CONTAINER}" /bin/bash -c "AWS_ENDPOINT_URL_ARGS='--endpoint-url http://moto-s3:5000' python -m $BATCH $ARGS" &
+
+sleep 1
+count=0
+while true; do
+    docker exec -t "${CONTAINER}" /bin/sh -c "python itest_status.py $STATUS_EXECUTABLE"
+    exitcode=$?
+    count=$((count+1))
+    if [ $exitcode -eq 0 ] || [ $count -ge 10 ]; then
+        break;
+    fi
+    sleep 10;
+done;
+cleanup
+if [ $exitcode -ne 0 ] || [ $count -ge 10 ]; then
+    echo "something broke ($exitcode) or it took too long ($count iterations)"
+    exit 1
+else
+    echo "success!"
+fi
