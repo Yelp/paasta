@@ -264,7 +264,6 @@ def format_custom_resource(
     }
     url = get_dashboard_url(kind, service, instance, cluster)
     if url:
-        resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
         resource["metadata"]["annotations"]["paasta.yelp.com/dashboard_url"] = url
     config_hash = get_config_hash(resource)
     resource["metadata"]["annotations"]["paasta.yelp.com/desired_state"] = "running"
