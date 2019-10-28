@@ -19,11 +19,11 @@ from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.cli.cli import main
-from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import decrypt_secret_environment_for_service
 from paasta_tools.cli.cmds.local_run import decrypt_secret_environment_variables
 from paasta_tools.cli.cmds.local_run import docker_pull_image
+from paasta_tools.cli.cmds.local_run import format_command_for_type
 from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
 from paasta_tools.cli.cmds.local_run import get_docker_run_cmd
@@ -1786,27 +1786,20 @@ def test_pull_docker_image_exists_with_failure(mock_run, mock_flock):
     )
 
 
-def test_command_function_for_framework_for_marathon():
-    fn = command_function_for_framework("marathon", "fake-date")
-    assert fn("foo") == "foo"
+def test_format_command_for_type_for_marathon():
+    actual = format_command_for_type("foo", "marathon", "fake-date")
+    assert actual == "foo"
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.parse_time_variables", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.datetime", autospec=True)
-def test_command_function_for_framework_for_tron(
-    mock_datetime, mock_parse_time_variables
-):
+def test_format_command_for_tron(mock_datetime, mock_parse_time_variables):
     fake_date = mock.Mock()
     mock_datetime.datetime.now.return_value = fake_date
     mock_parse_time_variables.return_value = "foo"
-    fn = command_function_for_framework("tron", fake_date)
-    fn("foo")
-    mock_parse_time_variables.assert_called_once_with("foo", fake_date)
-
-
-def test_command_function_for_framework_throws_error():
-    with raises(ValueError):
-        assert command_function_for_framework("bogus_string", "fake_date")
+    actual = format_command_for_type("{foo}", "tron", fake_date)
+    mock_parse_time_variables.assert_called_once_with("{foo}", fake_date)
+    assert actual == "foo"
 
 
 @mock.patch(

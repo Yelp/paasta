@@ -897,30 +897,16 @@ def run_docker_container(
     return returncode
 
 
-def command_function_for_framework(framework, date):
+def format_command_for_type(command, instance_type, date):
     """
-    Given a framework, return a function that appropriately formats
+    Given an instance_type, return a function that appropriately formats
     the command to be run.
     """
-
-    def format_marathon_command(cmd):
-        return cmd
-
-    def format_tron_command(cmd: str) -> str:
-        interpolated_command = parse_time_variables(cmd, date)
+    if instance_type == "tron":
+        interpolated_command = parse_time_variables(command, date)
         return interpolated_command
-
-    def format_adhoc_command(cmd):
-        return cmd
-
-    if framework == "marathon":
-        return format_marathon_command
-    elif framework == "adhoc":
-        return format_adhoc_command
-    elif framework == "tron":
-        return format_tron_command
     else:
-        raise ValueError("Invalid Framework")
+        return command
 
 
 def configure_and_run_docker_container(
@@ -1055,8 +1041,9 @@ def configure_and_run_docker_container(
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
-            command_modifier = command_function_for_framework(instance_type, args.date)
-            command = command_modifier(command_from_config)
+            command = format_command_for_type(
+                command=command_from_config, instance_type=instance_type, date=args.date
+            )
         else:
             command = instance_config.get_args()
 
