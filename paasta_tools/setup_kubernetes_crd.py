@@ -100,7 +100,7 @@ def setup_kube_crd(
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="yelp.com/paasta_service"
+        label_selector="paasta.yelp.com/service"
     )
 
     success = True
@@ -115,7 +115,6 @@ def setup_kube_crd(
         metadata = crd_config.get("metadata", {})
         if "labels" not in metadata:
             metadata["labels"] = {}
-        metadata["labels"]["yelp.com/paasta_service"] = service
         metadata["labels"]["paasta.yelp.com/service"] = service
         desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get("apiVersion"),
