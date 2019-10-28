@@ -45,7 +45,6 @@ from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
-from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -65,7 +64,6 @@ from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
-from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -90,7 +88,6 @@ HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     AdhocJobConfig,
 ]
-SSH_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = []
 
 
 def add_subparser(subparsers,) -> None:
@@ -991,21 +988,11 @@ def report_status_for_cluster(
     seen_instances = []
     deployed_instances = []
     instances = instance_whitelist.keys()
+
     http_only_instances = [
         instance
         for instance, instance_config_class in instance_whitelist.items()
         if instance_config_class in HTTP_ONLY_INSTANCE_CONFIG
-    ]
-    ssh_only_instances = [
-        instance
-        for instance, instance_config_class in instance_whitelist.items()
-        if instance_config_class in SSH_ONLY_INSTANCE_CONFIG
-    ]
-
-    tron_jobs = [
-        instance
-        for instance, instance_config_class in instance_whitelist.items()
-        if instance_config_class == TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
@@ -1030,84 +1017,24 @@ def report_status_for_cluster(
             output.append("  instance: %s" % PaastaColors.red(instance))
             output.append("    Git sha:    None (not deployed yet)")
 
-    api_return_code = 0
-    ssh_return_code = 0
-    if len(deployed_instances) > 0:
-        http_only_deployed_instances = [
-            deployed_instance
-            for deployed_instance in deployed_instances
-            if (
-                deployed_instance in http_only_instances
-                or deployed_instance not in ssh_only_instances
-                and use_api_endpoint
-            )
-        ]
-        if len(http_only_deployed_instances):
-            return_codes = [
-                paasta_status_on_api_endpoint(
-                    cluster=cluster,
-                    service=service,
-                    instance=deployed_instance,
-                    output=output,
-                    system_paasta_config=system_paasta_config,
-                    verbose=verbose,
-                )
-                for deployed_instance in http_only_deployed_instances
-            ]
-            if any(return_codes):
-                api_return_code = 1
-        ssh_only_deployed_instances = [
-            deployed_instance
-            for deployed_instance in deployed_instances
-            if (
-                deployed_instance in ssh_only_instances
-                or deployed_instance not in http_only_instances
-                and not use_api_endpoint
-            )
-        ]
-        if len(ssh_only_deployed_instances):
-            ssh_return_code, status = execute_paasta_serviceinit_on_remote_master(
-                "status",
-                cluster,
-                service,
-                ",".join(
-                    deployed_instance
-                    for deployed_instance in ssh_only_deployed_instances
-                ),
-                system_paasta_config,
-                stream=False,
-                verbose=verbose,
-                ignore_ssh_output=True,
-            )
-            # Status results are streamed. This print is for possible error messages.
-            if status is not None:
-                for line in status.rstrip().split("\n"):
-                    output.append("    %s" % line)
-
-    if len(tron_jobs) > 0:
-        return_codes = [
-            paasta_status_on_api_endpoint(
-                cluster=cluster,
-                service=service,
-                instance=tron_job,
-                output=output,
-                system_paasta_config=system_paasta_config,
-                verbose=verbose,
-            )
-            for tron_job in tron_jobs
-        ]
-        seen_instances.extend(tron_jobs)
+    return_code = 0
+    return_codes = [
+        paasta_status_on_api_endpoint(
+            cluster=cluster,
+            service=service,
+            instance=deployed_instance,
+            output=output,
+            system_paasta_config=system_paasta_config,
+            verbose=verbose,
+        )
+        for deployed_instance in http_only_instances
+    ]
+    if any(return_codes):
+        return_code = 1
 
     output.append(
         report_invalid_whitelist_values(instances, seen_instances, "instance")
     )
-
-    if ssh_return_code:
-        return_code = ssh_return_code
-    elif api_return_code:
-        return_code = api_return_code
-    else:
-        return_code = 0
 
     return return_code, output
 
