@@ -1379,6 +1379,9 @@ class TestPrintKubernetesStatus:
         )
         assert return_value == 0
 
+    @patch(
+        "paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True
+    )
     @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch(
@@ -1393,6 +1396,7 @@ class TestPrintKubernetesStatus:
         mock_kubernetes_app_deploy_status_human,
         mock_naturaltime,
         mock_get_smartstack_status_human,
+        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
@@ -1405,12 +1409,14 @@ class TestPrintKubernetesStatus:
                 host="fake_host1",
                 deployed_timestamp=1562963508,
                 phase="Running",
+                tail_lines=Struct(),
             ),
             Struct(
                 name="app_2",
                 host="fake_host2",
                 deployed_timestamp=1562963510,
                 phase="Running",
+                tail_lines=Struct(),
             ),
         ]
         mock_kubernetes_status.replicasets = [
@@ -1587,6 +1593,7 @@ class TestFormatMarathonTaskTable:
         assert task_table_dict["Health"] == PaastaColors.grey("N/A")
 
 
+@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestFormatKubernetesPodTable:
     @pytest.fixture
@@ -1596,6 +1603,7 @@ class TestFormatKubernetesPodTable:
             host="paasta.cloud",
             deployed_timestamp=1565648600,
             phase="Running",
+            tail_lines=Struct(),
         )
 
     @pytest.fixture
@@ -1604,7 +1612,12 @@ class TestFormatKubernetesPodTable:
             name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600
         )
 
-    def test_format_kubernetes_pod_table(self, mock_naturaltime, mock_kubernetes_pod):
+    def test_format_kubernetes_pod_table(
+        self,
+        mock_naturaltime,
+        mock_format_tail_lines_for_mesos_task,
+        mock_kubernetes_pod,
+    ):
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict == {
@@ -1615,7 +1628,10 @@ class TestFormatKubernetesPodTable:
         }
 
     def test_format_kubernetes_replicaset_table(
-        self, mock_naturaltime, mock_kubernetes_replicaset
+        self,
+        mock_naturaltime,
+        mock_format_tail_lines_for_mesos_task,
+        mock_kubernetes_replicaset,
     ):
         output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
         replicaset_table_dict = _formatted_table_to_dict(output)
@@ -1625,19 +1641,34 @@ class TestFormatKubernetesPodTable:
             "Created at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
         }
 
-    def test_no_host(self, mock_naturaltime, mock_kubernetes_pod):
+    def test_no_host(
+        self,
+        mock_naturaltime,
+        mock_format_tail_lines_for_mesos_task,
+        mock_kubernetes_pod,
+    ):
         mock_kubernetes_pod.host = None
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Host deployed to"] == "Unknown"
 
-    def test_unhealthy(self, mock_naturaltime, mock_kubernetes_pod):
+    def test_unhealthy(
+        self,
+        mock_naturaltime,
+        mock_format_tail_lines_for_mesos_task,
+        mock_kubernetes_pod,
+    ):
         mock_kubernetes_pod.phase = "Failed"
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")
 
-    def test_no_health(self, mock_naturaltime, mock_kubernetes_pod):
+    def test_no_health(
+        self,
+        mock_naturaltime,
+        mock_format_tail_lines_for_mesos_task,
+        mock_kubernetes_pod,
+    ):
         mock_kubernetes_pod.phase = None
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)

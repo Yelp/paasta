@@ -54,6 +54,7 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
@@ -218,7 +219,8 @@ def kubernetes_instance_status(
     return kstatus
 
 
-def kubernetes_job_status(
+@a_sync.to_blocking
+async def kubernetes_job_status(
     kstatus: MutableMapping[str, Any],
     client: kubernetes_tools.KubeClient,
     job_config: kubernetes_tools.KubernetesDeploymentConfig,
@@ -231,13 +233,23 @@ def kubernetes_job_status(
     kstatus["pods"] = []
     kstatus["replicasets"] = []
     if verbose > 0:
+        num_tail_lines = calculate_tail_lines(verbose)
+
         for pod in pod_list:
+            if num_tail_lines > 0:
+                tail_lines = await get_tail_lines_for_kubernetes_pod(
+                    client, pod, num_tail_lines
+                )
+            else:
+                tail_lines = {}
+
             kstatus["pods"].append(
                 {
                     "name": pod.metadata.name,
                     "host": pod.spec.node_name,
                     "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
                     "phase": pod.status.phase,
+                    "tail_lines": tail_lines,
                 }
             )
         for replicaset in replicaset_list:
@@ -245,7 +257,7 @@ def kubernetes_job_status(
                 {
                     "name": replicaset.metadata.name,
                     "replicas": replicaset.spec.replicas,
-                    "ready_replicas": replicaset.status.ready_replicas,
+                    "ready_replicas": getattr(replicaset, "status.ready_replicas", 0),
                     "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
                 }
             )

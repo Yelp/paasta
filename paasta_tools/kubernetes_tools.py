@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 from typing import List
 from typing import Mapping
+from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
@@ -85,6 +86,7 @@ from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -1169,6 +1171,24 @@ def list_deployments(
         )
         for item in deployments.items + stateful_sets.items
     ]
+
+
+@async_timeout()
+async def get_tail_lines_for_kubernetes_pod(
+    kube_client: KubeClient, pod: V1Pod, num_tail_lines: int
+) -> MutableMapping[str, List[str]]:
+    tail_lines_dict: MutableMapping[str, List[str]] = {"stdout": [], "stderr": []}
+    for container in pod.spec.containers:
+        if container.name != HACHECK_POD_NAME:
+            tail_lines_dict["stdout"].append(
+                kube_client.core.read_namespaced_pod_log(
+                    name=pod.metadata.name,
+                    namespace="paasta",
+                    container=container.name,
+                    tail_lines=num_tail_lines,
+                )
+            )
+    return tail_lines_dict
 
 
 def create_custom_resource(
