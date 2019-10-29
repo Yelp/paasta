@@ -544,7 +544,7 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
 
 
 def test_send_replication_event_users_monitoring_tools_send_event_properly(
-    instance_config
+    instance_config,
 ):
     fake_status = "999999"
     fake_output = "YOU DID IT"
@@ -582,7 +582,7 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
 
 
 def test_send_replication_event_users_monitoring_tools_send_event_respects_alert_after(
-    instance_config
+    instance_config,
 ):
     fake_status = "999999"
     fake_output = "YOU DID IT"
@@ -636,7 +636,7 @@ def instance_config():
 
 
 def test_check_smartstack_replication_for_instance_ok_when_expecting_zero(
-    instance_config
+    instance_config,
 ):
     expected_replication_count = 0
     mock_smartstack_replication_checker = mock.Mock()
@@ -681,7 +681,7 @@ def test_check_smartstack_replication_for_instance_crit_when_absent(instance_con
 
 
 def test_check_smartstack_replication_for_instance_crit_when_zero_replication(
-    instance_config
+    instance_config,
 ):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
@@ -722,7 +722,7 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication(
 
 
 def test_check_smartstack_replication_for_instance_crit_when_low_replication(
-    instance_config
+    instance_config,
 ):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
@@ -763,7 +763,7 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication(
 
 
 def test_check_smartstack_replication_for_instance_ok_with_enough_replication(
-    instance_config
+    instance_config,
 ):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
@@ -981,7 +981,7 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
 
 
 def test_send_replication_event_if_under_replication_handles_0_expected(
-    instance_config
+    instance_config,
 ):
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True

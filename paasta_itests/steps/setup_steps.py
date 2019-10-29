@@ -165,9 +165,11 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     interacting with them in the test."""
 
     if not hasattr(context, "marathon_clients"):
-        context.marathon_clients, context.marathon_servers, context.system_paasta_config = (
-            setup_marathon_clients()
-        )
+        (
+            context.marathon_clients,
+            context.marathon_servers,
+            context.system_paasta_config,
+        ) = setup_marathon_clients()
     else:
         paasta_print("Marathon connections already established")
 

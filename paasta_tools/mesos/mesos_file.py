@@ -31,9 +31,7 @@ class File:
         if self.task is None:
             self._host_path = self.path
         else:
-            self._host_path = (
-                None
-            )  # Defer until later (_fetch) so we don't make HTTP requests in __init__.
+            self._host_path = None  # Defer until later (_fetch) so we don't make HTTP requests in __init__.
 
         self._offset = 0
 

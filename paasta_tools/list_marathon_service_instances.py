@@ -113,9 +113,10 @@ def get_desired_marathon_configs(soa_dir):
 
 @use_requests_cache("list_marathon_services")
 def get_service_instances_that_need_bouncing(marathon_clients, soa_dir):
-    desired_marathon_configs_formatted, desired_job_configs = get_desired_marathon_configs(
-        soa_dir
-    )
+    (
+        desired_marathon_configs_formatted,
+        desired_job_configs,
+    ) = get_desired_marathon_configs(soa_dir)
     desired_ids_and_clients = set()
     for app_id, job_config in desired_job_configs.items():
         desired_ids_and_clients.add(

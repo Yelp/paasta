@@ -230,7 +230,11 @@ def status_marathon_job(
     )
     for app, client in matching_apps_with_clients:
         all_tasks.extend(app.tasks)
-        deploy_status_for_current_app, running_instances_for_current_app, out = status_marathon_app(
+        (
+            deploy_status_for_current_app,
+            running_instances_for_current_app,
+            out,
+        ) = status_marathon_app(
             marathon_client=client,
             app=app,
             service=service,

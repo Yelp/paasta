@@ -104,7 +104,7 @@ def test_create_remote_refs_is_safe_by_default(
 
 @mock.patch("dulwich.client", autospec=True)
 def test_create_remote_refs_allows_force_and_uses_the_provided_mutator(
-    mock_dulwich_client
+    mock_dulwich_client,
 ):
     git_url = "fake_git_url"
     fake_git_client = mock.Mock()

@@ -1027,7 +1027,7 @@ def healthcheck_result_resource_utilization_pair_for_resource_utilization(
 
 
 def format_table_column_for_healthcheck_resource_utilization_pair(
-    healthcheck_utilization_pair
+    healthcheck_utilization_pair,
 ):
     """Given a tuple of (HealthCheckResult, ResourceUtilization), return a
     string representation of the ResourceUtilization such that it is formatted

@@ -64,7 +64,7 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
 
 
 def test_check_service_replication_for_smartstack_with_different_namespace(
-    instance_config
+    instance_config,
 ):
     instance_config.get_instances.return_value = 100
     all_tasks = []

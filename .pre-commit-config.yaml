@@ -32,7 +32,7 @@ repos:
     -   id: pyupgrade
         args: [--py36-plus]
 -   repo: https://github.com/psf/black
-    rev: 19.3b0
+    rev: 19.10b0
     hooks:
     -   id: black
         language_version: python3.6

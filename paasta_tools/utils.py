@@ -871,7 +871,7 @@ def stringify_constraint(usc: UnstringifiedConstraint) -> Constraint:
 
 
 def stringify_constraints(
-    uscs: Optional[List[UnstringifiedConstraint]]
+    uscs: Optional[List[UnstringifiedConstraint]],
 ) -> List[Constraint]:
     if uscs is None:
         return None
@@ -1756,7 +1756,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
 
 
 def load_system_paasta_config(
-    path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+    path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR,
 ) -> "SystemPaastaConfig":
     """
     Reads Paasta configs in specified directory in lexicographical order and deep merges
@@ -1787,7 +1787,7 @@ def load_system_paasta_config(
 
 
 def optionally_load_system_paasta_config(
-    path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+    path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR,
 ) -> "SystemPaastaConfig":
     """
     Tries to load the system paasta config, but will return an empty configuration if not available,
@@ -3029,7 +3029,7 @@ def is_under_replicated(
 
 
 def deploy_blacklist_to_constraints(
-    deploy_blacklist: DeployBlacklist
+    deploy_blacklist: DeployBlacklist,
 ) -> List[Constraint]:
     """Converts a blacklist of locations into marathon appropriate constraints.
 
@@ -3046,7 +3046,7 @@ def deploy_blacklist_to_constraints(
 
 
 def deploy_whitelist_to_constraints(
-    deploy_whitelist: DeployWhitelist
+    deploy_whitelist: DeployWhitelist,
 ) -> List[Constraint]:
     """Converts a whitelist of locations into marathon appropriate constraints
 

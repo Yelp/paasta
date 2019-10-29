@@ -743,7 +743,7 @@ class TestCrossoverBounce:
         ) == {"create_app": False, "tasks_to_drain": set(old_app_live_unhappy_tasks)}
 
     def test_crossover_bounce_some_unhappy_old_no_happy_old_no_new_tasks_no_excess(
-        self
+        self,
     ):
         """When marathon only has old apps for this service, and all of their tasks are unhappy, and there are no excess
         tasks, the crossover bounce should start a new app and not kill any old tasks.
@@ -786,7 +786,7 @@ class TestCrossoverBounce:
         assert len(actual["tasks_to_drain"]) == 5
 
     def test_crossover_bounce_lots_of_unhappy_old_some_happy_old_new_app_exists_no_new_tasks(
-        self
+        self,
     ):
         """When marathon has a new app and multiple old apps, no new tasks are up, one of the old apps is healthy and
         the other is not, only unhealthy tasks should get killed.

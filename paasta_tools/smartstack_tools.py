@@ -126,7 +126,7 @@ def get_multiple_backends(
     """
 
     if services is not None and len(services) == 1:
-        scope, = services
+        (scope,) = services
     else:
         # Maybe if there's like two or three services we could make two queries, or find the longest common substring.
         # For now let's just hope this is rare and fetch all data.

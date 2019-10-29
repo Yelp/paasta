@@ -409,7 +409,7 @@ def test_active_service_groups(mock_service_config, mock_services_running_here):
 def test_ensure_internet_chain():
     with mock.patch.object(iptables, "ensure_chain", autospec=True) as m:
         firewall._ensure_internet_chain()
-    call, = m.call_args_list
+    (call,) = m.call_args_list
     args, _ = call
     assert args[0] == "PAASTA-INTERNET"
     assert args[1] == (
@@ -585,7 +585,7 @@ def test_ensure_dns_chain(tmpdir):
         iptables, "ensure_chain", autospec=True
     ) as m, mock.patch.object(firewall, "RESOLV_CONF", path.strpath):
         firewall._ensure_dns_chain()
-    call, = m.call_args_list
+    (call,) = m.call_args_list
     args, _ = call
     assert args[0] == "PAASTA-DNS"
     assert args[1] == (
@@ -619,7 +619,7 @@ def test_ensure_dns_chain(tmpdir):
 def test_ensure_common_chain():
     with mock.patch.object(iptables, "ensure_chain", autospec=True) as m:
         firewall._ensure_common_chain()
-    call, = m.call_args_list
+    (call,) = m.call_args_list
     args, _ = call
     assert args[0] == "PAASTA-COMMON"
     assert args[1] == (
