@@ -55,8 +55,8 @@ from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
-from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_pod
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
+from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -652,7 +652,12 @@ def build_smartstack_backend_dict(
     smartstack_backend: HaproxyBackend, task: Union[V1Pod, Optional[MarathonTask]]
 ) -> MutableMapping[str, Any]:
     svname = smartstack_backend["svname"]
-    hostname = svname.split("_")[0]
+    if isinstance(task, V1Pod):
+        node_hostname = svname.split("_")[0]
+        pod_ip = svname.split("_")[1].split(":")[0]
+        hostname = f"{node_hostname}:{pod_ip}"
+    else:
+        hostname = svname.split("_")[0]
     port = svname.split("_")[-1].split(":")[-1]
 
     smartstack_backend_dict = {

@@ -492,7 +492,7 @@ def test_kubernetes_smartstack_status(
                 "running_backends_count": 1,
                 "backends": [
                     {
-                        "hostname": "host1",
+                        "hostname": "host1:1.2.3.4",
                         "port": 123,
                         "status": "UP",
                         "check_status": "L7OK",
