@@ -1,3 +1,12 @@
+paasta-tools (0.88.4) xenial; urgency=medium
+
+  * 0.88.4 tagged with 'make release'
+    Commit: Merge pull request #2514 from
+    Yelp/drmorr/fix_check_oom_events_script  check_oom_events shouldn"t
+    crash on a parsing error
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 28 Oct 2019 17:02:25 -0700
+
 paasta-tools (0.88.3) xenial; urgency=medium
 
   * 0.88.3 tagged with 'make release'
