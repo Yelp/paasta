@@ -22,7 +22,7 @@ from paasta_tools.cli.cli import main
 def each_command():
     parser = get_argparser()
     # We're doing some wacky inspection here, let's make sure things are sane
-    subparsers, = [
+    (subparsers,) = [
         action
         for action in parser._actions
         if isinstance(action, argparse._SubParsersAction)

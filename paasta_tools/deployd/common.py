@@ -185,9 +185,11 @@ class DelayDeadlineQueue(DelayDeadlineQueueProtocol):
             while True:
                 try:
                     while True:
-                        wait_until, bounce_by, si = (
-                            self.unavailable_service_instances.get_nowait()
-                        )
+                        (
+                            wait_until,
+                            bounce_by,
+                            si,
+                        ) = self.unavailable_service_instances.get_nowait()
                         if wait_until < time.time():
                             self.available_service_instances.put_nowait((bounce_by, si))
                         else:

@@ -1374,7 +1374,7 @@ async def autoscale_local_cluster(
 
 
 def sort_scalers(
-    filtered_autoscaling_scalers: Sequence[ClusterAutoscaler]
+    filtered_autoscaling_scalers: Sequence[ClusterAutoscaler],
 ) -> Sequence[ClusterAutoscaler]:
     return sorted(
         filtered_autoscaling_scalers,

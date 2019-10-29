@@ -96,7 +96,7 @@ class TestZKDelayDeadlineQueue:
         )  # queue rounds to millisecond, so we might be slightly under.
 
     def test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
-        self
+        self,
     ):
         client = FakeClient()
         client.start()

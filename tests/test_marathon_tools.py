@@ -871,7 +871,7 @@ class TestMarathonTools:
             assert read_ns_config_patch.call_count == 2
 
     def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_custom_exception(
-        self
+        self,
     ):
         cluster = None
         soa_dir = "the_sound_of_music"
@@ -891,7 +891,7 @@ class TestMarathonTools:
             assert actual == []
 
     def test_get_marathon_services_running_here_for_nerve_when_paasta_not_configured(
-        self
+        self,
     ):
         cluster = None
         soa_dir = "the_sound_of_music"
@@ -911,7 +911,7 @@ class TestMarathonTools:
             assert actual == []
 
     def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_other_exception(
-        self
+        self,
     ):
         cluster = None
         soa_dir = "the_sound_of_music"

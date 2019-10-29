@@ -1799,7 +1799,7 @@ def test_create_mesos_non_running_tasks_table(
 
 @patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 def test_create_mesos_non_running_tasks_table_handles_none_deployed_timestamp(
-    mock_format_tail_lines_for_mesos_task
+    mock_format_tail_lines_for_mesos_task,
 ):
     mock_non_running_task = Struct(
         id="task_id",

@@ -83,9 +83,10 @@ class PaastaDeployWorker(PaastaThread):
             with self.instances_to_bounce.get() as service_instance:
                 self.busy = True
                 try:
-                    bounce_again_in_seconds, return_code = self.process_service_instance(
-                        service_instance
-                    )
+                    (
+                        bounce_again_in_seconds,
+                        return_code,
+                    ) = self.process_service_instance(service_instance)
                 except Exception:
                     self.log.error(
                         f"{self.name} Worker failed to process service instance and will retry. "

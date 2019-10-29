@@ -137,7 +137,7 @@ def read_nerve_files(
 
 
 def get_instance_data(
-    blacklisted_services: Set[str]
+    blacklisted_services: Set[str],
 ) -> Tuple[Set[InstanceTuple], Set[InstanceTuple]]:
     # Dump ZK
     zk_data = get_zk_data(blacklisted_services)

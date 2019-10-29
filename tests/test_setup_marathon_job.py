@@ -282,7 +282,7 @@ class TestSetupMarathonJob:
             )
 
     def test_do_bounce_when_create_app_and_new_app_not_running_but_already_created(
-        self
+        self,
     ):
         """ Note that this is possible if two bounces are running at the same time
         because we get the list of marathon apps outside of any locking"""
@@ -2117,9 +2117,12 @@ class TestGetOldHappyUnhappyDrainingTasks:
                 log_deploy_error=None,
                 draining_hosts=[],
             )
-        actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = (
-            actual
-        )
+        (
+            actual_live_happy_tasks,
+            actual_live_unhappy_tasks,
+            actual_draining_tasks,
+            actual_at_risk_tasks,
+        ) = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
         assert actual_live_unhappy_tasks == expected_live_unhappy_tasks
         assert actual_draining_tasks == expected_draining_tasks
@@ -2197,9 +2200,12 @@ class TestGetOldHappyUnhappyDrainingTasks:
                 log_deploy_error=None,
                 draining_hosts=[],
             )
-        actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks, actual_at_risk_tasks = (
-            actual
-        )
+        (
+            actual_live_happy_tasks,
+            actual_live_unhappy_tasks,
+            actual_draining_tasks,
+            actual_at_risk_tasks,
+        ) = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
         assert actual_live_unhappy_tasks == expected_live_unhappy_tasks
         assert actual_draining_tasks == expected_draining_tasks

@@ -67,7 +67,7 @@ def get_metrics_interface(base_name: str) -> BaseMetrics:
 
 
 def register_metrics_interface(
-    name: Optional[str]
+    name: Optional[str],
 ) -> Callable[[Type[BaseMetrics]], Type[BaseMetrics]]:
     def outer(func: Type[BaseMetrics]) -> Type[BaseMetrics]:
         _metrics_interfaces[name] = func

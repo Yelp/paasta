@@ -545,9 +545,14 @@ def remote_run_start(args):
     4. Run the task on the executor stack
     """
     # accumulate all configuration needed to build what we need to run a task
-    system_paasta_config, service, cluster, soa_dir, instance, instance_type = extract_args(
-        args
-    )
+    (
+        system_paasta_config,
+        service,
+        cluster,
+        soa_dir,
+        instance,
+        instance_type,
+    ) = extract_args(args)
     # TODO: move run_id into task identifier?
     run_id = args.run_id or generate_run_id(length=10)
     framework_name = create_framework_name(service, instance, run_id)

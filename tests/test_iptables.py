@@ -194,9 +194,9 @@ def test_ensure_rule_already_exists():
 def test_insert_rule(mock_Table, mock_Chain):
     iptables.insert_rule("PAASTA.service", EMPTY_RULE._replace(target="DROP"))
 
-    call, = mock_Chain("filter", "PAASTA.service").insert_rule.call_args_list
+    (call,) = mock_Chain("filter", "PAASTA.service").insert_rule.call_args_list
     args, kwargs = call
-    rule, = args
+    (rule,) = args
     assert iptables.Rule.from_iptc(rule) == EMPTY_RULE._replace(target="DROP")
 
 

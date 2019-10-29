@@ -39,7 +39,7 @@ T = TypeVar("T")
 
 
 def register_drain_method(
-    name: str
+    name: str,
 ) -> Callable[[_RegisterDrainMethod_T], _RegisterDrainMethod_T]:
     """Returns a decorator that registers a DrainMethod subclass at a given name
     so get_drain_method/list_drain_methods can find it."""

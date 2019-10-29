@@ -55,9 +55,10 @@ async def get_task_allocation_info():
         info["mesos_container_id"], info["start_time"] = get_container_info_from_task(
             task
         )
-        info["paasta_service"], info[
-            "paasta_instance"
-        ] = get_paasta_service_instance_from_task(task)
+        (
+            info["paasta_service"],
+            info["paasta_instance"],
+        ) = get_paasta_service_instance_from_task(task)
         info["paasta_pool"] = await get_pool_from_task(task)
         info_list.append(info)
     return info_list
