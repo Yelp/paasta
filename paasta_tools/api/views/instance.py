@@ -210,17 +210,17 @@ def kubernetes_instance_status(
 
         if include_smartstack:
             service_namespace_config = kubernetes_tools.load_service_namespace_config(
-                service=service,
+                service=job_config.get_service_name_smartstack(),
                 namespace=job_config.get_nerve_namespace(),
                 soa_dir=settings.soa_dir,
             )
             if "proxy_port" in service_namespace_config:
                 kstatus["smartstack"] = kubernetes_smartstack_status(
-                    service,
-                    instance,
-                    job_config,
-                    service_namespace_config,
-                    pod_list,
+                    service=job_config.get_service_name_smartstack(),
+                    instance=job_config.get_nerve_namespace(),
+                    job_config=job_config,
+                    service_namespace_config=service_namespace_config,
+                    pods=pod_list,
                     should_return_individual_backends=verbose > 0,
                 )
     return kstatus

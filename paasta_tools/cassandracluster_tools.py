@@ -14,6 +14,7 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 
+import logging
 import service_configuration_lib
 
 from paasta_tools.kubernetes_tools import InvalidJobNameError
@@ -25,6 +26,11 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class CassandraClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
@@ -54,6 +60,38 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+
+    def get_service_name_smartstack(self) -> str:
+        """
+        To support apollo we always register in
+        cassandra_<cluster>.main
+        """
+        return "cassandra_" + self.get_instance()
+
+    def get_nerve_namespace(self) -> str:
+        """
+        To support apollo we always register in
+        cassandra_<cluster>.main
+        """
+        return "main"
+
+    def get_registrations(self) -> List[str]:
+        """
+        To support apollo we always register in
+        cassandra_<cluster>.main
+        """
+        registrations = self.config_dict.get("registrations", [])
+        for registration in registrations:
+            try:
+                decompose_job_id(registration)
+            except InvalidJobNameError:
+                log.error(
+                    "Provided registration {} for service "
+                    "{} is invalid".format(registration, self.service)
+                )
+
+
+        return registrations or [compose_job_id(self.get_service_name_smartstack(), "main")]
 
     def get_instances(self, with_limit: bool = True) -> int:
         return self.config_dict.get("replicas", 1)

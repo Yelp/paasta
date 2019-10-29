@@ -796,6 +796,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ]
         )
 
+    def get_service_name_smartstack(self) -> str:
+        """
+        This is just the service name here
+        For cassandra we have to override this to support apollo
+        """
+        return self.get_service()
+
     def get_sanitised_service_name(self) -> str:
         return sanitise_kubernetes_name(self.get_service())
 
