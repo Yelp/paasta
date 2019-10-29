@@ -163,13 +163,19 @@ def send_sensu_event(instance, oom_events, args):
         oom_events=oom_events,
         is_check_enabled=monitoring_overrides.get("check_oom_events", True),
     )
+    memory_limit = instance.get_mem()
+    try:
+        memory_limit_str = f"{int(memory_limit)}MB"
+    except ValueError:
+        memory_limit_str = memory_limit
+
     monitoring_overrides.update(
         {
             "page": False,
             "alert_after": "0m",
             "realert_every": args.realert_every,
             "runbook": "y/check-oom-events",
-            "tip": "Try bumping the memory limit past %dMB" % instance.get_mem(),
+            "tip": "Try bumping the memory limit past %s" % memory_limit_str,
         }
     )
     return monitoring_tools.send_event(
