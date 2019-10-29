@@ -1559,9 +1559,7 @@ def update_stateful_set(
 
 
 def get_kubernetes_app_deploy_status(
-    kube_client: KubeClient,
-    app: Union[V1Deployment, V1StatefulSet],
-    desired_instances: int,
+    app: Union[V1Deployment, V1StatefulSet], desired_instances: int
 ) -> int:
     if (
         app.status.ready_replicas is None
