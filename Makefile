@@ -122,6 +122,10 @@ package: itest_xenial itest_bionic
 package-external: itest_xenial-external itest_bionic-external
 
 .PHONY:
+export EXAMPLE=true
+example: itest_bionic-external
+
+.PHONY:
 clean: clean-cache
 	-docker-compose -f acceptance/docker-compose.yaml down
 	-rm -rf docs/build
@@ -130,6 +134,7 @@ clean: clean-cache
 	-unlink dist
 	-rm -rf package/dist/*
 
+.PHONY:
 clean-cache:
 	find -name '*.pyc' -delete
 	find -name '__pycache__' -delete

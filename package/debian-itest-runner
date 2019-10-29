@@ -28,8 +28,12 @@ docker run -t -v "$(pwd)/itest:/itest:rw" -v "$(pwd)/dist:/dist:ro" \
 
 while [ -z "${CONTAINER}" ]; do CONTAINER=$(docker ps | egrep "${CONTAINER_NAME}" | cut -d' ' -f1); done
 
+if [ "${EXAMPLE}" ]; then
+    EXAMPLE_FLAG="-e EXAMPLE=true"
+fi
+
 docker network connect "clusterman_${DISTRIB_CODENAME}_default" "${CONTAINER}"
 docker network connect "clusterman_${DISTRIB_CODENAME}_acceptance" "${CONTAINER}"
-docker exec -it "${CONTAINER}" /itest/ubuntu.sh "${PACKAGE_NAME}" "${PACKAGE_VERSION}"
+docker exec ${EXAMPLE_FLAG} -it "${CONTAINER}" /itest/ubuntu.sh "${PACKAGE_NAME}" "${PACKAGE_VERSION}"
 cleanup
 docker rm "${CONTAINER_NAME}"
