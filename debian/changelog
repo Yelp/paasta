@@ -1,3 +1,10 @@
+paasta-tools (0.88.5) xenial; urgency=medium
+
+  * 0.88.5 tagged with 'make release'
+    Commit: Use black 19.3b0 (#2516)
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Mon, 28 Oct 2019 17:57:58 -0700
+
 paasta-tools (0.88.4) xenial; urgency=medium
 
   * 0.88.4 tagged with 'make release'
