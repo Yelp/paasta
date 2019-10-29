@@ -59,6 +59,11 @@ specify the following options:
     met, other than a ``TASK_FAILED`` message. For more a more detailed read on
     how this works, see the docs on `isolation <isolation.html>`_
 
+  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
+    may or may not be enforced, but services should set their ``disk`` setting
+    regardless to ensure the scheduler has adequate information for distributing
+    tasks.
+
   * ``env``: A dictionary of environment variables that will be made available
     to the container. PaaSTA additionally will inject the following variables:
 
@@ -169,11 +174,6 @@ instance MAY have:
   * Anything in the `Common Settings`_.
 
   * Anything in the `Placement Options (Constraints)`_.
-
-  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
-    may or may not be enforced, but services should set their ``disk`` setting
-    regardless to ensure the scheduler has adequate information for distributing
-    tasks.
 
   * ``cap_add``: List of capabilities that are passed to Docker. Defaults
     to empty list. Example::
