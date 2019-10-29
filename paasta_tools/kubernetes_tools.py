@@ -133,6 +133,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
+KUBERNETES_NAMESPACE = "paasta"
 
 
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -342,6 +343,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             else None,
             soa_dir=self.soa_dir,
         )
+
+    def get_kubernetes_namespace(self) -> str:
+        return KUBERNETES_NAMESPACE
 
     def get_cmd(self) -> Optional[List[str]]:
         cmd = super(LongRunningServiceConfig, self).get_cmd()
@@ -795,13 +799,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 for volume in persistent_volumes
             ]
         )
-
-    def get_service_name_smartstack(self) -> str:
-        """
-        This is just the service name here
-        For cassandra we have to override this to support apollo
-        """
-        return self.get_service()
 
     def get_sanitised_service_name(self) -> str:
         return sanitise_kubernetes_name(self.get_service())
@@ -1388,20 +1385,20 @@ def list_matching_deployments(
 
 
 def replicasets_for_service_instance(
-    service: str, instance: str, kube_client: KubeClient
+    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1ReplicaSet]:
     return kube_client.deployments.list_namespaced_replica_set(
-        namespace="paasta",
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        namespace=namespace,
     ).items
 
 
 def pods_for_service_instance(
-    service: str, instance: str, kube_client: KubeClient
+    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(
-        namespace="paasta",
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        namespace=namespace,
     ).items
 
 
@@ -1508,11 +1505,11 @@ def get_nodes_grouped_by_attribute(
 
 
 def get_kubernetes_app_by_name(
-    name: str, kube_client: KubeClient
+    name: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Union[V1Deployment, V1StatefulSet]:
     try:
         app = kube_client.deployments.read_namespaced_deployment_status(
-            name=name, namespace="paasta"
+            name=name, namespace=namespace
         )
         return app
     except ApiException as e:
@@ -1521,7 +1518,7 @@ def get_kubernetes_app_by_name(
         else:
             raise
     return kube_client.deployments.read_namespaced_stateful_set_status(
-        name=name, namespace="paasta"
+        name=name, namespace=namespace
     )
 
 

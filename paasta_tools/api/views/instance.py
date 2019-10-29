@@ -56,8 +56,10 @@ from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_pod
+from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
 from paasta_tools.marathon_serviceinit import get_short_task_id
@@ -179,19 +181,31 @@ def kubernetes_instance_status(
     instance: str,
     verbose: int,
     include_smartstack: bool,
+    instance_type: str,
 ) -> Mapping[str, Any]:
     kstatus: Dict[str, Any] = {}
-    job_config = kubernetes_tools.load_kubernetes_service_config(
-        service, instance, settings.cluster, soa_dir=settings.soa_dir
+    config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
+    job_config = config_loader(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=True,
     )
     client = settings.kubernetes_client
     if client is not None:
         # bouncing status can be inferred from app_count, ref get_bouncing_status
         pod_list = kubernetes_tools.pods_for_service_instance(
-            job_config.service, job_config.instance, client
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=client,
+            namespace=job_config.get_kubernetes_namespace(),
         )
         replicaset_list = kubernetes_tools.replicasets_for_service_instance(
-            job_config.service, job_config.instance, client
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=client,
+            namespace=job_config.get_kubernetes_namespace(),
         )
         active_shas = kubernetes_tools.get_active_shas_for_service(pod_list)
         kstatus["app_count"] = max(
@@ -202,6 +216,7 @@ def kubernetes_instance_status(
         kubernetes_job_status(
             kstatus=kstatus,
             client=client,
+            namespace=job_config.get_kubernetes_namespace(),
             job_config=job_config,
             verbose=verbose,
             pod_list=pod_list,
@@ -230,10 +245,11 @@ def kubernetes_instance_status(
 async def kubernetes_job_status(
     kstatus: MutableMapping[str, Any],
     client: kubernetes_tools.KubeClient,
-    job_config: kubernetes_tools.KubernetesDeploymentConfig,
+    job_config: LongRunningServiceConfig,
     pod_list: Sequence[V1Pod],
     replicaset_list: Sequence[V1ReplicaSet],
     verbose: int,
+    namespace: str,
 ) -> None:
     app_id = job_config.get_sanitised_deployment_name()
     kstatus["app_id"] = app_id
@@ -271,9 +287,11 @@ async def kubernetes_job_status(
 
     kstatus["expected_instance_count"] = job_config.get_instances()
 
-    app = kubernetes_tools.get_kubernetes_app_by_name(app_id, client)
+    app = kubernetes_tools.get_kubernetes_app_by_name(
+        name=app_id, kube_client=client, namespace=namespace
+    )
     deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(
-        client, app, job_config.get_instances()
+        app=app, desired_instances=job_config.get_instances()
     )
     kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
         deploy_status
@@ -516,7 +534,7 @@ def marathon_smartstack_status(
 def kubernetes_smartstack_status(
     service: str,
     instance: str,
-    job_config: kubernetes_tools.KubernetesDeploymentConfig,
+    job_config: LongRunningServiceConfig,
     service_namespace_config: ServiceNamespaceConfig,
     pods: Sequence[V1Pod],
     should_return_individual_backends: bool = False,
@@ -882,6 +900,7 @@ def instance_status(request):
                 instance,
                 verbose,
                 include_smartstack=include_smartstack,
+                instance_type=instance_type,
             )
         elif instance_type == "tron":
             instance_status["tron"] = tron_instance_status(
@@ -902,6 +921,15 @@ def instance_status(request):
                 f"Unknown instance_type {instance_type} of {service}.{instance}"
             )
             raise ApiFailure(error_message, 404)
+        if instance_type == "cassandracluster":
+            instance_status["kubernetes"] = kubernetes_instance_status(
+                instance_status,
+                service,
+                instance,
+                verbose,
+                include_smartstack=include_smartstack,
+                instance_type=instance_type,
+            )
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)

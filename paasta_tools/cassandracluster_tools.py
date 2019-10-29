@@ -10,24 +10,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 from typing import List
 from typing import Mapping
 from typing import Optional
 
-import logging
 import service_configuration_lib
 
 from paasta_tools.kubernetes_tools import InvalidJobNameError
 from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
+
+KUBERNETES_NAMESPACE = "paasta-cassandraclusters"
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -90,11 +93,30 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
                     "{} is invalid".format(registration, self.service)
                 )
 
+        return registrations or [
+            compose_job_id(self.get_service_name_smartstack(), "main")
+        ]
 
-        return registrations or [compose_job_id(self.get_service_name_smartstack(), "main")]
+    def get_kubernetes_namespace(self) -> str:
+        return KUBERNETES_NAMESPACE
 
     def get_instances(self, with_limit: bool = True) -> int:
         return self.config_dict.get("replicas", 1)
+
+    def get_bounce_method(self) -> str:
+        return "RollingUpdate"
+
+    def get_sanitised_service_name(self) -> str:
+        return sanitise_kubernetes_name(self.get_service())
+
+    def get_sanitised_instance_name(self) -> str:
+        return sanitise_kubernetes_name(self.get_instance())
+
+    def get_sanitised_deployment_name(self) -> str:
+        return "{service}-{instance}".format(
+            service=self.get_sanitised_service_name(),
+            instance=self.get_sanitised_instance_name(),
+        )
 
     def validate(
         self,
