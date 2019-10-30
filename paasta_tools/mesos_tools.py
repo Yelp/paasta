@@ -750,7 +750,11 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
               (response can contain multiple 'attribute_value)
     """
     sorted_slaves = sorted(
-        slaves, key=lambda slave: slave["attributes"].get(attribute, "")
+        slaves,
+        key=lambda slave: (
+            slave["attributes"].get(attribute) is None,
+            slave["attributes"].get(attribute),
+        ),
     )
     return {
         key: list(group)
