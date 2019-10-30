@@ -749,7 +749,13 @@ def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
     :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
               (response can contain multiple 'attribute_value)
     """
-    sorted_slaves = sorted(slaves, key=lambda slave: slave["attributes"].get(attribute))
+    sorted_slaves = sorted(
+        slaves,
+        key=lambda slave: (
+            slave["attributes"].get(attribute) is None,
+            slave["attributes"].get(attribute),
+        ),
+    )
     return {
         key: list(group)
         for key, group in itertools.groupby(
