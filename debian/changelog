@@ -1,3 +1,11 @@
+paasta-tools (0.88.6) xenial; urgency=medium
+
+  * 0.88.6 tagged with 'make release'
+    Commit: fix paasta status error on stagef (#2519)  fix paasta status
+    error on stagef
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Wed, 30 Oct 2019 15:17:29 -0700
+
 paasta-tools (0.88.5) xenial; urgency=medium
 
   * 0.88.5 tagged with 'make release'
