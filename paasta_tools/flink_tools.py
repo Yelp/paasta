@@ -18,6 +18,7 @@ from typing import Optional
 
 import requests
 import service_configuration_lib
+import urllib3.exceptions
 from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import InvalidJobNameError
@@ -188,5 +189,7 @@ def get_flink_jobmanager_overview(
         raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
+    except urllib3.exceptions.HTTPError as e:
+        raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")
     except ConnectionError as e:
         raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")
