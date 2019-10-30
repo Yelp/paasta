@@ -808,7 +808,7 @@
                     "description": "The unix timestamp at which the task was deployed"
                 },
                 "tail_lines": {
-                    "$ref": "#/definitions/MesosTaskTailLines",
+                    "$ref": "#/definitions/TaskTailLines",
                     "description": "Stdout and stderr tail of the task"
                 }
             }
@@ -834,12 +834,12 @@
                     "description": "The current state of the task"
                 },
                 "tail_lines": {
-                    "$ref": "#/definitions/MesosTaskTailLines",
+                    "$ref": "#/definitions/TaskTailLines",
                     "description": "Stdout and stderr tail of the task"
                 }
             }
         },
-        "MesosTaskTailLines": {
+        "TaskTailLines": {
             "type": "object",
             "properties": {
                 "stdout": {
@@ -1189,6 +1189,10 @@
                 "phase": {
                     "type": "string",
                     "description": "The status of the pod"
+                },
+                "tail_lines": {
+                    "$ref": "#/definitions/TaskTailLines",
+                    "description": "Stdout and stderr tail of the task"
                 }
             }
         },

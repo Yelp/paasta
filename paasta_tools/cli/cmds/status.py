@@ -638,6 +638,7 @@ def format_kubernetes_pod_table(pods):
                 health_check_status,
             )
         )
+        rows.extend(format_tail_lines_for_mesos_task(pod.tail_lines, pod.name))
 
     return format_table(rows)
 
