@@ -2194,11 +2194,6 @@ class SystemPaastaConfig:
             "docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar",
         )
 
-    def get_enable_nerve_readiness_check(self) -> bool:
-        """Enables a k8s readiness check on the Pod to ensure that all registrations
-        are UP on the local synapse haproxy"""
-        return self.config_dict.get("enable_nerve_readiness_check", True)
-
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
         return self.config_dict.get("register_k8s_pods", False)
