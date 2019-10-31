@@ -102,16 +102,16 @@ def tron_instance_status(
     client = tron_tools.get_tron_client()
     short_job, action = instance.split(".")
     job = f"{service}.{short_job}"
+    job_content = client.get_job_content(job=job)
 
     try:
-        job_content = client.get_job_content(job=job)
         latest_run_id = client.get_latest_job_run_id(job_content=job_content)
         if not latest_run_id:
             action_run = {"state": f"Hasn't Run Yet (no job run id #{latest_run_id})"}
         else:
             action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
     except Exception as e:
-        action_run = {"state": f"Failed to get job data: {e}"}
+        action_run = {"state": f"Failed to get latest run info: {e}"}
 
     # job info
     status["job_name"] = short_job
