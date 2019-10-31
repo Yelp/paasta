@@ -61,9 +61,11 @@ from paasta_tools.marathon_serviceinit import haproxy_backend_report
 from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
 from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -81,12 +83,14 @@ from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
 
-HTTP_ONLY_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
+ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
+    MarathonServiceConfig,
+    TronActionConfig,
 ]
 
 
@@ -986,14 +990,19 @@ def report_status_for_cluster(
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     output = ["", "service: %s" % service, "cluster: %s" % cluster]
-    seen_instances = []
     deployed_instances = []
-    instances = instance_whitelist.keys()
-
-    http_only_instances = [
+    instances = [
         instance
         for instance, instance_config_class in instance_whitelist.items()
-        if instance_config_class in HTTP_ONLY_INSTANCE_CONFIG
+        if instance_config_class in ALLOWED_INSTANCE_CONFIG
+    ]
+
+    # Tron instance are not present in the deploy pipeline, so treat them as
+    # seen by default to avoid error messages
+    seen_instances = [
+        instance
+        for instance, instance_config_class in instance_whitelist.items()
+        if instance_config_class == TronActionConfig
     ]
 
     for namespace in deploy_pipeline:
@@ -1028,7 +1037,7 @@ def report_status_for_cluster(
             system_paasta_config=system_paasta_config,
             verbose=verbose,
         )
-        for deployed_instance in http_only_instances
+        for deployed_instance in instances
     ]
     if any(return_codes):
         return_code = 1

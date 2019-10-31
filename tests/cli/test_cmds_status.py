@@ -147,7 +147,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
         system_paasta_config=system_paasta_config,
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
-        {}.keys(), ["instance1", "instance2"], "instance"
+        [], ["instance1", "instance2"], "instance"
     )
 
 
