@@ -1,5 +1,4 @@
 import unittest
-from pprint import pprint
 from typing import Sequence
 
 import mock
@@ -385,7 +384,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     ports=[V1ContainerPort(container_port=6666)],
                 )
             ]
-            pprint(ret)
             assert ret == expected
             mock_get_enable_nerve_readiness_check.return_value = True
             mock_system_config = mock.Mock(
