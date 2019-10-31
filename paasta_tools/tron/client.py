@@ -110,6 +110,8 @@ class TronClient:
             key=lambda k: (k["state"] != "scheduled", k["run_num"]),
             reverse=True,
         )
+        if not job_runs:
+            return None
         return job_runs[0]["run_num"]
 
     def get_action_run(self, job: str, action: str, run_id: str) -> dict:
