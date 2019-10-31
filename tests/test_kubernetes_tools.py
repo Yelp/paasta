@@ -1,4 +1,5 @@
 import unittest
+from pprint import pprint
 from typing import Sequence
 
 import mock
@@ -334,9 +335,12 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
             autospec=True,
             return_value="sane-name",
-        ):
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
+            autospec=True,
+            return_value=False,
+        ) as mock_get_enable_nerve_readiness_check:
             mock_system_config = mock.Mock(
-                get_enable_nerve_readiness_check=mock.Mock(return_value=False),
                 get_nerve_readiness_check_script=mock.Mock(
                     return_value="/nail/blah.sh"
                 ),
@@ -347,6 +351,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             mock_service_namespace = mock.Mock(
                 is_in_smartstack=mock.Mock(return_value=False)
             )
+
             assert (
                 self.deployment.get_sidecar_containers(
                     mock_system_config, mock_service_namespace
@@ -357,6 +362,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             mock_service_namespace = mock.Mock(
                 is_in_smartstack=mock.Mock(return_value=True)
             )
+
             ret = self.deployment.get_sidecar_containers(
                 mock_system_config, mock_service_namespace
             )
@@ -379,10 +385,10 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     ports=[V1ContainerPort(container_port=6666)],
                 )
             ]
+            pprint(ret)
             assert ret == expected
-
+            mock_get_enable_nerve_readiness_check.return_value = True
             mock_system_config = mock.Mock(
-                get_enable_nerve_readiness_check=mock.Mock(return_value=True),
                 get_nerve_readiness_check_script=mock.Mock(
                     return_value="/nail/blah.sh"
                 ),
@@ -821,6 +827,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 kind="Deployment",
                 metadata=mock_get_kubernetes_metadata.return_value,
                 spec=V1DeploymentSpec(
+                    min_ready_seconds=0,
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={

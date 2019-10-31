@@ -21,6 +21,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -202,6 +203,7 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
+    bounce_health_params: Dict[str, Any]
     service_account_name: str
     autoscaling: AutoscalingParamsDict
 
@@ -510,7 +512,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
         readiness_probe: Optional[V1Probe]
-        if system_paasta_config.get_enable_nerve_readiness_check():
+        if (
+            self.get_enable_nerve_readiness_check()
+            and service_namespace_config.is_in_smartstack()
+        ):
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
                     command=[
@@ -892,6 +897,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             instance=self.get_sanitised_instance_name(),
         )
 
+    def get_min_task_uptime(self) -> int:
+        return self.config_dict.get("bounce_health_params", {}).get(
+            "min_task_uptime", 0
+        )
+
+    def get_enable_nerve_readiness_check(self) -> bool:
+        """Enables a k8s readiness check on the Pod to ensure that all registrations
+        are UP on the local synapse haproxy"""
+        return self.config_dict.get("bounce_health_params", {}).get(
+            "check_haproxy", True
+        )
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -931,6 +948,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     metadata=self.get_kubernetes_metadata(code_sha),
                     spec=V1DeploymentSpec(
                         replicas=self.get_desired_instances(),
+                        min_ready_seconds=self.get_min_task_uptime(),
                         selector=V1LabelSelector(
                             match_labels={
                                 "yelp.com/paasta_service": self.get_service(),
