@@ -1,3 +1,10 @@
+paasta-tools (0.89.0) xenial; urgency=medium
+
+  * 0.89.0 tagged with 'make release'
+    Commit: Update m-f-d tests to check rollback auditing
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 31 Oct 2019 11:31:10 -0700
+
 paasta-tools (0.88.6) xenial; urgency=medium
 
   * 0.88.6 tagged with 'make release'
