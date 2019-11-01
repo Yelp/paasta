@@ -1,3 +1,11 @@
+paasta-tools (0.89.1) xenial; urgency=medium
+
+  * 0.89.1 tagged with 'make release'
+    Commit: fix default bounce method (#2527)   fix default bounce
+    method
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Thu, 31 Oct 2019 17:19:55 -0700
+
 paasta-tools (0.89.0) xenial; urgency=medium
 
   * 0.89.0 tagged with 'make release'
