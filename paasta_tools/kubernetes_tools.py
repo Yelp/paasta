@@ -132,7 +132,6 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "downthenup": "Recreate",
     "brutal": "RollingUpdate",
 }
-KUBE_DEPLOY_STATEGY_REVMAP = {v: k for k, v in KUBE_DEPLOY_STATEGY_MAP.items()}
 HACHECK_POD_NAME = "hacheck"
 
 
