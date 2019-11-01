@@ -1,5 +1,4 @@
 import unittest
-from pprint import pprint
 from typing import Sequence
 
 import mock
@@ -299,7 +298,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 ),
             )
             mock_get_bounce_method.return_value = "downthenup"
-            pprint(self.deployment.get_deployment_strategy_config())
             assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
                 type="Recreate"
             )
