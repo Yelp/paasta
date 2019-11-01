@@ -1,4 +1,5 @@
 import unittest
+from pprint import pprint
 from typing import Sequence
 
 import mock
@@ -280,11 +281,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes",
             autospec=True,
         ) as mock_get_aws_ebs_volumes:
-            mock_get_aws_ebs_volumes.return_value = []
-            assert self.deployment.get_bounce_method() == "RollingUpdate"
-            self.deployment.config_dict["bounce_method"] = "downthenup"
-            assert self.deployment.get_bounce_method() == "Recreate"
-            self.deployment.config_dict["bounce_method"] = "crossover"
             # if ebs we must downthenup for now as we need to free up the EBS for the new instance
             mock_get_aws_ebs_volumes.return_value = ["some-ebs"]
             with pytest.raises(Exception):
@@ -294,7 +290,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_method",
             autospec=True,
-            return_value="RollingUpdate",
+            return_value="crossover",
         ) as mock_get_bounce_method:
             assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
                 type="RollingUpdate",
@@ -302,7 +298,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     max_surge="100%", max_unavailable="0%"
                 ),
             )
-            mock_get_bounce_method.return_value = "Recreate"
+            mock_get_bounce_method.return_value = "downthenup"
+            pprint(self.deployment.get_deployment_strategy_config())
             assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
                 type="Recreate"
             )
