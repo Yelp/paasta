@@ -956,3 +956,31 @@ def test_tron_instance_status(
     assert response["tron"]["action_start_time"] == "fake_start_time"
     assert response["tron"]["action_stdout"] == "fake_stdout"
     assert response["tron"]["action_stderr"] == "fake_stderr"
+
+
+@mock.patch("paasta_tools.api.views.instance.kubernetes_job_status", autospec=True)
+@mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
+)
+@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.load_kubernetes_service_config", autospec=True
+)
+def test_kubernetes_instance_status_bounce_method(
+    mock_load_kubernetes_service_config,
+    mock_pods_for_service_instance,
+    mock_replicasets_for_service_instance,
+    mock_get_active_shas_for_service,
+    mock_kubernetes_job_status,
+):
+    settings.kubernetes_client = True
+    st = {}
+    svc = "fake-svc"
+    inst = "fake-inst"
+
+    mock_job_config = mock.Mock()
+    mock_load_kubernetes_service_config.return_value = mock_job_config
+
+    actual = instance.kubernetes_instance_status(st, svc, inst, 0, False)
+    assert actual["bounce_method"] == mock_job_config.get_bounce_method()

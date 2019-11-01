@@ -195,9 +195,7 @@ def kubernetes_instance_status(
             len(active_shas["config_sha"]), len(active_shas["git_sha"])
         )
         kstatus["desired_state"] = job_config.get_desired_state()
-        kstatus["bounce_method"] = kubernetes_tools.KUBE_DEPLOY_STATEGY_REVMAP[
-            job_config.get_bounce_method()
-        ]
+        kstatus["bounce_method"] = job_config.get_bounce_method()
         kubernetes_job_status(
             kstatus=kstatus,
             client=client,
