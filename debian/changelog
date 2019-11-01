@@ -1,3 +1,13 @@
+paasta-tools (0.89.2) xenial; urgency=medium
+
+  * 0.89.2 tagged with 'make release'
+    Commit: Fix bounce_method on kubernetes instances  Squashed commit
+    of the following:  commit eb991f9479e67636654345572a037513989b5ab3
+    Author: Maksym Melnychok <maksym@yelp.com> Date:   Fri Nov 1
+    04:50:27 2019 -0700      fix bounce_method on k8s instances
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 01 Nov 2019 09:11:50 -0700
+
 paasta-tools (0.89.1) xenial; urgency=medium
 
   * 0.89.1 tagged with 'make release'
