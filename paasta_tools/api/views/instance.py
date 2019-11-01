@@ -109,7 +109,9 @@ def tron_instance_status(
         if latest_run_id is None:
             action_run = {"state": "Hasn't run yet (no job run id found)"}
         else:
-            action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
+            action_run = client.get_action_run(
+                job=job, action=action, run_id=latest_run_id
+            )
     except Exception as e:
         action_run = {"state": f"Failed to get latest run info: {e}"}
 
