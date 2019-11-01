@@ -366,7 +366,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             raise Exception(
                 "If service instance defines an EBS volume it must use a downthenup bounce_method"
             )
-        return KUBE_DEPLOY_STATEGY_MAP[bounce_method]
+        return bounce_method
 
     def get_autoscaling_params(self) -> AutoscalingParamsDict:
         default_params: AutoscalingParamsDict = {
@@ -451,9 +451,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method
-        bounce_method = self.config_dict.get("bounce_method", "")
+        bounce_method = self.get_bounce_method()
         # get k8s equivalent
-        strategy_type = self.get_bounce_method()
+        strategy_type = KUBE_DEPLOY_STATEGY_MAP[bounce_method]
 
         if strategy_type == "RollingUpdate":
             max_surge = "100%"
@@ -461,9 +461,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 max_unavailable = "{}%".format(
                     int((1 - self.get_bounce_margin_factor()) * 100)
                 )
-            else:
+            elif bounce_method == "brutal":
                 # `brutal` bounce method means a bounce margin factor of 0, do not call get_bounce_margin_factor
                 max_unavailable = "100%"
+            else:
+                raise Exception("Unknown bounce method for RollingUpdate.")
             rolling_update = V1RollingUpdateDeployment
 
             # this translates bounce_margin to k8s speak maxUnavailable
