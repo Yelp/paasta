@@ -3,7 +3,10 @@ LOGO GOES HERE
 # Clusterman - Autoscale and Manage your compute clusters
 
 Clusterman (the Cluster Manager) is an autoscaling engine for Mesos 
-and Kubernetes clusters that provides the following set of features:
+and Kubernetes clusters. It looks at metrics and can launch or terminate
+compute to meet the needs of your workloads, similart to the official
+[Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
+It provides the following set of features:
 
 * Customizable metrics: All metrics for Clusterman are stored in an
   external datastore, and are automatically loaded into the signals
@@ -25,7 +28,7 @@ You can try out Clusterman in a local development environment against
 a Dockerized Mesos cluster by running the following command:
 
     make example
-    clusterman status --cluster docker -v
+    clusterman status --cluster local-dev -v
 
 All of the Clusterman CLI commands should work in the above environment.
 You can see examples of the Clusterman services by running
@@ -69,11 +72,11 @@ Clusterman CLI provides a set of command-line tools for viewing and managing
 the state of the cluster; type `clusterman --help` to see a list of possible 
 subcommands.  See the Clusterman documentation for more details.
 
-The Clusterman service runs as a set of three long-running batches; the first 
-batch collects data about spot instance pricing from AWS (not required if you
+The Clusterman service runs as a set of three long-running processes; the first 
+process collects data about spot instance pricing from AWS (not required if you
 aren't using AWS, spot instances, or the Clusterman simulator); the second 
-batch queries each of the pools in a cluster to collect metadata and system
-metrics about the pool; and the third batch is responsible for actually 
+process queries each of the pools in a cluster to collect metadata and system
+metrics about the pool; and the third process is responsible for actually 
 autoscaling each of the pools.
 
 ## Integrating Clusterman
@@ -87,15 +90,12 @@ to your environment.
 If you'd like to use Clusterman in your environment, you will need the 
 following components set up:
 
-* A metrics datastore with three tables: `app_metrics`, `system_metrics`,
-  `metadata`; these tables should be able to handle time series data with 
-  `metric_name`, `timestamp`, and `value` fields.  The `value` field must be a 
-  single floating point number except in the case of `metadata` where it can 
-  optionally be a dictionary of `(string, number)` pairs.
+* A metrics datastore with the appropriate tables.
+  See `clusterman.tf` for a Terraform representation of the schema in DynamoDB.
 * A `clusterman_metrics` library that can communicate with your chosen metrics 
   datastore.  There is a reference copy of the metrics library in `examples/clusterman_metrics` 
   that is capable of communicating with AWS DynamoDB.
-* Code to run the autoscaler service as a batch; at Yelp, we use an internal
+* Code to run the autoscaler service. At Yelp, we use an internal
   batch library called `yelp_batch` for this task; however, the same goal
   can be achieved by simply running the code in a never-terminating while
   loop.  See the sample code in `examples/batch` for a place to start.
