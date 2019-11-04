@@ -86,6 +86,10 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         else:
             return []
 
+    # Since Flink services are stateful, losing capacity is not transparent to the users
+    def get_replication_crit_percentage(self) -> int:
+        return self.config_dict.get("replication_threshold", 100)
+
 
 def load_flink_instance_config(
     service: str,
