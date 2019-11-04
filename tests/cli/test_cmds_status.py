@@ -882,6 +882,7 @@ def mock_kubernetes_status():
             expected_backends_per_location=1,
             locations=[],
         ),
+        evicted_count=1,
     )
 
 
@@ -1084,6 +1085,7 @@ class TestPrintKubernetesStatus:
                 deployed_timestamp=1562963508,
                 phase="Running",
                 tail_lines=Struct(),
+                message=None,
             ),
             Struct(
                 name="app_2",
@@ -1091,6 +1093,16 @@ class TestPrintKubernetesStatus:
                 deployed_timestamp=1562963510,
                 phase="Running",
                 tail_lines=Struct(),
+                message=None,
+            ),
+            Struct(
+                name="app_3",
+                host="fake_host3",
+                deployed_timestamp=1562963511,
+                phase="Failed",
+                tail_lines=Struct(),
+                message="Disk quota exceeded",
+                reason="Evicted",
             ),
         ]
         mock_kubernetes_status.replicasets = [
@@ -1112,7 +1124,7 @@ class TestPrintKubernetesStatus:
 
         expected_output = [
             f"    State:      {mock_bouncing_status.return_value} - Desired state: {mock_desired_state.return_value}",
-            f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances. Status: {mock_kubernetes_app_deploy_status_human.return_value}",
+            f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
         ]
         expected_output += [
             f"      App created: 2019-07-12 20:31:48 ({mock_naturaltime.return_value}). Namespace: paasta",
@@ -1120,6 +1132,8 @@ class TestPrintKubernetesStatus:
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
             f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
             f"        app_2   fake_host2        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_3   fake_host3        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
+            f"        {PaastaColors.grey('  Disk quota exceeded')}",
             f"      ReplicaSets:",
             f"        ReplicaSet Name  Ready / Desired  Created at what localtime",
             f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})",
@@ -1278,6 +1292,8 @@ class TestFormatKubernetesPodTable:
             deployed_timestamp=1565648600,
             phase="Running",
             tail_lines=Struct(),
+            message=None,
+            reason=None,
         )
 
     @pytest.fixture
@@ -1336,6 +1352,18 @@ class TestFormatKubernetesPodTable:
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")
+
+    def test_evicted(
+        self,
+        mock_naturaltime,
+        mock_format_tail_lines_for_mesos_task,
+        mock_kubernetes_pod,
+    ):
+        mock_kubernetes_pod.phase = "Failed"
+        mock_kubernetes_pod.reason = "Evicted"
+        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        pod_table_dict = _formatted_table_to_dict(output)
+        assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
 
     def test_no_health(
         self,

@@ -986,3 +986,29 @@ def test_kubernetes_instance_status_bounce_method(
 
     actual = instance.kubernetes_instance_status(st, svc, inst, 0, False, "kubernetes")
     assert actual["bounce_method"] == mock_job_config.get_bounce_method()
+
+
+@mock.patch("paasta_tools.api.views.instance.kubernetes_job_status", autospec=True)
+@mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
+)
+@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.instance.LONG_RUNNING_INSTANCE_TYPE_HANDLERS", autospec=True
+)
+def test_kubernetes_instance_status_evicted_nodes(
+    mock_long_running_instance_type_handlers,
+    mock_pods_for_service_instance,
+    mock_replicasets_for_service_instance,
+    mock_get_active_shas_for_service,
+    mock_kubernetes_job_status,
+):
+    mock_pod_1 = mock.Mock(status=mock.Mock(reason="Evicted"))
+    mock_pod_2 = mock.Mock()
+    mock_pods_for_service_instance.return_value = [mock_pod_1, mock_pod_2]
+
+    instance_status = instance.kubernetes_instance_status(
+        {}, "fake-svc", "fake-inst", 0, False, "kubernetes"
+    )
+    assert instance_status["evicted_count"] == 1

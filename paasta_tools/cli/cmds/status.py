@@ -624,14 +624,14 @@ def format_kubernetes_pod_table(pods):
             datetime.fromtimestamp(pod.deployed_timestamp)
         )
         hostname = f"{pod.host}" if pod.host is not None else "Unknown"
-
         if pod.phase is None or pod.phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif pod.phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
+        elif pod.phase == "Failed" and pod.reason == "Evicted":
+            health_check_status = PaastaColors.red("Evicted")
         else:
             health_check_status = PaastaColors.red("Unhealthy")
-
         rows.append(
             (
                 pod.name,
@@ -643,6 +643,8 @@ def format_kubernetes_pod_table(pods):
                 health_check_status,
             )
         )
+        if pod.message is not None:
+            rows.append(PaastaColors.grey(f"  {pod.message}"))
         rows.extend(format_tail_lines_for_mesos_task(pod.tail_lines, pod.name))
 
     return format_table(rows)
@@ -757,6 +759,7 @@ def status_kubernetes_job_human(
     app_count: int,
     running_instances: int,
     normal_instance_count: int,
+    evicted_count: int,
 ) -> str:
     name = PaastaColors.cyan(compose_job_id(service, instance))
 
@@ -776,8 +779,14 @@ def status_kubernetes_job_human(
             instance_count = PaastaColors.yellow(
                 "(%d/%d)" % (running_instances, normal_instance_count)
             )
-        return "Kubernetes:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status
+
+        evicted = (
+            PaastaColors.red(str(evicted_count))
+            if evicted_count > 0
+            else PaastaColors.green(str(evicted_count))
+        )
+        return "Kubernetes:   {} - up with {} instances ({} evicted). Status: {}".format(
+            status, instance_count, evicted, deploy_status
         )
     else:
         status = PaastaColors.yellow("Warning")
@@ -939,6 +948,7 @@ def print_kubernetes_status(
                 app_count=kubernetes_status.app_count,
                 running_instances=kubernetes_status.running_instance_count,
                 normal_instance_count=kubernetes_status.expected_instance_count,
+                evicted_count=kubernetes_status.evicted_count,
             )
         )
     )
