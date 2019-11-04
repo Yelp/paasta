@@ -1006,6 +1006,7 @@ class TestMarathonTools:
             ),
         ]
         fake_mem = 1000000000000000000000
+        fake_disk = 2000000000000000000000
         fake_env = {"FAKEENV": "FAKEVALUE"}
         expected_env = {
             "FAKEENV": "FAKEVALUE",
@@ -1056,6 +1057,10 @@ class TestMarathonTools:
                         {"key": "memory-swap", "value": "%sm" % int(fake_mem + 64)},
                         {"key": "cpu-period", "value": "%s" % int(fake_period)},
                         {"key": "cpu-quota", "value": "%s" % int(fake_cpu_quota)},
+                        {
+                            "key": "storage-opt",
+                            "value": "size=%s" % int(fake_disk * 1024 * 1024),
+                        },
                         {"key": "label", "value": "paasta_service=can_you_dig_it"},
                         {"key": "label", "value": "paasta_instance=yes_i_can"},
                         {"key": "init", "value": "true"},
@@ -1128,6 +1133,10 @@ class TestMarathonTools:
             "paasta_tools.marathon_tools.load_service_namespace_config",
             autospec=True,
             return_value=fake_service_namespace_config,
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=True,
         ), mock.patch(
             "paasta_tools.marathon_tools.load_system_paasta_config",
             autospec=True,
@@ -1792,6 +1801,10 @@ class TestMarathonTools:
             autospec=True,
             return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
             "paasta_tools.utils.InstanceConfig.get_docker_url",
             autospec=True,
             return_value=fake_url,
@@ -2402,6 +2415,10 @@ def test_format_marathon_app_dict_no_smartstack():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
+        "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+        autospec=True,
+        return_value=True,
+    ), mock.patch(
         "paasta_tools.marathon_tools.load_system_paasta_config",
         return_value=fake_system_paasta_config,
         autospec=True,
@@ -2419,6 +2436,7 @@ def test_format_marathon_app_dict_no_smartstack():
                         {"key": "memory-swap", "value": "1088m"},
                         {"key": "cpu-period", "value": "100000"},
                         {"key": "cpu-quota", "value": "125000"},
+                        {"key": "storage-opt", "value": "size=1073741824"},
                         {"key": "label", "value": "paasta_service=service"},
                         {"key": "label", "value": "paasta_instance=instance"},
                         {"key": "init", "value": "true"},
@@ -2499,6 +2517,10 @@ def test_format_marathon_app_dict_with_smartstack():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
+        "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+        autospec=True,
+        return_value=True,
+    ), mock.patch(
         "paasta_tools.marathon_tools.load_system_paasta_config",
         return_value=fake_system_paasta_config,
         autospec=True,
@@ -2516,6 +2538,7 @@ def test_format_marathon_app_dict_with_smartstack():
                         {"key": "memory-swap", "value": "1088m"},
                         {"key": "cpu-period", "value": "100000"},
                         {"key": "cpu-quota", "value": "125000"},
+                        {"key": "storage-opt", "value": "size=1073741824"},
                         {"key": "label", "value": "paasta_service=service"},
                         {"key": "label", "value": "paasta_instance=instance"},
                         {"key": "init", "value": "true"},
@@ -2668,6 +2691,10 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
+        "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+        autospec=True,
+        return_value=True,
+    ), mock.patch(
         "paasta_tools.marathon_tools.load_system_paasta_config",
         return_value=fake_system_paasta_config,
         autospec=True,
@@ -2685,6 +2712,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                         {"key": "memory-swap", "value": "1088m"},
                         {"key": "cpu-period", "value": "100000"},
                         {"key": "cpu-quota", "value": "125000"},
+                        {"key": "storage-opt", "value": "size=1073741824"},
                         {"key": "label", "value": "paasta_service=service"},
                         {"key": "label", "value": "paasta_instance=instance"},
                         {"key": "init", "value": "true"},

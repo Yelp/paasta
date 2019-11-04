@@ -466,6 +466,13 @@ class InstanceConfig:
             {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
             {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
         ]
+        if self.use_docker_disk_quota():
+            parameters.append(
+                {
+                    "key": "storage-opt",
+                    "value": f"size={int(self.get_disk() * 1024 * 1024)}",
+                }
+            )
         if with_labels:
             parameters.extend(
                 [
@@ -482,15 +489,18 @@ class InstanceConfig:
         parameters.extend(self.get_cap_drop())
         return parameters
 
+    def use_docker_disk_quota(self) -> bool:
+        return load_system_paasta_config().get_enforce_disk_quota()
+
     def get_docker_init(self) -> Iterable[DockerParameter]:
         return [{"key": "init", "value": "true"}]
 
     def get_disk(self, default: float = 1024) -> float:
-        """Gets the  amount of disk space required from the service's configuration.
+        """Gets the amount of disk space in MiB required from the service's configuration.
 
-        Defaults to 1024 (1G) if no value is specified in the config.
+        Defaults to 1024 (1GiB) if no value is specified in the config.
 
-        :returns: The amount of disk space specified by the config, 1024 if not specified"""
+        :returns: The amount of disk space specified by the config, 1024 MiB if not specified"""
         disk = self.config_dict.get("disk", default)
         return disk
 
@@ -1721,6 +1731,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dockercfg_location: str
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
+    enforce_disk_quota: bool
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
@@ -1912,6 +1923,18 @@ class SystemPaastaConfig:
         If enabled present a client certificate from ~/.paasta/pki/<cluster>.crt and ~/.paasta/pki/<cluster>.key
         """
         return self.config_dict.get("enable_client_cert_auth", True)
+
+    def get_enforce_disk_quota(self) -> bool:
+        """
+        If enabled, add `--storage-opt size=SIZE` arg to `docker run` calls,
+        enforcing the disk quota as a result.
+
+        Please note that this should be enabled only for a suported environment
+        (which at the moment is only `overlay2` driver backed by `XFS`
+        filesystem mounted with `prjquota` option) otherwise Docker will fail
+        to start.
+        """
+        return self.config_dict.get("enforce_disk_quota", False)
 
     def get_auth_certificate_ttl(self) -> str:
         """

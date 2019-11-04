@@ -315,6 +315,10 @@ class TestNativeServiceConfig:
             "paasta_tools.utils.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=True,
         ):
             task = service_config.base_task(system_paasta_config)
 
@@ -327,6 +331,7 @@ class TestNativeServiceConfig:
                         {"key": "memory-swap", "value": mock.ANY},
                         {"key": "cpu-period", "value": mock.ANY},
                         {"key": "cpu-quota", "value": mock.ANY},
+                        {"key": "storage-opt", "value": mock.ANY},
                         {"key": "label", "value": mock.ANY},  # service
                         {"key": "label", "value": mock.ANY},  # instance
                         {"key": "init", "value": "true"},
