@@ -30,10 +30,6 @@ def fake_deployment():
         metadata=mock.Mock(
             namespace="paasta",
             labels={
-                "yelp.com/paasta_service": "service",
-                "yelp.com/paasta_instance": "instance-1",
-                "yelp.com/paasta_git_sha": "1234",
-                "yelp.com/paasta_config_sha": "1234",
                 "paasta.yelp.com/service": "service",
                 "paasta.yelp.com/instance": "instance-1",
                 "paasta.yelp.com/git_sha": "1234",
@@ -54,10 +50,6 @@ def fake_stateful_set():
         metadata=mock.Mock(
             namespace="paasta",
             labels={
-                "yelp.com/paasta_service": "service",
-                "yelp.com/paasta_instance": "instance-2",
-                "yelp.com/paasta_git_sha": "1234",
-                "yelp.com/paasta_config_sha": "1234",
                 "paasta.yelp.com/service": "service",
                 "paasta.yelp.com/instance": "instance-2",
                 "paasta.yelp.com/git_sha": "1234",

@@ -883,9 +883,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 instance=self.get_sanitised_instance_name(),
             ),
             labels={
-                "yelp.com/paasta_service": self.get_service(),
-                "yelp.com/paasta_instance": self.get_instance(),
-                "yelp.com/paasta_git_sha": code_sha,
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": code_sha,
@@ -933,8 +930,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         revision_history_limit=0,
                         selector=V1LabelSelector(
                             match_labels={
-                                "yelp.com/paasta_service": self.get_service(),
-                                "yelp.com/paasta_instance": self.get_instance(),
+                                "paasta.yelp.com/service": self.get_service(),
+                                "paasta.yelp.com/instance": self.get_instance(),
                             }
                         ),
                         template=self.get_pod_template_spec(
@@ -952,8 +949,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         min_ready_seconds=self.get_min_task_uptime(),
                         selector=V1LabelSelector(
                             match_labels={
-                                "yelp.com/paasta_service": self.get_service(),
-                                "yelp.com/paasta_instance": self.get_instance(),
+                                "paasta.yelp.com/service": self.get_service(),
+                                "paasta.yelp.com/instance": self.get_instance(),
                             }
                         ),
                         revision_history_limit=0,
@@ -968,11 +965,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 self.sanitize_for_config_hash(complete_config),
                 force_bounce=self.get_force_bounce(),
             )
-            complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
             complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
-            complete_config.spec.template.metadata.labels[
-                "yelp.com/paasta_config_sha"
-            ] = config_hash
             complete_config.spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ] = config_hash
@@ -1001,9 +994,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
-                    "yelp.com/paasta_service": self.get_service(),
-                    "yelp.com/paasta_instance": self.get_instance(),
-                    "yelp.com/paasta_git_sha": code_sha,
                     "paasta.yelp.com/service": self.get_service(),
                     "paasta.yelp.com/instance": self.get_instance(),
                     "paasta.yelp.com/git_sha": code_sha,
@@ -1094,8 +1084,8 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
                     break
             services.append(
                 KubeService(
-                    name=pod["metadata"]["labels"]["yelp.com/paasta_service"],
-                    instance=pod["metadata"]["labels"]["yelp.com/paasta_instance"],
+                    name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
+                    instance=pod["metadata"]["labels"]["paasta.yelp.com/instance"],
                     port=port,
                     pod_ip=pod["status"]["podIP"],
                     registrations=json.loads(
@@ -1218,10 +1208,10 @@ def list_deployments(
     )
     return [
         KubeDeployment(
-            service=item.metadata.labels["yelp.com/paasta_service"],
-            instance=item.metadata.labels["yelp.com/paasta_instance"],
-            git_sha=item.metadata.labels["yelp.com/paasta_git_sha"],
-            config_sha=item.metadata.labels["yelp.com/paasta_config_sha"],
+            service=item.metadata.labels["paasta.yelp.com/service"],
+            instance=item.metadata.labels["paasta.yelp.com/instance"],
+            git_sha=item.metadata.labels["paasta.yelp.com/git_sha"],
+            config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas,
         )
         for item in deployments.items + stateful_sets.items
@@ -1309,9 +1299,9 @@ def list_custom_resources(
         try:
             kube_custom_resources.append(
                 KubeCustomResource(
-                    service=cr["metadata"]["labels"]["yelp.com/paasta_service"],
-                    instance=cr["metadata"]["labels"]["yelp.com/paasta_instance"],
-                    config_sha=cr["metadata"]["labels"]["yelp.com/paasta_config_sha"],
+                    service=cr["metadata"]["labels"]["paasta.yelp.com/service"],
+                    instance=cr["metadata"]["labels"]["paasta.yelp.com/instance"],
+                    config_sha=cr["metadata"]["labels"]["paasta.yelp.com/config_sha"],
                     kind=cr["kind"],
                     namespace=cr["metadata"]["namespace"],
                     name=cr["metadata"]["name"],
@@ -1361,8 +1351,8 @@ def pod_disruption_budget_for_service_instance(
             max_unavailable=max_unavailable,
             selector=V1LabelSelector(
                 match_labels={
-                    "yelp.com/paasta_service": service,
-                    "yelp.com/paasta_instance": instance,
+                    "paasta.yelp.com/service": service,
+                    "paasta.yelp.com/instance": instance,
                 }
             ),
         ),
@@ -1386,7 +1376,7 @@ def list_matching_deployments(
 ) -> Sequence[KubeDeployment]:
     return list_deployments(
         kube_client,
-        f"yelp.com/paasta_instance={instance},yelp.com/paasta_service={service}",
+        f"paasta.yelp.com/instance={instance},paasta.yelp.com/service={service}",
     )
 
 
@@ -1395,7 +1385,7 @@ def replicasets_for_service_instance(
 ) -> Sequence[V1ReplicaSet]:
     return kube_client.deployments.list_namespaced_replica_set(
         namespace="paasta",
-        label_selector=f"yelp.com/paasta_service={service},yelp.com/paasta_instance={instance}",
+        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
     ).items
 
 
@@ -1404,7 +1394,7 @@ def pods_for_service_instance(
 ) -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(
         namespace="paasta",
-        label_selector=f"yelp.com/paasta_service={service},yelp.com/paasta_instance={instance}",
+        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
     ).items
 
 
@@ -1419,8 +1409,8 @@ def filter_pods_by_service_instance(
         pod
         for pod in pod_list
         if pod.metadata.labels is not None
-        and pod.metadata.labels.get("yelp.com/paasta_service", "") == service
-        and pod.metadata.labels.get("yelp.com/paasta_instance", "") == instance
+        and pod.metadata.labels.get("paasta.yelp.com/service", "") == service
+        and pod.metadata.labels.get("paasta.yelp.com/instance", "") == instance
     ]
 
 
@@ -1458,8 +1448,8 @@ def get_pod_status(pod: V1Pod,) -> PodStatus:
 def get_active_shas_for_service(pod_list: Sequence[V1Pod],) -> Mapping[str, Set[str]]:
     ret: Mapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
     for pod in pod_list:
-        ret["config_sha"].add(pod.metadata.labels["yelp.com/paasta_config_sha"])
-        ret["git_sha"].add(pod.metadata.labels["yelp.com/paasta_git_sha"])
+        ret["config_sha"].add(pod.metadata.labels["paasta.yelp.com/config_sha"])
+        ret["git_sha"].add(pod.metadata.labels["paasta.yelp.com/git_sha"])
     return ret
 
 
@@ -1623,10 +1613,7 @@ def create_secret(
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{sanitised_secret}",
-                labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
-                },
+                labels={"paasta.yelp.com/service": service},
             ),
             data={
                 secret: base64.b64encode(
@@ -1651,10 +1638,7 @@ def update_secret(
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{sanitised_secret}",
-                labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
-                },
+                labels={"paasta.yelp.com/service": service},
             ),
             data={
                 secret: base64.b64encode(
@@ -1696,10 +1680,7 @@ def update_kubernetes_secret_signature(
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{secret}-signature",
-                labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
-                },
+                labels={"paasta.yelp.com/service": service},
             ),
             data={"signature": secret_signature},
         ),
@@ -1716,10 +1697,7 @@ def create_kubernetes_secret_signature(
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{secret}-signature",
-                labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
-                },
+                labels={"paasta.yelp.com/service": service},
             ),
             data={"signature": secret_signature},
         ),
@@ -1784,7 +1762,6 @@ def set_cr_desired_state(
         cr["metadata"] = {}
     if "annotations" not in cr["metadata"]:
         cr["metadata"]["annotations"] = {}
-    cr["metadata"]["annotations"]["yelp.com/desired_state"] = desired_state
     cr["metadata"]["annotations"]["paasta.yelp.com/desired_state"] = desired_state
     kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
     status = cr.get("status")

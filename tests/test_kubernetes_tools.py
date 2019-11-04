@@ -102,8 +102,6 @@ def test_force_delete_pods():
     mock_pod_1 = mock.MagicMock(
         metadata=mock.MagicMock(
             labels={
-                "yelp.com/paasta_service": "srv1",
-                "yelp.com/paasta_instance": "instance1",
                 "paasta.yelp.com/service": "srv1",
                 "paasta.yelp.com/instance": "instance1",
             }
@@ -112,8 +110,6 @@ def test_force_delete_pods():
     mock_pod_2 = mock.MagicMock(
         metadata=mock.MagicMock(
             labels={
-                "yelp.com/paasta_service": "srv1",
-                "yelp.com/paasta_instance": "instance1",
                 "paasta.yelp.com/service": "srv1",
                 "paasta.yelp.com/instance": "instance1",
             }
@@ -824,8 +820,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={
-                            "yelp.com/paasta_instance": mock_get_instance.return_value,
-                            "yelp.com/paasta_service": mock_get_service.return_value,
+                            "paasta.yelp.com/instance": mock_get_instance.return_value,
+                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -836,21 +832,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             assert ret == expected
             assert (
                 mock.call(
-                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
-                )
-                in ret.metadata.labels.__setitem__.mock_calls
-            )
-            assert (
-                mock.call(
                     "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
                 )
                 in ret.metadata.labels.__setitem__.mock_calls
-            )
-            assert (
-                mock.call(
-                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
-                )
-                in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
             assert (
                 mock.call(
@@ -876,8 +860,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={
-                            "yelp.com/paasta_instance": mock_get_instance.return_value,
-                            "yelp.com/paasta_service": mock_get_service.return_value,
+                            "paasta.yelp.com/instance": mock_get_instance.return_value,
+                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -888,21 +872,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             assert ret == expected
             assert (
                 mock.call(
-                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
-                )
-                in ret.metadata.labels.__setitem__.mock_calls
-            )
-            assert (
-                mock.call(
                     "paasta.yelp.com/config_sha", mock_get_config_hash.return_value
                 )
                 in ret.metadata.labels.__setitem__.mock_calls
-            )
-            assert (
-                mock.call(
-                    "yelp.com/paasta_config_sha", mock_get_config_hash.return_value
-                )
-                in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
             assert (
                 mock.call(
@@ -937,9 +909,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             assert ret == V1PodTemplateSpec(
                 metadata=V1ObjectMeta(
                     labels={
-                        "yelp.com/paasta_git_sha": "aaaa123",
-                        "yelp.com/paasta_instance": mock_get_instance.return_value,
-                        "yelp.com/paasta_service": mock_get_service.return_value,
                         "paasta.yelp.com/git_sha": "aaaa123",
                         "paasta.yelp.com/instance": mock_get_instance.return_value,
                         "paasta.yelp.com/service": mock_get_service.return_value,
@@ -969,9 +938,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             ret = self.deployment.get_kubernetes_metadata("aaa123")
             assert ret == V1ObjectMeta(
                 labels={
-                    "yelp.com/paasta_git_sha": "aaa123",
-                    "yelp.com/paasta_instance": mock_get_instance.return_value,
-                    "yelp.com/paasta_service": mock_get_service.return_value,
                     "paasta.yelp.com/git_sha": "aaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
@@ -1243,8 +1209,6 @@ def test_get_kubernetes_services_running_here():
                     "metadata": {
                         "namespace": "paasta",
                         "labels": {
-                            "yelp.com/paasta_service": "kurupt",
-                            "yelp.com/paasta_instance": "fm",
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "fm",
                         },
@@ -1257,8 +1221,6 @@ def test_get_kubernetes_services_running_here():
                     "metadata": {
                         "namespace": "paasta",
                         "labels": {
-                            "yelp.com/paasta_service": "kurupt",
-                            "yelp.com/paasta_instance": "garage",
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "garage",
                         },
@@ -1271,8 +1233,6 @@ def test_get_kubernetes_services_running_here():
                     "metadata": {
                         "namespace": "paasta",
                         "labels": {
-                            "yelp.com/paasta_service": "kurupt",
-                            "yelp.com/paasta_instance": "grindah",
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "grindah",
                         },
@@ -1285,8 +1245,6 @@ def test_get_kubernetes_services_running_here():
                     "metadata": {
                         "namespace": "paasta",
                         "labels": {
-                            "yelp.com/paasta_service": "kurupt",
-                            "yelp.com/paasta_instance": "beats",
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "beats",
                         },
@@ -1456,10 +1414,6 @@ def test_list_all_deployments():
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    "yelp.com/paasta_service": "kurupt",
-                    "yelp.com/paasta_instance": "fm",
-                    "yelp.com/paasta_git_sha": "a12345",
-                    "yelp.com/paasta_config_sha": "b12345",
                     "paasta.yelp.com/service": "kurupt",
                     "paasta.yelp.com/instance": "fm",
                     "paasta.yelp.com/git_sha": "a12345",
@@ -1470,10 +1424,6 @@ def test_list_all_deployments():
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    "yelp.com/paasta_service": "kurupt",
-                    "yelp.com/paasta_instance": "am",
-                    "yelp.com/paasta_git_sha": "a12345",
-                    "yelp.com/paasta_config_sha": "b12345",
                     "paasta.yelp.com/service": "kurupt",
                     "paasta.yelp.com/instance": "am",
                     "paasta.yelp.com/git_sha": "a12345",
@@ -1529,8 +1479,8 @@ def test_pod_disruption_budget_for_service_instance():
     assert x.metadata.namespace == "paasta"
     assert x.spec.max_unavailable == "10%"
     assert x.spec.selector.match_labels == {
-        "yelp.com/paasta_service": "foo",
-        "yelp.com/paasta_instance": "bar",
+        "paasta.yelp.com/service": "foo",
+        "paasta.yelp.com/instance": "bar",
     }
 
 
@@ -1619,9 +1569,6 @@ def test_list_custom_resources():
                     "kind": "somecluster",
                     "metadata": {
                         "labels": {
-                            "yelp.com/paasta_service": "kurupt",
-                            "yelp.com/paasta_instance": "fm",
-                            "yelp.com/paasta_config_sha": "con123",
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "fm",
                             "paasta.yelp.com/config_sha": "con123",
@@ -1756,8 +1703,6 @@ def test_get_active_shas_for_service():
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    "yelp.com/paasta_config_sha": "a123",
-                    "yelp.com/paasta_git_sha": "b456",
                     "paasta.yelp.com/config_sha": "a123",
                     "paasta.yelp.com/git_sha": "b456",
                 }
@@ -1766,8 +1711,6 @@ def test_get_active_shas_for_service():
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    "yelp.com/paasta_config_sha": "a123!!!",
-                    "yelp.com/paasta_git_sha": "b456!!!",
                     "paasta.yelp.com/config_sha": "a123!!!",
                     "paasta.yelp.com/git_sha": "b456!!!",
                 }
@@ -1776,8 +1719,6 @@ def test_get_active_shas_for_service():
         mock.Mock(
             metadata=mock.Mock(
                 labels={
-                    "yelp.com/paasta_config_sha": "a123!!!",
-                    "yelp.com/paasta_git_sha": "b456!!!",
                     "paasta.yelp.com/config_sha": "a123!!!",
                     "paasta.yelp.com/git_sha": "b456!!!",
                 }
@@ -1807,8 +1748,6 @@ def test_filter_pods_for_service_instance():
     mock_pod_1 = mock.MagicMock(
         metadata=mock.MagicMock(
             labels={
-                "yelp.com/paasta_service": "kurupt",
-                "yelp.com/paasta_instance": "fm",
                 "paasta.yelp.com/service": "kurupt",
                 "paasta.yelp.com/instance": "fm",
             }
@@ -1817,8 +1756,6 @@ def test_filter_pods_for_service_instance():
     mock_pod_2 = mock.MagicMock(
         metadata=mock.MagicMock(
             labels={
-                "yelp.com/paasta_service": "kurupt",
-                "yelp.com/paasta_instance": "garage",
                 "paasta.yelp.com/service": "kurupt",
                 "paasta.yelp.com/instance": "garage",
             }
