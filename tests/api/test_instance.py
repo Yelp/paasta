@@ -492,7 +492,7 @@ def test_kubernetes_smartstack_status(
                 "running_backends_count": 1,
                 "backends": [
                     {
-                        "hostname": "host1",
+                        "hostname": "host1:1.2.3.4",
                         "port": 123,
                         "status": "UP",
                         "check_status": "L7OK",
@@ -965,10 +965,10 @@ def test_tron_instance_status(
 )
 @mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
 @mock.patch(
-    "paasta_tools.kubernetes_tools.load_kubernetes_service_config", autospec=True
+    "paasta_tools.api.views.instance.LONG_RUNNING_INSTANCE_TYPE_HANDLERS", autospec=True
 )
 def test_kubernetes_instance_status_bounce_method(
-    mock_load_kubernetes_service_config,
+    mock_long_running_instance_type_handlers,
     mock_pods_for_service_instance,
     mock_replicasets_for_service_instance,
     mock_get_active_shas_for_service,
@@ -980,7 +980,9 @@ def test_kubernetes_instance_status_bounce_method(
     inst = "fake-inst"
 
     mock_job_config = mock.Mock()
-    mock_load_kubernetes_service_config.return_value = mock_job_config
+    mock_long_running_instance_type_handlers.__getitem__ = mock.Mock(
+        return_value=mock.Mock(loader=mock.Mock(return_value=mock_job_config))
+    )
 
-    actual = instance.kubernetes_instance_status(st, svc, inst, 0, False)
+    actual = instance.kubernetes_instance_status(st, svc, inst, 0, False, "kubernetes")
     assert actual["bounce_method"] == mock_job_config.get_bounce_method()

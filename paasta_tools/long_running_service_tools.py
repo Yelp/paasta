@@ -119,6 +119,28 @@ class LongRunningServiceConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
 
+    def get_bounce_method(self) -> str:
+        raise NotImplementedError
+
+    def get_kubernetes_namespace(self) -> str:
+        """
+        Only needed on kubernetes LongRunningServiceConfig
+        """
+        raise NotImplementedError
+
+    def get_sanitised_deployment_name(self) -> str:
+        """
+        Only needed on kubernetes LongRunningServiceConfig
+        """
+        raise NotImplementedError
+
+    def get_service_name_smartstack(self) -> str:
+        """
+        This is just the service name here
+        For cassandra we have to override this to support apollo
+        """
+        return self.get_service()
+
     def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         """Get the drain method specified in the service's marathon configuration.
 

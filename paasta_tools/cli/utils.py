@@ -30,6 +30,7 @@ from typing import Callable
 from typing import Iterable
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -47,6 +48,7 @@ from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_c
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log_audit
@@ -831,17 +833,76 @@ InstanceLoaderSig = Callable[
     InstanceConfig,
 ]
 
-INSTANCE_TYPE_HANDLERS: Mapping[
-    str, Tuple[InstanceListerSig, InstanceLoaderSig]
+LongRunningServiceListerSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(Optional[str], "cluster"),
+        NamedArg(str, "instance_type"),
+        NamedArg(str, "soa_dir"),
+    ],
+    List[Tuple[str, str]],
+]
+
+LongRunningServiceLoaderSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(str, "instance"),
+        NamedArg(str, "cluster"),
+        NamedArg(bool, "load_deployments"),
+        NamedArg(str, "soa_dir"),
+    ],
+    LongRunningServiceConfig,
+]
+
+
+class InstanceTypeHandler(NamedTuple):
+    lister: InstanceListerSig
+    loader: InstanceLoaderSig
+
+
+class LongRunningInstanceTypeHandler(NamedTuple):
+    lister: LongRunningServiceListerSig
+    loader: LongRunningServiceLoaderSig
+
+
+INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
+    lambda: InstanceTypeHandler(None, None),
+    marathon=InstanceTypeHandler(
+        get_service_instance_list, load_marathon_service_config
+    ),
+    adhoc=InstanceTypeHandler(get_service_instance_list, load_adhoc_job_config),
+    kubernetes=InstanceTypeHandler(
+        get_service_instance_list, load_kubernetes_service_config
+    ),
+    tron=InstanceTypeHandler(get_service_instance_list, load_tron_instance_config),
+    flink=InstanceTypeHandler(get_service_instance_list, load_flink_instance_config),
+    cassandracluster=InstanceTypeHandler(
+        get_service_instance_list, load_cassandracluster_instance_config
+    ),
+    kafkacluster=InstanceTypeHandler(
+        get_service_instance_list, load_kafkacluster_instance_config
+    ),
+)
+
+LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
+    str, LongRunningInstanceTypeHandler
 ] = defaultdict(
-    lambda: (None, None),
-    marathon=(get_service_instance_list, load_marathon_service_config),
-    adhoc=(get_service_instance_list, load_adhoc_job_config),
-    kubernetes=(get_service_instance_list, load_kubernetes_service_config),
-    tron=(get_service_instance_list, load_tron_instance_config),
-    flink=(get_service_instance_list, load_flink_instance_config),
-    cassandracluster=(get_service_instance_list, load_cassandracluster_instance_config),
-    kafkacluster=(get_service_instance_list, load_kafkacluster_instance_config),
+    lambda: LongRunningInstanceTypeHandler(None, None),
+    marathon=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_marathon_service_config
+    ),
+    kubernetes=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_kubernetes_service_config
+    ),
+    flink=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_flink_instance_config
+    ),
+    cassandracluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_cassandracluster_instance_config
+    ),
+    kafkacluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_kafkacluster_instance_config
+    ),
 )
 
 
@@ -860,7 +921,7 @@ def get_instance_config(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
         )
 
-    instance_config_loader = INSTANCE_TYPE_HANDLERS[instance_type][1]
+    instance_config_loader = INSTANCE_TYPE_HANDLERS[instance_type].loader
     if instance_config_loader is None:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"

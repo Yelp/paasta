@@ -1634,35 +1634,34 @@ def test_update_stateful_set():
 def test_get_kubernetes_app_deploy_status():
     mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
     mock_app = mock.Mock(status=mock_status)
-    mock_client = mock.Mock()
     assert (
-        get_kubernetes_app_deploy_status(mock_client, mock_app, desired_instances=1)
+        get_kubernetes_app_deploy_status(mock_app, desired_instances=1)
         == KubernetesDeployStatus.Running
     )
 
     assert (
-        get_kubernetes_app_deploy_status(mock_client, mock_app, desired_instances=2)
+        get_kubernetes_app_deploy_status(mock_app, desired_instances=2)
         == KubernetesDeployStatus.Waiting
     )
 
     mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
     mock_app = mock.Mock(status=mock_status)
     assert (
-        get_kubernetes_app_deploy_status(mock_client, mock_app, desired_instances=2)
+        get_kubernetes_app_deploy_status(mock_app, desired_instances=2)
         == KubernetesDeployStatus.Deploying
     )
 
     mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
     mock_app = mock.Mock(status=mock_status)
     assert (
-        get_kubernetes_app_deploy_status(mock_client, mock_app, desired_instances=0)
+        get_kubernetes_app_deploy_status(mock_app, desired_instances=0)
         == KubernetesDeployStatus.Stopped
     )
 
     mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
     mock_app = mock.Mock(status=mock_status)
     assert (
-        get_kubernetes_app_deploy_status(mock_client, mock_app, desired_instances=1)
+        get_kubernetes_app_deploy_status(mock_app, desired_instances=1)
         == KubernetesDeployStatus.Waiting
     )
 
