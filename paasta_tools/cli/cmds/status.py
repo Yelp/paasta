@@ -801,7 +801,7 @@ def print_flink_status(
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
-    config_sha = metadata.labels.get("yelp.com/paasta_config_sha")
+    config_sha = metadata.labels.get("paasta.yelp.com/config_sha")
     if config_sha is None:
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
@@ -816,7 +816,7 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    dashboard_url = metadata.annotations.get("yelp.com/dashboard_url")
+    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
     if verbose:
         output.append(
             f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
