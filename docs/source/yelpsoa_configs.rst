@@ -788,7 +788,7 @@ Here is a list of options that PaaSTA will pass through:
  * ``check_oom_events``: Boolean to indicate if an instance should alert when
    the Out Of Memory killer kills processes in the instance containers.
    This alert sends an email to ``notification_email`` and post notifications
-   to ``irc_channels``. It neither pages nor makes a JIRA ticket. Defaults to **true**.
+   to ``irc_channels``. It does not page. Defaults to **true**.
 
 
 Monitoring Examples
