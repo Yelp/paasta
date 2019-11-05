@@ -1,3 +1,11 @@
+paasta-tools (0.90.0) xenial; urgency=medium
+
+  * 0.90.0 tagged with 'make release'
+    Commit: Merge pull request #2489 from Yelp/docker-disk-quota  Disk
+    quota for Docker
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Tue, 05 Nov 2019 01:37:50 -0800
+
 paasta-tools (0.89.2) xenial; urgency=medium
 
   * 0.89.2 tagged with 'make release'
