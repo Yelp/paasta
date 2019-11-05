@@ -631,7 +631,9 @@ def build_smartstack_backend_dict(
     smartstack_backend: HaproxyBackend, task: Union[V1Pod, Optional[MarathonTask]]
 ) -> MutableMapping[str, Any]:
     svname = smartstack_backend["svname"]
-    hostname = svname.split("_")[0]
+    hostname = (
+        svname.split("_")[0] if not isinstance(task, V1Pod) else task.status.pod_ip
+    )
     port = svname.split("_")[-1].split(":")[-1]
 
     smartstack_backend_dict = {

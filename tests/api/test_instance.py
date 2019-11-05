@@ -464,6 +464,7 @@ def test_kubernetes_smartstack_status(
         lastchg="9876",
     )
     mock_pod = mock.create_autospec(V1Pod)
+    mock_pod.status.pod_ip = "1.2.3.4"
     mock_match_backends_and_pods.return_value = [(mock_backend, mock_pod)]
 
     mock_job_config = kubernetes_tools.KubernetesDeploymentConfig(
@@ -492,7 +493,7 @@ def test_kubernetes_smartstack_status(
                 "running_backends_count": 1,
                 "backends": [
                     {
-                        "hostname": "host1",
+                        "hostname": "1.2.3.4",
                         "port": 123,
                         "status": "UP",
                         "check_status": "L7OK",
