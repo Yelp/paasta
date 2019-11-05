@@ -88,7 +88,7 @@ def cleanup_all_custom_resources(
     cluster_crds = {
         crd.spec.names.kind
         for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector="paasta.yelp.com/service"
+            label_selector="yelp.com/paasta_service"
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")

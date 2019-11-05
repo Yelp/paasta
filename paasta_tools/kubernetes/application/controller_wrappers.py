@@ -42,10 +42,10 @@ class Application(ABC):
         if not item.metadata.namespace:
             item.metadata.namespace = "paasta"
         self.kube_deployment = KubeDeployment(
-            service=item.metadata.labels["paasta.yelp.com/service"],
-            instance=item.metadata.labels["paasta.yelp.com/instance"],
-            git_sha=item.metadata.labels["paasta.yelp.com/git_sha"],
-            config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
+            service=item.metadata.labels["yelp.com/paasta_service"],
+            instance=item.metadata.labels["yelp.com/paasta_instance"],
+            git_sha=item.metadata.labels["yelp.com/paasta_git_sha"],
+            config_sha=item.metadata.labels["yelp.com/paasta_config_sha"],
             replicas=item.spec.replicas,
         )
         self.item = item

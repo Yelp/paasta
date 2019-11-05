@@ -16,10 +16,10 @@ log = logging.getLogger(__name__)
 
 def is_valid_application(deployment: V1Deployment):
     is_valid = (
-        "paasta.yelp.com/service" in deployment.metadata.labels
-        and "paasta.yelp.com/instance" in deployment.metadata.labels
-        and "paasta.yelp.com/git_sha" in deployment.metadata.labels
-        and "paasta.yelp.com/config_sha" in deployment.metadata.labels
+        "yelp.com/paasta_service" in deployment.metadata.labels
+        and "yelp.com/paasta_instance" in deployment.metadata.labels
+        and "yelp.com/paasta_git_sha" in deployment.metadata.labels
+        and "yelp.com/paasta_config_sha" in deployment.metadata.labels
     )
     if not is_valid:
         log.warning(
