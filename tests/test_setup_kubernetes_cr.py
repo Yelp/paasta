@@ -323,7 +323,7 @@ def test_reconcile_kubernetes_resource():
         # instance diff config, update
         mock_format_custom_resource.return_value = {
             "metadata": {
-                "labels": {"yelp.com/paasta_config_sha": "conf456"},
+                "labels": {"paasta.yelp.com/config_sha": "conf456"},
                 "name": "foo",
                 "namespace": "paasta-flinks",
             }

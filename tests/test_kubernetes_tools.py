@@ -824,8 +824,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={
-                            "yelp.com/paasta_instance": mock_get_instance.return_value,
-                            "yelp.com/paasta_service": mock_get_service.return_value,
+                            "paasta.yelp.com/instance": mock_get_instance.return_value,
+                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -876,8 +876,8 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     replicas=mock_get_instances.return_value,
                     selector=V1LabelSelector(
                         match_labels={
-                            "yelp.com/paasta_instance": mock_get_instance.return_value,
-                            "yelp.com/paasta_service": mock_get_service.return_value,
+                            "paasta.yelp.com/instance": mock_get_instance.return_value,
+                            "paasta.yelp.com/service": mock_get_service.return_value,
                         }
                     ),
                     revision_history_limit=0,
@@ -1529,8 +1529,8 @@ def test_pod_disruption_budget_for_service_instance():
     assert x.metadata.namespace == "paasta"
     assert x.spec.max_unavailable == "10%"
     assert x.spec.selector.match_labels == {
-        "yelp.com/paasta_service": "foo",
-        "yelp.com/paasta_instance": "bar",
+        "paasta.yelp.com/service": "foo",
+        "paasta.yelp.com/instance": "bar",
     }
 
 

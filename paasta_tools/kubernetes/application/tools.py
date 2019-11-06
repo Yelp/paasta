@@ -16,15 +16,16 @@ log = logging.getLogger(__name__)
 
 def is_valid_application(deployment: V1Deployment):
     is_valid = (
-        "yelp.com/paasta_service" in deployment.metadata.labels
-        and "yelp.com/paasta_instance" in deployment.metadata.labels
-        and "yelp.com/paasta_git_sha" in deployment.metadata.labels
-        and "yelp.com/paasta_config_sha" in deployment.metadata.labels
+        "paasta.yelp.com/service" in deployment.metadata.labels
+        and "paasta.yelp.com/instance" in deployment.metadata.labels
+        and "paasta.yelp.com/git_sha" in deployment.metadata.labels
+        and "paasta.yelp.com/config_sha" in deployment.metadata.labels
     )
     if not is_valid:
         log.warning(
-            f"deployment/{deployment.metadata.name} in namespace/{deployment.metadata.namespace}\
-         does not have complete set of labels"
+            f"deployment/{deployment.metadata.name} in "
+            f"namespace/{deployment.metadata.namespace} "
+            "does not have complete set of labels"
         )
         log.warning(deployment)
     return is_valid
