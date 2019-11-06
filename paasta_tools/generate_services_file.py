@@ -23,8 +23,8 @@ import socket
 from datetime import datetime
 
 import service_configuration_lib
-import yaml
 
+from paasta_tools import yaml
 from paasta_tools.marathon_tools import get_all_namespaces
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.utils import atomic_file_write
@@ -72,7 +72,7 @@ def get_service_lines_for_service(service):
 
 
 def write_yaml_file(filename):
-    previous_config = maybe_load_previous_config(filename, yaml.safe_load)
+    previous_config = maybe_load_previous_config(filename, yaml.load)
     configuration = generate_configuration()
 
     if previous_config and previous_config == configuration:
@@ -85,7 +85,7 @@ def write_yaml_file(filename):
                 host=socket.getfqdn(), now=datetime.now().isoformat()
             )
         )
-        yaml.safe_dump(
+        yaml.dump(
             configuration,
             fp,
             indent=2,

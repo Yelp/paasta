@@ -15,10 +15,10 @@ import subprocess
 
 import mock
 import pytest
-import yaml
 
 from paasta_tools import firewall
 from paasta_tools import firewall_update
+from paasta_tools import yaml
 from paasta_tools.utils import TimeoutError
 
 
@@ -88,7 +88,7 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
         },
         "nosecurity": {"dependencies_reference": "my_ref"},
     }
-    myservice_dir.join("marathon-mycluster.yaml").write(yaml.safe_dump(marathon_config))
+    myservice_dir.join("marathon-mycluster.yaml").write(yaml.dump(marathon_config))
 
     dependencies_config = {
         "my_ref": [
@@ -97,7 +97,7 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
             {"smartstack": "another.one"},
         ]
     }
-    myservice_dir.join("dependencies.yaml").write(yaml.safe_dump(dependencies_config))
+    myservice_dir.join("dependencies.yaml").write(yaml.dump(dependencies_config))
 
     result = firewall_update.smartstack_dependencies_of_running_firewalled_services(
         soa_dir=str(soa_dir)

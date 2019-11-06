@@ -16,9 +16,10 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
-import yaml
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+
+from paasta_tools import yaml
 
 logger = logging.getLogger("check_orphans")
 

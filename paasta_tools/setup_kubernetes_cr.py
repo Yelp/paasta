@@ -28,8 +28,7 @@ from typing import Mapping
 from typing import Optional
 from typing import Sequence
 
-import yaml
-
+from paasta_tools import yaml
 from paasta_tools.flink_tools import get_flink_ingress_url_root
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
@@ -72,7 +71,7 @@ class StdoutKubeClient:
                 if "metadata" not in body:
                     body["metadata"] = {}
                 body["metadata"]["namespace"] = ns
-            yaml.safe_dump(body, sys.stdout, indent=4, explicit_start=True)
+            yaml.dump(body, sys.stdout, indent=4, explicit_start=True)
 
     def __init__(self, kube_client) -> None:
         self.deployments = StdoutKubeClient.StdoutWrapper(kube_client.deployments)

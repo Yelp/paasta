@@ -69,7 +69,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
@@ -77,6 +76,7 @@ from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
+from paasta_tools import yaml
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -2794,7 +2794,7 @@ def get_services_for_cluster(
 
 
 def parse_yaml_file(yaml_file: str) -> Any:
-    return yaml.safe_load(open(yaml_file))
+    return yaml.load(open(yaml_file))
 
 
 def get_docker_host() -> str:

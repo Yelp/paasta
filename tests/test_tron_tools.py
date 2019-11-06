@@ -763,7 +763,7 @@ class TestTronTools:
         mock_format_job.assert_called_once_with(job_config)
         complete_config = {"jobs": {"my_job": mock_format_job.return_value}}
         mock_yaml_dump.assert_called_once_with(
-            complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY
+            complete_config, default_flow_style=mock.ANY
         )
 
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)

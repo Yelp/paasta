@@ -20,35 +20,29 @@ import pkgutil
 import re
 import subprocess
 from string import Formatter
+from typing import Any
+from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 import service_configuration_lib
-import yaml
 
-try:
-    from yaml.cyaml import CSafeDumper as Dumper
-except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
-    Dumper = yaml.SafeDumper  # type: ignore
-
-from paasta_tools.tron.client import TronClient
+from paasta_tools import monitoring_tools
+from paasta_tools import yaml
+from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.tron import tron_command_context
+from paasta_tools.tron.client import TronClient
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import extract_jobs_from_tron_yaml
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_tron_yaml
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
-from paasta_tools.utils import load_tron_yaml
-from paasta_tools.utils import extract_jobs_from_tron_yaml
-
-from paasta_tools import monitoring_tools
-from paasta_tools.monitoring_tools import list_teams
-from typing import Optional
-from typing import Dict
-from typing import Any
 
 log = logging.getLogger(__name__)
 logging.getLogger("tron").setLevel(logging.WARNING)
@@ -590,7 +584,7 @@ def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
         system_paasta_config.get_volumes(),
         system_paasta_config.get_dockercfg_location(),
     )
-    return yaml.dump(master_config, Dumper=Dumper, default_flow_style=False)
+    return yaml.dump(master_config, default_flow_style=False)
 
 
 def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
@@ -603,7 +597,7 @@ def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
         job_config.get_name(): format_tron_job_dict(job_config)
         for job_config in job_configs
     }
-    return yaml.dump(preproccessed_config, Dumper=Dumper, default_flow_style=False)
+    return yaml.dump(preproccessed_config, default_flow_style=False)
 
 
 def validate_complete_config(
@@ -630,7 +624,7 @@ def validate_complete_config(
         for job_config in job_configs
     }
 
-    complete_config = yaml.dump(preproccessed_config, Dumper=Dumper)
+    complete_config = yaml.dump(preproccessed_config)
 
     proc = subprocess.run(
         ["tronfig", "-", "-V", "-n", service, "-m", master_config_path],

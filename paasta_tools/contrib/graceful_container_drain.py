@@ -10,8 +10,7 @@ from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
 
-import yaml
-
+from paasta_tools import yaml
 from paasta_tools.utils import paasta_print
 
 
@@ -89,7 +88,7 @@ def get_proxy_port(service_name, instance_name):
     proxy_port = None
     if os.path.exists(smartstack_yaml):
         with open(smartstack_yaml, "r") as stream:
-            data = yaml.safe_load(stream)
+            data = yaml.load(stream)
             if instance_name in data:
                 proxy_port = data[instance_name].get("proxy_port", None)
     return proxy_port

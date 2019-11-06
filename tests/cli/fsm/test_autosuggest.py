@@ -26,7 +26,7 @@ class TestGetSmartstackProxyPortFromFile:
             with mock.patch(
                 "paasta_tools.cli.fsm.autosuggest.yaml", autospec=True
             ) as mock_yaml:
-                mock_yaml.safe_load.return_value = {
+                mock_yaml.load.return_value = {
                     "main": {"proxy_port": 1},
                     "foo": {"proxy_port": 2},
                 }

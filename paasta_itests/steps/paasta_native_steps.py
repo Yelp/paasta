@@ -7,7 +7,6 @@ from typing import Tuple
 
 import a_sync
 import mock
-import yaml
 from behave import given
 from behave import then
 from behave import when
@@ -16,6 +15,7 @@ from requests import HTTPError
 
 from paasta_tools import drain_lib
 from paasta_tools import mesos_tools
+from paasta_tools import yaml
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.frameworks.adhoc_scheduler import AdhocScheduler
 from paasta_tools.frameworks.native_scheduler import create_driver
@@ -162,7 +162,7 @@ def write_paasta_native_cluster_yaml_files(context, service, instance):
         "w",
     ) as f:
         f.write(
-            yaml.safe_dump(
+            yaml.dump(
                 {
                     instance: {
                         "cmd": 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',

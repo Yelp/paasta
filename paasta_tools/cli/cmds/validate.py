@@ -18,12 +18,12 @@ import pkgutil
 from collections import Counter
 from glob import glob
 
-import yaml
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
 
+from paasta_tools import yaml
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
@@ -163,7 +163,7 @@ def validate_schema(file_path, file_type):
     try:
         config_file = get_file_contents(file_path)
         if extension == ".yaml":
-            config_file_object = yaml.safe_load(config_file)
+            config_file_object = yaml.load(config_file)
         elif extension == ".json":
             config_file_object = json.loads(config_file)
         else:

@@ -15,7 +15,6 @@ import json
 import os
 from tempfile import NamedTemporaryFile
 
-import yaml
 from behave import given
 from behave import when
 from bravado.client import SwaggerClient
@@ -23,6 +22,7 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
 from paasta_tools import utils
+from paasta_tools import yaml
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import paasta_print
@@ -279,7 +279,7 @@ def write_soa_dir_marathon_job(context, job_id, shard=None, previous_shard=None)
     with open(
         os.path.join(soa_dir, service, "marathon-%s.yaml" % context.cluster), "w"
     ) as f:
-        f.write(yaml.safe_dump(soa))
+        f.write(yaml.dump(soa))
 
     context.soa_dir = soa_dir
 
@@ -297,7 +297,7 @@ def write_soa_dir_native_service(context, job_id):
         os.path.join(soa_dir, service, "paasta_native-%s.yaml" % context.cluster), "w"
     ) as f:
         f.write(
-            yaml.safe_dump(
+            yaml.dump(
                 {"%s" % instance: {"cpus": 0.1, "mem": 100, "cmd": "/bin/sleep 300"}}
             )
         )
@@ -383,10 +383,10 @@ def modify_configs(context, field, framework, service, instance, value):
     with open(
         os.path.join(soa_dir, service, f"{framework}-{context.cluster}.yaml"), "r+"
     ) as f:
-        data = yaml.safe_load(f.read())
+        data = yaml.load(f.read())
         data[instance][field] = value
         f.seek(0)
-        f.write(yaml.safe_dump(data))
+        f.write(yaml.dump(data))
         f.truncate()
 
 
