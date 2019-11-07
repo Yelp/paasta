@@ -15,6 +15,7 @@
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
 import argparse
+import json
 import logging
 import os
 import subprocess
@@ -85,6 +86,18 @@ def add_subparser(command, subparsers):
     add_subparser_fn(subparsers)
 
 
+def subcommands_json(subparsers, internal_commands):
+    json.dump(
+        {
+            kv[0]: dict(description=kv[1].description, help=kv[1].format_help())
+            for kv in subparsers.choices.items()
+            if kv[0] in internal_commands
+        },
+        sys.stdout,
+    )
+    return 0
+
+
 def get_argparser():
     parser = PrintsHelpOnErrorArgumentParser(
         description=(
@@ -121,11 +134,17 @@ def get_argparser():
     help_parser = subparsers.add_parser("help", add_help=False)
     help_parser.set_defaults(command=None)
 
-    for command in sorted(paasta_commands_dir(cmds)):
+    paasta_commands = sorted(paasta_commands_dir(cmds))
+    for command in paasta_commands:
         add_subparser(command, subparsers)
 
     for command, command_help in external_commands_items():
         subparsers.add_parser(command, help=command_help)
+
+    subc_parser = subparsers.add_parser("subcommands_json", add_help=False)
+    subc_parser.set_defaults(
+        command=lambda _: subcommands_json(subparsers, paasta_commands)
+    )
 
     return parser
 
