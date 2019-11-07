@@ -15,6 +15,7 @@
 import concurrent.futures
 import difflib
 import os
+import shutil
 import sys
 import traceback
 from collections import defaultdict
@@ -785,6 +786,10 @@ def status_kubernetes_job_human(
         )
 
 
+def get_flink_job_name(flink_job):
+    return flink_job["name"].split(".", 2)[2]
+
+
 def print_flink_status(
     cluster: str,
     service: str,
@@ -838,13 +843,26 @@ def print_flink_status(
         f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available"
     )
 
+    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
+    if status.jobs:
+        max_job_name_length = max([len(get_flink_job_name(job)) for job in status.jobs])
+    else:
+        max_job_name_length = 10
+    # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
+    # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
+    allowed_max_job_name_length = min(
+        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
+    )
+
     output.append(f"    Jobs:")
     if verbose:
         output.append(
-            f"      Job Name                         State       Job ID                           Started"
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
         )
     else:
-        output.append(f"      Job Name                         State       Started")
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+        )
 
     # Use only the most recent jobs
     unique_jobs = (
@@ -860,17 +878,18 @@ def print_flink_status(
     for job in unique_jobs:
         job_id = job["jid"]
         if verbose:
-            fmt = """      {job_name: <32.32} {state: <11} {job_id} {start_time}
+            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
-            fmt = "      {job_name: <32.32} {state: <11} {start_time}"
+            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime_from_utc_to_local(
             datetime.utcfromtimestamp(int(job["start-time"]) // 1000)
         )
         output.append(
             fmt.format(
                 job_id=job_id,
-                job_name=job["name"].split(".", 2)[2],
+                job_name=get_flink_job_name(job),
+                allowed_max_job_name_length=allowed_max_job_name_length,
                 state=(job.get("state") or "unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
