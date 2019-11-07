@@ -152,7 +152,7 @@ def setup_all_custom_resources(
     cluster_crds = {
         crd.spec.names.kind
         for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector="yelp.com/paasta_service"
+            label_selector="paasta.yelp.com/service"
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")
@@ -307,7 +307,7 @@ def reconcile_kubernetes_resource(
             service=service,
             instance=inst,
             config_sha=formatted_resource["metadata"]["labels"][
-                "yelp.com/paasta_config_sha"
+                "paasta.yelp.com/config_sha"
             ],
             kind=kind.singular,
             name=formatted_resource["metadata"]["name"],
