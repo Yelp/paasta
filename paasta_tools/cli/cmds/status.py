@@ -844,11 +844,14 @@ def print_flink_status(
     )
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    max_job_name_length = max([len(get_flink_job_name(job)) for job in status.jobs])
+    if status.jobs:
+        max_job_name_length = max([len(get_flink_job_name(job)) for job in status.jobs])
+    else:
+        max_job_name_length = 10
     # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
     # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
     allowed_max_job_name_length = min(
-        max(8, shutil.get_terminal_size().columns - 52), max_job_name_length
+        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
     output.append(f"    Jobs:")
