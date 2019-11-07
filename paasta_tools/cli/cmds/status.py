@@ -848,7 +848,7 @@ def print_flink_status(
     # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
     # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
     allowed_max_job_name_length = min(
-        shutil.get_terminal_size().columns - 52, max_job_name_length
+        max(8, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
     output.append(f"    Jobs:")
