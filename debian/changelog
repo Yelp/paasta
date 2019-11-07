@@ -1,3 +1,10 @@
+paasta-tools (0.90.3) xenial; urgency=medium
+
+  * 0.90.3 tagged with 'make release'
+    Commit: Replace reads of old kubernetes labels (#2533)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 07 Nov 2019 01:15:20 -0800
+
 paasta-tools (0.90.2) xenial; urgency=medium
 
   * 0.90.2 tagged with 'make release'
