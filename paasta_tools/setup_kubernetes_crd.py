@@ -100,7 +100,7 @@ def setup_kube_crd(
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="yelp.com/paasta_service"
+        label_selector="paasta.yelp.com/service"
     )
 
     success = True
