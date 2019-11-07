@@ -1,3 +1,10 @@
+paasta-tools (0.90.4) xenial; urgency=medium
+
+  * 0.90.4 tagged with 'make release'
+    Commit: fix missed kubernetes label reference
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 07 Nov 2019 01:25:33 -0800
+
 paasta-tools (0.90.3) xenial; urgency=medium
 
   * 0.90.3 tagged with 'make release'
