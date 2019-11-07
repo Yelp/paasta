@@ -15,6 +15,7 @@
 import concurrent.futures
 import difflib
 import os
+import shutil
 import sys
 import traceback
 from collections import defaultdict
@@ -845,22 +846,19 @@ def print_flink_status(
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     max_job_name_length = max([len(get_flink_job_name(job)) for job in status.jobs])
     # Limiting longest allowed job name to be 120 chars. This is to ensure while printing on cli the formatting is maintained on normal screens
-    allowed_max_job_name_length = min(120, max_job_name_length)
+    allowed_max_job_name_length = min(
+        shutil.get_terminal_size((120, 50)).columns, max_job_name_length
+    )
 
     output.append(f"    Jobs:")
     if verbose:
         fmt = "      {job_name_var: <{max_column_length}} State       Job ID                           Started"
         output.append(
-            fmt.format(
-                job_name_var="Job Name", max_column_length=allowed_max_job_name_length,
-            )
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
         )
     else:
-        fmt = "      {job_name_var: <{max_column_length}} State       Started"
         output.append(
-            fmt.format(
-                job_name_var="Job Name", max_column_length=allowed_max_job_name_length,
-            )
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
         )
 
     # Use only the most recent jobs
