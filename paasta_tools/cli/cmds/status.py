@@ -785,6 +785,10 @@ def status_kubernetes_job_human(
         )
 
 
+def get_flink_job_name(flink_job):
+    return flink_job["name"].split(".", 2)[2]
+
+
 def print_flink_status(
     cluster: str,
     service: str,
@@ -839,9 +843,7 @@ def print_flink_status(
     )
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    max_job_name_length = max(
-        [len(job["name"].split(".", 2)[2]) for job in status.jobs]
-    )
+    max_job_name_length = max([len(get_flink_job_name(job)) for job in status.jobs])
     # Limiting longest allowed job name to be 120 chars. This is to ensure while printing on cli the formatting is maintained on normal screens
     allowed_max_job_name_length = min(120, max_job_name_length)
 
@@ -885,7 +887,7 @@ def print_flink_status(
         output.append(
             fmt.format(
                 job_id=job_id,
-                job_name=job["name"].split(".", 2)[2],
+                job_name=get_flink_job_name(job),
                 allowed_max_job_name_length=allowed_max_job_name_length,
                 state=(job.get("state") or "unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
