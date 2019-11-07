@@ -838,13 +838,28 @@ def print_flink_status(
         f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available"
     )
 
+    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
+    max_job_name_length = max(
+        [len(job["name"].split(".", 2)[2]) for job in status.jobs]
+    )
+    # Limiting longest allowed job name to be 120 chars. This is to ensure while printing on cli the formatting is maintained on normal screens
+    allowed_max_job_name_length = min(120, max_job_name_length)
+
     output.append(f"    Jobs:")
     if verbose:
+        fmt = "      {job_name_var: <{max_column_length}} State       Job ID                           Started"
         output.append(
-            f"      Job Name                         State       Job ID                           Started"
+            fmt.format(
+                job_name_var="Job Name", max_column_length=allowed_max_job_name_length,
+            )
         )
     else:
-        output.append(f"      Job Name                         State       Started")
+        fmt = "      {job_name_var: <{max_column_length}} State       Started"
+        output.append(
+            fmt.format(
+                job_name_var="Job Name", max_column_length=allowed_max_job_name_length,
+            )
+        )
 
     # Use only the most recent jobs
     unique_jobs = (
@@ -860,10 +875,10 @@ def print_flink_status(
     for job in unique_jobs:
         job_id = job["jid"]
         if verbose:
-            fmt = """      {job_name: <32.32} {state: <11} {job_id} {start_time}
+            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
-            fmt = "      {job_name: <32.32} {state: <11} {start_time}"
+            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime_from_utc_to_local(
             datetime.utcfromtimestamp(int(job["start-time"]) // 1000)
         )
@@ -871,6 +886,7 @@ def print_flink_status(
             fmt.format(
                 job_id=job_id,
                 job_name=job["name"].split(".", 2)[2],
+                allowed_max_job_name_length=allowed_max_job_name_length,
                 state=(job.get("state") or "unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
