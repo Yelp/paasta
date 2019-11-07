@@ -129,17 +129,17 @@ def tron_instance_status(
 
     if action:
         status["action_name"] = action
-    if action_run["state"]:
+    if action_run.get("state"):
         status["action_state"] = action_run["state"]
-    if action_run["start_time"]:
+    if action_run.get("start_time"):
         status["action_start_time"] = action_run["start_time"]
-    if action_run["raw_command"]:
+    if action_run.get("raw_command"):
         status["action_raw_command"] = action_run["raw_command"]
-    if action_run["stdout"]:
+    if action_run.get("stdout"):
         status["action_stdout"] = "\n".join(action_run["stdout"])
-    if action_run["stderr"]:
+    if action_run.get("stderr"):
         status["action_stderr"] = "\n".join(action_run["stderr"])
-    if action_run["command"]:
+    if action_run.get("command"):
         status["action_command"] = action_run["command"]
 
     return status
