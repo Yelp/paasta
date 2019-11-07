@@ -852,7 +852,6 @@ def print_flink_status(
 
     output.append(f"    Jobs:")
     if verbose:
-        fmt = "      {job_name_var: <{max_column_length}} State       Job ID                           Started"
         output.append(
             f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
         )
