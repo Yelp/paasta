@@ -65,17 +65,6 @@ def restart_marathon_job(service, instance, app_id, client, cluster):
     client.scale_app(app_id, instances=0, force=True)
 
 
-def bouncing_status_human(app_count, bounce_method):
-    if app_count == 0:
-        return PaastaColors.red("Disabled")
-    elif app_count == 1:
-        return PaastaColors.green("Configured")
-    elif app_count > 1:
-        return PaastaColors.yellow("Bouncing (%s)" % bounce_method)
-    else:
-        return PaastaColors.red("Unknown (count: %s)" % app_count)
-
-
 def get_bouncing_status(service, instance, client, job_config):
     # embed_tasks=True here so that we're making the same HTTP call as the other parts of this code, so the call can be
     # cached.
@@ -109,67 +98,6 @@ def status_desired_state(
         job_config.get_desired_state(), job_config.get_instances()
     )
     return f"Desired State:      {status} and {desired_state}"
-
-
-def status_marathon_job_human(
-    service: str,
-    instance: str,
-    deploy_status: str,
-    desired_app_id: str,
-    app_count: int,
-    running_instances: int,
-    normal_instance_count: int,
-) -> str:
-    name = PaastaColors.cyan(compose_job_id(service, instance))
-
-    if app_count >= 0:
-        if running_instances >= normal_instance_count:
-            status = PaastaColors.green("Healthy")
-            instance_count = PaastaColors.green(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        elif running_instances == 0:
-            status = PaastaColors.yellow("Critical")
-            instance_count = PaastaColors.red(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        else:
-            status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.yellow(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        return "Marathon:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status
-        )
-    else:
-        status = PaastaColors.yellow("Warning")
-        return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
-            status, name, desired_app_id
-        )
-
-
-def marathon_app_deploy_status_human(status, backoff_seconds=None):
-    status_string = marathon_tools.MarathonDeployStatus.tostring(status)
-
-    if status == marathon_tools.MarathonDeployStatus.Waiting:
-        deploy_status = (
-            "%s (new tasks waiting for capacity to become available)"
-            % PaastaColors.red(status_string)
-        )
-    elif status == marathon_tools.MarathonDeployStatus.Delayed:
-        deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
-            PaastaColors.red(status_string), backoff_seconds
-        )
-    elif status == marathon_tools.MarathonDeployStatus.Deploying:
-        deploy_status = PaastaColors.yellow(status_string)
-    elif status == marathon_tools.MarathonDeployStatus.Stopped:
-        deploy_status = PaastaColors.grey(status_string)
-    elif status == marathon_tools.MarathonDeployStatus.Running:
-        deploy_status = PaastaColors.bold(status_string)
-    else:
-        deploy_status = status_string
-
-    return deploy_status
 
 
 def humanize_autoscaling_info(autoscaling_info):
@@ -365,28 +293,6 @@ def status_marathon_app(
         if len(app.tasks) == 0:
             output.append("      No tasks associated with this marathon app")
     return deploy_status, app.tasks_running, "\n".join(output)
-
-
-def haproxy_backend_report(normal_instance_count, up_backends):
-    """Given that a service is in smartstack, this returns a human readable
-    report of the up backends"""
-    # TODO: Take into account a configurable threshold, PAASTA-1102
-    crit_threshold = 50
-    under_replicated, ratio = is_under_replicated(
-        num_available=up_backends,
-        expected_count=normal_instance_count,
-        crit_threshold=crit_threshold,
-    )
-    if under_replicated:
-        status = PaastaColors.red("Critical")
-        count = PaastaColors.red(
-            "(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio)
-        )
-    else:
-        status = PaastaColors.green("Healthy")
-        count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
-    up_string = PaastaColors.bold("UP")
-    return f"{status} - in haproxy with {count} total backends {up_string} in this namespace."
 
 
 def format_haproxy_backend_row(backend, is_correct_instance):
