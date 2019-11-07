@@ -149,8 +149,6 @@ def test_marathon_instances_configs(
             instance="main",
             config_dict={
                 "port": None,
-                "vip": None,
-                "lb_extras": {},
                 "monitoring": {},
                 "deploy": {},
                 "data": {},
@@ -175,8 +173,6 @@ def test_marathon_instances_configs(
             instance="canary",
             config_dict={
                 "port": None,
-                "vip": None,
-                "lb_extras": {},
                 "monitoring": {},
                 "deploy": {},
                 "data": {},
@@ -229,8 +225,6 @@ def test_adhoc_instances_configs(
             instance="sample_batch",
             config_dict={
                 "port": None,
-                "vip": None,
-                "lb_extras": {},
                 "monitoring": {},
                 "deploy": {},
                 "data": {},
@@ -255,8 +249,6 @@ def test_adhoc_instances_configs(
             instance="interactive",
             config_dict={
                 "port": None,
-                "vip": None,
-                "lb_extras": {},
                 "monitoring": {},
                 "deploy": {},
                 "data": {},
