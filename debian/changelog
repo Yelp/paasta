@@ -1,3 +1,14 @@
+paasta-tools (0.90.5) xenial; urgency=medium
+
+  * 0.90.5 tagged with 'make release'
+    Commit: Avoid cutting name of flink jobs running in cluster (#2536)
+    * Avoid cutting name of flink jobs running in cluster  * Review
+    changes  * Small review changes  * Removing unused line  * Fixing
+    calculation of job name columns  * Safeguarding from negative
+    bounding  * Fix for the case when there are no jobs
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Thu, 07 Nov 2019 10:12:16 -0800
+
 paasta-tools (0.90.4) xenial; urgency=medium
 
   * 0.90.4 tagged with 'make release'
