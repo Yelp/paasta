@@ -139,7 +139,12 @@ class Application(ABC):
                 raise
 
         if existing_pdr:
-            if existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable:
+            if existing_pdr.spec.min_available is not None:
+                logging.debug(
+                    "Not updating poddisruptionbudget: can't have both "
+                    "min_available and max_unavailable"
+                )
+            elif existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable:
                 logging.debug(f"Updating poddisruptionbudget {pdr.metadata.name}")
                 return kube_client.policy.patch_namespaced_pod_disruption_budget(
                     name=pdr.metadata.name, namespace=pdr.metadata.namespace, body=pdr
