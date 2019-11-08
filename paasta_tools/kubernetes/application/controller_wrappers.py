@@ -24,7 +24,6 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
-from paasta_tools.utils import SystemPaastaConfig
 
 
 class Application(ABC):
@@ -53,13 +52,13 @@ class Application(ABC):
         self.logging = logging
 
     def load_local_config(
-        self, soa_dir: str, system_paasta_config: SystemPaastaConfig
+        self, soa_dir: str, cluster: str
     ) -> Optional[KubernetesDeploymentConfig]:
         if not self.soa_config:
             self.soa_config = load_kubernetes_service_config_no_cache(
                 service=self.kube_deployment.service,
                 instance=self.kube_deployment.instance,
-                cluster=system_paasta_config.get_cluster(),
+                cluster=cluster,
                 soa_dir=soa_dir,
             )
         return self.soa_config
