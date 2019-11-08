@@ -85,7 +85,7 @@ def docker_env_to_dict(environment_array):
 
 
 def get_proxy_port(service_name, instance_name):
-    smartstack_yaml = "/nail/etc/services/%s/smartstack.yaml" % service_name
+    smartstack_yaml = f"/nail/etc/services/{service_name}/smartstack.yaml"
     proxy_port = None
     if os.path.exists(smartstack_yaml):
         with open(smartstack_yaml, "r") as stream:
@@ -127,7 +127,7 @@ def main():
 
     for line in lines:
         if len(line) != 12:
-            abort("%s doesn't look like a container ID" % line)
+            abort(f"{line} doesn't look like a container ID")
         running_container_ids.append(line.rstrip())
 
     random.shuffle(running_container_ids)
@@ -140,13 +140,13 @@ def main():
     t = 0
 
     for container_id in running_container_ids:
-        rc, output = cmd("sudo docker inspect %s" % container_id)
-        condquit(rc, "docker inspect %s" % container_id)
+        rc, output = cmd(f"sudo docker inspect {container_id}")
+        condquit(rc, f"docker inspect {container_id}")
         docker_inspect_data = json.loads(output)
         environment = docker_env_to_dict(docker_inspect_data[0]["Config"]["Env"])
         if not has_all_paasta_env(environment):
             paasta_print(
-                "# WARNING: %s is not a paasta container, skipping)" % (container_id)
+                f"# WARNING: {container_id} is not a paasta container, skipping)"
             )
             continue
         service = environment["PAASTA_SERVICE"]
@@ -162,9 +162,9 @@ def main():
                 marathon_port, hadown_expire_in_seconds, service, instance
             )
         )
-        paasta_print("sleep %s" % smartstack_grace_sleep)
+        paasta_print(f"sleep {smartstack_grace_sleep}")
         t += smartstack_grace_sleep
-        paasta_print("sudo docker kill %s" % container_id)
+        paasta_print(f"sudo docker kill {container_id}")
         paasta_print(f"sudo haup -P {marathon_port} {service}.{instance}")
         last_killed_t = get_last_killed(drained_apps, service, instance)
         drained_apps.append((t, service, instance))
@@ -174,7 +174,7 @@ def main():
             sleep_amount = (
                 min_kill_interval - (t - last_killed_t) + between_containers_grace_sleep
             )
-        paasta_print("sleep %s" % sleep_amount)
+        paasta_print(f"sleep {sleep_amount}")
         t += sleep_amount
         paasta_print()
 

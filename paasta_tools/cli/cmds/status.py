@@ -174,7 +174,7 @@ def missing_deployments_message(service: str,) -> str:
 def get_deploy_info(deploy_file_path: str,) -> Mapping:
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
-        paasta_print("Error encountered with %s" % deploy_file_path)
+        paasta_print(f"Error encountered with {deploy_file_path}")
 
         exit(1)
     return deploy_info
@@ -206,7 +206,7 @@ def get_actual_deployments(service: str, soa_dir: str) -> Mapping[str, str]:
     deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
         paasta_print(
-            "Warning: it looks like %s has not been deployed anywhere yet!" % service,
+            f"Warning: it looks like {service} has not been deployed anywhere yet!",
             file=sys.stderr,
         )
     # Create a dictionary of actual $service Jenkins deployments
@@ -252,7 +252,7 @@ def paasta_status_on_api_endpoint(
         return 1
 
     if status.git_sha != "":
-        output.append("    Git sha:    %s (desired)" % status.git_sha)
+        output.append(f"    Git sha:    {status.git_sha} (desired)")
 
     if status.marathon is not None:
         return print_marathon_status(service, instance, output, status.marathon)
@@ -478,7 +478,7 @@ def get_mesos_task_cpu_string(task):
             cpu_percent = round(
                 100 * (task.cpu_used_seconds.value / allocated_seconds), 1
             )
-            cpu_string = "%s%%" % cpu_percent
+            cpu_string = f"{cpu_percent}%"
             if cpu_percent > 90:
                 return PaastaColors.red(cpu_string)
             else:
@@ -516,17 +516,17 @@ def marathon_mesos_status_summary(mesos_task_count, expected_instance_count) -> 
     if mesos_task_count >= expected_instance_count:
         status = PaastaColors.green("Healthy")
         count_str = PaastaColors.green(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
+            f"({mesos_task_count:d}/{expected_instance_count:d})"
         )
     elif mesos_task_count == 0:
         status = PaastaColors.red("Critical")
         count_str = PaastaColors.red(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
+            f"({mesos_task_count:d}/{expected_instance_count:d})"
         )
     else:
         status = PaastaColors.yellow("Warning")
         count_str = PaastaColors.yellow(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
+            f"({mesos_task_count:d}/{expected_instance_count:d})"
         )
     running_string = PaastaColors.bold("TASK_RUNNING")
     return f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
@@ -554,9 +554,7 @@ def marathon_app_status_human(app_id, app_status) -> List[str]:
 
     create_datetime = datetime.fromtimestamp(app_status.create_timestamp)
     output.append(
-        "  App created: {} ({})".format(
-            create_datetime, humanize.naturaltime(create_datetime)
-        )
+        f"  App created: {create_datetime} ({humanize.naturaltime(create_datetime)})"
     )
 
     deploy_status = MarathonDeployStatus.fromstring(app_status.deploy_status)
@@ -764,17 +762,17 @@ def status_kubernetes_job_human(
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green(
-                "(%d/%d)" % (running_instances, normal_instance_count)
+                f"({running_instances:d}/{normal_instance_count:d})"
             )
         elif running_instances == 0:
             status = PaastaColors.yellow("Critical")
             instance_count = PaastaColors.red(
-                "(%d/%d)" % (running_instances, normal_instance_count)
+                f"({running_instances:d}/{normal_instance_count:d})"
             )
         else:
             status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.yellow(
-                "(%d/%d)" % (running_instances, normal_instance_count)
+                f"({running_instances:d}/{normal_instance_count:d})"
             )
         return "Kubernetes:   {} - up with {} instances. Status: {}".format(
             status, instance_count, deploy_status
@@ -815,9 +813,7 @@ def print_flink_status(
     output.append(f"    Config SHA: {config_sha}")
 
     if status.state != "running":
-        output.append(
-            "    State: {state}".format(state=PaastaColors.yellow(status.state))
-        )
+        output.append(f"    State: {PaastaColors.yellow(status.state)}")
         output.append(f"    No other information available in non-running state")
         return 0
 
@@ -981,7 +977,7 @@ def print_tron_status(
     if verbose:
         output.append(f"      Status: {tron_status.job_status}")
         output.append(f"      Schedule: {tron_status.job_schedule}")
-    output.append("      Dashboard: {}".format(PaastaColors.blue(tron_status.job_url)))
+    output.append(f"      Dashboard: {PaastaColors.blue(tron_status.job_url)}")
 
     output.append(f"    Action: {tron_status.action_name}")
     output.append(f"      Status: {tron_status.action_state}")
@@ -1008,7 +1004,7 @@ def report_status_for_cluster(
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
-    output = ["", "service: %s" % service, "cluster: %s" % cluster]
+    output = ["", f"service: {service}", f"cluster: {cluster}"]
     deployed_instances = []
     instances = [
         instance
@@ -1132,7 +1128,7 @@ def verify_instances(
         if suggestions:
             paasta_print("Did you mean any of these?")
             for instance in sorted(suggestions):
-                paasta_print("  %s" % instance)
+                paasta_print(f"  {instance}")
 
     return unverified_instances
 

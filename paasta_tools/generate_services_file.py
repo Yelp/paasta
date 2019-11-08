@@ -59,7 +59,7 @@ def get_service_lines_for_service(service):
     description = config.get("description", "No description")
 
     if port is not None:
-        lines.append("%s\t%d/tcp\t# %s" % (service, port, description))
+        lines.append(f"{service}\t{port:d}/tcp\t# {description}")
 
     for namespace, config in get_all_namespaces_for_service(service, full_name=False):
         proxy_port = config.get("proxy_port", None)

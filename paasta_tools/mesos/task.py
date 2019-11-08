@@ -33,7 +33,7 @@ class Task:
         self.__items = items
 
     def __str__(self):
-        return "{}:{}".format(a_sync.block(self.slave), self["id"])
+        return f"{a_sync.block(self.slave)}:{self['id']}"
 
     def __getitem__(self, name):
         return self.__items[name]

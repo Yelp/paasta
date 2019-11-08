@@ -230,9 +230,7 @@ def get_cpu_requirements(env_args):
         return float(env_args.get("MARATHON_APP_RESOURCE_CPUS"))
     except (ValueError, TypeError):
         logging.warning(
-            "Could not read {} as a float".format(
-                env_args.get("MARATHON_APP_RESOURCE_CPUS")
-            )
+            f"Could not read {env_args.get('MARATHON_APP_RESOURCE_CPUS')} as a float"
         )
         return 0.0
 
@@ -243,9 +241,7 @@ def get_mem_requirements(env_args):
         return float(env_args.get("MARATHON_APP_RESOURCE_MEM"))
     except (ValueError, TypeError):
         logging.warning(
-            "Could not read {} as a float".format(
-                env_args.get("MARATHON_APP_RESOURCE_MEM")
-            )
+            f"Could not read {env_args.get('MARATHON_APP_RESOURCE_MEM')} as a float"
         )
         return 0.0
 
@@ -271,9 +267,7 @@ def append_cpuset_args(argv, env_args):
         return argv
     if pinned_numa_node not in cpumap:
         logging.error(
-            "Specified NUMA node: {} does not exist on this system".format(
-                pinned_numa_node
-            )
+            f"Specified NUMA node: {pinned_numa_node} does not exist on this system"
         )
         return argv
     if arg_collision(["--cpuset-cpus", "--cpuset-mems"], argv):

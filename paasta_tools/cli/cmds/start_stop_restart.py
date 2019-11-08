@@ -45,7 +45,7 @@ def add_subparser(subparsers):
     ]:
         status_parser = subparsers.add_parser(
             command,
-            help="%ss a PaaSTA service in a graceful way." % upper,
+            help=f"{upper}s a PaaSTA service in a graceful way.",
             description=(
                 "%ss a PaaSTA service in a graceful way. This uses the Git control plane."
                 % upper
@@ -204,9 +204,9 @@ def paasta_start_or_stop(args, desired_state):
         )
 
         for cluster, services_instances in pargs.items():
-            paasta_print("Cluster %s:" % cluster)
+            paasta_print(f"Cluster {cluster}:")
             for service, instances in services_instances.items():
-                paasta_print("    Service %s:" % service)
+                paasta_print(f"    Service {service}:")
                 paasta_print("        Instances %s" % ",".join(instances.keys()))
 
         if sys.stdin.isatty():

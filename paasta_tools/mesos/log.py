@@ -30,7 +30,7 @@ def fatal(msg, code=1):
 
 
 def fn(f, *args, **kwargs):
-    logging.debug("{}: {} {}".format(repr(f), args, kwargs))
+    logging.debug(f"{repr(f)}: {args} {kwargs}")
     return f(*args, **kwargs)
 
 

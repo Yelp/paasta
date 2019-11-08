@@ -83,7 +83,7 @@ class ServiceNamespaceConfig(dict):
         elif mode in ["http", "tcp", "https"]:
             return mode
         else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+            raise InvalidSmartstackMode(f"Unknown mode: {mode}")
 
     def get_healthcheck_uri(self) -> str:
         return self.get("healthcheck_uri", "/status")
@@ -227,7 +227,7 @@ class LongRunningServiceConfig(InstanceConfig):
         if mode is None:
             mode = service_namespace_config.get_healthcheck_mode()
         elif mode not in ["http", "https", "tcp", "cmd", None]:
-            raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
+            raise InvalidHealthcheckMode(f"Unknown mode: {mode}")
         return mode
 
     def get_bounce_start_deadline(self) -> float:
@@ -241,7 +241,7 @@ class LongRunningServiceConfig(InstanceConfig):
                 zk_instances = get_instances_from_zookeeper(
                     service=self.service, instance=self.instance
                 )
-                log.debug("Got %d instances out of zookeeper" % zk_instances)
+                log.debug(f"Got {zk_instances:d} instances out of zookeeper")
             except NoNodeError:
                 log.debug(
                     "No zookeeper data, returning max_instances (%d)"
@@ -257,7 +257,7 @@ class LongRunningServiceConfig(InstanceConfig):
                 return limited_instances
         else:
             instances = self.config_dict.get("instances", 1)
-            log.debug("Autoscaling not enabled, returning %d instances" % instances)
+            log.debug(f"Autoscaling not enabled, returning {instances:d} instances")
             return instances
 
     def get_min_instances(self) -> int:
@@ -318,9 +318,9 @@ def get_healthcheck_for_instance(
 
     if mode == "http" or mode == "https":
         path = service_manifest.get_healthcheck_uri(smartstack_config)
-        healthcheck_command = "%s://%s:%d%s" % (mode, hostname, random_port, path)
+        healthcheck_command = f"{mode}://{hostname}:{random_port:d}{path}"
     elif mode == "tcp":
-        healthcheck_command = "%s://%s:%d" % (mode, hostname, random_port)
+        healthcheck_command = f"{mode}://{hostname}:{random_port:d}"
     elif mode == "cmd":
         healthcheck_command = service_manifest.get_healthcheck_cmd()
     else:
@@ -479,7 +479,7 @@ def host_passes_blacklist(
                 return False
     except ValueError as e:
         log.error(f"Errors processing the following blacklist: {blacklist}")
-        log.error("I will assume the host does not pass\nError was: %s" % e)
+        log.error(f"I will assume the host does not pass\nError was: {e}")
         return False
     return True
 
@@ -501,6 +501,6 @@ def host_passes_whitelist(
             return True
     except ValueError as e:
         log.error(f"Errors processing the following whitelist: {whitelist}")
-        log.error("I will assume the host does not pass\nError was: %s" % e)
+        log.error(f"I will assume the host does not pass\nError was: {e}")
         return False
     return False

@@ -130,7 +130,7 @@ def paasta_cluster_boost(
                 return False
 
         else:
-            raise NotImplementedError("Action: '%s' is not implemented." % action)
+            raise NotImplementedError(f"Action: '{action}' is not implemented.")
             return False
 
         paasta_print(

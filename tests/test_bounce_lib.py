@@ -31,7 +31,7 @@ class TestBounceLib:
         import fcntl
 
         lock_name = "the_internet"
-        lock_file = "/var/lock/%s.lock" % lock_name
+        lock_file = f"/var/lock/{lock_name}.lock"
         fake_fd = mock.mock_open()
         with mock.patch("builtins.open", fake_fd, autospec=None) as open_patch:
             with mock.patch("fcntl.lockf", autospec=None) as lockf_patch:
@@ -495,7 +495,7 @@ class TestBounceLib:
 
     def test_flatten_tasks(self):
         """Simple check of flatten_tasks."""
-        all_tasks = [mock.Mock(task_id="id_%d" % i) for i in range(10)]
+        all_tasks = [mock.Mock(task_id=f"id_{i:d}") for i in range(10)]
 
         expected = set(all_tasks)
         actual = bounce_lib.flatten_tasks(

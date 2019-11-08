@@ -123,7 +123,7 @@ def test_marathon_instances(mock_read_extra_service_information):
         "not_deployed",
     ]
     mock_read_extra_service_information.assert_called_once_with(
-        extra_info="marathon-%s" % TEST_CLUSTER_NAME,
+        extra_info=f"marathon-{TEST_CLUSTER_NAME}",
         service_name=TEST_SERVICE_NAME,
         soa_dir=TEST_SOA_DIR,
     )
@@ -196,7 +196,7 @@ def test_marathon_instances_configs(
         list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
     )
     mock_read_extra_service_information.assert_called_once_with(
-        extra_info="marathon-%s" % TEST_CLUSTER_NAME,
+        extra_info=f"marathon-{TEST_CLUSTER_NAME}",
         service_name=TEST_SERVICE_NAME,
         soa_dir=TEST_SOA_DIR,
     )
@@ -270,7 +270,7 @@ def test_adhoc_instances_configs(
         print(i, i.cluster)
     assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
     mock_read_extra_service_information.assert_called_once_with(
-        extra_info="adhoc-%s" % TEST_CLUSTER_NAME,
+        extra_info=f"adhoc-{TEST_CLUSTER_NAME}",
         service_name=TEST_SERVICE_NAME,
         soa_dir=TEST_SOA_DIR,
     )

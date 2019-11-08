@@ -159,8 +159,7 @@ def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
         return
     if marked_sha == "":
         raise GitShaError(
-            "ERROR: Nothing is marked for deployment "
-            "in {} for {}".format(deploy_group, service)
+            f"ERROR: Nothing is marked for deployment in {deploy_group} for {service}"
         )
     if git_sha != marked_sha:
         raise GitShaError(
@@ -227,11 +226,7 @@ def paasta_wait_for_deployment(args):
         _log(
             service=service,
             component="deploy",
-            line=(
-                "Deployment of {} for {} complete".format(
-                    args.commit, args.deploy_group
-                )
-            ),
+            line=(f"Deployment of {args.commit} for {args.deploy_group} complete"),
             level="event",
         )
 

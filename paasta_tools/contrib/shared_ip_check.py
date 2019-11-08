@@ -32,10 +32,10 @@ def main():
         if len(containers) > 1:
             output.append(f"{ip} shared by the following containers:")
             for container in containers:
-                output.append("    Image: {}".format(container["Image"]))
-                output.append("        ID: {}".format(container["Id"]))
-                output.append("        State: {}".format(container["State"]))
-                output.append("        Status: {}".format(container["Status"]))
+                output.append(f"    Image: {container['Image']}")
+                output.append(f"        ID: {container['Id']}")
+                output.append(f"        State: {container['State']}")
+                output.append(f"        Status: {container['Status']}")
             output.append("")
 
     if output:

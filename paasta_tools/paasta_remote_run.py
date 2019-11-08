@@ -672,13 +672,13 @@ def remote_run_stop(args):
             sys.exit(1)
 
         found = [
-            f for f in frameworks if re.search(" %s$" % args.run_id, f.name) is not None
+            f for f in frameworks if re.search(f" {args.run_id}$", f.name) is not None
         ]
         if len(found) > 0:
             framework_id = found[0].id
         else:
             paasta_print(
-                PaastaColors.red("Framework with run id %s not found." % args.run_id)
+                PaastaColors.red(f"Framework with run id {args.run_id} not found.")
             )
             emit_counter_metric("paasta.remote_run.stop.failed", service, instance)
             sys.exit(1)
@@ -694,7 +694,7 @@ def remote_run_stop(args):
             emit_counter_metric("paasta.remote_run.stop.failed", service, instance)
             sys.exit(1)
 
-    paasta_print("Tearing down framework %s." % framework_id)
+    paasta_print(f"Tearing down framework {framework_id}.")
     mesos_master = get_mesos_master()
     teardown = mesos_master.teardown(framework_id)
     if teardown.status_code == 200:
@@ -723,8 +723,7 @@ def remote_run_list_report(service, instance, cluster, frameworks=None):
             r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
         ).groups()
         paasta_print(
-            "Launch time: %s, run id: %s, framework id: %s"
-            % (launch_time, run_id, f.id)
+            f"Launch time: {launch_time}, run id: {run_id}, framework id: {f.id}"
         )
     if len(filtered) > 0:
         paasta_print(

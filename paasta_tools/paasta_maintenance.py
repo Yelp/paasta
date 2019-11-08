@@ -124,12 +124,12 @@ def is_healthy_in_haproxy(local_port, backends):
         ip, port, _ = ip_port_hostname_from_svname(backend["svname"])
         if ip == local_ip and port == local_port:
             if backend_is_up(backend):
-                log.debug("Found a healthy local backend: %s" % backend)
+                log.debug(f"Found a healthy local backend: {backend}")
                 return True
             else:
-                log.debug("Found a unhealthy local backend: %s" % backend)
+                log.debug(f"Found a unhealthy local backend: {backend}")
                 return False
-    log.debug("Couldn't find any haproxy backend listening on %s" % local_port)
+    log.debug(f"Couldn't find any haproxy backend listening on {local_port}")
     return False
 
 
@@ -256,7 +256,7 @@ def paasta_maintenance():
     elif action == "is_host_past_maintenance_end":
         ret = mesos_maintenance.is_host_past_maintenance_end(hostnames[0])
     else:
-        raise NotImplementedError("Action: '%s' is not implemented." % action)
+        raise NotImplementedError(f"Action: '{action}' is not implemented.")
     paasta_print(ret)
     return ret
 

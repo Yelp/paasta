@@ -65,7 +65,7 @@ def base_api():
     leader = get_mesos_leader()
 
     def execute_request(method, endpoint, timeout=(3, 2), **kwargs):
-        url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
+        url = f"http://{leader}:{MESOS_MASTER_PORT:d}{endpoint}"
         s = Session()
         s.auth = (get_principal(), get_secret())
         req = Request(method, url, **kwargs)
@@ -75,7 +75,7 @@ def base_api():
             resp.raise_for_status()
             return resp
         except HTTPError:
-            raise HTTPError("Error executing API request calling %s." % url)
+            raise HTTPError(f"Error executing API request calling {url}.")
 
     return execute_request
 
@@ -88,7 +88,7 @@ def master_api():
 
     def execute_master_api_request(method, endpoint, **kwargs):
         base_api_client = base_api()
-        return base_api_client(method, "/master%s" % endpoint, **kwargs)
+        return base_api_client(method, f"/master{endpoint}", **kwargs)
 
     return execute_master_api_request
 
@@ -114,7 +114,7 @@ def reserve_api():
 
     def execute_reserve_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
-        return master_api_client(method, "/reserve%s" % endpoint, **kwargs)
+        return master_api_client(method, f"/reserve{endpoint}", **kwargs)
 
     return execute_reserve_api_request
 
@@ -127,7 +127,7 @@ def unreserve_api():
 
     def execute_unreserve_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
-        return master_api_client(method, "/unreserve%s" % endpoint, **kwargs)
+        return master_api_client(method, f"/unreserve{endpoint}", **kwargs)
 
     return execute_unreserve_api_request
 
@@ -141,7 +141,7 @@ def maintenance_api():
     def execute_schedule_api_request(method, endpoint, **kwargs):
         master_api_client = master_api()
         return master_api_client(
-            method, "/maintenance%s" % endpoint, timeout=(3, 10), **kwargs
+            method, f"/maintenance{endpoint}", timeout=(3, 10), **kwargs
         )
 
     return execute_schedule_api_request
@@ -155,7 +155,7 @@ def get_schedule_client():
 
     def execute_schedule_api_request(method, endpoint, **kwargs):
         maintenance_api_client = maintenance_api()
-        return maintenance_api_client(method, "/schedule%s" % endpoint, **kwargs)
+        return maintenance_api_client(method, f"/schedule{endpoint}", **kwargs)
 
     return execute_schedule_api_request
 
@@ -251,15 +251,15 @@ def get_hosts_forgotten_draining(grace=0):
     :returns: a list of hostnames of hosts forgotten draining
     """
     draining_hosts = get_draining_hosts()
-    log.debug("draining_hosts: %s" % draining_hosts)
+    log.debug(f"draining_hosts: {draining_hosts}")
 
     hosts_past_maintenance_start = get_hosts_past_maintenance_start(grace=grace)
-    log.debug("hosts_past_maintenance_start: %s" % hosts_past_maintenance_start)
+    log.debug(f"hosts_past_maintenance_start: {hosts_past_maintenance_start}")
 
     forgotten_draining = list(
         set(draining_hosts).intersection(hosts_past_maintenance_start)
     )
-    log.debug("forgotten_draining: %s" % forgotten_draining)
+    log.debug(f"forgotten_draining: {forgotten_draining}")
 
     return forgotten_draining
 
@@ -280,13 +280,13 @@ def get_hosts_forgotten_down(grace=0):
     :returns: a list of hostnames of hosts forgotten down
     """
     down_hosts = get_down_hosts()
-    log.debug("down_hosts: %s" % down_hosts)
+    log.debug(f"down_hosts: {down_hosts}")
 
     hosts_past_maintenance_end = get_hosts_past_maintenance_end(grace=grace)
-    log.debug("hosts_past_maintenance_end: %s" % hosts_past_maintenance_end)
+    log.debug(f"hosts_past_maintenance_end: {hosts_past_maintenance_end}")
 
     forgotten_down = list(set(down_hosts).intersection(hosts_past_maintenance_end))
-    log.debug("forgotten_down: %s" % forgotten_down)
+    log.debug(f"forgotten_down: {forgotten_down}")
 
     return forgotten_down
 
@@ -304,7 +304,7 @@ def parse_timedelta(value):
     :param value: a string containing a time format supported by :mod:`pytimeparse`
     :returns: an integer (or float) representing the specified delta in nanoseconds
     """
-    error_msg = "'%s' is not a valid time expression" % value
+    error_msg = f"'{value}' is not a valid time expression"
     try:
         seconds = timeparse.timeparse(value)
     except TypeError:
@@ -319,7 +319,7 @@ def parse_datetime(value):
     :param value: a string containing a datetime supported by :mod:`dateutil.parser`
     :returns: an integer (or float) representing the specified datetime in nanoseconds
     """
-    error_msg = "'%s' is not a valid datetime expression" % value
+    error_msg = f"'{value}' is not a valid datetime expression"
     try:
         dt = parser.parse(value)
     except Exception:
@@ -606,7 +606,7 @@ def reserve_all_resources(hostnames):
     ]
     for slave in known_slaves:
         hostname = slave["hostname"]
-        log.info("Reserving all resources on %s" % hostname)
+        log.info(f"Reserving all resources on {hostname}")
         slave_id = slave["id"]
         resources = []
         for resource in ["disk", "mem", "cpus", "gpus"]:
@@ -636,7 +636,7 @@ def unreserve_all_resources(hostnames):
     ]
     for slave in known_slaves:
         hostname = slave["hostname"]
-        log.info("Unreserving all resources on %s" % hostname)
+        log.info(f"Unreserving all resources on {hostname}")
         slave_id = slave["id"]
         resources = []
         if MAINTENANCE_ROLE in slave["reserved_resources"]:
@@ -661,12 +661,12 @@ def drain(hostnames, start, duration, reserve_resources=True):
     :param reserve_resources: bool setting to also reserve the free resources on the agent before the drain call
     :returns: None
     """
-    log.info("Draining: %s" % hostnames)
+    log.info(f"Draining: {hostnames}")
     if reserve_resources:
         try:
             reserve_all_resources(hostnames)
         except HTTPError as e:
-            log.warning("Failed to reserve resources, will continue to drain: %s" % e)
+            log.warning(f"Failed to reserve resources, will continue to drain: {e}")
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = operator_api()
     try:
@@ -683,14 +683,12 @@ def undrain(hostnames, unreserve_resources=True):
     :param unreserve_resources: bool setting to also unreserve resources on the agent before the undrain call
     :returns: None
     """
-    log.info("Undraining: %s" % hostnames)
+    log.info(f"Undraining: {hostnames}")
     if unreserve_resources:
         try:
             unreserve_all_resources(hostnames)
         except HTTPError as e:
-            log.warning(
-                "Failed to unreserve resources, will continue to undrain: %s" % e
-            )
+            log.warning(f"Failed to unreserve resources, will continue to undrain: {e}")
     payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     client_fn = operator_api()
@@ -706,7 +704,7 @@ def down(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
-    log.info("Bringing down: %s" % hostnames)
+    log.info(f"Bringing down: {hostnames}")
     payload = build_maintenance_payload(hostnames, "start_maintenance")
     client_fn = operator_api()
     try:
@@ -721,7 +719,7 @@ def up(hostnames):
     :param hostnames: a list of hostnames
     :returns: None
     """
-    log.info("Bringing up: %s" % hostnames)
+    log.info(f"Bringing up: {hostnames}")
     payload = build_maintenance_payload(hostnames, "stop_maintenance")
     client_fn = operator_api()
     try:
@@ -758,11 +756,9 @@ def friendly_status():
     status = raw_status().json()["get_maintenance_status"]["status"]
     ret = ""
     for machine in status.get("draining_machines", []):
-        ret += "{} ({}): Draining\n".format(
-            machine["id"]["hostname"], machine["id"]["ip"]
-        )
+        ret += f"{machine['id']['hostname']} ({machine['id']['ip']}): Draining\n"
     for machine in status.get("down_machines", []):
-        ret += "{} ({}): Down\n".format(machine["hostname"], machine["ip"])
+        ret += f"{machine['hostname']} ({machine['ip']}): Down\n"
     return ret
 
 

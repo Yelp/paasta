@@ -47,9 +47,9 @@ def display_bounce_info(timedeltas):
     timedeltas: iterable of timedelta objects
     """
     std = list(sorted(timedeltas))
-    paasta_print("Median time to bounce: {} seconds".format(std[len(std) / 2]))
-    paasta_print("10% time to bounce: {}".format(std[len(std) / 10]))
-    paasta_print("90% time to bounce: {}".format(std[len(std) * 9 / 10]))
+    paasta_print(f"Median time to bounce: {std[len(std) / 2]} seconds")
+    paasta_print(f"10% time to bounce: {std[len(std) / 10]}")
+    paasta_print(f"90% time to bounce: {std[len(std) * 9 / 10]}")
 
 
 def main(filenames):
@@ -59,7 +59,7 @@ def main(filenames):
         timedeltas = get_deploy_durations_from_file(filename)
         for instance, tdlist in timedeltas.items():
             if timedeltas:
-                paasta_print("Instance: %s" % instance)
+                paasta_print(f"Instance: {instance}")
                 display_bounce_info(tdlist)
         paasta_print("Overall:")
         display_bounce_info(itertools.chain.from_iterable(timedeltas.values()))

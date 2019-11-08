@@ -54,7 +54,7 @@ class ServiceGroup(collections.namedtuple("ServiceGroup", ("service", "instance"
         bit. To attempt to ensure we don't have collisions due to shortening,
         we append a hash to the end.
         """
-        chain = "PAASTA.{}".format(self.service[:10])
+        chain = f"PAASTA.{self.service[:10]}"
         chain += "." + hashlib.sha256(json.dumps(self).encode("utf8")).hexdigest()[:10]
         assert len(chain) <= 28, len(chain)
         return chain
@@ -201,7 +201,7 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
             yield iptables.Rule(
                 protocol="tcp",
                 src="0.0.0.0/0.0.0.0",
-                dst="{}/255.255.255.255".format(backend["host"]),
+                dst=f"{backend['host']}/255.255.255.255",
                 target="ACCEPT",
                 matches=(
                     ("comment", (("comment", ("backend " + namespace,)),)),

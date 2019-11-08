@@ -135,7 +135,7 @@ def success(msg):
     :param msg: a string
     :return: a beautiful string
     """
-    return "{} {}".format(check_mark(), msg)
+    return f"{check_mark()} {msg}"
 
 
 def failure(msg, link):
@@ -144,7 +144,7 @@ def failure(msg, link):
     :param msg: a string
     :return: a beautiful string
     """
-    return "{} {} {}".format(x_mark(), msg, PaastaColors.blue(link))
+    return f"{x_mark()} {msg} {PaastaColors.blue(link)}"
 
 
 class PaastaCheckMessages:
@@ -275,7 +275,7 @@ class PaastaCheckMessages:
     @staticmethod
     def sensu_team_found(team_name):
         return success(
-            "Your service uses Sensu and team '%s' will get alerts." % team_name
+            f"Your service uses Sensu and team '{team_name}' will get alerts."
         )
 
     @staticmethod
@@ -328,9 +328,7 @@ class NoSuchService(Exception):
 
     def __str__(self):
         if self.service:
-            return "SERVICE: {} {}".format(
-                PaastaColors.cyan(self.service), self.CHECK_ERROR_MSG
-            )
+            return f"SERVICE: {PaastaColors.cyan(self.service)} {self.CHECK_ERROR_MSG}"
         else:
             return self.GUESS_ERROR_MSG
 
@@ -441,7 +439,7 @@ class NoMasterError(Exception):
 def connectable_master(cluster: str, system_paasta_config: SystemPaastaConfig) -> str:
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
-        raise NoMasterError("ERROR: %s" % output)
+        raise NoMasterError(f"ERROR: {output}")
 
     random.shuffle(masters)
 
@@ -459,15 +457,15 @@ def check_ssh_on_master(master, timeout=10):
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = "ssh -A -n -o StrictHostKeyChecking=no %s /bin/true" % master
+    check_command = f"ssh -A -n -o StrictHostKeyChecking=no {master} /bin/true"
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
     if rc == 255:  # ssh error
-        reason = "Return code was %d which probably means an ssh failure." % rc
-        hint = "HINT: Are you allowed to ssh to this machine %s?" % master
+        reason = f"Return code was {rc:d} which probably means an ssh failure."
+        hint = f"HINT: Are you allowed to ssh to this machine {master}?"
     if rc == 1:  # sudo error
-        reason = "Return code was %d which probably means a sudo failure." % rc
+        reason = f"Return code was {rc:d} which probably means a sudo failure."
         hint = "HINT: Is your ssh agent forwarded? (ssh-add -l)"
     if rc == -9:  # timeout error
         reason = (
@@ -476,7 +474,7 @@ def check_ssh_on_master(master, timeout=10):
         )
         hint = "HINT: Is there network latency? Try running somewhere closer to the cluster."
     else:  # unknown error
-        reason = "Return code was %d which is an unknown failure." % rc
+        reason = f"Return code was {rc:d} which is an unknown failure."
         hint = "HINT: Talk to #paasta and pastebin this output"
     output = (
         "ERROR cannot run check command %(check_command)s\n"
@@ -505,12 +503,12 @@ def run_paasta_serviceinit(
         timeout = 240 if subcommand == "status" else 60
 
     if "app_id" in kwargs and kwargs["app_id"]:
-        app_id_flag = "--appid %s" % kwargs["app_id"]
+        app_id_flag = f"--appid {kwargs['app_id']}"
     else:
         app_id_flag = ""
 
     if "delta" in kwargs and kwargs["delta"]:
-        delta_flag = "--delta %s" % kwargs["delta"]
+        delta_flag = f"--delta {kwargs['delta']}"
     else:
         delta_flag = ""
 
@@ -519,8 +517,8 @@ def run_paasta_serviceinit(
 
     command_parts = [
         f"ssh -A -o StrictHostKeyChecking=no {ssh_flags} {master} sudo paasta_serviceinit",
-        "-s %s" % service,
-        "-i %s" % instances,
+        f"-s {service}",
+        f"-i {instances}",
         verbose_flag,
         app_id_flag,
         delta_flag,
@@ -528,7 +526,7 @@ def run_paasta_serviceinit(
     ]
     command_without_empty_strings = [part for part in command_parts if part != ""]
     command = " ".join(command_without_empty_strings)
-    log.debug("Running Command: %s" % command)
+    log.debug(f"Running Command: {command}")
     return_code, output = _run(command, timeout=timeout, stream=stream)
     return return_code, output
 
@@ -637,7 +635,7 @@ def run_paasta_cluster_boost(master, action, pool, duration, override, boost, ve
 
     verbose_flag: Optional[str]
     if verbose > 0:
-        verbose_flag = "-{}".format("v" * verbose)
+        verbose_flag = f"-{('v' * verbose)}"
     else:
         verbose_flag = None
 
@@ -997,7 +995,7 @@ def short_to_full_git_sha(short, refs):
 def validate_short_git_sha(value):
     pattern = re.compile("[a-f0-9]{4,40}")
     if not pattern.match(value):
-        raise argparse.ArgumentTypeError("%s is not a valid git sha" % value)
+        raise argparse.ArgumentTypeError(f"{value} is not a valid git sha")
     return value
 
 
@@ -1005,7 +1003,7 @@ def validate_full_git_sha(value):
     pattern = re.compile("[a-f0-9]{40}")
     if not pattern.match(value):
         raise argparse.ArgumentTypeError(
-            "%s is not a full git sha, and PaaSTA needs the full sha" % value
+            f"{value} is not a full git sha, and PaaSTA needs the full sha"
         )
     return value
 
@@ -1185,7 +1183,7 @@ def get_task_from_instance(
 
 
 def get_container_name(task):
-    container_name = "mesos-{}".format(task.executor["container"])
+    container_name = f"mesos-{task.executor['container']}"
     return container_name
 
 

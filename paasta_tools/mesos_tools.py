@@ -119,9 +119,9 @@ def get_mesos_leader() -> str:
     except mesos_exceptions.MasterNotAvailableException:
         log.debug("mesos.cli failed to provide the master host")
         raise
-    log.debug("mesos.cli thinks the master host is: %s" % url)
+    log.debug(f"mesos.cli thinks the master host is: {url}")
     hostname = urlparse(url).hostname
-    log.debug("The parsed master hostname is: %s" % hostname)
+    log.debug(f"The parsed master hostname is: {hostname}")
     # This check is necessary, as if we parse a value such as 'localhost:5050',
     # it won't have a hostname attribute
     if hostname:
@@ -131,10 +131,10 @@ def get_mesos_leader() -> str:
         except (socket.error, socket.herror, socket.gaierror, socket.timeout):
             log.debug("Failed to convert mesos leader hostname to fqdn!")
             raise
-        log.debug("Mesos Leader: %s" % fqdn)
+        log.debug(f"Mesos Leader: {fqdn}")
         return fqdn
     else:
-        raise ValueError("Expected to receive a valid URL, got: %s" % url)
+        raise ValueError(f"Expected to receive a valid URL, got: {url}")
 
 
 def is_mesos_leader(hostname: str = MY_HOSTNAME) -> bool:
@@ -352,7 +352,7 @@ async def get_cpu_usage(task: Task) -> str:
         if allocated_seconds == 0:
             return "Undef"
         percent = round(100 * (used_seconds / allocated_seconds), 1)
-        percent_string = "%s%%" % percent
+        percent_string = f"{percent}%"
         if percent > 90:
             return PaastaColors.red(percent_string)
         else:
@@ -532,7 +532,7 @@ async def format_task_list(
             return PaastaColors.grey(x)
 
     output = []
-    output.append(colorize("  %s" % list_title))
+    output.append(colorize(f"  {list_title}"))
     table_rows: List[Union[str, Sequence[str]]] = [
         [colorize(th) for th in table_header]
     ]
@@ -547,7 +547,7 @@ async def format_task_list(
         for future in task_row_futures:
             table_rows.append(future.result())
 
-    tasks_table = ["    %s" % row for row in format_table(table_rows)]
+    tasks_table = [f"    {row}" for row in format_table(table_rows)]
     if tail_lines == 0:
         output.extend(tasks_table)
     else:
@@ -800,7 +800,7 @@ def get_container_id_for_mesos_id(client, mesos_task_id):
         info = client.inspect_container(container)
         if info["Config"]["Env"]:
             for env_var in info["Config"]["Env"]:
-                if ("MESOS_TASK_ID=%s" % mesos_task_id) in env_var:
+                if (f"MESOS_TASK_ID={mesos_task_id}") in env_var:
                     container_id = info["Id"]
                     break
 
@@ -849,7 +849,7 @@ async def get_mesos_task_count_by_slave(
         try:
             task_slave = await task.slave()
             if task_slave["id"] not in slaves:
-                log.debug("Slave {} not found for task".format(task_slave["id"]))
+                log.debug(f"Slave {task_slave['id']} not found for task")
                 continue
             else:
                 slaves[task_slave["id"]]["count"] += 1
@@ -860,9 +860,7 @@ async def get_mesos_task_count_by_slave(
                     slaves[task_slave["id"]]["batch_count"] += 1
         except SlaveDoesNotExist:
             log.debug(
-                "Tried to get mesos slaves for task {}, but none existed.".format(
-                    task["id"]
-                )
+                f"Tried to get mesos slaves for task {task['id']}, but none existed."
             )
             continue
     if slaves_list:
@@ -932,7 +930,7 @@ async def get_all_frameworks(active_only=False):
 
 def terminate_framework(framework_id):
     resp = requests.post(
-        "http://%s:%d/master/teardown" % (get_mesos_leader(), MESOS_MASTER_PORT),
+        f"http://{get_mesos_leader()}:{MESOS_MASTER_PORT:d}/master/teardown",
         data={"frameworkId": framework_id},
     )
     resp.raise_for_status()
@@ -1006,11 +1004,7 @@ def mesos_services_running_here(
                 executor["id"]
             )
         except ValueError:
-            log.error(
-                "Failed to decode paasta service instance from {}".format(
-                    executor["id"]
-                )
-            )
+            log.error(f"Failed to decode paasta service instance from {executor['id']}")
             continue
         if "ports" in executor["resources"]:
             srv_port = int(re.findall("[0-9]+", executor["resources"]["ports"])[0])

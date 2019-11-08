@@ -98,7 +98,7 @@ def get_deployments_strings(service: str, soa_dir: str) -> List[str]:
             if service_mode == "tcp":
                 service_port = service_config.get("proxy_port")
                 link = PaastaColors.cyan(
-                    "%s://paasta-%s.yelp:%d/" % (service_mode, cluster, service_port)
+                    f"{service_mode}://paasta-{cluster}.yelp:{service_port:d}/"
                 )
             elif service_mode == "http" or service_mode == "https":
                 link = PaastaColors.cyan(
@@ -126,8 +126,8 @@ def get_service_info(service, soa_dir):
     git_url = get_git_url(service, soa_dir)
 
     output = []
-    output.append("Service Name: %s" % service)
-    output.append("Description: %s" % description)
+    output.append(f"Service Name: {service}")
+    output.append(f"Description: {description}")
     output.append("External Link: %s" % PaastaColors.cyan(external_link))
     output.append(
         "Monitored By: team %s"
@@ -137,13 +137,13 @@ def get_service_info(service, soa_dir):
         "Runbook: %s"
         % PaastaColors.cyan(get_runbook(service=service, overrides={}, soa_dir=soa_dir))
     )
-    output.append("Git Repo: %s" % git_url)
+    output.append(f"Git Repo: {git_url}")
     output.append("Deployed to the following clusters:")
     output.extend(get_deployments_strings(service, soa_dir))
     if smartstack_endpoints:
         output.append("Smartstack endpoint(s):")
         for endpoint in smartstack_endpoints:
-            output.append(" - %s" % endpoint)
+            output.append(f" - {endpoint}")
     output.append("Dashboard(s):")
     output.extend(get_dashboard_urls(service))
 

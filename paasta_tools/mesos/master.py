@@ -85,16 +85,14 @@ class MesosMaster:
         self.config = config
 
     def __str__(self):
-        return "<master: {}>".format(self.key())
+        return f"<master: {self.key()}>"
 
     def key(self):
         return self.config["master"]
 
     @util.CachedProperty(ttl=5)
     def host(self):
-        return "{}://{}".format(
-            self.config["scheme"], self.resolve(self.config["master"])
-        )
+        return f"{self.config['scheme']}://{self.resolve(self.config['master'])}"
 
     @util.CachedProperty(ttl=5)
     def cache_host(self):
@@ -256,7 +254,7 @@ class MesosMaster:
 
         if len(lst) == 0:
             raise exceptions.TaskNotFoundException(
-                "Cannot find a task with filter %s" % fltr
+                f"Cannot find a task with filter {fltr}"
             )
 
         elif len(lst) > 1:
@@ -295,7 +293,7 @@ class MesosMaster:
         return [framework.Framework(f) for f in await self._framework_list(active_only)]
 
     async def teardown(self, framework_id):
-        return await self.post("/master/teardown", data="frameworkId=%s" % framework_id)
+        return await self.post("/master/teardown", data=f"frameworkId={framework_id}")
 
     async def metrics_snapshot(self) -> MesosMetrics:
         return await (await self.fetch("/metrics/snapshot")).json()

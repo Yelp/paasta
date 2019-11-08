@@ -115,7 +115,7 @@ def parse_args() -> argparse.Namespace:
         "service_instance_list",
         nargs="+",
         help="The list of marathon service instances to create or update",
-        metavar="SERVICE%sINSTANCE" % SPACER,
+        metavar=f"SERVICE{SPACER}INSTANCE",
     )
     parser.add_argument(
         "-d",
@@ -371,11 +371,11 @@ def do_bounce(
                 try:
                     reserve_all_resources([hostname])
                 except HTTPError:
-                    log.warning("Failed to reserve resources on %s" % hostname)
+                    log.warning(f"Failed to reserve resources on {hostname}")
 
     apps_to_kill: List[Tuple[str, MarathonClient]] = []
     for app, client in old_app_live_happy_tasks.keys():
-        if app != "/%s" % marathon_jobid or client != new_client:
+        if app != f"/{marathon_jobid}" or client != new_client:
             live_happy_tasks = old_app_live_happy_tasks[(app, client)]
             live_unhappy_tasks = old_app_live_unhappy_tasks[(app, client)]
             draining_tasks = old_app_draining_tasks[(app, client)]
@@ -625,7 +625,7 @@ def deploy_service(
     other_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
 
     for a, c in existing_apps_with_clients:
-        if a.id == "/%s" % config["id"] and c == new_client:
+        if a.id == f"/{config['id']}" and c == new_client:
             new_apps_with_clients_list.append((a, c))
         else:
             other_apps_with_clients.append((a, c))
@@ -665,7 +665,7 @@ def deploy_service(
     try:
         draining_hosts = get_draining_hosts()
     except ReadTimeout as e:
-        errormsg = "ReadTimeout encountered trying to get draining hosts: %s" % e
+        errormsg = f"ReadTimeout encountered trying to get draining hosts: {e}"
         return (1, errormsg, 60)
 
     (

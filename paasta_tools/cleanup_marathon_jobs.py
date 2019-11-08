@@ -90,7 +90,7 @@ def parse_args(argv):
 def delete_app(app_id, client, soa_dir):
     """Deletes a marathon app safely and logs to notify the user that it
     happened"""
-    log.warn("%s appears to be old; attempting to delete" % app_id)
+    log.warn(f"{app_id} appears to be old; attempting to delete")
     service, instance, _, __ = marathon_tools.deformat_job_id(app_id)
     cluster = load_system_paasta_config().get_cluster()
     try:
@@ -99,7 +99,7 @@ def delete_app(app_id, client, soa_dir):
             bounce_lib.delete_marathon_app(app_id, client)
         send_event(
             service=service,
-            check_name="check_marathon_services_replication.%s" % short_app_id,
+            check_name=f"check_marathon_services_replication.{short_app_id}",
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
             overrides={},
@@ -107,13 +107,13 @@ def delete_app(app_id, client, soa_dir):
         )
         send_event(
             service=service,
-            check_name="setup_marathon_job.%s" % short_app_id,
+            check_name=f"setup_marathon_job.{short_app_id}",
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
             overrides={},
             output="This instance was removed and is no longer running",
         )
-        log_line = "Deleted stale marathon job that looks lost: %s" % app_id
+        log_line = f"Deleted stale marathon job that looks lost: {app_id}"
         _log(
             service=service,
             component="deploy",
@@ -123,9 +123,9 @@ def delete_app(app_id, client, soa_dir):
             line=log_line,
         )
     except IOError:
-        log.debug("%s is being bounced, skipping" % app_id)
+        log.debug(f"{app_id} is being bounced, skipping")
     except Exception:
-        loglines = ["Exception raised during cleanup of service %s:" % service]
+        loglines = [f"Exception raised during cleanup of service {service}:"]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             _log(
@@ -166,7 +166,7 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
             app_id = marathon_tools.deformat_job_id(app.id.lstrip("/"))
         except InvalidJobNameError:
             log.warn(
-                "%s doesn't conform to paasta naming conventions? Skipping." % app.id
+                f"{app.id} doesn't conform to paasta naming conventions? Skipping."
             )
             continue
         app_ids_with_clients.append((app_id, client))
@@ -176,9 +176,9 @@ def cleanup_apps(soa_dir, kill_threshold=0.5, force=False):
         if (service, instance) not in valid_services
     ]
 
-    log.debug("Running apps: %s" % app_ids_with_clients)
-    log.debug("Valid apps: %s" % valid_services)
-    log.debug("Terminating: %s" % apps_to_kill)
+    log.debug(f"Running apps: {app_ids_with_clients}")
+    log.debug(f"Valid apps: {valid_services}")
+    log.debug(f"Terminating: {apps_to_kill}")
     if app_ids_with_clients:
         above_kill_threshold = float(len(apps_to_kill)) / float(
             len(app_ids_with_clients)

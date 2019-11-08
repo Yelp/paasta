@@ -149,7 +149,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-w",
         "--work-dir",
-        default="{}:{}".format(os.getcwd(), DEFAULT_SPARK_WORK_DIR),
+        default=f"{os.getcwd()}:{DEFAULT_SPARK_WORK_DIR}",
         help="The read-write volume to mount in format local_abs_dir:container_abs_dir",
     )
 
@@ -310,8 +310,8 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
         if sys.stdout.isatty():
             cmd.append("--tty=true")
 
-    cmd.append("--user=%d:%d" % (os.geteuid(), os.getegid()))
-    cmd.append("--name=%s" % container_name)
+    cmd.append(f"--user={os.geteuid():d}:{os.getegid():d}")
+    cmd.append(f"--name={container_name}")
     for k, v in env.items():
         cmd.append("--env")
         if k in SENSITIVE_ENV:
@@ -324,8 +324,8 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
         cmd.append("NVIDIA_VISIBLE_DEVICES=all")
         cmd.append("--runtime=nvidia")
     for volume in volumes:
-        cmd.append("--volume=%s" % volume)
-    cmd.append("%s" % docker_img)
+        cmd.append(f"--volume={volume}")
+    cmd.append(f"{docker_img}")
     cmd.extend(("sh", "-c", docker_cmd))
     cmd.append(sensitive_env)
 
@@ -360,7 +360,7 @@ def get_default_event_log_dir(access_key, secret_key):
             .get("Account")
         )
     except Exception as e:
-        log.warning("Failed to identify account ID, error: {}".format(str(e)))
+        log.warning(f"Failed to identify account ID, error: {str(e)}")
         return None
 
     for conf in spark_run_conf["environments"].values():
@@ -433,7 +433,7 @@ def get_aws_credentials(args):
 
 
 def get_service_aws_credentials_path(service_name):
-    service_yaml = "%s.yaml" % service_name
+    service_yaml = f"{service_name}.yaml"
     return os.path.join(AWS_CREDENTIALS_DIR, service_yaml)
 
 
@@ -475,7 +475,7 @@ def get_spark_config(
         "spark.executor.memory": "4g",
         # Use \; for multiple constraints. e.g.
         # instance_type:m4.10xlarge\;pool:default
-        "spark.mesos.constraints": "pool:%s" % args.pool,
+        "spark.mesos.constraints": f"pool:{args.pool}",
         "spark.mesos.executor.docker.forcePullImage": "true",
     }
 
@@ -488,10 +488,10 @@ def get_spark_config(
     cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(
         cluster=args.cluster
     )
-    mesos_address = "{}:{}".format(find_mesos_leader(cluster_fqdn), MESOS_MASTER_PORT)
+    mesos_address = f"{find_mesos_leader(cluster_fqdn)}:{MESOS_MASTER_PORT}"
     paasta_instance = get_smart_paasta_instance_name(args.instance)
     non_user_args = {
-        "spark.master": "mesos://%s" % mesos_address,
+        "spark.master": f"mesos://{mesos_address}",
         "spark.ui.port": spark_ui_port,
         "spark.executorEnv.PAASTA_SERVICE": args.service,
         "spark.executorEnv.PAASTA_INSTANCE": paasta_instance,
@@ -517,7 +517,7 @@ def get_spark_config(
             if len(fields) != 2:
                 paasta_print(
                     PaastaColors.red(
-                        "Spark option %s is not in format option=value." % spark_arg
+                        f"Spark option {spark_arg} is not in format option=value."
                     ),
                     file=sys.stderr,
                 )
@@ -585,7 +585,7 @@ def _load_mesos_secret():
             return f.read()
     except IOError:
         paasta_print(
-            "Cannot load mesos secret from %s" % DEFAULT_SPARK_MESOS_SECRET_FILE,
+            f"Cannot load mesos secret from {DEFAULT_SPARK_MESOS_SECRET_FILE}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -731,7 +731,7 @@ def configure_and_run_docker_container(
             )
 
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    spark_app_name = "paasta_spark_run_{}".format(get_username())
+    spark_app_name = f"paasta_spark_run_{get_username()}"
     container_name = spark_app_name + "_" + str(spark_ui_port)
     original_docker_cmd = args.cmd or instance_config.get_cmd()
     if "jupyter" not in original_docker_cmd:
@@ -751,7 +751,7 @@ def configure_and_run_docker_container(
     spark_conf_str = create_spark_config_str(spark_config_dict, is_mrjob=args.mrjob)
 
     # Spark client specific volumes
-    volumes.append("%s:rw" % args.work_dir)
+    volumes.append(f"{args.work_dir}:rw")
     volumes.append("/etc/passwd:/etc/passwd:ro")
     volumes.append("/etc/group:/etc/group:ro")
 
@@ -811,7 +811,7 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
     # Default cli options to start the jupyter notebook server.
     elif original_docker_cmd == "jupyter":
         cull_opts = (
-            "--MappingKernelManager.cull_idle_timeout=%s " % args.cull_idle_timeout
+            f"--MappingKernelManager.cull_idle_timeout={args.cull_idle_timeout} "
         )
         if args.not_cull_connected is False:
             cull_opts += "--MappingKernelManager.cull_connected=True "
@@ -845,7 +845,7 @@ def build_and_push_docker_image(args):
         )
         return None
 
-    default_tag = "{}-{}".format(DEFAULT_SPARK_DOCKER_IMAGE_PREFIX, get_username())
+    default_tag = f"{DEFAULT_SPARK_DOCKER_IMAGE_PREFIX}-{get_username()}"
     docker_tag = os.environ.get("DOCKER_TAG", default_tag)
     os.environ["DOCKER_TAG"] = docker_tag
 
@@ -863,9 +863,9 @@ def build_and_push_docker_image(args):
         return None
 
     if args.docker_registry != DEFAULT_SPARK_DOCKER_REGISTRY:
-        command = "sudo -H docker push %s" % docker_url
+        command = f"sudo -H docker push {docker_url}"
     else:
-        command = "docker push %s" % docker_url
+        command = f"docker push {docker_url}"
 
     paasta_print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=True)
@@ -879,14 +879,14 @@ def validate_work_dir(s):
     dirs = s.split(":")
     if len(dirs) != 2:
         paasta_print(
-            "work-dir %s is not in format local_abs_dir:container_abs_dir" % s,
+            f"work-dir {s} is not in format local_abs_dir:container_abs_dir",
             file=sys.stderr,
         )
         sys.exit(1)
 
     for d in dirs:
         if not os.path.isabs(d):
-            paasta_print("%s is not an absolute path" % d, file=sys.stderr)
+            paasta_print(f"{d} is not an absolute path", file=sys.stderr)
             sys.exit(1)
 
 
@@ -966,9 +966,7 @@ def paasta_spark_run(args):
             % docker_url,
             file=sys.stderr,
         )
-        retcode, _ = _run(
-            "sudo -H docker pull %s" % docker_url, stream=True, timeout=300
-        )
+        retcode, _ = _run(f"sudo -H docker pull {docker_url}", stream=True, timeout=300)
         if retcode != 0:
             paasta_print(
                 "\nPull failed. Are you authorized to run docker commands?",

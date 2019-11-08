@@ -852,10 +852,10 @@ def test_get_docker_run_cmd_interactive_false():
         docker_params,
         detach,
     )
-    assert "--memory=%dm" % memory in actual
-    assert any(["--publish=%s" % chosen_port in arg for arg in actual])
-    assert "--name=%s" % container_name in actual
-    assert all(["--volume=%s" % volume in actual for volume in volumes])
+    assert f"--memory={memory:d}m" in actual
+    assert any([f"--publish={chosen_port}" in arg for arg in actual])
+    assert f"--name={container_name}" in actual
+    assert all([f"--volume={volume}" in actual for volume in volumes])
     assert "--interactive=true" not in actual
     assert "--tty=true" not in actual
     assert docker_url in actual
@@ -905,7 +905,7 @@ def test_get_docker_run_docker_params():
     command = "IE9.exe /VERBOSE /ON_ERROR_RESUME_NEXT"
     net = "bridge"
     docker_params = [
-        {"key": "memory-swap", "value": "%sm" % memory},
+        {"key": "memory-swap", "value": f"{memory}m"},
         {"key": "cpu-period", "value": "200000"},
         {"key": "cpu-quota", "value": "150000"},
     ]

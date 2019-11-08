@@ -113,7 +113,7 @@ def load_flink_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    flink_conf_file = "flink-%s" % cluster
+    flink_conf_file = f"flink-{cluster}"
     instance_configs = service_configuration_lib.read_extra_service_information(
         service, flink_conf_file, soa_dir=soa_dir
     )

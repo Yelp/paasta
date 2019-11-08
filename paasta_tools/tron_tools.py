@@ -115,7 +115,7 @@ def decompose_instance(instance):
     """Get (job_name, action_name) from an instance."""
     decomposed = instance.split(SPACER)
     if len(decomposed) != 2:
-        raise InvalidInstanceConfig("Invalid instance name: %s" % instance)
+        raise InvalidInstanceConfig(f"Invalid instance name: {instance}")
     return (decomposed[0], decomposed[1])
 
 

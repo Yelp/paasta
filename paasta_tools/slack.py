@@ -44,7 +44,7 @@ class PaastaSlackClient(SlackClient):
                     thread_ts=thread_ts,
                 )
                 if response["ok"] is not True:
-                    log.error("Posting to slack failed: {}".format(response["error"]))
+                    log.error(f"Posting to slack failed: {response['error']}")
                 responses.append(response)
         else:
             log.info(f"(not sent to Slack) {channels}: {message}")
@@ -61,7 +61,7 @@ class PaastaSlackClient(SlackClient):
                 thread_ts=thread_ts,
             )
             if response["ok"] is not True:
-                log.error("Posting to slack failed: {}".format(response["error"]))
+                log.error(f"Posting to slack failed: {response['error']}")
             return response
         else:
             log.info(f"(not sent to Slack) {channel}: {message}")

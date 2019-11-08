@@ -145,7 +145,7 @@ class NativeScheduler(Scheduler):
 
     def registered(self, driver: MesosSchedulerDriver, frameworkId, masterInfo):
         self.framework_id = frameworkId["value"]
-        self.log("Registered with framework ID %s" % frameworkId["value"])
+        self.log(f"Registered with framework ID {frameworkId['value']}")
 
         self.task_store = self.task_store_type(
             service_name=self.service_name,
@@ -270,7 +270,7 @@ class NativeScheduler(Scheduler):
         }
 
     def is_task_new(self, name, tid):
-        return tid.startswith("%s." % name)
+        return tid.startswith(f"{name}.")
 
     def log_and_kill(self, driver: MesosSchedulerDriver, task_id):
         log.critical(
@@ -333,7 +333,7 @@ class NativeScheduler(Scheduler):
             task_port = random.choice(list(remainingPorts))
 
             task = copy.deepcopy(base_task)
-            task["task_id"] = {"value": "{}.{}".format(task["name"], uuid.uuid4().hex)}
+            task["task_id"] = {"value": f"{task['name']}.{uuid.uuid4().hex}"}
 
             task["container"]["docker"]["port_mappings"][0]["host_port"] = task_port
             for resource in task["resources"]:
@@ -383,7 +383,7 @@ class NativeScheduler(Scheduler):
 
         # update tasks
         task_id = update["task_id"]["value"]
-        self.log("Task {} is in state {}".format(task_id, update["state"]))
+        self.log(f"Task {task_id} is in state {update['state']}")
 
         task_params = self.task_store.update_task(
             task_id, mesos_task_state=update["state"]
@@ -526,17 +526,17 @@ class NativeScheduler(Scheduler):
         )
 
     async def undrain_task(self, task_id: str):
-        self.log("Undraining task %s" % task_id)
+        self.log(f"Undraining task {task_id}")
         await self.drain_method.stop_draining(self.make_drain_task(task_id))
         self.task_store.update_task(task_id, is_draining=False)
 
     async def drain_task(self, task_id: str):
-        self.log("Draining task %s" % task_id)
+        self.log(f"Draining task {task_id}")
         await self.drain_method.drain(self.make_drain_task(task_id))
         self.task_store.update_task(task_id, is_draining=True)
 
     def kill_task(self, driver: MesosSchedulerDriver, task_id: str):
-        self.log("Killing task %s" % task_id)
+        self.log(f"Killing task {task_id}")
         driver.killTask({"value": task_id})
         self.task_store.update_task(task_id, mesos_task_state=TASK_KILLING)
 
@@ -584,14 +584,14 @@ class NativeScheduler(Scheduler):
         self.constraints = self.service_config.get_constraints() or []
 
     def blacklist_slave(self, agent_id: str):
-        log.debug("Blacklisting slave: %s" % agent_id)
+        log.debug(f"Blacklisting slave: {agent_id}")
         self.blacklisted_slaves.setdefault(agent_id, time.time())
 
     def unblacklist_slave(self, agent_id: str):
         if agent_id not in self.blacklisted_slaves:
             return
 
-        log.debug("Unblacklisting slave: %s" % agent_id)
+        log.debug(f"Unblacklisting slave: {agent_id}")
         with self.blacklisted_slaves_lock:
             del self.blacklisted_slaves[agent_id]
 
@@ -617,9 +617,7 @@ def find_existing_id_if_exists_or_gen_new(name):
 
 
 def create_driver(framework_name, scheduler, system_paasta_config, implicit_acks=False):
-    master_uri = "{}:{}".format(
-        mesos_tools.get_mesos_leader(), mesos_tools.MESOS_MASTER_PORT
-    )
+    master_uri = f"{mesos_tools.get_mesos_leader()}:{mesos_tools.MESOS_MASTER_PORT}"
 
     framework = {
         "user": getpass.getuser(),

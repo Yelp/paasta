@@ -183,7 +183,7 @@ def paasta_rollback(args):
     if len(deploy_groups) == 0:
         paasta_print(
             PaastaColors.red(
-                "ERROR: No valid deploy groups specified for %s.\n" % (service)
+                f"ERROR: No valid deploy groups specified for {service}.\n"
             )
         )
         return 1

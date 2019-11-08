@@ -220,7 +220,7 @@ def send_event(
         "ticket": get_ticket(overrides, service, soa_dir),
         "project": get_project(overrides, service, soa_dir),
         "priority": get_priority(overrides, service, soa_dir),
-        "source": "paasta-%s" % cluster,
+        "source": f"paasta-{cluster}",
         "tags": get_tags(overrides, service, soa_dir),
         "ttl": ttl,
         "sensu_host": system_paasta_config.get_sensu_host(),
@@ -269,7 +269,7 @@ def send_replication_event(instance_config, status, output):
         monitoring_overrides, instance_config.service, soa_dir=instance_config.soa_dir
     )
 
-    check_name = "check_paasta_services_replication.%s" % instance_config.job_id
+    check_name = f"check_paasta_services_replication.{instance_config.job_id}"
     send_event(
         service=instance_config.service,
         check_name=check_name,
@@ -281,7 +281,7 @@ def send_replication_event(instance_config, status, output):
     )
     _log(
         service=instance_config.service,
-        line="Replication: %s" % output,
+        line=f"Replication: {output}",
         component="monitoring",
         level="debug",
         cluster=instance_config.cluster,

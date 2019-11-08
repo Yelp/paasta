@@ -279,9 +279,7 @@ def fill_table_rows_with_service_instance_stats(
                 num_service_instances_allowed = (
                     rsrc_free // rsrc_amt_wanted  # type: ignore
                 )
-    table_rows[-1].append(
-        "{:6} ; {}".format(int(num_service_instances_allowed), limiting_factor)
-    )
+    table_rows[-1].append(f"{int(num_service_instances_allowed):6} ; {limiting_factor}")
 
 
 def get_service_instance_stats(

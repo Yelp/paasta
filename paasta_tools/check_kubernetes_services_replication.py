@@ -80,9 +80,7 @@ def check_kubernetes_pod_replication(
     :param smartstack_replication_checker: an instance of KubeSmartstackReplicationChecker
     """
     expected_count = instance_config.get_instances()
-    log.info(
-        "Expecting %d total tasks for %s" % (expected_count, instance_config.job_id)
-    )
+    log.info(f"Expecting {expected_count:d} total tasks for {instance_config.job_id}")
     proxy_port = get_proxy_port_for_instance(instance_config)
 
     registrations = instance_config.get_registrations()

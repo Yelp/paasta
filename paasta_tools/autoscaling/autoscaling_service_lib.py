@@ -220,7 +220,7 @@ SIZE_PER_HISTORICAL_LOAD_RECORD = struct.calcsize(HISTORICAL_LOAD_SERIALIZATION_
 
 
 def zk_historical_load_path(zk_path_prefix):
-    return "%s/historical_load" % zk_path_prefix
+    return f"{zk_path_prefix}/historical_load"
 
 
 def save_historical_load(historical_load, zk_path_prefix):
@@ -425,8 +425,8 @@ def mesos_cpu_metrics_provider(
         service=marathon_service_config.service,
         instance=marathon_service_config.instance,
     )
-    zk_last_time_path = "%s/cpu_last_time" % autoscaling_root
-    zk_last_cpu_data = "%s/cpu_data" % autoscaling_root
+    zk_last_time_path = f"{autoscaling_root}/cpu_last_time"
+    zk_last_cpu_data = f"{autoscaling_root}/cpu_data"
 
     with ZookeeperPool() as zk:
         try:
@@ -834,7 +834,7 @@ def autoscaling_is_paused():
 
     remaining = pause_until - time.time()
     if remaining >= 0:
-        log.debug("Autoscaling is paused for {} more seconds".format(str(remaining)))
+        log.debug(f"Autoscaling is paused for {str(remaining)} more seconds")
         return True
     else:
         return False
@@ -883,9 +883,7 @@ def autoscale_service_configs(
                     mesos_tasks,
                 )
             except Exception as e:
-                write_to_log(
-                    config=config, line="Caught Exception %s" % e, level="debug"
-                )
+                write_to_log(config=config, line=f"Caught Exception {e}", level="debug")
 
 
 def filter_autoscaling_tasks(
@@ -913,7 +911,7 @@ def filter_autoscaling_tasks(
     # We assume tasks with no healthcheck results but a defined healthcheck to be unhealthy, unless they are "old" in
     # which case we assume that Marathon has screwed up and stopped healthchecking but that they are healthy.
 
-    log.info("Inspecting %s for autoscaling" % job_id_prefix)
+    log.info(f"Inspecting {job_id_prefix} for autoscaling")
 
     relevant_tasks_by_app: Dict[MarathonApp, List[MarathonTask]] = {
         app: app.tasks

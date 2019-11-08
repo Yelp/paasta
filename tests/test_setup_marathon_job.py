@@ -357,10 +357,10 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 2
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert "%s new tasks" % expected_new_task_count in first_logged_line
+            assert f"{expected_new_task_count} new tasks" in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert (
-                "creating new app with app_id %s" % fake_marathon_jobid
+                f"creating new app with app_id {fake_marathon_jobid}"
                 in second_logged_line
             )
 
@@ -436,15 +436,15 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 4
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert "%s new tasks" % expected_new_task_count in first_logged_line
+            assert f"{expected_new_task_count} new tasks" in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert (
-                "creating new app with app_id %s" % fake_marathon_jobid
+                f"creating new app with app_id {fake_marathon_jobid}"
                 in second_logged_line
             )
             third_logged_line = mock_log.mock_calls[2][2]["line"]
             assert (
-                "draining %s old tasks" % expected_drain_task_count in third_logged_line
+                f"draining {expected_drain_task_count} old tasks" in third_logged_line
             )
 
             assert mock_create_marathon_app.call_count == 1
@@ -550,11 +550,10 @@ class TestSetupMarathonJob:
                 job_config=self.fake_marathon_service_config,
             )
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert "%s new tasks" % expected_new_task_count in first_logged_line
+            assert f"{expected_new_task_count} new tasks" in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert (
-                "draining %s old tasks" % expected_drain_task_count
-                in second_logged_line
+                f"draining {expected_drain_task_count} old tasks" in second_logged_line
             )
             assert mock_log.call_count == 4
 
@@ -635,7 +634,7 @@ class TestSetupMarathonJob:
             )
             # assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert "%s new tasks" % expected_new_task_count in first_logged_line
+            assert f"{expected_new_task_count} new tasks" in first_logged_line
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert (
                 "draining {} old tasks with app_id {}".format(
@@ -723,11 +722,11 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 3, mock_log.mock_calls
             first_logged_line = mock_log.mock_calls[0][2]["line"]
-            assert "%s new tasks" % expected_new_task_count in first_logged_line
+            assert f"{expected_new_task_count} new tasks" in first_logged_line
 
             second_logged_line = mock_log.mock_calls[1][2]["line"]
             assert (
-                "removing old unused apps with app_ids: %s" % "fake_app_to_kill_1"
+                f"removing old unused apps with app_ids: {'fake_app_to_kill_1'}"
                 in second_logged_line
             )
 
@@ -742,7 +741,7 @@ class TestSetupMarathonJob:
                 f"{fake_bounce_method} bounce on {fake_serviceinstance} finish"
                 in third_logged_line
             )
-            assert "Now running %s" % fake_marathon_jobid in third_logged_line
+            assert f"Now running {fake_marathon_jobid}" in third_logged_line
             assert mock_meteorite.events.emit_event.call_count == 1
 
     def test_do_bounce_when_nothing_to_do(self):
@@ -1585,7 +1584,7 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_marathon_apps = [
             mock.Mock(id=fake_id, tasks=[]),
-            mock.Mock(id=("%s2" % fake_id), tasks=[]),
+            mock.Mock(id=(f"{fake_id}2"), tasks=[]),
         ]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_marathon_apps)
@@ -1645,7 +1644,7 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_marathon_apps = [
             mock.Mock(id=fake_id, tasks=[], instances=2),
-            mock.Mock(id=("%s2" % fake_id), tasks=[]),
+            mock.Mock(id=(f"{fake_id}2"), tasks=[]),
         ]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_marathon_apps)
@@ -1724,7 +1723,7 @@ class TestSetupMarathonJob:
         )
 
         old_app = mock.Mock(
-            id="/%s" % old_app_id,
+            id=f"/{old_app_id}",
             tasks=[old_task_to_drain, old_task_is_draining, old_task_dont_drain],
             instances=2,
         )
@@ -1849,7 +1848,7 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [
             mock.Mock(id=fake_id, tasks=[]),
-            mock.Mock(id=("%s2" % fake_id), tasks=[]),
+            mock.Mock(id=(f"{fake_id}2"), tasks=[]),
         ]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         fake_config: marathon_tools.FormattedMarathonAppDict = {
@@ -1909,7 +1908,7 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [
             mock.Mock(id=fake_id, tasks=[]),
-            mock.Mock(id=("%s2" % fake_id), tasks=[]),
+            mock.Mock(id=(f"{fake_id}2"), tasks=[]),
         ]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         fake_apps_with_clients = [(app, fake_client) for app in fake_apps]
@@ -2066,7 +2065,7 @@ class TestGetOldHappyUnhappyDrainingTasks:
         fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
 
         fake_app_1: MarathonApp = mock.Mock(id=fake_id, tasks=[])
-        fake_app_2: MarathonApp = mock.Mock(id=("%s2" % fake_id), tasks=[])
+        fake_app_2: MarathonApp = mock.Mock(id=(f"{fake_id}2"), tasks=[])
         fake_client_1: MarathonClient = mock.Mock()
         fake_client_2: MarathonClient = mock.Mock()
 
@@ -2142,7 +2141,7 @@ class TestGetOldHappyUnhappyDrainingTasks:
             ],
         )
         fake_app_2 = mock.Mock(
-            id=("%s2" % fake_id),
+            id=(f"{fake_id}2"),
             tasks=[
                 self.fake_task("up", "happy"),
                 self.fake_task("up", "unhappy"),
@@ -2364,7 +2363,7 @@ class TestDrainTasksAndFindTasksToKill:
 
 
 def test_undrain_tasks():
-    all_tasks = [mock.Mock(id="task%d" % x) for x in range(5)]
+    all_tasks = [mock.Mock(id=f"task{x:d}") for x in range(5)]
     to_undrain = all_tasks[:4]
     leave_draining = all_tasks[2:]
     fake_drain_method = make_fake_drain_method(

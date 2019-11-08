@@ -111,9 +111,7 @@ def main():
         finally:
             sys.exit(return_code)
     else:
-        paasta_print(
-            "Could not find container with MESOS_TASK_ID '%s'." % args.mesos_id
-        )
+        paasta_print(f"Could not find container with MESOS_TASK_ID '{args.mesos_id}'.")
         sys.exit(1)
 
 

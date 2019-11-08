@@ -313,6 +313,6 @@ def paasta_remote_run(args):
     # Status results are streamed. This print is for possible error messages.
     if status is not None:
         for line in status.rstrip().split("\n"):
-            paasta_print("    %s" % line)
+            paasta_print(f"    {line}")
 
     return return_code

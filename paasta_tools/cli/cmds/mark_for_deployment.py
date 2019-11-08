@@ -352,7 +352,7 @@ def paasta_mark_for_deployment(args):
     if args.verify_image:
         if not is_docker_image_already_in_registry(service, args.soa_dir, commit):
             raise ValueError(
-                "Failed to find image in the registry for the following sha %s" % commit
+                f"Failed to find image in the registry for the following sha {commit}"
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
@@ -1248,7 +1248,7 @@ def wait_for_deployment(
         if cluster not in api_endpoints:
             paasta_print(
                 PaastaColors.red(
-                    "Cluster %s is NOT in paasta-api endpoints config." % cluster
+                    f"Cluster {cluster} is NOT in paasta-api endpoints config."
                 )
             )
             raise NoSuchCluster
@@ -1291,9 +1291,7 @@ def wait_for_deployment(
         return
 
     paasta_print(
-        "Waiting for deployment of {} for '{}' to complete...".format(
-            git_sha, deploy_group
-        )
+        f"Waiting for deployment of {git_sha} for '{deploy_group}' to complete..."
     )
 
     deadline = time.time() + timeout
@@ -1353,9 +1351,7 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
         if instances:
             joined_instances = ",".join(instances)
             paasta_status.append(
-                "paasta status -c {cluster} -s {service} -i {instances}".format(
-                    cluster=cluster, service=service, instances=joined_instances
-                )
+                f"paasta status -c {cluster} -s {service} -i {joined_instances}"
             )
             paasta_logs.append(
                 "paasta logs -c {cluster} -s {service} -i {instances} -C deploy -l 1000".format(

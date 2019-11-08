@@ -54,7 +54,7 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
             use_mesos_cache=False,
         )
         actual, _ = capfd.readouterr()
-        assert "Cluster: %s" % cluster in actual
+        assert f"Cluster: {cluster}" in actual
         assert "mock_status" in actual
         assert return_code == mock.sentinel.return_value
 

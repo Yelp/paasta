@@ -75,7 +75,7 @@ def test_figure_out_service_name_not_found(mock_validate_service_name, capfd):
     parsed_args = Mock()
     parsed_args.service = "fake_service"
 
-    expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
+    expected_output = f"{NoSuchService.GUESS_ERROR_MSG}\n"
 
     # Fail if exit(1) does not get called
     with pytest.raises(SystemExit) as sys_exit:

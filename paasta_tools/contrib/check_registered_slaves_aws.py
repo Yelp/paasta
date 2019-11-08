@@ -14,13 +14,13 @@ def check_registration(threshold_percentage):
     try:
         mesos_state = block(get_mesos_master().state)
     except MasterNotAvailableException as e:
-        print("Could not find Mesos Master: %s" % e.message)
+        print(f"Could not find Mesos Master: {e.message}")
         sys.exit(1)
 
     config = load_system_paasta_config()
     autoscaling_resources = config.get_cluster_autoscaling_resources()
     for resource in autoscaling_resources.values():
-        print("Checking %s" % resource["id"])
+        print(f"Checking {resource['id']}")
         try:
             scaler = get_scaler(resource["type"])(
                 resource=resource,

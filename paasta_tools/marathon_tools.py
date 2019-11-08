@@ -366,7 +366,7 @@ def load_marathon_service_config_no_cache(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    marathon_conf_file = "marathon-%s" % cluster
+    marathon_conf_file = f"marathon-{cluster}"
     instance_configs = service_configuration_lib.read_extra_service_information(
         service, marathon_conf_file, soa_dir=soa_dir
     )
@@ -910,7 +910,7 @@ class MarathonDeployStatus:
         for k, v in vars(cls).items():
             if v == val:
                 return k
-        raise ValueError("Unknown Marathon deploy status %d" % val)
+        raise ValueError(f"Unknown Marathon deploy status {val:d}")
 
     @classmethod
     def fromstring(cls, _str: str) -> int:
@@ -1270,14 +1270,14 @@ def app_has_tasks(
     :returns: a boolean indicating whether there are atleast expected_tasks tasks with
         an app id matching app_id
     """
-    app_id = "/%s" % app_id
+    app_id = f"/{app_id}"
     try:
         tasks = client.list_tasks(app_id=app_id)
     except NotFoundError:
-        paasta_print("no app with id %s found" % app_id)
+        paasta_print(f"no app with id {app_id} found")
         raise
     paasta_print(
-        "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
+        f"app {app_id} has {len(tasks):d} of {expected_tasks:d} expected tasks"
     )
     if exact_matches_only:
         return len(tasks) == expected_tasks
@@ -1292,7 +1292,7 @@ def get_app_queue(client: MarathonClient, app_id: str) -> Optional[MarathonQueue
     :param app_id: The Marathon app id (without the leading /)
     :returns: The app queue from marathon
     """
-    app_id = "/%s" % app_id
+    app_id = f"/{app_id}"
     app_queue = client.list_queue(embed_last_unused_offers=True)
     for app_queue_item in app_queue:
         if app_queue_item.app.id == app_id:
@@ -1481,13 +1481,12 @@ def kill_task(
         # valid" message or a "Bean is not valid" message.
         if "is not valid" in e.error_message and e.status_code == 422:
             log.warning(
-                "Got 'is not valid' when killing task %s. Continuing anyway." % task_id
+                f"Got 'is not valid' when killing task {task_id}. Continuing anyway."
             )
             return None
         elif "does not exist" in e.error_message and e.status_code == 404:
             log.warning(
-                "Got 'does not exist' when killing task %s. Continuing anyway."
-                % task_id
+                f"Got 'does not exist' when killing task {task_id}. Continuing anyway."
             )
             return None
         else:
@@ -1572,7 +1571,7 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: Sequence[str]) -> in
     for host in hosts_tasks_running_on:
         if host in draining_hosts:
             num_at_risk_tasks += 1
-    log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
+    log.debug(f"{app.id} has {num_at_risk_tasks:d} tasks running on at-risk hosts.")
     return num_at_risk_tasks
 
 

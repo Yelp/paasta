@@ -230,7 +230,7 @@ def load_kubernetes_service_config_no_cache(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    kubernetes_conf_file = "kubernetes-%s" % cluster
+    kubernetes_conf_file = f"kubernetes-{cluster}"
     instance_configs = service_configuration_lib.read_extra_service_information(
         service, kubernetes_conf_file, soa_dir=soa_dir
     )
@@ -461,9 +461,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if strategy_type == "RollingUpdate":
             max_surge = "100%"
             if bounce_method == "crossover":
-                max_unavailable = "{}%".format(
-                    int((1 - self.get_bounce_margin_factor()) * 100)
-                )
+                max_unavailable = f"{int((1 - self.get_bounce_margin_factor()) * 100)}%"
             elif bounce_method == "brutal":
                 # `brutal` bounce method means a bounce margin factor of 0, do not call get_bounce_margin_factor
                 max_unavailable = "100%"
@@ -488,14 +486,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return sanitise_kubernetes_name(sanitised)
 
     def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
-        return self.get_sanitised_volume_name(
-            "host--{name}".format(name=docker_volume["hostPath"])
-        )
+        return self.get_sanitised_volume_name(f"host--{docker_volume['hostPath']}")
 
     def get_persistent_volume_name(self, docker_volume: PersistentVolume) -> str:
-        return self.get_sanitised_volume_name(
-            "pv--{name}".format(name=docker_volume["container_path"])
-        )
+        return self.get_sanitised_volume_name(f"pv--{docker_volume['container_path']}")
 
     def get_aws_ebs_volume_name(self, aws_ebs_volume: AwsEbsVolume) -> str:
         return self.get_sanitised_volume_name(
@@ -830,7 +824,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 return self.get_max_instances()
         else:
             instances = self.config_dict.get("instances", 1)
-            log.debug("Autoscaling not enabled, returning %d instances" % instances)
+            log.debug(f"Autoscaling not enabled, returning {instances:d} instances")
             return instances
 
     def get_desired_instances(self) -> int:
@@ -1602,7 +1596,7 @@ class KubernetesDeployStatus:
         for k, v in vars(cls).items():
             if v == val:
                 return k
-        raise ValueError("Unknown Kubernetes deploy status %d" % val)
+        raise ValueError(f"Unknown Kubernetes deploy status {val:d}")
 
     @classmethod
     def fromstring(cls, _str: str) -> int:

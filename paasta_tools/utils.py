@@ -382,7 +382,7 @@ class InstanceConfig:
         """
         mem = self.get_mem()
         mem_swap = int(math.ceil(mem + 64))
-        return "%sm" % mem_swap
+        return f"{mem_swap}m"
 
     def get_cpus(self) -> float:
         """Gets the number of cpus required from the service's configuration.
@@ -476,8 +476,8 @@ class InstanceConfig:
         if with_labels:
             parameters.extend(
                 [
-                    {"key": "label", "value": "paasta_service=%s" % self.service},
-                    {"key": "label", "value": "paasta_instance=%s" % self.instance},
+                    {"key": "label", "value": f"paasta_service={self.service}"},
+                    {"key": "label", "value": f"paasta_instance={self.instance}"},
                 ]
             )
         extra_docker_args = self.get_extra_docker_args()
@@ -665,7 +665,7 @@ class InstanceConfig:
             if not isinstance(cpus, (float, int)):
                 return (
                     False,
-                    'The specified cpus value "%s" is not a valid float or int.' % cpus,
+                    f'The specified cpus value "{cpus}" is not a valid float or int.',
                 )
         return True, ""
 
@@ -675,7 +675,7 @@ class InstanceConfig:
             if not isinstance(mem, (float, int)):
                 return (
                     False,
-                    'The specified mem value "%s" is not a valid float or int.' % mem,
+                    f'The specified mem value "{mem}" is not a valid float or int.',
                 )
         return True, ""
 
@@ -685,7 +685,7 @@ class InstanceConfig:
             if not isinstance(disk, (float, int)):
                 return (
                     False,
-                    'The specified disk value "%s" is not a valid float or int.' % disk,
+                    f'The specified disk value "{disk}" is not a valid float or int.',
                 )
         return True, ""
 
@@ -701,7 +701,7 @@ class InstanceConfig:
         if outbound_firewall not in ("block", "monitor"):
             return (
                 False,
-                'Unrecognized outbound_firewall value "%s"' % outbound_firewall,
+                f'Unrecognized outbound_firewall value "{outbound_firewall}"',
             )
 
         unknown_keys = set(security.keys()) - {"outbound_firewall"}
@@ -750,7 +750,7 @@ class InstanceConfig:
         else:
             return (
                 False,
-                'Your service config specifies "%s", an unsupported parameter.' % param,
+                f'Your service config specifies "{param}", an unsupported parameter.',
             )
 
     def validate(
@@ -1139,7 +1139,7 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    default_location = "git@git.yelpcorp.com:services/%s" % service
+    default_location = f"git@git.yelpcorp.com:services/{service}"
     return general_config.get("git_url", default_location)
 
 
@@ -1370,7 +1370,7 @@ def format_audit_log_line(
 def get_log_name_for_service(service: str, prefix: str = None) -> str:
     if prefix:
         return f"stream_paasta_{prefix}_{service}"
-    return "stream_paasta_%s" % service
+    return f"stream_paasta_{service}"
 
 
 try:
@@ -1781,12 +1781,12 @@ def load_system_paasta_config(
     """
     if not os.path.isdir(path):
         raise PaastaNotConfiguredError(
-            "Could not find system paasta configuration directory: %s" % path
+            f"Could not find system paasta configuration directory: {path}"
         )
 
     if not os.access(path, os.R_OK):
         raise PaastaNotConfiguredError(
-            "Could not read from system paasta configuration directory: %s" % path
+            f"Could not read from system paasta configuration directory: {path}"
         )
 
     try:
@@ -1887,7 +1887,7 @@ class SystemPaastaConfig:
             return self.config_dict["volumes"]
         except KeyError:
             raise PaastaNotConfiguredError(
-                "Could not find volumes in configuration directory: %s" % self.directory
+                f"Could not find volumes in configuration directory: {self.directory}"
             )
 
     def get_cluster(self) -> str:
@@ -1899,7 +1899,7 @@ class SystemPaastaConfig:
             return self.config_dict["cluster"]
         except KeyError:
             raise PaastaNotConfiguredError(
-                "Could not find cluster in configuration directory: %s" % self.directory
+                f"Could not find cluster in configuration directory: {self.directory}"
             )
 
     def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
@@ -2409,7 +2409,7 @@ def atomic_file_write(target_path: str) -> Iterator[IO]:
         yield sys.stdout
     else:
         with tempfile.NamedTemporaryFile(
-            dir=dirname, prefix=(".%s-" % basename), delete=False, mode="w"
+            dir=dirname, prefix=(f".{basename}-"), delete=False, mode="w"
         ) as f:
             temp_target_path = f.name
             yield f
@@ -2469,7 +2469,7 @@ def decompose_job_id(job_id: str, spacer: str = SPACER) -> Tuple[str, str, str, 
         git_hash = decomposed[2]
         config_hash = decomposed[3]
     else:
-        raise InvalidJobNameError("invalid job id %s" % job_id)
+        raise InvalidJobNameError(f"invalid job id {job_id}")
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
@@ -2492,7 +2492,7 @@ def build_docker_tag(service: str, upstream_git_commit: str) -> str:
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
-    tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
+    tag = f"{build_docker_image_name(service)}:paasta-{upstream_git_commit}"
     return tag
 
 
@@ -2563,7 +2563,7 @@ def get_soa_cluster_deploy_files(
 
     search_re = r"/.*/(" + instance_types + r")-(" + valid_clusters + r")\.yaml$"
 
-    for yaml_file in glob.glob("%s/*.yaml" % service_path):
+    for yaml_file in glob.glob(f"{service_path}/*.yaml"):
         try:
             with open(yaml_file):
                 cluster_re_match = re.search(search_re, yaml_file)
@@ -2654,7 +2654,7 @@ def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
     )
     if not config:
         raise NoConfigurationForServiceError(
-            "No Tron configuration found for service %s" % service
+            f"No Tron configuration found for service {service}"
         )
     return config
 
@@ -2994,7 +2994,7 @@ def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
 
 
 def format_tag(tag: str) -> str:
-    return "refs/tags/%s" % tag
+    return f"refs/tags/{tag}"
 
 
 class NoDockerImageError(Exception):
@@ -3016,7 +3016,7 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
         json.dumps(config, sort_keys=True).encode("UTF-8")
         + (force_bounce or "").encode("UTF-8")
     )
-    return "config%s" % hasher.hexdigest()[:8]
+    return f"config{hasher.hexdigest()[:8]}"
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
@@ -3026,7 +3026,7 @@ def get_code_sha_from_dockerurl(docker_url: str) -> str:
     try:
         parts = docker_url.split("/")
         parts = parts[-1].split("-")
-        return "git%s" % parts[-1][:8]
+        return f"git{parts[-1][:8]}"
     except Exception:
         return "gitUNKNOWN"
 

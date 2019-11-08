@@ -52,7 +52,7 @@ def test_get_git_url_provided_by_serviceyaml():
 
 def test_get_git_url_default():
     service = "giiiiiiiiiiit"
-    expected = "git@git.yelpcorp.com:services/%s" % service
+    expected = f"git@git.yelpcorp.com:services/{service}"
     with (
         mock.patch(
             "service_configuration_lib.read_service_configuration", autospec=True
@@ -275,7 +275,7 @@ except ImportError:
 
 def test_get_log_name_for_service():
     service = "foo"
-    expected = "stream_paasta_%s" % service
+    expected = f"stream_paasta_{service}"
     assert utils.get_log_name_for_service(service) == expected
 
 
@@ -336,9 +336,7 @@ def test_load_system_paasta_config_file_non_existent_dir():
     with mock.patch("os.path.isdir", return_value=False, autospec=True):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
-        expected = (
-            "Could not find system paasta configuration directory: %s" % fake_path
-        )
+        expected = f"Could not find system paasta configuration directory: {fake_path}"
         assert str(excinfo.value) == expected
 
 
@@ -350,7 +348,7 @@ def test_load_system_paasta_config_file_non_readable_dir():
         with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         expected = (
-            "Could not read from system paasta configuration directory: %s" % fake_path
+            f"Could not read from system paasta configuration directory: {fake_path}"
         )
         assert str(excinfo.value) == expected
 
@@ -766,7 +764,7 @@ def test_missing_cluster_configs_are_ignored():
     )
     expected = []
     with mock.patch(
-        "os.path.join", autospec=True, return_value="%s/*" % fake_soa_dir
+        "os.path.join", autospec=True, return_value=f"{fake_soa_dir}/*"
     ) as mock_join_path, mock.patch(
         "glob.glob", autospec=True, return_value=fake_cluster_configs
     ) as mock_glob, mock.patch(
@@ -777,7 +775,7 @@ def test_missing_cluster_configs_are_ignored():
         actual = utils.list_clusters(soa_dir=fake_soa_dir)
         assert actual == expected
         mock_join_path.assert_called_once_with(fake_soa_dir, "*")
-        mock_glob.assert_called_once_with("%s/*/*.yaml" % fake_soa_dir)
+        mock_glob.assert_called_once_with(f"{fake_soa_dir}/*/*.yaml")
 
 
 def test_list_clusters_no_service_given_lists_all_of_them():

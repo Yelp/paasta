@@ -28,7 +28,7 @@ def main(hostnames: Sequence[str]) -> None:
     try:
         mesos_state = block(master.state)
     except MasterNotAvailableException as e:
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        paasta_print(PaastaColors.red(f"CRITICAL:  {e.message}"))
         sys.exit(2)
     slaves = [
         slave

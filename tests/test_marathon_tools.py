@@ -2893,7 +2893,7 @@ def test_get_app_queue_status():
     fake_delay = 100
     client = mock.create_autospec(marathon.MarathonClient)
     queue_item = mock.create_autospec(marathon.models.queue.MarathonQueueItem)
-    queue_item.app = mock.Mock(id="/%s" % fake_app_id)
+    queue_item.app = mock.Mock(id=f"/{fake_app_id}")
     queue_item.delay = mock.Mock(overdue=False, time_left_seconds=fake_delay)
     client.list_queue.return_value = [queue_item]
 

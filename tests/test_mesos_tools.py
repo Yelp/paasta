@@ -396,7 +396,7 @@ def test_get_paasta_execute_docker_healthcheck():
         },
         {
             "Config": {
-                "Env": ["fake_key2=fake_value2", "MESOS_TASK_ID=%s" % fake_mesos_id]
+                "Env": ["fake_key2=fake_value2", f"MESOS_TASK_ID={fake_mesos_id}"]
             },
             "Id": fake_container_id,
         },
@@ -543,9 +543,7 @@ async def test_format_stdstreams_tail_for_task(test_case,):
             # reverse sort because stdout is supposed to always come before stderr in the output
             files.sort(key=lambda f: f[0], reverse=True)
             for f in files:
-                output.append(
-                    "    " + PaastaColors.blue("{} tail for {}".format(f[0], task_id))
-                )
+                output.append("    " + PaastaColors.blue(f"{f[0]} tail for {task_id}"))
                 output.extend(f"      {line}" for line in f[1][-nlines:])
         else:
             output.append(error_message % (task_id, raise_what.__name__))

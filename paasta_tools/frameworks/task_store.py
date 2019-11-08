@@ -176,7 +176,7 @@ class ZKTaskStore(TaskStore):
     def _get_task(self, task_id: str) -> Tuple[MesosTaskParameters, ZnodeStat]:
         """Like get_task, but also returns the ZnodeStat that self.zk_client.get() returns """
         try:
-            data, stat = self.zk_client.get("/%s" % task_id)
+            data, stat = self.zk_client.get(f"/{task_id}")
             return MesosTaskParameters.deserialize(data), stat
         except NoNodeError:
             return None, None
@@ -239,7 +239,7 @@ class ZKTaskStore(TaskStore):
             )
 
     def _zk_path_from_task_id(self, task_id: str) -> str:
-        return "/%s" % task_id
+        return f"/{task_id}"
 
     def _task_id_from_zk_path(self, zk_path: str) -> str:
         return zk_path.lstrip("/")

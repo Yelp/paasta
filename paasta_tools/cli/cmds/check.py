@@ -100,7 +100,7 @@ def docker_check():
 def makefile_responds_to(target):
     """Runs `make --dry-run <target>` to detect if a makefile responds to the
     specified target."""
-    cmd = "make --dry-run %s" % target
+    cmd = f"make --dry-run {target}"
     # According to http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make,
     # 0 means OK, and 2 means error
     returncode, _ = _run(cmd, timeout=5)
@@ -154,7 +154,7 @@ def makefile_check():
 
 def git_repo_check(service, soa_dir):
     git_url = get_git_url(service, soa_dir)
-    cmd = "git ls-remote %s" % git_url
+    cmd = f"git ls-remote {git_url}"
     returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
         paasta_print(PaastaCheckMessages.GIT_REPO_FOUND)
@@ -251,7 +251,7 @@ def deployments_check(service, soa_dir):
             if len(framework_deploy_groups[it]) > 0:
                 paasta_print(
                     success(
-                        "All %s instances have a corresponding deploy.yaml entry" % it
+                        f"All {it} instances have a corresponding deploy.yaml entry"
                     )
                 )
     return the_return

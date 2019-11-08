@@ -108,7 +108,7 @@ def get_check_from_overrides(overrides, default_check, groupings):
         return checks[0]
     else:
         group_string = ", ".join([f"{k}: {v}" for k, v in groupings.items()])
-        paasta_print("UNKNOWN Multiple overrides specified for %s" % group_string)
+        paasta_print(f"UNKNOWN Multiple overrides specified for {group_string}")
         sys.exit(3)
 
 
@@ -142,7 +142,7 @@ def run_capacity_check():
     try:
         resource_use = client.resources.resources(groupings=attributes).result()
     except HTTPError as e:
-        paasta_print("UNKNOWN received exception from paasta api:\n\t%s" % e)
+        paasta_print(f"UNKNOWN received exception from paasta api:\n\t{e}")
         sys.exit(3)
 
     default_check = {

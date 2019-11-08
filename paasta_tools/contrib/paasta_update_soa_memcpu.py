@@ -236,7 +236,7 @@ def main(argv=None):
     services_to_update = get_perf_data(args.splunk_creds, args.file_splunk)
 
     for serv in services_to_update:
-        filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
+        filename = f"{serv['service']}/{serv['cluster']}.yaml"
         cpus = float(serv["cpus"])
         provisioned_state = "over"
         if cpus > float(serv["old_cpus"]):
@@ -276,7 +276,7 @@ def main(argv=None):
         summary = f"Rightsizing {serv['service']}.{serv['instance']} in {serv['cluster']} to make it not have {provisioned_state}-provisioned cpu"  # noqa: E501
         branch = ""
         if args.no_tick:
-            branch = "rightsize-{}".format(int(time.time()))
+            branch = f"rightsize-{int(time.time())}"
         else:
             branch = create_jira_ticket(serv, args.jira_creds, ticket_desc)
 

@@ -116,7 +116,7 @@ def test_check_deploy_check_pass(mock_is_file_in_dir, capfd):
     mock_is_file_in_dir.return_value = True
 
     deploy_check("service_path")
-    expected_output = "%s\n" % PaastaCheckMessages.DEPLOY_YAML_FOUND
+    expected_output = f"{PaastaCheckMessages.DEPLOY_YAML_FOUND}\n"
 
     output, _ = capfd.readouterr()
     assert output == expected_output
@@ -129,7 +129,7 @@ def test_check_deploy_check_fail(mock_is_file_in_dir, capfd):
     mock_is_file_in_dir.return_value = False
 
     deploy_check("service_path")
-    expected_output = "%s\n" % PaastaCheckMessages.DEPLOY_YAML_MISSING
+    expected_output = f"{PaastaCheckMessages.DEPLOY_YAML_MISSING}\n"
 
     output, _ = capfd.readouterr()
     assert output == expected_output
@@ -200,7 +200,7 @@ def test_check_sensu_check_fail(mock_is_file_in_dir, capfd):
     # monitoring.yaml doest exist
 
     mock_is_file_in_dir.return_value = False
-    expected_output = "%s\n" % PaastaCheckMessages.SENSU_MONITORING_MISSING
+    expected_output = f"{PaastaCheckMessages.SENSU_MONITORING_MISSING}\n"
 
     sensu_check(service="fake_service", service_path="path", soa_dir="path")
 

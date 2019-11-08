@@ -68,7 +68,7 @@ class TestLongRunningServiceConfig:
         ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
             expected = (
                 "http",
-                "http://%s:%d%s" % (fake_hostname, fake_random_port, fake_path),
+                f"http://{fake_hostname}:{fake_random_port:d}{fake_path}",
             )
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port
@@ -123,7 +123,7 @@ class TestLongRunningServiceConfig:
             autospec=True,
             return_value=fake_service_namespace_config,
         ), mock.patch("socket.getfqdn", autospec=True, return_value=fake_hostname):
-            expected = ("tcp", "tcp://%s:%d" % (fake_hostname, fake_random_port))
+            expected = ("tcp", f"tcp://{fake_hostname}:{fake_random_port:d}")
             actual = long_running_service_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_service_config, fake_random_port
             )

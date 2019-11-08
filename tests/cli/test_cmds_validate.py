@@ -597,7 +597,7 @@ def test_check_service_path_none(capsys):
     assert not check_service_path(service_path)
 
     output, _ = capsys.readouterr()
-    assert "%s is not a directory" % service_path in output
+    assert f"{service_path} is not a directory" in output
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
@@ -607,7 +607,7 @@ def test_check_service_path_empty(mock_isdir, capsys):
     assert not check_service_path(service_path)
 
     output, _ = capsys.readouterr()
-    assert "%s does not contain any .yaml files" % service_path in output
+    assert f"{service_path} does not contain any .yaml files" in output
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)

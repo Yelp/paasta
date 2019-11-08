@@ -329,7 +329,7 @@ def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
         service,
         "fake_instance",
         "marathon",
-        "fake message with service name %s" % service,
+        f"fake message with service name {service}",
     )
     with mock.patch(
         "paasta_tools.cli.cmds.logs.format_job_id", autospec=True
@@ -374,7 +374,7 @@ def test_extract_utc_timestamp_from_log_line_ok():
     fake_timestamp = "2015-07-22T10:38:46-07:00"
     fake_utc_timestamp = isodate.parse_datetime("2015-07-22T17:38:46.000000")
 
-    line = "%s this is a fake syslog test message" % fake_timestamp
+    line = f"{fake_timestamp} this is a fake syslog test message"
     assert logs.extract_utc_timestamp_from_log_line(line) == fake_utc_timestamp
 
 
@@ -397,7 +397,7 @@ def test_parse_marathon_log_line_ok():
     fake_utc_timestamp = "2015-07-22T17:38:46.000000"
     fake_service = "fake_service"
 
-    line = "%s this is a fake syslog test message" % fake_timestamp
+    line = f"{fake_timestamp} this is a fake syslog test message"
     clusters = ["fake_cluster"]
     expected = json.dumps(
         {
@@ -587,7 +587,7 @@ def test_scribe_tail_handles_StreamTailerSetupError():
                 filter_fn,
             )
         mock_log.error.assert_any_call(
-            "Failed to setup stream tailing for %s in fake_env" % stream_name
+            f"Failed to setup stream tailing for {stream_name} in fake_env"
         )
 
 
@@ -629,7 +629,7 @@ def test_prettify_level_less_than_or_equal_to_one_requested_levels():
 def test_prettify_log_line_invalid_json():
     line = "i am not json"
     levels = []
-    assert logs.prettify_log_line(line, levels) == "Invalid JSON: %s" % line
+    assert logs.prettify_log_line(line, levels) == f"Invalid JSON: {line}"
 
 
 def test_prettify_log_line_valid_json_missing_key():
@@ -638,7 +638,7 @@ def test_prettify_log_line_valid_json_missing_key():
     )
     levels = []
     actual = logs.prettify_log_line(line, levels)
-    assert "JSON missing keys: %s" % line in actual
+    assert f"JSON missing keys: {line}" in actual
 
 
 def test_prettify_log_line_valid_json():

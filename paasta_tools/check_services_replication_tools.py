@@ -58,7 +58,7 @@ def parse_args() -> argparse.Namespace:
         "service_instance_list",
         nargs="*",
         help="The list of service instances to check",
-        metavar="SERVICE%sINSTANCE" % SPACER,
+        metavar=f"SERVICE{SPACER}INSTANCE",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False

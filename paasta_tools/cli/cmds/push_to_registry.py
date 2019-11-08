@@ -131,12 +131,12 @@ def paasta_push_to_registry(args):
         loglevel="debug",
     )
     if returncode != 0:
-        loglines.append("ERROR: Failed to promote image for %s." % args.commit)
+        loglines.append(f"ERROR: Failed to promote image for {args.commit}.")
         output = get_jenkins_build_output_url()
         if output:
-            loglines.append("See output: %s" % output)
+            loglines.append(f"See output: {output}")
     else:
-        loglines.append("Successfully pushed image for %s to registry" % args.commit)
+        loglines.append(f"Successfully pushed image for {args.commit} to registry")
         _log_audit(
             action="push-to-registry",
             action_details={"commit": args.commit},

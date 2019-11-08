@@ -100,10 +100,10 @@ class Timer(TimerProtocol):
         self.name = name
 
     def start(self) -> None:
-        log.debug("timer {} start at {}".format(self.name, time.time()))
+        log.debug(f"timer {self.name} start at {time.time()}")
 
     def stop(self) -> None:
-        log.debug("timer {} stop at {}".format(self.name, time.time()))
+        log.debug(f"timer {self.name} stop at {time.time()}")
 
     def record(self, value: float) -> None:
         log.debug(f"timer {self.name} record value {value}")

@@ -90,12 +90,12 @@ def update_autoscaler_count(request):
     if desired_instances > max_instances:
         desired_instances = max_instances
         status = (
-            "WARNING desired_instances is greater than max_instances %d" % max_instances
+            f"WARNING desired_instances is greater than max_instances {max_instances:d}"
         )
     elif desired_instances < min_instances:
         desired_instances = min_instances
         status = (
-            "WARNING desired_instances is less than min_instances %d" % min_instances
+            f"WARNING desired_instances is less than min_instances {min_instances:d}"
         )
 
     response_body = {"desired_instances": desired_instances, "status": status}

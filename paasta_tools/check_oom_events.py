@@ -123,9 +123,7 @@ def compose_sensu_status(instance, oom_events, is_check_enabled):
     if not is_check_enabled:
         return (
             Status.OK,
-            "This check is disabled for {}.{}.".format(
-                instance.service, instance.instance
-            ),
+            f"This check is disabled for {instance.service}.{instance.instance}.",
         )
     if len(oom_events) == 0:
         return (
@@ -175,7 +173,7 @@ def send_sensu_event(instance, oom_events, args):
             "alert_after": "0m",
             "realert_every": args.realert_every,
             "runbook": "y/check-oom-events",
-            "tip": "Try bumping the memory limit past %s" % memory_limit_str,
+            "tip": f"Try bumping the memory limit past {memory_limit_str}",
         }
     )
     return monitoring_tools.send_event(

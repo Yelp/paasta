@@ -194,13 +194,13 @@ def build_component_descriptions(components):
     based on its help attribute"""
     output = []
     for k, v in components.items():
-        output.append("     {}: {}".format(v["color"](k), v["help"]))
+        output.append(f"     {v['color'](k)}: {v['help']}")
     return "\n".join(output)
 
 
 def prefix(input_string, component):
     """Returns a colored string with the right colored prefix with a given component"""
-    return "{}: {}".format(LOG_COMPONENTS[component]["color"](component), input_string)
+    return f"{LOG_COMPONENTS[component]['color'](component)}: {input_string}"
 
 
 # The reason this returns true if start_time or end_time are None is because
@@ -242,7 +242,7 @@ def paasta_log_line_passes_filter(
     try:
         parsed_line = json.loads(line)
     except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
+        log.debug(f"Trouble parsing line as json. Skipping. Line: {line!r}")
         return False
 
     timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
@@ -272,7 +272,7 @@ def paasta_app_output_passes_filter(
     try:
         parsed_line = json.loads(line)
     except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
+        log.debug(f"Trouble parsing line as json. Skipping. Line: {line!r}")
         return False
     try:
         timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
@@ -346,7 +346,7 @@ def marathon_log_line_passes_filter(
     try:
         parsed_line = json.loads(line)
     except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
+        log.debug(f"Trouble parsing line as json. Skipping. Line: {line!r}")
         return False
 
     timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
@@ -378,9 +378,9 @@ def prettify_timestamp(timestamp):
 
 def prettify_component(component):
     try:
-        return LOG_COMPONENTS[component]["color"]("[%s]" % component)
+        return LOG_COMPONENTS[component]["color"](f"[{component}]")
     except KeyError:
-        return "UNPRETTIFIABLE COMPONENT %s" % component
+        return f"UNPRETTIFIABLE COMPONENT {component}"
 
 
 def prettify_level(level, requested_levels):
@@ -395,9 +395,9 @@ def prettify_level(level, requested_levels):
     pretty_level = ""
     if len(requested_levels) > 1:
         if level == "event":
-            pretty_level = PaastaColors.bold("[%s] " % level)
+            pretty_level = PaastaColors.bold(f"[{level}] ")
         else:
-            pretty_level = PaastaColors.grey("[%s] " % level)
+            pretty_level = PaastaColors.grey(f"[{level}] ")
     return pretty_level
 
 
@@ -408,8 +408,8 @@ def prettify_log_line(line, requested_levels):
     try:
         parsed_line = json.loads(line)
     except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
-        return "Invalid JSON: %s" % line
+        log.debug(f"Trouble parsing line as json. Skipping. Line: {line!r}")
+        return f"Invalid JSON: {line}"
 
     try:
         pretty_level = prettify_level(parsed_line["level"], requested_levels)
@@ -428,9 +428,9 @@ def prettify_log_line(line, requested_levels):
         )
     except KeyError:
         log.debug(
-            "JSON parsed correctly but was missing a key. Skipping. Line: %r" % line
+            f"JSON parsed correctly but was missing a key. Skipping. Line: {line!r}"
         )
-        return "JSON missing keys: %s" % line
+        return f"JSON missing keys: {line}"
 
 
 # The map of name -> LogReader subclasses, used by configure_log.
@@ -546,7 +546,7 @@ class ScribeLogReader(LogReader):
         ),
         "marathon": ScribeComponentStreamInfo(
             per_cluster=True,
-            stream_name_fn=lambda service, cluster: "stream_marathon_%s" % cluster,
+            stream_name_fn=lambda service, cluster: f"stream_marathon_{cluster}",
             filter_fn=marathon_log_line_passes_filter,
             parse_fn=parse_marathon_log_line,
         ),
@@ -573,7 +573,7 @@ class ScribeLogReader(LogReader):
         scribe_envs: Set[str] = set()
         for cluster in clusters:
             scribe_envs.update(self.determine_scribereader_envs(components, cluster))
-        log.debug("Connect to these scribe envs to tail scribe logs: %s" % scribe_envs)
+        log.debug(f"Connect to these scribe envs to tail scribe logs: {scribe_envs}")
 
         for scribe_env in scribe_envs:
             # These components all get grouped in one call for backwards compatibility
@@ -1022,7 +1022,7 @@ class ScribeLogReader(LogReader):
         """
         env = self.cluster_map.get(cluster, None)
         if env is None:
-            paasta_print("I don't know where scribe logs for %s live?" % cluster)
+            paasta_print(f"I don't know where scribe logs for {cluster} live?")
             sys.exit(1)
         else:
             return env

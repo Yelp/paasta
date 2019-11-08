@@ -113,7 +113,7 @@ def test_find_connectable_master_all_failures(mock_check_ssh_on_master):
 def test_check_ssh_on_master_check_successful(mock_run):
     master = "fake_master"
     mock_run.return_value = (0, "fake_output")
-    expected_command = "ssh -A -n -o StrictHostKeyChecking=no %s /bin/true" % master
+    expected_command = f"ssh -A -n -o StrictHostKeyChecking=no {master} /bin/true"
 
     actual = utils.check_ssh_on_master(master)
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
@@ -319,7 +319,7 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
         "status", cluster, service, instancename, system_paasta_config
     )
     assert mock_check_ssh_on_master.call_count == 0
-    assert "ERROR: could not find connectable master in cluster %s" % cluster in actual
+    assert f"ERROR: could not find connectable master in cluster {cluster}" in actual
     assert return_code == 255
     assert "fake_err_msg" in actual
 
@@ -373,7 +373,7 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
         cluster, system_paasta_config, [], 0
     )
     assert mock_check_ssh_on_master.call_count == 0
-    assert "ERROR: could not find connectable master in cluster %s" % cluster in actual
+    assert f"ERROR: could not find connectable master in cluster {cluster}" in actual
     assert return_code == 255
     assert "fake_err_msg" in actual
 

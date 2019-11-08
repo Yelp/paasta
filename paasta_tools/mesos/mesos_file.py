@@ -55,7 +55,7 @@ class File:
         return f"{self._where}:{self.path}"
 
     def key(self):
-        return "{}:{}".format(self.host.key(), self._host_path)
+        return f"{self.host.key()}:{self._host_path}"
 
     @property
     def _where(self):

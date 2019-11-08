@@ -81,7 +81,7 @@ def alert_state_change(application: Application, soa_dir: str) -> Generator:
         )
 
     except Exception:
-        loglines = ["Exception raised during cleanup of service %s:" % application]
+        loglines = [f"Exception raised during cleanup of service {application}:"]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             _log(
@@ -127,9 +127,9 @@ def cleanup_unused_apps(
         not in valid_services
     ]
 
-    log.debug("Running apps: %s" % applications)
-    log.debug("Valid apps: %s" % valid_services)
-    log.debug("Terminating: %s" % applications_to_kill)
+    log.debug(f"Running apps: {applications}")
+    log.debug(f"Valid apps: {valid_services}")
+    log.debug(f"Terminating: {applications_to_kill}")
     if applications_to_kill:
         above_kill_threshold = float(len(applications_to_kill)) / float(
             len(applications)

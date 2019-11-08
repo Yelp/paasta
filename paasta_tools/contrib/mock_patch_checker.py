@@ -23,10 +23,10 @@ class MockChecker(ast.NodeVisitor):
                 try:
                     file_ast = ast.parse(fd.read())
                 except SyntaxError as error:
-                    print("SyntaxError on file %s:%d" % (filename, error.lineno))
+                    print(f"SyntaxError on file {filename}:{error.lineno:d}")
                     return
         except IOError:
-            print("Error opening filename: %s" % filename)
+            print(f"Error opening filename: {filename}")
             return
         self.init_module_imports()
         self.visit(file_ast)

@@ -36,7 +36,7 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
     is way too terse"""
 
     def error(self, message):
-        paasta_print("Argument parse error: %s" % message)
+        paasta_print(f"Argument parse error: {message}")
         self.print_help()
         sys.exit(1)
 
@@ -80,7 +80,7 @@ def add_subparser(command, subparsers):
 
     :param command: a simple string - e.g. 'list'
     :param subparsers: an ArgumentParser object"""
-    module_name = "paasta_tools.cli.cmds.%s" % command
+    module_name = f"paasta_tools.cli.cmds.{command}"
     add_subparser_fn = load_method(module_name, "add_subparser")
     add_subparser_fn(subparsers)
 

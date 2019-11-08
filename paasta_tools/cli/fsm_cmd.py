@@ -82,7 +82,7 @@ def get_paasta_config(yelpsoa_config_root):
 
 
 def write_paasta_config(variables, template, destination):
-    paasta_print("Using cookiecutter template from %s" % template)
+    paasta_print(f"Using cookiecutter template from {template}")
     with make_copyfile_symlink_aware():
         cookiecutter(
             template=template,

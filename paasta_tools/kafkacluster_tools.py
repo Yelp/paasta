@@ -101,7 +101,7 @@ def load_kafkacluster_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    kafkacluster_conf_file = "kafkacluster-%s" % cluster
+    kafkacluster_conf_file = f"kafkacluster-{cluster}"
     instance_configs = service_configuration_lib.read_extra_service_information(
         service, kafkacluster_conf_file, soa_dir=soa_dir
     )

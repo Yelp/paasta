@@ -155,7 +155,7 @@ class ClusterAutoscaler:
         self.enable_metrics = enable_metrics
         self.enable_maintenance_reservation = enable_maintenance_reservation
 
-        self.log.info("Initialized with utilization error %s" % self.utilization_error)
+        self.log.info(f"Initialized with utilization error {self.utilization_error}")
         config = load_system_paasta_config()
         self.slave_newness_threshold = config.get_monitoring_config().get(
             "check_registered_slave_threshold"
@@ -321,7 +321,7 @@ class ClusterAutoscaler:
             return
         if not dry_run:
             os.remove(configs_to_delete[0])
-        self.log.info("Deleted Resource config {}".format(configs_to_delete[0]))
+        self.log.info(f"Deleted Resource config {configs_to_delete[0]}")
 
     def get_aws_slaves(self, mesos_state: MesosState) -> Mapping[str, Mapping]:
         instance_ips = self.get_instance_ips(
@@ -393,9 +393,7 @@ class ClusterAutoscaler:
             return False
         if await a_sync.run(is_safe_to_kill, hostname):
             self.log.info(
-                "Slave {} is ready to kill, with {} left on timer".format(
-                    hostname, timer.left()
-                )
+                f"Slave {hostname} is ready to kill, with {timer.left()} left on timer"
             )
             timer.start()
             return True
@@ -610,9 +608,7 @@ class ClusterAutoscaler:
         except ClientError as e:
             self.log.error(f"Failure when terminating: {slave_to_kill.pid}: {e}")
             self.log.error(
-                "Setting resource capacity back to {}".format(
-                    self.capacity - capacity_diff
-                )
+                f"Setting resource capacity back to {(self.capacity - capacity_diff)}"
             )
             self.set_capacity(self.capacity - capacity_diff)
             self.log.info(f"Undraining {slave_to_kill.pid}")
@@ -740,7 +736,7 @@ class ClusterAutoscaler:
         current_capacity: float,
         target_capacity: int,
     ) -> None:
-        self.log.info("downscale_aws_resource for %s" % filtered_slaves)
+        self.log.info(f"downscale_aws_resource for {filtered_slaves}")
         killed_slaves = 0
         terminate_tasks = {}
         self.capacity = current_capacity
@@ -790,7 +786,7 @@ class ClusterAutoscaler:
                     break
 
             capacity_diff = new_capacity - current_capacity
-            self.log.info("Starting async kill for %s" % slave_to_kill.hostname)
+            self.log.info(f"Starting async kill for {slave_to_kill.hostname}")
             # My understanding is that ensure_future will actually start running the coroutine
             #  (gracefully_terminate_slave), until it hits something that sleeps, then the loop
             #  can continue and we start killing the next slave
@@ -879,7 +875,7 @@ class SpotAutoscaler(ClusterAutoscaler):
         CHECK_REGISTERED_SLAVE_THRESHOLD.
         """
         if not self.sfr:
-            self.log.warn("Cannot find SFR {}".format(self.resource["id"]))
+            self.log.warn(f"Cannot find SFR {self.resource['id']}")
             return True
 
         now = datetime.now(timezone.utc)
@@ -986,9 +982,9 @@ class SpotAutoscaler(ClusterAutoscaler):
         )
         new_capacity = max(new_capacity, self.resource["min_capacity"])
         self.log.debug(
-            "The ideal capacity to scale to is %d instances" % self.ideal_capacity
+            f"The ideal capacity to scale to is {self.ideal_capacity:d} instances"
         )
-        self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
+        self.log.debug(f"The capacity we will scale to is {new_capacity:d} instances")
         if self.ideal_capacity > self.resource["max_capacity"]:
             self.log.warning(
                 "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!"
@@ -1094,7 +1090,7 @@ class AsgAutoscaler(ClusterAutoscaler):
         """
         if not self.asg:
             self.log.warning(
-                "ASG {} not found, removing config file".format(self.resource["id"])
+                f"ASG {self.resource['id']} not found, removing config file"
             )
             return True
 
@@ -1117,7 +1113,7 @@ class AsgAutoscaler(ClusterAutoscaler):
     def metrics_provider(self, mesos_state: MesosState) -> Tuple[int, int]:
         if not self.asg:
             self.log.warning(
-                "ASG {} not found, removing config file".format(self.resource["id"])
+                f"ASG {self.resource['id']} not found, removing config file"
             )
             self.cleanup_cancelled_config(
                 self.resource["id"], self.config_folder, dry_run=self.dry_run
@@ -1179,9 +1175,9 @@ class AsgAutoscaler(ClusterAutoscaler):
             )
         new_capacity = max(new_capacity, self.resource["min_capacity"])
         self.log.debug(
-            "The ideal capacity to scale to is %d instances" % self.ideal_capacity
+            f"The ideal capacity to scale to is {self.ideal_capacity:d} instances"
         )
-        self.log.debug("The capacity we will scale to is %d instances" % new_capacity)
+        self.log.debug(f"The capacity we will scale to is {new_capacity:d} instances")
         if self.ideal_capacity > self.resource["max_capacity"]:
             self.log.warning(
                 "Our ideal capacity (%d) is higher than max_capacity (%d). Consider raising max_capacity!"
@@ -1328,7 +1324,7 @@ async def autoscale_local_cluster(
         mesos_state=mesos_state,
         system_config=system_config,
     )
-    log.info("Utilization errors: %s" % utilization_errors)
+    log.info(f"Utilization errors: {utilization_errors}")
     autoscaling_scalers: DefaultDict[
         Tuple[str, str], List[ClusterAutoscaler]
     ] = defaultdict(list)
@@ -1412,7 +1408,7 @@ def filter_scalers(
                 "There are cancelled resources in pool %s, skipping active resources"
                 % pool
             )
-            log.info("Skipped: %s" % skipped)
+            log.info(f"Skipped: {skipped}")
         else:
             filtered_autoscaling_scalers += scalers
 
@@ -1446,17 +1442,13 @@ def get_scaler(scaler_type: str,) -> Type[ClusterAutoscaler]:
 async def autoscale_cluster_resource(
     scaler: ClusterAutoscaler, mesos_state: MesosState
 ) -> None:
-    log.info(
-        "Autoscaling {} in pool, {}".format(
-            scaler.resource["id"], scaler.resource["pool"]
-        )
-    )
+    log.info(f"Autoscaling {scaler.resource['id']} in pool, {scaler.resource['pool']}")
     try:
         current, target = scaler.metrics_provider(mesos_state)
         log.info(f"Target capacity: {target}, Capacity current: {current}")
         await scaler.scale_resource(current, target)
     except ClusterAutoscalingError as e:
-        log.error("{}: {}".format(scaler.resource["id"], e))
+        log.error(f"{scaler.resource['id']}: {e}")
 
 
 def get_instances_from_ip(
@@ -1532,7 +1524,7 @@ def autoscaling_info_for_resource(
         utilization_error=utilization_errors[(resource["region"], resource["pool"])],
     )
     if not scaler.exists:
-        log.info("no scaler for resource {}. ignoring".format(resource["id"]))
+        log.info(f"no scaler for resource {resource['id']}. ignoring")
         return None
     target_capacity: Union[int, str]
     try:

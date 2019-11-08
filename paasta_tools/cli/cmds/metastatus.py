@@ -172,7 +172,7 @@ def print_cluster_status(
         use_mesos_cache=use_mesos_cache,
     )
 
-    paasta_print("Cluster: %s" % cluster)
+    paasta_print(f"Cluster: {cluster}")
     paasta_print(get_cluster_dashboards(cluster))
     paasta_print(output)
     paasta_print()
@@ -195,7 +195,7 @@ def get_cluster_dashboards(cluster: str,) -> str:
         dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
     except KeyError as e:
         if e.args[0] == cluster:
-            output = [PaastaColors.red("No dashboards configured for %s!" % cluster)]
+            output = [PaastaColors.red(f"No dashboards configured for {cluster}!")]
         else:
             output = [PaastaColors.red("No dashboards configured!")]
     else:
@@ -239,8 +239,6 @@ def paasta_metastatus(args,) -> int:
                 )
             )
         else:
-            paasta_print(
-                "Cluster %s doesn't look like a valid cluster?" % args.clusters
-            )
+            paasta_print(f"Cluster {args.clusters} doesn't look like a valid cluster?")
             paasta_print("Try using tab completion to help complete the cluster name")
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1

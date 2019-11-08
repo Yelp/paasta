@@ -34,9 +34,7 @@ def test_run_success(
 
     mock_log_audit.assert_called_once_with(
         action="cook-image",
-        action_details={
-            "tag": "paasta-cook-image-fake_service-{}".format(get_username())
-        },
+        action_details={"tag": f"paasta-cook-image-fake_service-{get_username()}"},
         service="fake_service",
     )
 

@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
         "service_instance_list",
         nargs="+",
         help="The list of marathon service instances to create or update",
-        metavar="SERVICE%sINSTANCE" % SPACER,
+        metavar=f"SERVICE{SPACER}INSTANCE",
     )
     parser.add_argument(
         "-d",
@@ -97,7 +97,7 @@ def validate_job_name(service_instance: str) -> bool:
         service, instance, _, __ = decompose_job_id(service_instance)
     except InvalidJobNameError:
         log.error(
-            "Invalid service instance specified. Format is service%sinstance." % SPACER
+            f"Invalid service instance specified. Format is service{SPACER}instance."
         )
         return False
     return True

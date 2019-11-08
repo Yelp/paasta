@@ -81,7 +81,7 @@ def paasta_itest(args):
 
     _log(
         service=service,
-        line="starting itest for %s." % args.commit,
+        line=f"starting itest for {args.commit}.",
         component="build",
         level="event",
     )
@@ -95,14 +95,14 @@ def paasta_itest(args):
         loglevel="debug",
     )
     if returncode != 0:
-        loglines.append("ERROR: itest failed for %s." % args.commit)
+        loglines.append(f"ERROR: itest failed for {args.commit}.")
         output = get_jenkins_build_output_url()
         if output:
-            loglines.append("See output: %s" % output)
+            loglines.append(f"See output: {output}")
     else:
-        loglines.append("itest passed for %s." % args.commit)
+        loglines.append(f"itest passed for {args.commit}.")
         if not check_docker_image(service, args.commit):
-            loglines.append("ERROR: itest has not created %s" % tag)
+            loglines.append(f"ERROR: itest has not created {tag}")
             returncode = 1
     for logline in loglines:
         _log(service=service, line=logline, component="build", level="event")

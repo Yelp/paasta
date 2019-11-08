@@ -211,7 +211,7 @@ def main() -> None:
             try:
                 version = get_deployment_version(actual_deployments, cluster, instance)
                 paasta_print("instance: %s" % PaastaColors.blue(instance))
-                paasta_print("Git sha:    %s (desired)" % version)
+                paasta_print(f"Git sha:    {version} (desired)")
 
                 if instance_type == "marathon":
                     return_code = marathon_serviceinit.perform_command(

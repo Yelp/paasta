@@ -72,7 +72,7 @@ UNKNOWN_SERVICE = (
 
 def invalid_tron_namespace(cluster, output, filename):
     return failure(
-        "%s is invalid:\n  %s\n  " "More info:" % (filename, output),
+        f"{filename} is invalid:\n  {output}\n  More info:",
         "http://tron.readthedocs.io/en/latest/jobs.html",
     )
 
@@ -101,7 +101,7 @@ def get_schema(file_type):
 
     :param file_type: what schema type should we validate against
     """
-    schema_path = "schemas/%s_schema.json" % file_type
+    schema_path = f"schemas/{file_type}_schema.json"
     try:
         schema = pkgutil.get_data("paasta_tools.cli", schema_path).decode()
     except IOError:
@@ -181,7 +181,7 @@ def validate_schema(file_path, file_type):
         paasta_print(f"{SCHEMA_INVALID}: {file_path}")
 
         errors = validator.iter_errors(config_file_object)
-        paasta_print("  Validation Message: %s" % exceptions.best_match(errors).message)
+        paasta_print(f"  Validation Message: {exceptions.best_match(errors).message}")
     except Exception as e:
         paasta_print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
         return
@@ -242,7 +242,7 @@ def check_service_path(service_path):
     if not service_path or not os.path.isdir(service_path):
         paasta_print(
             failure(
-                "%s is not a directory" % service_path,
+                f"{service_path} is not a directory",
                 "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
             )
         )
@@ -250,7 +250,7 @@ def check_service_path(service_path):
     if not glob(os.path.join(service_path, "*.yaml")):
         paasta_print(
             failure(
-                "%s does not contain any .yaml files" % service_path,
+                f"{service_path} does not contain any .yaml files",
                 "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
             )
         )

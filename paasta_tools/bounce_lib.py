@@ -114,7 +114,7 @@ def bounce_lock(name):
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
 
     :param name: The lock name to acquire"""
-    lockfile = "/var/lock/%s.lock" % name
+    lockfile = f"/var/lock/{name}.lock"
     with open(lockfile, "w") as fd:
         remove = False
         try:
@@ -122,7 +122,7 @@ def bounce_lock(name):
             remove = True
             yield
         except IOError:
-            raise LockHeldException("Service %s is already being bounced!" % name)
+            raise LockHeldException(f"Service {name} is already being bounced!")
         finally:
             if remove:
                 os.remove(lockfile)
@@ -144,7 +144,7 @@ def bounce_lock_zookeeper(name):
         lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
         yield
     except LockTimeout:
-        raise LockHeldException("Service %s is already being bounced!" % name)
+        raise LockHeldException(f"Service {name} is already being bounced!")
     else:
         lock.release()
     finally:

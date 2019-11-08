@@ -10,7 +10,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
 
     # We have to add a spacer at the end to make sure we only return
     # things for service.main and not service.main_foo
-    task_id_prefix = "{}{}".format(compose_job_id(service, instance), MESOS_TASK_SPACER)
+    task_id_prefix = f"{compose_job_id(service, instance)}{MESOS_TASK_SPACER}"
 
     if command == "status":
         paasta_print(

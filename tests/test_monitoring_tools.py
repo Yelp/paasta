@@ -512,9 +512,7 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
     fake_output = "YOU DID IT"
     instance_config.get_monitoring.return_value = {"fake_key": "fake_value"}
 
-    expected_check_name = (
-        "check_paasta_services_replication.%s" % instance_config.job_id
-    )
+    expected_check_name = f"check_paasta_services_replication.{instance_config.job_id}"
     with mock.patch(
         "paasta_tools.monitoring_tools.send_event", autospec=True
     ) as send_event_patch, mock.patch(
@@ -550,9 +548,7 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
     fake_output = "YOU DID IT"
     instance_config.get_monitoring.return_value = {"fake_key": "fake_value"}
 
-    expected_check_name = (
-        "check_paasta_services_replication.%s" % instance_config.job_id
-    )
+    expected_check_name = f"check_paasta_services_replication.{instance_config.job_id}"
     with mock.patch(
         "paasta_tools.monitoring_tools.send_event", autospec=True
     ) as send_event_patch, mock.patch(
@@ -587,9 +583,7 @@ def test_send_replication_event_users_monitoring_tools_send_event_respects_alert
     fake_status = "999999"
     fake_output = "YOU DID IT"
     instance_config.get_monitoring.return_value = {"alert_after": "666m"}
-    expected_check_name = (
-        "check_paasta_services_replication.%s" % instance_config.job_id
-    )
+    expected_check_name = f"check_paasta_services_replication.{instance_config.job_id}"
     with mock.patch(
         "paasta_tools.monitoring_tools.send_event", autospec=True
     ) as send_event_patch, mock.patch(
@@ -821,9 +815,7 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 1 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 1 out of 1 expected instances in fake_region"
         ) in alert_output
         assert (
             "{} has 1 out of 1 expected instances in fake_other_region".format(
@@ -857,9 +849,7 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 1 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 1 out of 1 expected instances in fake_region"
         ) in alert_output
         assert (
             "{} has 0 out of 1 expected instances in fake_other_region".format(
@@ -900,9 +890,7 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 0 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0 out of 1 expected instances in fake_region"
         ) in alert_output
         assert (
             "{} has 0 out of 1 expected instances in fake_other_region".format(
@@ -943,9 +931,7 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 0 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0 out of 1 expected instances in fake_region"
         ) in alert_output
         assert (
             "{} has 0 out of 1 expected instances in fake_other_region".format(

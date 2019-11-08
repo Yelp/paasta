@@ -446,7 +446,7 @@ def assert_no_duplicate_frameworks(
                     "    CRITICAL: There are %d connected %s frameworks! "
                     "(Expected 1)" % (count, framework)
                 )
-        output.append("    Framework: %s count: %d" % (name, len(shards)))
+        output.append(f"    Framework: {name} count: {len(shards):d}")
 
     return HealthCheckResult(message=("\n").join(output), healthy=status)
 
@@ -485,7 +485,7 @@ def assert_nodes_health(nodes_health_status: Tuple[int, int],) -> HealthCheckRes
     active, inactive = nodes_health_status
     healthy = active > 0
     return HealthCheckResult(
-        message="Nodes: active: %d inactive: %d" % (active, inactive), healthy=healthy
+        message=f"Nodes: active: {active:d} inactive: {inactive:d}", healthy=healthy
     )
 
 
@@ -493,7 +493,7 @@ def assert_quorum_size() -> HealthCheckResult:
     masters, quorum = get_num_masters(), a_sync.block(get_mesos_quorum)
     if quorum_ok(masters, quorum):
         return HealthCheckResult(
-            message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
+            message=f"Quorum: masters: {masters:d} configured quorum: {quorum:d} ",
             healthy=True,
         )
     else:

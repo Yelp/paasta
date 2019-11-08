@@ -35,7 +35,7 @@ def load_adhoc_job_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    adhoc_conf_file = "adhoc-%s" % cluster
+    adhoc_conf_file = f"adhoc-{cluster}"
     instance_configs = service_configuration_lib.read_extra_service_information(
         service_name=service, extra_info=adhoc_conf_file, soa_dir=soa_dir
     )

@@ -300,7 +300,7 @@ def read_service_config(
 ):
     conf_file = f"{instance_type}-{cluster}"
     full_path = f"{soa_dir}/{service}/{conf_file}.yaml"
-    paasta_print("Reading paasta-remote configuration file: %s" % full_path)
+    paasta_print(f"Reading paasta-remote configuration file: {full_path}")
 
     config = service_configuration_lib.read_extra_service_information(
         service, conf_file, soa_dir=soa_dir

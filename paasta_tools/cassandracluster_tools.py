@@ -161,7 +161,7 @@ def load_cassandracluster_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    cassandracluster_conf_file = "cassandracluster-%s" % cluster
+    cassandracluster_conf_file = f"cassandracluster-{cluster}"
     instance_configs = service_configuration_lib.read_extra_service_information(
         service, cassandracluster_conf_file, soa_dir=soa_dir
     )

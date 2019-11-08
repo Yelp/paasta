@@ -44,7 +44,7 @@ def check_mesos_no_duplicate_frameworks() -> None:
     try:
         state = block(master.state)
     except MasterNotAvailableException as e:
-        paasta_print("CRITICAL: %s" % e.args[0])
+        paasta_print(f"CRITICAL: {e.args[0]}")
         sys.exit(2)
 
     result = assert_no_duplicate_frameworks(state, check)

@@ -74,9 +74,7 @@ def parse_args():
 
 
 def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
-    tasks_for_app = [
-        task for task in all_tasks if task.app_id.startswith("/%s" % app_id)
-    ]
+    tasks_for_app = [task for task in all_tasks if task.app_id.startswith(f"/{app_id}")]
     one_minute_ago = datetime.now() - timedelta(minutes=1)
 
     healthy_tasks = []
@@ -97,7 +95,7 @@ def check_healthy_marathon_tasks_for_service_instance(
     num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
         all_tasks=all_tasks, app_id=app_id
     )
-    log.info("Checking %s in marathon as it is not in smartstack" % app_id)
+    log.info(f"Checking {app_id} in marathon as it is not in smartstack")
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,
         expected_count=expected_count,
@@ -115,9 +113,7 @@ def check_service_replication(
     :param smartstack_replication_checker: an instance of MesosSmartstackReplicationChecker
     """
     expected_count = instance_config.get_instances()
-    log.info(
-        "Expecting %d total tasks for %s" % (expected_count, instance_config.job_id)
-    )
+    log.info(f"Expecting {expected_count:d} total tasks for {instance_config.job_id}")
     proxy_port = get_proxy_port_for_instance(instance_config)
 
     registrations = instance_config.get_registrations()
