@@ -46,7 +46,6 @@ opt/venvs/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus
 opt/venvs/paasta-tools/bin/paasta_oom_logger usr/bin/paasta_oom_logger
 opt/venvs/paasta-tools/bin/paasta_remote_run.py usr/bin/paasta_remote_run
 opt/venvs/paasta-tools/bin/paasta_secrets_sync.py usr/bin/paasta_secrets_sync
-opt/venvs/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
 opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron_namespace
 opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh usr/share/bash-completion/completions/paasta
 opt/venvs/paasta-tools/bin/paasta usr/bin/paasta

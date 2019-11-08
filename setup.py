@@ -77,7 +77,6 @@ setup(
         "paasta_tools/paasta_maintenance.py",
         "paasta_tools/paasta_metastatus.py",
         "paasta_tools/paasta_remote_run.py",
-        "paasta_tools/paasta_serviceinit.py",
         "paasta_tools/setup_kubernetes_job.py",
         "paasta_tools/setup_kubernetes_crd.py",
         "paasta_tools/setup_kubernetes_cr.py",

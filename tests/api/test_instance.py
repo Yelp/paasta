@@ -28,7 +28,7 @@ from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.marathon_serviceinit import get_short_task_id
+from paasta_tools.marathon_tools import get_short_task_id
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task

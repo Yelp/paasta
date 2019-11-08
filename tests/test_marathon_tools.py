@@ -24,7 +24,7 @@ from pytest import raises
 
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
-from paasta_tools.marathon_serviceinit import desired_state_human
+from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.marathon_tools import FormattedMarathonAppDict
 from paasta_tools.marathon_tools import MarathonContainerInfo
 from paasta_tools.marathon_tools import MarathonServiceConfigDict
