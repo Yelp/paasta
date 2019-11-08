@@ -435,11 +435,6 @@ def pretty_print_smartstack_backends_for_locations(
     return format_table(rows)
 
 
-def get_short_task_id(task_id):
-    """Return just the Marathon-generated UUID of a Mesos task id."""
-    return task_id.split(marathon_tools.MESOS_TASK_SPACER)[-1]
-
-
 def status_mesos_tasks(
     service: str, instance: str, normal_instance_count: int, verbose: int
 ) -> str:

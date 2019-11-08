@@ -2335,42 +2335,6 @@ class TestMarathonServiceConfig:
         )
         assert marathon_config.get_accepted_resource_roles() == ["ads"]
 
-    def test_get_desired_state_human(self):
-        fake_conf = marathon_tools.MarathonServiceConfig(
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict={},
-            branch_dict={"desired_state": "stop"},
-        )
-        assert "Stopped" in desired_state_human(
-            fake_conf.get_desired_state(), fake_conf.get_instances()
-        )
-
-    def test_get_desired_state_human_started_with_instances(self):
-        fake_conf = marathon_tools.MarathonServiceConfig(
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict={"instances": 42},
-            branch_dict={"desired_state": "start"},
-        )
-        assert "Started" in desired_state_human(
-            fake_conf.get_desired_state(), fake_conf.get_instances()
-        )
-
-    def test_get_desired_state_human_with_0_instances(self):
-        fake_conf = marathon_tools.MarathonServiceConfig(
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict={"instances": 0},
-            branch_dict={"desired_state": "start"},
-        )
-        assert "Stopped" in desired_state_human(
-            fake_conf.get_desired_state(), fake_conf.get_instances()
-        )
-
 
 def test_deformat_job_id():
     expected = ("ser_vice", "in_stance", "git_hash", "config_hash")
@@ -3022,3 +2986,8 @@ def test_rendezvous_hash_roughly_fractional_change():
     num_same = len([1 for x, y in zip(first_results, second_results) if x == y])
     assert num_same > 8900
     assert num_same < 9100
+
+
+def test_get_short_task_id():
+    task_id = "service.instance.githash.confighash.uuid"
+    assert marathon_tools.get_short_task_id(task_id) == "uuid"

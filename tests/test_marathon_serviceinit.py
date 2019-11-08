@@ -1069,20 +1069,6 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
         )
 
 
-def test_haproxy_backend_report_healthy():
-    normal_count = 10
-    actual_count = 11
-    status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
-    assert "Healthy" in status
-
-
-def test_haproxy_backend_report_critical():
-    normal_count = 10
-    actual_count = 1
-    status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
-    assert "Critical" in status
-
-
 def test_get_short_task_id():
     task_id = "service.instance.githash.confighash.uuid"
     assert marathon_serviceinit.get_short_task_id(task_id) == "uuid"
@@ -1234,46 +1220,6 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             "    place3 - Healthy - in haproxy with (1/1) total backends UP in this namespace.",
             "      host3:1234  L7OK/200 in 4ms  now         UP",
         ]
-
-
-def test_get_marathon_dashboard_links():
-    system_paasta_config = SystemPaastaConfig(
-        config={
-            "cluster": "fake_cluster",
-            "dashboard_links": {
-                "fake_cluster": {
-                    "Marathon RO": [
-                        "http://marathon",
-                        "http://marathon1",
-                        "http://marathon2",
-                    ]
-                }
-            },
-        },
-        directory="/fake/config",
-    )
-
-    marathon_clients = mock.Mock(current=["client", "client1", "client2"])
-    assert marathon_serviceinit.get_marathon_dashboard_links(
-        marathon_clients, system_paasta_config
-    ) == {
-        "client": "http://marathon",
-        "client1": "http://marathon1",
-        "client2": "http://marathon2",
-    }
-
-    marathon_clients = mock.Mock(current=["client", "client1", "client2", "client3"])
-    assert (
-        marathon_serviceinit.get_marathon_dashboard_links(
-            marathon_clients, system_paasta_config
-        )
-        is None
-    )
-
-    marathon_clients = mock.Mock(current=["client", "client1"])
-    assert marathon_serviceinit.get_marathon_dashboard_links(
-        marathon_clients, system_paasta_config
-    ) == {"client": "http://marathon", "client1": "http://marathon1"}
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
