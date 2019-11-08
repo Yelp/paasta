@@ -1617,6 +1617,6 @@ def take_up_slack(client: MarathonClient, app: MarathonApp) -> None:
         client.scale_app(app_id=app.id, instances=(app.instances - slack), force=True)
 
 
-def get_short_task_id(task_id):
+def get_short_task_id(task_id: str) -> str:
     """Return just the Marathon-generated UUID of a Mesos task id."""
     return task_id.split(MESOS_TASK_SPACER)[-1]
