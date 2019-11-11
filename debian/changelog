@@ -1,3 +1,11 @@
+paasta-tools (0.90.7) xenial; urgency=medium
+
+  * 0.90.7 tagged with 'make release'
+    Commit: Showing flink version irrespective of flink cluster state
+    (#2545)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Mon, 11 Nov 2019 06:20:14 -0800
+
 paasta-tools (0.90.6) xenial; urgency=medium
 
   * 0.90.6 tagged with 'make release'
