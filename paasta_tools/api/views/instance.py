@@ -282,11 +282,16 @@ async def kubernetes_job_status(
                 }
             )
         for replicaset in replicaset_list:
+            try:
+                ready_replicas = replicaset.status.ready_replicas
+            except AttributeError:
+                ready_replicas = None
+
             kstatus["replicasets"].append(
                 {
                     "name": replicaset.metadata.name,
                     "replicas": replicaset.spec.replicas,
-                    "ready_replicas": getattr(replicaset, "status.ready_replicas", 0),
+                    "ready_replicas": ready_replicas,
                     "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
                 }
             )
