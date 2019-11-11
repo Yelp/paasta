@@ -35,7 +35,6 @@ paasta_list_tron_namespaces
 paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
-paasta_serviceinit
 setup_marathon_job
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"

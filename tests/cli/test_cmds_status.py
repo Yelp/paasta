@@ -25,6 +25,7 @@ from mock import MagicMock
 from mock import Mock
 from mock import patch
 
+from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import apply_args_filters
@@ -32,10 +33,12 @@ from paasta_tools.cli.cmds.status import build_smartstack_backends_table
 from paasta_tools.cli.cmds.status import create_autoscaling_info_table
 from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
 from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
+from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
+from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import marathon_app_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
@@ -1654,3 +1657,56 @@ class TestBuildSmartstackBackendsTable:
 
     def test_multiple_backends(self, mock_backend):
         assert len(build_smartstack_backends_table([mock_backend, mock_backend])) == 3
+
+
+def test_get_desired_state_human():
+    fake_conf = marathon_tools.MarathonServiceConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={},
+        branch_dict={"desired_state": "stop"},
+    )
+    assert "Stopped" in desired_state_human(
+        fake_conf.get_desired_state(), fake_conf.get_instances()
+    )
+
+
+def test_get_desired_state_human_started_with_instances():
+    fake_conf = marathon_tools.MarathonServiceConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={"instances": 42},
+        branch_dict={"desired_state": "start"},
+    )
+    assert "Started" in desired_state_human(
+        fake_conf.get_desired_state(), fake_conf.get_instances()
+    )
+
+
+def test_get_desired_state_human_with_0_instances():
+    fake_conf = marathon_tools.MarathonServiceConfig(
+        service="service",
+        cluster="cluster",
+        instance="instance",
+        config_dict={"instances": 0},
+        branch_dict={"desired_state": "start"},
+    )
+    assert "Stopped" in desired_state_human(
+        fake_conf.get_desired_state(), fake_conf.get_instances()
+    )
+
+
+def test_haproxy_backend_report_healthy():
+    normal_count = 10
+    actual_count = 11
+    status = haproxy_backend_report(normal_count, actual_count)
+    assert "Healthy" in status
+
+
+def test_haproxy_backend_report_critical():
+    normal_count = 10
+    actual_count = 1
+    status = haproxy_backend_report(normal_count, actual_count)
+    assert "Critical" in status

@@ -61,8 +61,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.marathon_serviceinit import get_marathon_dashboard_links
-from paasta_tools.marathon_serviceinit import get_short_task_id
+from paasta_tools.marathon_tools import get_short_task_id
 from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import (
     get_cached_list_of_not_running_tasks_from_frameworks,
@@ -79,7 +78,6 @@ from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.paasta_serviceinit import get_deployment_version
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import HaproxyBackend
@@ -1068,3 +1066,24 @@ def add_executor_info(task):
 def add_slave_info(task):
     task._Task__items["slave"] = a_sync.block(task.slave)._MesosSlave__items.copy()
     return task
+
+
+def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
+    """Return a dict of marathon clients and their corresponding dashboard URLs"""
+    cluster = system_paasta_config.get_cluster()
+    try:
+        links = (
+            system_paasta_config.get_dashboard_links().get(cluster).get("Marathon RO")
+        )
+    except KeyError:
+        pass
+    if isinstance(links, list) and len(links) >= len(marathon_clients.current):
+        return {client: url for client, url in zip(marathon_clients.current, links)}
+    return None
+
+
+def get_deployment_version(
+    actual_deployments: Mapping[str, str], cluster: str, instance: str
+) -> Optional[str]:
+    key = ".".join((cluster, instance))
+    return actual_deployments[key][:8] if key in actual_deployments else None

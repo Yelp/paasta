@@ -28,7 +28,7 @@ from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.marathon_serviceinit import get_short_task_id
+from paasta_tools.marathon_tools import get_short_task_id
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
@@ -1012,3 +1012,41 @@ def test_kubernetes_instance_status_evicted_nodes(
         {}, "fake-svc", "fake-inst", 0, False, "kubernetes"
     )
     assert instance_status["evicted_count"] == 1
+
+
+def test_get_marathon_dashboard_links():
+    system_paasta_config = SystemPaastaConfig(
+        config={
+            "cluster": "fake_cluster",
+            "dashboard_links": {
+                "fake_cluster": {
+                    "Marathon RO": [
+                        "http://marathon",
+                        "http://marathon1",
+                        "http://marathon2",
+                    ]
+                }
+            },
+        },
+        directory="/fake/config",
+    )
+
+    marathon_clients = mock.Mock(current=["client", "client1", "client2"])
+    assert instance.get_marathon_dashboard_links(
+        marathon_clients, system_paasta_config
+    ) == {
+        "client": "http://marathon",
+        "client1": "http://marathon1",
+        "client2": "http://marathon2",
+    }
+
+    marathon_clients = mock.Mock(current=["client", "client1", "client2", "client3"])
+    assert (
+        instance.get_marathon_dashboard_links(marathon_clients, system_paasta_config)
+        is None
+    )
+
+    marathon_clients = mock.Mock(current=["client", "client1"])
+    assert instance.get_marathon_dashboard_links(
+        marathon_clients, system_paasta_config
+    ) == {"client": "http://marathon", "client1": "http://marathon1"}
