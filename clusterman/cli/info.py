@@ -27,7 +27,9 @@ def add_mesos_list_clusters_parser(subparser, required_named_args, optional_name
 
 
 def list_pools(args):  # pragma: no cover
-    print('\n'.join(get_pool_name_list(args.cluster)))
+    for scheduler in ['mesos', 'kubernetes']:
+        print(f'\n{scheduler.capitalize()} pools\n--------------------')
+        print('\n'.join(get_pool_name_list(args.cluster, scheduler)))
 
 
 @subparser('list-pools', 'list available pools in a cluster', list_pools)
