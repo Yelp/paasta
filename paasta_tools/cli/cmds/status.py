@@ -56,11 +56,6 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
-from paasta_tools.marathon_serviceinit import bouncing_status_human
-from paasta_tools.marathon_serviceinit import desired_state_human
-from paasta_tools.marathon_serviceinit import haproxy_backend_report
-from paasta_tools.marathon_serviceinit import marathon_app_deploy_status_human
-from paasta_tools.marathon_serviceinit import status_marathon_job_human
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
@@ -73,6 +68,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -624,14 +620,14 @@ def format_kubernetes_pod_table(pods):
             datetime.fromtimestamp(pod.deployed_timestamp)
         )
         hostname = f"{pod.host}" if pod.host is not None else "Unknown"
-
         if pod.phase is None or pod.phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif pod.phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
+        elif pod.phase == "Failed" and pod.reason == "Evicted":
+            health_check_status = PaastaColors.red("Evicted")
         else:
             health_check_status = PaastaColors.red("Unhealthy")
-
         rows.append(
             (
                 pod.name,
@@ -643,6 +639,8 @@ def format_kubernetes_pod_table(pods):
                 health_check_status,
             )
         )
+        if pod.message is not None:
+            rows.append(PaastaColors.grey(f"  {pod.message}"))
         rows.extend(format_tail_lines_for_mesos_task(pod.tail_lines, pod.name))
 
     return format_table(rows)
@@ -757,6 +755,7 @@ def status_kubernetes_job_human(
     app_count: int,
     running_instances: int,
     normal_instance_count: int,
+    evicted_count: int,
 ) -> str:
     name = PaastaColors.cyan(compose_job_id(service, instance))
 
@@ -776,8 +775,14 @@ def status_kubernetes_job_human(
             instance_count = PaastaColors.yellow(
                 "(%d/%d)" % (running_instances, normal_instance_count)
             )
-        return "Kubernetes:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status
+
+        evicted = (
+            PaastaColors.red(str(evicted_count))
+            if evicted_count > 0
+            else PaastaColors.green(str(evicted_count))
+        )
+        return "Kubernetes:   {} - up with {} instances ({} evicted). Status: {}".format(
+            status, instance_count, evicted, deploy_status
         )
     else:
         status = PaastaColors.yellow("Warning")
@@ -814,6 +819,15 @@ def print_flink_status(
 
     output.append(f"    Config SHA: {config_sha}")
 
+    if verbose:
+        output.append(
+            f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
+        )
+    else:
+        output.append(f"    Flink version: {status.config['flink-version']}")
+    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
+    output.append(f"    URL: {dashboard_url}/")
+
     if status.state != "running":
         output.append(
             "    State: {state}".format(state=PaastaColors.yellow(status.state))
@@ -821,14 +835,6 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
-    if verbose:
-        output.append(
-            f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
-        )
-    else:
-        output.append(f"    Flink version: {status.config['flink-version']}")
-    output.append(f"    URL: {dashboard_url}/")
     output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
@@ -939,6 +945,7 @@ def print_kubernetes_status(
                 app_count=kubernetes_status.app_count,
                 running_instances=kubernetes_status.running_instance_count,
                 normal_instance_count=kubernetes_status.expected_instance_count,
+                evicted_count=kubernetes_status.evicted_count,
             )
         )
     )
@@ -1328,3 +1335,108 @@ def paasta_status(args) -> int:
             return_codes.append(return_code)
 
     return max(return_codes)
+
+
+def bouncing_status_human(app_count, bounce_method):
+    if app_count == 0:
+        return PaastaColors.red("Disabled")
+    elif app_count == 1:
+        return PaastaColors.green("Configured")
+    elif app_count > 1:
+        return PaastaColors.yellow("Bouncing (%s)" % bounce_method)
+    else:
+        return PaastaColors.red("Unknown (count: %s)" % app_count)
+
+
+def desired_state_human(desired_state, instances):
+    if desired_state == "start" and instances != 0:
+        return PaastaColors.bold("Started")
+    elif desired_state == "start" and instances == 0:
+        return PaastaColors.bold("Stopped")
+    elif desired_state == "stop":
+        return PaastaColors.red("Stopped")
+    else:
+        return PaastaColors.red("Unknown (desired_state: %s)" % desired_state)
+
+
+def haproxy_backend_report(normal_instance_count, up_backends):
+    """Given that a service is in smartstack, this returns a human readable
+    report of the up backends"""
+    # TODO: Take into account a configurable threshold, PAASTA-1102
+    crit_threshold = 50
+    under_replicated, ratio = is_under_replicated(
+        num_available=up_backends,
+        expected_count=normal_instance_count,
+        crit_threshold=crit_threshold,
+    )
+    if under_replicated:
+        status = PaastaColors.red("Critical")
+        count = PaastaColors.red(
+            "(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio)
+        )
+    else:
+        status = PaastaColors.green("Healthy")
+        count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
+    up_string = PaastaColors.bold("UP")
+    return f"{status} - in haproxy with {count} total backends {up_string} in this namespace."
+
+
+def marathon_app_deploy_status_human(status, backoff_seconds=None):
+    status_string = MarathonDeployStatus.tostring(status)
+
+    if status == MarathonDeployStatus.Waiting:
+        deploy_status = (
+            "%s (new tasks waiting for capacity to become available)"
+            % PaastaColors.red(status_string)
+        )
+    elif status == MarathonDeployStatus.Delayed:
+        deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
+            PaastaColors.red(status_string), backoff_seconds
+        )
+    elif status == MarathonDeployStatus.Deploying:
+        deploy_status = PaastaColors.yellow(status_string)
+    elif status == MarathonDeployStatus.Stopped:
+        deploy_status = PaastaColors.grey(status_string)
+    elif status == MarathonDeployStatus.Running:
+        deploy_status = PaastaColors.bold(status_string)
+    else:
+        deploy_status = status_string
+
+    return deploy_status
+
+
+def status_marathon_job_human(
+    service: str,
+    instance: str,
+    deploy_status: str,
+    desired_app_id: str,
+    app_count: int,
+    running_instances: int,
+    normal_instance_count: int,
+) -> str:
+    name = PaastaColors.cyan(compose_job_id(service, instance))
+
+    if app_count >= 0:
+        if running_instances >= normal_instance_count:
+            status = PaastaColors.green("Healthy")
+            instance_count = PaastaColors.green(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
+        elif running_instances == 0:
+            status = PaastaColors.yellow("Critical")
+            instance_count = PaastaColors.red(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
+        else:
+            status = PaastaColors.yellow("Warning")
+            instance_count = PaastaColors.yellow(
+                "(%d/%d)" % (running_instances, normal_instance_count)
+            )
+        return "Marathon:   {} - up with {} instances. Status: {}".format(
+            status, instance_count, deploy_status
+        )
+    else:
+        status = PaastaColors.yellow("Warning")
+        return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
+            status, name, desired_app_id
+        )

@@ -2290,7 +2290,7 @@ class RegexMatcher:
 
 
 class TestDrainTasksAndFindTasksToKill:
-    def test_catches_exception_during_drain(self):
+    def test_catches_unknown_exception_during_drain(self):
         tasks_to_drain: Set[Tuple[MarathonTask, MarathonClient]] = {
             (mock.Mock(id="to_drain", state="TASK_FOO"), mock.Mock())
         }
@@ -2323,7 +2323,6 @@ class TestDrainTasksAndFindTasksToKill:
                 flags=re.MULTILINE | re.DOTALL,
             )
         )
-
         fake_log_bounce_action.assert_any_call(
             line="fake bounce killing not_running or drained task to_drain TASK_FOO"
         )

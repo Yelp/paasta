@@ -16,7 +16,6 @@ import contextlib
 import asynctest
 import mock
 import pytest
-from pytest import raises
 
 from paasta_tools import drain_lib
 
@@ -172,11 +171,10 @@ class TestHTTPDrainMethod:
         )
 
         # Happy case
-        drain_method.check_response_code(200, "200-299")
+        assert drain_method.check_response_code(200, "200-299") is True
 
         # Sad case
-        with raises(drain_lib.StatusCodeNotAcceptableError):
-            drain_method.check_response_code(500, "200-299")
+        assert drain_method.check_response_code(500, "200-299") is False
 
     @pytest.mark.asyncio
     async def test_issue_request(self):

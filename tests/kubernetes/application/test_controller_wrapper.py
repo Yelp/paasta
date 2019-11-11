@@ -80,6 +80,7 @@ def test_ensure_pod_disruption_budget_replaces_outdated():
 
         mock_pdr = mock.Mock()
         mock_pdr.spec.max_unavailable = 5
+        mock_pdr.spec.min_available = None
 
         mock_client.policy.read_namespaced_pod_disruption_budget.return_value = mock_pdr
 
@@ -94,6 +95,32 @@ def test_ensure_pod_disruption_budget_replaces_outdated():
             namespace=mock_req_pdr.metadata.namespace,
             body=mock_req_pdr,
         )
+
+
+def test_ensure_pod_disruption_budget_noop_when_min_available_is_set():
+    with mock.patch(
+        "paasta_tools.kubernetes.application.controller_wrappers.pod_disruption_budget_for_service_instance",
+        autospec=True,
+    ) as mock_pdr_for_service_instance:
+        mock_req_pdr = mock.Mock()
+        mock_req_pdr.spec.max_unavailable = 10
+        mock_pdr_for_service_instance.return_value = mock_req_pdr
+
+        mock_client = mock.MagicMock()
+
+        mock_pdr = mock.Mock()
+        mock_pdr.spec.max_unavailable = 5
+        mock_pdr.spec.min_available = 5
+
+        mock_client.policy.read_namespaced_pod_disruption_budget.return_value = mock_pdr
+
+        app = mock.MagicMock()
+        app.soa_config.get_bounce_margin_factor.return_value = 0.1
+        app.kube_deployment.service.return_value = "fake_service"
+        app.kube_deployment.instance.return_value = "fake_instance"
+        Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
+
+        mock_client.policy.patch_namespaced_pod_disruption_budget.assert_not_called()
 
 
 def setup_app(config_dict, exists_hpa):

@@ -2335,13 +2335,7 @@ def _run(
             linebytes = linebytes.strip(b"\n")
             # additional indentation is for the paasta status command only
             if stream:
-                if "paasta_serviceinit status" in command:
-                    if "instance: " in line:
-                        paasta_print(b"  " + linebytes)
-                    else:
-                        paasta_print(b"    " + linebytes)
-                else:
-                    paasta_print(linebytes)
+                paasta_print(linebytes)
             else:
                 output.append(line)
 
