@@ -201,6 +201,7 @@ def send_event(
         except PaastaNotConfiguredError:
             cluster = "localhost"
 
+    alert_after = overrides.get("alert_after", "5m")
     result_dict = {
         "name": check_name,
         "runbook": overrides.get("runbook", "http://y/paasta-troubleshooting"),
@@ -214,7 +215,9 @@ def send_event(
         "realert_every": overrides.get(
             "realert_every", monitoring_defaults("realert_every")
         ),
-        "alert_after": overrides.get("alert_after", "5m"),
+        "alert_after": f"{alert_after}s"
+        if isinstance(alert_after, int)
+        else alert_after,
         "irc_channels": get_irc_channels(overrides, service, soa_dir),
         "slack_channels": get_slack_channels(overrides, service, soa_dir),
         "ticket": get_ticket(overrides, service, soa_dir),
