@@ -814,6 +814,9 @@ def print_flink_status(
 
     output.append(f"    Config SHA: {config_sha}")
 
+    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
+    output.append(f"    URL: {dashboard_url}/")
+
     if status.state != "running":
         output.append(
             "    State: {state}".format(state=PaastaColors.yellow(status.state))
@@ -821,14 +824,12 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
     if verbose:
         output.append(
             f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
         )
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
-    output.append(f"    URL: {dashboard_url}/")
     output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
