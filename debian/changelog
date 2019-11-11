@@ -1,3 +1,11 @@
+paasta-tools (0.91.0) xenial; urgency=medium
+
+  * 0.91.0 tagged with 'make release'
+    Commit: Merge pull request #2538 from Yelp/PAASTA-15390_serviceinit
+    Removed remaining code for ssh-based paasta status
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 11 Nov 2019 11:48:25 -0800
+
 paasta-tools (0.90.7) xenial; urgency=medium
 
   * 0.90.7 tagged with 'make release'
