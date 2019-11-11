@@ -1,3 +1,12 @@
+paasta-tools (0.90.6) xenial; urgency=medium
+
+  * 0.90.6 tagged with 'make release'
+    Commit: Merge pull request #2544 from Yelp/u/gabrielv/PAASTA-15937-
+    status-evicted-nodes  PAASTA-15937 Display evicted nodes on paasta
+    status
+
+ -- gabrielv <gabrielv@yelp.com>  Mon, 11 Nov 2019 05:46:19 -0800
+
 paasta-tools (0.90.5) xenial; urgency=medium
 
   * 0.90.5 tagged with 'make release'
