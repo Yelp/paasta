@@ -75,3 +75,7 @@ yelpy: ## Installs the yelp-internal packages into the default tox environment
 .PHONY: help
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: install-hooks
+install-hooks:
+	tox -e install-hooks
