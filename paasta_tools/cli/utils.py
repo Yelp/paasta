@@ -536,27 +536,6 @@ def run_paasta_metastatus(
     return return_code, output
 
 
-def execute_paasta_metastatus_on_remote_master(
-    cluster: str,
-    system_paasta_config: SystemPaastaConfig,
-    groupings: Sequence[str],
-    verbose: int,
-    autoscaling_info: bool = False,
-    use_mesos_cache: bool = False,
-) -> Tuple[int, str]:
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_paasta_metastatus().
-    """
-    try:
-        master = connectable_master(cluster, system_paasta_config)
-    except NoMasterError as e:
-        return (255, str(e))
-
-    return run_paasta_metastatus(
-        master, groupings, verbose, autoscaling_info, use_mesos_cache
-    )
-
-
 def run_paasta_cluster_boost(master, action, pool, duration, override, boost, verbose):
     timeout = 20
 

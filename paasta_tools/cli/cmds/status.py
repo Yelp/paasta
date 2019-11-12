@@ -14,7 +14,6 @@
 # limitations under the License.
 import concurrent.futures
 import difflib
-import os
 import shutil
 import sys
 import traceback
@@ -22,7 +21,6 @@ from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
-from distutils.util import strtobool
 from itertools import groupby
 from typing import Any
 from typing import Callable
@@ -1011,7 +1009,6 @@ def report_status_for_cluster(
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
-    use_api_endpoint: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -1289,12 +1286,6 @@ def paasta_status(args) -> int:
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
 
-    if "USE_API_ENDPOINT" in os.environ:
-        # bool will throw a ValueError if it doesn't recognize $USE_API_ENDPOINT
-        use_api_endpoint = bool(strtobool(os.environ["USE_API_ENDPOINT"]))
-    else:
-        use_api_endpoint = True
-
     return_codes = [0]
     tasks = []
     clusters_services_instances = apply_args_filters(args)
@@ -1319,7 +1310,6 @@ def paasta_status(args) -> int:
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
                             verbose=args.verbose,
-                            use_api_endpoint=use_api_endpoint,
                         ),
                     )
                 )
