@@ -616,9 +616,7 @@ def format_marathon_task_table(tasks):
 def format_kubernetes_pod_table(pods):
     rows = [("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")]
     for pod in pods:
-        local_deployed_datetime = datetime_from_utc_to_local(
-            datetime.fromtimestamp(pod.deployed_timestamp)
-        )
+        local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
         hostname = f"{pod.host}" if pod.host is not None else "Unknown"
         if pod.phase is None or pod.phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
