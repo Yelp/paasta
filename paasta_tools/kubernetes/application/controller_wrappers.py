@@ -279,7 +279,9 @@ class DeploymentWrapper(Application):
             return
 
         body = self.soa_config.get_autoscaling_metric_spec(
-            name=self.item.metadata.name, namespace=self.item.metadata.namespace
+            name=self.item.metadata.name,
+            cluster=self.soa_config.cluster,
+            namespace=self.item.metadata.namespace,
         )
         if not body:
             raise Exception(

@@ -383,7 +383,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_autoscaling_metric_spec(
-        self, name: str, namespace: str = "paasta"
+        self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
@@ -398,7 +398,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # TODO support multiple metrics
         metrics = []
         target = autoscaling_params["setpoint"] * 100
+        annotations: Dict[str, str] = {}
         # TODO support bespoke PAASTA-15680
+        selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         if autoscaling_params["decision_policy"] == "bespoke":
             log.error(
                 f"Sorry, bespoke is not implemented yet. Please use a different decision \
@@ -415,20 +417,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         elif metrics_provider == "http":
+            annotations = {"signalfx.com.custom.metrics": ""}
             metrics.append(
                 V2beta1MetricSpec(
                     type="Pods",
                     pods=V2beta1PodsMetricSource(
-                        metric_name="http", target_average_value=target
+                        metric_name="http",
+                        target_average_value=target,
+                        selector=selector,
                     ),
                 )
             )
         elif metrics_provider == "uwsgi":
+            annotations = {"signalfx.com.custom.metrics": ""}
             metrics.append(
                 V2beta1MetricSpec(
                     type="Pods",
                     pods=V2beta1PodsMetricSource(
-                        metric_name="uwsgi", target_average_value=target
+                        metric_name="uwsgi",
+                        target_average_value=target,
+                        selector=selector,
                     ),
                 )
             )
@@ -441,13 +449,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name=name, namespace=namespace),
+            metadata=V1ObjectMeta(
+                name=name, namespace=namespace, annotations=annotations
+            ),
             spec=V2beta1HorizontalPodAutoscalerSpec(
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="extensions/v1beta1", kind="Deployment", name=name
+                    api_version="apps/v1", kind="Deployment", name=name
                 ),
             ),
         )

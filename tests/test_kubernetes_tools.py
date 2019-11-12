@@ -995,11 +995,14 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name"
+            mock_config, "fake_name", "cluster"
         )
+        annotations = {}
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="paasta"),
+            metadata=V1ObjectMeta(
+                name="fake_name", namespace="paasta", annotations=annotations
+            ),
             spec=V2beta1HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
@@ -1012,9 +1015,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="extensions/v1beta1",
-                    kind="Deployment",
-                    name="fake_name",
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
         )
@@ -1035,11 +1036,14 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name"
+            mock_config, "fake_name", "cluster"
         )
+        annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="paasta"),
+            metadata=V1ObjectMeta(
+                name="fake_name", namespace="paasta", annotations=annotations
+            ),
             spec=V2beta1HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
@@ -1047,14 +1051,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     V2beta1MetricSpec(
                         type="Pods",
                         pods=V2beta1PodsMetricSource(
-                            metric_name="http", target_average_value=50.0
+                            metric_name="http",
+                            target_average_value=50.0,
+                            selector=V1LabelSelector(
+                                match_labels={"kubernetes_cluster": "cluster"}
+                            ),
                         ),
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="extensions/v1beta1",
-                    kind="Deployment",
-                    name="fake_name",
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
         )
@@ -1074,11 +1080,15 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name"
+            mock_config, "fake_name", "cluster"
         )
+
+        annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="paasta"),
+            metadata=V1ObjectMeta(
+                name="fake_name", namespace="paasta", annotations=annotations
+            ),
             spec=V2beta1HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
@@ -1086,14 +1096,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     V2beta1MetricSpec(
                         type="Pods",
                         pods=V2beta1PodsMetricSource(
-                            metric_name="uwsgi", target_average_value=50.0
+                            metric_name="uwsgi",
+                            target_average_value=50.0,
+                            selector=V1LabelSelector(
+                                match_labels={"kubernetes_cluster": "cluster"}
+                            ),
                         ),
                     )
                 ],
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="extensions/v1beta1",
-                    kind="Deployment",
-                    name="fake_name",
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
         )
@@ -1113,7 +1125,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name"
+            mock_config, "fake_name", "cluster"
         )
         expected_res = None
         assert expected_res == return_value
