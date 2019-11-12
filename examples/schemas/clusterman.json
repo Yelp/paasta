@@ -1,0 +1,83 @@
+{
+    "$schema": "http://json-schema.org/draft-06/schema",
+    "type": "object",
+    "required": [
+        "autoscaling", "autoscale_signal", "aws", "batches", "clusters", "mesos_clusters", "module_config", "module_env_config",
+        "sensu_config"
+    ],
+    "definitions": {
+        "cluster": {
+            "type": "object",
+            "required": ["aws_region"],
+            "properties": {
+                "aws_region": {"$ref": "definitions.json#awsRegion"},
+                "cluster_manager": {"type": "string", "enum": ["mesos", "kubernetes"]},
+                "drain_queue_url": {"type": "string", "format": "uri"},
+                "kubeconfig_path": {"type": "string"},
+                "fqdn": {"type": "string"},
+                "mesos_master_fqdn": {"type": "string"},
+                "sensu_config": {"$ref": "definitions.json#sensu_config"},
+                "termination_queue_url": {"type": "string", "format": "uri"},
+                "warning_queue_url": {"type": "string", "format": "uri"}
+            },
+            "additionalProperties": false
+        }
+    },
+    "properties": {
+        "autoscaling": {
+            "type": "object",
+            "properties": {
+                "default_signal_role": {"type": "string"},
+                "excluded_resources": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["cpus", "mem", "disk", "gpus"]}
+                },
+                "setpoint": {"$ref": "definitions.json#percentage"},
+                "setpoint_margin": {"$ref": "definitions.json#percentage"},
+                "target_capacity_margin": {"$ref": "definitions.json#percentage"}
+            },
+            "required": ["default_signal_role", "excluded_resources", "setpoint", "setpoint_margin", "target_capacity_margin"],
+            "additionalProperties": false
+        },
+        "autoscale_signal": {"$ref": "definitions.json#autoscale_signal"},
+        "aws": {
+            "type": "object",
+            "properties": {
+                "access_key_file": {"type": "string"}
+            },
+            "required": ["access_key_file"]
+        },
+        "batches": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "required": ["run_interval_seconds"],
+                "properties": {
+                    "run_interval_seconds": {"$ref": "definitions.json#posint"}
+                }
+            }
+        },
+        "drain_termination_timeout_seconds": {
+            "type": "object",
+            "properties": {
+                "sfr": {"$ref": "definitions.json#posint"}
+            }
+        },
+        "clusters": {
+            "type": "object",
+            "additionalProperties": {"$ref": "#/definitions/cluster"}
+        },
+        "mesos_clusters": {
+            "type": "object",
+            "additionalProperties": {"$ref": "#/definitions/cluster"}
+        },
+        "module_config": {
+            "type": "array"
+        },
+        "module_env_config": {
+            "type": "array"
+        },
+        "sensu_config": {"$ref": "definitions.json#sensu_config"}
+    },
+    "additionalProperties": false
+}

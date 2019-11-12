@@ -29,7 +29,7 @@ docker network connect "clusterman_${DISTRIB_CODENAME}_default" "${CONTAINER}"
 docker network connect "clusterman_${DISTRIB_CODENAME}_acceptance" "${CONTAINER}"
 docker exec -e "DISTRIB_CODENAME=${DISTRIB_CODENAME}" -e ACCEPTANCE_ROOT=/code/acceptance --user=0 "${CONTAINER}" python acceptance/run_instance.py
 docker exec -t --user=0 \
-    -e CMAN_CLUSTER=docker \
+    -e CMAN_CLUSTER=local-dev \
     -e CMAN_POOL=default \
     -e CMAN_SCHEDULER=mesos \
     "${CONTAINER}" /bin/bash -c "AWS_ENDPOINT_URL_ARGS='--endpoint-url http://moto-s3:5000' python -m $BATCH $ARGS" &

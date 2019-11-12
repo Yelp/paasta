@@ -9,7 +9,7 @@ module_config:
 # NOTE: The clusterman service will map clusters.{cluster_name}.aws_region
 #   to aws.region, if the --cluster argument is passed to the service.
 clusters:
-    docker:
+    local-dev:
         aws_region: us-west-2
         mesos_master_fqdn: mesosmaster
 

@@ -1,0 +1,76 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema",
+    "awsRegion": {
+        "type": "string",
+        "enum": ["us-east-1", "us-west-1", "us-west-2"]
+    },
+    "infinity": {
+        "type": "number",
+        "minimum": Infinity
+    },
+    "nonnegative_int": {
+        "type": "integer",
+        "minimum": 0
+    },
+    "percentage": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+    },
+    "posint": {
+        "type": "integer",
+        "minimum": 1
+    },
+    "autoscale_signal": {
+        "type": "object",
+        "required": ["name", "branch_or_tag", "period_minutes"],
+        "properties": {
+            "name": {"type": "string"},
+            "repository": {"type": "string"},
+            "branch_or_tag": {"type": "string"},
+            "period_minutes": {"$ref": "shared.json#posint"},
+            "parameters": {
+                "type": "array",
+                "items": {"type": "object"}
+            },
+            "required_metrics": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["name", "type", "minute_range"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "type": {
+                            "type": "string",
+                            "enum": ["system_metrics", "app_metrics"]
+                        },
+                        "minute_range": {"$ref": "shared.json#posint"},
+                        "regex": {"type": "boolean"}
+                    },
+                    "additionalProperties": false
+                }
+            }
+        }
+    },
+    "sensu_config": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 1,
+        "items": {
+            "type": "object",
+            "required": ["team", "runbook"],
+            "properties": {
+                "team": {"type": "string"},
+                "runbook": {"type": "string"},
+                "page": {"type": "boolean"},
+                "notification_email": {"type": "string"},
+                "irc_channels": {"type": "array", "items": {"type": "string"}},
+                "slack_channels": {"type": "array", "items": {"type": "string"}},
+                "ticket": {"type": "boolean"},
+                "project": {"type": "string"},
+                "tags": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": false
+        }
+    }
+}
