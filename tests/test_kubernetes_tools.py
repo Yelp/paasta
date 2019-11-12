@@ -320,6 +320,10 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             self.deployment.get_sanitised_volume_name("/var/tmp_file.json")
             == "slash-varslash-tmp--filedot-json"
         )
+        assert (
+            self.deployment.get_sanitised_volume_name("/var/tmp_file.json", 20)
+            == "slash-varslash--1953"
+        )
 
     def test_get_sidecar_containers(self):
         with mock.patch(
