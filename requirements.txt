@@ -88,7 +88,7 @@ s3transfer==0.1.13
 sensu-plugin==0.3.1
 service-configuration-lib==0.12.0
 setuptools==39.0.1
-signalfx==1.0.17
+signalfx==1.1.1
 simplejson==3.10.0
 six==1.11.0
 slackclient==1.2.1
