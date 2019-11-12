@@ -1,0 +1,69 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema",
+    "sfr_resource_group_definition": {
+        "type": "object",
+        "properties": {
+            "s3": {
+                "type": "object",
+                "required": ["bucket", "prefix"],
+                "properties": {
+                    "bucket": {"type": "string"},
+                    "prefix": {"type": "string"}
+                },
+                "additionalProperties": false
+            },
+            "tag": {"type": "string"}
+        },
+        "additionalProperties": false
+    },
+    "resource_groups_definition": {
+        "type": "array",
+        "items": [
+            {
+                "type": "object",
+                "properties": {
+                    "sfr": {
+                        "$ref": "#/sfr_resource_group_definition"
+                    }
+                }
+            }
+        ]
+    },
+    "type": "object",
+    "required": ["resource_groups", "scaling_limits"],
+    "properties": {
+        "resource_groups": {"$ref": "#/resource_groups_definition"},
+        "draining_enabled": {"type": "boolean"},
+        "scaling_limits": {
+            "type": "object",
+            "required": ["min_capacity", "max_capacity", "max_weight_to_add", "max_weight_to_remove"],
+            "properties": {
+                "min_capacity": {"$ref": "definitions.json#nonnegative_int"},
+                "max_capacity": {"$ref": "definitions.json#posint"},
+                "max_tasks_to_kill": {"anyOf": [
+                    {"$ref": "definitions.json#nonnegative_int"},
+                    {"$ref": "definitions.json#infinity"}
+                ]},
+                "max_weight_to_add": {"$ref": "definitions.json#posint"},
+                "max_weight_to_remove": {"$ref": "definitions.json#posint"}
+            },
+            "additionalProperties": false
+        },
+        "autoscale_signal": {"$ref": "definitions.json#autoscale_signal"},
+        "autoscaling": {
+            "type": "object",
+            "properties": {
+                "excluded_resources": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["cpus", "mem", "disk", "gpus"]}
+                },
+                "setpoint": {"$ref": "definitions.json#percentage"},
+                "setpoint_margin": {"$ref": "definitions.json#percentage"},
+                "target_capacity_margin": {"$ref": "definitions.json#percentage"}
+            },
+            "additionalProperties": false
+        },
+        "sensu_config": {"$ref": "definitions.json#sensu_config"}
+    },
+    "additionalProperties": false
+}

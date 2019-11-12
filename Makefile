@@ -46,14 +46,14 @@ itest: export EXTRA_VOLUME_MOUNTS=/nail/etc/services/services.yaml:/nail/etc/ser
 itest: cook-image
 	COMPOSE_PROJECT_NAME=clusterman_xenial tox -e acceptance
 	./service-itest-runner clusterman.batch.spot_price_collector "--aws-region=us-west-1 "
-	./service-itest-runner clusterman.batch.cluster_metrics_collector "--cluster=docker"
+	./service-itest-runner clusterman.batch.cluster_metrics_collector "--cluster=local-dev"
 	./service-itest-runner clusterman.batch.autoscaler_bootstrap "" clusterman.batch.autoscaler
 
 .PHONY: itest-external
 itest-external: cook-image-external
 	COMPOSE_PROJECT_NAME=clusterman_bionic tox -e acceptance
 	./service-itest-runner examples.batch.spot_price_collector "--aws-region=us-west-1 --env-config-path=acceptance/srv-configs/clusterman-external.yaml"
-	./service-itest-runner examples.batch.cluster_metrics_collector "--cluster=docker --env-config-path=acceptance/srv-configs/clusterman-external.yaml"
+	./service-itest-runner examples.batch.cluster_metrics_collector "--cluster=local-dev --env-config-path=acceptance/srv-configs/clusterman-external.yaml"
 	./service-itest-runner examples.batch.autoscaler_bootstrap "--env-config-path=acceptance/srv-configs/clusterman-external.yaml" examples.batch.autoscaler
 
 .PHONY: cook-image
