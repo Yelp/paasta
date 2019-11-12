@@ -1376,6 +1376,10 @@ def get_log_name_for_service(service: str, prefix: str = None) -> str:
 try:
     import clog
 
+    # Somehow clog turns on DeprecationWarnings, so we need to disable them
+    # again after importing it.
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+
     @register_log_writer("scribe")
     class ScribeLogWriter(LogWriter):
         def __init__(
