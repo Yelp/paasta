@@ -1580,6 +1580,10 @@ class TestInstanceConfig:
             "PAASTA_CLUSTER": "fake_cluster",
             "PAASTA_DEPLOY_GROUP": "fake_cluster.fake_instance",
             "PAASTA_DOCKER_IMAGE": "",
+            "PAASTA_APP_RESOURCE_CPUS": "0.25",
+            "PAASTA_APP_RESOURCE_DISK": "1024",
+            "PAASTA_APP_RESOURCE_MEM": "1024",
+            "PAASTA_PORT": "8888",
         }
 
     def test_get_env_handles_non_strings_and_returns_strings(self):
@@ -1596,6 +1600,10 @@ class TestInstanceConfig:
             "PAASTA_CLUSTER": "fake_cluster",
             "PAASTA_DEPLOY_GROUP": "None",
             "PAASTA_DOCKER_IMAGE": "",
+            "PAASTA_APP_RESOURCE_CPUS": "0.25",
+            "PAASTA_APP_RESOURCE_DISK": "1024",
+            "PAASTA_APP_RESOURCE_MEM": "1024",
+            "PAASTA_PORT": "8888",
         }
 
     def test_get_env_with_config(self):
@@ -1618,6 +1626,10 @@ class TestInstanceConfig:
             "PAASTA_DEPLOY_GROUP": "fake_deploy_group",
             "PAASTA_DOCKER_IMAGE": "something",
             "PAASTA_MONITORING_TEAM": "generic_team",
+            "PAASTA_APP_RESOURCE_CPUS": "0.25",
+            "PAASTA_APP_RESOURCE_DISK": "1024",
+            "PAASTA_APP_RESOURCE_MEM": "1024",
+            "PAASTA_PORT": "8888",
         }
 
     def test_get_args_default_no_cmd(self):

@@ -623,12 +623,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
         env["MARATHON_HOST"] = hostname
         env["PAASTA_HOST"] = hostname
-        env["PAASTA_PORT"] = str(port0)
-        env["PAASTA_PORT0"] = str(port0)
-        env["PAASTA_APP_RESOURCE_CPUS"] = str(instance_config.get_cpus())
-        env["PAASTA_APP_DOCKER_IMAGE"] = docker_image
-        env["PAASTA_APP_RESOURCE_MEM"] = str(instance_config.get_mem())
-        env["PAASTA_APP_RESOURCE_DISK"] = str(instance_config.get_disk())
 
     return env
 

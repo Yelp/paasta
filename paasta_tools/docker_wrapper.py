@@ -44,6 +44,7 @@ MAX_HOSTNAME_LENGTH = 60
 
 def parse_env_args(args):
     result = dict(os.environ.items())
+    env_file_name = None
     in_env = False
     in_file = False
     for arg in args:
@@ -60,6 +61,7 @@ def parse_env_args(args):
         in_env = False
 
         if in_file:
+            env_file_name = arg
             result.update(read_env_file(arg))
             in_file = False
             continue
@@ -71,7 +73,7 @@ def parse_env_args(args):
 
         result[k] = v
 
-    return result
+    return result, env_file_name
 
 
 def read_env_file(filename):
@@ -331,7 +333,7 @@ def add_firewall(argv, service, instance):
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
-    env_args = parse_env_args(argv)
+    env_args, env_file_name = parse_env_args(argv)
 
     if env_args.get("PIN_TO_NUMA_NODE"):
         argv = append_cpuset_args(argv, env_args)
@@ -341,6 +343,10 @@ def main(argv=None):
 
     if mesos_task_id and can_add_hostname(argv):
         hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
+        # Add PAASTA_HOST environment variable
+        if env_file_name is not None:
+            with open(env_file_name, "a") as f:
+                f.write(f"PAASTA_HOST={hostname}")
         argv = add_argument(argv, f"--hostname={hostname}")
 
     paasta_firewall = env_args.get("PAASTA_FIREWALL")

@@ -68,7 +68,6 @@ from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ReplicaSet
-from kubernetes.client import V1ResourceFieldSelector
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
@@ -588,7 +587,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             secret_env_vars=secret_env_vars,
             shared_secret_env_vars=shared_secret_env_vars,
         )
-        return user_env + self.get_kubernetes_environment() + self.get_service_container_env()  # type: ignore
+        return user_env + self.get_kubernetes_environment()
 
     def get_kubernetes_secret_env_vars(
         self,
@@ -630,42 +629,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return ret
 
-    def get_service_container_env(self) -> Sequence[V1EnvVar]:
-        kubernetes_env = [
-            V1EnvVar(name="PAASTA_APP_DOCKER_IMAGE", value=self.get_docker_image(),),
-            V1EnvVar(
-                name="PAASTA_HOST",
-                value_from=V1EnvVarSource(
-                    field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
-                ),
-            ),
-            V1EnvVar(name="PAASTA_PORT", value=str(self.get_container_port()),),
-            V1EnvVar(name="PAASTA_PORT0", value=str(self.get_container_port()),),
-            V1EnvVar(
-                name="PAASTA_APP_RESOURCE_DISK",
-                value_from=V1EnvVarSource(
-                    resource_field_ref=V1ResourceFieldSelector(
-                        resource="requests.ephemeral-storage"
-                    )
-                ),
-            ),
-            V1EnvVar(
-                name="PAASTA_APP_RESOURCE_CPUS",
-                value_from=V1EnvVarSource(
-                    resource_field_ref=V1ResourceFieldSelector(resource="requests.cpu")
-                ),
-            ),
-            V1EnvVar(
-                name="PAASTA_APP_RESOURCE_MEM",
-                value_from=V1EnvVarSource(
-                    resource_field_ref=V1ResourceFieldSelector(
-                        resource="requests.memory"
-                    )
-                ),
-            ),
-        ]
-        return kubernetes_env
-
     def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
@@ -680,6 +643,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 name="POD_NAME",
                 value_from=V1EnvVarSource(
                     field_ref=V1ObjectFieldSelector(field_path="metadata.name")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_HOST",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
                 ),
             ),
         ]

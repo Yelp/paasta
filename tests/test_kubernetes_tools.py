@@ -439,10 +439,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             autospec=True,
             return_value=[V1EnvVar(name="manager", value="chabuddy")],
         ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service_container_env",
-            autospec=True,
-            return_value=[V1EnvVar(name="servic3", value="lol")],
-        ), mock.patch(
             "paasta_tools.kubernetes_tools.is_secret_ref", autospec=True
         ) as mock_is_secret_ref, mock.patch(
             "paasta_tools.kubernetes_tools.is_shared_secret", autospec=True
@@ -459,7 +455,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 V1EnvVar(name="mc", value="grindah"),
                 V1EnvVar(name="dj", value="beats"),
                 V1EnvVar(name="manager", value="chabuddy"),
-                V1EnvVar(name="servic3", value="lol"),
             ]
             assert expected == self.deployment.get_container_env()
             mock_get_kubernetes_secret_env_vars.assert_called_with(
@@ -472,17 +467,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         ret = self.deployment.get_kubernetes_environment()
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
-
-    def test_get_service_container_env(self):
-        ret = self.deployment.get_service_container_env()
-        env_names = {env.name for env in ret}
-        assert "PAASTA_HOST" in env_names
-        assert "PAASTA_PORT0" in env_names
-        assert "PAASTA_PORT" in env_names
-        assert "PAASTA_APP_DOCKER_IMAGE" in env_names
-        assert "PAASTA_APP_RESOURCE_DISK" in env_names
-        assert "PAASTA_APP_RESOURCE_CPUS" in env_names
-        assert "PAASTA_APP_RESOURCE_MEM" in env_names
 
     def test_get_resource_requirements(self):
         with mock.patch(

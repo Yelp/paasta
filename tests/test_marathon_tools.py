@@ -24,6 +24,7 @@ from pytest import raises
 
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
+from paasta_tools import utils
 from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.marathon_tools import FormattedMarathonAppDict
 from paasta_tools.marathon_tools import MarathonContainerInfo
@@ -1008,6 +1009,10 @@ class TestMarathonTools:
         fake_mem = 1000000000000000000000
         fake_disk = 2000000000000000000000
         fake_env = {"FAKEENV": "FAKEVALUE"}
+        fake_cpus = 0.42
+        fake_disk = 1234.5
+        fake_instances = 101
+        fake_cmd = None
         expected_env = {
             "FAKEENV": "FAKEVALUE",
             "PAASTA_CLUSTER": "fake_cluster",
@@ -1016,11 +1021,11 @@ class TestMarathonTools:
             "PAASTA_DEPLOY_GROUP": "fake_cluster.yes_i_can",
             "PAASTA_DOCKER_IMAGE": "dockervania_from_konami",
             "PAASTA_INSTANCE_TYPE": "marathon",
+            "PAASTA_APP_RESOURCE_CPUS": str(fake_cpus),
+            "PAASTA_APP_RESOURCE_DISK": str(fake_disk),
+            "PAASTA_APP_RESOURCE_MEM": str(fake_mem),
+            "PAASTA_PORT": "8888",
         }
-        fake_cpus = 0.42
-        fake_disk = 1234.5
-        fake_instances = 101
-        fake_cmd = None
         fake_args = ["arg1", "arg2"]
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
             {"mode": "http", "healthcheck_uri": "/health", "discover": "habitat"}
@@ -1048,7 +1053,7 @@ class TestMarathonTools:
                     "network": "BRIDGE",
                     "portMappings": [
                         {
-                            "containerPort": long_running_service_tools.DEFAULT_CONTAINER_PORT,
+                            "containerPort": utils.DEFAULT_CONTAINER_PORT,
                             "hostPort": 0,
                             "protocol": "tcp",
                         }

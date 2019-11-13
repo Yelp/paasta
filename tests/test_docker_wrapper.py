@@ -29,7 +29,7 @@ class TestParseEnvArgs:
 
     def test_empty(self):
         env = docker_wrapper.parse_env_args(["docker"])
-        assert env == {}
+        assert env == ({}, None)
 
     @pytest.mark.parametrize(
         "args",
@@ -46,7 +46,7 @@ class TestParseEnvArgs:
     )
     def test_short(self, args):
         env = docker_wrapper.parse_env_args(args)
-        assert env == {"key": "value"}
+        assert env == ({"key": "value"}, None)
 
     @pytest.mark.parametrize(
         "args,envs",
@@ -60,14 +60,14 @@ class TestParseEnvArgs:
     def test_short_with_envs(self, args, envs):
         with patch_environ(envs):
             env = docker_wrapper.parse_env_args(args)
-            assert env == {"key": "value"}
+            assert env == ({"key": "value"}, None)
 
     @pytest.mark.parametrize(
         "args", [["docker", "--env", "key=value"], ["docker", "--env=key=value"]]
     )
     def test_long(self, args):
         env = docker_wrapper.parse_env_args(args)
-        assert env == {"key": "value"}
+        assert env == ({"key": "value"}, None)
 
     @pytest.mark.parametrize(
         "args,envs",
@@ -79,7 +79,7 @@ class TestParseEnvArgs:
     def test_long_with_envs(self, args, envs):
         with patch_environ(envs):
             env = docker_wrapper.parse_env_args(args)
-            assert env == {"key": "value"}
+            assert env == ({"key": "value"}, None)
 
     @pytest.mark.parametrize(
         "args",
@@ -95,51 +95,63 @@ class TestParseEnvArgs:
     )
     def test_short_invalid(self, args):
         env = docker_wrapper.parse_env_args(args)
-        assert env == {}
+        assert env == ({}, None)
 
     def test_mixed_short_long(self):
         env = docker_wrapper.parse_env_args(
             ["docker", "-e", "foo=bar", "--env=apple=banana", "--env", "c=d"]
         )
-        assert env == {"foo": "bar", "apple": "banana", "c": "d"}
+        assert env == ({"foo": "bar", "apple": "banana", "c": "d"}, None)
 
     def test_multiple_equals(self):
         env = docker_wrapper.parse_env_args(["docker", "-e", "foo=bar=cat"])
-        assert env == {"foo": "bar=cat"}
+        assert env == ({"foo": "bar=cat"}, None)
 
     def test_dupe(self):
         env = docker_wrapper.parse_env_args(
             ["docker", "-e", "foo=bar", "-e", "foo=cat"]
         )
-        assert env == {"foo": "cat"}
+        assert env == ({"foo": "cat"}, None)
 
     def test_empty_value(self):
         env = docker_wrapper.parse_env_args(["docker", "-e", "foo=", "--env=bar="])
-        assert env == {"foo": "", "bar": ""}
+        assert env == ({"foo": "", "bar": ""}, None)
 
     def test_file_equals(self, mock_env_file):
         env = docker_wrapper.parse_env_args(["docker", f"--env-file={mock_env_file}"])
-        assert env == {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"}
+        assert env == (
+            {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"},
+            f"{mock_env_file}",
+        )
 
     def test_file(self, mock_env_file):
         env = docker_wrapper.parse_env_args(["docker", "--env-file", mock_env_file])
-        assert env == {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"}
+        assert env == (
+            {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"},
+            f"{mock_env_file}",
+        )
 
     def test_two_files(self, mock_env_file, mock_env_file2):
         env = docker_wrapper.parse_env_args(
             ["docker", "--env-file", mock_env_file, "--env-file", mock_env_file2]
         )
-        assert env == {
-            "fileKeyA": "fileValueA",
-            "fileKeyB": "fileValueB",
-            "fileKeyC": "fileValueC",
-        }
+        assert env == (
+            {
+                "fileKeyA": "fileValueA",
+                "fileKeyB": "fileValueB",
+                "fileKeyC": "fileValueC",
+            },
+            f"{mock_env_file2}",
+        )
 
     def test_file_and_short(self, mock_env_file):
         env = docker_wrapper.parse_env_args(
             ["docker", "--env-file", mock_env_file, "-e", "foo=bar"]
         )
-        assert env == {"foo": "bar", "fileKeyA": "fileValueA", "fileKeyB": "fileValueB"}
+        assert env == (
+            {"foo": "bar", "fileKeyA": "fileValueA", "fileKeyB": "fileValueB"},
+            mock_env_file,
+        )
 
     @pytest.fixture
     def mock_env_file(self, tmpdir):

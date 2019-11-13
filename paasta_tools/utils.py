@@ -113,6 +113,7 @@ DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = (
 
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_ADD = 1
+DEFAULT_CONTAINER_PORT = 8888
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -545,7 +546,13 @@ class InstanceConfig:
             "PAASTA_CLUSTER": self.cluster,
             "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
+            "PAASTA_APP_RESOURCE_CPUS": str(self.get_cpus()),
+            "PAASTA_PORT": str(self.get_container_port()),
+            "PAASTA_APP_RESOURCE_MEM": str(self.get_mem()),
+            "PAASTA_APP_RESOURCE_DISK": str(self.get_disk()),
         }
+        if self.get_gpus() is not None:
+            env["PAASTA_APP_RESOURCE_GPUS"] = str(self.get_gpus())
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
@@ -555,6 +562,9 @@ class InstanceConfig:
         user_env = self.config_dict.get("env", {})
         env.update(user_env)
         return {str(k): str(v) for (k, v) in env.items()}
+
+    def get_container_port(self) -> int:
+        return self.config_dict.get("container_port", DEFAULT_CONTAINER_PORT)
 
     def get_env(self) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
