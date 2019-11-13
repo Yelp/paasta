@@ -12,6 +12,7 @@
 # limitations under the License.
 import base64
 import copy
+import hashlib
 import itertools
 import json
 import logging
@@ -481,20 +482,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return V1DeploymentStrategy(type=strategy_type, rolling_update=rolling_update)
 
-    def get_sanitised_volume_name(self, volume_name: str) -> str:
+    def get_sanitised_volume_name(self, volume_name: str, length_limit: int = 0) -> str:
         """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip("/")
         sanitised = volume_name.replace("/", "slash-").replace(".", "dot-")
-        return sanitise_kubernetes_name(sanitised)
+        sanitised_name = sanitise_kubernetes_name(sanitised)
+        if length_limit and len(sanitised_name) > length_limit:
+            sanitised_name = (
+                sanitised_name[0 : length_limit - 6]
+                + "--"
+                + hashlib.md5(sanitised_name.encode("ascii")).hexdigest()[:4]
+            )
+        return sanitised_name
 
     def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
         return self.get_sanitised_volume_name(
-            "host--{name}".format(name=docker_volume["hostPath"])
+            "host--{name}".format(name=docker_volume["hostPath"]), length_limit=63
         )
 
     def get_persistent_volume_name(self, docker_volume: PersistentVolume) -> str:
         return self.get_sanitised_volume_name(
-            "pv--{name}".format(name=docker_volume["container_path"])
+            "pv--{name}".format(name=docker_volume["container_path"]), length_limit=253
         )
 
     def get_aws_ebs_volume_name(self, aws_ebs_volume: AwsEbsVolume) -> str:
