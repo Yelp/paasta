@@ -1,3 +1,4 @@
+#!/usr/bin/python3.6
 # Copyright 2019 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#!/usr/bin/python3.6
 import os
 
 import boto3
@@ -75,7 +75,7 @@ s3.put_object(
     Key='acceptance/sfr.json',
     Body=json.dumps({
         'cluster_autoscaling_resources': {
-            'aws_spot_fleet_request.docker': {
+            'aws_spot_fleet_request.local-dev': {
                 'id': sfr_response['SpotFleetRequestId'],
                 'pool': 'default'
             }

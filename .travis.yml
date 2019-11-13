@@ -1,0 +1,15 @@
+---
+dist: bionic
+language: python
+python:
+    - "3.7"
+env:
+    - TARGET: test-external
+    - TARGET: itest-external
+    - TARGET: itest_xenial-external
+    - TARGET: itest_bionic-external
+
+before_install:
+    - sudo apt-get install python3.7 python3.7-dev libfreetype6-dev
+    - pip install tox
+script: make $TARGET

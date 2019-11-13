@@ -31,4 +31,4 @@ package/itest/run_instance.py
 package/itest/trusty/*
 package/itest/xenial/*
 package/itest/bionic/*
-/completions/
+/completions/[a-zA-Z]*
