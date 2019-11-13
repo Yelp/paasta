@@ -254,6 +254,7 @@ class InstanceConfigDict(TypedDict, total=False):
     extra_docker_args: Dict[str, str]
     gpus: int
     branch: str
+    container_port: int
 
 
 class BranchDictV1(TypedDict, total=False):

@@ -31,7 +31,6 @@ ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     drain_method: str
-    container_port: int
     drain_method_params: Dict
     healthcheck_cmd: str
     healthcheck_grace_period_seconds: float
