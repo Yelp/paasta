@@ -28,10 +28,10 @@ from paasta_tools.oom_logger import main
 def sys_stdin():
     return [
         "some random line1\n",
-        "1500316299 dev37-devc [30533610.306528] apache2 invoked oom-killer: "
+        "1500316299 dev42-uswest1adevc [30533610.306528] apache2 invoked oom-killer: "
         "gfp_mask=0x24000c0, order=0, oom_score_adj=0\n,"
         "some random line2\n",
-        "1500316300 dev37-devc [30533610.306529] Task in "
+        "1500316300 dev42-uswest1adevc [30533610.306529] Task in "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 "
         "killed as a result of limit of "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79\n",
@@ -42,10 +42,10 @@ def sys_stdin():
 def sys_stdin_process_name_with_slashes():
     return [
         "some random line1\n",
-        "1500316299 dev37-devc [30533610.306528] /nail/live/yelp invoked oom-killer: "
+        "1500316299 dev42-uswest1adevc [30533610.306528] /nail/live/yelp invoked oom-killer: "
         "gfp_mask=0x24000c0, order=0, oom_score_adj=0\n,"
         "some random line2\n",
-        "1500316300 dev37-devc [30533610.306529] Task in "
+        "1500316300 dev42-uswest1adevc [30533610.306529] Task in "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 "
         "killed as a result of limit of "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79\n",
@@ -56,10 +56,10 @@ def sys_stdin_process_name_with_slashes():
 def sys_stdin_process_name_with_spaces():
     return [
         "some random line1\n",
-        "1500316299 dev37-devc [30533610.306528] python batch/ke invoked oom-killer: "
+        "1500316299 dev42-uswest1adevc [30533610.306528] python batch/ke invoked oom-killer: "
         "gfp_mask=0x24000c0, order=0, oom_score_adj=0\n,"
         "some random line2\n",
-        "1500316300 dev37-devc [30533610.306529] Task in "
+        "1500316300 dev42-uswest1adevc [30533610.306529] Task in "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 "
         "killed as a result of limit of "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79\n",
@@ -70,12 +70,12 @@ def sys_stdin_process_name_with_spaces():
 def sys_stdin_without_process_name():
     return [
         "some random line1\n",
-        "1500216300 dev37-devc [1140036.678311] Task in "
+        "1500216300 dev42-uswest1adevc [1140036.678311] Task in "
         "/docker/e3a1057fdd485f5dffe48f1584e6f30c2bf6d30107d95518aea32bbb8bb29560 "
         "killed as a result of limit of "
         "/docker/e3a1057fdd485f5dffe48f1584e6f30c2bf6d30107d95518aea32bbb8bb29560\n,"
         "some random line2\n",
-        "1500316300 dev37-devc [30533610.306529] Task in "
+        "1500316300 dev42-uswest1adevc [30533610.306529] Task in "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79 "
         "killed as a result of limit of "
         "/docker/a687af92e281725daf5b4cda0b487f20d2055d2bb6814b76d0e39c18a52a4e79\n",
@@ -86,7 +86,11 @@ def sys_stdin_without_process_name():
 def docker_inspect():
     return {
         "Config": {
-            "Env": ["PAASTA_SERVICE=fake_service", "PAASTA_INSTANCE=fake_instance"]
+            "Env": [
+                "PAASTA_SERVICE=fake_service",
+                "PAASTA_INSTANCE=fake_instance",
+                "PAASTA_HOST=dev42-uswest1adevc-64e7207e-f738-4236-b0c5-8f4fc5e0adbd",
+            ]
         }
     }
 
@@ -95,7 +99,7 @@ def docker_inspect():
 def log_line():
     return LogLine(
         timestamp=1500316300,
-        hostname="dev37-devc",
+        hostname="dev42-uswest1adevc-64e7207e-f738-4236-b0c5-8f4fc5e0adbd",
         container_id="a687af92e281",
         cluster="fake_cluster",
         service="fake_service",
@@ -111,7 +115,9 @@ def test_capture_oom_events_from_stdin(mock_sys_stdin, sys_stdin):
     for a_tuple in capture_oom_events_from_stdin():
         test_output.append(a_tuple)
 
-    assert test_output == [(1500316300, "dev37-devc", "a687af92e281", "apache2")]
+    assert test_output == [
+        (1500316300, "dev42-uswest1adevc", "a687af92e281", "apache2")
+    ]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
@@ -124,7 +130,7 @@ def test_capture_oom_events_from_stdin_with_slashes(
         test_output.append(a_tuple)
 
     assert test_output == [
-        (1500316300, "dev37-devc", "a687af92e281", "/nail/live/yelp")
+        (1500316300, "dev42-uswest1adevc", "a687af92e281", "/nail/live/yelp")
     ]
 
 
@@ -138,7 +144,7 @@ def test_capture_oom_events_from_stdin_with_spaces(
         test_output.append(a_tuple)
 
     assert test_output == [
-        (1500316300, "dev37-devc", "a687af92e281", "python batch/ke")
+        (1500316300, "dev42-uswest1adevc", "a687af92e281", "python batch/ke")
     ]
 
 
@@ -152,8 +158,8 @@ def test_capture_oom_events_from_stdin_without_process_name(
         test_output.append(a_tuple)
 
     assert test_output == [
-        (1500216300, "dev37-devc", "e3a1057fdd48", ""),
-        (1500316300, "dev37-devc", "a687af92e281", ""),
+        (1500216300, "dev42-uswest1adevc", "e3a1057fdd48", ""),
+        (1500316300, "dev42-uswest1adevc", "a687af92e281", ""),
     ]
 
 
