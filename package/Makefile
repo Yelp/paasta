@@ -7,7 +7,7 @@ ACCEPTANCE_DIR:=$(CURDIR)/../acceptance
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_BUILD_RUN:=docker run -t -v $(CURDIR)/..:/src:ro -v $(CURDIR)/dist:/dist:rw
+DOCKER_BUILD_RUN:=docker run -t -e TRAVIS=${TRAVIS} -v $(CURDIR)/..:/src:ro -v $(CURDIR)/dist:/dist:rw
 VERSIONED_FILES:=$(shell cd $(CURDIR)/.. && git ls-files -z --cached --modified | xargs -0 -I@ echo -n "'@' ")
 DOCKER_WORKDIR:=mkdir -p /work && cd /src && cp -vP --parents $(VERSIONED_FILES) /work/ && cp -r completions /work/ && cd /work
 
@@ -38,7 +38,7 @@ package_%_external: build_%_docker
 	$(DOCKER_BUILD_RUN) \
 		$(SYSTEM_PKG_NAME)_$*_container /bin/bash -c "\
 		$(DOCKER_WORKDIR) && echo \"file:///work/examples/clusterman_metrics\" >> requirements.txt \
-		&& dpkg-buildpackage -d -Rdebian/rules.external \
+		&& dpkg-buildpackage -d \
 		&& mv ../*.deb /dist/$*/$(SYSTEM_PKG_NAME)_$(PACKAGE_VERSION)_amd64.deb \
 		&& chown $(UID):$(GID) /dist/$*/*.deb"
 

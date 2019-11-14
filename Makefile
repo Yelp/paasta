@@ -122,7 +122,7 @@ package: itest_xenial itest_bionic
 package-external: itest_xenial-external itest_bionic-external
 
 .PHONY:
-export EXAMPLE=true
+example: export EXAMPLE=true
 example: itest_bionic-external
 
 .PHONY:

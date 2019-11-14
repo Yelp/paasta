@@ -1,7 +1,19 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
+ifneq ($(shell echo ${TRAVIS}),true)
+	YELP_DH_VIRTUALENV = --index-url='https://pypi.yelpcorp.com/simple' --preinstall=pip-custom-platform --pip-tool=pip-custom-platform
+	YELP_DH_INSTALL = install -d completions/usr debian/package/.
+endif
+
 %:
 	dh $@ --with python-virtualenv
 
 override_dh_virtualenv:
-	dh_virtualenv --index-url='https://pypi.yelpcorp.com/simple' --python python3.7 --preinstall=pip-custom-platform --pip-tool=pip-custom-platform
+	dh_virtualenv --python python3.7 $(YELP_DH_VIRTUALENV)
+
+override_dh_install:
+	dh_install
+	$(YELP_DH_INSTALL)
+
+override_dh_shlibdeps:
+	dh_shlibdeps --exclude matplotlib --exclude numpy
