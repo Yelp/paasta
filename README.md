@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/Yelp/clusterman.svg?branch=master)](https://travis-ci.com/Yelp/clusterman)
+[![Documentation Status](https://readthedocs.org/projects/clusterman/badge/?version=latest)](https://clusterman.readthedocs.io/en/latest/?badge=latest)
 
 # Clusterman - Autoscale and Manage your compute clusters
 
@@ -22,7 +23,7 @@ It provides the following set of features:
   simulate future traffic so that you can predict usage or cost increase
   before they happen.
 
-The documentation for Clusterman is available at READTHEDOCS-LINK
+For more information, see the [Clusterman documentation](https://clusterman.readthedocs.io/en/latest/)
 
 ## Getting Started
 
