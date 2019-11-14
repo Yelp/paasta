@@ -502,9 +502,6 @@ def get_spark_config(
         "spark.mesos.executor.docker.image": docker_img,
         "spark.mesos.principal": "spark",
         "spark.mesos.secret": _load_mesos_secret(),
-        # derby.system.home property defaulting to '.',
-        # which requires directory permission changes.
-        "spark.driver.extraJavaOptions": "-Dderby.system.home=/tmp/derby",
     }
 
     if not args.build and not args.image:
@@ -513,7 +510,7 @@ def get_spark_config(
     if args.spark_args:
         spark_args = args.spark_args.split()
         for spark_arg in spark_args:
-            fields = spark_arg.split("=")
+            fields = spark_arg.split("=", 1)
             if len(fields) != 2:
                 paasta_print(
                     PaastaColors.red(
