@@ -67,6 +67,5 @@ deploy:
       repo: Yelp/paasta
 matrix:
   allow_failures:
-    - env: MAKE_TARGET=itest_bionic
     - env: TOXENV=example_cluster_k8s
   fast_finish: true
