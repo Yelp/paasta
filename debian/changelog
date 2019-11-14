@@ -1,3 +1,9 @@
+clusterman (4.3.3) xenial bionic; urgency=low
+
+  * Fix bug with list-pools traceback
+
+ -- Chien-An Lai <chl@yelp.com>  Thu, 14 Nov 2019 15:33:59 -0800
+
 clusterman (4.3.2) xenial bionic; urgency=low
 
   * Bumping to v4.3.2 as v4.3.1 was already on remote
