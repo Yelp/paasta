@@ -44,7 +44,6 @@ MAX_HOSTNAME_LENGTH = 60
 
 def parse_env_args(args):
     result = dict(os.environ.items())
-    env_file_name = None
     in_env = False
     in_file = False
     for arg in args:
@@ -61,7 +60,6 @@ def parse_env_args(args):
         in_env = False
 
         if in_file:
-            env_file_name = arg
             result.update(read_env_file(arg))
             in_file = False
             continue
@@ -73,7 +71,7 @@ def parse_env_args(args):
 
         result[k] = v
 
-    return result, env_file_name
+    return result
 
 
 def read_env_file(filename):
@@ -146,20 +144,21 @@ def can_add_mac_address(args):
     return True
 
 
-def generate_hostname(fqdn, mesos_task_id):
-    host_hostname = fqdn.partition(".")[0]
+def generate_hostname_task_id(hostname, mesos_task_id):
     task_id = mesos_task_id.rpartition(".")[2]
 
-    hostname = host_hostname + "-" + task_id
+    hostname_task_id = hostname + "-" + task_id
 
     # hostnames can only contain alphanumerics and dashes and must be no more
     # than 60 characters
-    hostname = re.sub("[^a-zA-Z0-9-]+", "-", hostname)[:MAX_HOSTNAME_LENGTH]
+    hostname_task_id = re.sub("[^a-zA-Z0-9-]+", "-", hostname_task_id)[
+        :MAX_HOSTNAME_LENGTH
+    ]
 
     # hostnames can also not end with dashes as per RFC952
-    hostname = hostname.rstrip("-")
+    hostname_task_id = hostname_task_id.rstrip("-")
 
-    return hostname
+    return hostname_task_id
 
 
 def add_argument(args, argument):
@@ -333,7 +332,7 @@ def add_firewall(argv, service, instance):
 def main(argv=None):
     argv = argv if argv is not None else sys.argv
 
-    env_args, env_file_name = parse_env_args(argv)
+    env_args = parse_env_args(argv)
 
     if env_args.get("PIN_TO_NUMA_NODE"):
         argv = append_cpuset_args(argv, env_args)
@@ -342,12 +341,12 @@ def main(argv=None):
     mesos_task_id = env_args.get("MESOS_TASK_ID")
 
     if mesos_task_id and can_add_hostname(argv):
-        hostname = generate_hostname(socket.getfqdn(), mesos_task_id)
-        # Add PAASTA_HOST environment variable
-        if env_file_name is not None:
-            with open(env_file_name, "a") as f:
-                f.write(f"PAASTA_HOST={hostname}")
-        argv = add_argument(argv, f"--hostname={hostname}")
+        hostname = socket.getfqdn()
+        argv = add_argument(argv, f"-e PAASTA_HOST={hostname}")
+        hostname_task_id = generate_hostname_task_id(
+            hostname.partition(".")[0], mesos_task_id
+        )
+        argv = add_argument(argv, f"--hostname={hostname_task_id }")
 
     paasta_firewall = env_args.get("PAASTA_FIREWALL")
     service = env_args.get("PAASTA_SERVICE")

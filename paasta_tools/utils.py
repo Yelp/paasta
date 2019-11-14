@@ -547,13 +547,15 @@ class InstanceConfig:
             "PAASTA_CLUSTER": self.cluster,
             "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
-            "PAASTA_APP_RESOURCE_CPUS": str(self.get_cpus()),
+            "PAASTA_RESOURCE_CPUS": str(self.get_cpus()),
             "PAASTA_PORT": str(self.get_container_port()),
-            "PAASTA_APP_RESOURCE_MEM": str(self.get_mem()),
-            "PAASTA_APP_RESOURCE_DISK": str(self.get_disk()),
+            "PAASTA_RESOURCE_MEM": str(self.get_mem()),
+            "PAASTA_RESOURCE_DISK": str(self.get_disk()),
         }
         if self.get_gpus() is not None:
-            env["PAASTA_APP_RESOURCE_GPUS"] = str(self.get_gpus())
+            env["PAASTA_RESOURCE_GPUS"] = str(self.get_gpus())
+        if self.get_docker_image():
+            env["PAASTA_GIT_SHA"] = get_code_sha_from_dockerurl(self.get_docker_url())
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team

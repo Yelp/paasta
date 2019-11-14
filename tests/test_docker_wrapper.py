@@ -29,7 +29,7 @@ class TestParseEnvArgs:
 
     def test_empty(self):
         env = docker_wrapper.parse_env_args(["docker"])
-        assert env == ({}, None)
+        assert env == {}
 
     @pytest.mark.parametrize(
         "args",
@@ -46,7 +46,7 @@ class TestParseEnvArgs:
     )
     def test_short(self, args):
         env = docker_wrapper.parse_env_args(args)
-        assert env == ({"key": "value"}, None)
+        assert env == {"key": "value"}
 
     @pytest.mark.parametrize(
         "args,envs",
@@ -60,14 +60,14 @@ class TestParseEnvArgs:
     def test_short_with_envs(self, args, envs):
         with patch_environ(envs):
             env = docker_wrapper.parse_env_args(args)
-            assert env == ({"key": "value"}, None)
+            assert env == {"key": "value"}
 
     @pytest.mark.parametrize(
         "args", [["docker", "--env", "key=value"], ["docker", "--env=key=value"]]
     )
     def test_long(self, args):
         env = docker_wrapper.parse_env_args(args)
-        assert env == ({"key": "value"}, None)
+        assert env == {"key": "value"}
 
     @pytest.mark.parametrize(
         "args,envs",
@@ -79,7 +79,7 @@ class TestParseEnvArgs:
     def test_long_with_envs(self, args, envs):
         with patch_environ(envs):
             env = docker_wrapper.parse_env_args(args)
-            assert env == ({"key": "value"}, None)
+            assert env == {"key": "value"}
 
     @pytest.mark.parametrize(
         "args",
@@ -95,63 +95,51 @@ class TestParseEnvArgs:
     )
     def test_short_invalid(self, args):
         env = docker_wrapper.parse_env_args(args)
-        assert env == ({}, None)
+        assert env == {}
 
     def test_mixed_short_long(self):
         env = docker_wrapper.parse_env_args(
             ["docker", "-e", "foo=bar", "--env=apple=banana", "--env", "c=d"]
         )
-        assert env == ({"foo": "bar", "apple": "banana", "c": "d"}, None)
+        assert env == {"foo": "bar", "apple": "banana", "c": "d"}
 
     def test_multiple_equals(self):
         env = docker_wrapper.parse_env_args(["docker", "-e", "foo=bar=cat"])
-        assert env == ({"foo": "bar=cat"}, None)
+        assert env == {"foo": "bar=cat"}
 
     def test_dupe(self):
         env = docker_wrapper.parse_env_args(
             ["docker", "-e", "foo=bar", "-e", "foo=cat"]
         )
-        assert env == ({"foo": "cat"}, None)
+        assert env == {"foo": "cat"}
 
     def test_empty_value(self):
         env = docker_wrapper.parse_env_args(["docker", "-e", "foo=", "--env=bar="])
-        assert env == ({"foo": "", "bar": ""}, None)
+        assert env == {"foo": "", "bar": ""}
 
     def test_file_equals(self, mock_env_file):
         env = docker_wrapper.parse_env_args(["docker", f"--env-file={mock_env_file}"])
-        assert env == (
-            {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"},
-            f"{mock_env_file}",
-        )
+        assert env == {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"}
 
     def test_file(self, mock_env_file):
         env = docker_wrapper.parse_env_args(["docker", "--env-file", mock_env_file])
-        assert env == (
-            {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"},
-            f"{mock_env_file}",
-        )
+        assert env == {"fileKeyA": "fileValueA", "fileKeyB": "fileValueB"}
 
     def test_two_files(self, mock_env_file, mock_env_file2):
         env = docker_wrapper.parse_env_args(
             ["docker", "--env-file", mock_env_file, "--env-file", mock_env_file2]
         )
-        assert env == (
-            {
-                "fileKeyA": "fileValueA",
-                "fileKeyB": "fileValueB",
-                "fileKeyC": "fileValueC",
-            },
-            f"{mock_env_file2}",
-        )
+        assert env == {
+            "fileKeyA": "fileValueA",
+            "fileKeyB": "fileValueB",
+            "fileKeyC": "fileValueC",
+        }
 
     def test_file_and_short(self, mock_env_file):
         env = docker_wrapper.parse_env_args(
             ["docker", "--env-file", mock_env_file, "-e", "foo=bar"]
         )
-        assert env == (
-            {"foo": "bar", "fileKeyA": "fileValueA", "fileKeyB": "fileValueB"},
-            mock_env_file,
-        )
+        assert env == {"foo": "bar", "fileKeyA": "fileValueA", "fileKeyB": "fileValueB"}
 
     @pytest.fixture
     def mock_env_file(self, tmpdir):
@@ -247,13 +235,13 @@ class TestMemInfo:
 
 class TestGenerateHostname:
     def test_simple(self):
-        hostname = docker_wrapper.generate_hostname(
-            "first.part.matters", "what.only.matters.is.lastpart"
+        hostname = docker_wrapper.generate_hostname_task_id(
+            "first", "what.only.matters.is.lastpart"
         )
         assert hostname == "first-lastpart"
 
     def test_truncate(self):
-        hostname = docker_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname_task_id(
             "reallllllllllllllylooooooooooooooong",
             "reallyreallylongidsssssssssssssssssssssssss",
         )
@@ -263,15 +251,17 @@ class TestGenerateHostname:
         assert len(hostname) == 60
 
     def test_symbols(self):
-        hostname = docker_wrapper.generate_hostname(
-            "first.part.matters", "anything:can_do!s0me weird-stuff"
+        hostname = docker_wrapper.generate_hostname_task_id(
+            "first", "anything:can_do!s0me weird-stuff"
         )
         assert hostname == "first-anything-can-do-s0me-weird-stuff"
 
     def test_no_dashes_on_end(self):
-        assert docker_wrapper.generate_hostname("beep", "foobar-") == "beep-foobar"
+        assert (
+            docker_wrapper.generate_hostname_task_id("beep", "foobar-") == "beep-foobar"
+        )
 
-        hostname = docker_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname_task_id(
             "reallllllllllllllylooooooooooooooong", "reallyreallylongid0123--abc"
         )
         assert hostname == "reallllllllllllllylooooooooooooooong-reallyreallylongid0123"
@@ -320,6 +310,7 @@ class TestMain:
                 "docker",
                 "run",
                 "--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c",
+                "-e PAASTA_HOST=myhostname",
                 "--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c",
             )
         ]
