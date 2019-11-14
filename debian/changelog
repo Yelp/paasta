@@ -1,3 +1,11 @@
+paasta-tools (0.91.3) xenial; urgency=medium
+
+  * 0.91.3 tagged with 'make release'
+    Commit: Showing job information till the cluster has reached
+    StoppingJobManager state (#2555)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Thu, 14 Nov 2019 08:06:25 -0800
+
 paasta-tools (0.91.2) xenial; urgency=medium
 
   * 0.91.2 tagged with 'make release'
