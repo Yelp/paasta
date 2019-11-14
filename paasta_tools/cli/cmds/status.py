@@ -793,6 +793,14 @@ def get_flink_job_name(flink_job):
     return flink_job["name"].split(".", 2)[2]
 
 
+def should_job_info_be_shown(cluster_state):
+    return (
+        cluster_state == "running"
+        or cluster_state == "stoppingsupervisor"
+        or cluster_state == "cleanupsupervisor"
+    )
+
+
 def print_flink_status(
     cluster: str,
     service: str,
@@ -830,10 +838,13 @@ def print_flink_status(
         output.append(
             "    State: {state}".format(state=PaastaColors.yellow(status.state))
         )
+    else:
+        output.append(f"    State: {status.state}")
+
+    if not should_job_info_be_shown(status.state):
         output.append(f"    No other information available in non-running state")
         return 0
 
-    output.append(f"    State: {status.state}")
     output.append(
         "    Jobs:"
         f" {status.overview['jobs-running']} running,"
