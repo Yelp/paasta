@@ -9,7 +9,3 @@ requirements-tools
 mock
 moto>=1.1.24
 mypy
-sphinx>=1.6.6
-sphinx-rtd-theme
-sphinxcontrib-programoutput
-sphinx-autodoc-annotation
