@@ -177,7 +177,7 @@ def main():
         env_vars = get_container_env_as_dict(docker_inspect)
         service = env_vars.get("PAASTA_SERVICE", "unknown")
         instance = env_vars.get("PAASTA_INSTANCE", "unknown")
-        hostname = env_vars.get("PAASTA_HOST", hostname)
+        hostname = env_vars.get("HOSTNAME", hostname)
         log_line = LogLine(
             timestamp=timestamp,
             hostname=hostname,

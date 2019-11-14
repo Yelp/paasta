@@ -89,7 +89,7 @@ def docker_inspect():
             "Env": [
                 "PAASTA_SERVICE=fake_service",
                 "PAASTA_INSTANCE=fake_instance",
-                "PAASTA_HOST=dev42-uswest1adevc-64e7207e-f738-4236-b0c5-8f4fc5e0adbd",
+                "HOSTNAME=dev42-uswest1adevc-64e7207e-f738-4236-b0c5-8f4fc5e0adbd",
             ]
         }
     }
