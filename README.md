@@ -2,7 +2,7 @@
 
 # Clusterman - Autoscale and Manage your compute clusters
 
-![Clusterman Logo](https://github.com/Yelp/clusterman/clusterman_logo.png)
+![Clusterman Logo](https://raw.githubusercontent.com/Yelp/clusterman/master/clusterman_logo.png)
 
 Clusterman (the Cluster Manager) is an autoscaling engine for Mesos
 and Kubernetes clusters. It looks at metrics and can launch or terminate
