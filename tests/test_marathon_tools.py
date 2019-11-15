@@ -24,7 +24,6 @@ from pytest import raises
 
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
-from paasta_tools import utils
 from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.marathon_tools import FormattedMarathonAppDict
 from paasta_tools.marathon_tools import MarathonContainerInfo
@@ -1025,7 +1024,7 @@ class TestMarathonTools:
             "PAASTA_RESOURCE_DISK": str(fake_disk),
             "PAASTA_RESOURCE_MEM": str(fake_mem),
             "PAASTA_PORT": "8888",
-            "PAASTA_GIT_SHA": "gitdockerva",
+            "PAASTA_GIT_SHA": "dockerva",
         }
         fake_args = ["arg1", "arg2"]
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
@@ -1054,7 +1053,7 @@ class TestMarathonTools:
                     "network": "BRIDGE",
                     "portMappings": [
                         {
-                            "containerPort": utils.DEFAULT_CONTAINER_PORT,
+                            "containerPort": long_running_service_tools.DEFAULT_CONTAINER_PORT,
                             "hostPort": 0,
                             "protocol": "tcp",
                         }

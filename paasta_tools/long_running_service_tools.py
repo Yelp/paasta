@@ -27,10 +27,12 @@ logging.getLogger("marathon").setLevel(logging.WARNING)
 
 AUTOSCALING_ZK_ROOT = "/autoscaling"
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
+DEFAULT_CONTAINER_PORT = 8888
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     drain_method: str
+    container_port: int
     drain_method_params: Dict
     healthcheck_cmd: str
     healthcheck_grace_period_seconds: float
@@ -137,6 +139,14 @@ class LongRunningServiceConfig(InstanceConfig):
         For cassandra we have to override this to support apollo
         """
         return self.get_service()
+
+    def get_env(self) -> Dict[str, str]:
+        env = super().get_env()
+        env["PAASTA_PORT"] = str(self.get_container_port())
+        return env
+
+    def get_container_port(self) -> int:
+        return self.config_dict.get("container_port", DEFAULT_CONTAINER_PORT)
 
     def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         """Get the drain method specified in the service's marathon configuration.

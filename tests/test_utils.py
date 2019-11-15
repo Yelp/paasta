@@ -1583,7 +1583,6 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "0.25",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "1024",
-            "PAASTA_PORT": "8888",
         }
 
     def test_get_env_handles_non_strings_and_returns_strings(self):
@@ -1603,7 +1602,6 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "0.25",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "1024",
-            "PAASTA_PORT": "8888",
         }
 
     def test_get_env_with_config(self):
@@ -1629,8 +1627,7 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "0.25",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "1024",
-            "PAASTA_PORT": "8888",
-            "PAASTA_GIT_SHA": "gitsomethin",
+            "PAASTA_GIT_SHA": "somethin",
         }
 
     def test_get_args_default_no_cmd(self):
