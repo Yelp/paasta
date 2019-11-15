@@ -1,3 +1,10 @@
+paasta-tools (0.91.4) xenial; urgency=medium
+
+  * 0.91.4 tagged with 'make release'
+    Commit: Merge branch "fix_ready_replicas"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 15 Nov 2019 15:56:41 -0800
+
 paasta-tools (0.91.3) xenial; urgency=medium
 
   * 0.91.3 tagged with 'make release'
