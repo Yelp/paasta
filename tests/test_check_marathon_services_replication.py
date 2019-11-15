@@ -13,6 +13,7 @@
 # limitations under the License.
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 
 import mock
 import pytest
@@ -113,7 +114,7 @@ def test_check_service_replication_for_non_smartstack(instance_config):
 
 
 def _make_fake_task(app_id, **kwargs):
-    kwargs.setdefault("started_at", datetime(1991, 7, 5, 6, 13, 0))
+    kwargs.setdefault("started_at", datetime(1991, 7, 5, 6, 13, 0, tzinfo=timezone.utc))
     return mock.Mock(app_id=app_id, **kwargs)
 
 
@@ -138,7 +139,7 @@ def test_filter_healthy_marathon_instances_for_short_app_id_considers_new_tasks_
             f"/service.instance.foo{i}.bar{i}",
             # when i == 0, produces a task that has just started (not healthy yet)
             # otherwise produces a task that was started over a minute ago (healthy)
-            started_at=datetime.now() - one_minute * i,
+            started_at=datetime.now(timezone.utc) - one_minute * i,
         )
 
         mock_result = mock.Mock(alive=True)

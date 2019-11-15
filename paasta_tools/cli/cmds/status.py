@@ -63,7 +63,6 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_soa_cluster_deploy_files
@@ -583,9 +582,7 @@ def format_marathon_task_table(tasks):
         ("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")
     ]
     for task in tasks:
-        local_deployed_datetime = datetime_from_utc_to_local(
-            datetime.fromtimestamp(task.deployed_timestamp)
-        )
+        local_deployed_datetime = datetime.fromtimestamp(task.deployed_timestamp)
         if task.host is not None:
             hostname = f"{task.host}:{task.port}"
         else:
@@ -647,9 +644,7 @@ def format_kubernetes_pod_table(pods):
 def format_kubernetes_replicaset_table(replicasets):
     rows = [("ReplicaSet Name", "Ready / Desired", "Created at what localtime")]
     for replicaset in replicasets:
-        local_created_datetime = datetime_from_utc_to_local(
-            datetime.fromtimestamp(replicaset.create_timestamp)
-        )
+        local_created_datetime = datetime.fromtimestamp(replicaset.create_timestamp)
 
         replica_status = f"{replicaset.ready_replicas}/{replicaset.replicas}"
         if replicaset.ready_replicas >= replicaset.replicas:
@@ -886,9 +881,7 @@ def print_flink_status(
         {dashboard_url}"""
         else:
             fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
-        start_time = datetime_from_utc_to_local(
-            datetime.utcfromtimestamp(int(job["start-time"]) // 1000)
-        )
+        start_time = datetime.fromtimestamp(int(job["start-time"]) // 1000)
         output.append(
             fmt.format(
                 job_id=job_id,
@@ -906,9 +899,7 @@ def print_flink_status(
                 output.append(f"        Exception: {root_exception}")
                 ts = exceptions["timestamp"]
                 if ts is not None:
-                    exc_ts = datetime_from_utc_to_local(
-                        datetime.utcfromtimestamp(int(ts) // 1000)
-                    )
+                    exc_ts = datetime.fromtimestamp(int(ts) // 1000)
                     output.append(
                         f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
                     )
