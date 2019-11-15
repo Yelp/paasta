@@ -551,8 +551,10 @@ class InstanceConfig:
         }
         if self.get_gpus() is not None:
             env["PAASTA_RESOURCE_GPUS"] = str(self.get_gpus())
-        if self.get_docker_image():
+        try:
             env["PAASTA_GIT_SHA"] = get_git_sha_from_dockerurl(self.get_docker_url())
+        except Exception:
+            pass
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
