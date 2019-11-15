@@ -310,7 +310,7 @@ class TestMain:
                 "docker",
                 "run",
                 "--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c",
-                "-e PAASTA_HOST=myhostname",
+                "-e=PAASTA_HOST=myhostname",
                 "--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c",
             )
         ]

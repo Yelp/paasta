@@ -342,7 +342,7 @@ def main(argv=None):
 
     if mesos_task_id and can_add_hostname(argv):
         hostname = socket.getfqdn()
-        argv = add_argument(argv, f"-e PAASTA_HOST={hostname}")
+        argv = add_argument(argv, f"-e=PAASTA_HOST={hostname}")
         hostname_task_id = generate_hostname_task_id(
             hostname.partition(".")[0], mesos_task_id
         )
