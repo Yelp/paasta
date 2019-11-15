@@ -285,7 +285,7 @@ async def kubernetes_job_status(
             try:
                 ready_replicas = replicaset.status.ready_replicas
             except AttributeError:
-                ready_replicas = None
+                ready_replicas = 0
 
             kstatus["replicasets"].append(
                 {
