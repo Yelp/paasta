@@ -278,12 +278,17 @@ class TestConfigureAndRunDockerContainer:
         args.mrjob = False
         args.nvidia = False
 
-        retcode = configure_and_run_docker_container(
-            args=args,
-            docker_img="fake-registry/fake-service",
-            instance_config=self.instance_config,
-            system_paasta_config=self.system_paasta_config,
-        )
+        with mock.patch(
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
+            return_value="fake-registry",
+        ):
+            retcode = configure_and_run_docker_container(
+                args=args,
+                docker_img="fake-registry/fake-service",
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+            )
 
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(

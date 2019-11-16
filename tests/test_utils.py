@@ -1605,30 +1605,35 @@ class TestInstanceConfig:
         }
 
     def test_get_env_with_config(self):
-        fake_conf = utils.InstanceConfig(
-            service="",
-            cluster="",
-            instance="",
-            config_dict={
-                "env": {"SPECIAL_ENV": "TRUE"},
-                "deploy_group": "fake_deploy_group",
-                "monitoring": {"team": "generic_team"},
-            },
-            branch_dict={"docker_image": "something"},
-        )
-        assert fake_conf.get_env() == {
-            "SPECIAL_ENV": "TRUE",
-            "PAASTA_SERVICE": "",
-            "PAASTA_INSTANCE": "",
-            "PAASTA_CLUSTER": "",
-            "PAASTA_DEPLOY_GROUP": "fake_deploy_group",
-            "PAASTA_DOCKER_IMAGE": "something",
-            "PAASTA_MONITORING_TEAM": "generic_team",
-            "PAASTA_RESOURCE_CPUS": "0.25",
-            "PAASTA_RESOURCE_DISK": "1024",
-            "PAASTA_RESOURCE_MEM": "1024",
-            "PAASTA_GIT_SHA": "somethin",
-        }
+        with mock.patch(
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
+            return_value="something",
+        ):
+            fake_conf = utils.InstanceConfig(
+                service="",
+                cluster="",
+                instance="",
+                config_dict={
+                    "env": {"SPECIAL_ENV": "TRUE"},
+                    "deploy_group": "fake_deploy_group",
+                    "monitoring": {"team": "generic_team"},
+                },
+                branch_dict={"docker_image": "something"},
+            )
+            assert fake_conf.get_env() == {
+                "SPECIAL_ENV": "TRUE",
+                "PAASTA_SERVICE": "",
+                "PAASTA_INSTANCE": "",
+                "PAASTA_CLUSTER": "",
+                "PAASTA_DEPLOY_GROUP": "fake_deploy_group",
+                "PAASTA_DOCKER_IMAGE": "something",
+                "PAASTA_MONITORING_TEAM": "generic_team",
+                "PAASTA_RESOURCE_CPUS": "0.25",
+                "PAASTA_RESOURCE_DISK": "1024",
+                "PAASTA_RESOURCE_MEM": "1024",
+                "PAASTA_GIT_SHA": "somethin",
+            }
 
     def test_get_args_default_no_cmd(self):
         fake_conf = utils.InstanceConfig(
