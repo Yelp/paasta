@@ -32,20 +32,18 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
 
     mock_load_system_paasta_config.return_value = fake_system_paasta_config
 
-    thing_to_patch = (
-        "paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master"
-    )
     with mock.patch(
-        thing_to_patch, autospec=True
-    ) as mock_execute_paasta_metastatus_on_remote_master:
-        mock_execute_paasta_metastatus_on_remote_master.return_value = (
+        "paasta_tools.cli.cmds.metastatus.paasta_metastatus_on_api_endpoint",
+        autospec=True,
+    ) as mock_paasta_metastatus_on_api_endpoint:
+        mock_paasta_metastatus_on_api_endpoint.return_value = (
             mock.sentinel.return_value,
             "mock_status",
         )
         return_code = metastatus.print_cluster_status(
             cluster, fake_system_paasta_config, [], verbose=0
         )
-        mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
+        mock_paasta_metastatus_on_api_endpoint.assert_called_once_with(
             cluster=cluster,
             system_paasta_config=fake_system_paasta_config,
             groupings=[],

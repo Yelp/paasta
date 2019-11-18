@@ -41,6 +41,7 @@ def test_main():
         mock_setup_kube_deployments.assert_called_with(
             kube_client=mock_kube_client.return_value,
             service_instances=mock_parse_args.return_value.service_instance_list,
+            cluster=mock_parse_args.return_value.cluster,
             soa_dir=mock_parse_args.return_value.soa_dir,
         )
         mock_setup_kube_deployments.return_value = False
@@ -65,6 +66,7 @@ def test_setup_kube_deployment_invalid_job_name():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert mock_create_application_object.call_count == 0
@@ -95,6 +97,7 @@ def test_create_application_object():
             kube_client=mock_kube_client,
             service="kurupt",
             instance="fm",
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
 
@@ -107,6 +110,7 @@ def test_create_application_object():
             kube_client=mock_kube_client,
             service="kurupt",
             instance="fm",
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         mock_stateful_set_wrapper.assert_called_with(mock_deploy)
@@ -115,7 +119,10 @@ def test_create_application_object():
         with raises(Exception):
             service_config.format_kubernetes_app.return_value = mock.MagicMock()
             create_application_object(
-                kube_client=mock_kube_client, service="kurupt", instance="fm"
+                kube_client=mock_kube_client,
+                service="kurupt",
+                instance="fm",
+                cluster="fake_cluster",
             )
 
         mock_deployment_wrapper.reset_mock()
@@ -127,6 +134,7 @@ def test_create_application_object():
             kube_client=mock_kube_client,
             service="kurupt",
             instance="fm",
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert ret == (True, None)
@@ -140,6 +148,7 @@ def test_create_application_object():
             kube_client=mock_kube_client,
             service="kurupt",
             instance="fm",
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
 
@@ -157,6 +166,7 @@ def test_create_application_object():
             kube_client=mock_kube_client,
             service="kurupt",
             instance="fm",
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
 
@@ -169,7 +179,9 @@ def test_setup_kube_deployment_create_update():
     fake_create = mock.MagicMock()
     fake_update = mock.MagicMock()
 
-    def simple_create_application_object(kube_client, service, instance, soa_dir):
+    def simple_create_application_object(
+        kube_client, service, instance, cluster, soa_dir
+    ):
         fake_app = mock.MagicMock(spec=Application)
         fake_app.kube_deployment = KubeDeployment(
             service=service, instance=instance, git_sha="1", config_sha="1", replicas=1
@@ -191,6 +203,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert mock_create_application_object.call_count == 0
@@ -200,6 +213,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert fake_create.call_count == 1
@@ -217,6 +231,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
 
@@ -235,6 +250,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert fake_update.call_count == 1
@@ -252,6 +268,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert fake_update.call_count == 1
@@ -273,6 +290,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert fake_update.call_count == 1
@@ -294,6 +312,7 @@ def test_setup_kube_deployment_create_update():
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
+            cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
         assert fake_update.call_count == 0

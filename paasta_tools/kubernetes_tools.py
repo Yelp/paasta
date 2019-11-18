@@ -12,6 +12,7 @@
 # limitations under the License.
 import base64
 import copy
+import hashlib
 import itertools
 import json
 import logging
@@ -383,7 +384,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_autoscaling_metric_spec(
-        self, name: str, namespace: str = "paasta"
+        self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
@@ -398,7 +399,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # TODO support multiple metrics
         metrics = []
         target = autoscaling_params["setpoint"] * 100
+        annotations: Dict[str, str] = {}
         # TODO support bespoke PAASTA-15680
+        selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         if autoscaling_params["decision_policy"] == "bespoke":
             log.error(
                 f"Sorry, bespoke is not implemented yet. Please use a different decision \
@@ -415,20 +418,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         elif metrics_provider == "http":
+            annotations = {"signalfx.com.custom.metrics": ""}
             metrics.append(
                 V2beta1MetricSpec(
                     type="Pods",
                     pods=V2beta1PodsMetricSource(
-                        metric_name="http", target_average_value=target
+                        metric_name="http",
+                        target_average_value=target,
+                        selector=selector,
                     ),
                 )
             )
         elif metrics_provider == "uwsgi":
+            annotations = {"signalfx.com.custom.metrics": ""}
             metrics.append(
                 V2beta1MetricSpec(
                     type="Pods",
                     pods=V2beta1PodsMetricSource(
-                        metric_name="uwsgi", target_average_value=target
+                        metric_name="uwsgi",
+                        target_average_value=target,
+                        selector=selector,
                     ),
                 )
             )
@@ -441,13 +450,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name=name, namespace=namespace),
+            metadata=V1ObjectMeta(
+                name=name, namespace=namespace, annotations=annotations
+            ),
             spec=V2beta1HorizontalPodAutoscalerSpec(
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
                 scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="extensions/v1beta1", kind="Deployment", name=name
+                    api_version="apps/v1", kind="Deployment", name=name
                 ),
             ),
         )
@@ -481,20 +492,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return V1DeploymentStrategy(type=strategy_type, rolling_update=rolling_update)
 
-    def get_sanitised_volume_name(self, volume_name: str) -> str:
+    def get_sanitised_volume_name(self, volume_name: str, length_limit: int = 0) -> str:
         """I know but we really aren't allowed many characters..."""
         volume_name = volume_name.rstrip("/")
         sanitised = volume_name.replace("/", "slash-").replace(".", "dot-")
-        return sanitise_kubernetes_name(sanitised)
+        sanitised_name = sanitise_kubernetes_name(sanitised)
+        if length_limit and len(sanitised_name) > length_limit:
+            sanitised_name = (
+                sanitised_name[0 : length_limit - 6]
+                + "--"
+                + hashlib.md5(sanitised_name.encode("ascii")).hexdigest()[:4]
+            )
+        return sanitised_name
 
     def get_docker_volume_name(self, docker_volume: DockerVolume) -> str:
         return self.get_sanitised_volume_name(
-            "host--{name}".format(name=docker_volume["hostPath"])
+            "host--{name}".format(name=docker_volume["hostPath"]), length_limit=63
         )
 
     def get_persistent_volume_name(self, docker_volume: PersistentVolume) -> str:
         return self.get_sanitised_volume_name(
-            "pv--{name}".format(name=docker_volume["container_path"])
+            "pv--{name}".format(name=docker_volume["container_path"]), length_limit=253
         )
 
     def get_aws_ebs_volume_name(self, aws_ebs_volume: AwsEbsVolume) -> str:
@@ -635,6 +653,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 name="POD_NAME",
                 value_from=V1EnvVarSource(
                     field_ref=V1ObjectFieldSelector(field_path="metadata.name")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_HOST",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
                 ),
             ),
         ]

@@ -66,6 +66,9 @@ def parse_args() -> argparse.Namespace:
         help="define a different soa config directory",
     )
     parser.add_argument(
+        "-c", "--cluster", dest="cluster", help="paasta cluster",
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
@@ -88,6 +91,7 @@ def main() -> None:
         kube_client=kube_client,
         service_instances=args.service_instance_list,
         soa_dir=soa_dir,
+        cluster=args.cluster or load_system_paasta_config().get_cluster(),
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -106,6 +110,7 @@ def validate_job_name(service_instance: str) -> bool:
 def setup_kube_deployments(
     kube_client: KubeClient,
     service_instances: Sequence[str],
+    cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     if service_instances:
@@ -124,6 +129,7 @@ def setup_kube_deployments(
             kube_client=kube_client,
             service=service_instance[0],
             instance=service_instance[1],
+            cluster=cluster,
             soa_dir=soa_dir,
         )
         for service_instance in service_instances_with_valid_names
@@ -147,28 +153,26 @@ def setup_kube_deployments(
 
 
 def create_application_object(
-    kube_client: KubeClient, service: str, instance: str, soa_dir: str
+    kube_client: KubeClient, service: str, instance: str, cluster: str, soa_dir: str,
 ) -> Tuple[bool, Optional[Application]]:
     try:
         service_instance_config = load_kubernetes_service_config_no_cache(
-            service,
-            instance,
-            load_system_paasta_config().get_cluster(),
-            soa_dir=soa_dir,
+            service, instance, cluster, soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
         log.debug(
             "No deployments found for %s.%s in cluster %s. Skipping."
-            % (service, instance, load_system_paasta_config().get_cluster())
+            % (service, instance, cluster)
         )
         return True, None
     except NoConfigurationForServiceError:
         error_msg = (
             "Could not read kubernetes configuration file for %s.%s in cluster %s"
-            % (service, instance, load_system_paasta_config().get_cluster())
+            % (service, instance, cluster)
         )
         log.error(error_msg)
         return False, None
+
     try:
         formatted_application = service_instance_config.format_kubernetes_app()
     except InvalidKubernetesConfig as e:
@@ -183,7 +187,7 @@ def create_application_object(
     else:
         raise Exception("Unknown kubernetes object to update")
 
-    app.load_local_config(soa_dir, load_system_paasta_config())
+    app.load_local_config(soa_dir, cluster)
     return True, app
 
 

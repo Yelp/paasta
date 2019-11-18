@@ -235,13 +235,13 @@ class TestMemInfo:
 
 class TestGenerateHostname:
     def test_simple(self):
-        hostname = docker_wrapper.generate_hostname(
-            "first.part.matters", "what.only.matters.is.lastpart"
+        hostname = docker_wrapper.generate_hostname_task_id(
+            "first", "what.only.matters.is.lastpart"
         )
         assert hostname == "first-lastpart"
 
     def test_truncate(self):
-        hostname = docker_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname_task_id(
             "reallllllllllllllylooooooooooooooong",
             "reallyreallylongidsssssssssssssssssssssssss",
         )
@@ -251,15 +251,17 @@ class TestGenerateHostname:
         assert len(hostname) == 60
 
     def test_symbols(self):
-        hostname = docker_wrapper.generate_hostname(
-            "first.part.matters", "anything:can_do!s0me weird-stuff"
+        hostname = docker_wrapper.generate_hostname_task_id(
+            "first", "anything:can_do!s0me weird-stuff"
         )
         assert hostname == "first-anything-can-do-s0me-weird-stuff"
 
     def test_no_dashes_on_end(self):
-        assert docker_wrapper.generate_hostname("beep", "foobar-") == "beep-foobar"
+        assert (
+            docker_wrapper.generate_hostname_task_id("beep", "foobar-") == "beep-foobar"
+        )
 
-        hostname = docker_wrapper.generate_hostname(
+        hostname = docker_wrapper.generate_hostname_task_id(
             "reallllllllllllllylooooooooooooooong", "reallyreallylongid0123--abc"
         )
         assert hostname == "reallllllllllllllylooooooooooooooong-reallyreallylongid0123"
@@ -308,6 +310,7 @@ class TestMain:
                 "docker",
                 "run",
                 "--hostname=myhostname-0126a188-f944-11e6-bdfb-12abac3adf8c",
+                "-e=PAASTA_HOST=myhostname",
                 "--env=MESOS_TASK_ID=paasta--canary.main.git332d4a22.config458863b1.0126a188-f944-11e6-bdfb-12abac3adf8c",
             )
         ]

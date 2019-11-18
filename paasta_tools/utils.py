@@ -545,7 +545,16 @@ class InstanceConfig:
             "PAASTA_CLUSTER": self.cluster,
             "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
+            "PAASTA_RESOURCE_CPUS": str(self.get_cpus()),
+            "PAASTA_RESOURCE_MEM": str(self.get_mem()),
+            "PAASTA_RESOURCE_DISK": str(self.get_disk()),
         }
+        if self.get_gpus() is not None:
+            env["PAASTA_RESOURCE_GPUS"] = str(self.get_gpus())
+        try:
+            env["PAASTA_GIT_SHA"] = get_git_sha_from_dockerurl(self.get_docker_url())
+        except Exception:
+            pass
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
@@ -1375,6 +1384,10 @@ def get_log_name_for_service(service: str, prefix: str = None) -> str:
 
 try:
     import clog
+
+    # Somehow clog turns on DeprecationWarnings, so we need to disable them
+    # again after importing it.
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
 
     @register_log_writer("scribe")
     class ScribeLogWriter(LogWriter):
@@ -3013,14 +3026,19 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
     return "config%s" % hasher.hexdigest()[:8]
 
 
+def get_git_sha_from_dockerurl(docker_url: str) -> str:
+    parts = docker_url.split("/")
+    parts = parts[-1].split("-")
+    return parts[-1][:8]
+
+
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the partial sha
     """
     try:
-        parts = docker_url.split("/")
-        parts = parts[-1].split("-")
-        return "git%s" % parts[-1][:8]
+        git_sha = get_git_sha_from_dockerurl(docker_url)
+        return "git%s" % git_sha
     except Exception:
         return "gitUNKNOWN"
 

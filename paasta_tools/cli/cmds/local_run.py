@@ -622,6 +622,8 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env["MARATHON_APP_LABELS"] = ""
         env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
         env["MARATHON_HOST"] = hostname
+        env["PAASTA_HOST"] = hostname
+
     return env
 
 

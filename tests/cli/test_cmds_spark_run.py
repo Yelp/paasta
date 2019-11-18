@@ -278,12 +278,17 @@ class TestConfigureAndRunDockerContainer:
         args.mrjob = False
         args.nvidia = False
 
-        retcode = configure_and_run_docker_container(
-            args=args,
-            docker_img="fake-registry/fake-service",
-            instance_config=self.instance_config,
-            system_paasta_config=self.system_paasta_config,
-        )
+        with mock.patch(
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
+            return_value="fake-registry",
+        ):
+            retcode = configure_and_run_docker_container(
+                args=args,
+                docker_img="fake-registry/fake-service",
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+            )
 
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
@@ -308,6 +313,10 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_DEFAULT_REGION": "fake_region",
                 "SPARK_USER": "root",
                 "SPARK_OPTS": "--conf spark.app.name=fake_app",
+                "PAASTA_RESOURCE_CPUS": "0.25",
+                "PAASTA_RESOURCE_DISK": "1024",
+                "PAASTA_RESOURCE_MEM": "1024",
+                "PAASTA_GIT_SHA": "fake_ser",
             },
             docker_img="fake-registry/fake-service",
             docker_cmd="pyspark --conf spark.app.name=fake_app",

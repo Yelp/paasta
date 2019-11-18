@@ -1,3 +1,34 @@
+paasta-tools (0.91.5) xenial; urgency=medium
+
+  * 0.91.5 tagged with 'make release'
+    Commit: Add PAASTA_* environment variables (#2552)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Mon, 18 Nov 2019 11:11:05 -0800
+
+paasta-tools (0.91.4) xenial; urgency=medium
+
+  * 0.91.4 tagged with 'make release'
+    Commit: Merge branch "fix_ready_replicas"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 15 Nov 2019 15:56:41 -0800
+
+paasta-tools (0.91.3) xenial; urgency=medium
+
+  * 0.91.3 tagged with 'make release'
+    Commit: Showing job information till the cluster has reached
+    StoppingJobManager state (#2555)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Thu, 14 Nov 2019 08:06:25 -0800
+
+paasta-tools (0.91.2) xenial; urgency=medium
+
+  * 0.91.2 tagged with 'make release'
+    Commit: Merge pull request #2548 from
+    Yelp/fix_deprecation_warnings_on_py3.6.8  Silence
+    DeprecationWarnings on python 3.6.8 (bionic)
+
+ -- Daniele Rolando <drolando@yelp.com>  Tue, 12 Nov 2019 11:55:58 -0800
+
 paasta-tools (0.91.1) xenial; urgency=medium
 
   * 0.91.1 tagged with 'make release'
