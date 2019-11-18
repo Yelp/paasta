@@ -34,6 +34,7 @@ import argparse
 import logging
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 
 import a_sync
 
@@ -44,7 +45,6 @@ from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import MesosSmartstackReplicationChecker
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -77,14 +77,14 @@ def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
     tasks_for_app = [
         task for task in all_tasks if task.app_id.startswith("/%s" % app_id)
     ]
-    one_minute_ago = datetime.now() - timedelta(minutes=1)
+    one_minute_ago = datetime.now(timezone.utc) - timedelta(minutes=1)
 
     healthy_tasks = []
     for task in tasks_for_app:
         if (
             marathon_tools.is_task_healthy(task, default_healthy=True)
             and task.started_at is not None
-            and datetime_from_utc_to_local(task.started_at) < one_minute_ago
+            and task.started_at < one_minute_ago
         ):
             healthy_tasks.append(task)
     return len(healthy_tasks)
