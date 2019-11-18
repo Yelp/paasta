@@ -1,3 +1,10 @@
+paasta-tools (0.91.5) xenial; urgency=medium
+
+  * 0.91.5 tagged with 'make release'
+    Commit: Add PAASTA_* environment variables (#2552)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Mon, 18 Nov 2019 11:11:05 -0800
+
 paasta-tools (0.91.4) xenial; urgency=medium
 
   * 0.91.4 tagged with 'make release'
