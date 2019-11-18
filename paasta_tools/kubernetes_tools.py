@@ -645,6 +645,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     field_ref=V1ObjectFieldSelector(field_path="metadata.name")
                 ),
             ),
+            V1EnvVar(
+                name="PAASTA_HOST",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
+                ),
+            ),
         ]
         return kubernetes_env
 

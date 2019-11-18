@@ -1008,6 +1008,10 @@ class TestMarathonTools:
         fake_mem = 1000000000000000000000
         fake_disk = 2000000000000000000000
         fake_env = {"FAKEENV": "FAKEVALUE"}
+        fake_cpus = 0.42
+        fake_disk = 1234.5
+        fake_instances = 101
+        fake_cmd = None
         expected_env = {
             "FAKEENV": "FAKEVALUE",
             "PAASTA_CLUSTER": "fake_cluster",
@@ -1016,11 +1020,12 @@ class TestMarathonTools:
             "PAASTA_DEPLOY_GROUP": "fake_cluster.yes_i_can",
             "PAASTA_DOCKER_IMAGE": "dockervania_from_konami",
             "PAASTA_INSTANCE_TYPE": "marathon",
+            "PAASTA_RESOURCE_CPUS": str(fake_cpus),
+            "PAASTA_RESOURCE_DISK": str(fake_disk),
+            "PAASTA_RESOURCE_MEM": str(fake_mem),
+            "PAASTA_PORT": "8888",
+            "PAASTA_GIT_SHA": "dockerva",
         }
-        fake_cpus = 0.42
-        fake_disk = 1234.5
-        fake_instances = 101
-        fake_cmd = None
         fake_args = ["arg1", "arg2"]
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
             {"mode": "http", "healthcheck_uri": "/health", "discover": "habitat"}
