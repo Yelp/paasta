@@ -783,7 +783,7 @@ def test_instance_tasks(
     mock_add_executor_info,
 ):
     mock_request = mock.Mock(swagger_data={"task_id": "123", "slave_hostname": "host1"})
-    mock_instance_status.return_value = {"marathon": {"app_id": "app1"}}
+    mock_instance_status.return_value = {"marathon": {"desired_app_id": "app1"}}
 
     mock_task_1 = mock.Mock()
     mock_task_2 = mock.Mock()
