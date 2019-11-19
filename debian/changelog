@@ -1,3 +1,11 @@
+paasta-tools (0.91.7) xenial; urgency=medium
+
+  * 0.91.7 tagged with 'make release'
+    Commit: Also catch when replicaset.status.ready_replicas is None and
+    replace with 0
+
+ -- Evan Krall <krall@yelp.com>  Mon, 18 Nov 2019 16:06:38 -0800
+
 paasta-tools (0.91.6) xenial; urgency=medium
 
   * 0.91.6 tagged with 'make release'
