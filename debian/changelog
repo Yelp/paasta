@@ -1,3 +1,10 @@
+paasta-tools (0.91.8) xenial; urgency=medium
+
+  * 0.91.8 tagged with 'make release'
+    Commit: Merge branch "localtime_fix"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 19 Nov 2019 11:30:24 -0800
+
 paasta-tools (0.91.7) xenial; urgency=medium
 
   * 0.91.7 tagged with 'make release'
