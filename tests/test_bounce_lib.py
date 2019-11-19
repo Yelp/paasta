@@ -342,7 +342,7 @@ class TestBounceLib:
 
     def test_get_happy_tasks_min_task_uptime(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
-        now = datetime.datetime(2000, 1, 1, 0, 0, 0)
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
         tasks = [
             mock.Mock(
                 health_check_results=[],
@@ -356,7 +356,7 @@ class TestBounceLib:
         # datetime.datetime instead, and give it a utcnow attribute.
         with mock.patch(
             "paasta_tools.bounce_lib.datetime.datetime",
-            utcnow=lambda: now,
+            now=lambda tz: now,
             autospec=True,
         ):
             actual = bounce_lib.get_happy_tasks(
@@ -371,7 +371,7 @@ class TestBounceLib:
 
     def test_get_happy_tasks_min_task_uptime_when_unhealthy(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
-        now = datetime.datetime(2000, 1, 1, 0, 0, 0)
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
         tasks = [
             mock.Mock(
                 health_check_results=[mock.Mock(alive=False)],
@@ -383,7 +383,7 @@ class TestBounceLib:
 
         with mock.patch(
             "paasta_tools.bounce_lib.datetime.datetime",
-            utcnow=lambda: now,
+            now=lambda tz: now,
             autospec=True,
         ):
             actual = bounce_lib.get_happy_tasks(

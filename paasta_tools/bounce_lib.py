@@ -285,7 +285,7 @@ def get_happy_tasks(
     """
     tasks = app.tasks
     happy = []
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
 
     for task in tasks:
         if task.started_at is None:
