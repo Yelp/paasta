@@ -1,4 +1,4 @@
-clusterman-metrics==2.0.1
+clusterman-metrics==2.2.1
 monk==0.6.5
 pysensu-yelp==0.4.1
 yelp-batch==8.0.0
