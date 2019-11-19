@@ -1034,7 +1034,7 @@ def instance_tasks(request):
     except KeyError:
         raise ApiFailure("Only marathon tasks supported", 400)
     tasks = a_sync.block(
-        get_tasks_from_app_id, mstatus["app_id"], slave_hostname=slave_hostname
+        get_tasks_from_app_id, mstatus["desired_app_id"], slave_hostname=slave_hostname
     )
     if verbose:
         tasks = [add_executor_info(task) for task in tasks]
