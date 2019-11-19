@@ -284,6 +284,8 @@ async def kubernetes_job_status(
         for replicaset in replicaset_list:
             try:
                 ready_replicas = replicaset.status.ready_replicas
+                if ready_replicas is None:
+                    ready_replicas = 0
             except AttributeError:
                 ready_replicas = 0
 
