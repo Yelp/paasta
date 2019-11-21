@@ -33,6 +33,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import Union
 
 import humanize
 from bravado.exception import BravadoConnectionError
@@ -838,6 +839,26 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
+    pod_running_count = pod_evicted_count = pod_other_count = 0
+    for pod in status.pod_status:
+        if pod["phase"] == "Running":
+            pod_running_count += 1
+        elif pod["phase"] == "Failed" and pod["reason"] == "Evicted":
+            pod_evicted_count += 1
+        else:
+            pod_other_count += 1
+        evicted = (
+            PaastaColors.red(f"{pod_evicted_count}")
+            if pod_evicted_count > 0
+            else f"{pod_evicted_count}"
+        )
+    output.append(
+        "    Pods:"
+        f" {pod_running_count} running,"
+        f" {evicted} evicted,"
+        f" {pod_other_count} other"
+    )
+
     output.append(
         "    Jobs:"
         f" {status.overview['jobs-running']} running,"
@@ -912,6 +933,15 @@ def print_flink_status(
                     output.append(
                         f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
                     )
+    if verbose and len(status.pod_status) > 0:
+        output.append(f"    Pods:")
+        rows: List[Union[str, Tuple[str, str, str]]] = [("Pod Name", "Host", "Phase")]
+        for pod in status.pod_status:
+            rows.append((pod["name"], pod["host"], pod["phase"]))
+            if pod["reason"] != "":
+                rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
+        pods_table = format_table(rows)
+        output.extend([f"      {line}" for line in pods_table])
     return 0
 
 
