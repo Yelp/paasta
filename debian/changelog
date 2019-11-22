@@ -1,3 +1,12 @@
+paasta-tools (0.91.9) xenial; urgency=medium
+
+  * 0.91.9 tagged with 'make release'
+    Commit: Merge pull request #2564 from Yelp/u/gabrielv/PAASTA-16048-
+    extend-flink-status  Report evicted pods when running paasta status
+    on flink resources
+
+ -- gabrielv <gabrielv@yelp.com>  Fri, 22 Nov 2019 05:59:33 -0800
+
 paasta-tools (0.91.8) xenial; urgency=medium
 
   * 0.91.8 tagged with 'make release'
