@@ -2221,7 +2221,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("deployd_log_level", "INFO")
 
     def get_deployd_use_zk_queue(self) -> bool:
-        return self.config_dict.get("deployd_use_zk_queue", False)
+        return self.config_dict.get("deployd_use_zk_queue", True)
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""
