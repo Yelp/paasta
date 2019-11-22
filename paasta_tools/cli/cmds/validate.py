@@ -423,6 +423,9 @@ def paasta_validate(args):
 
     :param args: argparse.Namespace obj created from sys.args by cli
     """
+    if args.service is None:
+        print("Warning: Please specify service to validate.")
+        return 1
     service = args.service
     soa_dir = args.yelpsoa_config_root
     service_path = get_service_path(service, soa_dir)
