@@ -27,6 +27,7 @@ from jsonschema import ValidationError
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
@@ -423,11 +424,7 @@ def paasta_validate(args):
 
     :param args: argparse.Namespace obj created from sys.args by cli
     """
-    if args.service is None:
-        print("Warning: Please specify service to validate.")
-        return 1
-    service = args.service
-    soa_dir = args.yelpsoa_config_root
-    service_path = get_service_path(service, soa_dir)
+    service_path = get_service_path(args.service, args.yelpsoa_config_root)
+    service = args.service or guess_service_name()
     if not paasta_validate_soa_configs(service, service_path):
         return 1
