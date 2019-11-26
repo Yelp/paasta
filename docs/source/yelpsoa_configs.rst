@@ -47,10 +47,8 @@ specify the following options:
     available free CPU, but is guaranteed to get the CPU shares specified.  For
     a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
 
-  * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use
-    while bursting; if unspecified, PaaSTA defaults to 1. For example, if a
-    service specifies that it needs 2 CPUs normally and 1 for burst, the service
-    may go up to 3 CPUs, if needed.
+  * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use while bursting; if unspecified, PaaSTA defaults to 1 for long-running services, and 0 for scheduled jobs (Tron).
+    For example, if a service specifies that it needs 2 CPUs normally and 1 for burst, the service may go up to 3 CPUs, if needed.
 
   * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
     memory is constrained to the specified limit, and tasks will reach
@@ -65,16 +63,23 @@ specify the following options:
     tasks.
 
   * ``env``: A dictionary of environment variables that will be made available
-    to the container. PaaSTA additionally will inject the following variables:
+    to the container. PaaSTA additionally will inject the following variables automatically (keep in mind all environment variables are strings in a shell):
 
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+    * ``PAASTA_HOST``: The hostname of the actual server the container is runnig on
+    * ``PAASTA_PORT``: The configured port the service should listen on
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
+    * ``PAASTA_GIT_SHA``: The short git sha of the code the container has
     * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
     * ``PAASTA_MONITORING_TEAM``: The team that is configured to get alerts.
-    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username
-      of the user who launched the paasta container.
+    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username of the user who launched the paasta container
+    * ``PAASTA_RESOURCE_CPUS``: Number of cpus allocated to a container
+    * ``PAASTA_RESOURCE_MEM``: Amount of ram in MB allocated to a container
+    * ``PAASTA_RESOURCE_DISK``: Amount of disk space in MB allocated to a container
+    * ``PAASTA_RESOURCE_GPUS``: Number of GPUS (if requested) allocated to a container
+
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available

@@ -52,6 +52,11 @@
                     "minimum": 0,
                     "exclusiveMinimum": true
                 },
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "exclusiveMinimum": false
+                },
                 "cap_add": {
                     "type": "array",
                     "items": {
