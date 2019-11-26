@@ -191,6 +191,12 @@ class TronActionConfig(InstanceConfig):
     def get_cmd(self):
         return self.config_dict.get("command")
 
+    def get_cpu_burst_add(self) -> float:
+        """ For Tron jobs, we don't let them burst by default, because they
+        don't represent "real-time" workloads, and should not impact
+        neighbors """
+        return self.config_dict.get("cpu_burst_add", 0)
+
     def get_executor(self):
         executor = self.config_dict.get("executor", None)
         return "mesos" if executor == "paasta" else executor
