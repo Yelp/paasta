@@ -104,7 +104,12 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get("replicas", 1)
 
     def get_bounce_method(self) -> str:
-        return "RollingUpdate"
+        """
+        This isn't really true since we use the StatefulSet RollingUpdate strategy
+        However for the paasta-api we need to map to a paasta bounce method and
+        crossover is the closest
+        """
+        return "crossover"
 
     def get_sanitised_service_name(self) -> str:
         return sanitise_kubernetes_name(self.get_service())
