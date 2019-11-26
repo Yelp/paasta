@@ -48,6 +48,7 @@ RUN cd /tmp && \
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
 COPY requirements.txt requirements.txt
+RUN pip install virtualenv==16.7.7
 RUN virtualenv --python=python3.6 venv && venv/bin/pip install -r requirements.txt
 
 
