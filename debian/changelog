@@ -1,3 +1,11 @@
+paasta-tools (0.91.10) xenial; urgency=medium
+
+  * 0.91.10 tagged with 'make release'
+    Commit: Merge pull request #2570 from Yelp/fix-example-cluster-build
+    Fix example cluster build
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 26 Nov 2019 07:40:01 -0800
+
 paasta-tools (0.91.9) xenial; urgency=medium
 
   * 0.91.9 tagged with 'make release'
