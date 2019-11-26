@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
+
 import mock
 import pytest
 from boto3.exceptions import Boto3Error
@@ -24,6 +26,7 @@ from paasta_tools.cli.cmds.spark_run import get_aws_credentials
 from paasta_tools.cli.cmds.spark_run import get_default_event_log_dir
 from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
+from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_config
 from paasta_tools.cli.cmds.spark_run import load_aws_credentials_from_yaml
 from paasta_tools.utils import InstanceConfig
@@ -62,6 +65,39 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
         "pyspark",
         {},
     ]
+
+
+@pytest.mark.parametrize("mrjob", [True, False])
+def test_get_smart_paasta_instance_name(mrjob):
+    args = argparse.Namespace(
+        instance="foo", cmd="spark-submit blah blah blah", mrjob=mrjob,
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.get_username",
+        return_value="root",
+        autospec=True,
+    ):
+        assert (
+            get_smart_paasta_instance_name(args) == "foo_root_mrjob"
+            if mrjob
+            else "foo_root_spark-submit"
+        )
+
+
+def test_get_smart_paasta_instance_name_tron():
+    args = argparse.Namespace(
+        instance="foo", cmd="spark-submit blah blah blah", mrjob=True,
+    )
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.environ",
+        dict(
+            TRON_JOB_NAMESPACE="master",
+            TRON_JOB_NAME="yelp-main",
+            TRON_ACTION="rm_rf_slash",
+        ),
+        autospec=None,
+    ):
+        assert get_smart_paasta_instance_name(args) == "yelp-main.rm_rf_slash"
 
 
 class TestGetSparkConfig:
