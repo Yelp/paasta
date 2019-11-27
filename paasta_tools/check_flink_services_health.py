@@ -19,16 +19,17 @@ import datetime
 import logging
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 
 import pysensu_yelp
 
 from paasta_tools import flink_tools
-from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import V1Pod
+from paasta_tools.monitoring_tools import check_under_replication
 from paasta_tools.monitoring_tools import send_replication_event
 from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 from paasta_tools.utils import is_under_replicated
@@ -77,12 +78,15 @@ Things you can do:
 """
 
 
-def send_event_if_not_enough_taskmanagers(
+def check_under_registered_taskmanagers(
     instance_config: FlinkDeploymentConfig,
     expected_count: int,
     num_reported: Optional[int],
     strerror: Optional[str],
-) -> None:
+) -> Tuple[bool, str]:
+    """Check if not enough taskmanagers have been registered to the jobmanager and returns both the result of the check
+    in the form of a boolean and a human-readable text to be used in logging or monitoring events.
+    """
     under_replicated = False
     if strerror is None:
         crit_threshold = instance_config.get_replication_crit_percentage()
@@ -113,14 +117,7 @@ def send_event_if_not_enough_taskmanagers(
             "instance": instance_config.instance,
             "cluster": instance_config.cluster,
         }
-        log.error(output)
-        status = pysensu_yelp.Status.CRITICAL
-    else:
-        log.info(output)
-        status = pysensu_yelp.Status.OK
-    send_replication_event(
-        instance_config=instance_config, status=status, output=output
-    )
+    return (under_replicated or strerror, output)
 
 
 def check_flink_service_health(
@@ -150,30 +147,41 @@ def check_flink_service_health(
     except ValueError as e:
         strerror = str(e)
 
-    send_event_if_not_enough_taskmanagers(
-        instance_config=instance_config,
-        expected_count=taskmanagers_expected_cnt,
-        num_reported=reported_taskmanagers,
-        strerror=strerror,
-    )
-
-    monitoring_tools.send_replication_event_if_under_replication(
-        instance_config=instance_config,
-        expected_count=1,
-        num_available=num_healthy_supervisors,
-        sub_component="supervisor",
-    )
-    monitoring_tools.send_replication_event_if_under_replication(
-        instance_config=instance_config,
-        expected_count=1,
-        num_available=num_healthy_jobmanagers,
-        sub_component="jobmanager",
-    )
-    monitoring_tools.send_replication_event_if_under_replication(
-        instance_config=instance_config,
-        expected_count=taskmanagers_expected_cnt,
-        num_available=num_healthy_taskmanagers,
-        sub_component="taskmanager",
+    results = [
+        check_under_replication(
+            instance_config=instance_config,
+            expected_count=1,
+            num_available=num_healthy_supervisors,
+            sub_component="supervisor",
+        ),
+        check_under_replication(
+            instance_config=instance_config,
+            expected_count=1,
+            num_available=num_healthy_jobmanagers,
+            sub_component="jobmanager",
+        ),
+        check_under_replication(
+            instance_config=instance_config,
+            expected_count=taskmanagers_expected_cnt,
+            num_available=num_healthy_taskmanagers,
+            sub_component="taskmanager",
+        ),
+        check_under_registered_taskmanagers(
+            instance_config=instance_config,
+            expected_count=taskmanagers_expected_cnt,
+            num_reported=reported_taskmanagers,
+            strerror=strerror,
+        ),
+    ]
+    output = "\n########\n".join([r[1] for r in results])
+    if any(r[0] for r in results):
+        log.error(output)
+        status = pysensu_yelp.Status.CRITICAL
+    else:
+        log.info(output)
+        status = pysensu_yelp.Status.OK
+    send_replication_event(
+        instance_config=instance_config, status=status, output=output
     )
 
 

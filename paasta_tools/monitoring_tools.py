@@ -24,6 +24,7 @@ import json
 import logging
 import os
 from typing import Optional
+from typing import Tuple
 
 import pysensu_yelp
 import service_configuration_lib
@@ -411,12 +412,15 @@ def check_smartstack_replication_for_instance(
     )
 
 
-def send_replication_event_if_under_replication(
+def check_under_replication(
     instance_config,
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
-):
+) -> Tuple[bool, str]:
+    """Check if a component/sub_component is under-replicated and returns both the result of the check in the form of a
+    boolean and a human-readable text to be used in logging or monitoring events.
+    """
     crit_threshold = instance_config.get_replication_crit_percentage()
     if sub_component is not None:
         output = (
@@ -461,6 +465,19 @@ def send_replication_event_if_under_replication(
             "instance": instance_config.instance,
             "cluster": instance_config.cluster,
         }
+    return (under_replicated, output)
+
+
+def send_replication_event_if_under_replication(
+    instance_config,
+    expected_count: int,
+    num_available: int,
+    sub_component: Optional[str] = None,
+):
+    under_replicated, output = check_under_replication(
+        instance_config, expected_count, num_available, sub_component
+    )
+    if under_replicated:
         log.error(output)
         status = pysensu_yelp.Status.CRITICAL
     else:
