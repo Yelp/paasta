@@ -1,3 +1,13 @@
+paasta-tools (0.91.11) xenial; urgency=medium
+
+  * 0.91.11 tagged with 'make release'
+    Commit: Merge pull request #2572 from
+    Yelp/poros/single_check_flink_alert/FLINK-1982
+    check_flink_services_health sends a single event per service
+    instance
+
+ -- Antonio Verardi <antonio@yelp.com>  Thu, 28 Nov 2019 07:12:03 -0800
+
 paasta-tools (0.91.10) xenial; urgency=medium
 
   * 0.91.10 tagged with 'make release'
