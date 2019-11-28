@@ -17,6 +17,7 @@ import pytest
 
 from paasta_tools import check_flink_services_health
 from paasta_tools import check_services_replication_tools
+from paasta_tools.check_flink_services_health import check_under_registered_taskmanagers
 from paasta_tools.utils import compose_job_id
 
 check_flink_services_health.log = mock.Mock()
@@ -36,25 +37,83 @@ def instance_config():
         job_id=job_id,
         config_dict={},
     )
-    mock_instance_config.get_replication_crit_percentage.return_value = 90
+    mock_instance_config.get_replication_crit_percentage.return_value = 100
     mock_instance_config.get_registrations.return_value = [job_id]
     return mock_instance_config
 
 
-def test_check_flink_service_health(instance_config):
+@mock.patch(
+    "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+    autospec=True,
+    return_value={"taskmanagers": 3},
+)
+def test_check_under_registered_taskmanagers_ok(mock_overview, instance_config):
+    under, output = check_under_registered_taskmanagers(
+        instance_config, expected_count=3
+    )
+    assert not under
+    assert (
+        "Service fake_service.fake_instance has 3 out of 3 expected instances of "
+        "taskmanager reported by dashboard!\n"
+        "(threshold: 100%)"
+    ) in output
+
+
+@mock.patch(
+    "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+    autospec=True,
+    return_value={"taskmanagers": 2},
+)
+def test_check_under_registered_taskmanagers_under(mock_overview, instance_config):
+    under, output = check_under_registered_taskmanagers(
+        instance_config, expected_count=3
+    )
+    assert under
+    assert (
+        "Service fake_service.fake_instance has 2 out of 3 expected instances of "
+        "taskmanager reported by dashboard!\n"
+        "(threshold: 100%)"
+    ) in output
+    assert (
+        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv" in output
+    )
+
+
+@mock.patch(
+    "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+    autospec=True,
+    side_effect=ValueError("dummy exception"),
+)
+def test_check_under_registered_taskmanagers_error(mock_overview, instance_config):
+    under, output = check_under_registered_taskmanagers(
+        instance_config, expected_count=3
+    )
+    assert under
+    assert (
+        "Dashboard of service fake_service.fake_instance is not available!\n"
+        "(dummy exception)\n"
+        "What this alert"
+    ) in output
+    assert (
+        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv" in output
+    )
+
+
+def test_check_flink_service_health_healthy(instance_config):
     all_pods = []
     with mock.patch(
         "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
         autospec=True,
         return_value=1,
     ), mock.patch(
-        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+        "paasta_tools.check_flink_services_health.check_under_replication",
         autospec=True,
-        return_value={"taskmanagers": 3},
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.send_replication_event_if_under_replication",
+        return_value=(False, "OK"),
+    ) as mock_check_under_replication, mock.patch(
+        "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
         autospec=True,
-    ) as mock_send_replication_event_if_under_replication, mock.patch(
+        return_value=(False, "OK"),
+    ) as mock_check_under_registered_taskmanagers, mock.patch(
         "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
     ) as mock_send_replication_event:
         instance_config.config_dict["taskmanager"] = {"instances": 3}
@@ -83,32 +142,40 @@ def test_check_flink_service_health(instance_config):
                 sub_component="taskmanager",
             ),
         ]
-        mock_send_replication_event_if_under_replication.assert_has_calls(expected)
+        mock_check_under_replication.assert_has_calls(expected)
+        mock_check_under_registered_taskmanagers.assert_called_once_with(
+            instance_config=instance_config, expected_count=3,
+        )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.OK,
-            output="Service fake_service.fake_instance has 3 out of 3 expected instances of taskmanager reported by dashboard!\n(threshold: 90%)",
+            output="OK\n########\nOK\n########\nOK\n########\nOK",
         )
 
 
 def test_check_flink_service_health_too_few_taskmanagers(instance_config):
+    def check_under_replication_side_effect(*args, **kwargs):
+        if kwargs["sub_component"] == "supervisor":
+            return False, "OK"
+        if kwargs["sub_component"] == "jobmanager":
+            return False, "OK"
+        if kwargs["sub_component"] == "taskmanager":
+            return True, "NOPE"
+
     all_pods = []
     with mock.patch(
         "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
         autospec=True,
         return_value=1,
     ), mock.patch(
-        "paasta_tools.check_flink_services_health._event_explanation",
+        "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
         autospec=True,
-        return_value="",
-    ), mock.patch(
-        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
+        return_value=(True, "NOPE"),
+    ) as mock_check_under_registered_taskmanagers, mock.patch(
+        "paasta_tools.check_flink_services_health.check_under_replication",
         autospec=True,
-        return_value={"taskmanagers": 2},
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.send_replication_event_if_under_replication",
-        autospec=True,
-    ) as mock_send_replication_event_if_under_replication, mock.patch(
+        side_effect=check_under_replication_side_effect,
+    ) as mock_check_under_replication, mock.patch(
         "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
     ) as mock_send_replication_event:
         instance_config.config_dict["taskmanager"] = {"instances": 3}
@@ -137,36 +204,32 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
                 sub_component="taskmanager",
             ),
         ]
-        mock_send_replication_event_if_under_replication.assert_has_calls(expected)
+        mock_check_under_replication.assert_has_calls(expected)
+        mock_check_under_registered_taskmanagers.assert_called_once_with(
+            instance_config=instance_config, expected_count=3,
+        )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
-            output="Service fake_service.fake_instance has 2 out of 3 expected instances of taskmanager reported by dashboard!\n(threshold: 90%)      paasta status -s fake_service -i fake_instance -c fake_cluster -vv\n",
+            output="OK\n########\nOK\n########\nNOPE\n########\nNOPE",
         )
 
 
-def _raise_dummy_exception(*args):
-    raise ValueError("dummy exception")
-
-
-def test_check_flink_service_health_dashboard_error(instance_config):
+def test_check_flink_service_health_under_registered_taskamanagers(instance_config):
     all_pods = []
     with mock.patch(
         "paasta_tools.check_flink_services_health.healthy_flink_containers_cnt",
         autospec=True,
         return_value=1,
     ), mock.patch(
-        "paasta_tools.check_flink_services_health._event_explanation",
+        "paasta_tools.check_flink_services_health.check_under_replication",
         autospec=True,
-        return_value="",
-    ), mock.patch(
-        "paasta_tools.flink_tools.get_flink_jobmanager_overview",
-        side_effect=_raise_dummy_exception,
+        return_value=(False, "OK"),
+    ) as mock_check_under_replication, mock.patch(
+        "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
         autospec=True,
-    ), mock.patch(
-        "paasta_tools.monitoring_tools.send_replication_event_if_under_replication",
-        autospec=True,
-    ) as mock_send_replication_event_if_under_replication, mock.patch(
+        return_value=(True, "NOPE"),
+    ) as mock_check_under_registered_taskmanagers, mock.patch(
         "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
     ) as mock_send_replication_event:
         instance_config.config_dict["taskmanager"] = {"instances": 3}
@@ -195,9 +258,12 @@ def test_check_flink_service_health_dashboard_error(instance_config):
                 sub_component="taskmanager",
             ),
         ]
-        mock_send_replication_event_if_under_replication.assert_has_calls(expected)
+        mock_check_under_replication.assert_has_calls(expected)
+        mock_check_under_registered_taskmanagers.assert_called_once_with(
+            instance_config=instance_config, expected_count=3,
+        )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
-            output="Dashboard of service fake_service.fake_instance is not available!\n(dummy exception)      paasta status -s fake_service -i fake_instance -c fake_cluster -vv\n",
+            output="OK\n########\nOK\n########\nOK\n########\nNOPE",
         )
