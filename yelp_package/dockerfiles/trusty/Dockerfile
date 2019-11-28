@@ -18,6 +18,8 @@ RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sou
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
+RUN printf 'Package: *\nPin: release o=UbuntuESM, n=trusty\nPin-Priority: never\n' > /etc/apt/preferences.d/ubuntu-esm-infra-trusty
+
 # Need Python 3.6
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
