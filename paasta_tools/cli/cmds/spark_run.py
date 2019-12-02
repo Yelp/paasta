@@ -117,7 +117,7 @@ def add_subparser(subparsers):
         "-i",
         "--instance",
         help=("Start a docker run for a particular instance of the service."),
-        default="client",
+        default="adhoc",
     ).completer = lazy_choices_completer(list_instances)
 
     try:
@@ -332,13 +332,14 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
     return cmd
 
 
-def get_smart_paasta_instance_name(instance):
+def get_smart_paasta_instance_name(args):
     if os.environ.get("TRON_JOB_NAMESPACE"):
         tron_job = os.environ.get("TRON_JOB_NAME")
         tron_action = os.environ.get("TRON_ACTION")
         return f"{tron_job}.{tron_action}"
     else:
-        return f"{instance}_{get_username()}"
+        how_submitted = "mrjob" if args.mrjob else args.cmd.split(" ")[0]
+        return f"{args.instance}_{get_username()}_{how_submitted}"
 
 
 def get_default_event_log_dir(access_key, secret_key):
@@ -489,7 +490,7 @@ def get_spark_config(
         cluster=args.cluster
     )
     mesos_address = "{}:{}".format(find_mesos_leader(cluster_fqdn), MESOS_MASTER_PORT)
-    paasta_instance = get_smart_paasta_instance_name(args.instance)
+    paasta_instance = get_smart_paasta_instance_name(args)
     non_user_args = {
         "spark.master": "mesos://%s" % mesos_address,
         "spark.ui.port": spark_ui_port,
