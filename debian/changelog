@@ -1,3 +1,12 @@
+paasta-tools (0.91.12) xenial; urgency=medium
+
+  * 0.91.12 tagged with 'make release'
+    Commit: Merge pull request #2569 from Yelp/drmorr/PAASTA-
+    15870/add_more_info_for_adhoc_spark_runs  add command for adhoc
+    spark run
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 02 Dec 2019 13:14:54 -0800
+
 paasta-tools (0.91.11) xenial; urgency=medium
 
   * 0.91.11 tagged with 'make release'
