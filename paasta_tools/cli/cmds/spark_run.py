@@ -58,6 +58,8 @@ deprecated_opts = {
     "driver-memory": "spark.driver.memory",
 }
 
+SPARK_COMMANDS = {"pyspark", "spark-submit"}
+
 log = logging.getLogger(__name__)
 
 
@@ -338,7 +340,15 @@ def get_smart_paasta_instance_name(args):
         tron_action = os.environ.get("TRON_ACTION")
         return f"{tron_job}.{tron_action}"
     else:
-        how_submitted = "mrjob" if args.mrjob else args.cmd.split(" ")[0]
+        how_submitted = None
+        if args.mrjob:
+            how_submitted = "mrjob"
+        else:
+            for spark_cmd in SPARK_COMMANDS:
+                if spark_cmd in args.cmd:
+                    how_submitted = spark_cmd
+                    break
+        how_submitted = how_submitted or "other"
         return f"{args.instance}_{get_username()}_{how_submitted}"
 
 

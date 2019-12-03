@@ -70,7 +70,7 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
 @pytest.mark.parametrize("mrjob", [True, False])
 def test_get_smart_paasta_instance_name(mrjob):
     args = argparse.Namespace(
-        instance="foo", cmd="spark-submit blah blah blah", mrjob=mrjob,
+        instance="foo", cmd="USER blah spark-submit blah blah blah", mrjob=mrjob,
     )
     with mock.patch(
         "paasta_tools.cli.cmds.spark_run.get_username",
