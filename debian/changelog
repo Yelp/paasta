@@ -1,3 +1,12 @@
+paasta-tools (0.91.13) xenial; urgency=medium
+
+  * 0.91.13 tagged with 'make release'
+    Commit: Merge pull request #2576 from Yelp/drmorr/PAASTA-
+    15870/better_parsing_of_spark_command  better parsing of spark
+    command when env variables are set
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 03 Dec 2019 15:28:44 -0800
+
 paasta-tools (0.91.12) xenial; urgency=medium
 
   * 0.91.12 tagged with 'make release'
