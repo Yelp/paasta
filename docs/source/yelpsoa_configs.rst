@@ -110,7 +110,7 @@ specify the following options:
 -----------------------------------
 
 Constraint options control how Mesos schedules a task, whether it is scheduled by
-Marathon, Chronos, Tron, or ``paasta remote-run``.
+Marathon, Tron, or ``paasta remote-run``.
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
@@ -156,6 +156,166 @@ Marathon, Chronos, Tron, or ``paasta remote-run``.
     Warning: In order for an service to be launched in a particular pool, there
     *must* exist some Mesos slaves that already exist with that particular
     pool attribute set.
+
+``kubernetes-[clustername].yaml``
+-------------------------------
+
+**Note:** All values in this file except the following will cause PaaSTA to
+`bounce <workflow.html#bouncing>`_ the service:
+
+* ``min_instances``
+* ``instances``
+* ``max_instances``
+* ``backoff_seconds``
+
+Top level keys are instance names, e.g. ``main`` and ``canary``. Each
+instance MAY have:
+
+  * Anything in the `Common Settings`_.
+
+  * Only ``pool`` from `Placement Options (Constraints)`_.
+
+  * ``cap_add``: List of capabilities that are passed to Docker. Defaults
+    to empty list. Example::
+
+      "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
+
+  * ``instances``: Kubernetes will attempt to run this many instances of the Service
+
+  * ``min_instances``: When autoscaling, the minimum number of instances that
+    kubernetes will create for a service. Defaults to 1.
+
+  * ``max_instances``: When autoscaling, the maximum number of instances that
+    kubernetes will create for a service
+
+  * ``registrations``: A list of SmartStack registrations (service.namespace)
+    where instances of this PaaSTA service ought register in. In SmartStack,
+    each service has difference pools of backend servers that are listening on
+    a particular port. In PaaSTA we call these "Registrations". By default, the
+    Registration assigned to a particular instance in PaaSTA has the *same name*,
+    so a service ``foo`` with a ``main`` instance will correspond to the
+    ``foo.main`` Registration. This would correspond to the SmartStack
+    namespace defined in the Registration service's ``smartstack.yaml``. This
+    ``registrations`` option allows users to make PaaSTA instances appear
+    under an *alternative* namespace (or even service). For example
+    ``canary`` instances can have ``registrations: ['foo.main']`` to route
+    their traffic to the same pool as the other ``main`` instances.
+
+  * ``container_port``: Specify the port to expose when in ``bridge`` mode.
+    Defaults to ``8888``.
+
+  * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
+    Note: the upthendown bounce is not available to kubernetes instances.
+
+  * ``bounce_health_params``: A dictionary of parameters for get_happy_tasks.
+
+    * ``check_haproxy``: Boolean indicating if PaaSTA should check the local
+      haproxy to make sure this task has been registered and discovered
+      (Defaults to ``True`` if service is in SmartStack)
+
+    * ``min_task_uptime``: Minimum number of seconds that a task must be
+      running before we consider it healthy (Disabled by default)
+
+    * ``haproxy_min_fraction_up``: if ``check_haproxy`` is True, we check haproxy on up to 20 boxes to see whether a task is available.
+      This fraction of boxes must agree that the task is up for the bounce to treat a task as healthy.
+      Defaults to 1.0 -- haproxy on all queried boxes must agree that the task is up.
+
+  * ``bounce_margin_factor``: proportionally increase the number of old instances
+    to be drained when the crossover bounce method is used.
+    0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).
+    This allows bounces to proceed in the face of a percentage of failures.
+    It doesn’t affect any other bounce method but crossover.
+    See `the bounce docs <bouncing.html>`_ for a more detailed description.
+
+  * ``bounce_start_deadline``: a floating point number of seconds to add to the deadline when deployd notices a change
+    to soa-configs or the marked-for-deployment version of an instance.
+    Defaults to 0. (deadline = now)
+    When deployd has a queue of instances to process, it will choose to process instances with a lower deadline first.
+    Set this to a large positive number to allow deployd to process other instances before this one, even if their
+      soa-configs change or mark-for-deployment happened after this one.
+    This setting only affects the first time deployd processes an instance after a change --
+      instances that need to be reprocessed will be reenqueued normally.
+
+  * ``drain_method``: Controls the drain method; see `drain_lib
+    <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
+    instances that are not in Smartstack, or ``hacheck`` if they are.
+
+  * ``drain_method_params``: A dictionary of parameters for the specified
+    drain_method. Valid parameters are any of the kwargs defined for the
+    specified bounce_method in `drain_lib <generated/paasta_tools.drain_lib.html>`_.
+
+  * ``cmd``: The command that is executed. If a string, will be wrapped in ``/bin/sh -c``.
+    If a list, will be executed directly as is with no shell parsing.
+
+  * ``args``: An array of docker args if you use the `"entrypoint"
+    <https://docs.docker.com/reference/builder/#entrypoint>`_ functionality.
+
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
+
+  * ``autoscaling``: TBD
+
+  * ``deploy_group``: A string identifying what deploy group this instance belongs
+    to. The ``step`` parameter in ``deploy.yaml`` references this value
+    to determine the order in which to build & deploy deploy groups. Defaults to
+    ``clustername.instancename``. See the deploy group doc_ for more information.
+
+  * ``replication_threshold``: An integer representing the percentage of instances that
+    need to be available for monitoring purposes. If less than ``replication_threshold``
+    percent instances of a service's backends are not available, the monitoring
+    scripts will send a CRITICAL alert.
+
+  * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
+    If set to ``http`` or ``https``, a ``curl`` command will be executed
+    inside the container.
+
+    If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and
+    examine the return code. It must return 0 to be considered healthy.
+
+    If the service is registered in SmartStack, the healthcheck_mode will
+    automatically use the same setings specified by ``smartstack.yaml``.
+
+    If not in smartstack, the default healthcheck is "None", which means
+    the container is considered healthy unless it crashes.
+
+    A http healthcheck is considered healthy if it returns a 2xx or 3xx
+    response code.
+
+  * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
+    command is executed inside the container as a healthcheck. It must exit
+    with status code 0 to signify a successful healthcheck. Any other exit code
+    is treated as a failure. This is a required field if ``healthcheck_mode``
+    is ``cmd``.
+
+  * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long for a
+    service to come up before counting failed healthchecks. Defaults to 60
+    seconds.
+
+  * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
+    healthchecks. Defaults to 10 seconds.
+
+  * ``healthcheck_timeout_seconds``: Kubernetes will wait this long for a
+    healthcheck to return before considering it a failure. Defaults to 10
+    seconds.
+
+  * ``healthcheck_max_consecutive_failures``: Kubernetes will kill the current
+    task if this many healthchecks fail consecutively. Defaults to 6 attempts.
+
+  * ``healthcheck_uri``: The url of the service to healthcheck if using http.
+    Defaults to the same uri specified in ``smartstack.yaml``, but can be
+    set to something different here.
+
+**Note**: Although many of these settings are inherited from ``smartstack.yaml``,
+their thresholds are not the same. The reason for this has to do with control
+loops and infrastructure stability. The load balancer tier can be pickier
+about which copies of a service it can send requests to, compared to Mesos.
+
+A load balancer can take a container out of service and put it back in a few
+seconds later. Minor flaps and transient errors are tolerated.
+
+The healthchecks specified here in this file signal to the infrastructure that
+a container is unhealthy, and the action to take is to completely destroy it and
+launch it elsewhere. This is a more expensive operation than taking a container
+out of the load balancer, so it justifies having less sensitive thresholds.
 
 ``marathon-[clustername].yaml``
 -------------------------------
@@ -824,13 +984,13 @@ A service that pages everywhere, but only makes a ticket for a tron job::
         page: false
         ticket: true
 
-A marathon service that overrides options on different instances (canary)::
+A marathon/kubernetes service that overrides options on different instances (canary)::
 
     # monitoring.yaml
     team: frontend
     page: false
 
-    # marathon-prod.yaml
+    # marathon/kubernetes-prod.yaml
     main:
       instances: 20
       monitoring:

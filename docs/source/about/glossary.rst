@@ -57,14 +57,14 @@ software to run things on nodes.
 ~~~~~~~~~~~~~~~~
 
 A machine running a Mesos Master process, responsible for coordination
-but not responsible for actually running Marathon or Chronos jobs. There
+but not responsible for actually running Marathon or Tron jobs. There
 are several Masters, coordinating as a quorum via Zookeeper.
 
 **Mesos Slave**
 ~~~~~~~~~~~~~~~
 
 A machine running a Mesos Slave process, responsible for running
-Marathon or Chronos jobs as assigned by the Mesos Master.
+Marathon or Tron jobs as assigned by the Mesos Master.
 
 **PaaSTA**
 ~~~~~~~~~~
