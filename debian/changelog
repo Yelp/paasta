@@ -1,3 +1,12 @@
+paasta-tools (0.91.14) xenial; urgency=medium
+
+  * 0.91.14 tagged with 'make release'
+    Commit: Merge pull request #2578 from Yelp/fix-metastatus-for-
+    kubernetes  Use `KUBECONFIG` env var while checking availability of
+    k8s
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 05 Dec 2019 03:15:46 -0800
+
 paasta-tools (0.91.13) xenial; urgency=medium
 
   * 0.91.13 tagged with 'make release'
