@@ -1634,7 +1634,7 @@ class KubernetesDeployStatus:
 
 
 def is_kubernetes_available() -> bool:
-    return Path(KUBE_CONFIG_PATH).exists()
+    return Path(os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH)).exists()
 
 
 def create_secret(
