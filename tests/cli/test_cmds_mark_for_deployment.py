@@ -37,6 +37,7 @@ class FakeArgs:
     auto_certify_delay = 1.0
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
+    additional_authors = None
 
 
 @fixture
@@ -341,9 +342,10 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        additional_authors=['fakeuser1']
     )
     mock_get_authors_to_be_notified.assert_called_once_with(
-        git_url=None, from_sha="aaaaaaaa", to_sha="abc123512"
+        git_url=None, from_sha="aaaaaaaa", to_sha="abc123512", additional_authors=['fakeuser1']
     )
 
 
@@ -375,9 +377,10 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
+        additional_authors='fakeuser1'
     )
     mock_get_authors_to_be_notified.assert_called_once_with(
-        git_url=None, from_sha="asgdser23", to_sha="abc123512"
+        git_url=None, from_sha="asgdser23", to_sha="abc123512", additional_authors='fakeuser1'
     )
 
 
@@ -574,6 +577,7 @@ def test_MarkForDeployProcess_happy_path(
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
+        additional_authors=None,
     )
 
     mfdp.run_timeout = 1
@@ -618,6 +622,7 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
+        additional_authors=None,
     )
 
     mfdp.run_timeout = 1

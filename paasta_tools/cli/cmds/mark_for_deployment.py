@@ -199,6 +199,13 @@ def add_subparser(subparsers):
         default=30,
         help="After noticing an SLO failure, wait this many seconds before automatically rolling back.",
     )
+    list_parser.add_argument(
+        "--author",
+        dest="additional_authors",
+        default=None,
+        action='append',
+        help="Additional author(s) of the deploy, who will be pinged in Slack"
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -253,21 +260,27 @@ def report_waiting_aborted(service, deploy_group):
     paasta_print()
 
 
-def get_authors_to_be_notified(git_url, from_sha, to_sha):
+def get_authors_to_be_notified(git_url, from_sha, to_sha, additional_authors):
     if from_sha is None:
         return ""
-    ret, authors = remote_git.get_authors(
+    ret, git_authors = remote_git.get_authors(
         git_url=git_url, from_sha=from_sha, to_sha=to_sha
     )
-    if ret == 0:
-        if authors == "":
-            return ""
-        else:
-            slacky_authors = ", ".join({f"<@{a}>" for a in authors.split()})
-            log.debug(f"Authors: {slacky_authors}")
-            return f"^ {slacky_authors}"
+    if ret == 1: 
+        if not additional_authors:
+            return f"(Could not get authors: {git_authors})"
+        git_authors = []
     else:
-        return f"(Could not get authors: {authors})"
+        git_authors = git_authors.split()
+    
+    authors = git_authors + (additional_authors or [])
+    if authors == []:
+        log.debug(f"No authors found or provided")
+        return ""
+
+    slacky_authors = ", ".join({f"<@{a}>" for a in authors})
+    log.debug(f"Authors: {slacky_authors}")
+    return f"^ {slacky_authors}"
 
 
 def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
@@ -370,6 +383,7 @@ def paasta_mark_for_deployment(args):
         auto_certify_delay=args.auto_certify_delay,
         auto_abandon_delay=args.auto_abandon_delay,
         auto_rollback_delay=args.auto_rollback_delay,
+        additional_authors=args.additional_authors,
     )
     ret = deploy_process.run()
     return ret
@@ -422,6 +436,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         auto_certify_delay,
         auto_abandon_delay,
         auto_rollback_delay,
+        additional_authors=None,
     ):
         self.service = service
         self.deploy_info = deploy_info
@@ -440,6 +455,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
         self.auto_rollback_delay = auto_rollback_delay
+        self.additional_authors = additional_authors
 
         # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
         # and quickly launch wait_for_deployment for another commit without causing a race condition.
@@ -489,7 +505,10 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if from_sha is None:
             from_sha = self.old_git_sha
         return get_authors_to_be_notified(
-            git_url=self.git_url, from_sha=from_sha, to_sha=self.commit
+            git_url=self.git_url,
+            from_sha=from_sha, 
+            to_sha=self.commit,
+            additional_authors=self.additional_authors
         )
 
     def ping_authors(self, message: str = None) -> None:
