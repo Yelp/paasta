@@ -9,23 +9,22 @@ from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 
 log = logging.getLogger(__name__)
 
 
 def is_valid_application(deployment: V1Deployment):
-    is_valid = (
-        "paasta.yelp.com/service" in deployment.metadata.labels
-        and "paasta.yelp.com/instance" in deployment.metadata.labels
-        and "paasta.yelp.com/git_sha" in deployment.metadata.labels
-        and "paasta.yelp.com/config_sha" in deployment.metadata.labels
+    required = map(
+        paasta_prefixed, ["service", "instance", "git_sha", "config_sha"]
     )
+    is_valid = all(label in deployment.metadata.labels for label in required)
     if not is_valid:
         log.warning(
             f"deployment/{deployment.metadata.name} in "
             f"namespace/{deployment.metadata.namespace} "
-            "does not have complete set of labels"
+            f"does not have complete set of labels: {required}"
         )
         log.warning(deployment)
     return is_valid

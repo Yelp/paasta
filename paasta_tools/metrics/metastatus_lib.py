@@ -38,7 +38,7 @@ from paasta_tools.kubernetes_tools import get_pod_status
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
-from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.marathon_tools import get_all_marathon_apps
 from paasta_tools.marathon_tools import MarathonClient
@@ -570,7 +570,7 @@ def key_func_for_attribute_multi_kube(
     """
 
     def get_attribute(node, attribute):
-        return node.metadata.labels.get(maybe_add_yelp_prefix(attribute), "unknown")
+        return node.metadata.labels.get(paasta_prefixed(attribute), "unknown")
 
     def key_func(node):
         return tuple((a, get_attribute(node, a)) for a in attributes)

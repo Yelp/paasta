@@ -126,7 +126,7 @@ from paasta_tools.utils import VolumeWithMode
 log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
-YELP_ATTRIBUTE_PREFIX = "yelp.com/"
+PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 CONFIG_HASH_BLACKLIST = {"replicas"}
 KUBE_DEPLOY_STATEGY_MAP = {
     "crossover": "RollingUpdate",
@@ -1509,8 +1509,8 @@ def filter_nodes_by_blacklist(
     :returns: The list of nodes after the filter
     """
     if whitelist:
-        whitelist = (maybe_add_yelp_prefix(whitelist[0]), whitelist[1])
-    blacklist = [(maybe_add_yelp_prefix(entry[0]), entry[1]) for entry in blacklist]
+        whitelist = (paasta_prefixed(whitelist[0]), whitelist[1])
+    blacklist = [(paasta_prefixed(entry[0]), entry[1]) for entry in blacklist]
     return [
         node
         for node in nodes
@@ -1519,14 +1519,14 @@ def filter_nodes_by_blacklist(
     ]
 
 
-def maybe_add_yelp_prefix(attribute: str,) -> str:
-    return YELP_ATTRIBUTE_PREFIX + attribute if "/" not in attribute else attribute
+def paasta_prefixed(attribute: str,) -> str:
+    return attribute if "/" in attribute else PAASTA_ATTRIBUTE_PREFIX + attribute
 
 
 def get_nodes_grouped_by_attribute(
     nodes: Sequence[V1Node], attribute: str
 ) -> Mapping[str, Sequence[V1Node]]:
-    attribute = maybe_add_yelp_prefix(attribute)
+    attribute = paasta_prefixed(attribute)
     sorted_nodes = sorted(
         nodes, key=lambda node: node.metadata.labels.get(attribute, "")
     )
