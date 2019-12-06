@@ -103,9 +103,7 @@ def cleanup_kube_crd(
     for crd in existing_crds.items:
         service = crd.metadata.labels[service_attr]
         if not service:
-            log.error(
-                f"CRD {crd.metadata.name} has empty {service_attr} label"
-            )
+            log.error(f"CRD {crd.metadata.name} has empty {service_attr} label")
             continue
 
         crd_config = service_configuration_lib.read_extra_service_information(
