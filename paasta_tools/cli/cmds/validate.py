@@ -16,6 +16,7 @@ import json
 import os
 import pkgutil
 from collections import Counter
+from collections import defaultdict
 from glob import glob
 
 import yaml
@@ -143,6 +144,22 @@ def validate_service_name(service):
     return True
 
 
+def get_config_file_dict(file_path):
+    basename = os.path.basename(file_path)
+    extension = os.path.splitext(basename)[1]
+    try:
+        config_file = get_file_contents(file_path)
+        if extension == ".yaml":
+            return yaml.safe_load(config_file)
+        elif extension == ".json":
+            return json.loads(config_file)
+        else:
+            return config_file
+    except Exception:
+        paasta_print(f"{FAILED_READING_FILE}: {file_path}")
+        raise
+
+
 def validate_schema(file_path, file_type):
     """Check if the specified config file has a valid schema
 
@@ -160,18 +177,7 @@ def validate_schema(file_path, file_type):
         return
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
-    extension = os.path.splitext(basename)[1]
-    try:
-        config_file = get_file_contents(file_path)
-        if extension == ".yaml":
-            config_file_object = yaml.safe_load(config_file)
-        elif extension == ".json":
-            config_file_object = json.loads(config_file)
-        else:
-            config_file_object = config_file
-    except Exception:
-        paasta_print(f"{FAILED_READING_FILE}: {file_path}")
-        raise
+    config_file_object = get_config_file_dict(file_path)
     try:
         validator.validate(config_file_object)
         if file_type == "kubernetes" and not validate_instance_names(
@@ -391,6 +397,59 @@ def validate_unique_instance_names(service_path):
     return check_passed
 
 
+def validate_autoscaling_configs(service_path):
+    """Validate new autoscaling configurations that are not validated by jsonschema for the service of interest.
+
+    :param service_path: Path to directory containing soa conf yaml files for service
+    """
+    path = os.path.join(service_path, "*.yaml")
+    returncode = True
+    instances = {}
+    visited = defaultdict(list)
+    # Read and store all instance configuration in instances dict
+    for file_name in glob(path):
+        if os.path.islink(file_name):
+            continue
+        basename = os.path.basename(file_name)
+        if basename.startswith("kubernetes"):
+            cluster = basename[basename.rfind("kuernetes-") + 1 :]
+            instances[cluster] = get_config_file_dict(file_name)
+    # Validate autoscaling configurations for all instances
+    for cluster_name, cluster in instances:
+        for instance_name, instance in cluster.items():
+            for metric, params in instance.get("new_autoscaling", {}).items():
+                if len(metric) > 63:
+                    returncode = False
+                    paasta_print(f"length of metric name {metric} exceeds 63")
+                    continue
+                if (
+                    metric in {"http_custom_metrics", "uwsgi_custom_metrics"}
+                    and "service_scope_dimensions" in params
+                ):
+                    for k, v in params["service_scope_dimensions"].items():
+                        visited[(metric, k, v)].append((instance_name, cluster_name))
+                        if len(k) > 128:
+                            returncode = False
+                            paasta_print(
+                                f"length of dimension key {k} of instance {instance_name} in {cluster_name} cannot exceed 128"
+                            )
+                        if len(v) > 256:
+                            returncode = False
+                            paasta_print(
+                                f"length of dimension value {v} of instance {instance_name} in {cluster_name} cannot exceed 256"
+                            )
+
+    paasta_print(
+        f"Please double check that the following usage of dimension in {service_path}is intended."
+    )
+    for k, v in visited.items():
+        paasta_print(f"{k[0]} with dimension {k[1]}: {k[2]} is used by:")
+        for instance, cluster in v:
+            paasta_print(f"    {instance} in {cluster}")
+
+    return returncode
+
+
 def paasta_validate_soa_configs(service, service_path):
     """Analyze the service in service_path to determine if the conf files are valid
 
@@ -414,6 +473,9 @@ def paasta_validate_soa_configs(service, service_path):
         returncode = False
 
     if not validate_unique_instance_names(service_path):
+        returncode = False
+
+    if not validate_autoscaling_configs(service_path):
         returncode = False
 
     return returncode

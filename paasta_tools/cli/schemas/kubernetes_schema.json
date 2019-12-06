@@ -192,6 +192,100 @@
                 "autoscaling": {
                     "type": "object"
                 },
+                "new_autoscaling": {
+                    "type": "object",
+                    "properties": {
+                        "cpu": {
+                            "type": "object",
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "number",
+                                    "default": 0.7,
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                }
+                            }
+                        },
+                        "memory": {
+                            "type": "object",
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "number",
+                                    "default": 0.7,
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                }
+                            }
+                        },
+                        "uwsgi_custom_metrics": {
+                            "type": "object",
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "number",
+                                    "default": 0.7,
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                },
+                                "service_scope_dimensions": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "patternProperties": {
+                                        "^(?!(sf_|gcp_|azure_|aws_))[a-zA-Z]([-_a-zA-Z0-9])*$": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "http_custom_metrics": {
+                            "type": "object",
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "number",
+                                    "default": 0.7,
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                },
+                                "service_scope_dimensions": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "patternProperties": {
+                                        "^(?!(sf_|gcp_|azure_|aws_))[a-zA-Z]([-_a-zA-Z0-9])*$": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "patternProperties": {
+                        "^[a-z]([-a-z0-9]*[a-z0-9])?$": {
+                            "type": "object",
+                            "minProperties": 2,
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "number",
+                                    "default": 0.7,
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                },
+                                "signalflow_metrics_query": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
                 "sfn_autoscaling": {
                     "type": "object"
                 },
