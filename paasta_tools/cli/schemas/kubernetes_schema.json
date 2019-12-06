@@ -192,7 +192,7 @@
                 "autoscaling": {
                     "type": "object"
                 },
-                "new_autoscaling": {
+                "horizontal_autoscaling": {
                     "type": "object",
                     "properties": {
                         "cpu": {
@@ -232,7 +232,7 @@
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 },
-                                "service_scope_dimensions": {
+                                "dimensions": {
                                     "type": "object",
                                     "minProperties": 1,
                                     "patternProperties": {
@@ -254,7 +254,7 @@
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 },
-                                "service_scope_dimensions": {
+                                "dimensions": {
                                     "type": "object",
                                     "minProperties": 1,
                                     "patternProperties": {

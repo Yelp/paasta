@@ -16,7 +16,6 @@ import json
 import os
 import pkgutil
 from collections import Counter
-from collections import defaultdict
 from glob import glob
 
 import yaml
@@ -405,7 +404,6 @@ def validate_autoscaling_configs(service_path):
     path = os.path.join(service_path, "*.yaml")
     returncode = True
     instances = {}
-    visited = defaultdict(list)
     # Read and store all instance configuration in instances dict
     for file_name in glob(path):
         if os.path.islink(file_name):
@@ -424,10 +422,9 @@ def validate_autoscaling_configs(service_path):
                     continue
                 if (
                     metric in {"http_custom_metrics", "uwsgi_custom_metrics"}
-                    and "service_scope_dimensions" in params
+                    and "dimensions" in params
                 ):
-                    for k, v in params["service_scope_dimensions"].items():
-                        visited[(metric, k, v)].append((instance_name, cluster_name))
+                    for k, v in params["dimensions"].items():
                         if len(k) > 128:
                             returncode = False
                             paasta_print(
@@ -438,14 +435,6 @@ def validate_autoscaling_configs(service_path):
                             paasta_print(
                                 f"length of dimension value {v} of instance {instance_name} in {cluster_name} cannot exceed 256"
                             )
-
-    paasta_print(
-        f"Please double check that the following usage of dimension in {service_path}is intended."
-    )
-    for k, v in visited.items():
-        paasta_print(f"{k[0]} with dimension {k[1]}: {k[2]} is used by:")
-        for instance, cluster in v:
-            paasta_print(f"    {instance} in {cluster}")
 
     return returncode
 
