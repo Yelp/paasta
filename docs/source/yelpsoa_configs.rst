@@ -990,7 +990,7 @@ A marathon/kubernetes service that overrides options on different instances (can
     team: frontend
     page: false
 
-    # marathon/kubernetes-prod.yaml
+    # marathon-prod.yaml or kubernetes-prod.yaml
     main:
       instances: 20
       monitoring:
