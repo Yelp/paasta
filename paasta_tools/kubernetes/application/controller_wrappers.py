@@ -41,10 +41,10 @@ class Application(ABC):
         """
         if not item.metadata.namespace:
             item.metadata.namespace = "paasta"
-        attrs = dict(**{
+        attrs = {
             attr: item.metadata.labels[paasta_prefixed(attr)]
             for attr in ["service", "instance", "git_sha", "config_sha"]
-        })
+        }
         self.kube_deployment = KubeDeployment(replicas=item.spec.replicas, **attrs)
         self.item = item
         self.soa_config = None  # type: KubernetesDeploymentConfig
