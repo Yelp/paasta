@@ -16,17 +16,19 @@ log = logging.getLogger(__name__)
 
 
 def is_valid_application(deployment: V1Deployment):
-    required = map(
-        paasta_prefixed, ["service", "instance", "git_sha", "config_sha"]
-    )
-    is_valid = all(label in deployment.metadata.labels for label in required)
-    if not is_valid:
+    is_valid = True
+    missing = []
+    for attr in ["service", "instance", "git_sha", "config_sha"]:
+        prefixed_attr = paasta_prefixed(attr)
+        if prefixed_attr not in deployment.metadata.labels:
+            is_valid = False
+            missing.append(prefixed_attr)
+    if missing:
         log.warning(
             f"deployment/{deployment.metadata.name} in "
             f"namespace/{deployment.metadata.namespace} "
-            f"does not have complete set of labels: {required}"
+            f"is missing following labels: {missing}"
         )
-        log.warning(deployment)
     return is_valid
 
 
