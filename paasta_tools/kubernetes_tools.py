@@ -126,6 +126,7 @@ from paasta_tools.utils import VolumeWithMode
 log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
+YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 CONFIG_HASH_BLACKLIST = {"replicas"}
 KUBE_DEPLOY_STATEGY_MAP = {
@@ -1520,7 +1521,14 @@ def filter_nodes_by_blacklist(
 
 
 def paasta_prefixed(attribute: str,) -> str:
-    return attribute if "/" in attribute else PAASTA_ATTRIBUTE_PREFIX + attribute
+    # discovery attributes are exempt for now
+    discovery_attributes = ["region", "superregion", "ecosystem", "habitat"]
+    if attribute in discovery_attributes:
+        return YELP_ATTRIBUTE_PREFIX + attribute
+    elif "/" in attribute:
+        return attribute
+    else:
+        return PAASTA_ATTRIBUTE_PREFIX + attribute
 
 
 def get_nodes_grouped_by_attribute(
