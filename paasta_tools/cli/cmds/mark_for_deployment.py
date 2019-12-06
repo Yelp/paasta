@@ -266,6 +266,9 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, additional_authors):
     ret, git_authors = remote_git.get_authors(
         git_url=git_url, from_sha=from_sha, to_sha=to_sha
     )
+    # Since git authors can only be parsed using authors-of-changeset from gitolite hosts
+    # we expect that this call will fail often from being called on non-gitolite repos
+    # Cleaning up this logic after the migration from gitolite is ticketed as RELENG-41740
     if ret == 1: 
         if not additional_authors:
             return f"(Could not get authors: {git_authors})"
