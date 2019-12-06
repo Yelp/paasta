@@ -136,6 +136,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 KUBERNETES_NAMESPACE = "paasta"
+DISCOVERY_ATTRIBUTES = {"region", "superregion", "ecosystem", "habitat"}
 
 
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -1522,8 +1523,7 @@ def filter_nodes_by_blacklist(
 
 def paasta_prefixed(attribute: str,) -> str:
     # discovery attributes are exempt for now
-    discovery_attributes = ["region", "superregion", "ecosystem", "habitat"]
-    if attribute in discovery_attributes:
+    if attribute in DISCOVERY_ATTRIBUTES:
         return YELP_ATTRIBUTE_PREFIX + attribute
     elif "/" in attribute:
         return attribute
