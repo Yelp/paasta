@@ -569,6 +569,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             )
                         )
                     ),
+                    resources=self.get_sidecar_resource_requirements(),
                     name=HACHECK_POD_NAME,
                     env=self.get_kubernetes_environment(),
                     ports=[V1ContainerPort(container_port=6666)],
@@ -676,6 +677,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "memory": f"{self.get_mem()}Mi",
                 "ephemeral-storage": f"{self.get_disk()}Mi",
             },
+        )
+
+    def get_sidecar_resource_requirements(self) -> V1ResourceRequirements:
+        return V1ResourceRequirements(
+            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
         )
 
     def get_liveness_probe(
