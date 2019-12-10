@@ -70,7 +70,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 def check_kubernetes_pod_replication(
     instance_config: KubernetesDeploymentConfig,
-    all_pods: Sequence[V1Pod],
+    all_tasks_or_pods: Sequence[V1Pod],
     smartstack_replication_checker: KubeSmartstackReplicationChecker,
 ) -> None:
     """Checks a service's replication levels based on how the service's replication
@@ -98,7 +98,7 @@ def check_kubernetes_pod_replication(
         check_healthy_kubernetes_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            all_pods=all_pods,
+            all_pods=all_tasks_or_pods,
         )
 
 

@@ -30,47 +30,19 @@ After retrieving that information, a fraction of available instances is calculat
 CRITICAL. If replication_threshold is defined in the yelpsoa config for a service
 instance then it will be used instead.
 """
-import argparse
 import logging
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 
-import a_sync
-
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.check_services_replication_tools import main
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
 from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.mesos_tools import get_slaves
-from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.smartstack_tools import MesosSmartstackReplicationChecker
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger(__name__)
-
-
-def parse_args():
-    epilog = "PERCENTAGE is an integer value representing the percentage of available to expected instances"
-    parser = argparse.ArgumentParser(epilog=epilog)
-
-    parser.add_argument(
-        "-d",
-        "--soa-dir",
-        dest="soa_dir",
-        metavar="SOA_DIR",
-        default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", dest="verbose", default=False
-    )
-    options = parser.parse_args()
-
-    return options
 
 
 def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
@@ -106,7 +78,7 @@ def check_healthy_marathon_tasks_for_service_instance(
 
 
 def check_service_replication(
-    instance_config, all_tasks, smartstack_replication_checker
+    instance_config, all_tasks_or_pods, smartstack_replication_checker
 ):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
@@ -133,52 +105,14 @@ def check_service_replication(
         check_healthy_marathon_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            all_tasks=all_tasks,
+            all_tasks=all_tasks_or_pods,
         )
-
-
-def main():
-    args = parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.WARNING)
-
-    system_paasta_config = load_system_paasta_config()
-    cluster = system_paasta_config.get_cluster()
-
-    clients = marathon_tools.get_marathon_clients(
-        marathon_tools.get_marathon_servers(system_paasta_config)
-    )
-    all_clients = clients.get_all_clients()
-    all_tasks = []
-    for client in all_clients:
-        all_tasks.extend(client.list_tasks())
-    mesos_slaves = a_sync.block(get_slaves)
-    smartstack_replication_checker = MesosSmartstackReplicationChecker(
-        mesos_slaves, system_paasta_config
-    )
-
-    for service in list_services(soa_dir=args.soa_dir):
-        service_config = PaastaServiceConfigLoader(
-            service=service, soa_dir=args.soa_dir
-        )
-        for instance_config in service_config.instance_configs(
-            cluster=cluster, instance_type_class=marathon_tools.MarathonServiceConfig
-        ):
-            if instance_config.get_docker_image():
-                check_service_replication(
-                    instance_config=instance_config,
-                    all_tasks=all_tasks,
-                    smartstack_replication_checker=smartstack_replication_checker,
-                )
-            else:
-                log.debug(
-                    "%s is not deployed. Skipping replication monitoring."
-                    % instance_config.job_id
-                )
 
 
 if __name__ == "__main__":
-    main()
+    main(
+        instance_type_class=marathon_tools.MarathonServiceConfig,
+        check_service_replication=check_service_replication,
+        namespace=None,  # not relevant for mesos
+        mesos=True,
+    )
