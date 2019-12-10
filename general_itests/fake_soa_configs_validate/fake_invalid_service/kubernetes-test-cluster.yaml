@@ -1,0 +1,16 @@
+---
+main2:
+  cpus: .1
+  mem: 100
+  disk: 200.0
+  instances: 1
+  env:
+    FOO: BAR
+  deploy_group: fake_deploy_group
+  horizontal_autoscaling:
+      cpu:
+          target_average_value: 0.7
+          signalflow_metrics_query: "data(\"fake-external\").publish"
+      fake-external:
+          target_average_value: 0.55
+          signalflow_metrics_query: "data(\"fake-external\").publish"

@@ -413,17 +413,14 @@ def validate_autoscaling_configs(service_path):
             cluster = basename[basename.rfind("kuernetes-") + 1 :]
             instances[cluster] = get_config_file_dict(file_name)
     # Validate autoscaling configurations for all instances
-    for cluster_name, cluster in instances:
+    for cluster_name, cluster in instances.items():
         for instance_name, instance in cluster.items():
             for metric, params in instance.get("new_autoscaling", {}).items():
                 if len(metric) > 63:
                     returncode = False
                     paasta_print(f"length of metric name {metric} exceeds 63")
                     continue
-                if (
-                    metric in {"http_custom_metrics", "uwsgi_custom_metrics"}
-                    and "dimensions" in params
-                ):
+                if metric in {"http", "uwsgi"} and "dimensions" in params:
                     for k, v in params["dimensions"].items():
                         if len(k) > 128:
                             returncode = False

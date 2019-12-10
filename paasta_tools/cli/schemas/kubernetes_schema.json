@@ -194,9 +194,11 @@
                 },
                 "horizontal_autoscaling": {
                     "type": "object",
+                    "additionalProperties": false,
                     "properties": {
                         "cpu": {
                             "type": "object",
+                            "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
                                     "type": "number",
@@ -206,10 +208,14 @@
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 }
-                            }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
                         },
                         "memory": {
                             "type": "object",
+                            "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
                                     "type": "number",
@@ -219,10 +225,14 @@
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 }
-                            }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
                         },
-                        "uwsgi_custom_metrics": {
+                        "uwsgi": {
                             "type": "object",
+                            "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
                                     "type": "number",
@@ -241,10 +251,14 @@
                                         }
                                     }
                                 }
-                            }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
                         },
-                        "http_custom_metrics": {
+                        "http": {
                             "type": "object",
+                            "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
                                     "type": "number",
@@ -263,13 +277,16 @@
                                         }
                                     }
                                 }
-                            }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
                         }
                     },
                     "patternProperties": {
-                        "^[a-z]([-a-z0-9]*[a-z0-9])?$": {
+                        "(?!(^cpu|memory|http|uwsgi)$)(^[a-z]([-a-z0-9]*[a-z0-9])?$)": {
                             "type": "object",
-                            "minProperties": 2,
+                            "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
                                     "type": "number",
@@ -282,7 +299,10 @@
                                 "signalflow_metrics_query": {
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "required": [
+                                "signalflow_metrics_query"
+                            ]
                         }
                     }
                 },

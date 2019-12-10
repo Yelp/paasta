@@ -1,0 +1,15 @@
+---
+main2:
+  cpus: .1
+  mem: 100
+  disk: 200.0
+  instances: 1
+  env:
+    FOO: BAR
+  deploy_group: fake_deploy_group
+  horizontal_autoscaling:
+      http:
+          target_average_value: 0.55
+          dimension:
+              sf_x: "should fail"
+              gcp_x: "should fail"
