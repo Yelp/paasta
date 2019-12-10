@@ -107,11 +107,11 @@ Things you can do:
 
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
-    all_pods: Sequence[V1Pod],
+    all_tasks_or_pods: Sequence[V1Pod],
     smartstack_replication_checker: KubeSmartstackReplicationChecker,
 ) -> None:
     si_pods = filter_pods_by_service_instance(
-        pod_list=all_pods,
+        pod_list=all_tasks_or_pods,
         service=instance_config.service,
         instance=instance_config.instance,
     )
