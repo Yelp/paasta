@@ -380,6 +380,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                             )
                         )
                     ),
+                    resources=V1ResourceRequirements(
+                        limits={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                        requests={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                    ),
                     name="hacheck",
                     ports=[V1ContainerPort(container_port=6666)],
                 )
@@ -413,6 +425,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         )
                     ),
                     name="hacheck",
+                    resources=V1ResourceRequirements(
+                        limits={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                        requests={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                    ),
                     ports=[V1ContainerPort(container_port=6666)],
                     readiness_probe=V1Probe(
                         _exec=V1ExecAction(
