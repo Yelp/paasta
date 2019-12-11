@@ -39,6 +39,7 @@ class KubernetesClusterConnector(ClusterConnector):
 
     def __init__(self, cluster: str, pool: str) -> None:
         super().__init__(cluster, pool)
+        self.kubeconfig_path = f'clusters.{cluster}.kubeconfig_path'
         kubernetes.config.load_kube_config(staticconf.read_string(f'clusters.{cluster}.kubeconfig_path'))
         self._core_api = kubernetes.client.CoreV1Api()
         self._safe_to_evict_annotation = staticconf.read_string(
@@ -48,6 +49,7 @@ class KubernetesClusterConnector(ClusterConnector):
 
     def reload_state(self) -> None:
         logger.info('Reloading nodes')
+        kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
 
