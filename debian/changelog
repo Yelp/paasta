@@ -1,3 +1,12 @@
+paasta-tools (0.91.16) xenial; urgency=medium
+
+  * 0.91.16 tagged with 'make release'
+    Commit: Merge pull request #2584 from Yelp/u/chl/PAASTA-
+    16121_specify_sidecar_resource_requirements  specify sidecar
+    resource requirements
+
+ -- Chien-An Lai <chl@yelp.com>  Wed, 11 Dec 2019 11:15:08 -0800
+
 paasta-tools (0.91.15) xenial; urgency=medium
 
   * 0.91.15 tagged with 'make release'
