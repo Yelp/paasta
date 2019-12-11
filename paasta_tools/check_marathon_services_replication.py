@@ -96,17 +96,19 @@ def check_service_replication(
     # if the primary registration does not match the service_instance name then
     # the best we can do is check marathon for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        is_well_replicated = monitoring_tools.check_smartstack_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_count,
             smartstack_replication_checker=smartstack_replication_checker,
         )
+        return is_well_replicated
     else:
         check_healthy_marathon_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
             all_tasks=all_tasks_or_pods,
         )
+        return None
 
 
 if __name__ == "__main__":
