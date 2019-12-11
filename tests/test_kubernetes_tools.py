@@ -39,6 +39,7 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta1CrossVersionObjectReference
+from kubernetes.client import V2beta1ExternalMetricSource
 from kubernetes.client import V2beta1HorizontalPodAutoscaler
 from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta1MetricSpec
@@ -226,8 +227,17 @@ def test_load_kubernetes_service_config():
 
 class TestKubernetesDeploymentConfig(unittest.TestCase):
     def setUp(self):
+        hpa_config = {
+            "min_replicas": 1,
+            "max_replicas": 3,
+            "cpu": {"target_average_value": 70},
+            "memory": {"target_average_value": 70},
+            "uwsgi": {"target_average_value": 70},
+            "http": {"target_average_value": 70, "dimensions": {"any": "random"}},
+            "external": {"target_value": 70, "signalflow_metrics_query": "fake_query"},
+        }
         mock_config_dict = KubernetesDeploymentConfigDict(
-            bounce_method="crossover", instances=3
+            bounce_method="crossover", instances=3, horizontal_autoscaling=hpa_config,
         )
         self.deployment = KubernetesDeploymentConfig(
             service="kurupt",
@@ -938,6 +948,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             )
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
+            print(ret.metadata.annotations)
             assert ret == V1PodTemplateSpec(
                 metadata=V1ObjectMeta(
                     labels={
@@ -948,7 +959,10 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         "paasta.yelp.com/instance": mock_get_instance.return_value,
                         "paasta.yelp.com/service": mock_get_service.return_value,
                     },
-                    annotations={"smartstack_registrations": '["kurupt.fm"]'},
+                    annotations={
+                        "smartstack_registrations": '["kurupt.fm"]',
+                        "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
+                    },
                 ),
                 spec=V1PodSpec(
                     service_account_name=None,
@@ -983,6 +997,87 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 },
                 name="kurupt-fm",
             )
+
+    def test_get_hpa_metric_spec(self):
+        config_dict = {
+            "horizontal_autoscaling": {
+                "min_replicas": 1,
+                "max_replicas": 3,
+                "cpu": {"target_average_value": 70},
+                "memory": {"target_average_value": 70},
+                "uwsgi": {"target_average_value": 70},
+                "http": {"target_average_value": 70, "dimensions": {"any": "random"}},
+                "external": {
+                    "target_value": 70,
+                    "signalflow_metrics_query": "fake_query",
+                },
+            }
+        }
+        mock_config = KubernetesDeploymentConfig(
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name", "cluster"
+        )
+        annotations = {
+            "signalfx.com.custom.metrics": "",
+            "signalfx.com.external.metric/external": "fake_query",
+            "signalfx.com.external.metric/http": 'data("http", filter=filter("any", "random")).mean().publish()',
+        }
+        expected_res = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name", namespace="paasta", annotations=annotations
+            ),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta1MetricSpec(
+                        type="Resource",
+                        resource=V2beta1ResourceMetricSource(
+                            name="cpu", target_average_utilization=70
+                        ),
+                    ),
+                    V2beta1MetricSpec(
+                        type="Resource",
+                        resource=V2beta1ResourceMetricSource(
+                            name="memory", target_average_utilization=70
+                        ),
+                    ),
+                    V2beta1MetricSpec(
+                        type="Pods",
+                        pods=V2beta1PodsMetricSource(
+                            metric_name="uwsgi",
+                            target_average_value=70,
+                            selector=V1LabelSelector(
+                                match_labels={"kubernetes_cluster": "cluster"}
+                            ),
+                        ),
+                    ),
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name="http", target_value=70,
+                        ),
+                    ),
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name="external", target_value=70,
+                        ),
+                    ),
+                ],
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                ),
+            ),
+        )
+        assert expected_res == return_value
 
     def test_get_autoscaling_metric_spec_mesos_cpu(self):
         # with cpu

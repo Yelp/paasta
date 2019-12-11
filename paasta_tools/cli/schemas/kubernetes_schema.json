@@ -196,15 +196,22 @@
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
+                        "min_replicas": {
+                            "type": "integer",
+                            "default": 1
+                        },
+                        "max_replicas": {
+                            "type": "integer"
+                        },
                         "cpu": {
                             "type": "object",
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "number",
-                                    "default": 0.7,
+                                    "type": "integer",
+                                    "default": 70,
                                     "minimum": 0,
-                                    "maximum": 1,
+                                    "maximum": 100,
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 }
@@ -218,10 +225,10 @@
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "number",
-                                    "default": 0.7,
+                                    "type": "integer",
+                                    "default": 70,
                                     "minimum": 0,
-                                    "maximum": 1,
+                                    "maximum": 100,
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 }
@@ -235,10 +242,10 @@
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "number",
-                                    "default": 0.7,
+                                    "type": "integer",
+                                    "default": 70,
                                     "minimum": 0,
-                                    "maximum": 1,
+                                    "maximum": 100,
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 },
@@ -262,9 +269,9 @@
                             "properties": {
                                 "target_average_value": {
                                     "type": "number",
-                                    "default": 0.7,
+                                    "default": 70,
                                     "minimum": 0,
-                                    "maximum": 1,
+                                    "maximum": 100,
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 },
@@ -288,23 +295,24 @@
                             "type": "object",
                             "additionalProperties": false,
                             "properties": {
-                                "target_average_value": {
+                                "target_value": {
                                     "type": "number",
-                                    "default": 0.7,
                                     "minimum": 0,
-                                    "maximum": 1,
-                                    "exclusiveMinimum": true,
-                                    "exclusiveMaximum": false
+                                    "exclusiveMinimum": true
                                 },
                                 "signalflow_metrics_query": {
                                     "type": "string"
                                 }
                             },
                             "required": [
-                                "signalflow_metrics_query"
+                                "signalflow_metrics_query",
+                                "target_value"
                             ]
                         }
-                    }
+                    },
+                    "required": [
+                        "max_replicas"
+                    ]
                 },
                 "sfn_autoscaling": {
                     "type": "object"
