@@ -273,7 +273,7 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
         if ret == 0:
             authors_to_notify = git_authors.split()
         else:
-            return f"(Could not get authors: {authors})"
+            return f"(Could not get authors: {git_authors})"
 
     slacky_authors = ", ".join({f"<@{a}>" for a in authors_to_notify})
     log.debug(f"Authors: {slacky_authors}")
