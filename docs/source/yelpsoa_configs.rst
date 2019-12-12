@@ -796,6 +796,13 @@ Routing and Reliability
    in milliseconds, defaults to 1000.
  * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
    in milliseconds, defaults to 1000.
+ * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
+   specific endpoints. This is useful for when there is a long running endpoint
+   that requires a large timeout value but would like to keep the default timeout
+   at a resonable value. Example::
+
+     endpoint_timeouts:
+         "/specials/bulk/v1": 15000
 
 Fault Injection
 ```````````````
