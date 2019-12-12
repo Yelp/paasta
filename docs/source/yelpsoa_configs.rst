@@ -801,12 +801,12 @@ Routing and Reliability
    that requires a large timeout value but you would like to keep the default
    timeout at a resonable value. Endpoints are prefix-matched to what is
    specified here so for example ``/specials/bulk/v1`` will match the
-   endpoints ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``. 
+   endpoints ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``.
    Example::
 
      endpoint_timeouts:
          "/specials/bulk/v1": 15000
-   
+
 Fault Injection
 ```````````````
 
