@@ -352,6 +352,14 @@ def print_marathon_status(
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
+    if marathon_status.envoy is not None:
+        envoy_status_human = get_envoy_status_human(
+            marathon_status.envoy.registration,
+            marathon_status.envoy.expected_backends_per_location,
+            marathon_status.envoy.locations,
+        )
+        output.extend([f"    {line}" for line in envoy_status_human])
+
     return 0
 
 
@@ -708,6 +716,63 @@ def build_smartstack_backends_table(backends):
             f"{backend.hostname}:{backend.port}",
             f"{backend.check_status}/{backend.check_code} in {check_duration}ms",
             humanize.naturaltime(timedelta(seconds=backend.last_change)),
+            status,
+        )
+
+        if not backend.has_associated_task:
+            row = tuple(
+                PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row
+            )
+
+        rows.append(row)
+
+    return format_table(rows)
+
+
+def get_envoy_status_human(
+    registration, expected_backends_per_location, locations
+) -> List[str]:
+    if len(locations) == 0:
+        return [f"Envoy: ERROR - {registration} is NOT in Envoy at all!"]
+
+    output = ["Envoy:"]
+    output.append(f"  Service Name: {registration}")
+    output.append(f"  Backends:")
+    for location in locations:
+        backend_status = envoy_backend_report(
+            expected_backends_per_location, location.running_backends_count
+        )
+        output.append(f"    {location.name} - {backend_status}")
+
+        if location.backends:
+            is_proxied_through_casper = any(
+                [backend["priority"] for backend in location.backends]
+            )
+            color = (
+                PaastaColors.green if is_proxied_through_casper else PaastaColors.grey
+            )
+            is_proxied_through_casper = color(f"{is_proxied_through_casper}")
+            output.append(f"      Proxied through Casper: {is_proxied_through_casper}")
+
+            backends_table = build_envoy_backends_table(location.backends)
+            output.extend([f"        {line}" for line in backends_table])
+
+    return output
+
+
+def build_envoy_backends_table(backends):
+    rows = [("Hostname:Port", "Weight", "Status")]
+    for backend in backends:
+        if backend.eds_health_status == "HEALTHY":
+            status = PaastaColors.default(backend.eds_health_status)
+        elif backend.eds_health_status == "UNHEALTHY":
+            status = PaastaColors.red(backend.eds_health_status)
+        else:
+            status = PaastaColors.yellow(backend.eds_health_status)
+
+        row = (
+            f"{backend.hostname}:{backend.port_value}",
+            f"{backend.weight}",
             status,
         )
 
@@ -1379,7 +1444,15 @@ def desired_state_human(desired_state, instances):
         return PaastaColors.red("Unknown (desired_state: %s)" % desired_state)
 
 
+def envoy_backend_report(normal_instance_count, up_backends):
+    return _backend_report(normal_instance_count, up_backends, "Envoy")
+
+
 def haproxy_backend_report(normal_instance_count, up_backends):
+    return _backend_report(normal_instance_count, up_backends, "haproxy")
+
+
+def _backend_report(normal_instance_count, up_backends, system_name):
     """Given that a service is in smartstack, this returns a human readable
     report of the up backends"""
     # TODO: Take into account a configurable threshold, PAASTA-1102
@@ -1398,7 +1471,7 @@ def haproxy_backend_report(normal_instance_count, up_backends):
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold("UP")
-    return f"{status} - in haproxy with {count} total backends {up_string} in this namespace."
+    return f"{status} - in {system_name} with {count} total backends {up_string} in this namespace."
 
 
 def marathon_app_deploy_status_human(status, backoff_seconds=None):

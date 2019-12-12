@@ -45,6 +45,7 @@ from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import cassandracluster_tools
+from paasta_tools import envoy_tools
 from paasta_tools import flink_tools
 from paasta_tools import kafkacluster_tools
 from paasta_tools import kubernetes_tools
@@ -322,6 +323,7 @@ def marathon_instance_status(
     instance: str,
     verbose: int,
     include_smartstack: bool,
+    include_envoy: bool,
     include_mesos: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
@@ -344,7 +346,7 @@ def marathon_instance_status(
         )
     )
 
-    if include_smartstack:
+    if include_smartstack or include_envoy:
         service_namespace_config = marathon_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
@@ -354,15 +356,24 @@ def marathon_instance_status(
             tasks = [
                 task for app, _ in matching_apps_with_clients for task in app.tasks
             ]
-
-            mstatus["smartstack"] = marathon_smartstack_status(
-                service,
-                instance,
-                job_config,
-                service_namespace_config,
-                tasks,
-                should_return_individual_backends=verbose > 0,
-            )
+            if include_smartstack:
+                mstatus["smartstack"] = marathon_smartstack_status(
+                    service,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    tasks,
+                    should_return_individual_backends=verbose > 0,
+                )
+            if include_envoy:
+                mstatus["envoy"] = marathon_envoy_status(
+                    service,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    tasks,
+                    should_return_individual_backends=verbose > 0,
+                )
 
     if include_mesos:
         mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
@@ -542,6 +553,74 @@ def marathon_smartstack_status(
         smartstack_status["locations"].append(location_dict)
 
     return smartstack_status
+
+
+def marathon_envoy_status(
+    service: str,
+    instance: str,
+    job_config: marathon_tools.MarathonServiceConfig,
+    service_namespace_config: ServiceNamespaceConfig,
+    tasks: Sequence[MarathonTask],
+    should_return_individual_backends: bool = False,
+) -> Mapping[str, Any]:
+    registration = job_config.get_registrations()[0]
+    discover_location_type = service_namespace_config.get_discover()
+
+    grouped_slaves = get_mesos_slaves_grouped_by_attribute(
+        slaves=get_slaves(), attribute=discover_location_type
+    )
+
+    # rebuild the dict, replacing the slave object with just their hostname
+    slave_hostname_by_location = {
+        attribute_value: [slave["hostname"] for slave in slaves]
+        for attribute_value, slaves in grouped_slaves.items()
+    }
+
+    expected_envoy_count = marathon_tools.get_expected_instance_count_for_namespace(
+        service, instance, settings.cluster
+    )
+    expected_count_per_location = int(
+        expected_envoy_count / len(slave_hostname_by_location)
+    )
+    envoy_status: MutableMapping[str, Any] = {
+        "registration": registration,
+        "expected_backends_per_location": expected_count_per_location,
+        "locations": [],
+    }
+
+    for location, hosts in slave_hostname_by_location.items():
+        envoy_host = hosts[0]
+        sorted_backends = sorted(
+            envoy_tools.get_backends(
+                registration,
+                envoy_host=envoy_host,
+                envoy_admin_port=envoy_tools.get_envoy_admin_port(),
+            ),
+            key=lambda backend: backend["eds_health_status"],
+        )
+
+        matched_backends_and_tasks = envoy_tools.match_backends_and_tasks(
+            sorted_backends, tasks,
+        )
+
+        running_backends_count = 0
+        backends = []
+        for backend, task in matched_backends_and_tasks:
+            if backend is None:
+                continue
+            if backend["eds_health_status"] == "HEALTHY":
+                running_backends_count += 1
+            if should_return_individual_backends:
+                backend["has_associated_task"] = task is not None
+                backends.append(backend)
+        location_dict = {
+            "name": location,
+            "running_backends_count": running_backends_count,
+            "backends": backends,
+        }
+        envoy_status["locations"].append(location_dict)
+
+    return envoy_status
 
 
 def kubernetes_smartstack_status(
@@ -856,6 +935,9 @@ def instance_status(request):
     include_smartstack = request.swagger_data.get("include_smartstack")
     if include_smartstack is None:
         include_smartstack = True
+    include_envoy = request.swagger_data.get("include_envoy")
+    if include_envoy is None:
+        include_envoy = True
     include_mesos = request.swagger_data.get("include_mesos")
     if include_mesos is None:
         include_mesos = True
@@ -905,6 +987,7 @@ def instance_status(request):
                 instance,
                 verbose,
                 include_smartstack=include_smartstack,
+                include_envoy=include_envoy,
                 include_mesos=include_mesos,
             )
         elif instance_type == "adhoc":

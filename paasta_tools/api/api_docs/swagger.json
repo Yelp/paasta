@@ -337,6 +337,13 @@
                     },
                     {
                         "in": "query",
+                        "description": "Include Envoy information",
+                        "name": "include_envoy",
+                        "required": false,
+                        "type": "boolean"
+                    },
+                    {
+                        "in": "query",
                         "description": "Include Mesos information",
                         "name": "include_mesos",
                         "required": false,
@@ -731,6 +738,10 @@
                     "$ref": "#/definitions/SmartstackStatus",
                     "description": "Status of the service in smartstack"
                 },
+                "envoy": {
+                    "$ref": "#/definitions/EnvoyStatus",
+                    "description": "Status of the service in Envoy"
+                },
                 "error_message": {
                     "type": "string",
                     "description": "Error message when a marathon job ID cannot be found"
@@ -1048,6 +1059,88 @@
                     "type": "integer",
                     "format": "int32",
                     "description": "Seconds since last change in backend status"
+                },
+                "has_associated_task": {
+                    "type": "boolean",
+                    "description": "Whether this backend has an associated task running"
+                }
+            }
+        },
+        "EnvoyStatus": {
+            "type": "object",
+            "properties": {
+                "registration": {
+                    "type": "string",
+                    "description": "Registration name of the service in Smartstack"
+                },
+                "expected_backends_per_location": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Number of backends expected to be present in each location"
+                },
+                "locations": {
+                    "type": "array",
+                    "description": "Locations the service is deployed",
+                    "items": {
+                        "$ref": "#/definitions/EnvoyLocation"
+                    }
+                }
+            }
+        },
+        "EnvoyLocation": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the location"
+                },
+                "running_backends_count": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Number of running backends for the service in this location"
+                },
+                "backends": {
+                    "type": "array",
+                    "description": "Envoy backends running in this location",
+                    "items": {
+                        "$ref": "#/definitions/EnvoyBackend"
+                    }
+                }
+            }
+        },
+        "EnvoyBackend": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "description": "Address of the host on which the backend is running"
+                },
+                "port_value": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Port number on which the backend responds"
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "Name of the host on which the backend is running"
+                },
+                "eds_health_status": {
+                    "type": "string",
+                    "description": "Status of the backend in Envoy as reported by the EDS"
+                },
+                "weight": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "The weight of this backend in the cluster"
+                },
+                "priority": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "The priority of the Envoy backend"
+                },
+                "is_proxied_through_casper": {
+                    "type": "boolean",
+                    "description": "Whether this backend is proxied through Casper"
                 },
                 "has_associated_task": {
                     "type": "boolean",
