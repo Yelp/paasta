@@ -2340,6 +2340,41 @@ class TestMarathonServiceConfig:
         )
         assert marathon_config.get_accepted_resource_roles() == ["ads"]
 
+    def test_warning_big_bounce(self):
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service="service",
+            instance="instance",
+            cluster="cluster",
+            config_dict={},
+            branch_dict={
+                "docker_image": "abcdef",
+                "git_sha": "deadbeef",
+                "force_bounce": None,
+                "desired_state": "start",
+            },
+        )
+
+        with mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            return_value=SystemPaastaConfig(
+                {
+                    "volumes": [],
+                    "expected_slave_attributes": [{"region": "blah"}],
+                    "docker_registry": "docker-registry.local",
+                },
+                "/fake/dir/",
+            ),
+            autospec=True,
+        ) as mock_load_system_paasta_config, mock.patch(
+            "paasta_tools.marathon_tools.load_system_paasta_config",
+            new=mock_load_system_paasta_config,
+            autospec=False,
+        ):
+            assert (
+                marathon_config.format_marathon_app_dict()["id"]
+                == "service.instance.gitabcdef.configec492e1d"
+            ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+
 
 def test_deformat_job_id():
     expected = ("ser_vice", "in_stance", "git_hash", "config_hash")

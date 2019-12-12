@@ -1,3 +1,44 @@
+paasta-tools (0.91.16) xenial; urgency=medium
+
+  * 0.91.16 tagged with 'make release'
+    Commit: Merge pull request #2584 from Yelp/u/chl/PAASTA-
+    16121_specify_sidecar_resource_requirements  specify sidecar
+    resource requirements
+
+ -- Chien-An Lai <chl@yelp.com>  Wed, 11 Dec 2019 11:15:08 -0800
+
+paasta-tools (0.91.15) xenial; urgency=medium
+
+  * 0.91.15 tagged with 'make release'
+    Commit: Add additional authors as a CLI argument (#2580)  * Add
+    additional authors as a CLI argument  Not all internal git hosts are
+    gitolite, and relying on the authors-of-changeset gitolite script is
+    not an option for repositories hosted there.  Since most calls to
+    this command are automated, Release Engineering will be modifying
+    those calls to pass in the git authors directly. This change enables
+    that.  * Add comment and ticket for cleaning up old gitolite logic
+    * Override authors with --author instead of appending
+
+ -- Daniel Grigsby <dgrigsby@10-40-30-18-uswest1cdevc.dev.yelpcorp.com>  Tue, 10 Dec 2019 11:18:17 -0800
+
+paasta-tools (0.91.14) xenial; urgency=medium
+
+  * 0.91.14 tagged with 'make release'
+    Commit: Merge pull request #2578 from Yelp/fix-metastatus-for-
+    kubernetes  Use `KUBECONFIG` env var while checking availability of
+    k8s
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 05 Dec 2019 03:15:46 -0800
+
+paasta-tools (0.91.13) xenial; urgency=medium
+
+  * 0.91.13 tagged with 'make release'
+    Commit: Merge pull request #2576 from Yelp/drmorr/PAASTA-
+    15870/better_parsing_of_spark_command  better parsing of spark
+    command when env variables are set
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 03 Dec 2019 15:28:44 -0800
+
 paasta-tools (0.91.12) xenial; urgency=medium
 
   * 0.91.12 tagged with 'make release'

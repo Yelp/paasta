@@ -811,8 +811,7 @@ class InstanceConfig:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
 
-        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint to Marathon/Chronos
-        application defined by this instance config.
+        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint or node selector.
 
         Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
 
@@ -1668,12 +1667,6 @@ class ResourcePoolSettings(TypedDict):
 
 
 PoolToResourcePoolSettingsDict = Dict[str, ResourcePoolSettings]
-
-
-class ChronosConfig(TypedDict, total=False):
-    user: str
-    password: str
-    url: List[str]
 
 
 class MarathonConfigDict(TypedDict, total=False):

@@ -356,7 +356,7 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
 
 def list_paasta_services():
     """Returns a sorted list of services that happen to have at
-    least one service.instance (including Marathon and Chronos instances), which indicates it is on PaaSTA
+    least one service.instance, which indicates it is on PaaSTA
     """
     the_list = []
     for service in list_services():
