@@ -1,3 +1,11 @@
+paasta-tools (0.91.18) xenial; urgency=medium
+
+  * 0.91.18 tagged with 'make release'
+    Commit: Merge pull request #2592 from Yelp/u/chl/add_iam_role_config
+    add iam_role config
+
+ -- Chien-An Lai <chl@yelp.com>  Fri, 13 Dec 2019 13:39:16 -0800
+
 paasta-tools (0.91.17) xenial; urgency=medium
 
   * 0.91.17 tagged with 'make release'
