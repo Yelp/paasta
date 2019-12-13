@@ -15,17 +15,20 @@ import abc
 import collections
 import csv
 import socket
+from typing import Any
 from typing import cast
 from typing import Collection
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
+from typing import Union
 
 import requests
 from kubernetes.client import V1Node
@@ -635,3 +638,60 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
                 for node in nodes
             ]
         return ret
+
+
+def build_smartstack_location_dict(
+    location: str,
+    matched_backends_and_tasks=List[
+        Tuple[
+            Optional[HaproxyBackend],
+            Optional[Union[marathon_tools.MarathonTask, V1Pod]],
+        ]
+    ],
+    should_return_individual_backends: bool = False,
+):
+    running_backends_count = 0
+    backends = []
+    for backend, task in matched_backends_and_tasks:
+        if backend is None:
+            continue
+        if backend_is_up(backend):
+            running_backends_count += 1
+        if should_return_individual_backends:
+            backends.append(build_smartstack_backend_dict(backend, task))
+
+    return {
+        "name": location,
+        "running_backends_count": running_backends_count,
+        "backends": backends,
+    }
+
+
+def build_smartstack_backend_dict(
+    smartstack_backend: HaproxyBackend,
+    task: Union[V1Pod, Optional[marathon_tools.MarathonTask]],
+) -> MutableMapping[str, Any]:
+    svname = smartstack_backend["svname"]
+    if isinstance(task, V1Pod):
+        node_hostname = svname.split("_")[0]
+        pod_ip = svname.split("_")[1].split(":")[0]
+        hostname = f"{node_hostname}:{pod_ip}"
+    else:
+        hostname = svname.split("_")[0]
+    port = svname.split("_")[-1].split(":")[-1]
+
+    smartstack_backend_dict = {
+        "hostname": hostname,
+        "port": int(port),
+        "status": smartstack_backend["status"],
+        "check_status": smartstack_backend["check_status"],
+        "check_code": smartstack_backend["check_code"],
+        "last_change": int(smartstack_backend["lastchg"]),
+        "has_associated_task": task is not None,
+    }
+
+    check_duration = smartstack_backend["check_duration"]
+    if check_duration:
+        smartstack_backend_dict["check_duration"] = int(check_duration)
+
+    return smartstack_backend_dict

@@ -26,10 +26,8 @@ from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
-from typing import Union
 
 import a_sync
 import isodate
@@ -50,6 +48,7 @@ from paasta_tools import kafkacluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_remote_run
+from paasta_tools import smartstack_tools
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -78,11 +77,7 @@ from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
-from paasta_tools.smartstack_tools import HaproxyBackend
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
-from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import INSTANCE_TYPES_K8S
@@ -536,7 +531,7 @@ def marathon_smartstack_status(
             reverse=True,  # put 'UP' backends above 'MAINT' backends
         )
         matched_backends_and_tasks = match_backends_and_tasks(sorted_backends, tasks)
-        location_dict = build_smartstack_location_dict(
+        location_dict = smartstack_tools.build_smartstack_location_dict(
             location, matched_backends_and_tasks, should_return_individual_backends
         )
         smartstack_status["locations"].append(location_dict)
@@ -601,93 +596,6 @@ def kubernetes_smartstack_status(
         smartstack_status["locations"].append(location_dict)
 
     return smartstack_status
-
-
-@overload
-def build_smartstack_location_dict(
-    location: str,
-    matched_backends_and_tasks: List[
-        Tuple[Optional[HaproxyBackend], Optional[MarathonTask]]
-    ],
-    should_return_individual_backends: bool = False,
-) -> MutableMapping[str, Any]:
-    ...
-
-
-@overload
-def build_smartstack_location_dict(
-    location: str,
-    matched_backends_and_tasks: List[Tuple[Optional[HaproxyBackend], Optional[V1Pod]]],
-    should_return_individual_backends: bool = False,
-) -> MutableMapping[str, Any]:
-    ...
-
-
-def build_smartstack_location_dict(
-    location: str,
-    matched_backends_and_tasks=List[
-        Tuple[Optional[HaproxyBackend], Optional[Union[MarathonTask, V1Pod]]]
-    ],
-    should_return_individual_backends: bool = False,
-):
-    running_backends_count = 0
-    backends = []
-    for backend, task in matched_backends_and_tasks:
-        if backend is None:
-            continue
-        if backend_is_up(backend):
-            running_backends_count += 1
-        if should_return_individual_backends:
-            backends.append(build_smartstack_backend_dict(backend, task))
-
-    return {
-        "name": location,
-        "running_backends_count": running_backends_count,
-        "backends": backends,
-    }
-
-
-@overload
-def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: Optional[MarathonTask]
-) -> MutableMapping[str, Any]:
-    ...
-
-
-@overload
-def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: V1Pod
-) -> MutableMapping[str, Any]:
-    ...
-
-
-def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: Union[V1Pod, Optional[MarathonTask]]
-) -> MutableMapping[str, Any]:
-    svname = smartstack_backend["svname"]
-    if isinstance(task, V1Pod):
-        node_hostname = svname.split("_")[0]
-        pod_ip = svname.split("_")[1].split(":")[0]
-        hostname = f"{node_hostname}:{pod_ip}"
-    else:
-        hostname = svname.split("_")[0]
-    port = svname.split("_")[-1].split(":")[-1]
-
-    smartstack_backend_dict = {
-        "hostname": hostname,
-        "port": int(port),
-        "status": smartstack_backend["status"],
-        "check_status": smartstack_backend["check_status"],
-        "check_code": smartstack_backend["check_code"],
-        "last_change": int(smartstack_backend["lastchg"]),
-        "has_associated_task": task is not None,
-    }
-
-    check_duration = smartstack_backend["check_duration"]
-    if check_duration:
-        smartstack_backend_dict["check_duration"] = int(check_duration)
-
-    return smartstack_backend_dict
 
 
 @a_sync.to_blocking
