@@ -1028,8 +1028,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
-        annotations = {"smartstack_registrations": json.dumps(self.get_registrations())}
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
+        annotations = {
+            "smartstack_registrations": json.dumps(self.get_registrations()),
+            "iam.amazonaws.com/role": self.get_iam_role(),
+        }
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
 
