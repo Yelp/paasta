@@ -858,6 +858,11 @@ def mock_marathon_status():
             expected_backends_per_location=1,
             locations=[],
         ),
+        envoy=Struct(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=1,
+            locations=[],
+        ),
     )
 
 
@@ -959,10 +964,12 @@ class TestPrintMarathonStatus:
         )
         assert return_value == 0
 
+    @pytest.mark.parametrize("include_envoy", [True, False])
     @pytest.mark.parametrize("include_smartstack", [True, False])
     @pytest.mark.parametrize("include_autoscaling_info", [True, False])
     @patch("paasta_tools.cli.cmds.status.create_autoscaling_info_table", autospec=True)
     @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.marathon_mesos_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.marathon_app_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.status_marathon_job_human", autospec=True)
@@ -975,11 +982,13 @@ class TestPrintMarathonStatus:
         mock_status_marathon_job_human,
         mock_marathon_app_status_human,
         mock_marathon_mesos_status_human,
+        mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
         mock_create_autoscaling_info_table,
         mock_marathon_status,
         include_autoscaling_info,
         include_smartstack,
+        include_envoy,
     ):
         mock_marathon_app_status_human.side_effect = lambda desired_app_id, app_status: [
             f"{app_status.id} status 1",
@@ -988,6 +997,10 @@ class TestPrintMarathonStatus:
         mock_marathon_mesos_status_human.return_value = [
             "mesos status 1",
             "mesos status 2",
+        ]
+        mock_get_envoy_status_human.return_value = [
+            "envoy status 1",
+            "envoy status 2",
         ]
         mock_get_smartstack_status_human.return_value = [
             "smartstack status 1",
@@ -1003,6 +1016,8 @@ class TestPrintMarathonStatus:
             mock_marathon_status.autoscaling_info = Struct()
         if not include_smartstack:
             mock_marathon_status.smartstack = None
+        if not include_envoy:
+            mock_marathon_status.envoy = None
 
         output = []
         print_marathon_status(
@@ -1028,6 +1043,8 @@ class TestPrintMarathonStatus:
         ]
         if include_smartstack:
             expected_output += [f"    smartstack status 1", f"    smartstack status 2"]
+        if include_envoy:
+            expected_output += [f"    envoy status 1", f"    envoy status 2"]
 
         assert expected_output == output
 

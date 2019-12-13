@@ -40,8 +40,10 @@ from paasta_tools.utils import TimeoutError
 
 
 @pytest.mark.parametrize("include_mesos", [False, True])
+@pytest.mark.parametrize("include_envoy", [False, True])
 @pytest.mark.parametrize("include_smartstack", [False, True])
 @mock.patch("paasta_tools.api.views.instance.marathon_mesos_status", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.marathon_envoy_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.marathon_smartstack_status", autospec=True)
 @mock.patch(
     "paasta_tools.api.views.instance.marathon_tools.load_service_namespace_config",
@@ -71,8 +73,10 @@ def test_instance_status_marathon(
     mock_marathon_job_status,
     mock_load_service_namespace_config,
     mock_marathon_smartstack_status,
+    mock_marathon_envoy_status,
     mock_marathon_mesos_status,
     include_smartstack,
+    include_envoy,
     include_mesos,
 ):
     settings.cluster = "fake_cluster"
@@ -110,6 +114,7 @@ def test_instance_status_marathon(
         "instance": "fake_instance",
         "verbose": 2,
         "include_smartstack": include_smartstack,
+        "include_envoy": include_envoy,
         "include_mesos": include_mesos,
     }
     response = instance.instance_status(request)
@@ -120,6 +125,8 @@ def test_instance_status_marathon(
     }
     if include_smartstack:
         expected_response["smartstack"] = mock_marathon_smartstack_status.return_value
+    if include_envoy:
+        expected_response["envoy"] = mock_marathon_envoy_status.return_value
     if include_mesos:
         expected_response["mesos"] = mock_marathon_mesos_status.return_value
     assert response["marathon"] == expected_response
@@ -137,6 +144,15 @@ def test_instance_status_marathon(
         )
     if include_smartstack:
         mock_marathon_smartstack_status.assert_called_once_with(
+            "fake_service",
+            "fake_instance",
+            mock_service_config,
+            mock_load_service_namespace_config.return_value,
+            mock_app.tasks,
+            should_return_individual_backends=True,
+        )
+    if include_envoy:
+        mock_marathon_envoy_status.assert_called_once_with(
             "fake_service",
             "fake_instance",
             mock_service_config,
