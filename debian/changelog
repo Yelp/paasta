@@ -1,3 +1,11 @@
+paasta-tools (0.91.17) xenial; urgency=medium
+
+  * 0.91.17 tagged with 'make release'
+    Commit: Merge pull request #2591 from
+    Yelp/u/chl/fix_paasta_make_itest  fix make itest
+
+ -- Chien-An Lai <chl@yelp.com>  Fri, 13 Dec 2019 11:54:42 -0800
+
 paasta-tools (0.91.16) xenial; urgency=medium
 
   * 0.91.16 tagged with 'make release'
