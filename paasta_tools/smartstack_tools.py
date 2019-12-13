@@ -22,6 +22,7 @@ from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -642,14 +643,14 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
 
 def build_smartstack_location_dict(
     location: str,
-    matched_backends_and_tasks=List[
+    matched_backends_and_tasks: List[
         Tuple[
             Optional[HaproxyBackend],
             Optional[Union[marathon_tools.MarathonTask, V1Pod]],
         ]
     ],
     should_return_individual_backends: bool = False,
-):
+) -> Mapping[str, Any]:
     running_backends_count = 0
     backends = []
     for backend, task in matched_backends_and_tasks:

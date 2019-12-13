@@ -1893,7 +1893,9 @@ def sanitised_cr_name(service: str, instance: str) -> str:
     return f"{sanitised_service}-{sanitised_instance}"
 
 
-def get_cr(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
+def get_cr(
+    kube_client: KubeClient, cr_id: Mapping[str, str]
+) -> Optional[Mapping[str, Any]]:
     try:
         return kube_client.custom.get_namespaced_custom_object(**cr_id)
     except ApiException as e:
@@ -1903,18 +1905,20 @@ def get_cr(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
             raise
 
 
-def get_cr_status(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
+def get_cr_status(
+    kube_client: KubeClient, cr_id: Mapping[str, str]
+) -> Optional[Mapping[str, Any]]:
     return (get_cr(kube_client, cr_id) or {}).get("status")
 
 
 def get_cr_metadata(
-    kube_client: KubeClient, cr_id: dict
+    kube_client: KubeClient, cr_id: Mapping[str, str]
 ) -> Optional[Mapping[str, Any]]:
     return (get_cr(kube_client, cr_id) or {}).get("metadata")
 
 
 def set_cr_desired_state(
-    kube_client: KubeClient, cr_id: dict, desired_state: str
+    kube_client: KubeClient, cr_id: Mapping[str, str], desired_state: str
 ) -> str:
     cr = kube_client.custom.get_namespaced_custom_object(**cr_id)
     if cr.get("status", {}).get("state") == desired_state:

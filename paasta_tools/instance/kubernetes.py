@@ -34,11 +34,16 @@ INSTANCE_TYPE_CR_ID = dict(
 
 
 def set_cr_desired_state(
-    kube_client, service: str, instance: str, instance_type: str, desired_state: str,
+    kube_client: kubernetes_tools.KubeClient,
+    service: str,
+    instance: str,
+    instance_type: str,
+    desired_state: str,
 ):
     try:
         cr_id_fn = INSTANCE_TYPE_CR_ID[instance_type]
         kubernetes_tools.set_cr_desired_state(
+            kube_client=kube_client,
             cr_id=cr_id_fn(service=service, instance=instance),
             desired_state=desired_state,
         )
@@ -184,7 +189,7 @@ def smartstack_status(
 def cr_status(
     service: str, instance: str, verbose: int, instance_type: str, kube_client: Any,
 ) -> Mapping[str, Any]:
-    status: Mapping[str, Any] = {}
+    status: MutableMapping[str, Any] = {}
     cr_id_fn = INSTANCE_TYPE_CR_ID[instance_type]
     cr_id = cr_id_fn(service, instance)
     crstatus = kubernetes_tools.get_cr_status(kube_client=kube_client, cr_id=cr_id)
@@ -264,6 +269,7 @@ def kubernetes_status(
                     service_namespace_config=service_namespace_config,
                     pods=pod_list,
                     should_return_individual_backends=verbose > 0,
+                    settings=settings,
                 )
     return kstatus
 
