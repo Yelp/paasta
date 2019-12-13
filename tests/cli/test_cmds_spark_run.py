@@ -163,6 +163,8 @@ class TestGetSparkConfig:
             setattr(args, k, v)
         if "cluster" not in paasta_args:
             args.cluster = "fake_cluster"
+        if "spark_args" not in paasta_args:
+            args.spark_args = ""
         return get_spark_config(
             args=args,
             spark_app_name="fake_name",
@@ -256,6 +258,26 @@ class TestGetSparkConfig:
                 assert key not in spark_conf
             else:
                 assert spark_conf[key] == expected_value
+
+    def test_parse_args_with_spaces(self):
+        spark_args = 'spark.executor.extraJavaOptions="-Xss4M -XX:Option=blah"'
+        expected = {
+            "spark.executor.extraJavaOptions": "-Xss4M -XX:Option=blah",
+        }
+        conf = self.get_spark_config({"spark_args": spark_args})
+        for key, value in expected.items():
+            assert conf[key] == value
+
+    def test_join_args_with_spaces(self):
+        spark_config_dict = {
+            "option1": "nospace",
+            "option2": "with spaces",
+        }
+
+        string = create_spark_config_str(spark_config_dict, False)
+
+        assert "--conf option1=nospace" in string
+        assert "--conf 'option2=with spaces'" in string
 
 
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_aws_credentials", autospec=True)

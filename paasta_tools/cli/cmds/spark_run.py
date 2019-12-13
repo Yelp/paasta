@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import shlex
 import socket
 import sys
 import time
@@ -519,7 +520,7 @@ def get_spark_config(
         non_user_args["spark.mesos.uris"] = "file:///root/.dockercfg"
 
     if args.spark_args:
-        spark_args = args.spark_args.split()
+        spark_args = shlex.split(args.spark_args)
         for spark_arg in spark_args:
             fields = spark_arg.split("=", 1)
             if len(fields) != 2:
@@ -608,7 +609,8 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
         spark_config_entries.append(f"--spark-master={spark_master}")
 
     for opt, val in spark_config_dict.items():
-        spark_config_entries.append(f"{conf_option} {opt}={val}")
+        quoted_opt = shlex.quote(f"{opt}={val}")
+        spark_config_entries.append(f"{conf_option} {quoted_opt}")
     return " ".join(spark_config_entries)
 
 
