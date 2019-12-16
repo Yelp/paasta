@@ -8,6 +8,8 @@ main2:
     FOO: BAR
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
+      max_replicas: 3
+      max_replicas: 1
       cpu:
           target_average_value: 70
           signalflow_metrics_query: "data(\"fake-external\").publish"

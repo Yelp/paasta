@@ -8,6 +8,8 @@ main2:
     FOO: BAR
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
+      max_replicas: 100
+      min_replicas: 1
       cpu:
           target_average_value: 7
       memory:

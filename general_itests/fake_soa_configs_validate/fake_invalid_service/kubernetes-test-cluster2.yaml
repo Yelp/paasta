@@ -8,5 +8,7 @@ main4:
     FOO: BAR
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
+      max_replicas: 3
+      max_replicas: 1
       custom:
           target_average_value: 55
