@@ -9,8 +9,8 @@ main2:
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
       cpu:
-          target_average_value: 0.7
+          target_average_value: 70
           signalflow_metrics_query: "data(\"fake-external\").publish"
       fake-external:
-          target_average_value: 0.55
+          target_average_value: 55
           signalflow_metrics_query: "data(\"fake-external\").publish"

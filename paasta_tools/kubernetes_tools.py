@@ -208,6 +208,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     autoscaling: AutoscalingParamsDict
+    horizontal_autoscaling: Dict[str, Any]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1103,7 +1104,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
-        annotations = {"smartstack_registrations": json.dumps(self.get_registrations())}
+        annotations: Dict[str, Any] = {
+            "smartstack_registrations": json.dumps(self.get_registrations())
+        }
 
         # For legacy autoscaling
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]

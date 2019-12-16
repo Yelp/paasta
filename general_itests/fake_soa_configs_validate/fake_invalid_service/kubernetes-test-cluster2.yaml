@@ -9,4 +9,4 @@ main4:
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
       custom:
-          target_average_value: 0.55
+          target_average_value: 55

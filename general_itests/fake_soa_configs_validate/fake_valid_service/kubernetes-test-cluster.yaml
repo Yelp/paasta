@@ -9,16 +9,16 @@ main2:
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
       cpu:
-          target_average_value: 0.7
+          target_average_value: 7
       memory:
-          target_average_value: 0.7
+          target_average_value: 7
       uwsgi:
-          target_average_value: 0.4
+          target_average_value: 4
       http:
-          target_average_value: 0.6
+          target_average_value: 6
           dimensions:
               d1: "1"
               d2: "2"
       fake-external:
-          target_average_value: 0.55
+          target_average_value: 55
           signalflow_metrics_query: "data(\"fake-external\").publish"

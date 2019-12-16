@@ -9,7 +9,7 @@ main2:
   deploy_group: fake_deploy_group
   horizontal_autoscaling:
       http:
-          target_average_value: 0.55
+          target_average_value: 55
           dimension:
               sf_x: "should fail"
               gcp_x: "should fail"
