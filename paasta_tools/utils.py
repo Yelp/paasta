@@ -2552,6 +2552,7 @@ def get_soa_cluster_deploy_files(
         service = "*"
     service_path = os.path.join(soa_dir, service)
 
+    print(load_system_paasta_config().get_clusters())
     valid_clusters = "|".join(load_system_paasta_config().get_clusters())
 
     if instance_type in INSTANCE_TYPES:
@@ -2923,6 +2924,7 @@ class DeploymentsJsonV2:
         self, service: str, branch: str, deploy_group: str
     ) -> BranchDictV2:
         full_branch = f"{service}:{branch}"
+        # import pdb; pdb.set_trace()
         branch_dict: BranchDictV2 = {
             "docker_image": self.get_docker_image_for_deploy_group(deploy_group),
             "git_sha": self.get_git_sha_for_deploy_group(deploy_group),

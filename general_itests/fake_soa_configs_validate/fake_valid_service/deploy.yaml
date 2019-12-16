@@ -1,3 +1,0 @@
----
-pipeline:
-- step: fake_deploy_group

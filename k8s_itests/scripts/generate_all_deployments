@@ -1,0 +1,9 @@
+#!/bin/bash
+#
+# Generates all the per-service deployments.json files
+#
+
+set -eo pipefail
+
+# xargs will return 0 if everything went ok, but 12X if something else went wrong
+python -m paasta_tools.cli.cli list -y `printenv SOA_DIR` | shuf | xargs -n 1 -r -P 4 generate_deployments_for_service -d `printenv SOA_DIR` -s
