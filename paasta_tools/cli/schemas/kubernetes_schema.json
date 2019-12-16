@@ -456,6 +456,9 @@
                 "monitoring_blacklist": {
                     "type": "array"
                 },
+                "iam_role": {
+                    "type": "string"
+                },
                 "healthcheck_mode": {
                     "enum": [
                         "cmd",

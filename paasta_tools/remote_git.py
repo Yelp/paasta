@@ -117,7 +117,7 @@ def get_authors(git_url, from_sha, to_sha):
             f"could not understand the git repo in {git_url} for authors detection",
         )
 
-    if "yelpcorp.com" in git_server:
+    if "git.yelpcorp.com" in git_server:
         ssh_command = (
             f"ssh {git_server} authors-of-changeset {git_repo} {from_sha} {to_sha}"
         )

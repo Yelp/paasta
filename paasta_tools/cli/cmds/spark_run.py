@@ -166,7 +166,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-C",
         "--cmd",
-        help="Run the spark-shell, pyspark, spark-submit, jupyter, or history-server command.",
+        help="Run the spark-shell, pyspark, spark-submit, jupyter-lab, or history-server command.",
     )
 
     list_parser.add_argument(
@@ -306,7 +306,7 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
 
     sensitive_env = {}
 
-    non_interactive_cmd = ["spark-submit", "jupyter", "history-server"]
+    non_interactive_cmd = ["spark-submit", "history-server"]
     if not any(c in docker_cmd for c in non_interactive_cmd):
         cmd.append("--interactive=true")
         if sys.stdout.isatty():
@@ -397,10 +397,10 @@ def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
     spark_env["SPARK_OPTS"] = spark_conf
 
     # Default configs to start the jupyter notebook server
-    if args.cmd == "jupyter":
-        dirs = args.work_dir.split(":")
-        spark_env["JUPYTER_RUNTIME_DIR"] = dirs[1] + "/.jupyter"
-        spark_env["JUPYTER_DATA_DIR"] = dirs[1] + "/.jupyter"
+    if args.cmd == "jupyter-lab":
+        spark_env["JUPYTER_RUNTIME_DIR"] = "/source/.jupyter"
+        spark_env["JUPYTER_DATA_DIR"] = "/source/.jupyter"
+        spark_env["JUPYTER_CONFIG_DIR"] = "/source/.jupyter"
     elif args.cmd == "history-server":
         dirs = args.work_dir.split(":")
         spark_env["SPARK_LOG_DIR"] = dirs[1]
@@ -762,6 +762,7 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/etc/passwd:/etc/passwd:ro")
     volumes.append("/etc/group:/etc/group:ro")
+    volumes.append("/nail/home:/nail/home:rw")
 
     environment = instance_config.get_env_dictionary()
     environment.update(
@@ -817,15 +818,15 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
     if args.mrjob:
         return original_docker_cmd + " " + spark_conf_str
     # Default cli options to start the jupyter notebook server.
-    elif original_docker_cmd == "jupyter":
+    elif original_docker_cmd == "jupyter-lab":
         cull_opts = (
             "--MappingKernelManager.cull_idle_timeout=%s " % args.cull_idle_timeout
         )
         if args.not_cull_connected is False:
             cull_opts += "--MappingKernelManager.cull_connected=True "
 
-        return "jupyter notebook -y --ip={} --notebook-dir={} {}".format(
-            socket.getfqdn(), args.work_dir.split(":")[1], cull_opts
+        return "SHELL=bash USER={} /source/virtualenv_run_jupyter/bin/jupyter-lab -y --ip={} {}".format(
+            get_username(), socket.getfqdn(), cull_opts
         )
     elif original_docker_cmd == "history-server":
         return "start-history-server.sh"
@@ -955,6 +956,15 @@ def paasta_spark_run(args):
     elif args.image:
         docker_url = args.image
     else:
+        if args.cmd == "jupyter-lab":
+            paasta_print(
+                PaastaColors.red(
+                    "The jupyter-lab command requires a prebuilt image with -I or --image."
+                ),
+                file=sys.stderr,
+            )
+            return 1
+
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:

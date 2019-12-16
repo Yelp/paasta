@@ -652,6 +652,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             )
                         )
                     ),
+                    resources=self.get_sidecar_resource_requirements(),
                     name=HACHECK_POD_NAME,
                     env=self.get_kubernetes_environment(),
                     ports=[V1ContainerPort(container_port=6666)],
@@ -759,6 +760,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "memory": f"{self.get_mem()}Mi",
                 "ephemeral-storage": f"{self.get_disk()}Mi",
             },
+        )
+
+    def get_sidecar_resource_requirements(self) -> V1ResourceRequirements:
+        return V1ResourceRequirements(
+            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
         )
 
     def get_liveness_probe(
@@ -1104,12 +1111,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
-        annotations: Dict[str, Any] = {
-            "smartstack_registrations": json.dumps(self.get_registrations())
-        }
-
-        # For legacy autoscaling
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
+        annotations = {
+            "smartstack_registrations": json.dumps(self.get_registrations()),
+            "iam.amazonaws.com/role": self.get_iam_role(),
+        }
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
         # If legacy autoscaling is not configured
@@ -1733,7 +1739,7 @@ class KubernetesDeployStatus:
 
 
 def is_kubernetes_available() -> bool:
-    return Path(KUBE_CONFIG_PATH).exists()
+    return Path(os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH)).exists()
 
 
 def create_secret(

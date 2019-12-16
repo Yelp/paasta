@@ -97,6 +97,7 @@ from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_force_delete_pods():
@@ -389,6 +390,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                             )
                         )
                     ),
+                    resources=V1ResourceRequirements(
+                        limits={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                        requests={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                    ),
                     name="hacheck",
                     ports=[V1ContainerPort(container_port=6666)],
                 )
@@ -422,6 +435,18 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         )
                     ),
                     name="hacheck",
+                    resources=V1ResourceRequirements(
+                        limits={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                        requests={
+                            "cpu": 0.1,
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "256Mi",
+                        },
+                    ),
                     ports=[V1ContainerPort(container_port=6666)],
                     readiness_probe=V1Probe(
                         _exec=V1ExecAction(
@@ -962,6 +987,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     annotations={
                         "smartstack_registrations": '["kurupt.fm"]',
                         "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
+                        "iam.amazonaws.com/role": "",
                     },
                 ),
                 spec=V1PodSpec(
@@ -1360,7 +1386,10 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "fm",
                         },
-                        "annotations": {"smartstack_registrations": "[]"},
+                        "annotations": {
+                            "smartstack_registrations": "[]",
+                            "iam.amazonaws.com/role": "",
+                        },
                     },
                     "spec": spec,
                 },
@@ -1374,7 +1403,10 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "garage",
                         },
-                        "annotations": {"smartstack_registrations": "[]"},
+                        "annotations": {
+                            "smartstack_registrations": "[]",
+                            "iam.amazonaws.com/role": "",
+                        },
                     },
                     "spec": spec,
                 },
@@ -1388,7 +1420,10 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "grindah",
                         },
-                        "annotations": {"smartstack_registrations": "[]"},
+                        "annotations": {
+                            "smartstack_registrations": "[]",
+                            "iam.amazonaws.com/role": "",
+                        },
                     },
                     "spec": spec,
                 },
@@ -1402,7 +1437,7 @@ def test_get_kubernetes_services_running_here():
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "beats",
                         },
-                        "annotations": {},
+                        "annotations": {"iam.amazonaws.com/role": ""},
                     },
                     "spec": spec,
                 },
@@ -2250,3 +2285,41 @@ def test_load_custom_resources():
             group="yelp.com",
         )
     ]
+
+
+def test_warning_big_bounce():
+    job_config = kubernetes_tools.KubernetesDeploymentConfig(
+        service="service",
+        instance="instance",
+        cluster="cluster",
+        config_dict={},
+        branch_dict={
+            "docker_image": "abcdef",
+            "git_sha": "deadbeef",
+            "force_bounce": None,
+            "desired_state": "start",
+        },
+    )
+
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "volumes": [],
+                "expected_slave_attributes": [{"region": "blah"}],
+                "docker_registry": "docker-registry.local",
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ):
+        assert (
+            job_config.format_kubernetes_app().spec.template.metadata.labels[
+                "paasta.yelp.com/config_sha"
+            ]
+            == "configca7c47bd"
+        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"

@@ -98,7 +98,7 @@ These are the keys that may exist in system configs:
 
     Example: ``"sensu_port": 3031``
 
-  * ``dockercfg_location``: A URI of a .dockercfg file, added to Marathon/Chronos configurations, to allow mesos slaves
+  * ``dockercfg_location``: A URI of a .dockercfg file, to allow mesos slaves
     to authenticate with the docker registry.
     Defaults to ``file:///root/.dockercfg``.
     While this must be set, this file can contain an empty JSON dictionary (``{}``) if your docker registry does not
