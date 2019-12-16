@@ -52,4 +52,5 @@ def validate_status_all_pass(context):
 
 @then("it should report an error in the output")
 def validate_status_something_fail(context):
-    assert x_mark() in context.output
+    paasta_print(context.output)
+    assert "Successfully validated schema" not in context.output

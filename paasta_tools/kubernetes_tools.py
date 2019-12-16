@@ -79,6 +79,7 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta1CrossVersionObjectReference
+from kubernetes.client import V2beta1ExternalMetricSource
 from kubernetes.client import V2beta1HorizontalPodAutoscaler
 from kubernetes.client import V2beta1HorizontalPodAutoscalerCondition
 from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
@@ -207,6 +208,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     autoscaling: AutoscalingParamsDict
+    horizontal_autoscaling: Dict[str, Any]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -383,9 +385,90 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             defaults=default_params,
         )
 
+    def get_hpa_metric_spec(
+        self, name: str, cluster: str, namespace: str = "paasta"
+    ) -> Optional[V2beta1HorizontalPodAutoscaler]:
+        hpa_config = self.config_dict["horizontal_autoscaling"]
+        min_replicas = hpa_config["min_replicas"]
+        max_replicas = hpa_config["max_replicas"]
+        selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
+        annotations = {"signalfx.com.custom.metrics": ""}
+        metrics = []
+        for metric_name, value in hpa_config.items():
+            if metric_name in {"min_replicas", "max_replicas"}:
+                continue
+            if metric_name in {"cpu", "memory"}:
+                metrics.append(
+                    V2beta1MetricSpec(
+                        type="Resource",
+                        resource=V2beta1ResourceMetricSource(
+                            name=metric_name,
+                            target_average_utilization=value["target_average_value"],
+                        ),
+                    )
+                )
+            elif metric_name in {"http", "uwsgi"}:
+                if "dimensions" not in value:
+                    metrics.append(
+                        V2beta1MetricSpec(
+                            type="Pods",
+                            pods=V2beta1PodsMetricSource(
+                                metric_name=metric_name,
+                                target_average_value=value["target_average_value"],
+                                selector=selector,
+                            ),
+                        )
+                    )
+                else:
+                    metrics.append(
+                        V2beta1MetricSpec(
+                            type="External",
+                            external=V2beta1ExternalMetricSource(
+                                metric_name=metric_name,
+                                target_value=value["target_average_value"],
+                            ),
+                        )
+                    )
+                    filters = " and ".join(
+                        f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
+                    )
+                    annotations[
+                        f"signalfx.com.external.metric/{metric_name}"
+                    ] = f'data("{metric_name}", filter={filters}).mean().publish()'
+            else:
+                metrics.append(
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name=metric_name, target_value=value["target_value"]
+                        ),
+                    )
+                )
+                annotations[f"signalfx.com.external.metric/{metric_name}"] = value[
+                    "signalflow_metrics_query"
+                ]
+
+        return V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name=name, namespace=namespace, annotations=annotations
+            ),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=max_replicas,
+                min_replicas=min_replicas,
+                metrics=metrics,
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    api_version="apps/v1", kind="Deployment", name=name
+                ),
+            ),
+        )
+
     def get_autoscaling_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
+        # use new autoscaling configuration if it exists.
+        if "horizontal_autoscaling" in self.config_dict:
+            return self.get_hpa_metric_spec(name, cluster, namespace)
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
         if not min_replicas or not max_replicas:
@@ -1028,13 +1111,25 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
-        metrics_provider = self.get_autoscaling_params()["metrics_provider"]
-        annotations = {
+        annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "iam.amazonaws.com/role": self.get_iam_role(),
         }
+        metrics_provider = self.get_autoscaling_params()["metrics_provider"]
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
+        # If legacy autoscaling is not configured
+        if "autoscaling" not in self.config_dict:
+            for metric_name in ["http", "uwsgi"]:
+                hpa_config = self.config_dict.get("horizontal_autoscaling", {})
+                if metric_name in hpa_config:
+                    if "hpa" not in annotations:
+                        annotations["hpa"] = {}
+                    annotations["hpa"][metric_name] = hpa_config[metric_name].get(
+                        "dimensions", {}
+                    )
+            if "hpa" in annotations:
+                annotations["hpa"] = json.dumps(annotations["hpa"])
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
