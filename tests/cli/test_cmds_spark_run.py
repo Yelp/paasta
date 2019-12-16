@@ -335,6 +335,7 @@ class TestConfigureAndRunDockerContainer:
                 "/fake_dir:/spark_driver:rw",
                 "/etc/passwd:/etc/passwd:ro",
                 "/etc/group:/etc/group:ro",
+                "/nail/home:/nail/home:rw",
             ],
             environment={
                 "PAASTA_SERVICE": "fake_service",

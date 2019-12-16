@@ -4,5 +4,6 @@ main:
     mem: 100
     disk: 200
     instances: 1
+    oops: oops
     env:
       FOO: BAR

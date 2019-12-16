@@ -192,6 +192,128 @@
                 "autoscaling": {
                     "type": "object"
                 },
+                "horizontal_autoscaling": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "min_replicas": {
+                            "type": "integer",
+                            "default": 1
+                        },
+                        "max_replicas": {
+                            "type": "integer"
+                        },
+                        "cpu": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "integer",
+                                    "default": 70,
+                                    "minimum": 0,
+                                    "maximum": 100,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
+                        },
+                        "memory": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "integer",
+                                    "default": 70,
+                                    "minimum": 0,
+                                    "maximum": 100,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
+                        },
+                        "uwsgi": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "integer",
+                                    "default": 70,
+                                    "minimum": 0,
+                                    "maximum": 100,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                },
+                                "dimensions": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "patternProperties": {
+                                        "^(?!(sf_|gcp_|azure_|aws_))[a-zA-Z]([-_a-zA-Z0-9])*$": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
+                        },
+                        "http": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "target_average_value": {
+                                    "type": "number",
+                                    "default": 70,
+                                    "minimum": 0,
+                                    "maximum": 100,
+                                    "exclusiveMinimum": true,
+                                    "exclusiveMaximum": false
+                                },
+                                "dimensions": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "patternProperties": {
+                                        "^(?!(sf_|gcp_|azure_|aws_))[a-zA-Z]([-_a-zA-Z0-9])*$": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "target_average_value"
+                            ]
+                        }
+                    },
+                    "patternProperties": {
+                        "(?!(^cpu|memory|http|uwsgi)$)(^[a-z]([-a-z0-9]*[a-z0-9])?$)": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "target_value": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true
+                                },
+                                "signalflow_metrics_query": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "signalflow_metrics_query",
+                                "target_value"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "max_replicas"
+                    ]
+                },
                 "sfn_autoscaling": {
                     "type": "object"
                 },
@@ -333,6 +455,9 @@
                 },
                 "monitoring_blacklist": {
                     "type": "array"
+                },
+                "iam_role": {
+                    "type": "string"
                 },
                 "healthcheck_mode": {
                     "enum": [
