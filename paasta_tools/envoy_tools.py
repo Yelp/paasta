@@ -40,7 +40,6 @@ EnvoyBackend = TypedDict(
         "hostname": str,
         "eds_health_status": str,
         "weight": int,
-        "priority": int,
         "is_proxied_through_casper": bool,
     },
 )
@@ -97,48 +96,66 @@ def get_multiple_backends(
         envoy_host=envoy_host, envoy_admin_port=envoy_admin_port,
     )
 
+    casper_endpoints = set()
+    for cluster_status in clusters_info["cluster_statuses"]:
+        if "host_statuses" in cluster_status:
+            if cluster_status["name"].startswith("spectre.") and cluster_status[
+                "name"
+            ].endswith(".egress_cluster"):
+                for host_status in cluster_status["host_statuses"]:
+                    casper_endpoints.add(
+                        (
+                            host_status["address"]["socket_address"]["address"],
+                            host_status["address"]["socket_address"]["port_value"],
+                        )
+                    )
+
     backends = []
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):
                 service_name = cluster_status["name"][: -len(".egress_cluster")]
-            if services is None or service_name in services:
-                cluster_backends = []
-                for host_status in cluster_status["host_statuses"]:
-                    cluster_backends.append(
-                        EnvoyBackend(
-                            cluster_name=cluster_status["name"],
-                            address=host_status["address"]["socket_address"]["address"],
-                            port_value=host_status["address"]["socket_address"][
-                                "port_value"
-                            ],
-                            hostname=socket.gethostbyaddr(
-                                host_status["address"]["socket_address"]["address"]
-                            )[0].split(".")[0],
-                            eds_health_status=host_status["health_status"][
-                                "eds_health_status"
-                            ],
-                            weight=host_status["weight"],
-                            priority=host_status.get(
-                                "priority", 0
-                            ),  # Envoy defaults priority to 0 (highest priority)
-                            is_proxied_through_casper=False,
-                        )
-                    )
-                # Filter out casper backends if they exist
-                # Casper backends will be the highest priority endpoints IF there are more than
-                # one unique endpoint priorities
-                unique_priorities = {x["priority"] for x in cluster_backends}
-                if len(unique_priorities) > 1:
-                    cluster_backends = [
-                        x
-                        for x in cluster_backends
-                        if x["priority"] > min(unique_priorities)
-                    ]
-                    for backend in cluster_backends:
-                        backend["is_proxied_through_casper"] = True
-                backends = backends + cluster_backends
 
+                if services is None or service_name in services:
+                    cluster_backends = []
+                    casper_endpoint_found = False
+                    for host_status in cluster_status["host_statuses"]:
+                        address = host_status["address"]["socket_address"]["address"]
+                        port_value = host_status["address"]["socket_address"][
+                            "port_value"
+                        ]
+
+                        # Check if this endpoint is actually a casper backend
+                        # If so, omit from the service's list of backends
+                        if not service_name.startswith("spectre."):
+                            if (address, port_value) in casper_endpoints:
+                                casper_endpoint_found = True
+                                continue
+
+                        cluster_backends.append(
+                            EnvoyBackend(
+                                cluster_name=cluster_status["name"],
+                                address=address,
+                                port_value=port_value,
+                                hostname=socket.gethostbyaddr(
+                                    host_status["address"]["socket_address"]["address"]
+                                )[0].split(".")[0],
+                                eds_health_status=host_status["health_status"][
+                                    "eds_health_status"
+                                ],
+                                weight=host_status["weight"],
+                                is_proxied_through_casper=False,
+                            )
+                        )
+
+                    if (
+                        not service_name.startswith("spectre.")
+                        and casper_endpoint_found
+                    ):
+                        for cluster_backend in cluster_backends:
+                            cluster_backend["is_proxied_through_casper"] = True
+
+                    backends += cluster_backends
     return backends
 
 

@@ -1133,11 +1133,6 @@
                     "format": "int32",
                     "description": "The weight of this backend in the cluster"
                 },
-                "priority": {
-                    "type": "integer",
-                    "format": "int32",
-                    "description": "The priority of the Envoy backend"
-                },
                 "is_proxied_through_casper": {
                     "type": "boolean",
                     "description": "Whether this backend is proxied through Casper"
