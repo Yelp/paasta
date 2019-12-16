@@ -22,5 +22,5 @@ main2:
               d1: "1"
               d2: "2"
       fake-external:
-          target_average_value: 55
+          target_value: 55
           signalflow_metrics_query: "data(\"fake-external\").publish"
