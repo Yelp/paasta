@@ -256,7 +256,10 @@ class DeploymentWrapper(Application):
 
     def should_have_hpa(self):
         return (
-            self.soa_config.get_max_instances() is not None
+            (
+                self.soa_config.get_max_instances() is not None
+                or self.soa_config.config_dict.get("horizontal_autoscaling", False)
+            )
             # with bespoke autoscaler, setup_kubernetes_job sets the number of instances directly; no HPA is required.
             and self.soa_config.get_autoscaling_params()["decision_policy"] != "bespoke"
         )
