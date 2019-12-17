@@ -1,3 +1,10 @@
+paasta-tools (0.91.20) xenial; urgency=medium
+
+  * 0.91.20 tagged with 'make release'
+    Commit: fix a small new autoscaler only bug (#2597)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 17 Dec 2019 13:30:41 -0800
+
 paasta-tools (0.91.19) xenial; urgency=medium
 
   * 0.91.19 tagged with 'make release'
