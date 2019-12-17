@@ -31,6 +31,7 @@ CRITICAL. If replication_threshold is defined in the yelpsoa config for a servic
 instance then it will be used instead.
 """
 import logging
+from typing import Optional
 from typing import Sequence
 
 from paasta_tools import kubernetes_tools
@@ -70,9 +71,9 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 def check_kubernetes_pod_replication(
     instance_config: KubernetesDeploymentConfig,
-    all_pods: Sequence[V1Pod],
+    all_tasks_or_pods: Sequence[V1Pod],
     smartstack_replication_checker: KubeSmartstackReplicationChecker,
-) -> None:
+) -> Optional[bool]:
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or k8s)
 
@@ -89,17 +90,19 @@ def check_kubernetes_pod_replication(
     # if the primary registration does not match the service_instance name then
     # the best we can do is check k8s for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        is_well_replicated = monitoring_tools.check_smartstack_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_count,
             smartstack_replication_checker=smartstack_replication_checker,
         )
+        return is_well_replicated
     else:
         check_healthy_kubernetes_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            all_pods=all_pods,
+            all_pods=all_tasks_or_pods,
         )
+        return None
 
 
 if __name__ == "__main__":

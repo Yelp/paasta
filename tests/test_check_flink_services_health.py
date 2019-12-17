@@ -119,7 +119,7 @@ def test_check_flink_service_health_healthy(instance_config):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
-            all_pods=all_pods,
+            all_tasks_or_pods=all_pods,
             smartstack_replication_checker=None,
         )
         expected = [
@@ -181,7 +181,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
-            all_pods=all_pods,
+            all_tasks_or_pods=all_pods,
             smartstack_replication_checker=None,
         )
         expected = [
@@ -235,7 +235,7 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
         instance_config.config_dict["taskmanager"] = {"instances": 3}
         check_flink_services_health.check_flink_service_health(
             instance_config=instance_config,
-            all_pods=all_pods,
+            all_tasks_or_pods=all_pods,
             smartstack_replication_checker=None,
         )
         expected = [

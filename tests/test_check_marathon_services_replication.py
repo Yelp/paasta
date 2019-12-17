@@ -54,7 +54,7 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
     ) as mock_check_smartstack_replication_for_service:
         check_marathon_services_replication.check_service_replication(
             instance_config=instance_config,
-            all_tasks=all_tasks,
+            all_tasks_or_pods=all_tasks,
             smartstack_replication_checker=None,
         )
         mock_check_smartstack_replication_for_service.assert_called_once_with(
@@ -83,7 +83,7 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         instance_config.get_registrations.return_value = ["some-random-other-namespace"]
         check_marathon_services_replication.check_service_replication(
             instance_config=instance_config,
-            all_tasks=all_tasks,
+            all_tasks_or_pods=all_tasks,
             smartstack_replication_checker=None,
         )
         assert not mock_check_smartstack_replication_for_service.called
@@ -105,7 +105,7 @@ def test_check_service_replication_for_non_smartstack(instance_config):
     ) as mock_check_healthy_marathon_tasks:
         check_marathon_services_replication.check_service_replication(
             instance_config=instance_config,
-            all_tasks=[],
+            all_tasks_or_pods=[],
             smartstack_replication_checker=None,
         )
         mock_check_healthy_marathon_tasks.assert_called_once_with(
@@ -182,51 +182,3 @@ def test_check_healthy_marathon_tasks_for_service_instance(
     mock_send_replication_event_if_under_replication.assert_called_once_with(
         instance_config=instance_config, expected_count=10, num_available=2
     )
-
-
-def test_main(instance_config):
-    soa_dir = "anw"
-    crit = 1
-    args = mock.Mock(soa_dir=soa_dir, crit=crit, verbose=False)
-    instance_config.get_docker_image.return_value = True
-    with mock.patch(
-        "paasta_tools.check_marathon_services_replication.parse_args",
-        return_value=args,
-        autospec=True,
-    ) as mock_parse_args, mock.patch(
-        "paasta_tools.check_marathon_services_replication.list_services",
-        autospec=True,
-        return_value=["a"],
-    ), mock.patch(
-        "paasta_tools.check_marathon_services_replication.check_service_replication",
-        autospec=True,
-    ) as mock_check_service_replication, mock.patch(
-        "paasta_tools.check_marathon_services_replication.load_system_paasta_config",
-        autospec=True,
-    ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.check_marathon_services_replication.marathon_tools.get_marathon_clients",
-        autospec=True,
-    ) as mock_get_marathon_clients, mock.patch(
-        "paasta_tools.check_marathon_services_replication.get_slaves", autospec=True
-    ), mock.patch(
-        "paasta_tools.check_marathon_services_replication.PaastaServiceConfigLoader",
-        autospec=True,
-    ) as mock_paasta_service_config_loader:
-        mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
-            instance_config
-        ]
-        mock_client = mock.Mock()
-        mock_client.list_tasks.return_value = []
-        mock_get_marathon_clients.return_value = mock.Mock(
-            get_all_clients=mock.Mock(return_value=[mock_client])
-        )
-        mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(
-            return_value="fake_cluster"
-        )
-        check_marathon_services_replication.main()
-        mock_parse_args.assert_called_once_with()
-        mock_paasta_service_config_loader.assert_called_once_with(
-            service="a", soa_dir=soa_dir
-        )
-        instance_config.get_docker_image.assert_called_once_with()
-        assert mock_check_service_replication.called
