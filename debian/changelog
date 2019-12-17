@@ -1,3 +1,12 @@
+paasta-tools (0.91.19) xenial; urgency=medium
+
+  * 0.91.19 tagged with 'make release'
+    Commit: Merge pull request #2587 from
+    Yelp/check_services_replication_metrics  Check services replication
+    metrics
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 17 Dec 2019 10:12:54 -0800
+
 paasta-tools (0.91.18) xenial; urgency=medium
 
   * 0.91.18 tagged with 'make release'
