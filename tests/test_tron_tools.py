@@ -102,7 +102,7 @@ class TestTronActionConfig:
             config_dict=action_dict,
             branch_dict={},
         )
-        assert action_config.get_executor() == "mesos"
+        assert action_config.get_executor() == "paasta"
 
 
 class TestTronJobConfig:

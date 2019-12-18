@@ -953,7 +953,7 @@ def test_get_service_instance_list_ignores_underscore():
     autospec=True,
 )
 @mock.patch(
-    "paasta_tools.utils.service_configuration_lib._read_yaml_file", autospec=True
+    "paasta_tools.utils.service_configuration_lib.read_yaml_file", autospec=True
 )
 def test_load_tron_yaml_empty(mock_read_file, mock_read_service_info):
     mock_read_file.return_value = {}
