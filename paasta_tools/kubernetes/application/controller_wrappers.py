@@ -248,7 +248,7 @@ class DeploymentWrapper(Application):
                 target=self.deep_delete_and_create, args=[KubeClient()]
             ).start()
             return
-        if self.should_have_hpa() is None:
+        if self.should_have_hpa():
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
