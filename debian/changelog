@@ -1,3 +1,12 @@
+paasta-tools (0.91.22) xenial; urgency=medium
+
+  * 0.91.22 tagged with 'make release'
+    Commit: Merge pull request #2594 from Yelp/u/gabrielv/PAASTA-15954-
+    pod-eviction-monitor  PAASTA-15954 Add
+    kubernetes_remove_evicted_pods script
+
+ -- gabrielv <gabrielv@yelp.com>  Wed, 18 Dec 2019 02:04:05 -0800
+
 paasta-tools (0.91.21) xenial; urgency=medium
 
   * 0.91.21 tagged with 'make release'
