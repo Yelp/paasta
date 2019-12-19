@@ -224,6 +224,32 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock__log_audit.call_count == len(mock_list_deploy_groups.return_value)
 
 
+@patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
+def test_mark_for_deployment_yelpy_repo(mock_trigger_deploys, mock_create_remote_refs):
+    mark_for_deployment.mark_for_deployment(
+        git_url="git://false.repo.yelpcorp.com/services/test_services",
+        deploy_group="fake_deploy_group",
+        service="fake_service",
+        commit="fake_commit",
+    )
+    mock_trigger_deploys.assert_called_once_with(service="fake_service")
+
+
+@patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
+def test_mark_for_deployment_nonyelpy_repo(
+    mock_trigger_deploys, mock_create_remote_refs
+):
+    mark_for_deployment.mark_for_deployment(
+        git_url="git://false.repo/services/test_services",
+        deploy_group="fake_deploy_group",
+        service="fake_service",
+        commit="fake_commit",
+    )
+    assert not mock_trigger_deploys.called
+
+
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.get_authors", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.get_slack_client", autospec=True)
