@@ -69,8 +69,6 @@ from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
-from paasta_tools.utils import INSTANCE_TYPES_K8S
-from paasta_tools.utils import INSTANCE_TYPES_WITH_SET_STATE
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import TimeoutError
@@ -578,7 +576,7 @@ def instance_status(request):
             instance_status["adhoc"] = adhoc_instance_status(
                 instance_status, service, instance, verbose
             )
-        elif instance_type in INSTANCE_TYPES_K8S:
+        elif instance_type in pik.INSTANCE_TYPES_K8S:
             instance_status.update(
                 pik.instance_status(
                     service=service,
@@ -626,7 +624,7 @@ def instance_set_state(request,) -> None:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type in INSTANCE_TYPES_WITH_SET_STATE:
+    if instance_type in pik.INSTANCE_TYPES_WITH_SET_STATE:
         try:
             pik.set_cr_desired_state(
                 kube_client=settings.kubernetes_client,
@@ -641,7 +639,7 @@ def instance_set_state(request,) -> None:
         error_message = (
             f"instance_type {instance_type} of {service}.{instance} doesn't "
             f"support set_state, must be in INSTANCE_TYPES_WITH_SET_STATE, "
-            f"currently: {INSTANCE_TYPES_WITH_SET_STATE}"
+            f"currently: {pik.INSTANCE_TYPES_WITH_SET_STATE}"
         )
         raise ApiFailure(error_message, 404)
 

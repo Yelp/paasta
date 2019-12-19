@@ -23,9 +23,11 @@ from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
-from paasta_tools.utils import INSTANCE_TYPES_K8S
-from paasta_tools.utils import INSTANCE_TYPES_K8S_STATUS
 
+
+INSTANCE_TYPES_K8S = {"kubernetes", "flink", "cassandracluster", "kafkacluster"}
+INSTANCE_TYPES_K8S_STATUS = {"kubernetes", "cassandracluster"}
+INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
