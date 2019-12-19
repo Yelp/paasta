@@ -1,6 +1,0 @@
-{
-    "monitoring_config": {
-        "signalfx_api_key": "Sd1GzuaNTgtC1BO5H6QASA",
-        "check_registered_slave_threshold": 3600
-    }
-}

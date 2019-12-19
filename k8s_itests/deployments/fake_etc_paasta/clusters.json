@@ -1,6 +1,0 @@
-{
-    "clusters": [
-        "paasta-k8s-test-cluster"
-    ],
-    "cluster": "paasta-k8s-test-cluster"
-}
