@@ -1594,7 +1594,7 @@ def get_pod_status(pod: V1Pod,) -> PodStatus:
 def get_active_shas_for_service(
     obj_list: Sequence[Union[V1Pod, V1ReplicaSet, V1Deployment, V1StatefulSet]],
 ) -> Mapping[str, Set[str]]:
-    ret = {"config_sha": set(), "git_sha": set()}
+    ret: MutableMapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
     for obj in obj_list:
         config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
         if config_sha is not None:
