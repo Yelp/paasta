@@ -214,7 +214,7 @@ def trigger_deploys(service):
     """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
     service that listens for a service string and then generates a service deployment"""
     logline = f"Notifying sysgit to generate a deployment for {service}"
-    _log(service=service, line=logline, compoment="deploy", level="event")
+    _log(service=service, line=logline, component="deploy", level="event")
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect(("sysgit.yelpcorp.com", 5049))
     client.send(f"{service}\n".encode("utf-8"))
