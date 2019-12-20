@@ -1591,11 +1591,17 @@ def get_pod_status(pod: V1Pod,) -> PodStatus:
     return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
 
 
-def get_active_shas_for_service(pod_list: Sequence[V1Pod],) -> Mapping[str, Set[str]]:
-    ret: Mapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
-    for pod in pod_list:
-        ret["config_sha"].add(pod.metadata.labels["paasta.yelp.com/config_sha"])
-        ret["git_sha"].add(pod.metadata.labels["paasta.yelp.com/git_sha"])
+def get_active_shas_for_service(
+    obj_list: Sequence[Union[V1Pod, V1ReplicaSet, V1Deployment, V1StatefulSet]],
+) -> Mapping[str, Set[str]]:
+    ret: MutableMapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
+    for obj in obj_list:
+        config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
+        if config_sha is not None:
+            ret["config_sha"].add(config_sha)
+        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
+        if git_sha is not None:
+            ret["git_sha"].add(git_sha)
     return ret
 
 

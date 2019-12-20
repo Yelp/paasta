@@ -222,6 +222,11 @@ def kubernetes_status(
     )
     kube_client = settings.kubernetes_client
     if kube_client is not None:
+        app = kubernetes_tools.get_kubernetes_app_by_name(
+            name=job_config.get_sanitised_deployment_name(),
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
         # bouncing status can be inferred from app_count, ref get_bouncing_status
         pod_list = kubernetes_tools.pods_for_service_instance(
             service=job_config.service,
@@ -235,7 +240,9 @@ def kubernetes_status(
             kube_client=kube_client,
             namespace=job_config.get_kubernetes_namespace(),
         )
-        active_shas = kubernetes_tools.get_active_shas_for_service(pod_list)
+        active_shas = kubernetes_tools.get_active_shas_for_service(
+            [app, *pod_list, *replicaset_list]
+        )
         kstatus["app_count"] = max(
             len(active_shas["config_sha"]), len(active_shas["git_sha"])
         )
