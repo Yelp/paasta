@@ -41,7 +41,9 @@ EnvoyBackend = TypedDict(
         "eds_health_status": str,
         "weight": int,
         "is_proxied_through_casper": bool,
+        "has_associated_task": bool,
     },
+    total=False,
 )
 
 
@@ -110,7 +112,7 @@ def get_multiple_backends(
                         )
                     )
 
-    backends = []
+    backends: List[EnvoyBackend] = []
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):
@@ -134,7 +136,6 @@ def get_multiple_backends(
 
                         cluster_backends.append(
                             EnvoyBackend(
-                                cluster_name=cluster_status["name"],
                                 address=address,
                                 port_value=port_value,
                                 hostname=socket.gethostbyaddr(
