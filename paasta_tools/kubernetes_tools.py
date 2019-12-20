@@ -1517,7 +1517,7 @@ def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
     return list_deployments(kube_client)
 
 
-def service_instance_selector(service, instance):
+def service_instance_selector(service: str, instance: str) -> str:
     return (
         f"{paasta_prefixed('service')}={service},"
         f"{paasta_prefixed('instance')}={instance}"
