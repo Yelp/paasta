@@ -1,12 +1,13 @@
 import os
 
-from k8s_itests.cmds import cmd
+from k8s_itests.tools.cmds import cmd
 
 # import pytest
 
 
 # @pytest.fixture(scope='session', autouse=True)
 def test_cluster_info():
+    print(os.environ)
     service_instances = cmd(
         f'python -m paasta_tools.list_kubernetes_service_instances -d {os.environ["SOA_DIR"]}',
         capture_output=True,

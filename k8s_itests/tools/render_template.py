@@ -6,8 +6,20 @@ import yaml
 
 
 def replace(s, values):
-    s = re.sub(r"<%(.*?)%>", lambda x: values.get(x, x), s)
-    return re.sub(r"$\((.*?)\)", lambda x: os.environ.get(x, x), s)
+    s = re.sub(
+        r"<%(.*?)%>",
+        lambda x: values.get(
+            x.group(0).replace("<%", "").replace("%>", ""), x.group(0)
+        ),
+        s,
+    )
+    return re.sub(
+        r"$((.*?))",
+        lambda x: os.environ.get(
+            x.group(0).replace("(", "").replace(")", ""), x.group(0)
+        ),
+        s,
+    )
 
 
 def render_file(src, dst, values):
@@ -18,20 +30,23 @@ def render_file(src, dst, values):
             new.write(replace(old.read(), values))
 
 
-def render(src, dst, values={}):
+def render(src, dst, values={}, exclude={}):
     if os.path.isfile(src):
         render_file(src, dst, values)
         return
     for f in os.scandir(src):
-        if f.name.startswith("."):
+        if f.name.startswith(".") or f.path in exclude:
             continue
-        if f.is_file:
+        if os.path.isfile(f.path):
             render_file(f.path, dst, values)
-            return
         else:
             new_dst = replace(f"{dst}/{f.name}", values)
-            os.mkdir(new_dst)
-            render(f.path, new_dst, values)
+            try:
+                os.mkdir(new_dst)
+            except OSError as e:
+                if e.errno != os.errno.EEXIST:
+                    raise
+            render(f.path, new_dst, values, exclude)
 
 
 def parse_args():
@@ -70,9 +85,9 @@ def main():
     args = parse_args()
     src = os.path.abspath(args.src)
     dst = os.path.abspath(args.dst)
-    values = os.path.abspath(args.values)
-    if args.values is not None:
-        values = os.path.abspath(args.values)
+    values = args.values
+    if values is not None:
+        values = os.path.abspath(values)
     # Validate src and values. Dst needs to be a directory. src can be either a valid folder of directory. values need to be valid file if provided.
     if not os.path.exists(src):
         raise Exception("src path is invalid")
@@ -87,8 +102,8 @@ def main():
     if values is not None:
         with open(values) as f:
             config_dict = yaml.safe_load(f)
-    render(src, dst, config_dict)
+    render(src, dst, config_dict, {values})
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
