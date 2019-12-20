@@ -39,6 +39,7 @@ from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import update_custom_resource
@@ -152,7 +153,7 @@ def setup_all_custom_resources(
     cluster_crds = {
         crd.spec.names.kind
         for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector="paasta.yelp.com/service"
+            label_selector=paasta_prefixed("service")
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")
@@ -257,9 +258,9 @@ def format_custom_resource(
                 "yelp.com/paasta_service": service,
                 "yelp.com/paasta_instance": instance,
                 "yelp.com/paasta_cluster": cluster,
-                "paasta.yelp.com/service": service,
-                "paasta.yelp.com/instance": instance,
-                "paasta.yelp.com/cluster": cluster,
+                paasta_prefixed("service"): service,
+                paasta_prefixed("instance"): instance,
+                paasta_prefixed("cluster"): cluster,
             },
             "annotations": {},
         },
@@ -268,12 +269,12 @@ def format_custom_resource(
     url = get_dashboard_url(kind, service, instance, cluster)
     if url:
         resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
-        resource["metadata"]["annotations"]["paasta.yelp.com/dashboard_url"] = url
+        resource["metadata"]["annotations"][paasta_prefixed("dashboard_url")] = url
     config_hash = get_config_hash(resource)
     resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"
-    resource["metadata"]["annotations"]["paasta.yelp.com/desired_state"] = "running"
+    resource["metadata"]["annotations"][paasta_prefixed("desired_state")] = "running"
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
-    resource["metadata"]["labels"]["paasta.yelp.com/config_sha"] = config_hash
+    resource["metadata"]["labels"][paasta_prefixed("config_sha")] = config_hash
     return resource
 
 
@@ -307,7 +308,7 @@ def reconcile_kubernetes_resource(
             service=service,
             instance=inst,
             config_sha=formatted_resource["metadata"]["labels"][
-                "paasta.yelp.com/config_sha"
+                paasta_prefixed("config_sha")
             ],
             kind=kind.singular,
             name=formatted_resource["metadata"]["name"],
