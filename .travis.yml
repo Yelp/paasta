@@ -16,14 +16,6 @@ before_cache:
   - rm -rf .tox/*/log .tox/log .tox/*/local/log
 python:
   - "3.6"
-env:
-  - TOXENV=py36-linux,docs,mypy
-  - TOXENV=general_itests
-  - TOXENV=paasta_itests
-  - TOXENV=example_cluster
-  - MAKE_TARGET=itest_trusty
-  - MAKE_TARGET=itest_xenial
-  - MAKE_TARGET=itest_bionic
 sudo: required
 services:
   - docker
