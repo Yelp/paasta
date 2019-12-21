@@ -1,0 +1,2 @@
+pipeline:
+  - step: itest-and-push-to-registry
