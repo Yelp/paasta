@@ -6,7 +6,6 @@ export KUBE_RESOURCE_DIR=$(CWD)/deployments/kind/resources
 export KIND_CLUSTER=$(CLUSTER)
 export SOA_DIR=$(PAASTA_CONFIG_DIR)/fake_soa_config
 export PAASTA_SYSTEM_CONFIG_DIR=$(PAASTA_CONFIG_DIR)/fake_etc_paasta
-export PAASTA_API_PORT=$(shell ephemeral-port-reserve)
 
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	export KIND_CONFIG=deployments/kind/cluster-devbox.yaml
@@ -14,9 +13,9 @@ ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 else
 	export KIND_CONFIG=deployments/kind/cluster.yaml
 	pip install ephemeral-port-reserve
-	pip install PyYAML
 endif
 
+export PAASTA_API_PORT=$(shell ephemeral-port-reserve)
 
 all: clean itest
 
