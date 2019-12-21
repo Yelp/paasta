@@ -39,10 +39,7 @@ from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
-from paasta_tools.secret_tools import get_secret_provider
-from paasta_tools.secret_tools import is_secret_ref
-from paasta_tools.secret_tools import is_shared_secret
-from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -639,74 +636,6 @@ def check_if_port_free(port):
     return True
 
 
-def decrypt_secret_environment_variables(
-    secret_provider_name,
-    environment,
-    soa_dir,
-    service_name,
-    cluster_name,
-    secret_provider_kwargs,
-):
-    decrypted_secrets = {}
-    service_secret_env = {}
-    shared_secret_env = {}
-    for k, v in environment.items():
-        if is_secret_ref(v):
-            if is_shared_secret(v):
-                shared_secret_env[k] = v
-            else:
-                service_secret_env[k] = v
-    provider_args = {
-        "secret_provider_name": secret_provider_name,
-        "soa_dir": soa_dir,
-        "cluster_name": cluster_name,
-        "secret_provider_kwargs": secret_provider_kwargs,
-    }
-    secret_provider_kwargs["vault_num_uses"] = len(service_secret_env) + len(
-        shared_secret_env
-    )
-
-    try:
-        decrypted_secrets.update(
-            decrypt_secret_environment_for_service(
-                service_secret_env, service_name, **provider_args
-            )
-        )
-        decrypted_secrets.update(
-            decrypt_secret_environment_for_service(
-                shared_secret_env, SHARED_SECRET_SERVICE, **provider_args
-            )
-        )
-    except Exception as e:
-        paasta_print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
-        paasta_print(
-            "If you don't need the secrets for local-run, you can add --skip-secrets"
-        )
-        sys.exit(1)
-    return decrypted_secrets
-
-
-def decrypt_secret_environment_for_service(
-    secret_env_vars,
-    service_name,
-    secret_provider_name,
-    soa_dir,
-    cluster_name,
-    secret_provider_kwargs,
-):
-    if not secret_env_vars:
-        return {}
-
-    secret_provider = get_secret_provider(
-        secret_provider_name=secret_provider_name,
-        soa_dir=soa_dir,
-        service_name=service_name,
-        cluster_names=[cluster_name],
-        secret_provider_kwargs=secret_provider_kwargs,
-    )
-    return secret_provider.decrypt_environment(secret_env_vars)
-
-
 def run_docker_container(
     docker_client,
     service,
@@ -750,14 +679,21 @@ def run_docker_container(
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
     if not skip_secrets:
-        secret_environment = decrypt_secret_environment_variables(
-            secret_provider_name=secret_provider_name,
-            environment=environment,
-            soa_dir=soa_dir,
-            service_name=service,
-            cluster_name=instance_config.cluster,
-            secret_provider_kwargs=secret_provider_kwargs,
-        )
+        try:
+            secret_environment = decrypt_secret_environment_variables(
+                secret_provider_name=secret_provider_name,
+                environment=environment,
+                soa_dir=soa_dir,
+                service_name=service,
+                cluster_name=instance_config.cluster,
+                secret_provider_kwargs=secret_provider_kwargs,
+            )
+        except Exception as e:
+            paasta_print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
+            paasta_print(
+                "If you don't need the secrets for local-run, you can add --skip-secrets"
+            )
+            sys.exit(1)
         environment.update(secret_environment)
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework

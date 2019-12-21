@@ -15,6 +15,8 @@ from json.decoder import JSONDecodeError
 
 import mock
 
+from paasta_tools.secret_tools import decrypt_secret_environment_for_service
+from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_hmac_for_secret
 from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.secret_tools import get_secret_name_from_ref
@@ -164,3 +166,76 @@ def test_get_secret_hashes():
             soa_dir=DEFAULT_SOA_DIR,
             secret_environment="dev",
         )
+
+
+@mock.patch("paasta_tools.secret_tools.is_secret_ref", autospec=True)
+@mock.patch("paasta_tools.secret_tools.is_shared_secret", autospec=True)
+@mock.patch(
+    "paasta_tools.secret_tools.decrypt_secret_environment_for_service", autospec=True,
+)
+def test_decrypt_secret_environment_variables(
+    mock_decrypt_for_service, mock_is_shared_secret, mock_is_secret_ref
+):
+    mock_environment = {
+        "MY": "aaa",
+        "SECRET": "SECRET(123)",
+        "SECRET_SHARED": "SHARED_SECRET(abc)",
+    }
+    mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
+    mock_is_shared_secret.side_effect = lambda val: "SHARED" in val
+    mock_decrypt_for_service.side_effect = [{"SECRET": "123"}, {"SECRET_SHARED": "abc"}]
+
+    ret = decrypt_secret_environment_variables(
+        secret_provider_name="vault",
+        environment=mock_environment,
+        soa_dir="/nail/blah",
+        service_name="universe",
+        cluster_name="mesosstage",
+        secret_provider_kwargs={"some": "config"},
+    )
+    assert ret == {"SECRET": "123", "SECRET_SHARED": "abc"}
+
+    assert mock_decrypt_for_service.call_args_list == [
+        mock.call(
+            {"SECRET": "SECRET(123)"},
+            "universe",
+            "vault",
+            "/nail/blah",
+            "mesosstage",
+            {"some": "config", "vault_num_uses": 2},
+        ),
+        mock.call(
+            {"SECRET_SHARED": "SHARED_SECRET(abc)"},
+            SHARED_SECRET_SERVICE,
+            "vault",
+            "/nail/blah",
+            "mesosstage",
+            {"some": "config", "vault_num_uses": 2},
+        ),
+    ]
+
+
+@mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)
+def test_decrypt_secret_environment_for_service(mock_get_secret_provider):
+    mock_secret_env = {"SECRET": "SECRET(123)"}
+    mock_secret_provider = mock.Mock()
+    mock_get_secret_provider.return_value = mock_secret_provider
+    ret = decrypt_secret_environment_for_service(
+        secret_env_vars=mock_secret_env,
+        service_name="universe",
+        secret_provider_name="vault",
+        soa_dir="/nail/blah",
+        cluster_name="mesosstage",
+        secret_provider_kwargs={"some": "config"},
+    )
+    mock_get_secret_provider.assert_called_with(
+        secret_provider_name="vault",
+        soa_dir="/nail/blah",
+        service_name="universe",
+        cluster_names=["mesosstage"],
+        secret_provider_kwargs={"some": "config"},
+    )
+    mock_secret_provider.decrypt_environment.assert_called_with(
+        {"SECRET": "SECRET(123)"}
+    )
+    assert ret == mock_secret_provider.decrypt_environment.return_value
