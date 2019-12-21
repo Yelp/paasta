@@ -1,2 +1,2 @@
 pipeline:
-  - step: itest-and-push-to-registry
+  - step: fake_deploy_group
