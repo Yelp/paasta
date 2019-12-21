@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.6
 import argparse
 import os
 import re
@@ -14,9 +15,9 @@ def replace(s, values):
         s,
     )
     return re.sub(
-        r"$((.*?))",
+        r"\$\((.*?)\)",
         lambda x: os.environ.get(
-            x.group(0).replace("(", "").replace(")", ""), x.group(0)
+            x.group(0).replace("$(", "").replace(")", ""), x.group(0)
         ),
         s,
     )
@@ -99,9 +100,19 @@ def main():
     if os.path.isdir(src) and values is None and os.path.exists(f"{src}/values.yaml"):
         values = f"{src}/values.yaml"
     config_dict = {}
+    print(values)
     if values is not None:
         with open(values) as f:
             config_dict = yaml.safe_load(f)
+    # Replace environment variables in values.yaml with environment variables
+    for k, v in config_dict.items():
+        config_dict[k] = re.sub(
+            r"\$\((.*?)\)",
+            lambda x: os.environ.get(
+                x.group(0).replace("$(", "").replace(")", ""), x.group(0)
+            ),
+            v,
+        )
     render(src, dst, config_dict, {values})
 
 

@@ -1,1 +1,1 @@
-cluster: paasta-test-cluster
+cluster: $(USER)-k8s-test

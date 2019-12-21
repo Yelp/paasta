@@ -10,6 +10,9 @@ dist/
 .*.sw?
 .idea
 .vscode
+.create_cluster
+.tmp
+.kube
 paasta_tools.egg-info/
 docs/man/
 tags
