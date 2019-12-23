@@ -250,7 +250,7 @@ def kubernetes_status(
         kstatus["bounce_method"] = job_config.get_bounce_method()
         job_status(
             kstatus=kstatus,
-            kube_client=kube_client,
+            client=kube_client,
             namespace=job_config.get_kubernetes_namespace(),
             job_config=job_config,
             verbose=verbose,
