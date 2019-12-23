@@ -25,14 +25,20 @@ from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
 
-INSTANCE_TYPES_K8S = {"kubernetes", "flink", "cassandracluster", "kafkacluster"}
-INSTANCE_TYPES_K8S_STATUS = {"kubernetes", "cassandracluster"}
+INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
+INSTANCE_TYPES_K8S = {"kubernetes", "cassandracluster"}
+INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
+
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
 )
+
+
+def can_handle(instance_type: str) -> bool:
+    return instance_type in INSTANCE_TYPES
 
 
 def set_cr_desired_state(
@@ -293,7 +299,7 @@ def instance_status(
 ) -> Mapping[str, Any]:
     status = {}
 
-    if instance_type in INSTANCE_TYPES_K8S:
+    if instance_type in INSTANCE_TYPES_CR:
         status[instance_type] = cr_status(
             service=service,
             instance=instance,
@@ -302,7 +308,7 @@ def instance_status(
             kube_client=settings.kubernetes_client,
         )
 
-    if instance_type in INSTANCE_TYPES_K8S_STATUS:
+    if instance_type in INSTANCE_TYPES_K8S:
         status["kubernetes"] = kubernetes_status(
             service=service,
             instance=instance,
