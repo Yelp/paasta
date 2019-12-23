@@ -100,7 +100,6 @@ def main():
     if os.path.isdir(src) and values is None and os.path.exists(f"{src}/values.yaml"):
         values = f"{src}/values.yaml"
     config_dict = {}
-    print(values)
     if values is not None:
         with open(values) as f:
             config_dict = yaml.safe_load(f)

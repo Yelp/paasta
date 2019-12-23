@@ -7,10 +7,10 @@ export KIND_CLUSTER=$(CLUSTER)
 export SOA_DIR=$(PAASTA_CONFIG_DIR)/fake_soa_config
 export PAASTA_SYSTEM_CONFIG_DIR=$(PAASTA_CONFIG_DIR)/fake_etc_paasta
 export PAASTA_API_PORT= `ephemeral-port-reserve`
+export KUBECONFIG=$(shell kind get kubeconfig-path --name=$(KIND_CLUSTER))
 
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	export KIND_CONFIG=deployments/kind/cluster-devbox.yaml
-	export KUBECONFIG=$(shell kind get kubeconfig-path --name=$(KIND_CLUSTER))
 else
 	export KIND_CONFIG=deployments/kind/cluster.yaml
 endif
