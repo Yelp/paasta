@@ -576,7 +576,7 @@ def instance_status(request):
             instance_status["adhoc"] = adhoc_instance_status(
                 instance_status, service, instance, verbose
             )
-        elif instance_type in pik.INSTANCE_TYPES_K8S:
+        elif pik.can_handle(instance_type):
             instance_status.update(
                 pik.instance_status(
                     service=service,
