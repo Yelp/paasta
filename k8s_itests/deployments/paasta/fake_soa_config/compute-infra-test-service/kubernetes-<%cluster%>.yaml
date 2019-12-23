@@ -1,7 +1,19 @@
 autoscaling:
   cpus: .1
   mem: 100
-  min_instances: 1
-  max_instances: 10
-  autoscaling:
-    metrics_provider: mesos_cpu
+  horizontal_autoscaling:
+    max_replicas: 10
+    min_replicas: 1
+    cpu:
+      target_average_value: 70
+    memory:
+      target_average_value: 70
+    http:
+      target_average_value: 70
+    uwsgi:
+      target_average_value: 70
+      dimensions:
+        fake-dimension: fake
+    external:
+      target_value: 20
+      signalflow_metrics_query: 'this does not work anyway'

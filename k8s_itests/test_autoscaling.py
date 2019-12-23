@@ -14,9 +14,6 @@ def teardown_module(module):
         p.kill()
 
 
-class TestSomething:
-    def test_autoscalig(self):
-        print("------------------------------------------")
-        print("executing kubectl")
+class TestSetupKubernetesJobs:
+    def test_autoscaling(self):
         cmd("kubectl get hpa -n paasta", False)
-        print("------------------------------------------")

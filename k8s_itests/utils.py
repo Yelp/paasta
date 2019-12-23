@@ -16,9 +16,9 @@ def cmd(args, capture_output=True):
 def start_paasta_api():
     print("Starting Paasta API Server")
     p = subprocess.Popen(
-        f'python -m paasta_tools.api.api -D -c {os.environ["KIND_CLUSTER"]} {os.environ["PAASTA_API_PORT"]}'.split(
-            " "
-        )
+        "python -m paasta_tools.api.api -D -c {} {}".format(
+            os.environ["KIND_CLUSTER"], os.environ["PAASTA_API_PORT"]
+        ).split(" ")
     )
     return p
 
@@ -26,10 +26,14 @@ def start_paasta_api():
 def paasta_apply():
     print("Applying SOA configurations")
     service_instances = cmd(
-        f'python -m paasta_tools.list_kubernetes_service_instances -d {os.environ["SOA_DIR"]}',
+        "python -m paasta_tools.list_kubernetes_service_instances -d {}".format(
+            os.environ["SOA_DIR"]
+        ),
     )
     cmd(
-        f'python -m paasta_tools.setup_kubernetes_job {service_instances.stdout.strip()} -v -d {os.environ["SOA_DIR"]}',
+        "python -m paasta_tools.setup_kubernetes_job {} -v -d {}".format(
+            service_instances.stdout.strip(), os.environ["SOA_DIR"]
+        ),
         False,
     )
 
