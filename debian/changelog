@@ -1,3 +1,10 @@
+paasta-tools (0.91.23) xenial; urgency=medium
+
+  * 0.91.23 tagged with 'make release'
+    Commit: fix job_status arg name
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 23 Dec 2019 00:25:58 -0800
+
 paasta-tools (0.91.22) xenial; urgency=medium
 
   * 0.91.22 tagged with 'make release'
