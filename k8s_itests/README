@@ -1,6 +1,7 @@
 Kubernetes itest is done in a few steps.
 Before test:
     Kind is required. It is intalled in before_script section in travis but its existence is assumed in devboxes.
+    https://kind.sigs.k8s.io/
 During test:
     1. Tests are triggered by `make k8s_itests` command in root folder.
     2. All environment variables are set in the Makefile and are exported. They are exposed to tox as well.

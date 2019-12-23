@@ -5,18 +5,4 @@ network: k8s_kind
 nodes:
   - role: control-plane
   - role: worker
-    extraMounts:
-      - containerPath: /nail
-        hostPath: /nail
-        readOnly: true
-      - containerPath: /etc/paasta
-        hostPath: /etc/paasta
-        readOnly: true
   - role: worker
-    extraMounts:
-      - containerPath: /nail
-        hostPath: /nail
-        readOnly: true
-      - containerPath: /etc/paasta
-        hostPath: /etc/paasta
-        readOnly: true
