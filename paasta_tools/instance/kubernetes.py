@@ -37,7 +37,7 @@ INSTANCE_TYPE_CR_ID = dict(
 )
 
 
-def cr_id(service: str, instance: str, instance_type: str) -> str:
+def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
     cr_id_fn = INSTANCE_TYPE_CR_ID.get(instance_type)
     if not cr_id_fn:
         raise RuntimeError(f"Unknown instance type {instance_type}")
