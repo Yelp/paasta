@@ -624,7 +624,7 @@ def instance_set_state(request,) -> None:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type in pik.INSTANCE_TYPES_WITH_SET_STATE:
+    if pik.can_set_state(instance_type):
         try:
             pik.set_cr_desired_state(
                 kube_client=settings.kubernetes_client,
@@ -638,10 +638,9 @@ def instance_set_state(request,) -> None:
     else:
         error_message = (
             f"instance_type {instance_type} of {service}.{instance} doesn't "
-            f"support set_state, must be in INSTANCE_TYPES_WITH_SET_STATE, "
-            f"currently: {pik.INSTANCE_TYPES_WITH_SET_STATE}"
+            "support set_state"
         )
-        raise ApiFailure(error_message, 404)
+        raise ApiFailure(error_message, 500)
 
 
 @view_config(

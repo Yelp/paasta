@@ -1915,18 +1915,6 @@ def get_cr(
             raise
 
 
-def get_cr_status(
-    kube_client: KubeClient, cr_id: Mapping[str, str]
-) -> Optional[Mapping[str, Any]]:
-    return (get_cr(kube_client, cr_id) or {}).get("status")
-
-
-def get_cr_metadata(
-    kube_client: KubeClient, cr_id: Mapping[str, str]
-) -> Optional[Mapping[str, Any]]:
-    return (get_cr(kube_client, cr_id) or {}).get("metadata")
-
-
 def set_cr_desired_state(
     kube_client: KubeClient, cr_id: Mapping[str, str], desired_state: str
 ) -> str:
