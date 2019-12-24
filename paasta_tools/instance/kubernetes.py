@@ -37,8 +37,19 @@ INSTANCE_TYPE_CR_ID = dict(
 )
 
 
+def cr_id(service: str, instance: str, instance_type: str) -> str:
+    cr_id_fn = INSTANCE_TYPE_CR_ID.get(instance_type)
+    if not cr_id_fn:
+        raise RuntimeError(f"Unknown instance type {instance_type}")
+    return cr_id_fn(service, instance)
+
+
 def can_handle(instance_type: str) -> bool:
     return instance_type in INSTANCE_TYPES
+
+
+def can_set_state(instance_type: str) -> bool:
+    return instance_type in INSTANCE_TYPES_WITH_SET_STATE
 
 
 def set_cr_desired_state(
@@ -49,10 +60,9 @@ def set_cr_desired_state(
     desired_state: str,
 ):
     try:
-        cr_id_fn = INSTANCE_TYPE_CR_ID[instance_type]
         kubernetes_tools.set_cr_desired_state(
             kube_client=kube_client,
-            cr_id=cr_id_fn(service=service, instance=instance),
+            cr_id=cr_id(service, instance, instance_type),
             desired_state=desired_state,
         )
     except ApiException as e:
@@ -198,10 +208,14 @@ def cr_status(
     service: str, instance: str, verbose: int, instance_type: str, kube_client: Any,
 ) -> Mapping[str, Any]:
     status: MutableMapping[str, Any] = {}
-    cr_id_fn = INSTANCE_TYPE_CR_ID[instance_type]
-    cr_id = cr_id_fn(service, instance)
-    crstatus = kubernetes_tools.get_cr_status(kube_client=kube_client, cr_id=cr_id)
-    metadata = kubernetes_tools.get_cr_metadata(kube_client=kube_client, cr_id=cr_id)
+    cr = (
+        kubernetes_tools.get_cr(
+            kube_client=kube_client, cr_id=cr_id(service, instance, instance_type)
+        )
+        or {}
+    )
+    crstatus = cr.get("status")
+    metadata = cr.get("metadata")
     if crstatus is not None:
         status["status"] = crstatus
     if metadata is not None:
@@ -227,65 +241,67 @@ def kubernetes_status(
         load_deployments=True,
     )
     kube_client = settings.kubernetes_client
-    if kube_client is not None:
-        app = kubernetes_tools.get_kubernetes_app_by_name(
-            name=job_config.get_sanitised_deployment_name(),
-            kube_client=kube_client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        # bouncing status can be inferred from app_count, ref get_bouncing_status
-        pod_list = kubernetes_tools.pods_for_service_instance(
-            service=job_config.service,
-            instance=job_config.instance,
-            kube_client=kube_client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        replicaset_list = kubernetes_tools.replicasets_for_service_instance(
-            service=job_config.service,
-            instance=job_config.instance,
-            kube_client=kube_client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        active_shas = kubernetes_tools.get_active_shas_for_service(
-            [app, *pod_list, *replicaset_list]
-        )
-        kstatus["app_count"] = max(
-            len(active_shas["config_sha"]), len(active_shas["git_sha"])
-        )
-        kstatus["desired_state"] = job_config.get_desired_state()
-        kstatus["bounce_method"] = job_config.get_bounce_method()
-        job_status(
-            kstatus=kstatus,
-            client=kube_client,
-            namespace=job_config.get_kubernetes_namespace(),
-            job_config=job_config,
-            verbose=verbose,
-            pod_list=pod_list,
-            replicaset_list=replicaset_list,
-        )
+    if kube_client is None:
+        return kstatus
 
-        evicted_count = 0
-        for pod in pod_list:
-            if pod.status.reason == "Evicted":
-                evicted_count += 1
-        kstatus["evicted_count"] = evicted_count
+    app = kubernetes_tools.get_kubernetes_app_by_name(
+        name=job_config.get_sanitised_deployment_name(),
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    # bouncing status can be inferred from app_count, ref get_bouncing_status
+    pod_list = kubernetes_tools.pods_for_service_instance(
+        service=job_config.service,
+        instance=job_config.instance,
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    replicaset_list = kubernetes_tools.replicasets_for_service_instance(
+        service=job_config.service,
+        instance=job_config.instance,
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    active_shas = kubernetes_tools.get_active_shas_for_service(
+        [app, *pod_list, *replicaset_list]
+    )
+    kstatus["app_count"] = max(
+        len(active_shas["config_sha"]), len(active_shas["git_sha"])
+    )
+    kstatus["desired_state"] = job_config.get_desired_state()
+    kstatus["bounce_method"] = job_config.get_bounce_method()
+    job_status(
+        kstatus=kstatus,
+        client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+        job_config=job_config,
+        verbose=verbose,
+        pod_list=pod_list,
+        replicaset_list=replicaset_list,
+    )
 
-        if include_smartstack:
-            service_namespace_config = kubernetes_tools.load_service_namespace_config(
+    evicted_count = 0
+    for pod in pod_list:
+        if pod.status.reason == "Evicted":
+            evicted_count += 1
+    kstatus["evicted_count"] = evicted_count
+
+    if include_smartstack:
+        service_namespace_config = kubernetes_tools.load_service_namespace_config(
+            service=job_config.get_service_name_smartstack(),
+            namespace=job_config.get_nerve_namespace(),
+            soa_dir=settings.soa_dir,
+        )
+        if "proxy_port" in service_namespace_config:
+            kstatus["smartstack"] = smartstack_status(
                 service=job_config.get_service_name_smartstack(),
-                namespace=job_config.get_nerve_namespace(),
-                soa_dir=settings.soa_dir,
+                instance=job_config.get_nerve_namespace(),
+                job_config=job_config,
+                service_namespace_config=service_namespace_config,
+                pods=pod_list,
+                should_return_individual_backends=verbose > 0,
+                settings=settings,
             )
-            if "proxy_port" in service_namespace_config:
-                kstatus["smartstack"] = smartstack_status(
-                    service=job_config.get_service_name_smartstack(),
-                    instance=job_config.get_nerve_namespace(),
-                    job_config=job_config,
-                    service_namespace_config=service_namespace_config,
-                    pods=pod_list,
-                    should_return_individual_backends=verbose > 0,
-                    settings=settings,
-                )
     return kstatus
 
 
@@ -298,6 +314,12 @@ def instance_status(
     settings: Any,
 ) -> Mapping[str, Any]:
     status = {}
+
+    if not can_handle(instance_type):
+        raise RuntimeError(
+            f"Unknown instance type: {instance_type!r}, "
+            f"can handle: {INSTANCE_TYPES}"
+        )
 
     if instance_type in INSTANCE_TYPES_CR:
         status[instance_type] = cr_status(
