@@ -17,10 +17,10 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.mesos_tools import find_mesos_leader
-from paasta_tools.mesos_tools import load_mesos_secret
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
+from paasta_tools.spark_tools import load_mesos_secret_for_spark
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
@@ -432,7 +432,7 @@ def get_spark_config(
         "spark.mesos.executor.docker.volumes": ",".join(volumes),
         "spark.mesos.executor.docker.image": docker_img,
         "spark.mesos.principal": "spark",
-        "spark.mesos.secret": load_mesos_secret(),
+        "spark.mesos.secret": load_mesos_secret_for_spark(),
     }
 
     if not args.build and not args.image:

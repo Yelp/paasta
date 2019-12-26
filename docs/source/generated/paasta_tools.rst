@@ -11,6 +11,7 @@ Subpackages
     paasta_tools.cli
     paasta_tools.deployd
     paasta_tools.frameworks
+    paasta_tools.instance
     paasta_tools.kubernetes
     paasta_tools.mesos
     paasta_tools.metrics
@@ -91,6 +92,7 @@ Submodules
    paasta_tools.setup_tron_namespace
    paasta_tools.slack
    paasta_tools.smartstack_tools
+   paasta_tools.spark_tools
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.tron_tools
    paasta_tools.utils

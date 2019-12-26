@@ -127,7 +127,7 @@ def main():
                     skipped.append(service)
                     log.debug(f"Skipped {service}")
         except Exception as e:
-            log.exception(f"Update for {service} failed: {str(e)}")
+            log.error(f"Update for {service} failed: {str(e)}")
             log.debug(f"Exception while updating {service}", exc_info=1)
             failed.append(service)
 

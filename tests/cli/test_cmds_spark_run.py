@@ -141,9 +141,9 @@ class TestGetSparkConfig:
         yield spark_run_file
 
     @pytest.fixture(autouse=True)
-    def mock_load_mesos_secret(self):
+    def mock_load_mesos_secret_for_spark(self):
         with mock.patch(
-            "paasta_tools.cli.cmds.spark_run.load_mesos_secret", autospec=True
+            "paasta_tools.cli.cmds.spark_run.load_mesos_secret_for_spark", autospec=True
         ) as m:
             yield m
 

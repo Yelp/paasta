@@ -1,22 +1,28 @@
 import logging
 import os
 import sys
-from typing import List
 from typing import Optional
 from typing import Tuple
 
 import boto3
 from botocore.session import Session
 from ruamel.yaml import YAML
+from typing_extensions import TypedDict
 
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
+DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
 DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 DEFAULT_SPARK_SERVICE = "spark"
-EXTRA_SPARK_VOLUMES = ("/etc/passwd", "/etc/group")
 log = logging.getLogger(__name__)
+
+
+class DockerVolumeDict(TypedDict):
+    hostPath: str
+    containerPath: str
+    mode: str
 
 
 def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str]:
@@ -99,13 +105,13 @@ def get_default_event_log_dir(**kwargs) -> str:
     return None
 
 
-def get_formatted_spark_volumes(instance_config, system_volumes) -> List[str]:
-    volume_dicts = instance_config.get_volumes(system_volumes)
-    volumes = [
-        f"{v['hostPath']}:{v['containerPath']}:{v['mode'].lower()}"
-        for v in volume_dicts
-        if os.path.exists(v["hostPath"]) and v["hostPath"] not in EXTRA_SPARK_VOLUMES
-    ]
-    for v in EXTRA_SPARK_VOLUMES:
-        volumes.append(f"{v}:{v}:ro")
-    return volumes
+def load_mesos_secret_for_spark():
+    try:
+        with open(DEFAULT_SPARK_MESOS_SECRET_FILE, "r") as f:
+            return f.read()
+    except IOError as e:
+        paasta_print(
+            "Cannot load mesos secret from %s" % DEFAULT_SPARK_MESOS_SECRET_FILE,
+            file=sys.stderr,
+        )
+        raise e

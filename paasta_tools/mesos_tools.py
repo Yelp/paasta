@@ -18,7 +18,6 @@ import json
 import logging
 import re
 import socket
-import sys
 from collections import namedtuple
 from pathlib import Path
 from typing import Any
@@ -59,12 +58,10 @@ from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
 
 MARATHON_FRAMEWORK_NAME_PREFIX = "marathon"
-DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
 
 ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
 SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "batch_count", "slave"])
@@ -161,18 +158,6 @@ def find_mesos_leader(cluster):
     response = requests.get(url)
     hostname = urlparse(response.url).hostname
     return f"{hostname}:{MESOS_MASTER_PORT}"
-
-
-def load_mesos_secret():
-    try:
-        with open(DEFAULT_SPARK_MESOS_SECRET_FILE, "r") as f:
-            return f.read()
-    except IOError as e:
-        paasta_print(
-            "Cannot load mesos secret from %s" % DEFAULT_SPARK_MESOS_SECRET_FILE,
-            file=sys.stderr,
-        )
-        raise e
 
 
 async def get_current_tasks(job_id: str) -> List[Task]:
