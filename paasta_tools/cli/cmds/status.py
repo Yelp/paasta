@@ -745,13 +745,14 @@ def get_envoy_status_human(
         output.append(f"    {location.name} - {backend_status}")
 
         if location.backends:
-            is_proxied_through_casper = any(
-                [backend["is_proxied_through_casper"] for backend in location.backends]
-            )
             color = (
-                PaastaColors.green if is_proxied_through_casper else PaastaColors.grey
+                PaastaColors.green
+                if location.is_proxied_through_casper
+                else PaastaColors.grey
             )
-            is_proxied_through_casper_output = color(f"{is_proxied_through_casper}")
+            is_proxied_through_casper_output = color(
+                f"{location.is_proxied_through_casper}"
+            )
             output.append(
                 f"      Proxied through Casper: {is_proxied_through_casper_output}"
             )

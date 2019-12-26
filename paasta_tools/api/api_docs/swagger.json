@@ -1105,6 +1105,10 @@
                     "items": {
                         "$ref": "#/definitions/EnvoyBackend"
                     }
+                },
+                "is_proxied_through_casper": {
+                    "type": "boolean",
+                    "description": "Whether this backend is proxied through Casper"
                 }
             }
         },
@@ -1132,10 +1136,6 @@
                     "type": "integer",
                     "format": "int32",
                     "description": "The weight of this backend in the cluster"
-                },
-                "is_proxied_through_casper": {
-                    "type": "boolean",
-                    "description": "Whether this backend is proxied through Casper"
                 },
                 "has_associated_task": {
                     "type": "boolean",

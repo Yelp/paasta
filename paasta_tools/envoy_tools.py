@@ -17,19 +17,20 @@ from typing import Any
 from typing import Collection
 from typing import DefaultDict
 from typing import Dict
+from typing import FrozenSet
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Set
 from typing import Tuple
 
 import requests
 from mypy_extensions import TypedDict
 
 from paasta_tools import marathon_tools
+from paasta_tools.api import settings
 from paasta_tools.utils import get_user_agent
-
-
-ENVOY_ADMIN_URL_FORMAT = "http://{host:s}:{port:d}/{endpoint:s}"
+from paasta_tools.utils import SystemPaastaConfig
 
 
 EnvoyBackend = TypedDict(
@@ -40,15 +41,16 @@ EnvoyBackend = TypedDict(
         "hostname": str,
         "eds_health_status": str,
         "weight": int,
-        "is_proxied_through_casper": bool,
         "has_associated_task": bool,
     },
     total=False,
 )
 
 
-def retrieve_envoy_clusters(envoy_host: str, envoy_admin_port: int) -> Dict[str, Any]:
-    envoy_uri = ENVOY_ADMIN_URL_FORMAT.format(
+def retrieve_envoy_clusters(
+    envoy_host: str, envoy_admin_port: int, system_paasta_config: SystemPaastaConfig
+) -> Dict[str, Any]:
+    envoy_uri = system_paasta_config.get_envoy_admin_endpoint_format().format(
         host=envoy_host, port=envoy_admin_port, endpoint="clusters?format=json"
     )
 
@@ -61,9 +63,27 @@ def retrieve_envoy_clusters(envoy_host: str, envoy_admin_port: int) -> Dict[str,
     return envoy_admin_response.json()
 
 
+def get_casper_endpoints(clusters_info: Dict[str, Any]) -> FrozenSet[Tuple[str, int]]:
+    """Filters out and returns casper endpoints from Envoy clusters."""
+    casper_endpoints: Set[Tuple[str, int]] = set()
+    for cluster_status in clusters_info["cluster_statuses"]:
+        if "host_statuses" in cluster_status:
+            if cluster_status["name"].startswith("spectre.") and cluster_status[
+                "name"
+            ].endswith(".egress_cluster"):
+                for host_status in cluster_status["host_statuses"]:
+                    casper_endpoints.add(
+                        (
+                            host_status["address"]["socket_address"]["address"],
+                            host_status["address"]["socket_address"]["port_value"],
+                        )
+                    )
+    return frozenset(casper_endpoints)
+
+
 def get_backends(
     service: str, envoy_host: str, envoy_admin_port: int,
-) -> List[EnvoyBackend]:
+) -> List[Tuple[EnvoyBackend, bool]]:
     """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of backends.
 
     :param service: If None, return backends for all services, otherwise only return backends for this particular
@@ -95,24 +115,14 @@ def get_multiple_backends(
                        services or the requested service
     """
     clusters_info = retrieve_envoy_clusters(
-        envoy_host=envoy_host, envoy_admin_port=envoy_admin_port,
+        envoy_host=envoy_host,
+        envoy_admin_port=envoy_admin_port,
+        system_paasta_config=settings.system_paasta_config,
     )
 
-    casper_endpoints = set()
-    for cluster_status in clusters_info["cluster_statuses"]:
-        if "host_statuses" in cluster_status:
-            if cluster_status["name"].startswith("spectre.") and cluster_status[
-                "name"
-            ].endswith(".egress_cluster"):
-                for host_status in cluster_status["host_statuses"]:
-                    casper_endpoints.add(
-                        (
-                            host_status["address"]["socket_address"]["address"],
-                            host_status["address"]["socket_address"]["port_value"],
-                        )
-                    )
+    casper_endpoints = get_casper_endpoints(clusters_info)
 
-    backends: List[EnvoyBackend] = []
+    backends: List[Tuple[EnvoyBackend, bool]] = []
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):
@@ -135,27 +145,23 @@ def get_multiple_backends(
                                 continue
 
                         cluster_backends.append(
-                            EnvoyBackend(
-                                address=address,
-                                port_value=port_value,
-                                hostname=socket.gethostbyaddr(
-                                    host_status["address"]["socket_address"]["address"]
-                                )[0].split(".")[0],
-                                eds_health_status=host_status["health_status"][
-                                    "eds_health_status"
-                                ],
-                                weight=host_status["weight"],
-                                is_proxied_through_casper=False,
+                            (
+                                EnvoyBackend(
+                                    address=address,
+                                    port_value=port_value,
+                                    hostname=socket.gethostbyaddr(
+                                        host_status["address"]["socket_address"][
+                                            "address"
+                                        ]
+                                    )[0].split(".")[0],
+                                    eds_health_status=host_status["health_status"][
+                                        "eds_health_status"
+                                    ],
+                                    weight=host_status["weight"],
+                                ),
+                                casper_endpoint_found,
                             )
                         )
-
-                    if (
-                        not service_name.startswith("spectre.")
-                        and casper_endpoint_found
-                    ):
-                        for cluster_backend in cluster_backends:
-                            cluster_backend["is_proxied_through_casper"] = True
-
                     backends += cluster_backends
     return backends
 
@@ -195,8 +201,3 @@ def match_backends_and_tasks(
             backend_task_pairs.append((backend, None))
 
     return backend_task_pairs
-
-
-def get_envoy_admin_port() -> int:
-    """Get Envoy's configured admin port from /etc/hosts"""
-    return socket.getservbyname("envoy-admin")
