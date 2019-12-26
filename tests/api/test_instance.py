@@ -965,7 +965,6 @@ def test_tron_instance_status(
     assert response["tron"]["action_stderr"] == "fake_stderr"
 
 
-@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
 @mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
 @mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
 @mock.patch(
@@ -982,7 +981,6 @@ def test_kubernetes_instance_status_bounce_method(
     mock_replicasets_for_service_instance,
     mock_get_active_shas_for_service,
     mock_kubernetes_job_status,
-    mock_get_kubernetes_app_by_name,
 ):
     settings.kubernetes_client = True
     svc = "fake-svc"
@@ -992,7 +990,6 @@ def test_kubernetes_instance_status_bounce_method(
     mock_long_running_instance_type_handlers.__getitem__ = mock.Mock(
         return_value=mock.Mock(loader=mock.Mock(return_value=mock_job_config))
     )
-    mock_get_kubernetes_app_by_name.return_value = mock.Mock()
 
     actual = instance.pik.kubernetes_status(
         service=svc,
