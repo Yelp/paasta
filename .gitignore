@@ -12,6 +12,7 @@ dist/
 .vscode
 .create_cluster
 .tmp
+kind
 .kube
 paasta_tools.egg-info/
 docs/man/
