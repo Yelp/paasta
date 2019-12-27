@@ -371,7 +371,7 @@ def marathon_service_mesh_status(
     for location, hosts in slave_hostname_by_location.items():
         if service_mesh == ServiceMesh.SMARTSTACK:
             synapse_host = hosts[0]
-            sorted_backends = sorted(
+            sorted_smartstack_backends = sorted(
                 get_backends(
                     registration,
                     synapse_host=synapse_host,
@@ -381,11 +381,13 @@ def marathon_service_mesh_status(
                 key=lambda backend: backend["status"],
                 reverse=True,  # put 'UP' backends above 'MAINT' backends
             )
-            matched_backends_and_tasks = match_backends_and_tasks(
-                sorted_backends, tasks
+            matched_smartstack_backends_and_tasks = match_backends_and_tasks(
+                sorted_smartstack_backends, tasks
             )
             location_dict = smartstack_tools.build_smartstack_location_dict(
-                location, matched_backends_and_tasks, should_return_individual_backends
+                location,
+                matched_smartstack_backends_and_tasks,
+                should_return_individual_backends,
             )
             service_mesh_status["locations"].append(location_dict)
         elif service_mesh == ServiceMesh.ENVOY:
@@ -395,7 +397,7 @@ def marathon_service_mesh_status(
                 envoy_host=envoy_host,
                 envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
             )
-            sorted_backends = sorted(
+            sorted_envoy_backends = sorted(
                 [backend[0] for backend in backends],
                 key=lambda backend: backend["eds_health_status"],
             )
@@ -405,21 +407,21 @@ def marathon_service_mesh_status(
                 if is_casper_proxied_backend
             }
 
-            matched_backends_and_tasks = envoy_tools.match_backends_and_tasks(
-                sorted_backends, tasks,
+            matched_envoy_backends_and_tasks = envoy_tools.match_backends_and_tasks(
+                sorted_envoy_backends, tasks,
             )
 
             running_backends_count = 0
-            backends = []
+            envoy_backends = []
             is_proxied_through_casper = False
-            for backend, task in matched_backends_and_tasks:
+            for backend, task in matched_envoy_backends_and_tasks:
                 if backend is None:
                     continue
                 if backend["eds_health_status"] == "HEALTHY":
                     running_backends_count += 1
                 if should_return_individual_backends:
                     backend["has_associated_task"] = task is not None
-                    backends.append(backend)
+                    envoy_backends.append(backend)
                 if (
                     backend["address"],
                     backend["port_value"],
@@ -428,7 +430,7 @@ def marathon_service_mesh_status(
             location_dict = {
                 "name": location,
                 "running_backends_count": running_backends_count,
-                "backends": backends,
+                "backends": envoy_backends,
                 "is_proxied_through_casper": is_proxied_through_casper,
             }
             service_mesh_status["locations"].append(location_dict)
