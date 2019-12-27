@@ -632,6 +632,7 @@ def instance_config():
     )
     mock_instance_config.get_replication_crit_percentage.return_value = 90
     mock_instance_config.get_registrations.return_value = [job_id]
+    mock_instance_config.get_pool.return_value = "fake_pool"
     return mock_instance_config
 
 
@@ -978,6 +979,73 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         assert (
             f"{instance_config.job_id} has no Smartstack replication info."
         ) in alert_output
+
+
+def test_emit_replication_metrics(instance_config):
+    with mock.patch(
+        "paasta_tools.monitoring_tools.yelp_meteorite", autospec=True
+    ) as mock_yelp_meteorite:
+        mock_smartstack_replication_info = {
+            "fake_region_1": {
+                "fake_service.fake_instance": 2,
+                "other_service.other_instance": 5,
+            },
+            "fake_region_2": {"fake_service.fake_instance": 4},
+        }
+        mock_gauges = {
+            "paasta.service.available_backends": mock.Mock(),
+            "paasta.service.critical_backends": mock.Mock(),
+            "paasta.service.expected_backends": mock.Mock(),
+        }
+        expected_dims = {
+            "paasta_service": "fake_service",
+            "paasta_cluster": "fake_cluster",
+            "paasta_instance": "fake_instance",
+            "paasta_pool": "fake_pool",
+        }
+
+        mock_yelp_meteorite.create_gauge.side_effect = lambda name, dims: mock_gauges[
+            name
+        ]
+        monitoring_tools.emit_replication_metrics(
+            mock_smartstack_replication_info, instance_config, expected_count=10,
+        )
+
+        mock_yelp_meteorite.create_gauge.assert_has_calls(
+            [
+                mock.call("paasta.service.available_backends", expected_dims),
+                mock.call("paasta.service.critical_backends", expected_dims),
+                mock.call("paasta.service.expected_backends", expected_dims),
+            ]
+        )
+        mock_gauges["paasta.service.available_backends"].set.assert_called_once_with(6)
+        mock_gauges["paasta.service.critical_backends"].set.assert_called_once_with(9)
+        mock_gauges["paasta.service.expected_backends"].set.assert_called_once_with(10)
+
+
+def test_check_smartstack_replication_for_instance_emits_metrics(instance_config):
+    with mock.patch(
+        "paasta_tools.monitoring_tools.send_replication_event", autospec=True
+    ), mock.patch(
+        "paasta_tools.monitoring_tools.yelp_meteorite", autospec=True
+    ), mock.patch(
+        "paasta_tools.monitoring_tools.emit_replication_metrics", autospec=True
+    ) as mock_emit_replication_metrics:
+        mock_smartstack_replication_checker = mock.Mock()
+        mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
+            "fake_region": {"fake_service.fake_instance": 10}
+        }
+
+        monitoring_tools.check_smartstack_replication_for_instance(
+            instance_config=instance_config,
+            expected_count=10,
+            smartstack_replication_checker=mock_smartstack_replication_checker,
+        )
+        mock_emit_replication_metrics.assert_called_once_with(
+            mock_smartstack_replication_checker.get_replication_for_instance.return_value,
+            instance_config,
+            10,
+        )
 
 
 def test_send_replication_event_if_under_replication_handles_0_expected(

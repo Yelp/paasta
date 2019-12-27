@@ -103,3 +103,68 @@ def get_secret_hashes(
                 secret_environment=secret_environment,
             )
     return secret_hashes
+
+
+def decrypt_secret_environment_for_service(
+    secret_env_vars: Dict[str, str],
+    service_name: str,
+    secret_provider_name: str,
+    soa_dir: str,
+    cluster_name: str,
+    secret_provider_kwargs: Dict[str, Any],
+) -> Dict[str, str]:
+    if not secret_env_vars:
+        return {}
+
+    secret_provider = get_secret_provider(
+        secret_provider_name=secret_provider_name,
+        soa_dir=soa_dir,
+        service_name=service_name,
+        cluster_names=[cluster_name],
+        secret_provider_kwargs=secret_provider_kwargs,
+    )
+    return secret_provider.decrypt_environment(secret_env_vars)
+
+
+def decrypt_secret_environment_variables(
+    secret_provider_name: str,
+    environment: Dict[str, str],
+    soa_dir: str,
+    service_name: str,
+    cluster_name: str,
+    secret_provider_kwargs: Dict[str, Any],
+) -> Dict[str, str]:
+    decrypted_secrets = {}
+    service_secret_env = {}
+    shared_secret_env = {}
+    for k, v in environment.items():
+        if is_secret_ref(v):
+            if is_shared_secret(v):
+                shared_secret_env[k] = v
+            else:
+                service_secret_env[k] = v
+    secret_provider_kwargs["vault_num_uses"] = len(service_secret_env) + len(
+        shared_secret_env
+    )
+
+    decrypted_secrets.update(
+        decrypt_secret_environment_for_service(
+            service_secret_env,
+            service_name,
+            secret_provider_name,
+            soa_dir,
+            cluster_name,
+            secret_provider_kwargs,
+        )
+    )
+    decrypted_secrets.update(
+        decrypt_secret_environment_for_service(
+            shared_secret_env,
+            SHARED_SECRET_SERVICE,
+            secret_provider_name,
+            soa_dir,
+            cluster_name,
+            secret_provider_kwargs,
+        )
+    )
+    return decrypted_secrets

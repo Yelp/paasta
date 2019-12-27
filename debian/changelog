@@ -1,3 +1,42 @@
+paasta-tools (0.91.23) xenial; urgency=medium
+
+  * 0.91.23 tagged with 'make release'
+    Commit: fix job_status arg name
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 23 Dec 2019 00:25:58 -0800
+
+paasta-tools (0.91.22) xenial; urgency=medium
+
+  * 0.91.22 tagged with 'make release'
+    Commit: Merge pull request #2594 from Yelp/u/gabrielv/PAASTA-15954-
+    pod-eviction-monitor  PAASTA-15954 Add
+    kubernetes_remove_evicted_pods script
+
+ -- gabrielv <gabrielv@yelp.com>  Wed, 18 Dec 2019 02:04:05 -0800
+
+paasta-tools (0.91.21) xenial; urgency=medium
+
+  * 0.91.21 tagged with 'make release'
+    Commit: fix another autoscaler bug (#2598)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 17 Dec 2019 17:29:16 -0800
+
+paasta-tools (0.91.20) xenial; urgency=medium
+
+  * 0.91.20 tagged with 'make release'
+    Commit: fix a small new autoscaler only bug (#2597)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 17 Dec 2019 13:30:41 -0800
+
+paasta-tools (0.91.19) xenial; urgency=medium
+
+  * 0.91.19 tagged with 'make release'
+    Commit: Merge pull request #2587 from
+    Yelp/check_services_replication_metrics  Check services replication
+    metrics
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 17 Dec 2019 10:12:54 -0800
+
 paasta-tools (0.91.18) xenial; urgency=medium
 
   * 0.91.18 tagged with 'make release'

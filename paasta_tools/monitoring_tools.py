@@ -23,17 +23,24 @@ Everything in here is private, and you shouldn't worry about it.
 import json
 import logging
 import os
+from typing import Dict
 from typing import Optional
 from typing import Tuple
 
 import pysensu_yelp
 import service_configuration_lib
 
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaNotConfiguredError
+
+try:
+    import yelp_meteorite
+except ImportError:
+    yelp_meteorite = None
 
 
 log = logging.getLogger(__name__)
@@ -293,9 +300,42 @@ def send_replication_event(instance_config, status, output):
     )
 
 
+def emit_replication_metrics(
+    smartstack_replication_info: Dict[str, Dict[str, int]],
+    instance_config: LongRunningServiceConfig,
+    expected_count: int,
+) -> None:
+    meteorite_dims = {
+        "paasta_service": instance_config.service,
+        "paasta_cluster": instance_config.cluster,
+        "paasta_instance": instance_config.instance,
+        "paasta_pool": instance_config.get_pool(),
+    }
+
+    num_available_backends = 0
+    for available_backends in smartstack_replication_info.values():
+        num_available_backends += available_backends.get(instance_config.job_id, 0)
+    available_backends_gauge = yelp_meteorite.create_gauge(
+        "paasta.service.available_backends", meteorite_dims
+    )
+    available_backends_gauge.set(num_available_backends)
+
+    critical_percentage = instance_config.get_replication_crit_percentage()
+    num_critical_backends = critical_percentage * expected_count / 100.0
+    critical_backends_gauge = yelp_meteorite.create_gauge(
+        "paasta.service.critical_backends", meteorite_dims
+    )
+    critical_backends_gauge.set(num_critical_backends)
+
+    expected_backends_gauge = yelp_meteorite.create_gauge(
+        "paasta.service.expected_backends", meteorite_dims
+    )
+    expected_backends_gauge.set(expected_count)
+
+
 def check_smartstack_replication_for_instance(
     instance_config, expected_count, smartstack_replication_checker
-):
+) -> bool:
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
     the corresponding yelpsoa config.
@@ -315,6 +355,10 @@ def check_smartstack_replication_for_instance(
         "Got smartstack replication info for %s: %s"
         % (instance_config.job_id, smartstack_replication_info)
     )
+    if yelp_meteorite is not None:
+        emit_replication_metrics(
+            smartstack_replication_info, instance_config, expected_count,
+        )
 
     if len(smartstack_replication_info) == 0:
         status = pysensu_yelp.Status.CRITICAL
@@ -323,6 +367,7 @@ def check_smartstack_replication_for_instance(
             "is valid!\n"
         ) % instance_config.job_id
         log.error(output)
+        service_is_under_replicated = True
     else:
         expected_count_per_location = int(
             expected_count / len(smartstack_replication_info)
@@ -369,7 +414,8 @@ def check_smartstack_replication_for_instance(
             output += "The following locations are OK:\n"
         output += output_ok
 
-        if any(under_replication_per_location):
+        service_is_under_replicated = any(under_replication_per_location)
+        if service_is_under_replicated:
             status = pysensu_yelp.Status.CRITICAL
             output += (
                 "\n\n"
@@ -410,6 +456,8 @@ def check_smartstack_replication_for_instance(
     send_replication_event(
         instance_config=instance_config, status=status, output=output
     )
+
+    return not service_is_under_replicated
 
 
 def check_under_replication(

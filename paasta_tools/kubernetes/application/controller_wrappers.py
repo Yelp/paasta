@@ -21,6 +21,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
@@ -40,13 +41,11 @@ class Application(ABC):
         """
         if not item.metadata.namespace:
             item.metadata.namespace = "paasta"
-        self.kube_deployment = KubeDeployment(
-            service=item.metadata.labels["paasta.yelp.com/service"],
-            instance=item.metadata.labels["paasta.yelp.com/instance"],
-            git_sha=item.metadata.labels["paasta.yelp.com/git_sha"],
-            config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
-            replicas=item.spec.replicas,
-        )
+        attrs = {
+            attr: item.metadata.labels[paasta_prefixed(attr)]
+            for attr in ["service", "instance", "git_sha", "config_sha"]
+        }
+        self.kube_deployment = KubeDeployment(replicas=item.spec.replicas, **attrs)
         self.item = item
         self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging
@@ -248,7 +247,7 @@ class DeploymentWrapper(Application):
                 target=self.deep_delete_and_create, args=[KubeClient()]
             ).start()
             return
-        if self.should_have_hpa() is None:
+        if self.should_have_hpa():
             self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
@@ -256,7 +255,10 @@ class DeploymentWrapper(Application):
 
     def should_have_hpa(self):
         return (
-            self.soa_config.get_max_instances() is not None
+            (
+                self.soa_config.get_max_instances() is not None
+                or self.soa_config.config_dict.get("horizontal_autoscaling", False)
+            )
             # with bespoke autoscaler, setup_kubernetes_job sets the number of instances directly; no HPA is required.
             and self.soa_config.get_autoscaling_params()["decision_policy"] != "bespoke"
         )
