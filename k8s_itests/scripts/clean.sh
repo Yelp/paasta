@@ -8,4 +8,4 @@ rm -rf $PAASTA_CONFIG_DIR
 ./kind delete cluster --name=$KIND_CLUSTER
 unset KUBECONFIG
 rm ./kind
-rm -rf ./tmp
+rm -rf ./.tmp
