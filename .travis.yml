@@ -26,7 +26,7 @@ before_install:
   - sudo bash -c 'echo "deb http://apt.dockerproject.org/repo ubuntu-xenial main" > /etc/apt/sources.list.d/docker.list'
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 58118E89F3A912897C070ADBF76221572C52609D
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-  - sudo add-apt-repository ppa:longsleep/golang-backports
+  - sudo add-apt-repository ppa:longsleep/golang-backports -y
   - sudo apt-get update
   - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=1.13.1-0~ubuntu-xenial devscripts golang-1.13 --force-yes
   - 'if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" -a "$DOCKER_USERNAME" != "" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi'
