@@ -56,6 +56,7 @@ class Host(NamedTuple):
     ip: str
     sender: str
     receipt_handle: str
+    scheduler: str = 'mesos'
 
 
 class DrainingClient():
@@ -70,7 +71,12 @@ class DrainingClient():
             default=None,
         )
 
-    def submit_instance_for_draining(self, instance: InstanceMetadata, sender: Type[AWSResourceGroup]) -> None:
+    def submit_instance_for_draining(
+        self,
+        instance: InstanceMetadata,
+        sender: Type[AWSResourceGroup],
+        scheduler: str
+    ) -> None:
         return self.client.send_message(
             QueueUrl=self.drain_queue_url,
             MessageAttributes={
@@ -85,6 +91,7 @@ class DrainingClient():
                     'ip': instance.ip_address,
                     'hostname': instance.hostname,
                     'group_id': instance.group_id,
+                    'scheduler': scheduler,
                 }
             ),
         )
@@ -104,6 +111,7 @@ class DrainingClient():
                     'ip': host.ip,
                     'hostname': host.hostname,
                     'group_id': host.group_id,
+                    'scheduler': host.scheduler,
                 }
             ),
         )
@@ -128,6 +136,7 @@ class DrainingClient():
                     'ip': host.ip,
                     'hostname': host.hostname,
                     'group_id': host.group_id,
+                    'scheduler': host.scheduler,
                 }
             ),
         )
@@ -312,6 +321,11 @@ def host_from_instance_id(
         return None
     try:
         sfr_ids = [tag['Value'] for tag in instance_data[0]['Tags'] if tag['Key'] == 'aws:ec2spot:fleet-request-id']
+        scheduler = 'mesos'
+        for tag in instance_data[0]['Tags']:
+            if tag['Key'] == 'KubernetesCluster':
+                scheduler = 'kubernetes'
+                break
     except KeyError as e:
         logger.warning(f'SFR tag key not found: {e}')
         sfr_ids = []
@@ -335,6 +349,7 @@ def host_from_instance_id(
         hostname=hostnames[0],
         group_id=sfr_ids[0],
         ip=ip,
+        scheduler=scheduler,
     )
 
 

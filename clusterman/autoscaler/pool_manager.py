@@ -181,6 +181,7 @@ class PoolManager:
                         self.draining_client.submit_instance_for_draining(
                             node_metadata.instance,
                             sender=cast(Type[AWSResourceGroup], self.resource_groups[group_id].__class__),
+                            scheduler=self.scheduler,
                         )
             else:
                 for group_id, node_metadatas in marked_nodes_by_group.items():

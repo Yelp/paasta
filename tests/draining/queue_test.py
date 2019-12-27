@@ -51,6 +51,7 @@ def test_submit_instance_for_draining(mock_draining_client):
         assert mock_draining_client.submit_instance_for_draining(
             mock_instance,
             sender=SpotFleetResourceGroup,
+            scheduler='mesos',
         ) == mock_draining_client.client.send_message.return_value
         mock_json.dumps.assert_called_with(
             {
@@ -58,6 +59,7 @@ def test_submit_instance_for_draining(mock_draining_client):
                 'ip': '10.1.1.1',
                 'hostname': 'host123',
                 'group_id': 'sfr123',
+                'scheduler': 'mesos',
             }
         )
         mock_draining_client.client.send_message.assert_called_with(
@@ -82,6 +84,7 @@ def test_submit_host_for_draining(mock_draining_client):
             hostname='host123',
             group_id='sfr123',
             sender='aws_2_min_warning',
+            scheduler='kubernetes',
         )
         assert mock_draining_client.submit_host_for_draining(
             mock_host,
@@ -92,6 +95,7 @@ def test_submit_host_for_draining(mock_draining_client):
                 'ip': '10.1.1.1',
                 'hostname': 'host123',
                 'group_id': 'sfr123',
+                'scheduler': 'kubernetes',
             }
         )
         mock_draining_client.client.send_message.assert_called_with(
@@ -146,6 +150,7 @@ def test_submit_host_for_termination(mock_draining_client):
             hostname='host123',
             group_id='sfr123',
             sender='clusterman',
+            scheduler='kubernetes',
         )
         assert mock_draining_client.submit_host_for_termination(
             mock_host,
@@ -157,6 +162,7 @@ def test_submit_host_for_termination(mock_draining_client):
                 'ip': '10.1.1.1',
                 'hostname': 'host123',
                 'group_id': 'sfr123',
+                'scheduler': 'kubernetes',
             }
         )
         mock_draining_client.client.send_message.assert_called_with(
@@ -180,6 +186,7 @@ def test_submit_host_for_termination(mock_draining_client):
                 'ip': '10.1.1.1',
                 'hostname': 'host123',
                 'group_id': 'sfr123',
+                'scheduler': 'kubernetes',
             }
         )
         mock_draining_client.client.send_message.assert_called_with(
