@@ -28,4 +28,4 @@ itest: .create_cluster
 	../.paasta/bin/tox -e k8s_itests
 
 clean:
-	./scripts/clean.sh $(PAASTA_CONFIG_DIR) $(KIND_CLUSTER) 2>/dev/null
+	./scripts/clean.sh $(PAASTA_CONFIG_DIR) $(KIND_CLUSTER) 2>/dev/null || true
