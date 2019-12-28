@@ -14,6 +14,7 @@
 import time
 
 import colorlog
+from botocore.exceptions import EndpointConnectionError
 from yelp_batch.batch import batch_command_line_arguments
 from yelp_batch.batch import batch_configure
 from yelp_batch.batch_daemon import BatchDaemon
@@ -31,6 +32,7 @@ from clusterman.batch.util import suppress_request_limit_exceeded
 from clusterman.config import setup_config
 from clusterman.exceptions import AutoscalerError
 from clusterman.exceptions import ClustermanSignalError
+from clusterman.exceptions import PoolConnectionError
 from clusterman.util import get_autoscaler_scribe_stream
 from clusterman.util import sensu_checkin
 from clusterman.util import setup_logging
@@ -132,7 +134,10 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
 
     def run(self):
         while self.running:
-            self._autoscale()
+            try:
+                self._autoscale()
+            except (PoolConnectionError, EndpointConnectionError) as e:
+                logger.exception(f'Encountered a connection error: {e}')
 
     def _do_sensu_checkins(self, signal_failed, service_failed, msg):
         check_every = ('{minutes}m'.format(minutes=int(self.autoscaler.run_frequency // 60))
