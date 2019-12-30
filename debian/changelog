@@ -1,3 +1,31 @@
+paasta-tools (0.91.24) xenial; urgency=medium
+
+  * 0.91.24 tagged with 'make release'
+    Commit: Notify service config git master of deployments directly for
+    yelp services (#2602)  * Notify service config master of deployments
+    directly  Context for change:  Currently, to mark a service for
+    deployment, tags are pushed to the service"s git repository, and a
+    gitolite hook reads those tags, then notifies sysgit, which has the
+    master copy of our service configs, to generate a deployment for
+    that service. That hook lives here:
+    https://sourcegraph.yelpcorp.com/packages/py-
+    gitolite@e4e52bf91f3351b840e012b8373e642c2db0032f/-
+    /blob/gitolite/hooks/repo_specific/paasta_deploymentsd.py#L21-41 And
+    the service on sysgit that just calls
+    `generate_deployment_for_service` lives here:
+    https://sourcegraph.yelpcorp.com/sysgit/puppet@02d24429c51c6f27e9aa9
+    b1adc0401a1b0558842/-/blob/modules/paasta_tools/files/paasta-
+    deploymentsd  Release Engineering is moving these services off of
+    gitolite, and decommisioning the gitolite master, so this hook needs
+    its functionality moved. Having the deployments service call be at
+    the point in code when the tags are pushed makes a lot of sense.
+    We"ll be taking a deeper look at moving other parts of service
+    functionality that rely on existing git infrastructure in 2020. For
+    now though, this unblocks the moving of PaaSTA services to our new
+    git infrastructure.
+
+ -- Daniel Grigsby <dgrigsby@10-40-30-18-uswest1cdevc.dev.yelpcorp.com>  Mon, 30 Dec 2019 07:26:18 -0800
+
 paasta-tools (0.91.23) xenial; urgency=medium
 
   * 0.91.23 tagged with 'make release'
