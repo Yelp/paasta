@@ -185,10 +185,10 @@ class TestPruneExcessFulfilledCapacity:
         mock_pool_manager.draining_enabled = True
         mock_pool_manager.prune_excess_fulfilled_capacity(100)
         assert mock_pool_manager.draining_client.submit_instance_for_draining.call_args_list == [
-            mock.call(mock_nodes_to_prune['sfr-1'][0].instance, sender=AWSResourceGroup),
-            mock.call(mock_nodes_to_prune['sfr-3'][0].instance, sender=AWSResourceGroup),
-            mock.call(mock_nodes_to_prune['sfr-3'][1].instance, sender=AWSResourceGroup),
-            mock.call(mock_nodes_to_prune['sfr-3'][2].instance, sender=AWSResourceGroup),
+            mock.call(mock_nodes_to_prune['sfr-1'][0].instance, sender=AWSResourceGroup, scheduler='mesos'),
+            mock.call(mock_nodes_to_prune['sfr-3'][0].instance, sender=AWSResourceGroup, scheduler='mesos'),
+            mock.call(mock_nodes_to_prune['sfr-3'][1].instance, sender=AWSResourceGroup, scheduler='mesos'),
+            mock.call(mock_nodes_to_prune['sfr-3'][2].instance, sender=AWSResourceGroup, scheduler='mesos'),
         ]
 
     def test_terminate_immediately(self, mock_pool_manager):
