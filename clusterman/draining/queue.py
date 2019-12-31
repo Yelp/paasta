@@ -255,13 +255,9 @@ class DrainingClient():
         host_to_process = self.get_host_to_drain()
         if host_to_process and host_to_process.instance_id not in self.draining_host_ttl_cache:
             self.draining_host_ttl_cache[host_to_process.instance_id] = arrow.now().shift(seconds=DRAIN_CACHE_SECONDS)
-            # if hosts do not have hostname it means they are likely not in mesos and don't need draining
-            # so instead we send them to terminate straight away
-            if not host_to_process.hostname:
-                logger.info(f'Host to submit for termination immediately: {host_to_process}')
-                self.submit_host_for_termination(host_to_process, delay=0)
-            else:
-                logger.info(f'Host to drain and submit for termination: {host_to_process}')
+
+            if host_to_process.scheduler == 'mesos':
+                logger.info(f'Mesos host to drain and submit for termination: {host_to_process}')
                 try:
                     drain(
                         mesos_operator_client,
@@ -273,6 +269,12 @@ class DrainingClient():
                     logger.error(f'Failed to drain {host_to_process.hostname} continuing to terminate anyway: {e}')
                 finally:
                     self.submit_host_for_termination(host_to_process)
+            elif host_to_process.scheduler == 'kubernetes':
+                logger.info(f'Kubernetes host to drain and submit for termination: {host_to_process}')
+                self.submit_host_for_termination(host_to_process, delay=0)
+            else:
+                logger.info(f'Host to submit for termination immediately: {host_to_process}')
+                self.submit_host_for_termination(host_to_process, delay=0)
             self.delete_drain_messages([host_to_process])
         elif host_to_process:
             logger.warning(f'Host: {host_to_process.hostname} already being processed, skipping...')
