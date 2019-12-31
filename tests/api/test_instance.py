@@ -427,18 +427,13 @@ def test_marathon_smartstack_status(
     }
 
 
+@mock.patch("paasta_tools.api.views.instance.match_backends_and_pods", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.get_backends", autospec=True)
 @mock.patch(
-    "paasta_tools.api.views.instance.pik.match_backends_and_pods", autospec=True
+    "paasta_tools.api.views.instance.KubeSmartstackReplicationChecker", autospec=True
 )
 @mock.patch(
-    "paasta_tools.api.views.instance.pik.smartstack_tools.get_backends", autospec=True
-)
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.KubeSmartstackReplicationChecker",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.kubernetes_tools.get_all_nodes", autospec=True
+    "paasta_tools.api.views.instance.kubernetes_tools.get_all_nodes", autospec=True
 )
 @mock.patch(
     "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
@@ -479,16 +474,14 @@ def test_kubernetes_smartstack_status(
         branch_dict=None,
     )
     mock_service_namespace_config = ServiceNamespaceConfig()
-    mock_settings = mock.Mock()
 
-    smartstack_status = instance.pik.smartstack_status(
-        service="fake_service",
-        instance="fake_instance",
-        job_config=mock_job_config,
-        service_namespace_config=mock_service_namespace_config,
+    smartstack_status = instance.kubernetes_smartstack_status(
+        "fake_service",
+        "fake_instance",
+        mock_job_config,
+        mock_service_namespace_config,
         pods=[mock_pod],
         should_return_individual_backends=True,
-        settings=mock_settings,
     )
     assert smartstack_status == {
         "registration": "fake_service.fake_instance",
@@ -965,15 +958,14 @@ def test_tron_instance_status(
     assert response["tron"]["action_stderr"] == "fake_stderr"
 
 
-@mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.kubernetes_job_status", autospec=True)
 @mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
 @mock.patch(
     "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
 )
 @mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
 @mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
+    "paasta_tools.api.views.instance.LONG_RUNNING_INSTANCE_TYPE_HANDLERS", autospec=True
 )
 def test_kubernetes_instance_status_bounce_method(
     mock_long_running_instance_type_handlers,
@@ -983,6 +975,7 @@ def test_kubernetes_instance_status_bounce_method(
     mock_kubernetes_job_status,
 ):
     settings.kubernetes_client = True
+    st = {}
     svc = "fake-svc"
     inst = "fake-inst"
 
@@ -991,26 +984,18 @@ def test_kubernetes_instance_status_bounce_method(
         return_value=mock.Mock(loader=mock.Mock(return_value=mock_job_config))
     )
 
-    actual = instance.pik.kubernetes_status(
-        service=svc,
-        instance=inst,
-        instance_type="kubernetes",
-        verbose=0,
-        include_smartstack=False,
-        settings=settings,
-    )
+    actual = instance.kubernetes_instance_status(st, svc, inst, 0, False, "kubernetes")
     assert actual["bounce_method"] == mock_job_config.get_bounce_method()
 
 
-@mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.kubernetes_job_status", autospec=True)
 @mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
 @mock.patch(
     "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
 )
 @mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
 @mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
+    "paasta_tools.api.views.instance.LONG_RUNNING_INSTANCE_TYPE_HANDLERS", autospec=True
 )
 def test_kubernetes_instance_status_evicted_nodes(
     mock_long_running_instance_type_handlers,
@@ -1023,15 +1008,8 @@ def test_kubernetes_instance_status_evicted_nodes(
     mock_pod_2 = mock.Mock()
     mock_pods_for_service_instance.return_value = [mock_pod_1, mock_pod_2]
 
-    mock_settings = mock.Mock(cluster="kubernetes")
-
-    instance_status = instance.pik.kubernetes_status(
-        service="fake-svc",
-        instance="fake-inst",
-        instance_type="kubernetes",
-        verbose=0,
-        include_smartstack=False,
-        settings=mock_settings,
+    instance_status = instance.kubernetes_instance_status(
+        {}, "fake-svc", "fake-inst", 0, False, "kubernetes"
     )
     assert instance_status["evicted_count"] == 1
 

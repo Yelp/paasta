@@ -55,7 +55,6 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
-from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
@@ -812,7 +811,7 @@ def print_flink_status(
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
-    config_sha = metadata.labels.get(paasta_prefixed("config_sha"))
+    config_sha = metadata.labels.get("paasta.yelp.com/config_sha")
     if config_sha is None:
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
@@ -826,7 +825,7 @@ def print_flink_status(
         )
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
-    dashboard_url = metadata.annotations.get(paasta_prefixed("dashboard_url"))
+    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
 
     if status.state != "running":
