@@ -216,12 +216,7 @@ def create_mesos_executor(
     """ Create a Mesos executor specific to our cluster """
     MesosExecutor = processor.executor_cls("mesos_task")
 
-    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(
-        cluster=cluster
-    )
-    mesos_address = "{}:{}".format(
-        mesos_tools.find_mesos_leader(cluster_fqdn), mesos_tools.MESOS_MASTER_PORT
-    )
+    mesos_address = mesos_tools.find_mesos_leader(cluster)
 
     return MesosExecutor(
         role=role,
