@@ -22,7 +22,6 @@ env:
   - TOXENV=general_itests
   - TOXENV=paasta_itests
   - TOXENV=example_cluster
-  - TOXENV=example_cluster_k8s
   - MAKE_TARGET=itest_trusty
   - MAKE_TARGET=itest_xenial
   - MAKE_TARGET=itest_bionic
