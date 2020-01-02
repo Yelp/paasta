@@ -1,3 +1,12 @@
+paasta-tools (0.92.0) xenial; urgency=medium
+
+  * 0.92.0 tagged with 'make release'
+    Commit: Merge pull request #2601 from Yelp/drmorr/TRON-
+    1369/spark_on_tron  Use the service configuration library to set up
+    Spark on Tron
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 02 Jan 2020 12:46:03 -0800
+
 paasta-tools (0.91.24) xenial; urgency=medium
 
   * 0.91.24 tagged with 'make release'
