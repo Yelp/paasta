@@ -283,7 +283,7 @@ def edit_soa_configs(filename, instance, cpu, mem):
 def create_jira_ticket(serv, creds, description):
     creds = creds.split(":")
     options = {"server": "https://jira.yelpcorp.com"}
-    jira_cli = JIRA(options=options, basic_auth=(creds[0], creds[1]))
+    jira_cli = JIRA(options=options, basic_auth=(creds[0], creds[1]))  # noqa: F821
     jira_ticket = {}
     # Sometimes a project has required fields we can't predict
     try:
@@ -409,7 +409,7 @@ def main(argv=None):
         if not args.jira_creds:
             raise ValueError("No JIRA creds specified")
         # Only import the jira module if we need too
-        from jira.client import JIRA
+        from jira.client import JIRA  # noqa: F401
 
     report = get_report_from_splunk(args.splunk_creds, args.csv_report)
 
