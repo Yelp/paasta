@@ -26,3 +26,6 @@ fake_service_uno/
 paasta_itests/mesos-cli.json
 paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/bintray.json
+
+.activate.sh
+.deactivate.sh

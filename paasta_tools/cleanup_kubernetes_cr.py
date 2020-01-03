@@ -30,7 +30,6 @@ from paasta_tools.kubernetes_tools import delete_custom_resource
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
-from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
@@ -89,7 +88,7 @@ def cleanup_all_custom_resources(
     cluster_crds = {
         crd.spec.names.kind
         for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector=paasta_prefixed("service")
+            label_selector="paasta.yelp.com/service"
         ).items
     }
     log.debug(f"CRDs found: {cluster_crds}")

@@ -6,9 +6,7 @@ import socket
 import sys
 import time
 
-import boto3
 from boto3.exceptions import Boto3Error
-from botocore.session import Session
 from ruamel.yaml import YAML
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -19,11 +17,15 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.mesos_tools import find_mesos_leader
-from paasta_tools.mesos_tools import MESOS_MASTER_PORT
+from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
+from paasta_tools.spark_tools import get_aws_credentials
+from paasta_tools.spark_tools import get_default_event_log_dir
+from paasta_tools.spark_tools import load_mesos_secret_for_spark
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -35,14 +37,10 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 
-AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
-DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 DEFAULT_AWS_REGION = "us-west-2"
-DEFAULT_SERVICE = "spark"
 DEFAULT_SPARK_WORK_DIR = "/spark_driver"
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
-DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
@@ -112,7 +110,7 @@ def add_subparser(subparsers):
         "-s",
         "--service",
         help="The name of the service from which the Spark image is built.",
-        default=DEFAULT_SERVICE,
+        default=DEFAULT_SPARK_SERVICE,
     ).completer = lazy_choices_completer(list_services)
 
     list_parser.add_argument(
@@ -352,36 +350,6 @@ def get_smart_paasta_instance_name(args):
         return f"{args.instance}_{get_username()}_{how_submitted}"
 
 
-def get_default_event_log_dir(access_key, secret_key):
-    if access_key is None:
-        log.warning(
-            "Since no AWS credentials were provided, spark event logging "
-            "will be disabled"
-        )
-        return None
-
-    with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
-        spark_run_conf = YAML().load(fp.read())
-    try:
-        account_id = (
-            boto3.client(
-                "sts", aws_access_key_id=access_key, aws_secret_access_key=secret_key
-            )
-            .get_caller_identity()
-            .get("Account")
-        )
-    except Exception as e:
-        log.warning("Failed to identify account ID, error: {}".format(str(e)))
-        return None
-
-    for conf in spark_run_conf["environments"].values():
-        if account_id == conf["account_id"]:
-            default_event_log_dir = conf["default_event_log_dir"]
-            paasta_print(f"default event logging at: {default_event_log_dir}")
-            return default_event_log_dir
-    return None
-
-
 def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
     spark_env = {}
 
@@ -422,52 +390,6 @@ def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
     return spark_env
 
 
-def get_aws_credentials(args):
-    if args.no_aws_credentials:
-        return None, None
-    elif args.aws_credentials_yaml:
-        return load_aws_credentials_from_yaml(args.aws_credentials_yaml)
-    elif args.service != DEFAULT_SERVICE:
-        service_credentials_path = get_service_aws_credentials_path(args.service)
-        if os.path.exists(service_credentials_path):
-            return load_aws_credentials_from_yaml(service_credentials_path)
-        else:
-            paasta_print(
-                PaastaColors.yellow(
-                    "Did not find service AWS credentials at %s.  Falling back to "
-                    "user credentials." % (service_credentials_path)
-                )
-            )
-
-    creds = Session(profile=args.aws_profile).get_credentials()
-    return creds.access_key, creds.secret_key
-
-
-def get_service_aws_credentials_path(service_name):
-    service_yaml = "%s.yaml" % service_name
-    return os.path.join(AWS_CREDENTIALS_DIR, service_yaml)
-
-
-def load_aws_credentials_from_yaml(yaml_file_path):
-    with open(yaml_file_path, "r") as yaml_file:
-        try:
-            credentials_yaml = YAML().load(yaml_file.read())
-        except Exception as e:
-            paasta_print(
-                PaastaColors.red(
-                    "Encountered %s when trying to parse AWS credentials yaml %s. "
-                    "Suppressing further output to avoid leaking credentials."
-                    % (type(e), yaml_file_path)
-                )
-            )
-            sys.exit(1)
-
-        return (
-            credentials_yaml["aws_access_key_id"],
-            credentials_yaml["aws_secret_access_key"],
-        )
-
-
 def get_spark_config(
     args,
     spark_app_name,
@@ -490,16 +412,15 @@ def get_spark_config(
         "spark.mesos.executor.docker.forcePullImage": "true",
     }
 
-    default_event_log_dir = get_default_event_log_dir(access_key, secret_key)
+    default_event_log_dir = get_default_event_log_dir(
+        access_key=access_key, secret_key=secret_key
+    )
     if default_event_log_dir is not None:
         user_args["spark.eventLog.enabled"] = "true"
         user_args["spark.eventLog.dir"] = default_event_log_dir
 
     # Spark options managed by PaaSTA
-    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(
-        cluster=args.cluster
-    )
-    mesos_address = "{}:{}".format(find_mesos_leader(cluster_fqdn), MESOS_MASTER_PORT)
+    mesos_address = find_mesos_leader(args.cluster)
     paasta_instance = get_smart_paasta_instance_name(args)
     non_user_args = {
         "spark.master": "mesos://%s" % mesos_address,
@@ -512,7 +433,7 @@ def get_spark_config(
         "spark.mesos.executor.docker.volumes": ",".join(volumes),
         "spark.mesos.executor.docker.image": docker_img,
         "spark.mesos.principal": "spark",
-        "spark.mesos.secret": _load_mesos_secret(),
+        "spark.mesos.secret": load_mesos_secret_for_spark(),
     }
 
     if not args.build and not args.image:
@@ -585,18 +506,6 @@ def get_spark_config(
     )
 
     return dict(non_user_args, **user_args)
-
-
-def _load_mesos_secret():
-    try:
-        with open(DEFAULT_SPARK_MESOS_SECRET_FILE, "r") as f:
-            return f.read()
-    except IOError:
-        paasta_print(
-            "Cannot load mesos secret from %s" % DEFAULT_SPARK_MESOS_SECRET_FILE,
-            file=sys.stderr,
-        )
-        sys.exit(1)
 
 
 def create_spark_config_str(spark_config_dict, is_mrjob):
@@ -699,7 +608,7 @@ def parse_constraints_string(constraints_string):
 
 def run_docker_container(
     container_name, volumes, environment, docker_img, docker_cmd, dry_run, nvidia
-):
+) -> int:
     docker_run_args = dict(
         container_name=container_name,
         volumes=volumes,
@@ -719,8 +628,11 @@ def run_docker_container(
 
 
 def configure_and_run_docker_container(
-    args, docker_img, instance_config, system_paasta_config
-):
+    args: argparse.Namespace,
+    docker_img: str,
+    instance_config: InstanceConfig,
+    system_paasta_config: SystemPaastaConfig,
+) -> int:
     volumes = list()
     for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
         if os.path.exists(volume["hostPath"]):
@@ -745,7 +657,12 @@ def configure_and_run_docker_container(
     if "jupyter" not in original_docker_cmd:
         spark_app_name = container_name
 
-    access_key, secret_key = get_aws_credentials(args)
+    access_key, secret_key = get_aws_credentials(
+        service=args.service,
+        no_aws_credentials=args.no_aws_credentials,
+        aws_credentials_yaml=args.aws_credentials_yaml,
+        profile_name=args.aws_profile,
+    )
     spark_config_dict = get_spark_config(
         args=args,
         spark_app_name=spark_app_name,

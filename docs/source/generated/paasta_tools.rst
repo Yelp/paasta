@@ -91,6 +91,7 @@ Submodules
    paasta_tools.setup_tron_namespace
    paasta_tools.slack
    paasta_tools.smartstack_tools
+   paasta_tools.spark_tools
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.tron_tools
    paasta_tools.utils

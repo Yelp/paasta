@@ -31,7 +31,6 @@ from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -101,7 +100,7 @@ def setup_kube_crd(
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector=paasta_prefixed("service")
+        label_selector="paasta.yelp.com/service"
     )
 
     success = True
@@ -117,7 +116,7 @@ def setup_kube_crd(
         if "labels" not in metadata:
             metadata["labels"] = {}
         metadata["labels"]["yelp.com/paasta_service"] = service
-        metadata["labels"][paasta_prefixed("service")] = service
+        metadata["labels"]["paasta.yelp.com/service"] = service
         desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get("apiVersion"),
             kind=crd_config.get("kind"),

@@ -145,15 +145,19 @@ def is_mesos_leader(hostname: str = MY_HOSTNAME) -> bool:
     return get_mesos_leader() == hostname
 
 
-def find_mesos_leader(master):
+def find_mesos_leader(cluster):
     """ Find the leader with redirect given one mesos master.
     """
+    master = (
+        load_system_paasta_config().get_cluster_fqdn_format().format(cluster=cluster)
+    )
     if master is None:
         raise ValueError("Mesos master is required to find leader")
 
     url = f"http://{master}:{MESOS_MASTER_PORT}/redirect"
     response = requests.get(url)
-    return urlparse(response.url).hostname
+    hostname = urlparse(response.url).hostname
+    return f"{hostname}:{MESOS_MASTER_PORT}"
 
 
 async def get_current_tasks(job_id: str) -> List[Task]:

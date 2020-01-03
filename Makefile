@@ -24,11 +24,14 @@ endif
 
 .PHONY: all docs test itest k8s_itests
 
+dev: .paasta/bin/activate
+	.paasta/bin/tox -i $(PIP_INDEX_URL)
+
 docs: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e docs
 
 test: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL)
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e test
 
 .tox/py36-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
@@ -60,13 +63,13 @@ release:
 	make -C yelp_package release
 
 clean:
-	rm -rf ./dist
-	make -C yelp_package clean
-	rm -rf docs/build
-	find . -name '*.pyc' -delete
-	find . -name '__pycache__' -delete
-	rm -rf .tox
-	rm -rf .paasta
+	-rm -rf ./dist
+	-make -C yelp_package clean
+	-rm -rf docs/build
+	-find . -name '*.pyc' -delete
+	-find . -name '__pycache__' -delete
+	-rm -rf .tox
+	-rm -rf .paasta
 
 yelpy: ## Installs the yelp-internal packages into the default tox environment
 	.tox/py36-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt -r ./extra-linux-requirements.txt
