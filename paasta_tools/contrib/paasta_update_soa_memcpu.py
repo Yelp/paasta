@@ -2,6 +2,7 @@
 import argparse
 import contextlib
 import json
+import logging
 import os
 import subprocess
 import tempfile
@@ -9,10 +10,10 @@ import time
 
 import requests
 import ruamel.yaml as yaml
-import logging
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
+
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
@@ -77,34 +78,28 @@ def parse_args(argv):
         required=False,
     )
     parser.add_argument(
-        "-v",
-        "--verbose",
-        help="Debug mode.",
-        action="store_true",
-        dest="verbose",
+        "-v", "--verbose", help="Debug mode.", action="store_true", dest="verbose",
     )
 
     return parser.parse_args(argv)
+
+
+def tempdir():
+    tmp = tempfile.TemporaryDirectory(prefix="repo", dir="/nail/tmp")
+    log.info(f"Created temp directory: {tmp.name}")
+    return tmp
 
 
 @contextlib.contextmanager
 def cwd(path):
     pwd = os.getcwd()
     os.chdir(path)
-    log.debug("Switching from directory {} to {}".format(pwd, path))
+    log.debug(f"Switching from directory {pwd} to {path}")
     try:
         yield
     finally:
-        log.debug("Switching back from directory {} to {}".format(path, pwd))
+        log.debug(f"Switching back from directory {path} to {pwd}")
         os.chdir(pwd)
-
-
-@contextlib.contextmanager
-def in_tempdir():
-    with tempfile.TemporaryDirectory(prefix="repo", dir="/nail/tmp") as tmp:
-        log.info("Created temp directory: {}".format(tmp))
-        with cwd(tmp):
-            yield
 
 
 def get_report_from_splunk(creds, filename):
@@ -128,12 +123,13 @@ def get_report_from_splunk(creds, filename):
     creds = creds.split(":")
     resp = requests.post(url, data=data, auth=(creds[0], creds[1]))
     resp_text = resp.text.split("\n")
+    log.info("Found {} services to rightsize".format(len(resp_text) - 1))
     resp_text = [x for x in resp_text if x]
     resp_text = [json.loads(x) for x in resp_text]
     services_to_update = {}
     for d in resp_text:
-        if not "result" in d:
-            raise ValueError("Splunk request didn't return any results: {}".format(resp_text))
+        if "result" not in d:
+            raise ValueError(f"Splunk request didn't return any results: {resp_text}")
         criteria = d["result"]["criteria"]
         serv = {}
         serv["service"] = criteria.split(" ")[0]
@@ -147,17 +143,18 @@ def get_report_from_splunk(creds, filename):
         serv["old_cpus"] = d["result"].get("current_cpus")
         serv["mem"] = d["result"].get("suggested_mem")
         serv["old_mem"] = d["result"].get("current_mem")
-        services_to_update[criteria]=serv
+        services_to_update[criteria] = serv
 
     return services_to_update
 
 
-def clone(target_dir):
+def clone_in(target_dir):
     remote = "git@sysgit.yelpcorp.com:yelpsoa-configs"
     subprocess.check_call(("git", "clone", remote, target_dir))
 
 
 def create_branch(branch_name):
+    subprocess.check_call(("git", "checkout", "master"))
     subprocess.check_call(("git", "checkout", "-b", branch_name))
 
 
@@ -194,6 +191,7 @@ def commit(filename, serv):
     message = "Updating {} for {}provisioned cpu from {} to {} cpus".format(
         filename, serv["state"], serv["old_cpus"], serv["cpus"]
     )
+    log.debug(f"Commit {filename} with the following message: {message}")
     subprocess.check_call(("git", "add", filename))
     subprocess.check_call(("git", "commit", "-n", "-m", message))
 
@@ -234,10 +232,10 @@ def get_reviewers(filename):
     return recent_authors
 
 
-def review(filename, summary, description, publish_reviews):
+def review(filename, summary, description, publish_review):
     all_reviewers = get_reviewers(filename).union(get_reviewers_in_group("right-sizer"))
     reviewers_arg = " ".join(all_reviewers)
-    publish_arg = "-p" if publish_reviews is True else " "
+    publish_arg = "-p" if publish_review is True else "-d"
     subprocess.check_call(
         (
             "review-branch",
@@ -254,12 +252,12 @@ def review(filename, summary, description, publish_reviews):
 
 def edit_soa_configs(filename, instance, cpu, mem):
     if not os.path.exists(filename):
-        filename=filename.replace("marathon", "kubernetes")
+        filename = filename.replace("marathon", "kubernetes")
     if os.path.islink(filename):
-        real_filename=os.path.realpath(filename)
+        real_filename = os.path.realpath(filename)
         os.remove(filename)
     else:
-        real_filename=filename
+        real_filename = filename
     try:
         with open(real_filename, "r") as fi:
             yams = fi.read()
@@ -277,9 +275,9 @@ def edit_soa_configs(filename, instance, cpu, mem):
         with open(filename, "w") as fi:
             fi.write(out)
     except FileNotFoundError:
-        log.warning("Could not find {}".format(filename))
+        log.exception(f"Could not find {filename}")
     except KeyError:
-        log.warning("Error in {}".format(filename))
+        log.exception(f"Error in {filename}")
 
 
 def create_jira_ticket(serv, creds, description):
@@ -351,57 +349,59 @@ def generate_ticket_content(serv):
         service_param=_get_dashboard_qs_param("paasta_service", serv["service"]),
         instance_param=_get_dashboard_qs_param("paasta_instance", serv["instance"]),
     )
-    summary = f"Rightsizing {serv["service"]}.{serv["instance"]} in {serv["cluster"]} to make it not have {provisioned_state}-provisioned cpu"  # noqa: E501
+    summary = f"Rightsizing {serv['service']}.{serv['instance']} in {serv['cluster']} to make it not have {provisioned_state}-provisioned cpu"  # noqa: E501
     return (summary, ticket_desc)
 
 
-def bulk_rightsize(report, working_dir, create_code_review, publish_code_review):
-    with cwd(working_dir):
-        branch = "rightsize-bulk-{}".format(int(time.time()))
-        create_branch(branch)
-        filenames=[]
-        for _, serv in report.items():
-            filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
-            filenames.append(filename)
-            cpus=serv.get("cpus", None)
-            mem=serv.get("mem", None)
-            edit_soa_configs(filename, serv["instance"], cpus, mem)
-        if create_code_review:
-            bulk_commit(filenames)
-            bulk_review(filenames, publish_code_review)
+def bulk_rightsize(report, create_code_review, publish_code_review):
+    branch = "rightsize-bulk-{}".format(int(time.time()))
+    create_branch(branch)
+    filenames = []
+    for _, serv in report.items():
+        filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
+        filenames.append(filename)
+        cpus = serv.get("cpus", None)
+        mem = serv.get("mem", None)
+        edit_soa_configs(filename, serv["instance"], cpus, mem)
+    if create_code_review:
+        bulk_commit(filenames)
+        bulk_review(filenames, publish_code_review)
 
 
-def individual_rightsize(report):
-    for serv in cpu_report:
+def individual_rightsize(
+    report, create_tickets, jira_creds, create_review, publish_review
+):
+    for _, serv in report.items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
         summary, ticket_desc = generate_ticket_content(serv)
 
-        if args.ticket:
-            branch = create_jira_ticket(serv, args.jira_creds, ticket_desc)
+        if create_tickets is True:
+            branch = create_jira_ticket(serv, jira_creds, ticket_desc)
         else:
-            branch = "rightsize-{}".format(int(time.time()))
+            branch = "rightsize-{}".format(int(time.time() * 1000))
 
-        with in_tempdir():
-            clone(branch)
-            cpus=serv.get("cpus", None)
-            mem=serv.get("mem", None)
-            edit_soa_configs(filename, serv["instance"], cpus, mem)
-            try:
-                commit(filename, serv)
-                review(filename, summary, ticket_desc, args.publish_reviews)
-            except Exception:
-                log.warning(
-                    (
-                        "\nUnable to push changes to {f}. Check if {f} conforms to"
-                        "yelpsoa-configs yaml rules. No review created. To see the"
-                        "cpu suggestion for this service check {t}."
-                    ).format(f=filename, t=branch)
-                )
-                continue
+        create_branch(branch)
+        cpus = serv.get("cpus", None)
+        mem = serv.get("mem", None)
+        edit_soa_configs(filename, serv["instance"], cpus, mem)
+        try:
+            commit(filename, serv)
+            if create_review:
+                review(filename, summary, ticket_desc, publish_review)
+        except Exception:
+            log.exception(
+                (
+                    "\nUnable to push changes to {f}. Check if {f} conforms to"
+                    "yelpsoa-configs yaml rules. No review created. To see the"
+                    "cpu suggestion for this service check {t}."
+                ).format(f=filename, t=branch)
+            )
+            continue
 
 
 def main(argv=None):
     args = parse_args(argv)
+
     if args.verbose:
         log.setLevel(logging.DEBUG)
 
@@ -413,21 +413,28 @@ def main(argv=None):
 
     report = get_report_from_splunk(args.splunk_creds, args.csv_report)
 
-    if args.bulk:
-        log.info("Running in bulk mode")
-        working_dir = args.YELPSOA_DIR
-        if working_dir is not None:
-            log.info("Using provided yelpsoa dir: {}".format(working_dir))
-            bulk_rightsize(report, working_dir, args.create_reviews, args.publish_reviews)
-        else:
-            with in_tempdir():
-                working_dir="bulk_rightsize"
-                clone(working_dir)
-                create_code_review=True
-                bulk_rightsize(report, working_dir, create_code_review, args.publish_reviews)
+    tmpdir = tempdir()  # Create a tmp dir even if we are not using it
 
-    else:
-        individual_rightsize(report)
+    working_dir = args.YELPSOA_DIR
+    if working_dir is None:
+        # Working in a temporary directory
+        working_dir = os.path.join("rightsizer", tmpdir.name)
+        clone_in(working_dir)
+
+    with cwd(working_dir):
+        if args.bulk:
+            log.info("Running in bulk mode")
+            bulk_rightsize(report, args.create_reviews, args.publish_reviews)
+        else:
+            individual_rightsize(
+                report,
+                args.ticket,
+                args.jira_creds,
+                args.create_reviews,
+                args.publish_reviews,
+            )
+
+    tmpdir.cleanup()  # Cleanup any tmpdire used
 
 
 if __name__ == "__main__":
