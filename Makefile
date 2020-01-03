@@ -22,7 +22,7 @@ else
 	PAASTA_ENV ?= $(shell hostname -f)
 endif
 
-.PHONY: all docs test itest
+.PHONY: all docs test itest k8s_itests
 
 dev: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
@@ -82,3 +82,6 @@ help:
 .PHONY: install-hooks
 install-hooks:
 	tox -e install-hooks
+
+k8s_itests: .paasta/bin/activate
+	make -C k8s_itests all
