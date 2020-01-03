@@ -25,6 +25,7 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -607,7 +608,7 @@ def parse_constraints_string(constraints_string):
 
 def run_docker_container(
     container_name, volumes, environment, docker_img, docker_cmd, dry_run, nvidia
-):
+) -> int:
     docker_run_args = dict(
         container_name=container_name,
         volumes=volumes,
@@ -627,8 +628,11 @@ def run_docker_container(
 
 
 def configure_and_run_docker_container(
-    args, docker_img, instance_config, system_paasta_config
-):
+    args: argparse.Namespace,
+    docker_img: str,
+    instance_config: InstanceConfig,
+    system_paasta_config: SystemPaastaConfig,
+) -> int:
     volumes = list()
     for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
         if os.path.exists(volume["hostPath"]):
@@ -653,7 +657,12 @@ def configure_and_run_docker_container(
     if "jupyter" not in original_docker_cmd:
         spark_app_name = container_name
 
-    access_key, secret_key = get_aws_credentials(args)
+    access_key, secret_key = get_aws_credentials(
+        service=args.service,
+        no_aws_credentials=args.no_aws_credentials,
+        aws_credentials_yaml=args.aws_credentials_yaml,
+        profile_name=args.aws_profile,
+    )
     spark_config_dict = get_spark_config(
         args=args,
         spark_app_name=spark_app_name,
