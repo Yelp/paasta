@@ -1,3 +1,11 @@
+paasta-tools (0.92.1) xenial; urgency=medium
+
+  * 0.92.1 tagged with 'make release'
+    Commit: Merge pull request #2611 from Yelp/drmorr/TRON-
+    1369/fix_spark_run  fix AWS credentials regression
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 02 Jan 2020 16:44:23 -0800
+
 paasta-tools (0.92.0) xenial; urgency=medium
 
   * 0.92.0 tagged with 'make release'
