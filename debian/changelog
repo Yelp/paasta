@@ -1,3 +1,12 @@
+paasta-tools (0.92.2) xenial; urgency=medium
+
+  * 0.92.2 tagged with 'make release'
+    Commit: Merge pull request #2612 from
+    Yelp/u/mathieu/rightsizer_manual_mem_too
+    Add memory and bulk changes support to rightsizer
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 06 Jan 2020 15:15:49 -0800
+
 paasta-tools (0.92.1) xenial; urgency=medium
 
   * 0.92.1 tagged with 'make release'
