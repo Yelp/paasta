@@ -1253,15 +1253,20 @@ def apply_args_filters(
     ] = defaultdict(lambda: defaultdict(dict))
 
     if args.service:
+        if '.' in args.service:
+            service_name = args.service[:args.service.find('.')]
+            args.instances = args.service[args.service.find('.')+1:]
+        else:
+            service_name = args.service
         try:
-            validate_service_name(args.service, soa_dir=args.soa_dir)
+            validate_service_name(service_name, soa_dir=args.soa_dir)
         except NoSuchService:
             paasta_print(
-                PaastaColors.red(f'The service "{args.service}" does not exist.')
+                PaastaColors.red(f'The service "{service_name}" does not exist.')
             )
             all_services = list_services(soa_dir=args.soa_dir)
             suggestions = difflib.get_close_matches(
-                args.service, all_services, n=5, cutoff=0.5
+                service_name, all_services, n=5, cutoff=0.5
             )
             if suggestions:
                 paasta_print(PaastaColors.red(f"Did you mean any of these?"))
@@ -1269,12 +1274,11 @@ def apply_args_filters(
                     paasta_print(PaastaColors.red(f"  {suggestion}"))
             return clusters_services_instances
 
-        all_services = [args.service]
+        all_services = [service_name]
     else:
         all_services = list_services(soa_dir=args.soa_dir)
-
-    if args.service is None and args.owner is None:
-        args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
+    if service_name is None and args.owner is None:
+        service_name = figure_out_service_name(args, soa_dir=args.soa_dir)
 
     if args.clusters:
         clusters = args.clusters.split(",")
@@ -1286,13 +1290,13 @@ def apply_args_filters(
     else:
         instances = None
 
+    args.service = service_name
     filters = get_filters(args)
 
     i_count = 0
     for service in all_services:
-        if args.service and service != args.service:
+        if service_name and service != service_name:
             continue
-
         for instance_conf in get_instance_configs_for_service(
             service, soa_dir=args.soa_dir, clusters=clusters, instances=instances
         ):
@@ -1303,8 +1307,8 @@ def apply_args_filters(
                 cluster_service[instance_conf.get_instance()] = instance_conf.__class__
                 i_count += 1
 
-    if i_count == 0 and args.service and args.instances:
-        for service in args.service.split(","):
+    if i_count == 0 and service_name and args.instances:
+        for service in service_name.split(","):
             verify_instances(args.instances, service, clusters)
 
     return clusters_services_instances
