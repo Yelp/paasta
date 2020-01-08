@@ -437,8 +437,8 @@
                 },
                 "cfs_period_us": {
                     "type": "integer",
-                    "minimum": "1000",
-                    "maximum": "1000000",
+                    "minimum": 1000,
+                    "maximum": 1000000,
                     "exclusiveMinimum": false
                 },
                 "net": {
