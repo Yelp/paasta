@@ -1276,6 +1276,7 @@ def apply_args_filters(
 
         all_services = [service_name]
     else:
+        service_name = None
         all_services = list_services(soa_dir=args.soa_dir)
     if service_name is None and args.owner is None:
         service_name = figure_out_service_name(args, soa_dir=args.soa_dir)
