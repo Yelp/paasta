@@ -561,18 +561,23 @@ def test_apply_args_filters_clusters_and_instances(
         "instance3": mock_inst3.__class__,
     }
 
+
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
+@pytest.mark.parametrize("service_name", ["fake_service.instance1",
+                                          "fake_service.instance1,instance2",
+                                          "fake_service.instance3"])
 def test_apply_args_filters_shorthand_notation(
     mock_validate_service_name,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
+    service_name
 ):
     args = StatusArgs(
-        service="fake_service.instance1",
+        service=service_name,
         soa_dir="/fake/soa/dir",
         deploy_group=None,
         clusters="cluster1",
@@ -596,80 +601,17 @@ def test_apply_args_filters_shorthand_notation(
     ]
 
     pargs = apply_args_filters(args)
-    assert sorted(pargs.keys()) == ["cluster1"]
-    assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
+    if service_name == 'fake_service.instance1':
+        assert sorted(pargs.keys()) == ["cluster1"]
+        assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
+    elif service_name == 'fake_service.instance1,instance2':
+        assert sorted(pargs.keys()) == ["cluster1"]
+        assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__,
+                                                     "instance2": mock_inst2.__class__}
+    elif service_name == 'fake_service.instance3':
+        assert sorted(pargs.keys()) == []
+        assert pargs["cluster1"]["fake_service"] == {}
 
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-def test_apply_args_filters_multi_shorthand_notation(
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-):
-    args = StatusArgs(
-        service="fake_service.instance1,instance2",
-        soa_dir="/fake/soa/dir",
-        deploy_group=None,
-        clusters="cluster1",
-        instances=None,
-        owner=None,
-        registration=None,
-        verbose=False,
-    )
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_inst1 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance1", "fake_deploy_group"
-    )
-    mock_inst2 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance2", "fake_deploy_group"
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst1,
-        mock_inst2,
-    ]
-
-    pargs = apply_args_filters(args)
-    assert sorted(pargs.keys()) == ["cluster1"]
-    assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__, "instance2": mock_inst2.__class__}
-
-@patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
-@patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
-@patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-def test_apply_args_filters_bad_instance_name_shorthand_notation(
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_list_services,
-    mock_get_instance_configs_for_service,
-):
-    args = StatusArgs(
-        service="fake_service.instance2",
-        soa_dir="/fake/soa/dir",
-        deploy_group=None,
-        clusters="cluster1",
-        instances=None,
-        owner=None,
-        registration=None,
-        verbose=False,
-    )
-    mock_validate_service_name.return_value = None
-    mock_figure_out_service_name.return_value = "fake_service"
-    mock_list_services.return_value = ["fake_service"]
-    mock_inst1 = make_fake_instance_conf(
-        "cluster1", "fake_service", "instance1", "fake_deploy_group"
-    )
-    mock_get_instance_configs_for_service.return_value = [
-        mock_inst1,
-    ]
-
-    pargs = apply_args_filters(args)
-    assert sorted(pargs.keys()) == []
-    assert pargs["cluster1"]["fake_service"] == {}
 
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
