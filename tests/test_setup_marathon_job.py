@@ -701,7 +701,7 @@ class TestSetupMarathonJob:
         ) as mock_kill_old_ids, mock.patch(
             "paasta_tools.setup_marathon_job.yelp_meteorite", autospec=True
         ) as mock_meteorite:
-            setup_marathon_job.do_bounce(
+            setup_marathon_job.do_bounce(  # type: ignore
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
                 config=fake_config,
@@ -793,7 +793,7 @@ class TestSetupMarathonJob:
         ) as mock_create_marathon_app, mock.patch(
             "paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids", autospec=True
         ) as mock_kill_old_ids:
-            setup_marathon_job.do_bounce(
+            setup_marathon_job.do_bounce(  # type: ignore
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
                 config=fake_config,
@@ -919,13 +919,13 @@ class TestSetupMarathonJob:
                 ("", fake_client): {mock.Mock(name="old_app_at_risk_task")}
             }
 
-            all_non_draining_tasks = []
+            all_non_draining_tasks: List[Any] = []
             all_non_draining_tasks += [t for t, c in happy_new_tasks]
             all_non_draining_tasks += old_app_live_happy_tasks[("", fake_client)]
             all_non_draining_tasks += old_app_live_unhappy_tasks[("", fake_client)]
             all_non_draining_tasks += old_app_at_risk_tasks[("", fake_client)]
 
-            setup_marathon_job.do_bounce(
+            setup_marathon_job.do_bounce(  # type: ignore
                 bounce_func=bounce_func,
                 drain_method=mock.Mock(),
                 config=mock.MagicMock(),
@@ -950,7 +950,7 @@ class TestSetupMarathonJob:
             )
 
             kwargs = bounce_func.call_args[1]
-            all_passed_tasks_with_clients = set()
+            all_passed_tasks_with_clients: Set[Any] = set()
             all_passed_tasks_with_clients |= set(kwargs["happy_new_tasks"])
             all_passed_tasks_with_clients |= set(kwargs["old_non_draining_tasks"])
             all_passed_tasks = {t for t, c in all_passed_tasks_with_clients}
@@ -2252,7 +2252,7 @@ class TestGetOldHappyUnhappyDrainingTasks:
             "fake_down_unhappy ('ohai',). Treating task as 'unhappy'."
         )
 
-        def is_draining_func(*args, **kwargs):
+        def is_draining_func2(*args, **kwargs):
             raise Exception
 
         with mock.patch(
@@ -2262,7 +2262,7 @@ class TestGetOldHappyUnhappyDrainingTasks:
         ):
             setup_marathon_job.get_tasks_by_state_for_app(
                 app=fake_app,
-                drain_method=make_fake_drain_method(is_draining_func=is_draining_func),
+                drain_method=make_fake_drain_method(is_draining_func=is_draining_func2),
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},

@@ -228,7 +228,12 @@ class TestLongRunningServiceConfig:
             cluster="fake_cluster",
             instance="fake_instance",
             config_dict={"instances": -10},
-            branch_dict={"desired_state": "start"},
+            branch_dict={
+                "desired_state": "start",
+                "git_sha": "c0ded00d",
+                "docker_image": "docker_image",
+                "force_bounce": None,
+            },
         )
         assert fake_conf.get_instances() == -10
 
@@ -248,7 +253,12 @@ class TestLongRunningServiceConfig:
             cluster="fake_cluster",
             instance="fake_instance",
             config_dict={"instances": False},
-            branch_dict={"desired_state": "start"},
+            branch_dict={
+                "desired_state": "start",
+                "git_sha": "c0debabe",
+                "docker_image": "docker_image",
+                "force_bounce": None,
+            },
         )
         assert fake_conf.get_instances() == 0
 
@@ -309,7 +319,7 @@ def test_get_proxy_port_for_instance():
 
 def test_host_passes_blacklist_passes():
     slave_attributes = {"fake_attribute": "fake_value_1"}
-    blacklist = [["fake_attribute", "No what we have here"], ["foo", "bar"]]
+    blacklist = [("fake_attribute", "No what we have here"), ("foo", "bar")]
     actual = long_running_service_tools.host_passes_blacklist(
         host_attributes=slave_attributes, blacklist=blacklist
     )
@@ -318,7 +328,7 @@ def test_host_passes_blacklist_passes():
 
 def test_host_passes_blacklist_blocks_blacklisted_locations():
     slave_attributes = {"fake_attribute": "fake_value_1"}
-    blacklist = [["fake_attribute", "fake_value_1"]]
+    blacklist = [("fake_attribute", "fake_value_1")]
     actual = long_running_service_tools.host_passes_blacklist(
         host_attributes=slave_attributes, blacklist=blacklist
     )
@@ -330,8 +340,8 @@ def test_host_passes_whitelist():
         "location_type": "fake_location",
         "fake_location_type": "fake_location",
     }
-    fake_whitelist_allow = ["fake_location_type", ["fake_location"]]
-    fake_whitelist_deny = ["anoterfake_location_type", ["anotherfake_location"]]
+    fake_whitelist_allow = ("fake_location_type", ["fake_location"])
+    fake_whitelist_deny = ("anoterfake_location_type", ["anotherfake_location"])
 
     slave_passes = long_running_service_tools.host_passes_whitelist(
         fake_slave_attributes, fake_whitelist_deny

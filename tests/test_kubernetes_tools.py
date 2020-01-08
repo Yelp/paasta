@@ -1,4 +1,6 @@
 import unittest
+from typing import Any
+from typing import Dict
 from typing import Sequence
 
 import mock
@@ -97,6 +99,7 @@ from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -280,11 +283,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             service="kurupt",
             instance="fm",
             cluster="brentford",
-            config_dict={"cmd": ["/bin/echo", "hi"]},
+            config_dict={"cmd": "/bin/echo hi"},
             branch_dict=None,
             soa_dir="/nail/blah",
         )
-        assert deployment.get_cmd() == ["/bin/echo", "hi"]
+        assert deployment.get_cmd() == ["sh", "-c", "/bin/echo hi"]
 
     def test_get_bounce_method(self):
         with mock.patch(
@@ -1039,7 +1042,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 },
             }
         }
-        mock_config = KubernetesDeploymentConfig(
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
             instance="instance",
@@ -1112,7 +1115,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "max_instances": 3,
             "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
         }
-        mock_config = KubernetesDeploymentConfig(
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
             instance="instance",
@@ -1122,7 +1125,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name", "cluster"
         )
-        annotations = {}
+        annotations: Dict[Any, Any] = {}
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
@@ -1153,7 +1156,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "max_instances": 3,
             "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
         }
-        mock_config = KubernetesDeploymentConfig(
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
             instance="instance",
@@ -1197,7 +1200,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "max_instances": 3,
             "autoscaling": {"metrics_provider": "uwsgi", "setpoint": 0.5},
         }
-        mock_config = KubernetesDeploymentConfig(
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
             instance="instance",
@@ -1242,7 +1245,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "max_instances": 3,
             "autoscaling": {"metrics_provider": "bespoke", "setpoint": 0.5},
         }
-        mock_config = KubernetesDeploymentConfig(
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
             instance="instance",
@@ -1346,12 +1349,19 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
 
     def test_get_storage_class_name_wrong(self):
         fake_sc = "fake_sc"
-        pv = kubernetes_tools.PersistentVolume(storage_class_name=fake_sc)
+        pv = PersistentVolume(
+            storage_class_name=fake_sc,
+            size=1000,
+            container_path="/dev/null",
+            mode="rw",
+        )
         assert self.deployment.get_storage_class_name(pv) == "ebs"
 
     def test_get_storage_class_name_correct(self):
         for sc in ["ebs", "ebs-slow"]:
-            pv = kubernetes_tools.PersistentVolume(storage_class_name=sc)
+            pv = PersistentVolume(
+                storage_class_name=sc, size=1000, container_path="/dev/null", mode="rw",
+            )
             assert self.deployment.get_storage_class_name(pv) == sc
 
     def test_get_persistent_volume_name(self):
@@ -1738,7 +1748,7 @@ def test_update_custom_resource():
     mock_client = mock.Mock(
         custom=mock.Mock(get_namespaced_custom_object=mock_get_object)
     )
-    mock_formatted_resource = {"metadata": {}}
+    mock_formatted_resource: Dict[Any, Any] = {"metadata": {}}
     update_custom_resource(
         kube_client=mock_client,
         formatted_resource=mock_formatted_resource,
