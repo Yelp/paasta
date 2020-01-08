@@ -1256,6 +1256,7 @@ def apply_args_filters(
         if '.' in args.service:
             service_name = args.service[:args.service.find('.')]
             args.instances = args.service[args.service.find('.')+1:]
+            args.service = service_name
         else:
             service_name = args.service
         try:
@@ -1291,7 +1292,6 @@ def apply_args_filters(
     else:
         instances = None
 
-    args.service = service_name
     filters = get_filters(args)
 
     i_count = 0
