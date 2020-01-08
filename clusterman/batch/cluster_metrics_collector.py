@@ -48,6 +48,7 @@ from clusterman.config import load_cluster_pool_config
 from clusterman.config import setup_config
 from clusterman.mesos.metrics_generators import ClusterMetric
 from clusterman.mesos.metrics_generators import generate_framework_metadata
+from clusterman.mesos.metrics_generators import generate_kubernetes_metrics
 from clusterman.mesos.metrics_generators import generate_simple_metadata
 from clusterman.mesos.metrics_generators import generate_system_metrics
 from clusterman.util import All
@@ -64,17 +65,18 @@ class MetricToWrite(NamedTuple):
     type: str
     aggregate_meteorite_dims: bool
     pools: Union[Type[All], List['str']]
+    schedulers: List['str']
 
 
 METRICS_TO_WRITE = [
-    MetricToWrite(generate_system_metrics, SYSTEM_METRICS, aggregate_meteorite_dims=False, pools=All),
-    MetricToWrite(generate_simple_metadata, METADATA, aggregate_meteorite_dims=False, pools=All),
-    MetricToWrite(
-        generate_framework_metadata,
-        METADATA,
-        aggregate_meteorite_dims=True,
-        pools=['default'],
-    ),
+    MetricToWrite(generate_kubernetes_metrics, SYSTEM_METRICS,
+                  aggregate_meteorite_dims=False, pools=All, schedulers=['kubernetes']),
+    MetricToWrite(generate_system_metrics, SYSTEM_METRICS, aggregate_meteorite_dims=False,
+                  pools=All, schedulers=['kubernetes', 'mesos']),
+    MetricToWrite(generate_simple_metadata, METADATA, aggregate_meteorite_dims=False,
+                  pools=All, schedulers=['kubernetes', 'mesos']),
+    MetricToWrite(generate_framework_metadata, METADATA, aggregate_meteorite_dims=True,
+                  pools=['default.mesos'], schedulers=['mesos']),
 ]
 
 
@@ -157,7 +159,12 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                 metric_to_write.aggregate_meteorite_dims
             ) as writer:
                 try:
-                    self.write_metrics(writer, metric_to_write.generator, metric_to_write.pools)
+                    self.write_metrics(
+                        writer,
+                        metric_to_write.generator,
+                        metric_to_write.pools,
+                        metric_to_write.schedulers
+                    )
                 except socket.timeout:
                     # Try to get metrics for the rest of the clusters, but make sure we know this failed
                     logger.warn(f'Timed out getting cluster metric data:\n\n{format_exc()}')
@@ -171,8 +178,11 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
         writer,
         metric_generator: Callable[[PoolManager], Generator[ClusterMetric, None, None]],
         pools: Union[Type[All], List[str]],
+        schedulers: List['str']
     ) -> None:
         for pool, manager in self.pool_managers.items():
+            if manager.scheduler not in schedulers:
+                continue
             if pools != All and pool not in cast(List[str], pools):
                 continue
 

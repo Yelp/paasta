@@ -87,7 +87,7 @@ def test_write_metrics(batch):
             {'pool': f'{manager.pool}.{manager.scheduler}'},
         )
 
-    batch.write_metrics(writer, metric_generator, pools=All)
+    batch.write_metrics(writer, metric_generator, pools=All, schedulers=['mesos', 'kubernetes'])
 
     for pool, manager in batch.pool_managers.items():
         assert manager.cluster_connector.get_resource_allocation.call_args_list == [mock.call('cpus')]
@@ -128,7 +128,7 @@ def test_run(mock_sensu, mock_running, mock_time, mock_sleep, batch):
             mock.patch.object(batch, 'write_metrics', autospec=True) as write_metrics, \
             mock.patch('clusterman.batch.cluster_metrics_collector.PoolManager', autospec=True), \
             mock.patch('clusterman.batch.cluster_metrics_collector.logger') as mock_logger:
-        def mock_write_metrics(writer, generator, pools):
+        def mock_write_metrics(writer, generator, pools, schedulers):
             if mock_time.call_count == 4:
                 raise socket.timeout('timed out')
             else:
@@ -147,12 +147,12 @@ def test_run(mock_sensu, mock_running, mock_time, mock_sleep, batch):
         )
 
         expected_write_metrics_calls = [
-            mock.call(writer, metric_to_write.generator, metric_to_write.pools) for metric_to_write in METRICS_TO_WRITE
-        ] * 4
+            mock.call(writer, metric_to_write.generator, metric_to_write.pools, metric_to_write.schedulers)
+            for metric_to_write in METRICS_TO_WRITE] * 4
         assert write_metrics.call_args_list == expected_write_metrics_calls
 
         assert writer_context.__exit__.call_count == len(METRICS_TO_WRITE) * 4
         assert mock_sensu.call_count == 3
-        assert mock_logger.warn.call_count == 3
+        assert mock_logger.warn.call_count == 4
 
     assert mock_sleep.call_args_list == [mock.call(9), mock.call(7), mock.call(2), mock.call(2)]

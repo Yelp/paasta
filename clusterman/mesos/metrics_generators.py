@@ -41,6 +41,9 @@ SIMPLE_METADATA = {
                                            value in manager.get_market_capacities().items()},
     'non_orphan_fulfilled_capacity': lambda manager: manager.non_orphan_fulfilled_capacity,
 }
+KUBERNETES_METRICS = {
+    'unschedulable_pods': lambda manager: manager.cluster_connector.get_unschedulable_pods(),
+}
 
 
 class ClusterMetric(NamedTuple):
@@ -58,6 +61,12 @@ def generate_system_metrics(manager: PoolManager) -> Generator[ClusterMetric, No
 def generate_simple_metadata(manager: PoolManager) -> Generator[ClusterMetric, None, None]:
     dimensions = get_cluster_dimensions(manager.cluster, manager.pool, manager.scheduler)
     for metric_name, value_method in SIMPLE_METADATA.items():
+        yield ClusterMetric(metric_name, value_method(manager), dimensions=dimensions)
+
+
+def generate_kubernetes_metrics(manager: PoolManager) -> Generator[ClusterMetric, None, None]:
+    dimensions = get_cluster_dimensions(manager.cluster, manager.pool, manager.scheduler)
+    for metric_name, value_method in KUBERNETES_METRICS.items():
         yield ClusterMetric(metric_name, value_method(manager), dimensions=dimensions)
 
 
