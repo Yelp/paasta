@@ -159,10 +159,7 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     status_parser.add_argument(
         "service_instance",
         nargs="?",
-        help=(
-            f"A shorthand notation to {verb} instances"
-            f"For example: paasta status example_happyhour.canary,main "
-        ),
+        help=f'A shorthand notation to {verb} instances. For example: "paasta status example_happyhour.canary,main"',
     )
 
 
@@ -1272,7 +1269,7 @@ def apply_args_filters(
             args.service, args.instances = args.service_instance.split(".", 1)
         else:
             paasta_print(
-                PaastaColors.red(f"Use a . to separate service and instance name")
+                PaastaColors.red(f'Use a "." to separate service and instance name')
             )
             return clusters_services_instances
     if args.service:
