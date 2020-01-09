@@ -156,6 +156,11 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     status_parser.add_argument(
         "-r", "--registration", help=f"Only {verb} instances with this registration."
     )
+    status_parser.add_argument(
+        "service_instance",
+        nargs="?",
+        help=f'A shorthand notation to {verb} instances. For example: "paasta status example_happyhour.canary,main"',
+    )
 
 
 def missing_deployments_message(service: str,) -> str:
@@ -1251,7 +1256,22 @@ def apply_args_filters(
     clusters_services_instances: DefaultDict[
         str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
-
+    if args.service_instance:
+        if args.service or args.instances:
+            paasta_print(
+                PaastaColors.red(
+                    f"Invalid command. Do not include optional arguments -s or -i "
+                    f"when using shorthand notation."
+                )
+            )
+            return clusters_services_instances
+        if "." in args.service_instance:
+            args.service, args.instances = args.service_instance.split(".", 1)
+        else:
+            paasta_print(
+                PaastaColors.red(f'Use a "." to separate service and instance name')
+            )
+            return clusters_services_instances
     if args.service:
         try:
             validate_service_name(args.service, soa_dir=args.soa_dir)
@@ -1271,8 +1291,8 @@ def apply_args_filters(
 
         all_services = [args.service]
     else:
+        args.service = None
         all_services = list_services(soa_dir=args.soa_dir)
-
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
 
@@ -1292,7 +1312,6 @@ def apply_args_filters(
     for service in all_services:
         if args.service and service != args.service:
             continue
-
         for instance_conf in get_instance_configs_for_service(
             service, soa_dir=args.soa_dir, clusters=clusters, instances=instances
         ):
