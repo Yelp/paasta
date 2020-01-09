@@ -94,13 +94,8 @@ def add_subparser(subparsers,) -> None:
         "status",
         help="Display the status of a PaaSTA service.",
         description=(
-            "'paasta status' works by SSH'ing to remote PaaSTA masters and "
-            "inspecting the local APIs, and reports on the overal health "
-            "of a service."
-        ),
-        epilog=(
-            "Note: This command requires SSH and sudo privileges on the remote PaaSTA "
-            "masters."
+            "'paasta status' queries the PaaSTA API in order to report "
+            "on the overall health of a service."
         ),
     )
     status_parser.add_argument(
