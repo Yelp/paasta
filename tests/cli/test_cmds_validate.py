@@ -14,7 +14,6 @@
 import os
 
 import mock
-import pytest
 from mock import patch
 
 from paasta_tools.cli.cmds.validate import check_service_path
@@ -520,36 +519,6 @@ test_job:
     assert not validate_schema("unused_service_path.yaml", "tron")
     output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
-
-
-@patch("paasta_tools.cli.cmds.validate.validate_schema", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True)
-@patch("os.listdir", autospec=True)
-@pytest.mark.parametrize(
-    "schema_valid,config_msgs,expected_return",
-    [(False, [], False), (True, ["something wrong"], False), (True, [], True)],
-)
-def test_validate_tron_with_tron_dir(
-    mock_ls,
-    mock_validate_tron_config,
-    mock_validate_schema,
-    capsys,
-    schema_valid,
-    config_msgs,
-    expected_return,
-):
-    mock_ls.return_value = ["foo.yaml"]
-    mock_validate_schema.return_value = schema_valid
-    mock_validate_tron_config.return_value = config_msgs
-
-    assert validate_tron("soa/tron/dev") == expected_return
-    mock_ls.assert_called_once_with("soa/tron/dev")
-    mock_validate_schema.assert_called_once_with("soa/tron/dev/foo.yaml", "tron")
-    mock_validate_tron_config.assert_called_once_with("foo", "dev", "soa")
-
-    output, _ = capsys.readouterr()
-    for error in config_msgs:
-        assert error in output
 
 
 @patch("paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True)
