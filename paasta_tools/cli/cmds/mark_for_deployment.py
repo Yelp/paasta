@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+import datetime
 import getpass
 import logging
 import math
@@ -34,6 +35,7 @@ from typing import Iterator
 from typing import Mapping
 from typing import Optional
 
+import humanize
 import progressbar
 from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
@@ -577,7 +579,61 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 )
             )
             log.debug("triggering mfd_succeeded")
+            if self.block:
+                self.schedule_paasta_status_reminder()
             self.trigger("mfd_succeeded")
+
+    def schedule_paasta_status_reminder(self):
+        timeout_percentage_before_reminding = 75
+
+        def waiting_on_to_status(waiting_on):
+            if waiting_on is None:
+                return [
+                    f"`paasta status --service {self.service} --{self.deploy_group}` -vv"
+                ]
+            commands = []
+            for cluster, queue in waiting_on.items():
+                queue_length = len(queue)
+                if queue_length == 0:
+                    continue
+                else:
+                    instances = [q.get_instance() for q in queue]
+                    commands.append(
+                        f"`paasta status --service {self.service} --cluster {cluster} --instance {','.join(instances)} -vv`"
+                    )
+            return commands
+
+        def times_up():
+            try:
+                if self.state == "deploying":
+                    human_max_deploy_time = humanize.naturaldelta(
+                        datetime.timedelta(seconds=self.timeout)
+                    )
+                    status_commands = "\n".join(
+                        waiting_on_to_status(self.progress.waiting_on)
+                    )
+
+                    self.notify_users(
+                        (
+                            f"It has been {timeout_percentage_before_reminding}% of the maximum deploy time ({human_max_deploy_time}), "
+                            "it probably should have finished by now. Is it stuck?\n\n"
+                            "Try running this command to see the status of the deploy:\n"
+                            f"{status_commands}"
+                        )
+                    )
+            except Exception as e:
+                log.error(
+                    "Non-fatal exception encountered when processing the status reminder:"
+                )
+                log.error(e)
+
+        def schedule_callback():
+            """Unfortunately, call_at is not threadsafe, and there's no call_at_threadsafe, so we need to schedule the
+            call to call_at with call_soon_threadsafe."""
+            time_to_notify = self.timeout * (timeout_percentage_before_reminding / 100)
+            self.timer_handle = self.event_loop.call_later(time_to_notify, times_up)
+
+        self.event_loop.call_soon_threadsafe(schedule_callback)
 
     def states(self) -> Collection[str]:
         return [
