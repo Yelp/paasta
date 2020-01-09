@@ -1,6 +1,8 @@
 import logging
 import os
+import socket
 import sys
+from typing import Mapping
 from typing import Optional
 from typing import Tuple
 
@@ -9,6 +11,7 @@ from botocore.session import Session
 from ruamel.yaml import YAML
 from typing_extensions import TypedDict
 
+from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
@@ -16,6 +19,7 @@ AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
 DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
 DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 DEFAULT_SPARK_SERVICE = "spark"
+clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 log = logging.getLogger(__name__)
 
 
@@ -115,3 +119,55 @@ def load_mesos_secret_for_spark():
             file=sys.stderr,
         )
         raise e
+
+
+def _calculate_memory_per_executor(spark_memory_string, memory_overhead):
+    # expected to be in format "dg" where d is an integer
+    base_memory_per_executor = 1024 * int(spark_memory_string[:-1])
+
+    # by default, spark adds an overhead of 10% of the executor memory, with
+    # a minimum of 384mb
+    if memory_overhead is None:
+        memory_overhead = max(384, int(0.1 * base_memory_per_executor))
+    else:
+        memory_overhead = int(memory_overhead)
+
+    return base_memory_per_executor + memory_overhead
+
+
+def get_spark_resource_requirements(
+    spark_config_dict: Mapping[str, str], webui_url: str,
+) -> Mapping[str, int]:
+    if not clusterman_metrics:
+        return {}
+    num_executors = int(spark_config_dict["spark.cores.max"]) / int(
+        spark_config_dict["spark.executor.cores"]
+    )
+    memory_per_executor = _calculate_memory_per_executor(
+        spark_config_dict["spark.executor.memory"],
+        spark_config_dict.get("spark.mesos.executor.memoryOverhead"),
+    )
+
+    desired_resources = {
+        "cpus": int(spark_config_dict["spark.cores.max"]),
+        "mem": memory_per_executor * num_executors,
+        "disk": memory_per_executor
+        * num_executors,  # rough guess since spark does not collect this information
+    }
+    dimensions = {
+        "framework_name": spark_config_dict["spark.app.name"],
+        "webui_url": webui_url,
+    }
+    qualified_resources = {}
+    for resource, quantity in desired_resources.items():
+        qualified_resources[
+            clusterman_metrics.generate_key_with_dimensions(
+                f"requested_{resource}", dimensions
+            )
+        ] = desired_resources[resource]
+
+    return qualified_resources
+
+
+def get_webui_url(port: int) -> str:
+    return f"http://{socket.getfqdn()}:{port}"

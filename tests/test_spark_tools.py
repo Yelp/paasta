@@ -6,6 +6,7 @@ from paasta_tools.spark_tools import _load_aws_credentials_from_yaml
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
+from paasta_tools.spark_tools import get_spark_resource_requirements
 
 
 def test_load_aws_credentials_from_yaml(tmpdir):
@@ -140,3 +141,39 @@ class TestStuff:
             )
             == expected_dir
         )
+
+
+def test_get_spark_resource_requirements(tmpdir):
+    spark_config_dict = {
+        "spark.executor.cores": "2",
+        "spark.cores.max": "4",
+        "spark.executor.memory": "4g",
+        "spark.mesos.executor.memoryOverhead": "555",
+        "spark.app.name": "paasta_spark_run_johndoe_2_3",
+        "spark.mesos.constraints": "pool:cool-pool\\;other:value",
+    }
+
+    clusterman_yaml_file_path = tmpdir.join("fake_clusterman.yaml")
+    expected_memory_request = (4 * 1024 + 555) * 2
+    metric_key_template = "requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp"
+    with mock.patch(
+        "paasta_tools.spark_tools.get_clusterman_metrics", autospec=True
+    ), mock.patch(
+        "paasta_tools.spark_tools.clusterman_metrics", autospec=True
+    ) as mock_clusterman_metrics, mock.patch(
+        "paasta_tools.spark_tools.CLUSTERMAN_YAML_FILE_PATH",
+        clusterman_yaml_file_path,
+        autospec=None,  # we're replacing this name, so we can't autospec
+    ):
+        mock_clusterman_metrics.generate_key_with_dimensions.side_effect = lambda name, dims: (
+            f'{name}|framework_name={dims["framework_name"]},webui_url={dims["webui_url"]}'
+        )
+        resources = get_spark_resource_requirements(
+            spark_config_dict, "http://spark.yelp"
+        )
+
+    assert resources == {
+        metric_key_template.format(resource="cpus"): 4,
+        metric_key_template.format(resource="mem"): expected_memory_request,
+        metric_key_template.format(resource="disk"): expected_memory_request,
+    }

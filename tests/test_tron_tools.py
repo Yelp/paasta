@@ -77,12 +77,16 @@ class TestTronActionConfig:
             "paasta_tools.tron_tools.get_default_event_log_dir", autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.stringify_spark_env", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.get_spark_resource_requirements",
+            autospec=True,
+            return_value={"cpus": 1900, "mem": "42"},
         ):
             env = action_config.get_env()
         if executor == "spark":
-            assert env["SPARK_OPTS"] is not None
+            assert all([env["SPARK_OPTS"], env["CLUSTERMAN_RESOURCES"]])
         else:
-            assert env.get("SPARK_OPTS") is None
+            assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
     def test_get_executor_default(self, action_config):
         assert action_config.get_executor() is None
