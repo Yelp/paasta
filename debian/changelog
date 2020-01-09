@@ -1,3 +1,12 @@
+paasta-tools (0.93.0) xenial; urgency=medium
+
+  * 0.93.0 tagged with 'make release'
+    Commit: Merge pull request #2615 from Yelp/PAASTA-
+    8764_enocht_paasta_status_support  Paasta status support shorthand
+    notation
+
+ -- Enoch Tang <enocht@yelp.com>  Thu, 09 Jan 2020 10:15:52 -0800
+
 paasta-tools (0.92.2) xenial; urgency=medium
 
   * 0.92.2 tagged with 'make release'
