@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from collections import namedtuple
 from typing import Any
 from typing import Dict
 from typing import Set
@@ -119,6 +118,7 @@ def test_status_arg_service_not_found(
     args.instances = None
     args.deploy_group = None
     args.registration = None
+    args.service_instance = None
 
     # Fail if exit(1) does not get called
     with pytest.raises(SystemExit) as sys_exit:
@@ -198,6 +198,7 @@ def test_status_pending_pipeline_build_message(
     args.owner = None
     args.soa_dir = utils.DEFAULT_SOA_DIR
     args.registration = None
+    args.service_instance = None
 
     paasta_status(args)
     output, _ = capfd.readouterr()
@@ -297,6 +298,7 @@ def test_status_calls_sergeants(
     args.deploy_group = None
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
+    args.service_instance = None
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -331,9 +333,19 @@ def test_report_invalid_whitelist_values_with_whitelists():
     assert "bogus1" in actual
 
 
-
 class StatusArgs:
-    def __init__(self, service, soa_dir, clusters, instances, deploy_group, owner, registration, verbose):
+    def __init__(
+        self,
+        service,
+        soa_dir,
+        clusters,
+        instances,
+        deploy_group,
+        owner,
+        registration,
+        verbose,
+        service_instance=None,
+    ):
         self.service = service
         self.soa_dir = soa_dir
         self.clusters = clusters
@@ -342,6 +354,7 @@ class StatusArgs:
         self.owner = owner
         self.registration = registration
         self.verbose = verbose
+        self.service_instance = service_instance
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -365,6 +378,7 @@ def test_apply_args_filters_clusters_and_instances_clusters_instances_deploy_gro
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_list_clusters.return_value = ["cluster1", "cluster2"]
     mock_validate_service_name.return_value = None
@@ -411,6 +425,7 @@ def test_apply_args_filters_clusters_uses_deploy_group_when_no_clusters_and_inst
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_list_clusters.return_value = ["cluster1", "cluster2"]
     mock_validate_service_name.return_value = None
@@ -457,6 +472,7 @@ def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_grou
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_figure_out_service_name.return_value = "fake_service"
     mock_list_services.return_value = ["fake_service"]
@@ -496,6 +512,7 @@ def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_gro
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_list_clusters.return_value = ["cluster1", "cluster2"]
     mock_figure_out_service_name.return_value = "fake_service"
@@ -535,6 +552,7 @@ def test_apply_args_filters_clusters_and_instances(
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
@@ -566,18 +584,23 @@ def test_apply_args_filters_clusters_and_instances(
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.status.validate_service_name", autospec=True)
-@pytest.mark.parametrize("service_name", ["fake_service.instance1",
-                                          "fake_service.instance1,instance2",
-                                          "fake_service.instance3"])
+@pytest.mark.parametrize(
+    "service_instance_name",
+    [
+        "fake_service.instance1",
+        "fake_service.instance1,instance2",
+        "fake_service.instance3",
+    ],
+)
 def test_apply_args_filters_shorthand_notation(
     mock_validate_service_name,
     mock_figure_out_service_name,
     mock_list_services,
     mock_get_instance_configs_for_service,
-    service_name
+    service_instance_name,
 ):
     args = StatusArgs(
-        service=service_name,
+        service=None,
         soa_dir="/fake/soa/dir",
         deploy_group=None,
         clusters="cluster1",
@@ -585,6 +608,7 @@ def test_apply_args_filters_shorthand_notation(
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=service_instance_name,
     )
     mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
@@ -601,14 +625,16 @@ def test_apply_args_filters_shorthand_notation(
     ]
 
     pargs = apply_args_filters(args)
-    if service_name == 'fake_service.instance1':
+    if service_instance_name == "fake_service.instance1":
         assert sorted(pargs.keys()) == ["cluster1"]
         assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__}
-    elif service_name == 'fake_service.instance1,instance2':
+    elif service_instance_name == "fake_service.instance1,instance2":
         assert sorted(pargs.keys()) == ["cluster1"]
-        assert pargs["cluster1"]["fake_service"] == {"instance1": mock_inst1.__class__,
-                                                     "instance2": mock_inst2.__class__}
-    elif service_name == 'fake_service.instance3':
+        assert pargs["cluster1"]["fake_service"] == {
+            "instance1": mock_inst1.__class__,
+            "instance2": mock_inst2.__class__,
+        }
+    elif service_instance_name == "fake_service.instance3":
         assert sorted(pargs.keys()) == []
         assert pargs["cluster1"]["fake_service"] == {}
 
@@ -624,6 +650,7 @@ def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_list_services.return_value = ["fake_service"]
     pargs = apply_args_filters(args)
@@ -632,6 +659,7 @@ def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
     assert 'The service "fake-service" does not exist.' in output
     assert "Did you mean any of these?" in output
     assert "  fake_service" in output
+
 
 @patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -655,6 +683,7 @@ def test_apply_args_filters_no_instances_found(
         owner=None,
         registration=None,
         verbose=False,
+        service_instance=None,
     )
     mock_validate_service_name.return_value = None
     mock_figure_out_service_name.return_value = "fake_service"
@@ -782,6 +811,7 @@ def test_status_with_owner(
     args.owner = "faketeam"
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
+    args.service_instance = None
     return_value = paasta_status(args)
 
     assert return_value == 0
@@ -853,6 +883,7 @@ def test_status_with_registration(
         registration="main,not_main",
         soa_dir="/fake/soa/dir",
         verbose=False,
+        service_instance=None,
     )
     return_value = paasta_status(args)
 

@@ -156,6 +156,14 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     status_parser.add_argument(
         "-r", "--registration", help=f"Only {verb} instances with this registration."
     )
+    status_parser.add_argument(
+        "service_instance",
+        nargs="?",
+        help=(
+            f"A shorthand notation to {verb} instances"
+            f"For example: paasta status example_happyhour.canary,main "
+        ),
+    )
 
 
 def missing_deployments_message(service: str,) -> str:
@@ -1251,10 +1259,23 @@ def apply_args_filters(
     clusters_services_instances: DefaultDict[
         str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
-
+    if args.service_instance:
+        if args.service or args.instances:
+            paasta_print(
+                PaastaColors.red(
+                    f"Invalid command. Do not include optional arguments -s or -i "
+                    f"when using shorthand notation."
+                )
+            )
+            return clusters_services_instances
+        if "." in args.service_instance:
+            args.service, args.instances = args.service_instance.split(".", 1)
+        else:
+            paasta_print(
+                PaastaColors.red(f"Use a . to separate service and instance name")
+            )
+            return clusters_services_instances
     if args.service:
-        if '.' in args.service:
-            args.service, args.instances = args.service.split('.', 1)
         try:
             validate_service_name(args.service, soa_dir=args.soa_dir)
         except NoSuchService:
