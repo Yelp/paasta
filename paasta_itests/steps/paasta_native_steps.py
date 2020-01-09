@@ -85,6 +85,7 @@ def start_paasta_native_framework(
     system_paasta_config.config_dict[
         "docker_registry"
     ] = "docker.io"  # so busybox runs.
+    system_paasta_config.config_dict["push_registries"] = ["docker.io"]
 
     if scheduler == "paasta_native":
         scheduler_class = NativeScheduler

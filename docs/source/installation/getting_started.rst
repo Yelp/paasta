@@ -75,17 +75,23 @@ Docker and a Docker Registry
 ----------------------------
 
 PaaSTA uses `Docker <https://www.docker.com/>`_ to build and distribute code for each service. PaaSTA
-assumes that a single registry is available and that the associated components
+assumes that a single registry is available for pulling, that multiple registries can be used
+for pulling the images, and that the associated components
 (Docker commands, unix users, mesos slaves, etc) have the correct credentials
 to use it.
 
-The docker registry needs to be defined in a config file in ``/etc/paasta/``.
+The docker registries need to be defined in a config file in ``/etc/paasta/``.
 PaaSTA merges all json files in ``/etc/paasta/`` together, so the actual
 filename is irrelevant, but here would be an example
-``/etc/paasta/docker.json``::
+``/etc/paasta/docker-registry.json``::
 
   {
     "docker_registry": "private-docker-registry.example.com:443"
+    "push_registries": [
+      "first-docker-registry.example.com:443",
+      "second-docker-registry.example.com:443",
+      "third-docker-registry.example.com:443"
+    ]
   }
 
 There are many registries available to use, or you can

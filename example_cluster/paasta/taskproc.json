@@ -3,7 +3,7 @@
         "role": "*",
         "principal": "slave",
         "secret": "secret1",
-        "dynamodb_endpoint": "http://dynamodb:8000",
+        "dynamodb_endpoint": "http://dynamodb:8880",
         "boto_credential_file": "/etc/boto/fake_creds",
         "aws_region": "foo"
     }

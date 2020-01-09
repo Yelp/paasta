@@ -90,7 +90,7 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock_
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry",
+    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registries",
     autospec=True,
 )
 @patch(
@@ -101,21 +101,21 @@ def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock_
 def test_paasta_mark_for_deployment_when_verify_image_fails(
     mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
-    mock_is_docker_image_already_in_registry,
+    mock_is_docker_image_already_in_registries,
     mock_validate_service_name,
 ):
     class FakeArgsRollback(FakeArgs):
         verify_image = True
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
-    mock_is_docker_image_already_in_registry.return_value = False
+    mock_is_docker_image_already_in_registries.return_value = False
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
 
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry",
+    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registries",
     autospec=True,
 )
 @patch(
@@ -126,17 +126,17 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
 def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
-    mock_is_docker_image_already_in_registry,
+    mock_is_docker_image_already_in_registries,
     mock_validate_service_name,
 ):
     class FakeArgsRollback(FakeArgs):
         verify_image = True
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
-    mock_is_docker_image_already_in_registry.return_value = False
+    mock_is_docker_image_already_in_registries.return_value = False
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
-    mock_is_docker_image_already_in_registry.assert_called_with(
+    mock_is_docker_image_already_in_registries.assert_called_with(
         "test_service", "fake_soa_dir", "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
     )
 

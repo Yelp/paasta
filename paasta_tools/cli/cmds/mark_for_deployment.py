@@ -44,7 +44,7 @@ from sticht.slo import SLOSlackDeploymentProcess
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
-from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
+from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registries
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -373,9 +373,10 @@ def paasta_mark_for_deployment(args):
         paasta_print("Continuing anyway.")
 
     if args.verify_image:
-        if not is_docker_image_already_in_registry(service, args.soa_dir, commit):
+        if not is_docker_image_already_in_registries(service, args.soa_dir, commit):
             raise ValueError(
-                "Failed to find image in the registry for the following sha %s" % commit
+                "Failed to find image in the registries for the following sha %s"
+                % commit
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)

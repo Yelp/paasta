@@ -11,4 +11,4 @@ paasta mark-for-deployment \
   --deploy-group testcluster.everything \
   --service hello-world
 
-python /work/paasta_tools/contrib/create_dynamodb_table.py http://dynamodb:8000 taskproc_events_testcluster
+python /work/paasta_tools/contrib/create_dynamodb_table.py http://dynamodb:8880 taskproc_events_testcluster

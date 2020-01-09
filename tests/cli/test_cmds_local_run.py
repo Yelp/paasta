@@ -505,7 +505,7 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_run_docker_container.return_value = 0
 
     fake_instance_config = mock.MagicMock(InstanceConfig)
-    fake_instance_config.get_docker_registry.return_value = "fake_registry"
+    fake_instance_config.get_push_docker_registries.return_value = ["fake_registry"]
     fake_instance_config.get_docker_image.return_value = "fake_image"
     fake_instance_config.get_docker_url.return_value = "fake_registry/fake_image"
     mock_get_instance_config.return_value = fake_instance_config
@@ -645,6 +645,10 @@ def test_configure_and_run_docker_container_respects_docker_sha(system_paasta_co
     ) as mock_run_docker_container, mock.patch(
         "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
     ) as mock_get_default_interactive_config, mock.patch(
+        "paasta_tools.utils.get_service_push_docker_registries",
+        autospec=True,
+        return_value=["fake_registry"],
+    ), mock.patch(
         "paasta_tools.utils.get_service_docker_registry",
         autospec=True,
         return_value="fake_registry",

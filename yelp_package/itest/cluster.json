@@ -1,5 +1,8 @@
 {
     "cluster": "cluster",
     "zookeeper": "something",
-    "docker_registry": "docker-dev.yelpcorp.com"
+    "docker_registry": "docker-dev.yelpcorp.com:443",
+    "push_registries": [
+        "docker-dev.yelpcorp.com:443"
+    ]
 }

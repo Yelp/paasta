@@ -116,9 +116,9 @@ PaaSTA CLI contains subcommands to help with this (these same subcommands are
 used by Jenkins)
 
 * Docker images MUST be tagged
-   * You’ll tag your image at build time with something like docker build -t "$DOCKER_TAG" .
+   * You’ll tag your image at build time with something like docker build -t "$DOCKER_TAG".
    * Use ``paasta itest`` to do this
-* Docker images MUST be uploaded to the docker-paasta registry
+* Docker images MUST be uploaded to the docker-paasta[-[pnw/nova/norcal]] registries
    * Use ``paasta push-to-registry``
 * To deploy a service to a particular Marathon instance, the service’s git repo MUST have a specially-named branch
    * Use ``paasta mark-for-deployment`` for the format of the git ref

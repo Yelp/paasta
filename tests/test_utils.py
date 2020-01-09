@@ -485,8 +485,10 @@ def test_get_service_registry_dne():
             return_value=fake_system_config,
             autospec=True,
         ):
-            actual = utils.get_service_docker_registry("fake_service", "fake_soa_dir")
-            assert actual == fake_registry
+            actual = utils.get_service_push_docker_registries(
+                "fake_service", "fake_soa_dir"
+            )
+            assert "".join(actual) == fake_registry
 
 
 def test_SystemPaastaConfig_get_sensu_host_default():
@@ -680,35 +682,35 @@ def test_decompose_job_id_with_hashes():
     assert actual == expected
 
 
-def test_build_docker_image_name():
+def test_build_docker_image_names():
     registry_url = "fake_registry"
     upstream_job_name = "a_really_neat_service"
-    expected = f"{registry_url}/services-{upstream_job_name}"
+    expected = [f"{registry_url}/services-{upstream_job_name}"]
     with mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
+        "paasta_tools.utils.get_service_push_docker_registries",
         autospec=True,
-        return_value=registry_url,
+        return_value=[registry_url],
     ):
-        actual = utils.build_docker_image_name(upstream_job_name)
+        actual = utils.build_docker_image_names(upstream_job_name)
     assert actual == expected
 
 
-@mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_build_docker_tag(mock_build_docker_image_name):
+@mock.patch("paasta_tools.utils.build_docker_image_names", autospec=True)
+def test_build_docker_tags(mock_build_docker_image_names):
     upstream_job_name = "foo"
     upstream_git_commit = "bar"
-    mock_build_docker_image_name.return_value = "fake-registry/services-foo"
-    expected = f"fake-registry/services-foo:paasta-{upstream_git_commit}"
-    actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
+    mock_build_docker_image_names.return_value = ["fake-registry/services-foo"]
+    expected = [f"fake-registry/services-foo:paasta-{upstream_git_commit}"]
+    actual = utils.build_docker_tags(upstream_job_name, upstream_git_commit)
     assert actual == expected
 
 
-@mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_check_docker_image_false(mock_build_docker_image_name):
-    mock_build_docker_image_name.return_value = "fake-registry/services-foo"
+@mock.patch("paasta_tools.utils.build_docker_image_names", autospec=True)
+def test_check_docker_images_false(mock_build_docker_image_names):
+    mock_build_docker_image_names.return_value = ["fake-registry/services-foo"]
     fake_app = "fake_app"
     fake_commit = "fake_commit"
-    docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+    docker_tag = utils.build_docker_tags(fake_app, fake_commit)[0]
     with mock.patch(
         "paasta_tools.utils.get_docker_client", autospec=True
     ) as mock_docker:
@@ -723,15 +725,15 @@ def test_check_docker_image_false(mock_build_docker_image_name):
                 "Size": 0,
             }
         ]
-        assert utils.check_docker_image("test_service", "tag2") is False
+        assert utils.check_docker_images("test_service", "tag2") is False
 
 
-@mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_check_docker_image_true(mock_build_docker_image_name):
+@mock.patch("paasta_tools.utils.build_docker_image_names", autospec=True)
+def test_check_docker_images_true(mock_build_docker_image_names):
     fake_app = "fake_app"
     fake_commit = "fake_commit"
-    mock_build_docker_image_name.return_value = "fake-registry/services-foo"
-    docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+    mock_build_docker_image_names.return_value = ["fake-registry/services-foo"]
+    docker_tag = utils.build_docker_tags(fake_app, fake_commit)[0]
     with mock.patch(
         "paasta_tools.utils.get_docker_client", autospec=True
     ) as mock_docker:
@@ -746,7 +748,7 @@ def test_check_docker_image_true(mock_build_docker_image_name):
                 "Size": 0,
             }
         ]
-        assert utils.check_docker_image(fake_app, fake_commit) is True
+        assert utils.check_docker_images(fake_app, fake_commit) is True
 
 
 def test_remove_ansi_escape_sequences():
@@ -1606,9 +1608,9 @@ class TestInstanceConfig:
 
     def test_get_env_with_config(self):
         with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry",
+            "paasta_tools.utils.get_service_push_docker_registries",
             autospec=True,
-            return_value="something",
+            return_value=["something"],
         ):
             fake_conf = utils.InstanceConfig(
                 service="",
@@ -1882,6 +1884,10 @@ class TestInstanceConfig:
         )
 
         with mock.patch(
+            "paasta_tools.utils.InstanceConfig.get_push_docker_registries",
+            autospec=True,
+            return_value=[fake_registry],
+        ), mock.patch(
             "paasta_tools.utils.InstanceConfig.get_docker_registry",
             autospec=True,
             return_value=fake_registry,

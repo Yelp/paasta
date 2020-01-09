@@ -18,6 +18,7 @@ echo "exit" | /start.sh
 cd /tmp
 git clone root@git:dockercloud-hello-world
 cd dockercloud-hello-world
+cat /etc/hosts
 /work/example_cluster/tests/start-new-service.sh
 try_and_retry /work/example_cluster/tests/check-metastatus.sh
 try_and_retry /work/example_cluster/tests/check-status.sh

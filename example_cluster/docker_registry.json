@@ -1,3 +1,6 @@
 {
-    "docker_registry": "localhost:5000"
+    "docker_registry": "localhost:5550",
+    "push_registries": [
+        "localhost:5550"
+    ]
 }

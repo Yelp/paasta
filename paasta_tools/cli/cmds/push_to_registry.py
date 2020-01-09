@@ -22,7 +22,6 @@ import os
 
 import requests
 from requests.exceptions import RequestException
-from requests.exceptions import SSLError
 
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_full_git_sha
@@ -31,9 +30,9 @@ from paasta_tools.generate_deployments_for_service import build_docker_image_nam
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
-from paasta_tools.utils import build_docker_tag
+from paasta_tools.utils import build_docker_tags
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_service_docker_registry
+from paasta_tools.utils import get_service_push_docker_registries
 from paasta_tools.utils import paasta_print
 
 
@@ -79,25 +78,34 @@ def add_subparser(subparsers):
         "-f",
         "--force",
         help=(
-            "Do not check if the image is already in the PaaSTA docker registry. "
+            "Do not check if the image is already in the PaaSTA docker registries. "
             "Push it anyway."
         ),
         action="store_true",
     )
+    list_parser.add_argument(
+        "-r",
+        "--registries",
+        nargs="*",
+        help=(
+            "Docker Registry URLs, such as docker-paasta-norcal.yelpcorp.com:443, separated by semicolons."
+            "Restricts the Docker Registry URLs to only a specified list."
+        ),
+    )
     list_parser.set_defaults(command=paasta_push_to_registry)
 
 
-def build_command(upstream_job_name, upstream_git_commit):
+def build_commands(upstream_job_name, upstream_git_commit, registries=None):
     # This is kinda dumb since we just cleaned the 'services-' off of the
     # service so we could validate it, but the Docker image will have the full
     # name with 'services-' so add it back.
-    tag = build_docker_tag(upstream_job_name, upstream_git_commit)
-    cmd = f"docker push {tag}"
-    return cmd
+    tags = build_docker_tags(upstream_job_name, upstream_git_commit, registries)
+    cmds = [f"docker push {tag}" for tag in tags]
+    return cmds
 
 
 def paasta_push_to_registry(args):
-    """Upload a docker image to a registry"""
+    """Upload a docker image to registries"""
     service = args.service
     if service and service.startswith("services-"):
         service = service.split("services-", 1)[1]
@@ -105,46 +113,69 @@ def paasta_push_to_registry(args):
 
     if not args.force:
         try:
-            if is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
-                paasta_print(
-                    "The docker image is already in the PaaSTA docker registry. "
-                    "I'm NOT overriding the existing image. "
-                    "Add --force to override the image in the registry if you are sure what you are doing."
-                )
-                return 0
-        except RequestException as e:
-            registry_uri = get_service_docker_registry(service, args.soa_dir)
+            image_in_registry_or_not = where_does_docker_image_exist_and_does_not(
+                service, args.soa_dir, args.commit, args.registries
+            )
+        except Exception as e:
             paasta_print(
-                "Can not connect to the PaaSTA docker registry '%s' to verify if this image exists.\n"
-                "%s" % (registry_uri, str(e))
+                "Cannot find or connect to the PaaSTA docker registries to verify if the image exists.\n"
+                "%s" % (str(e))
             )
             return 1
 
-    cmd = build_command(service, args.commit)
-    loglines = []
-    returncode, output = _run(
-        cmd,
-        timeout=3600,
-        log=True,
-        component="build",
-        service=service,
-        loglevel="debug",
-    )
-    if returncode != 0:
-        loglines.append("ERROR: Failed to promote image for %s." % args.commit)
-        output = get_jenkins_build_output_url()
-        if output:
-            loglines.append("See output: %s" % output)
+    cmds = build_commands(service, args.commit, args.registries)
+
+    if args.registries:
+        registries = args.registries
     else:
-        loglines.append("Successfully pushed image for %s to registry" % args.commit)
+        registries = get_service_push_docker_registries(service, args.soa_dir)
+
+    resultingcode = 0
+
+    for cmd, registry in zip(cmds, registries):
+        if not args.force and image_in_registry_or_not.get(registry, False):
+            paasta_print(
+                f"The docker image is already in the PaaSTA docker registry {registry}. "
+                "I'm NOT overriding the existing image. "
+                "Add --force and --registries to override the image in the registry if you are sure what you are doing."
+            )
+            continue
+
+        loglines = []
+
+        returncode, output = _run(
+            cmd,
+            timeout=3600,
+            log=True,
+            component="build",
+            service=service,
+            loglevel="debug",
+        )
+
+        if returncode != 0:
+            resultingcode = 1
+            loglines.append(
+                f"ERROR: Failed to promote image for {args.commit} (command: {cmd})."
+            )
+            output = get_jenkins_build_output_url()
+            if output:
+                loglines.append("See output: %s" % output)
+        else:
+            loglines.append(
+                f"Successfully pushed image for {args.commit} to registry (command: {cmd})"
+            )
+
+        for logline in loglines:
+            _log(service=service, line=logline, component="build", level="event")
+
+    if resultingcode == 0:
         _log_audit(
             action="push-to-registry",
             action_details={"commit": args.commit},
             service=service,
         )
-    for logline in loglines:
-        _log(service=service, line=logline, component="build", level="event")
-    return returncode
+
+    return resultingcode
 
 
 def read_docker_registry_creds(registry_uri):
@@ -165,14 +196,22 @@ def read_docker_registry_creds(registry_uri):
     return (None, None)
 
 
-def is_docker_image_already_in_registry(service, soa_dir, sha):
-    """Verifies that docker image exists in the paasta registry.
+def where_does_docker_image_exist_and_does_not(service, soa_dir, sha, registries=None):
+    if registries:
+        registry_uris = registries
+    else:
+        registry_uris = get_service_push_docker_registries(service, soa_dir)
 
-    :param service: name of the service
-    :param sha: git sha
-    :returns: True, False or raises requests.exceptions.RequestException
-    """
-    registry_uri = get_service_docker_registry(service, soa_dir)
+    if not registry_uris:
+        raise Exception("Unable to check image existence - no registry provided")
+
+    return {
+        registry_uri: is_docker_image_already_in_registry(service, sha, registry_uri)
+        for registry_uri in registry_uris
+    }
+
+
+def is_docker_image_already_in_registry(service, sha, registry_uri):
     repository, tag = build_docker_image_name(service, sha).split(":")
 
     creds = read_docker_registry_creds(registry_uri)
@@ -186,7 +225,7 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
                 if creds[0] is None
                 else s.head(url, auth=creds, timeout=30)
             )
-        except SSLError:
+        except RequestException:
             # If no auth creds, fallback to trying http
             if creds[0] is not None:
                 raise
@@ -197,4 +236,17 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
             return True
         elif r.status_code == 404:
             return False  # No Such Repository Error
+
         r.raise_for_status()
+
+
+def is_docker_image_already_in_registries(service, soa_dir, sha):
+    """Verifies that docker image exists in all the paasta registries.
+
+    :param service: name of the service
+    :param sha: git sha
+    :returns: True, False or raises requests.exceptions.RequestException
+    """
+    return all(
+        where_does_docker_image_exist_and_does_not(service, soa_dir, sha).values()
+    )

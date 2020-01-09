@@ -1,3 +1,6 @@
 {
-    "docker_registry": "docker-paasta.yelpcorp.com:443"
+    "docker_registry": "docker-paasta.yelpcorp.com:443",
+    "push_registries": [
+        "docker-paasta.yelpcorp.com:443"
+    ]
 }

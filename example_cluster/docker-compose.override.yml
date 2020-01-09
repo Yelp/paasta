@@ -1,10 +1,10 @@
-version: '2'
+version: "2"
 volumes:
   ssh-data: {}
 services:
   zookeeper:
     # we need to create /mesos-testcluster/autoscaling for deployd to start up correctly...
-    command: "bash -c '/usr/share/zookeeper/bin/zkServer.sh start-foreground & sleep 5 && /usr/share/zookeeper/bin/zkCli.sh create /mesos-testcluster/autoscaling \"\" & while true; do sleep 100; done'"
+    command: 'bash -c ''/usr/share/zookeeper/bin/zkServer.sh start-foreground & sleep 5 && /usr/share/zookeeper/bin/zkCli.sh create /mesos-testcluster/autoscaling "" & while true; do sleep 100; done'''
   mesosbase:
     build: ../yelp_package/dockerfiles/itest/mesos/
   mesosmaster:
@@ -12,7 +12,7 @@ services:
       context: ../
       dockerfile: ./yelp_package/dockerfiles/mesos-paasta/Dockerfile
     ports:
-      - '5050:5050'
+      - "5050:5050"
       - 22
     depends_on:
       - mesosbase
@@ -25,7 +25,7 @@ services:
       - ./example-services:/nail/etc/services:rw
       - /var/run/docker.sock:/var/run/docker.sock
       - ssh-data:/root/.ssh
-    command: '/start.sh'
+    command: "/start.sh"
   mesosslave:
     ports:
       - 5051
@@ -39,7 +39,7 @@ services:
     depends_on:
       - mesosbase
       - zookeeper
-    command: '/start-slave.sh'
+    command: "/start-slave.sh"
   marathon:
     ports:
       - 8080
@@ -63,7 +63,7 @@ services:
       - ./example-services:/nail/etc/services:rw
       - /var/run/docker.sock:/var/run/docker.sock
       - ssh-data:/root/.ssh
-    command: '/start.sh'
+    command: "/start.sh"
     depends_on:
       - mesosmaster
       - itest_xenial
@@ -78,7 +78,7 @@ services:
   registry:
     image: registry:2
     ports:
-      - '5000:5000'
+      - "5550:5000"
   git:
     build: ../yelp_package/dockerfiles/gitremote/
     command: /usr/sbin/sshd -D
@@ -89,11 +89,11 @@ services:
   dynamodb:
     image: deangiberson/aws-dynamodb-local
     ports:
-        - '8000:8000'
+      - "8880:8000"
   paasta_api:
     command: bash -c 'pip install -e /work && while true; do pserve /work/paasta_tools/api/development.ini --reload; echo "RESTARTING API..."; sleep 5; done'
     ports:
-      - '5054:5054'
+      - "5054:5054"
     volumes:
       - ../:/work:rw
       - nail-etc:/nail/etc

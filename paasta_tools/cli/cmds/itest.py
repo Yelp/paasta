@@ -19,8 +19,8 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
-from paasta_tools.utils import build_docker_tag
-from paasta_tools.utils import check_docker_image
+from paasta_tools.utils import build_docker_tags
+from paasta_tools.utils import check_docker_images
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_services
 
@@ -69,22 +69,28 @@ def paasta_itest(args):
     """Build and test a docker image"""
     service = args.service
     soa_dir = args.soa_dir
+
     if service and service.startswith("services-"):
         service = service.split("services-", 1)[1]
+
     validate_service_name(service, soa_dir=soa_dir)
 
-    tag = build_docker_tag(service, args.commit)
+    tags = build_docker_tags(service, args.commit)
+
     run_env = os.environ.copy()
-    run_env["DOCKER_TAG"] = tag
+    run_env["DOCKER_TAG"] = " -t ".join(tags)
     cmd = "make itest"
     loglines = []
 
     _log(
         service=service,
-        line="starting itest for %s." % args.commit,
+        line="starting itest for {} (tags: {}).".format(
+            args.commit, run_env["DOCKER_TAG"]
+        ),
         component="build",
         level="event",
     )
+
     returncode, output = _run(
         cmd,
         env=run_env,
@@ -94,16 +100,19 @@ def paasta_itest(args):
         service=service,
         loglevel="debug",
     )
+
     if returncode != 0:
-        loglines.append("ERROR: itest failed for %s." % args.commit)
+        loglines.append(f"ERROR: itest failed for {args.commit} (tags: {tags}).")
         output = get_jenkins_build_output_url()
         if output:
             loglines.append("See output: %s" % output)
     else:
-        loglines.append("itest passed for %s." % args.commit)
-        if not check_docker_image(service, args.commit):
-            loglines.append("ERROR: itest has not created %s" % tag)
+        loglines.append(f"itest passed for {args.commit} (tag: {tags}).")
+        if not check_docker_images(service, args.commit):
+            loglines.append("ERROR: itest has not created %s" % tags)
             returncode = 1
+
     for logline in loglines:
         _log(service=service, line=logline, component="build", level="event")
+
     return returncode

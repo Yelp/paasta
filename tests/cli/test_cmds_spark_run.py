@@ -290,9 +290,9 @@ class TestConfigureAndRunDockerContainer:
         args.nvidia = False
 
         with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry",
+            "paasta_tools.utils.get_service_push_docker_registries",
             autospec=True,
-            return_value="fake-registry",
+            return_value=["fake-registry"],
         ):
             retcode = configure_and_run_docker_container(
                 args=args,

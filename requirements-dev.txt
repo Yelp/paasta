@@ -15,6 +15,7 @@ isort==4.2.5
 lazy-object-proxy==1.2.1
 mccabe==0.6.1
 mock==2.0.0
+more-itertools==8.0.2
 nodeenv==1.1.4
 path.py==8.1
 pbr==3.1.1

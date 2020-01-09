@@ -350,6 +350,9 @@ class InstanceConfig:
     def job_id(self) -> str:
         return self._job_id
 
+    def get_push_docker_registries(self) -> List[str]:
+        return get_service_push_docker_registries(self.service, self.soa_dir)
+
     def get_docker_registry(self) -> str:
         return get_service_docker_registry(self.service, self.soa_dir)
 
@@ -636,15 +639,23 @@ class InstanceConfig:
             return ""
 
     def get_docker_url(self) -> str:
-        """Compose the docker url.
+        """Compose the docker URL.
         :returns: '<registry_uri>/<docker_image>'
         """
         registry_uri = self.get_docker_registry()
+
+        if not registry_uri:
+            raise NoDockerRegistryError(
+                "Docker URL not available because 'docker_registry' not found"
+            )
+
         docker_image = self.get_docker_image()
+
         if not docker_image:
             raise NoDockerImageError(
-                "Docker url not available because there is no docker_image"
+                "Docker URL not available because 'docker_image' not found"
             )
+
         docker_url = f"{registry_uri}/{docker_image}"
         return docker_url
 
@@ -1151,6 +1162,24 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     return general_config.get("git_url", default_location)
 
 
+def get_service_push_docker_registries(
+    service: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    system_config: Optional["SystemPaastaConfig"] = None,
+) -> List[str]:
+    if service is None:
+        raise NotImplementedError('"None" is not a valid service')
+    service_configuration = service_configuration_lib.read_service_configuration(
+        service, soa_dir
+    )
+    try:
+        return service_configuration["push_registries"]
+    except KeyError:
+        if not system_config:
+            system_config = load_system_paasta_config()
+        return system_config.get_push_docker_registries()
+
+
 def get_service_docker_registry(
     service: str,
     soa_dir: str = DEFAULT_SOA_DIR,
@@ -1166,7 +1195,7 @@ def get_service_docker_registry(
     except KeyError:
         if not system_config:
             system_config = load_system_paasta_config()
-        return system_config.get_system_docker_registry()
+        return system_config.get_docker_registry()
 
 
 class NoSuchLogLevel(Exception):
@@ -1756,6 +1785,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     paasta_native: PaastaNativeConfig
     pki_backend: str
     previous_marathon_servers: List[MarathonConfigDict]
+    push_registries: List[str]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
@@ -1871,16 +1901,30 @@ class SystemPaastaConfig:
             return hosts[len("zk://") :]
         return hosts
 
-    def get_system_docker_registry(self) -> str:
-        """Get the docker_registry defined in this host's cluster config file.
+    def get_push_docker_registries(self) -> List[str]:
+        """Get the 'push_registries' defined in this host's cluster config file.
+        If not present, uses 'docker_registry' as an alternative.
 
-        :returns: The docker_registry specified in the paasta configuration
+        :returns: The 'push_registries' specified in the paasta configuration or
+        the array consisting of 'docker_registry'.
         """
+        try:
+            return self.config_dict["push_registries"]
+        except KeyError:
+            try:
+                return [self.config_dict["docker_registry"]]
+            except KeyError:
+                raise PaastaNotConfiguredError(
+                    "Could not find 'push_registries' (and 'docker_registry') in configuration directory: %s"
+                    % self.directory
+                )
+
+    def get_docker_registry(self) -> str:
         try:
             return self.config_dict["docker_registry"]
         except KeyError:
             raise PaastaNotConfiguredError(
-                "Could not find docker registry in configuration directory: %s"
+                "Could not find 'docker_registry' in configuration directory: %s"
                 % self.directory
             )
 
@@ -2473,48 +2517,75 @@ def decompose_job_id(job_id: str, spacer: str = SPACER) -> Tuple[str, str, str, 
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def build_docker_image_name(service: str) -> str:
-    """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
-    will look for your images.
+def build_docker_image_names(service: str, registries: List[str] = None) -> List[str]:
+    """docker-paasta[-[pnw/norcal/nova]].yelpcorp.com:443 are the URLs
+    for the Docker Registries where PaaSTA will possibly look for your images.
 
     :returns: a sanitized-for-Jenkins (s,/,-,g) version of the
     service's path in git. E.g. For git.yelpcorp.com:services/foo the
     docker image name is docker_registry/services-foo.
     """
-    docker_registry_url = get_service_docker_registry(service)
-    name = f"{docker_registry_url}/services-{service}"
-    return name
+    if registries:
+        docker_registry_urls = registries
+    else:
+        docker_registry_urls = get_service_push_docker_registries(service)
+
+    names = [
+        f"{docker_registry_url}/services-{service}"
+        for docker_registry_url in docker_registry_urls
+    ]
+    return names
 
 
-def build_docker_tag(service: str, upstream_git_commit: str) -> str:
-    """Builds the DOCKER_TAG string
+def build_docker_tags(
+    service: str, upstream_git_commit: str, registries: List[str] = None
+) -> List[str]:
+    """Builds the DOCKER_TAG strings
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
-    tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
-    return tag
+    tags = []
+    for docker_image_name in build_docker_image_names(service, registries):
+        tags.append(f"{docker_image_name}:paasta-{upstream_git_commit}")
+    return tags
 
 
-def check_docker_image(service: str, tag: str) -> bool:
+def check_docker_images(service: str, tag: str) -> bool:
     """Checks whether the given image for :service: with :tag: exists.
 
     :raises: ValueError if more than one docker image with :tag: found.
     :returns: True if there is exactly one matching image found.
     """
     docker_client = get_docker_client()
-    image_name = build_docker_image_name(service)
-    docker_tag = build_docker_tag(service, tag)
-    images = docker_client.images(name=image_name)
-    # image['RepoTags'] may be None
-    # Fixed upstream but only in docker-py 2.
-    # https://github.com/docker/docker-py/issues/1401
-    result = [image for image in images if docker_tag in (image["RepoTags"] or [])]
-    if len(result) > 1:
+
+    image_names = build_docker_image_names(service)
+    docker_tags = build_docker_tags(service, tag)
+
+    if len(image_names) != len(docker_tags):
         raise ValueError(
-            f"More than one docker image found with tag {docker_tag}\n{result}"
+            "Got different number of images and number of their tags (should be the same)"
         )
-    return len(result) == 1
+
+    for i in range(len(image_names)):
+        image_name = image_names[i]
+        docker_tag = docker_tags[i]
+
+        images = docker_client.images(name=image_name)
+        # image['RepoTags'] may be None
+        # Fixed upstream but only in docker-py 2.
+        # https://github.com/docker/docker-py/issues/1401
+        result = [image for image in images if docker_tag in (image["RepoTags"] or [])]
+
+        if len(result) > 1:
+            raise ValueError(
+                f"More than one docker image found with tag {docker_tag}\n{result}"
+            )
+
+        if len(result) != 1:
+            return False
+
+    return True
 
 
 def datetime_from_utc_to_local(utc_datetime: datetime.datetime) -> datetime.datetime:
@@ -2998,6 +3069,10 @@ def format_tag(tag: str) -> str:
 
 
 class NoDockerImageError(Exception):
+    pass
+
+
+class NoDockerRegistryError(Exception):
     pass
 
 
