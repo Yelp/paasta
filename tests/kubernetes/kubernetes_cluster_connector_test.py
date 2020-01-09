@@ -17,6 +17,7 @@ from kubernetes.client import V1Container
 from kubernetes.client import V1NodeStatus
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1Pod
+from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodStatus
 from kubernetes.client import V1ResourceRequirements
@@ -63,6 +64,39 @@ def mock_cluster_connector():
                 ),
             ]
         }
+        mock_cluster_connector._pods = [
+            V1Pod(
+                metadata=V1ObjectMeta(name='pod1'),
+                status=V1PodStatus(phase='Running'),
+                spec=V1PodSpec(
+                    containers=[
+                        V1Container(
+                            name='container1',
+                            resources=V1ResourceRequirements(requests={'cpu': '1.5'})
+                        )
+                    ],
+                    node_selector={'clusterman.com/pool': 'bar'}
+                )
+            ),
+            V1Pod(
+                metadata=V1ObjectMeta(name='pod2'),
+                status=V1PodStatus(
+                    phase='Pending',
+                    conditions=[
+                        V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
+                    ]
+                ),
+                spec=V1PodSpec(
+                    containers=[
+                        V1Container(
+                            name='container2',
+                            resources=V1ResourceRequirements(requests={'cpu': '1.5'})
+                        )
+                    ],
+                    node_selector={'clusterman.com/pool': 'bar'}
+                )
+            )
+        ]
         return mock_cluster_connector
 
 
@@ -83,3 +117,11 @@ def test_allocation(mock_cluster_connector):
 
 def test_total_cpus(mock_cluster_connector):
     assert mock_cluster_connector.get_resource_total('cpus') == 12
+
+
+def test_get_pending_pods(mock_cluster_connector):
+    assert len(mock_cluster_connector._get_pending_pods()) == 1
+
+
+def test_get_unschedulable_pods(mock_cluster_connector):
+    assert mock_cluster_connector.get_unschedulable_pods() == 1

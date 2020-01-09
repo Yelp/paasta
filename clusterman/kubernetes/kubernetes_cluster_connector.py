@@ -50,6 +50,7 @@ class KubernetesClusterConnector(ClusterConnector):
     def reload_state(self) -> None:
         logger.info('Reloading nodes')
         kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
+        self._pods = self._get_all_pods()
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
 
@@ -64,6 +65,22 @@ class KubernetesClusterConnector(ClusterConnector):
             getattr(total_node_resources(node), resource_name)
             for node in self._nodes_by_ip.values()
         )
+
+    def get_unschedulable_pods(self) -> int:
+        unschedulable_pods = []
+        for pod in self._get_pending_pods():
+            is_unschedulable = False
+            for condition in pod.status.conditions:
+                if condition.reason == 'Unschedulable':
+                    is_unschedulable = True
+            if is_unschedulable:
+                unschedulable_pods.append(pod)
+        return len(unschedulable_pods)
+
+    def _get_pending_pods(self) -> List[KubernetesPod]:
+        pool_label_key = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool')
+        node_selector = {pool_label_key: self.pool}
+        return [pod for pod in self._pods if pod.spec.node_selector == node_selector and pod.status.phase == 'Pending']
 
     def _get_agent_metadata(self, node_ip: str) -> AgentMetadata:
         node = self._nodes_by_ip.get(node_ip)
@@ -88,12 +105,16 @@ class KubernetesClusterConnector(ClusterConnector):
         }
 
     def _get_pods_by_ip(self) -> Mapping[str, List[KubernetesPod]]:
-        all_pods = self._core_api.list_pod_for_all_namespaces().items
+        all_pods = self._pods
         pods_by_ip: Mapping[str, List[KubernetesPod]] = defaultdict(list)
         for pod in all_pods:
             if pod.status.phase == 'Running' and pod.status.host_ip in self._nodes_by_ip:
                 pods_by_ip[pod.status.host_ip].append(pod)
         return pods_by_ip
+
+    def _get_all_pods(self):
+        all_pods = self._core_api.list_pod_for_all_namespaces().items
+        return all_pods
 
     def _count_batch_tasks(self, node_ip: str) -> int:
         count = 0
