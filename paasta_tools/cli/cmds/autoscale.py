@@ -82,7 +82,7 @@ def paasta_autoscale(args):
         except HTTPNotFound:
             paasta_print(
                 PaastaColors.red(
-                    f"ERROR: Specified worker is not configured to autoscale."
+                    f"ERROR: No such service or service is not configured to autoscale."
                 )
             )
             return 0
