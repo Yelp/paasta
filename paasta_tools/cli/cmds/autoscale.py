@@ -92,10 +92,10 @@ def paasta_autoscale(args):
                 f"ERROR: '{args.instance}' is not configured to autoscale, "
                 f"so paasta autoscale could not scale it up on demand. "
                 f"If you want to be able to boost this service, please configure autoscaling for the service "
-                f"in its config file by setting min and max instances. Example:"
-                f"\n{args.instance}:"
-                f"\n      min_instances: 5"
-                f"\n      max_instances: 50"
+                f"in its config file by setting min and max instances. Example: \n"
+                f"{args.instance}:\n"
+                f"     min_instances: 5\n"
+                f"     max_instances: 50"
             )
         )
         return 0
