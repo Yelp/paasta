@@ -14,6 +14,8 @@
 # limitations under the License.
 import logging
 
+from bravado.exception import HTTPNotFound
+
 from paasta_tools.api import client
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -22,6 +24,7 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
+from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger(__name__)
@@ -72,9 +75,15 @@ def paasta_autoscale(args):
     else:
         log.debug(f"Setting desired instances to {args.set}.")
         body = {"desired_instances": int(args.set)}
-        res, http = api.autoscaler.update_autoscaler_count(
-            service=service, instance=args.instance, json_body=body
-        ).result()
+        try:
+            res, http = api.autoscaler.update_autoscaler_count(
+                service=service, instance=args.instance, json_body=body
+            ).result()
+        except HTTPNotFound:
+            paasta_print(
+                PaastaColors.red(f"Specified worker is not configured to autoscale.")
+            )
+            return 0
 
         _log_audit(
             action="manual-scale",
