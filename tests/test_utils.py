@@ -26,13 +26,12 @@ import pytest
 from pytest import raises
 
 from paasta_tools import utils
-from paasta_tools.instance import kubernetes as pik
 
 
 def test_instance_types_integrity():
-    for it in pik.INSTANCE_TYPES_K8S:
+    for it in utils.INSTANCE_TYPES_K8S:
         assert it in utils.INSTANCE_TYPES
-    for it in pik.INSTANCE_TYPES_WITH_SET_STATE:
+    for it in utils.INSTANCE_TYPES_WITH_SET_STATE:
         assert it in utils.INSTANCE_TYPES
 
 
@@ -954,7 +953,7 @@ def test_get_service_instance_list_ignores_underscore():
     autospec=True,
 )
 @mock.patch(
-    "paasta_tools.utils.service_configuration_lib._read_yaml_file", autospec=True
+    "paasta_tools.utils.service_configuration_lib.read_yaml_file", autospec=True
 )
 def test_load_tron_yaml_empty(mock_read_file, mock_read_service_info):
     mock_read_file.return_value = {}

@@ -1,0 +1,13 @@
+{
+    "v2": {
+        "deployments": {
+            "<%cluster%>.autoscaling": {
+                "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
+                "git_sha": "a0ec9b362e29123022e5cebb6612aedc58a0889b"
+            }
+        },
+        "controls": {
+            "compute-infra-test-service:<%cluster%>.autoscaling": {}
+        }
+    }
+}

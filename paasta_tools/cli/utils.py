@@ -354,22 +354,24 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
     return True
 
 
-def list_paasta_services():
+def list_paasta_services(soa_dir: str = DEFAULT_SOA_DIR):
     """Returns a sorted list of services that happen to have at
     least one service.instance, which indicates it is on PaaSTA
     """
     the_list = []
-    for service in list_services():
-        if list_all_instances_for_service(service):
+    for service in list_services(soa_dir):
+        if list_all_instances_for_service(service, soa_dir=soa_dir):
             the_list.append(service)
     return the_list
 
 
-def list_service_instances():
+def list_service_instances(soa_dir: str = DEFAULT_SOA_DIR):
     """Returns a sorted list of service<SPACER>instance names"""
     the_list = []
-    for service in list_services():
-        for instance in list_all_instances_for_service(service):
+    for service in list_services(soa_dir):
+        for instance in list_all_instances_for_service(
+            service=service, soa_dir=soa_dir
+        ):
             the_list.append(compose_job_id(service, instance))
     return the_list
 

@@ -292,28 +292,9 @@ def validate_tron(service_path):
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
-    if soa_dir.endswith("/tron"):
-        # Makes it possible to validate files in tron/ rather than service directories
-        # TODO: Clean up after migration to services is complete
-        cluster = service
-        soa_dir = soa_dir[:-5]
-        filenames = [
-            filename
-            for filename in os.listdir(service_path)
-            if filename.endswith(".yaml")
-        ]
-        for filename in filenames:
-            namespace = os.path.splitext(filename)[0]
-            file_path = os.path.join(service_path, filename)
-            if not validate_schema(file_path, "tron"):
-                returncode = False
-            if not validate_tron_namespace(namespace, cluster, soa_dir, tron_dir=True):
-                returncode = False
-    else:
-        # Normal service directory
-        for cluster in list_tron_clusters(service, soa_dir):
-            if not validate_tron_namespace(service, cluster, soa_dir):
-                returncode = False
+    for cluster in list_tron_clusters(service, soa_dir):
+        if not validate_tron_namespace(service, cluster, soa_dir):
+            returncode = False
 
     return returncode
 

@@ -65,6 +65,20 @@
                 "operationId": "metastatus"
             }
         },
+        "/deploy_queue": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Contents of deploy queue",
+                        "schema": {
+                            "$ref": "#/definitions/DeployQueue"
+                        }
+                    }
+                },
+                "summary": "Get deploy queue contents",
+                "operationId": "deploy_queue"
+            }
+        },
         "/service_autoscaler/pause": {
             "get": {
                 "responses": {
@@ -1423,6 +1437,74 @@
                 "exit_code": {
                     "type": "integer",
                     "description": "Exit code from `paasta metastatus` command"
+                }
+            }
+        },
+        "DeployQueue": {
+            "type": "object",
+            "description": "Current state of the deployd queue",
+            "properties": {
+                "available_service_instances": {
+                    "type": "array",
+                    "description": "Service instances that are ready to be acted on by deployd",
+                    "items": {
+                        "$ref": "#/definitions/DeployQueueServiceInstance"
+                    }
+                },
+                "unavailable_service_instances": {
+                    "type": "array",
+                    "description": "Service instances that deployd is waiting to act on",
+                    "items": {
+                        "$ref": "#/definitions/DeployQueueServiceInstance"
+                    }
+                }
+            }
+        },
+        "DeployQueueServiceInstance": {
+            "type": "object",
+            "description": "An instance of a service in the deploy queue",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Name of the service"
+                },
+                "instance": {
+                    "type": "string",
+                    "description": "Name of the instance of the service"
+                },
+                "bounce_by": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Desired timestamp by which the service instance should be bounced"
+                },
+                "wait_until": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Timestamp before which no action should be taken on this service instance"
+                },
+                "enqueue_time": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Timestamp at which the service instance was last added to the queue"
+                },
+                "bounce_start_time": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Timestamp at which service instance was first added to the queue"
+                },
+                "watcher": {
+                    "type": "string",
+                    "description": "The process that enqueued the task"
+                },
+                "failures": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Number of times deployment actions have failed on this service instance"
+                },
+                "processed_count": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Number of times any deployment action has been taken on this service instance"
                 }
             }
         },

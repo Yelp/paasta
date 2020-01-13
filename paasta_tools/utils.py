@@ -127,6 +127,8 @@ INSTANCE_TYPES = (
     "cassandracluster",
     "kafkacluster",
 )
+INSTANCE_TYPES_K8S = {"flink", "cassandracluster", "kafkacluster"}
+INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 
 
 class RollbackTypes(Enum):

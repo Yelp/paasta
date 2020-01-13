@@ -23,14 +23,20 @@ from string import Formatter
 from typing import List
 from typing import Tuple
 
-import service_configuration_lib
 import yaml
+from service_configuration_lib import pick_random_port
+from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import get_mesos_spark_env
+from service_configuration_lib.spark_config import stringify_spark_env
 
 try:
     from yaml.cyaml import CSafeDumper as Dumper
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
+from paasta_tools.spark_tools import get_default_event_log_dir
+from paasta_tools.spark_tools import load_mesos_secret_for_spark
+from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -60,6 +66,7 @@ VALID_MONITORING_KEYS = set(
         pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
+MESOS_EXECUTOR_NAMES = ("paasta", "spark")
 
 
 class TronNotConfigured(Exception):
@@ -189,7 +196,43 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get("deploy_group", None)
 
     def get_cmd(self):
-        return self.config_dict.get("command")
+        command = self.config_dict.get("command")
+        if self.get_executor() == "spark":
+            # Spark expects to be able to write to MESOS_SANDBOX if it is set
+            # but the default value (/mnt/mesos/sandbox) doesn't get mounted in
+            # our Docker containers, so we unset it here.  (Un-setting is fine,
+            # since Spark will just write to /tmp instead).
+            command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + command
+        return command
+
+    def get_env(self):
+        env = super().get_env()
+        spark_env = {}
+        if self.get_executor() == "spark":
+            spark_env = get_mesos_spark_env(
+                spark_app_name="tron_spark_{self.get_service()}_{self.get_instance()}",
+                spark_ui_port=pick_random_port(
+                    f"{self.get_service()}{self.get_instance()}".encode()
+                ),
+                mesos_leader=find_mesos_leader(self.get_cluster()),
+                mesos_secret=load_mesos_secret_for_spark(),
+                paasta_cluster=self.get_cluster(),
+                paasta_pool=self.get_pool(),
+                paasta_service=self.get_service(),
+                paasta_instance=self.get_instance(),
+                docker_img=self.get_docker_url(),
+                volumes=format_volumes(
+                    self.get_volumes(load_system_paasta_config().get_volumes())
+                ),
+                user_spark_opts=self.config_dict.get("spark_args"),
+                event_log_dir=get_default_event_log_dir(
+                    service=self.get_service(),
+                    aws_credentials_yaml=self.config_dict.get("aws_credentials"),
+                ),
+            )
+            env["SPARK_OPTS"] = stringify_spark_env(spark_env)
+
+        return env
 
     def get_cpu_burst_add(self) -> float:
         """ For Tron jobs, we don't let them burst by default, because they
@@ -198,8 +241,7 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get("cpu_burst_add", 0)
 
     def get_executor(self):
-        executor = self.config_dict.get("executor", None)
-        return "mesos" if executor == "paasta" else executor
+        return self.config_dict.get("executor", None)
 
     def get_healthcheck_mode(self, _) -> None:
         return None
@@ -258,7 +300,10 @@ class TronActionConfig(InstanceConfig):
         error_msgs.extend(super().validate())
         # Tron is a little special, because it can *not* have a deploy group
         # But only if an action is running via ssh and not via paasta
-        if self.get_deploy_group() is None and self.get_executor() == "mesos":
+        if (
+            self.get_deploy_group() is None
+            and self.get_executor() in MESOS_EXECUTOR_NAMES
+        ):
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
@@ -482,7 +527,8 @@ def format_tron_action_dict(action_config):
         "on_upstream_rerun": action_config.get_on_upstream_rerun(),
         "trigger_timeout": action_config.get_trigger_timeout(),
     }
-    if executor == "mesos":
+    if executor in MESOS_EXECUTOR_NAMES:
+        result["executor"] = "mesos"
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
@@ -588,9 +634,7 @@ def load_tron_service_config(
 def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
     tronfig_folder = get_tronfig_folder(soa_dir=soa_dir, cluster=cluster)
-    config = service_configuration_lib._read_yaml_file(
-        os.path.join(tronfig_folder, f"MASTER.yaml")
-    )
+    config = read_yaml_file(os.path.join(tronfig_folder, f"MASTER.yaml"))
     master_config = format_master_config(
         config,
         system_paasta_config.get_volumes(),

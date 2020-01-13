@@ -5,6 +5,7 @@ import pytest
 
 from paasta_tools import tron_tools
 from paasta_tools.tron_tools import MASTER_NAMESPACE
+from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
 
@@ -45,64 +46,51 @@ def test_parse_time_variables_parses_shortdate():
 
 
 class TestTronActionConfig:
-    def test_get_job_name(self):
+    @pytest.fixture
+    def action_config(self):
         action_dict = {"name": "print", "command": "echo something"}
-        action_config = tron_tools.TronActionConfig(
+        return tron_tools.TronActionConfig(
             service="my_service",
             instance=tron_tools.compose_instance("cool_job", "print"),
             cluster="fake-cluster",
             config_dict=action_dict,
-            branch_dict={},
+            branch_dict={"docker_image": "foo:latest"},
         )
+
+    def test_action_config(self, action_config):
         assert action_config.get_job_name() == "cool_job"
-
-    def test_get_action_name(self):
-        action_dict = {"name": "sleep", "command": "sleep 10"}
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "sleep"),
-            cluster="fake-cluster",
-            config_dict=action_dict,
-            branch_dict={},
-        )
-        assert action_config.get_action_name() == "sleep"
-
-    def test_get_cluster(self):
-        action_dict = {"name": "do_something", "command": "echo something"}
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
-            cluster="fake-cluster",
-            config_dict=action_dict,
-            branch_dict={},
-        )
+        assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
 
-    def test_get_executor_default(self):
-        action_dict = {"name": "do_something", "command": "echo something"}
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
-            cluster="fake-cluster",
-            config_dict=action_dict,
-            branch_dict={},
-        )
+    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
+    def test_get_env(self, action_config, executor):
+        action_config.config_dict["executor"] = executor
+        with mock.patch(
+            "paasta_tools.tron_tools.get_mesos_spark_env", autospec=True
+        ), mock.patch(
+            "paasta_tools.tron_tools.pick_random_port", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.find_mesos_leader", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_mesos_secret_for_spark", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.get_default_event_log_dir", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.stringify_spark_env", autospec=True,
+        ):
+            env = action_config.get_env()
+        if executor == "spark":
+            assert env["SPARK_OPTS"] is not None
+        else:
+            assert env.get("SPARK_OPTS") is None
+
+    def test_get_executor_default(self, action_config):
         assert action_config.get_executor() is None
 
-    def test_get_executor_paasta(self):
-        action_dict = {
-            "name": "do_something",
-            "command": "echo something",
-            "executor": "paasta",
-        }
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
-            cluster="fake-cluster",
-            config_dict=action_dict,
-            branch_dict={},
-        )
-        assert action_config.get_executor() == "mesos"
+    @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
+    def test_get_executor_paasta(self, executor, action_config):
+        action_config.config_dict["executor"] = executor
+        assert action_config.get_executor() == executor
 
 
 class TestTronJobConfig:

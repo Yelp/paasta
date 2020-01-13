@@ -210,6 +210,17 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
+def trigger_deploys(service):
+    """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
+    service that listens for a service string and then generates a service deployment"""
+    logline = f"Notifying sysgit to generate a deployment for {service}"
+    _log(service=service, line=logline, component="deploy", level="event")
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("sysgit.yelpcorp.com", 5049))
+    client.send(f"{service}\n".encode("utf-8"))
+    client.close()
+
+
 def mark_for_deployment(git_url, deploy_group, service, commit):
     """Mark a docker image for deployment"""
     tag = get_paasta_tag_from_deploy_group(
@@ -226,6 +237,8 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
             remote_git.create_remote_refs(
                 git_url=git_url, ref_mutator=ref_mutator, force=True
             )
+            if "yelpcorp.com" in git_url:
+                trigger_deploys(service)
         except Exception:
             logline = "Failed to mark {} for deployment in deploy group {}! (attempt {}/{})".format(
                 commit, deploy_group, attempt, max_attempts
