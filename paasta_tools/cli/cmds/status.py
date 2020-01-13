@@ -21,6 +21,7 @@ from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
+from enum import Enum
 from itertools import groupby
 from typing import Any
 from typing import Callable
@@ -674,7 +675,7 @@ def format_kubernetes_replicaset_table(replicasets):
 
 
 def get_smartstack_status_human(
-    registration, expected_backends_per_location, locations
+    registration: str, expected_backends_per_location: int, locations: Iterable[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
@@ -695,7 +696,7 @@ def get_smartstack_status_human(
     return output
 
 
-def build_smartstack_backends_table(backends):
+def build_smartstack_backends_table(backends: Iterable[Any]) -> List[Tuple[str, ...]]:
     rows = [("Name", "LastCheck", "LastChange", "Status")]
     for backend in backends:
         if backend.status == "UP":
@@ -730,7 +731,7 @@ def build_smartstack_backends_table(backends):
 
 
 def get_envoy_status_human(
-    registration, expected_backends_per_location, locations
+    registration: str, expected_backends_per_location: int, locations: Iterable[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Envoy: ERROR - {registration} is NOT in Envoy at all!"]
@@ -763,7 +764,7 @@ def get_envoy_status_human(
     return output
 
 
-def build_envoy_backends_table(backends):
+def build_envoy_backends_table(backends: Iterable[Any]) -> List[Tuple[str, ...]]:
     rows = [("Hostname:Port", "Weight", "Status")]
     for backend in backends:
         if backend.eds_health_status == "HEALTHY":
@@ -1461,15 +1462,22 @@ def desired_state_human(desired_state, instances):
         return PaastaColors.red("Unknown (desired_state: %s)" % desired_state)
 
 
-def envoy_backend_report(normal_instance_count, up_backends):
-    return _backend_report(normal_instance_count, up_backends, "Envoy")
+class BackendType(Enum):
+    ENVOY = "Envoy"
+    HAPROXY = "haproxy"
 
 
-def haproxy_backend_report(normal_instance_count, up_backends):
-    return _backend_report(normal_instance_count, up_backends, "haproxy")
+def envoy_backend_report(normal_instance_count: int, up_backends: int) -> str:
+    return _backend_report(normal_instance_count, up_backends, BackendType.ENVOY)
 
 
-def _backend_report(normal_instance_count, up_backends, system_name):
+def haproxy_backend_report(normal_instance_count: int, up_backends: int) -> str:
+    return _backend_report(normal_instance_count, up_backends, BackendType.HAPROXY)
+
+
+def _backend_report(
+    normal_instance_count: int, up_backends: int, system_name: BackendType
+) -> str:
     """Given that a service is in smartstack, this returns a human readable
     report of the up backends"""
     # TODO: Take into account a configurable threshold, PAASTA-1102
