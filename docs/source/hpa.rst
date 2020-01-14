@@ -8,7 +8,7 @@ It allows developers to utilize the full power of the new autoscaling system on
 Kubernetes. If you are interested in the architectural design, please read `this blog post <https://yelpwiki.yelpcorp.com/display/PAASTA/2019/12/09/Service+Autoscaling+with+HPA>`_
 
 
-Alrogithms
+Algorithms
 ======================
 
 Here is a list of different algorithms used for the three different `HPA  metrics <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-metrics-apis>`_.
@@ -85,15 +85,15 @@ The maximum number of replicas(pods) of your service.
 
 horizontal_autoscaling
 ^^^^^^^^^^^^^^^^^^^^^^^^
-This overrides ``autoscalig``, ``max_instances``, and ``min_instances``.
+This overrides ``autoscaling``, ``max_instances``, and ``min_instances``.
 
 cpu
 ^^^
 Please check here for `algorthm detail <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
 
 :target_average_value (required):
-  An Integer from 0 (exclusive) to 100 (inclusive), (0 - 100]. This is 100 times
-  of the average value exposed by your http endpoint.
+  An Integer from 0 (exclusive) to 100 (inclusive), (0 - 100].
+  This is the percentage of cpu used.
 
 memory
 ^^^^^^
@@ -101,7 +101,6 @@ Same as cpu.
 
 http
 ^^^^
-Same as cpu.
 Makes a request on a HTTP endpoint on your service. Expects a JSON-formatted
 dictionary with a ``utilization`` field containing a number between 0 and
 1. Note that this is the same as in Marathon autoscaler. The endpoint is ``/status``
@@ -134,13 +133,24 @@ the same function with your own custom metrics. Any suggestions/demands are welc
 
 uwsgi
 ^^^^^
- Same as http, but "/status/uwsgi" is used as the endpoint.
+Makes a request on a HTTP endpoint on your service. Expects a response with a
+JSON body containing the current uwsgi state (see `this page
+<http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_ for the
+expected format). Uses the percentage of non-idle workers as the utilization
+metric. Only "/status/uwsgi" is used as the endpoint.
 
-your-signalfx-own-metrics
-^^^^^^^^^^^^^^^^^^^^^^^^^
-You can autoscale your service with any number of any random siganlfx metrics you want.
+:target_average_value (required):
+  Same as HTTP.
+
+:dimensions:
+  Same as HTTP.
+
+
+your-own-sfx-metrics
+^^^^^^^^^^^^^^^^^^^^
+You can autoscale your service with any number of any random signalfx metrics you want.
 The metrics name cannot be cpu/uwsgi/http/memory. It needs to follow ``(^[a-z]([-a-z0-9]*[a-z0-9])?$)``.
-You are responsible for collecting your own metrics. Note that the autoscaler checks metrics
+You are responsible for writing your own signalfx query. Note that the autoscaler checks metrics
 every 15s.
 
 This use case makes it possible to autoscale an instance across clusters by reusing the same
@@ -150,7 +160,7 @@ SignalFX metrics. Also, users can use external metrics to set canary instances t
   Any none-zero number.
 
 :signalflow_metrics_query (required):
-  String. This is not validated so you are reponsible for making it right. Please refer to this doc for
+  String. This is not validated so you are responsible for making it right. Please refer to this doc for
   how to write `Signalflow queries <https://yelpwiki.yelpcorp.com/display/METRICS/SignalFlow+Example+Programs>`_
   In general, if your metrics fluctuate a lot, it is recommended to use mean() over a range of time.
 
