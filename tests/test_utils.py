@@ -27,12 +27,13 @@ import pytest
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.instance import kubernetes as pik
 
 
 def test_instance_types_integrity():
-    for it in utils.INSTANCE_TYPES_K8S:
+    for it in pik.INSTANCE_TYPES_K8S:
         assert it in utils.INSTANCE_TYPES
-    for it in utils.INSTANCE_TYPES_WITH_SET_STATE:
+    for it in pik.INSTANCE_TYPES_WITH_SET_STATE:
         assert it in utils.INSTANCE_TYPES
 
 
