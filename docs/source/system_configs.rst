@@ -114,7 +114,7 @@ These are the keys that may exist in system configs:
 
   * ``synapse_host``: The default host that paasta should interrogate for haproxy-synapse state.
     Defaults to ``localhost``.
-    Primarily used in `check_synapse_replication <generated/paasta_tools.monitoring.check_synapse_replication.html>`_.
+    Primarily used in `check_marathon_services_replication <generated/paasta_tools.check_marathon_services_replication.html>`_.
 
     Example: ``"synapse_host": 169.254.255.254``
 
