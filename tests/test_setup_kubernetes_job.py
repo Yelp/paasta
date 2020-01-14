@@ -123,6 +123,7 @@ def test_create_application_object():
                 service="kurupt",
                 instance="fm",
                 cluster="fake_cluster",
+                soa_dir="/nail/blah",
             )
 
         mock_deployment_wrapper.reset_mock()
