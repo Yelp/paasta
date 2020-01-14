@@ -968,9 +968,15 @@ def instance_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
-    include_smartstack = request.swagger_data.get("include_smartstack", True)
-    include_envoy = request.swagger_data.get("include_envoy", True)
-    include_mesos = request.swagger_data.get("include_mesos", True)
+    include_smartstack = request.swagger_data.get("include_smartstack")
+    if include_smartstack is None:
+        include_smartstack = True
+    include_envoy = request.swagger_data.get("include_envoy")
+    if include_envoy is None:
+        include_envoy = True
+    include_mesos = request.swagger_data.get("include_mesos")
+    if include_mesos is None:
+        include_mesos = True
 
     instance_status: Dict[str, Any] = {}
     instance_status["service"] = service
