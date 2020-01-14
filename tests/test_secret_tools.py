@@ -36,7 +36,7 @@ def test_is_secret_ref():
     # if it is not a string it can't be a secret ref
     # so this checks that we are catching the TypeError
     assert not is_secret_ref(None)
-    assert not is_secret_ref(3)
+    assert not is_secret_ref(3)  # type: ignore
 
 
 def test_is_secret_ref_shared():

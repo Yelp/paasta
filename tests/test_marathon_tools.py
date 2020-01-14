@@ -1009,7 +1009,7 @@ class TestMarathonTools:
         fake_disk = 2000000000000000000000
         fake_env = {"FAKEENV": "FAKEVALUE"}
         fake_cpus = 0.42
-        fake_disk = 1234.5
+        fake_disk = 1234
         fake_instances = 101
         fake_cmd = None
         expected_env = {
@@ -1169,7 +1169,12 @@ class TestMarathonTools:
             cluster="",
             instance="fake_instance",
             config_dict={"instances": 10},
-            branch_dict={"desired_state": "stop"},
+            branch_dict={
+                "desired_state": "stop",
+                "git_sha": "deadbeef",
+                "docker_image": "docker_image",
+                "force_bounce": None,
+            },
         )
         assert fake_conf.get_desired_instances() == 0
 
@@ -1314,7 +1319,12 @@ class TestMarathonTools:
             cluster="fake_cluster",
             instance="fake_instance",
             config_dict={"instances": -10},
-            branch_dict={"desired_state": "start"},
+            branch_dict={
+                "desired_state": "start",
+                "git_sha": "cafebabe",
+                "docker_image": "docker_image",
+                "force_bounce": None,
+            },
         )
         assert fake_conf.get_instances() == -10
 
@@ -1334,7 +1344,12 @@ class TestMarathonTools:
             cluster="fake_cluster",
             instance="fake_instance",
             config_dict={"instances": False},
-            branch_dict={"desired_state": "start"},
+            branch_dict={
+                "desired_state": "start",
+                "git_sha": "baaaaaa",
+                "docker_image": "docker_image",
+                "force_bounce": None,
+            },
         )
         assert fake_conf.get_instances() == 0
 
@@ -1852,7 +1867,12 @@ class TestMarathonTools:
                 cluster="fake_cluster",
                 instance="fake_instance",
                 config_dict=self.fake_marathon_app_config.config_dict,
-                branch_dict={"desired_state": "stop", "force_bounce": "99999"},
+                branch_dict={
+                    "desired_state": "stop",
+                    "force_bounce": "99999",
+                    "git_sha": "deadface",
+                    "docker_image": "docker_image",
+                },
             )
             with raises(NoSlavesAvailableError) as excinfo:
                 fake_service_config.get_routing_constraints(
@@ -2843,7 +2863,12 @@ def test_marathon_service_config_copy():
         instance="fake-instance",
         cluster="fake-cluster",
         config_dict={"cmd": "test"},
-        branch_dict={"docker_image": "test2"},
+        branch_dict={
+            "docker_image": "test2",
+            "git_sha": "beefd00d",
+            "desired_state": "start",
+            "force_bounce": None,
+        },
     )
     fake_marathon_service_config_2 = fake_marathon_service_config.copy()
     assert fake_marathon_service_config is not fake_marathon_service_config_2
