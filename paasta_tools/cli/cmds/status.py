@@ -25,6 +25,7 @@ from enum import Enum
 from itertools import groupby
 from typing import Any
 from typing import Callable
+from typing import Collection
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
@@ -675,7 +676,7 @@ def format_kubernetes_replicaset_table(replicasets):
 
 
 def get_smartstack_status_human(
-    registration: str, expected_backends_per_location: int, locations: Iterable[Any],
+    registration: str, expected_backends_per_location: int, locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
@@ -696,8 +697,8 @@ def get_smartstack_status_human(
     return output
 
 
-def build_smartstack_backends_table(backends: Iterable[Any]) -> List[Tuple[str, ...]]:
-    rows = [("Name", "LastCheck", "LastChange", "Status")]
+def build_smartstack_backends_table(backends: Iterable[Any]) -> List[str]:
+    rows: List[Tuple[str, ...]] = [("Name", "LastCheck", "LastChange", "Status")]
     for backend in backends:
         if backend.status == "UP":
             status = PaastaColors.default(backend.status)
@@ -713,7 +714,7 @@ def build_smartstack_backends_table(backends: Iterable[Any]) -> List[Tuple[str, 
         else:
             check_duration = str(backend.check_duration)
 
-        row = (
+        row: Tuple[str, ...] = (
             f"{backend.hostname}:{backend.port}",
             f"{backend.check_status}/{backend.check_code} in {check_duration}ms",
             humanize.naturaltime(timedelta(seconds=backend.last_change)),
@@ -731,7 +732,7 @@ def build_smartstack_backends_table(backends: Iterable[Any]) -> List[Tuple[str, 
 
 
 def get_envoy_status_human(
-    registration: str, expected_backends_per_location: int, locations: Iterable[Any],
+    registration: str, expected_backends_per_location: int, locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Envoy: ERROR - {registration} is NOT in Envoy at all!"]
@@ -764,8 +765,8 @@ def get_envoy_status_human(
     return output
 
 
-def build_envoy_backends_table(backends: Iterable[Any]) -> List[Tuple[str, ...]]:
-    rows = [("Hostname:Port", "Weight", "Status")]
+def build_envoy_backends_table(backends: Iterable[Any]) -> List[str]:
+    rows: List[Tuple[str, ...]] = [("Hostname:Port", "Weight", "Status")]
     for backend in backends:
         if backend.eds_health_status == "HEALTHY":
             status = PaastaColors.default(backend.eds_health_status)
@@ -774,7 +775,7 @@ def build_envoy_backends_table(backends: Iterable[Any]) -> List[Tuple[str, ...]]
         else:
             status = PaastaColors.yellow(backend.eds_health_status)
 
-        row = (
+        row: Tuple[str, ...] = (
             f"{backend.hostname}:{backend.port_value}",
             f"{backend.weight}",
             status,

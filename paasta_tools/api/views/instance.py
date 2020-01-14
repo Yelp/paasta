@@ -21,6 +21,7 @@ import logging
 import re
 import traceback
 from enum import Enum
+from typing import AbstractSet
 from typing import Any
 from typing import Dict
 from typing import List
@@ -738,7 +739,7 @@ def build_envoy_location_dict(
         Tuple[Optional[envoy_tools.EnvoyBackend], Optional[marathon_tools.MarathonTask]]
     ],
     should_return_individual_backends: bool,
-    casper_proxied_backends: Mapping[str, int],
+    casper_proxied_backends: AbstractSet[Tuple[str, int]],
 ) -> MutableMapping[str, Any]:
     running_backends_count = 0
     envoy_backends = []
