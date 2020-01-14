@@ -1,5 +1,5 @@
-paasta_tools.deployd package
-============================
+paasta\_tools.deployd package
+=============================
 
 Submodules
 ----------
@@ -18,6 +18,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.deployd
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

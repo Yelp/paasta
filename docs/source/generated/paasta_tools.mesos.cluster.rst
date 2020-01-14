@@ -1,7 +1,7 @@
-paasta_tools.mesos.cluster module
-=================================
+paasta\_tools.mesos.cluster module
+==================================
 
 .. automodule:: paasta_tools.mesos.cluster
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

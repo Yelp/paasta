@@ -1,7 +1,7 @@
-paasta_tools.api.views.service module
-=====================================
+paasta\_tools.api.views.service module
+======================================
 
 .. automodule:: paasta_tools.api.views.service
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -302,7 +302,7 @@ class DeploymentWrapper(Application):
             self.logging.info(
                 f"Updating new HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
             )
-            kube_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler(
+            kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name,
                 namespace=self.item.metadata.namespace,
                 body=body,

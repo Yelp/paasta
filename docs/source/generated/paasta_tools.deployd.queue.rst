@@ -1,7 +1,7 @@
-paasta_tools.deployd.queue module
-=================================
+paasta\_tools.deployd.queue module
+==================================
 
 .. automodule:: paasta_tools.deployd.queue
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

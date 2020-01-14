@@ -1,11 +1,18 @@
 ====================================
-Autoscaling Marathon tasks in PaaSTA
+Autoscaling PaaSTA Instances
 ====================================
+
+The section below introduces autoscaling in Marathon. For services in Kubernetes,
+the following configurations still work but not all of them are respected. The mechanism
+is also different. If you are creating a new service on Kubernetes or are modifying
+autoscaling configurations for your services that already running on Kubernetes, please
+check :ref:`here <hpa>`.
 
 PaaSTA allows programmatic control of the number of marathon tasks a service
 has. It does this by using Zookeeper as a data store to record the number of
 tasks it thinks should be running for each instance of a service on a
 per-cluster basis.
+
 
 How to use autoscaling
 ======================
@@ -87,6 +94,7 @@ The currently available metrics providers are:
   :endpoint:
     the path to perform the HTTP request on (the requested URL will be
     ``http://$HOST:$PORT/$endpoint``). Defaults to 'status'.
+    Only status is supported in Kubernetes currently.
 
 :uwsgi:
   Makes a request on a HTTP endpoint on your service. Expects a response with a
@@ -100,6 +108,7 @@ The currently available metrics providers are:
   :endpoint:
     the path to perform the HTTP request on (the requested URL will be
     ``http://$HOST:$PORT/$endpoint``). Defaults to 'status/uwsgi'.
+    Only status/uwsgi is supported in Kubernetes currently.
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
@@ -121,19 +130,19 @@ The currently available decicion policies are:
     the forecasted total load is within the window, instances will not scale. Optional
     parameter (defaults to None).
 
-:pid:
+:pid (Not Supported in Kubernetes):
   Uses a PID controller to determine when to autoscale a service. See `this
   page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on
   PIDs.
 
-:threshold:
+:threshold (Not Supported in Kubernetes):
   Autoscales when a service's utilization exceeds beyond a certain threshold.
 
 :bespoke:
-  Allows a service author to implement their own autoscaling.
+  Allows a service author to implement their own autoscaling. Currently set to max_instances in Kuberentes.
 
-Forecast policies
-^^^^^^^^^^^^^^^^^
+Forecast policies (Not Supported in Kubernetes)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Forecast policies are used by the proportional decision policy. Two forecast policies
 have been implemented:

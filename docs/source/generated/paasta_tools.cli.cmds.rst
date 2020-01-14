@@ -1,5 +1,5 @@
-paasta_tools.cli.cmds package
-=============================
+paasta\_tools.cli.cmds package
+==============================
 
 Submodules
 ----------
@@ -38,6 +38,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.cli.cmds
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

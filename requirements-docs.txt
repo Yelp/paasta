@@ -28,7 +28,8 @@ pytest==3.3.1
 pytest-asyncio==0.8.0
 requirements-tools==1.1.2
 snowballstemmer==1.2.0
-Sphinx==1.4.1
+Sphinx==2.3.1
+sphinx-rtd-theme
 toml==0.9.4
 virtualenv==15.1.0
 wrapt==1.10.8

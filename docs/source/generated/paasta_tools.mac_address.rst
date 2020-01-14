@@ -1,7 +1,7 @@
-paasta_tools.mac_address module
-===============================
+paasta\_tools.mac\_address module
+=================================
 
 .. automodule:: paasta_tools.mac_address
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

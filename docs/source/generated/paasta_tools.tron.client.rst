@@ -1,7 +1,7 @@
-paasta_tools.tron.client module
-===============================
+paasta\_tools.tron.client module
+================================
 
 .. automodule:: paasta_tools.tron.client
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

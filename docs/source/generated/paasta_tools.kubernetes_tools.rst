@@ -1,7 +1,7 @@
-paasta_tools.kubernetes_tools module
-====================================
+paasta\_tools.kubernetes\_tools module
+======================================
 
 .. automodule:: paasta_tools.kubernetes_tools
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

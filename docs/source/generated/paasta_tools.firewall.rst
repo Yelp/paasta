@@ -1,7 +1,7 @@
-paasta_tools.firewall module
-============================
+paasta\_tools.firewall module
+=============================
 
 .. automodule:: paasta_tools.firewall
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

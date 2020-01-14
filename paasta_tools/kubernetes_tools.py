@@ -389,7 +389,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         hpa_config = self.config_dict["horizontal_autoscaling"]
-        min_replicas = hpa_config["min_replicas"]
+        min_replicas = hpa_config.get("min_replicas", 0)
         max_replicas = hpa_config["max_replicas"]
         selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         annotations = {"signalfx.com.custom.metrics": ""}
@@ -434,7 +434,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                     annotations[
                         f"signalfx.com.external.metric/{metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean().publish()'
+                    ] = f'data("{metric_name}", filter={filters}).mean(over=15m).publish()'
             else:
                 metrics.append(
                     V2beta1MetricSpec(
@@ -479,11 +479,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         autoscaling_params = self.get_autoscaling_params()
         metrics_provider = autoscaling_params["metrics_provider"]
-        # TODO support multiple metrics
         metrics = []
         target = autoscaling_params["setpoint"] * 100
         annotations: Dict[str, str] = {}
-        # TODO support bespoke PAASTA-15680
         selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         if autoscaling_params["decision_policy"] == "bespoke":
             log.error(

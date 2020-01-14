@@ -14,6 +14,7 @@ Directions (For PaaSTA Users)
    yelpsoa_configs
    workflow
    autoscaling
+   hpa
 
 About PaaSTA's Architecture
 ---------------------------

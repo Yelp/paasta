@@ -1,5 +1,5 @@
-paasta_tools.mesos package
-==========================
+paasta\_tools.mesos package
+===========================
 
 Submodules
 ----------
@@ -23,6 +23,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.mesos
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

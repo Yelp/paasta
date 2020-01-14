@@ -1,5 +1,5 @@
-paasta_tools.api.views package
-==============================
+paasta\_tools.api.views package
+===============================
 
 Submodules
 ----------
@@ -21,6 +21,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.api.views
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

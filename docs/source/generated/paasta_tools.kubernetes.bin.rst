@@ -1,5 +1,5 @@
-paasta_tools.kubernetes.bin package
-===================================
+paasta\_tools.kubernetes.bin package
+====================================
 
 Submodules
 ----------
@@ -14,6 +14,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.kubernetes.bin
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

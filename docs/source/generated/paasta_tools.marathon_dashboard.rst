@@ -1,7 +1,7 @@
-paasta_tools.marathon_dashboard module
-======================================
+paasta\_tools.marathon\_dashboard module
+========================================
 
 .. automodule:: paasta_tools.marathon_dashboard
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
