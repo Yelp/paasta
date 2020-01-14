@@ -12,7 +12,6 @@ opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_
 opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
 opt/venvs/paasta-tools/bin/check_oom_events.py usr/bin/check_oom_events
-opt/venvs/paasta-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
 opt/venvs/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
 opt/venvs/paasta-tools/bin/cleanup_kubernetes_cr.py usr/bin/cleanup_kubernetes_cr
 opt/venvs/paasta-tools/bin/cleanup_kubernetes_crd.py usr/bin/cleanup_kubernetes_crd
