@@ -31,6 +31,8 @@ provided by your signalflow query. For example, if your target_value is 10, the
 value returned by your signalflow_metrics_query is 50, then, the desired replica
 is probably (target_value / signalflow_metrics_query) * current_ready_pods.
 
+Note that you can add any number of metrics you want to. The max value of desired number of replicas calculated will be used.
+
 For more on the algorithm, please check out `this doc <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
 
 
