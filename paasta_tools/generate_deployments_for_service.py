@@ -53,6 +53,18 @@ from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from py_zipkin.zipkin import zipkin_span
+from py_zipkin.zipkin import ZipkinAttrs
+from py_zipkin.zipkin import create_http_headers_for_new_span
+from py_zipkin.util import generate_random_64bit_string
+import clog
+import staticconf
+import base64
+clog.config.configure_from_dict(
+    staticconf.YamlConfiguration('/nail/srv/configs/clog.yaml'),
+)
+def zipkin_scribe_handler(message):
+    clog.log_line('zipkin', base64.b64encode(message).strip())
 
 log = logging.getLogger(__name__)
 TARGET_FILE = 'deployments.json'
@@ -71,6 +83,8 @@ V2_Deployment = TypedDict(
     {
         'docker_image': str,
         'git_sha': str,
+        'trace_id': str,
+        'parent_span_id': str,
     },
 )
 V2_Control = TypedDict(
@@ -129,17 +143,30 @@ def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[
     most_recent_dtime = None
     most_recent_ref = None
     most_recent_sha = None
-    pattern = re.compile(r'^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$' % deploy_group)
+    zipkin_ids = None
+    pattern = re.compile(r'^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy(-\w{16}-\w{16}){0,1}$' % deploy_group)
 
     for ref_name, sha in refs.items():
         match = pattern.match(ref_name)
         if match:
-            dtime = match.groups()[0]
+            groups = match.groups()
+            dtime = groups[0]
+            if len(groups) > 1:
+                zipkin_string = groups[1]
+            else:
+                zipkin_string = None
+            zipkin_ids = get_zipkin_ids(zipkin_string)
             if most_recent_dtime is None or dtime > most_recent_dtime:
                 most_recent_dtime = dtime
                 most_recent_ref = ref_name
                 most_recent_sha = sha
-    return most_recent_ref, most_recent_sha
+    return most_recent_ref, most_recent_sha, zipkin_ids
+
+def get_zipkin_ids(zipkin_string):
+    if zipkin_string:
+        return tuple(zipkin_string.split('-')[1:3])
+    else:
+        return None
 
 
 def get_deploy_group_mappings(
@@ -185,7 +212,7 @@ def get_deploy_group_mappings(
     remote_refs = remote_git.list_remote_refs(git_url)
 
     for control_branch, deploy_group in deploy_group_branch_mappings.items():
-        (deploy_ref_name, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+        (deploy_ref_name, _, zipkin_ids) = get_latest_deployment_tag(remote_refs, deploy_group)
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
             control_branch_alias = f'{service}:paasta-{control_branch}'
@@ -202,6 +229,24 @@ def get_deploy_group_mappings(
                 'docker_image': docker_image,
                 'git_sha': commit_sha,
             }
+            if zipkin_ids:
+                v2_mappings['deployments'][deploy_group]['trace_id'] = zipkin_ids[0]
+                v2_mappings['deployments'][deploy_group]['parent_span_id'] = zipkin_ids[1]
+                zipkin_attrs = ZipkinAttrs(
+		    trace_id=zipkin_ids[0],
+		    span_id=generate_random_64bit_string(),
+		    parent_span_id=zipkin_ids[1],
+		    flags='0',
+		    is_sampled=True,
+		)
+                with zipkin_span(
+                    service_name='mmb-paasta',
+                    span_name='generate_deployments_json',
+                    transport_handler=zipkin_scribe_handler,
+                    sample_rate=100,
+                    zipkin_attrs=zipkin_attrs,
+                ):
+                    pass
             mappings[control_branch_alias] = {
                 'docker_image': docker_image,
                 'desired_state': desired_state,
@@ -239,7 +284,7 @@ def get_desired_state(branch: str, remote_refs: Dict[str, str], deploy_group: st
     tag_pattern = r'^refs/tags/(?:paasta-){0,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
 
     states = []
-    (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
+    (_, head_sha, _) = get_latest_deployment_tag(remote_refs, deploy_group)
 
     for ref_name, sha in remote_refs.items():
         if sha == head_sha:

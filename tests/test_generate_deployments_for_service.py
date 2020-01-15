@@ -230,3 +230,18 @@ def test_get_desired_state_fails_gracefully_with_start():
     actual = generate_deployments_for_service.get_desired_state(branch, remote_refs, deploy_group)
 
     assert actual == expected_desired_state
+
+
+def test_get_latest_deployment_tag():
+    fake_remote_refs = {
+        'refs/tags/paasta-try_me-20160308T053933-deploy': '123456',
+        'refs/tags/paasta-try_me-20170308T053933-deploy': 'abc123',
+    }
+    assert generate_deployments_for_service.get_latest_deployment_tag(fake_remote_refs, 'try_me') == ('refs/tags/paasta-try_me-20170308T053933-deploy',
+            'abc123', None)
+
+    fake_remote_refs = {
+        'refs/tags/paasta-try_me-20160308T053933-deploy-605e1861d233d410-10718baf7d27c852': '123456',
+        'refs/tags/paasta-try_me-20170308T053933-deploy-605e1861d233d410-10718baf7d27c852': 'abc123',
+    }
+    assert generate_deployments_for_service.get_latest_deployment_tag(fake_remote_refs, 'try_me') == ('refs/tags/paasta-try_me-20170308T053933-deploy-605e1861d233d410-10718baf7d27c852', 'abc123', ('605e1861d233d410', '10718baf7d27c852'))

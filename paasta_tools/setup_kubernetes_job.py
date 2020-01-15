@@ -23,6 +23,7 @@ Command line options:
 import argparse
 import logging
 import sys
+import os
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -54,6 +55,20 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
+from py_zipkin.zipkin import zipkin_span
+from py_zipkin.zipkin import ZipkinAttrs
+from py_zipkin.zipkin import create_http_headers_for_new_span
+from py_zipkin.util import generate_random_64bit_string
+import clog
+import staticconf
+import base64
+
+clog.config.configure_from_dict(
+    staticconf.YamlConfiguration('/nail/srv/configs/clog.yaml'),
+)
+
+def zipkin_scribe_handler(message):
+    clog.log_line('zipkin', base64.b64encode(message).strip())
 
 log = logging.getLogger(__name__)
 
@@ -161,19 +176,50 @@ def reconcile_kubernetes_deployment(
         config_sha=formatted_application.metadata.labels["yelp.com/paasta_config_sha"],
         replicas=formatted_application.spec.replicas,
     )
+    trace_id = service_instance_config.branch_dict.get('trace_id', '')
+    parent_span_id = service_instance_config.branch_dict.get('parent_span_id', '')
+    if trace_id and parent_span_id:
+        zipkin_attrs = ZipkinAttrs(
+            trace_id=trace_id,
+            span_id=generate_random_64bit_string(),
+            parent_span_id=parent_span_id,
+            flags='0',
+            is_sampled=True,
+        )
+        span = zipkin_span(
+            service_name='mmb-paasta',
+            span_name='setup_kubernetes_job',
+            transport_handler=zipkin_scribe_handler,
+            sample_rate=100,
+            zipkin_attrs=zipkin_attrs,
+        )
+    else:
+        span = None
+
+
 
     if not (service, instance) in [(kd.service, kd.instance) for kd in kube_deployments]:
         log.debug(f"{desired_deployment} does not exist so creating")
+        if span:
+            span.start()
         create_kubernetes_application(
             kube_client=kube_client,
             application=formatted_application,
         )
+        if span:
+            span.stop()
+            os.system(f'python paasta_tools/kubernetes/trace.py {trace_id} {parent_span_id} &')
     elif desired_deployment not in kube_deployments:
         log.debug(f"{desired_deployment} exists but config_sha or git_sha doesn't match or number of instances changed")
+        if span:
+            span.start()
         update_kubernetes_application(
             kube_client=kube_client,
             application=formatted_application,
         )
+        if span:
+            span.stop()
+            os.system(f'python paasta_tools/kubernetes/trace.py {trace_id} {parent_span_id} &')
     else:
         log.debug(f"{desired_deployment} is up to date, no action taken")
 

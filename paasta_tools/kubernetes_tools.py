@@ -728,6 +728,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": code_sha,
+                "yelp.com/trace_id": self.branch_dict.get('trace_id', ''),
+                "yelp.com/parent_span_id": self.branch_dict.get('parent_span_id', ''),
             },
         )
 
@@ -820,6 +822,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "yelp.com/paasta_service": self.get_service(),
                     "yelp.com/paasta_instance": self.get_instance(),
                     "yelp.com/paasta_git_sha": code_sha,
+                    "yelp.com/trace_id": self.branch_dict.get('trace_id', ''),
+                    "yelp.com/parent_span_id": self.branch_dict.get('parent_span_id', ''),
                 },
                 annotations={
                     "smartstack_registrations": json.dumps(self.get_registrations()),
@@ -856,7 +860,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for key, value in config.to_dict().items()
             if key not in CONFIG_HASH_BLACKLIST
         }
+        ahash.get('metadata', {}).get('labels', {}).pop('yelp.com/trace_id')
+        ahash.get('metadata', {}).get('labels', {}).pop('yelp.com/parent_span_id')
         spec = ahash['spec']
+        spec.get('template', {}).get('metadata', {}).get('labels', {}).pop('yelp.com/trace_id')
+        spec.get('template', {}).get('metadata', {}).get('labels', {}).pop('yelp.com/parent_span_id')
         ahash['spec'] = {
             key: copy.deepcopy(value)
             for key, value in spec.items()

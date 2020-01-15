@@ -67,13 +67,30 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
+import clog
+import staticconf
+import base64
+from py_zipkin.zipkin import zipkin_span
+from py_zipkin.zipkin import create_http_headers_for_new_span
+from py_zipkin.storage import Stack
+from py_zipkin.storage import SpanStorage
+from py_zipkin.storage import Tracer
 
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
-DEFAULT_SLACK_CHANNEL = "#deploy"
+DEFAULT_SLACK_CHANNEL = "#test"
 
 log = logging.getLogger(__name__)
+
+clog.config.configure_from_dict(
+    staticconf.YamlConfiguration('/nail/srv/configs/clog.yaml'),
+)
+
+
+def zipkin_scribe_handler(message):
+    clog.log_line('zipkin', base64.b64encode(message).strip())
+    print(base64.b64encode(message))
 
 
 def add_subparser(subparsers):
@@ -192,9 +209,16 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit):
+def mark_for_deployment(git_url, deploy_group, service, commit, zipkin_headers=None):
     """Mark a docker image for deployment"""
-    tag = get_paasta_tag_from_deploy_group(identifier=deploy_group, desired_state='deploy')
+    if not zipkin_headers:
+        zipkin_headers = {}
+    tag = get_paasta_tag_from_deploy_group(
+        identifier=deploy_group,
+        desired_state='deploy',
+        trace_id=zipkin_headers.get('X-B3-TraceId'),
+        parent_span_id=zipkin_headers.get('X-B3-ParentSpanId'),
+    )
     remote_tag = format_tag(tag)
     ref_mutator = remote_git.make_force_push_mutate_refs_func(
         targets=[remote_tag],
@@ -629,6 +653,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         super().__init__()
         self.ping_authors()
         self.print_who_is_running_this()
+        self.zipkin_span = zipkin_span(
+            service_name='mmb-paasta',
+            span_name='deploy',
+            transport_handler=zipkin_scribe_handler,
+            binary_annotations={'service': self.service},
+            sample_rate=100,
+            _tracer=Tracer()
+        )
 
     def get_progress(self, summary=False) -> str:
         return self.progress.human_readable(summary)
@@ -680,17 +712,23 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_start_deploy(self):
         self.update_slack_status(f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}...")
+        self.zipkin_span.start()
+        zipkin_headers = create_http_headers_for_new_span(tracer=self.zipkin_span._tracer)
+        print(zipkin_headers)
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
             deploy_group=self.deploy_group,
             service=self.service,
             commit=self.commit,
+            zipkin_headers=zipkin_headers,
         )
+        trace_id = zipkin_headers['X-B3-TraceId']
         if self.mark_for_deployment_return_code != 0:
             self.trigger('mfd_failed')
         else:
             self.update_slack_thread(
                 f"Marked `{self.commit[:8]}` for {self.deploy_group}." +
+                f"\n Trace your deploy: http://zipkin.paasta-pnw-devc.yelp/zipkin/traces/{trace_id}" +
                 ("\n" + self.get_authors() if self.deploy_group_is_set_to_notify('notify_after_mark') else ""),
             )
             log.debug("triggering mfd_succeeded")
@@ -1004,6 +1042,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.start_timer(self.auto_abandon_delay, 'auto_abandon', 'abandon')
 
     def on_enter_deployed(self):
+        self.zipkin_span.stop()
         self.update_slack_status(f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}")
         line = f"Deployment of {self.commit[:8]} for {self.deploy_group} complete"
         _log(

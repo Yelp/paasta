@@ -245,6 +245,8 @@ class BranchDictV2(TypedDict):
     docker_image: str
     desired_state: str
     force_bounce: Optional[str]
+    trace_id: str
+    parent_span_id: str
 
 
 class DockerParameter(TypedDict):
@@ -2756,6 +2758,8 @@ class DeploymentsJsonV2:
             'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
             'desired_state': self.get_desired_state_for_branch(full_branch),
             'force_bounce': self.get_force_bounce_for_branch(full_branch),
+            'trace_id': self.get_trace_id_for_deploy_group(deploy_group),
+            'parent_span_id': self.get_parent_span_id_for_deploy_group(deploy_group),
         }
         return branch_dict
 
@@ -2772,6 +2776,20 @@ class DeploymentsJsonV2:
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
             return self.config_dict['deployments'][deploy_group]['git_sha']
+        except KeyError:
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
+
+    def get_trace_id_for_deploy_group(self, deploy_group: str) -> str:
+        try:
+            return self.config_dict['deployments'][deploy_group]['trace_id']
+        except KeyError:
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
+
+    def get_parent_span_id_for_deploy_group(self, deploy_group: str) -> str:
+        try:
+            return self.config_dict['deployments'][deploy_group]['parent_span_id']
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
@@ -2805,9 +2823,17 @@ def format_timestamp(dt: datetime.datetime = None) -> str:
     return dt.strftime('%Y%m%dT%H%M%S')
 
 
-def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
+def get_paasta_tag_from_deploy_group(
+    identifier: str,
+    desired_state: str,
+    trace_id: Optional[str],
+    parent_span_id: Optional[str],
+) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f'paasta-{identifier}-{timestamp}-{desired_state}'
+    if trace_id and parent_span_id:
+        return f'paasta-{identifier}-{timestamp}-{desired_state}-{trace_id}-{parent_span_id}'
+    else:
+        return f'paasta-{identifier}-{timestamp}-{desired_state}'
 
 
 def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
