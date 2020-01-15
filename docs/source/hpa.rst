@@ -11,7 +11,7 @@ If you are interested in the architectural design, please read `this blog post <
 Algorithms
 ======================
 
-Here is a list of different algorithms used for the three different `HPA  metrics <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-metrics-apis>`_.
+Here is a list of different Horizontal Pod Autoscaler(HPA) metric sources used for the three different `HPA  metrics <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-metrics-apis>`_.
 
 :Resource Metrics:
   cpu/memory
@@ -23,7 +23,8 @@ Here is a list of different algorithms used for the three different `HPA  metric
   your_own_average_value
   http/uwsgi when dimensions are provided
 
-In short, resource metrics and custom metrics scales your service proportionally based on the average value of metrics provided by all ready pods in the same cluster.
+The algorithms for all metrics are mostly the same but vary in detail.
+In short, resource metrics and custom metrics scales your service proportionally based on the average value of metrics provided by all ready (healthy and running) pods in the same cluster.
 
 External metrics scales your service proportionally based on the value of metrics provided by your signalflow query.
 For example, if your target_value is 10, the value returned by your signalflow_metrics_query is 50.

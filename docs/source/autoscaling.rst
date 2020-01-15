@@ -3,7 +3,8 @@ Autoscaling PaaSTA Instances
 ====================================
 
 The section below introduces autoscaling in Marathon.
-For services in Kubernetes, the following configurations still work but not all of them are respected.
+For services in Kubernetes, the following configurations are allowed in configuration files,
+for compatibility with marathon.yaml; but not all of them are respected.
 The mechanism is also different. If you are creating a new service on Kubernetes or are modifying
 autoscaling configurations for your services that already running on Kubernetes, please
 check :ref:`here <hpa>`.
