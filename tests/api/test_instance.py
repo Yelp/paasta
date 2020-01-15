@@ -27,6 +27,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
+from paasta_tools.envoy_tools import EnvoyBackend
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_tools import get_short_task_id
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
@@ -390,9 +391,11 @@ class TestMarathonAppStatus:
     "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
     autospec=True,
 )
+@mock.patch("paasta_tools.api.views.instance.envoy_tools", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.get_slaves", autospec=True)
 def test_marathon_service_mesh_status(
     mock_get_slaves,
+    mock_envoy_tools,
     mock_get_expected_instance_count_for_namespace,
     mock_get_backends,
     mock_match_backends_and_tasks,
@@ -402,7 +405,7 @@ def test_marathon_service_mesh_status(
     ]
     mock_get_expected_instance_count_for_namespace.return_value = 2
 
-    mock_backend = HaproxyBackend(
+    mock_haproxy_backend = HaproxyBackend(
         status="UP",
         svname="host1_1.2.3.4:123",
         check_status="L7OK",
@@ -411,7 +414,7 @@ def test_marathon_service_mesh_status(
         lastchg="9876",
     )
     mock_task = mock.create_autospec(MarathonTask)
-    mock_match_backends_and_tasks.return_value = [(mock_backend, mock_task)]
+    mock_match_backends_and_tasks.return_value = [(mock_haproxy_backend, mock_task)]
 
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
     settings.system_paasta_config.get_deploy_blacklist.return_value = []
@@ -452,6 +455,48 @@ def test_marathon_service_mesh_status(
                         "check_duration": 1,
                     }
                 ],
+            }
+        ],
+    }
+
+    mock_envoy_backend = EnvoyBackend(
+        address="1.2.3.4",
+        port_value=123,
+        hostname="host1_1.2.3.4",
+        eds_health_status="HEALTHY",
+        weight=1,
+        has_associated_task=False,
+    )
+    mock_envoy_tools.match_backends_and_tasks.return_value = [
+        (mock_envoy_backend, mock_task)
+    ]
+    smartstack_status = instance.marathon_service_mesh_status(
+        "fake_service",
+        instance.ServiceMesh.ENVOY,
+        "fake_instance",
+        mock_service_config,
+        mock_service_namespace_config,
+        tasks=[mock_task],
+        should_return_individual_backends=True,
+    )
+    assert smartstack_status == {
+        "registration": "fake_service.fake_instance",
+        "expected_backends_per_location": 2,
+        "locations": [
+            {
+                "name": "us-north-3",
+                "running_backends_count": 1,
+                "backends": [
+                    {
+                        "address": "1.2.3.4",
+                        "port_value": 123,
+                        "hostname": "host1_1.2.3.4",
+                        "eds_health_status": "HEALTHY",
+                        "weight": 1,
+                        "has_associated_task": True,
+                    }
+                ],
+                "is_proxied_through_casper": False,
             }
         ],
     }
