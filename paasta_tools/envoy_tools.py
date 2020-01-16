@@ -13,6 +13,7 @@
 # limitations under the License.
 import collections
 import socket
+from typing import AbstractSet
 from typing import Any
 from typing import Collection
 from typing import DefaultDict
@@ -20,6 +21,7 @@ from typing import Dict
 from typing import FrozenSet
 from typing import Iterable
 from typing import List
+from typing import MutableMapping
 from typing import Optional
 from typing import Set
 from typing import Tuple
@@ -201,3 +203,32 @@ def match_backends_and_tasks(
             backend_task_pairs.append((backend, None))
 
     return backend_task_pairs
+
+
+def build_envoy_location_dict(
+    location: str,
+    matched_envoy_backends_and_tasks: List[
+        Tuple[Optional[EnvoyBackend], Optional[marathon_tools.MarathonTask]]
+    ],
+    should_return_individual_backends: bool,
+    casper_proxied_backends: AbstractSet[Tuple[str, int]],
+) -> MutableMapping[str, Any]:
+    running_backends_count = 0
+    envoy_backends = []
+    is_proxied_through_casper = False
+    for backend, task in matched_envoy_backends_and_tasks:
+        if backend is None:
+            continue
+        if backend["eds_health_status"] == "HEALTHY":
+            running_backends_count += 1
+        if should_return_individual_backends:
+            backend["has_associated_task"] = task is not None
+            envoy_backends.append(backend)
+        if (backend["address"], backend["port_value"]) in casper_proxied_backends:
+            is_proxied_through_casper = True
+    return {
+        "name": location,
+        "running_backends_count": running_backends_count,
+        "backends": envoy_backends,
+        "is_proxied_through_casper": is_proxied_through_casper,
+    }
