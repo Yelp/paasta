@@ -105,6 +105,7 @@ EC2_INSTANCE_TYPES: Mapping[str, InstanceResources] = {
     'c5d.2xlarge': InstanceResources(8.0, 16.0, 200.0, 0),
     'c5d.4xlarge': InstanceResources(16.0, 32.0, 400.0, 0),
     'c5d.9xlarge': InstanceResources(36.0, 72.0, 900.0, 0),
+    'c5d.12xlarge': InstanceResources(48.0, 96.0, 1800.0, 0),
     'c5d.18xlarge': InstanceResources(72.0, 144.0, 1800.0, 0),
     'c5.large': InstanceResources(2.0, 4.0, None, 0),
     'c5.xlarge': InstanceResources(4.0, 8.0, None, 0),
