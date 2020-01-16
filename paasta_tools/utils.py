@@ -1095,6 +1095,13 @@ LOG_COMPONENTS = OrderedDict(
             },
         ),
         ("oom", {"color": PaastaColors.red, "help": "Kernel OOM events."}),
+        (
+            "task_lifecycle",
+            {
+                "color": PaastaColors.bold,
+                "help": "Logs that tell you about task startup, failures, healthchecks, etc.",
+            },
+        ),
         # I'm leaving these planned components here since they provide some hints
         # about where we want to go. See PAASTA-78.
         #

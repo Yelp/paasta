@@ -126,6 +126,12 @@ def decompose_instance(instance):
     return (decomposed[0], decomposed[1])
 
 
+def decompose_executor_id(executor_id) -> Tuple[str, str, int, str]:
+    """(service, job, run_number, action)"""
+    service, job, str_run_number, action, _ = executor_id.split(SPACER)
+    return (service, job, int(str_run_number), action)
+
+
 class StringFormatter(Formatter):
     def __init__(self, context=None):
         Formatter.__init__(self)
