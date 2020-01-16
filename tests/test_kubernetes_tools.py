@@ -85,7 +85,7 @@ from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
-from paasta_tools.kubernetes_tools import maybe_add_yelp_prefix
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
@@ -2057,7 +2057,7 @@ def test_filter_nodes_by_blacklist():
     ) as mock_host_passes_whitelist, mock.patch(
         "paasta_tools.kubernetes_tools.host_passes_blacklist", autospec=True
     ) as mock_host_passes_blacklist, mock.patch(
-        "paasta_tools.kubernetes_tools.maybe_add_yelp_prefix",
+        "paasta_tools.kubernetes_tools.paasta_prefixed",
         autospec=True,
         side_effect=lambda x: x,
     ):
@@ -2109,7 +2109,7 @@ def test_filter_nodes_by_blacklist():
 
 def test_get_nodes_grouped_by_attribute():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.maybe_add_yelp_prefix",
+        "paasta_tools.kubernetes_tools.paasta_prefixed",
         autospec=True,
         side_effect=lambda x: x,
     ):
@@ -2129,9 +2129,9 @@ def test_get_nodes_grouped_by_attribute():
         )
 
 
-def test_maybe_add_yelp_prefix():
-    assert maybe_add_yelp_prefix("kubernetes.io/thing") == "kubernetes.io/thing"
-    assert maybe_add_yelp_prefix("region") == "yelp.com/region"
+def test_paasta_prefixed():
+    assert paasta_prefixed("kubernetes.io/thing") == "kubernetes.io/thing"
+    assert paasta_prefixed("region") == "yelp.com/region"
 
 
 def test_sanitise_kubernetes_name():

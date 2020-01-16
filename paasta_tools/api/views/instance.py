@@ -26,16 +26,11 @@ from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
-from typing import Union
 
 import a_sync
 import isodate
-from kubernetes.client import V1Pod
-from kubernetes.client import V1ReplicaSet
-from kubernetes.client.rest import ApiException
 from marathon import MarathonClient
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
@@ -44,22 +39,15 @@ from pyramid.view import view_config
 from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
-from paasta_tools import cassandracluster_tools
-from paasta_tools import flink_tools
-from paasta_tools import kafkacluster_tools
-from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_remote_run
+from paasta_tools import smartstack_tools
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
-from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
-from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_pod
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.instance import kubernetes as pik
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_tools import get_short_task_id
 from paasta_tools.mesos.task import Task
@@ -78,15 +66,9 @@ from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
-from paasta_tools.smartstack_tools import HaproxyBackend
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
-from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
-from paasta_tools.utils import INSTANCE_TYPES_K8S
-from paasta_tools.utils import INSTANCE_TYPES_WITH_SET_STATE
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import TimeoutError
@@ -157,163 +139,6 @@ def adhoc_instance_status(
             {"launch_time": launch_time, "run_id": run_id, "framework_id": f.id}
         )
     return status
-
-
-def kubernetes_cr_status(cr_id: dict, verbose: int) -> Optional[Mapping[str, Any]]:
-    client = settings.kubernetes_client
-    if client is not None:
-        return kubernetes_tools.get_cr_status(kube_client=client, cr_id=cr_id)
-    return None
-
-
-def kubernetes_cr_metadata(cr_id: dict, verbose: int) -> Optional[Mapping[str, Any]]:
-    client = settings.kubernetes_client
-    if client is not None:
-        return kubernetes_tools.get_cr_metadata(kube_client=client, cr_id=cr_id)
-    return None
-
-
-def kubernetes_instance_status(
-    instance_status: Mapping[str, Any],
-    service: str,
-    instance: str,
-    verbose: int,
-    include_smartstack: bool,
-    instance_type: str,
-) -> Mapping[str, Any]:
-    kstatus: Dict[str, Any] = {}
-    config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
-    job_config = config_loader(
-        service=service,
-        instance=instance,
-        cluster=settings.cluster,
-        soa_dir=settings.soa_dir,
-        load_deployments=True,
-    )
-    client = settings.kubernetes_client
-    if client is not None:
-        # bouncing status can be inferred from app_count, ref get_bouncing_status
-        pod_list = kubernetes_tools.pods_for_service_instance(
-            service=job_config.service,
-            instance=job_config.instance,
-            kube_client=client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        replicaset_list = kubernetes_tools.replicasets_for_service_instance(
-            service=job_config.service,
-            instance=job_config.instance,
-            kube_client=client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        active_shas = kubernetes_tools.get_active_shas_for_service(pod_list)
-        kstatus["app_count"] = max(
-            len(active_shas["config_sha"]), len(active_shas["git_sha"])
-        )
-        kstatus["desired_state"] = job_config.get_desired_state()
-        kstatus["bounce_method"] = job_config.get_bounce_method()
-        kubernetes_job_status(
-            kstatus=kstatus,
-            client=client,
-            namespace=job_config.get_kubernetes_namespace(),
-            job_config=job_config,
-            verbose=verbose,
-            pod_list=pod_list,
-            replicaset_list=replicaset_list,
-        )
-
-        evicted_count = 0
-        for pod in pod_list:
-            if pod.status.reason == "Evicted":
-                evicted_count += 1
-        kstatus["evicted_count"] = evicted_count
-
-        if include_smartstack:
-            service_namespace_config = kubernetes_tools.load_service_namespace_config(
-                service=job_config.get_service_name_smartstack(),
-                namespace=job_config.get_nerve_namespace(),
-                soa_dir=settings.soa_dir,
-            )
-            if "proxy_port" in service_namespace_config:
-                kstatus["smartstack"] = kubernetes_smartstack_status(
-                    service=job_config.get_service_name_smartstack(),
-                    instance=job_config.get_nerve_namespace(),
-                    job_config=job_config,
-                    service_namespace_config=service_namespace_config,
-                    pods=pod_list,
-                    should_return_individual_backends=verbose > 0,
-                )
-    return kstatus
-
-
-@a_sync.to_blocking
-async def kubernetes_job_status(
-    kstatus: MutableMapping[str, Any],
-    client: kubernetes_tools.KubeClient,
-    job_config: LongRunningServiceConfig,
-    pod_list: Sequence[V1Pod],
-    replicaset_list: Sequence[V1ReplicaSet],
-    verbose: int,
-    namespace: str,
-) -> None:
-    app_id = job_config.get_sanitised_deployment_name()
-    kstatus["app_id"] = app_id
-    kstatus["pods"] = []
-    kstatus["replicasets"] = []
-    if verbose > 0:
-        num_tail_lines = calculate_tail_lines(verbose)
-
-        for pod in pod_list:
-            if num_tail_lines > 0:
-                tail_lines = await get_tail_lines_for_kubernetes_pod(
-                    client, pod, num_tail_lines
-                )
-            else:
-                tail_lines = {}
-
-            kstatus["pods"].append(
-                {
-                    "name": pod.metadata.name,
-                    "host": pod.spec.node_name,
-                    "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
-                    "phase": pod.status.phase,
-                    "tail_lines": tail_lines,
-                    "reason": pod.status.reason,
-                    "message": pod.status.message,
-                }
-            )
-        for replicaset in replicaset_list:
-            try:
-                ready_replicas = replicaset.status.ready_replicas
-                if ready_replicas is None:
-                    ready_replicas = 0
-            except AttributeError:
-                ready_replicas = 0
-
-            kstatus["replicasets"].append(
-                {
-                    "name": replicaset.metadata.name,
-                    "replicas": replicaset.spec.replicas,
-                    "ready_replicas": ready_replicas,
-                    "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
-                }
-            )
-
-    kstatus["expected_instance_count"] = job_config.get_instances()
-
-    app = kubernetes_tools.get_kubernetes_app_by_name(
-        name=app_id, kube_client=client, namespace=namespace
-    )
-    deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(
-        app=app, desired_instances=job_config.get_instances()
-    )
-    kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
-        deploy_status
-    )
-    kstatus["running_instance_count"] = (
-        app.status.ready_replicas if app.status.ready_replicas else 0
-    )
-    kstatus["create_timestamp"] = app.metadata.creation_timestamp.timestamp()
-    kstatus["namespace"] = app.metadata.namespace
 
 
 def marathon_instance_status(
@@ -536,158 +361,12 @@ def marathon_smartstack_status(
             reverse=True,  # put 'UP' backends above 'MAINT' backends
         )
         matched_backends_and_tasks = match_backends_and_tasks(sorted_backends, tasks)
-        location_dict = build_smartstack_location_dict(
+        location_dict = smartstack_tools.build_smartstack_location_dict(
             location, matched_backends_and_tasks, should_return_individual_backends
         )
         smartstack_status["locations"].append(location_dict)
 
     return smartstack_status
-
-
-def kubernetes_smartstack_status(
-    service: str,
-    instance: str,
-    job_config: LongRunningServiceConfig,
-    service_namespace_config: ServiceNamespaceConfig,
-    pods: Sequence[V1Pod],
-    should_return_individual_backends: bool = False,
-) -> Mapping[str, Any]:
-
-    registration = job_config.get_registrations()[0]
-    instance_pool = job_config.get_pool()
-
-    smartstack_replication_checker = KubeSmartstackReplicationChecker(
-        nodes=kubernetes_tools.get_all_nodes(settings.kubernetes_client),
-        system_paasta_config=settings.system_paasta_config,
-    )
-    node_hostname_by_location = smartstack_replication_checker.get_allowed_locations_and_hosts(
-        job_config
-    )
-
-    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
-        service=service,
-        namespace=instance,
-        cluster=settings.cluster,
-        instance_type_class=KubernetesDeploymentConfig,
-    )
-    expected_count_per_location = int(
-        expected_smartstack_count / len(node_hostname_by_location)
-    )
-    smartstack_status: MutableMapping[str, Any] = {
-        "registration": registration,
-        "expected_backends_per_location": expected_count_per_location,
-        "locations": [],
-    }
-
-    for location, hosts in node_hostname_by_location.items():
-        synapse_host = smartstack_replication_checker.get_first_host_in_pool(
-            hosts, instance_pool
-        )
-        sorted_backends = sorted(
-            get_backends(
-                registration,
-                synapse_host=synapse_host,
-                synapse_port=settings.system_paasta_config.get_synapse_port(),
-                synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
-            ),
-            key=lambda backend: backend["status"],
-            reverse=True,  # put 'UP' backends above 'MAINT' backends
-        )
-
-        matched_backends_and_pods = match_backends_and_pods(sorted_backends, pods)
-        location_dict = build_smartstack_location_dict(
-            location, matched_backends_and_pods, should_return_individual_backends
-        )
-        smartstack_status["locations"].append(location_dict)
-
-    return smartstack_status
-
-
-@overload
-def build_smartstack_location_dict(
-    location: str,
-    matched_backends_and_tasks: List[
-        Tuple[Optional[HaproxyBackend], Optional[MarathonTask]]
-    ],
-    should_return_individual_backends: bool = False,
-) -> MutableMapping[str, Any]:
-    ...
-
-
-@overload
-def build_smartstack_location_dict(
-    location: str,
-    matched_backends_and_tasks: List[Tuple[Optional[HaproxyBackend], Optional[V1Pod]]],
-    should_return_individual_backends: bool = False,
-) -> MutableMapping[str, Any]:
-    ...
-
-
-def build_smartstack_location_dict(
-    location: str,
-    matched_backends_and_tasks=List[
-        Tuple[Optional[HaproxyBackend], Optional[Union[MarathonTask, V1Pod]]]
-    ],
-    should_return_individual_backends: bool = False,
-):
-    running_backends_count = 0
-    backends = []
-    for backend, task in matched_backends_and_tasks:
-        if backend is None:
-            continue
-        if backend_is_up(backend):
-            running_backends_count += 1
-        if should_return_individual_backends:
-            backends.append(build_smartstack_backend_dict(backend, task))
-
-    return {
-        "name": location,
-        "running_backends_count": running_backends_count,
-        "backends": backends,
-    }
-
-
-@overload
-def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: Optional[MarathonTask]
-) -> MutableMapping[str, Any]:
-    ...
-
-
-@overload
-def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: V1Pod
-) -> MutableMapping[str, Any]:
-    ...
-
-
-def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: Union[V1Pod, Optional[MarathonTask]]
-) -> MutableMapping[str, Any]:
-    svname = smartstack_backend["svname"]
-    if isinstance(task, V1Pod):
-        node_hostname = svname.split("_")[0]
-        pod_ip = svname.split("_")[1].split(":")[0]
-        hostname = f"{node_hostname}:{pod_ip}"
-    else:
-        hostname = svname.split("_")[0]
-    port = svname.split("_")[-1].split(":")[-1]
-
-    smartstack_backend_dict = {
-        "hostname": hostname,
-        "port": int(port),
-        "status": smartstack_backend["status"],
-        "check_status": smartstack_backend["check_status"],
-        "check_code": smartstack_backend["check_code"],
-        "last_change": int(smartstack_backend["lastchg"]),
-        "has_associated_task": task is not None,
-    }
-
-    check_duration = smartstack_backend["check_duration"]
-    if check_duration:
-        smartstack_backend_dict["check_duration"] = int(check_duration)
-
-    return smartstack_backend_dict
 
 
 @a_sync.to_blocking
@@ -832,20 +511,6 @@ async def get_mesos_non_running_task_dict(
     return task_dict
 
 
-INSTANCE_TYPE_CR_ID = dict(
-    flink=flink_tools.cr_id,
-    cassandracluster=cassandracluster_tools.cr_id,
-    kafkacluster=kafkacluster_tools.cr_id,
-)
-
-
-def cr_id_fn_for_instance_type(instance_type: str):
-    if instance_type not in INSTANCE_TYPE_CR_ID:
-        raise ApiFailure(f"Error looking up cr_id function for {instance_type}", 500)
-
-    return INSTANCE_TYPE_CR_ID[instance_type]
-
-
 @view_config(
     route_name="service.instance.status", request_method="GET", renderer="json"
 )
@@ -911,43 +576,26 @@ def instance_status(request):
             instance_status["adhoc"] = adhoc_instance_status(
                 instance_status, service, instance, verbose
             )
-        elif instance_type == "kubernetes":
-            instance_status["kubernetes"] = kubernetes_instance_status(
-                instance_status,
-                service,
-                instance,
-                verbose,
-                include_smartstack=include_smartstack,
-                instance_type=instance_type,
+        elif pik.can_handle(instance_type):
+            instance_status.update(
+                pik.instance_status(
+                    service=service,
+                    instance=instance,
+                    verbose=verbose,
+                    include_smartstack=include_smartstack,
+                    instance_type=instance_type,
+                    settings=settings,
+                )
             )
         elif instance_type == "tron":
             instance_status["tron"] = tron_instance_status(
                 instance_status, service, instance, verbose
             )
-        elif instance_type in INSTANCE_TYPES_K8S:
-            cr_id_fn = cr_id_fn_for_instance_type(instance_type)
-            cr_id = cr_id_fn(service, instance)
-            status = kubernetes_cr_status(cr_id, verbose)
-            metadata = kubernetes_cr_metadata(cr_id, verbose)
-            instance_status[instance_type] = {}
-            if status is not None:
-                instance_status[instance_type]["status"] = status
-            if metadata is not None:
-                instance_status[instance_type]["metadata"] = metadata
         else:
             error_message = (
                 f"Unknown instance_type {instance_type} of {service}.{instance}"
             )
             raise ApiFailure(error_message, 404)
-        if instance_type == "cassandracluster":
-            instance_status["kubernetes"] = kubernetes_instance_status(
-                instance_status,
-                service,
-                instance,
-                verbose,
-                include_smartstack=include_smartstack,
-                instance_type=instance_type,
-            )
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
@@ -976,28 +624,23 @@ def instance_set_state(request,) -> None:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type in INSTANCE_TYPES_WITH_SET_STATE:
+    if pik.can_set_state(instance_type):
         try:
-            cr_id_fn = cr_id_fn_for_instance_type(instance_type)
-            kube_client = KubeClient()
-            kubernetes_tools.set_cr_desired_state(
-                kube_client=kube_client,
-                cr_id=cr_id_fn(service=service, instance=instance),
+            pik.set_cr_desired_state(
+                kube_client=settings.kubernetes_client,
+                service=service,
+                instance=instance,
+                instance_type=instance_type,
                 desired_state=desired_state,
             )
-        except ApiException as e:
-            error_message = (
-                f"Error while setting state {desired_state} of "
-                f"{service}.{instance}: {e}"
-            )
-            raise ApiFailure(error_message, 500)
+        except RuntimeError as e:
+            raise ApiFailure(e, 500)
     else:
         error_message = (
             f"instance_type {instance_type} of {service}.{instance} doesn't "
-            f"support set_state, must be in INSTANCE_TYPES_WITH_SET_STATE, "
-            f"currently: {INSTANCE_TYPES_WITH_SET_STATE}"
+            "support set_state"
         )
-        raise ApiFailure(error_message, 404)
+        raise ApiFailure(error_message, 500)
 
 
 @view_config(
