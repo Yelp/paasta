@@ -385,20 +385,30 @@ class TestMarathonAppStatus:
         ]
 
 
-@mock.patch("paasta_tools.api.views.instance.match_backends_and_tasks", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.get_backends", autospec=True)
 @mock.patch(
     "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
     autospec=True,
 )
-@mock.patch("paasta_tools.api.views.instance.envoy_tools", autospec=True)
+@mock.patch(
+    "paasta_tools.api.views.instance.smartstack_tools.match_backends_and_tasks",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.api.views.instance.smartstack_tools.get_backends", autospec=True
+)
+@mock.patch(
+    "paasta_tools.api.views.instance.envoy_tools.match_backends_and_tasks",
+    autospec=True,
+)
+@mock.patch("paasta_tools.api.views.instance.envoy_tools.get_backends", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.get_slaves", autospec=True)
 def test_marathon_service_mesh_status(
     mock_get_slaves,
-    mock_envoy_tools,
+    mock_envoy_tools_get_backends,
+    mock_envoy_tools_match_backends_and_tasks,
+    mock_smartstack_tools_get_backends,
+    mock_smartstack_tools_match_backends_and_tasks,
     mock_get_expected_instance_count_for_namespace,
-    mock_get_backends,
-    mock_match_backends_and_tasks,
 ):
     mock_get_slaves.return_value = [
         {"hostname": "host1.paasta.party", "attributes": {"region": "us-north-3"}}
@@ -414,7 +424,9 @@ def test_marathon_service_mesh_status(
         lastchg="9876",
     )
     mock_task = mock.create_autospec(MarathonTask)
-    mock_match_backends_and_tasks.return_value = [(mock_haproxy_backend, mock_task)]
+    mock_smartstack_tools_match_backends_and_tasks.return_value = [
+        (mock_haproxy_backend, mock_task)
+    ]
 
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
     settings.system_paasta_config.get_deploy_blacklist.return_value = []
@@ -467,10 +479,10 @@ def test_marathon_service_mesh_status(
         weight=1,
         has_associated_task=False,
     )
-    mock_envoy_tools.match_backends_and_tasks.return_value = [
+    mock_envoy_tools_match_backends_and_tasks.return_value = [
         (mock_envoy_backend, mock_task)
     ]
-    smartstack_status = instance.marathon_service_mesh_status(
+    envoy_status = instance.marathon_service_mesh_status(
         "fake_service",
         instance.ServiceMesh.ENVOY,
         "fake_instance",
@@ -479,7 +491,7 @@ def test_marathon_service_mesh_status(
         tasks=[mock_task],
         should_return_individual_backends=True,
     )
-    assert smartstack_status == {
+    assert envoy_status == {
         "registration": "fake_service.fake_instance",
         "expected_backends_per_location": 2,
         "locations": [
