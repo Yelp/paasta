@@ -1374,7 +1374,7 @@ async def get_tail_lines_for_kubernetes_pod(
             tail_lines_dict["stdout"].append(
                 kube_client.core.read_namespaced_pod_log(
                     name=pod.metadata.name,
-                    namespace="paasta",
+                    namespace=pod.metadata.namespace,
                     container=container.name,
                     tail_lines=num_tail_lines,
                 )
