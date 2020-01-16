@@ -1,7 +1,7 @@
-paasta_tools.generate_services_yaml module
-==========================================
+paasta\_tools.generate\_services\_yaml module
+=============================================
 
 .. automodule:: paasta_tools.generate_services_yaml
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

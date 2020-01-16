@@ -1,5 +1,5 @@
-paasta_tools.cli.cmds package
-=============================
+paasta\_tools.cli.cmds package
+==============================
 
 Submodules
 ----------
@@ -16,6 +16,7 @@ Submodules
    paasta_tools.cli.cmds.itest
    paasta_tools.cli.cmds.list
    paasta_tools.cli.cmds.list_clusters
+   paasta_tools.cli.cmds.list_deploy_queue
    paasta_tools.cli.cmds.local_run
    paasta_tools.cli.cmds.logs
    paasta_tools.cli.cmds.mark_for_deployment
@@ -38,6 +39,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.cli.cmds
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

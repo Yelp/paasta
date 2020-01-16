@@ -1,7 +1,7 @@
-paasta_tools.deployd.master module
-==================================
+paasta\_tools.deployd.master module
+===================================
 
 .. automodule:: paasta_tools.deployd.master
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

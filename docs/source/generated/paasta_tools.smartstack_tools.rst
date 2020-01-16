@@ -1,7 +1,7 @@
-paasta_tools.smartstack_tools module
-====================================
+paasta\_tools.smartstack\_tools module
+======================================
 
 .. automodule:: paasta_tools.smartstack_tools
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

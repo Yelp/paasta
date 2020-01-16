@@ -1,5 +1,5 @@
-paasta_tools.cli.fsm package
-============================
+paasta\_tools.cli.fsm package
+=============================
 
 Submodules
 ----------
@@ -12,6 +12,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.cli.fsm
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
