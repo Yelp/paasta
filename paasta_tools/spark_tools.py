@@ -137,7 +137,7 @@ def _calculate_memory_per_executor(spark_memory_string, memory_overhead):
 
 def get_spark_resource_requirements(
     spark_config_dict: Mapping[str, str], webui_url: str,
-) -> Mapping[str, int]:
+) -> Mapping[str, Tuple[str, int]]:
     if not clusterman_metrics:
         return {}
     num_executors = int(spark_config_dict["spark.cores.max"]) / int(
@@ -151,8 +151,8 @@ def get_spark_resource_requirements(
     desired_resources = {
         "cpus": int(spark_config_dict["spark.cores.max"]),
         "mem": memory_per_executor * num_executors,
-        "disk": memory_per_executor
-        * num_executors,  # rough guess since spark does not collect this information
+        # rough guess since spark does not collect this information
+        "disk": memory_per_executor * num_executors,
     }
     dimensions = {
         "framework_name": spark_config_dict["spark.app.name"],
@@ -160,11 +160,12 @@ def get_spark_resource_requirements(
     }
     qualified_resources = {}
     for resource, quantity in desired_resources.items():
-        qualified_resources[
+        qualified_resources[resource] = (
             clusterman_metrics.generate_key_with_dimensions(
                 f"requested_{resource}", dimensions
-            )
-        ] = desired_resources[resource]
+            ),
+            desired_resources[resource],
+        )
 
     return qualified_resources
 

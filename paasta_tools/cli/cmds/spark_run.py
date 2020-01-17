@@ -536,13 +536,8 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
         region_name=aws_region, app_identifier=pool
     )
 
-    cpus, mem = None, None
-    for key, value in desired_resources.items():
-        if "requested_cpus" in key:
-            cpus = value
-        elif "requested_mem" in key:
-            mem = value
-
+    cpus = desired_resources["cpus"][1]
+    mem = desired_resources["mem"][1]
     est_cost = clusterman_metrics.util.costs.estimate_cost_per_hour(
         cluster=paasta_cluster, pool=pool, cpus=cpus, mem=mem,
     )
@@ -556,7 +551,7 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     with metrics_client.get_writer(
         clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True
     ) as writer:
-        for metric_key, desired_quantity in desired_resources.items():
+        for _, (metric_key, desired_quantity) in desired_resources.items():
             writer.send((metric_key, int(time.time()), desired_quantity))
 
 

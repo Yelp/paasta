@@ -173,7 +173,7 @@ def test_get_spark_resource_requirements(tmpdir):
         )
 
     assert resources == {
-        metric_key_template.format(resource="cpus"): 4,
-        metric_key_template.format(resource="mem"): expected_memory_request,
-        metric_key_template.format(resource="disk"): expected_memory_request,
+        "cpus": (metric_key_template.format(resource="cpus"), 4),
+        "mem": (metric_key_template.format(resource="mem"), expected_memory_request),
+        "disk": (metric_key_template.format(resource="disk"), expected_memory_request),
     }

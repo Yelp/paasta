@@ -244,8 +244,11 @@ class TronActionConfig(InstanceConfig):
             env["EXECUTOR_POOL"] = self.get_spark_pool()
             env["SPARK_OPTS"] = stringify_spark_env(spark_env)
             env["CLUSTERMAN_RESOURCES"] = json.dumps(
-                get_spark_resource_requirements(
-                    spark_config_dict=spark_env, webui_url=get_webui_url(spark_ui_port)
+                dict(
+                    get_spark_resource_requirements(
+                        spark_config_dict=spark_env,
+                        webui_url=get_webui_url(spark_ui_port),
+                    ).values()
                 )
             )
 

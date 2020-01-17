@@ -510,9 +510,15 @@ def test_emit_resource_requirements(tmpdir):
         metric_key_template = "requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp"
         expected_memory_request = (4 * 1024 + 555) * 2
         mock_spark_requirements.return_value = {
-            metric_key_template.format(resource="cpus"): 4,
-            metric_key_template.format(resource="mem"): expected_memory_request,
-            metric_key_template.format(resource="disk"): expected_memory_request,
+            "cpus": (metric_key_template.format(resource="cpus"), 4),
+            "mem": (
+                metric_key_template.format(resource="mem"),
+                expected_memory_request,
+            ),
+            "disk": (
+                metric_key_template.format(resource="disk"),
+                expected_memory_request,
+            ),
         }
         emit_resource_requirements(
             spark_config_dict, "anywhere-prod", "http://spark.yelp"

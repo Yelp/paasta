@@ -80,7 +80,10 @@ class TestTronActionConfig:
         ), mock.patch(
             "paasta_tools.tron_tools.get_spark_resource_requirements",
             autospec=True,
-            return_value={"cpus": 1900, "mem": "42"},
+            return_value={
+                "cpus": ("cpus|dimension=2", 1900),
+                "mem": ("mem|dimension=1", "42"),
+            },
         ):
             env = action_config.get_env()
         if executor == "spark":
