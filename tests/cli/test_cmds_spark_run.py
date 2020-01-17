@@ -502,11 +502,24 @@ def test_emit_resource_requirements(tmpdir):
         autospec=None,  # we're replacing this name, so we can't autospec
     ), mock.patch(
         "time.time", return_value=1234, autospec=True
-    ):
-        mock_clusterman_metrics.generate_key_with_dimensions.side_effect = lambda name, dims: (
-            f'{name}|framework_name={dims["framework_name"]},webui_url={dims["webui_url"]}'
-        )
+    ), mock.patch(
+        "paasta_tools.cli.cmds.spark_run.get_spark_resource_requirements",
+        autospec=True,
+    ) as mock_spark_requirements:
 
+        metric_key_template = "requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp"
+        expected_memory_request = (4 * 1024 + 555) * 2
+        mock_spark_requirements.return_value = {
+            "cpus": (metric_key_template.format(resource="cpus"), 4),
+            "mem": (
+                metric_key_template.format(resource="mem"),
+                expected_memory_request,
+            ),
+            "disk": (
+                metric_key_template.format(resource="disk"),
+                expected_memory_request,
+            ),
+        }
         emit_resource_requirements(
             spark_config_dict, "anywhere-prod", "http://spark.yelp"
         )
@@ -517,10 +530,6 @@ def test_emit_resource_requirements(tmpdir):
         metrics_writer = (
             mock_clusterman_metrics.ClustermanMetricsBotoClient.return_value.get_writer.return_value.__enter__.return_value
         )
-
-        metric_key_template = "requested_{resource}|framework_name=paasta_spark_run_johndoe_2_3,webui_url=http://spark.yelp"
-
-        expected_memory_request = (4 * 1024 + 555) * 2
 
         metrics_writer.send.assert_has_calls(
             [

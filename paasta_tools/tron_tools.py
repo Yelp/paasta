@@ -49,6 +49,8 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import load_tron_yaml
 from paasta_tools.utils import extract_jobs_from_tron_yaml
+from paasta_tools.spark_tools import get_spark_resource_requirements
+from paasta_tools.spark_tools import get_webui_url
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -205,32 +207,50 @@ class TronActionConfig(InstanceConfig):
             command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + command
         return command
 
+    def get_spark_cluster(self):
+        return self.config_dict.get("spark_cluster", self.get_cluster())
+
+    def get_spark_pool(self):
+        return self.config_dict.get("spark_pool", "default")
+
     def get_env(self):
         env = super().get_env()
         spark_env = {}
         if self.get_executor() == "spark":
+            spark_ui_port = pick_random_port(
+                f"{self.get_service()}{self.get_instance()}".encode()
+            )
             spark_env = get_mesos_spark_env(
-                spark_app_name="tron_spark_{self.get_service()}_{self.get_instance()}",
-                spark_ui_port=pick_random_port(
-                    f"{self.get_service()}{self.get_instance()}".encode()
-                ),
-                mesos_leader=find_mesos_leader(self.get_cluster()),
+                spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
+                spark_ui_port=spark_ui_port,
+                mesos_leader=find_mesos_leader(self.get_spark_cluster()),
                 mesos_secret=load_mesos_secret_for_spark(),
-                paasta_cluster=self.get_cluster(),
-                paasta_pool=self.get_pool(),
+                paasta_cluster=self.get_spark_cluster(),
+                paasta_pool=self.get_spark_pool(),
                 paasta_service=self.get_service(),
                 paasta_instance=self.get_instance(),
                 docker_img=self.get_docker_url(),
-                volumes=format_volumes(
-                    self.get_volumes(load_system_paasta_config().get_volumes())
-                ),
+                volumes=[
+                    f"{v['hostPath']}:{v['containerPath']}:{v['mode']}"
+                    for v in self.get_volumes(load_system_paasta_config().get_volumes())
+                ],
                 user_spark_opts=self.config_dict.get("spark_args"),
                 event_log_dir=get_default_event_log_dir(
                     service=self.get_service(),
                     aws_credentials_yaml=self.config_dict.get("aws_credentials"),
                 ),
             )
+            env["EXECUTOR_CLUSTER"] = self.get_spark_cluster()
+            env["EXECUTOR_POOL"] = self.get_spark_pool()
             env["SPARK_OPTS"] = stringify_spark_env(spark_env)
+            env["CLUSTERMAN_RESOURCES"] = json.dumps(
+                dict(
+                    get_spark_resource_requirements(
+                        spark_config_dict=spark_env,
+                        webui_url=get_webui_url(spark_ui_port),
+                    ).values()
+                )
+            )
 
         return env
 
