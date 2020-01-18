@@ -1036,7 +1036,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             docker_url = self.get_docker_url()
             code_sha = get_code_sha_from_dockerurl(docker_url)
             complete_config: Union[V1StatefulSet, V1Deployment]
-            if self.get_persistent_volumes():
+            if self.get_persistent_volumes() or self.get_aws_ebs_volumes():
                 complete_config = V1StatefulSet(
                     api_version="apps/v1",
                     kind="StatefulSet",
