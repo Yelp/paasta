@@ -840,6 +840,9 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes",
             autospec=True,
         ) as mock_get_persistent_volumes, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes",
+            autospec=True,
+        ) as mock_get_aws_ebs_volumes, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volume_claim_templates",
             autospec=True,
         ) as mock_get_volumes_claim_templates, mock.patch(
@@ -850,6 +853,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             autospec=True,
         ) as mock_get_kubernetes_metadata:
             mock_get_persistent_volumes.return_value = []
+            mock_get_aws_ebs_volumes.return_value = []
             ret = self.deployment.format_kubernetes_app()
             assert mock_load_system_config.called
             assert mock_get_docker_url.called
