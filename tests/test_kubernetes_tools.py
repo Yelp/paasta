@@ -1055,7 +1055,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         annotations = {
             "signalfx.com.custom.metrics": "",
             "signalfx.com.external.metric/external": "fake_query",
-            "signalfx.com.external.metric/http": 'data("http", filter=filter("any", "random")).mean().publish()',
+            "signalfx.com.external.metric/http": 'data("http", filter=filter("any", "random")).mean(over=15m).publish()',
         }
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
