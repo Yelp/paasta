@@ -1,5 +1,5 @@
-paasta_tools.kubernetes.application package
-===========================================
+paasta\_tools.kubernetes.application package
+============================================
 
 Submodules
 ----------
@@ -13,6 +13,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.kubernetes.application
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

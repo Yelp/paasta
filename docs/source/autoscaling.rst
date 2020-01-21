@@ -1,11 +1,18 @@
 ====================================
-Autoscaling Marathon tasks in PaaSTA
+Autoscaling PaaSTA Instances
 ====================================
 
-PaaSTA allows programmatic control of the number of marathon tasks a service
-has. It does this by using Zookeeper as a data store to record the number of
-tasks it thinks should be running for each instance of a service on a
-per-cluster basis.
+The section below introduces autoscaling in Marathon.
+For services in Kubernetes, the following configurations are allowed in configuration files,
+for compatibility with marathon.yaml; but not all of them are respected.
+The mechanism is also different. If you are creating a new service on Kubernetes or are modifying
+autoscaling configurations for your services that already running on Kubernetes, please
+check :ref:`here <hpa>`.
+
+PaaSTA allows programmatic control of the number of marathon tasks a service has.
+It does this by using Zookeeper as a data store to record the number of tasks it
+thinks should be running for each instance of a service on a per-cluster basis.
+
 
 How to use autoscaling
 ======================
@@ -34,18 +41,14 @@ run as soon as the service is deployed. If you have defined a healthcheck,
 autoscaling will run as soon as the healthcheck passes. This is so new tasks that
 have higher-than-average load when starting up are ignored.
 
-Autoscaling parameters are stored in an ``autoscaling`` attribute of your
-instances as a dictionary. Within the ``autoscaling`` attribute, setting a
-``metrics_provider`` will allow you to specify a method that determines the
-utilization of your service. If a metrics provider isn't provided, the
-``"mesos_cpu"`` metrics provider will be used. Within the ``autoscaling``
-attribute, setting a ``decision_policy`` will allow you to specify the logic
-that determines when to autoscale your service. If a decision policy isn't
-provided, the ``"proportional"`` decision policy will be used. Specifying a ``setpoint``
-allows you to specify a target utilization for your service. The default
-``setpoint`` is 0.8 (80%). Decision policies and metrics providers have their
-own optional keyword arguments that may be placed into the ``autoscaling``
-dictionary as well.
+Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary.
+Within the ``autoscaling`` attribute, setting a ``metrics_provider`` will allow you to specify a method that determines the utilization of your service.
+If a metrics provider isn't provided, the ``"mesos_cpu"`` metrics provider will be used.
+Within the ``autoscaling`` attribute, setting a ``decision_policy`` will allow you to specify the logic that determines when to autoscale your service.
+If a decision policy isn't provided, the ``"proportional"`` decision policy will be used.
+Specifying a ``setpoint`` allows you to specify a target utilization for your service.
+The default ``setpoint`` is 0.8 (80%).
+Decision policies and metrics providers have their own optional keyword arguments that may be placed into the ``autoscaling`` dictionary as well.
 
 Let's look at sample marathon config file:
 
@@ -87,6 +90,7 @@ The currently available metrics providers are:
   :endpoint:
     the path to perform the HTTP request on (the requested URL will be
     ``http://$HOST:$PORT/$endpoint``). Defaults to 'status'.
+    Only status is supported in Kubernetes currently.
 
 :uwsgi:
   Makes a request on a HTTP endpoint on your service. Expects a response with a
@@ -100,6 +104,7 @@ The currently available metrics providers are:
   :endpoint:
     the path to perform the HTTP request on (the requested URL will be
     ``http://$HOST:$PORT/$endpoint``). Defaults to 'status/uwsgi'.
+    Only status/uwsgi is supported in Kubernetes currently.
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
@@ -113,30 +118,31 @@ The currently available decicion policies are:
   Extra parameters:
 
   :offset:
-    Float between 0.0 and 1.0, representing expected baseline load for each container. Defaults to 0.0.
+    Float between 0.0 and 1.0, representing expected baseline load for each container.
+    Defaults to 0.0.
   :forecast_policy:
     See "Forecast policies" below.
   :good_enough_window:
-    An array of two utilization values [low, high]. If utilization per container at
-    the forecasted total load is within the window, instances will not scale. Optional
-    parameter (defaults to None).
+    An array of two utilization values [low, high].
+    If utilization per container at the forecasted total load is within the window, instances will not scale.
+    Optional parameter (defaults to None).
 
-:pid:
-  Uses a PID controller to determine when to autoscale a service. See `this
-  page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on
-  PIDs.
+:pid (Not Supported in Kubernetes):
+  Uses a PID controller to determine when to autoscale a service.
+  See `this page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on PIDs.
 
-:threshold:
+:threshold (Not Supported in Kubernetes):
   Autoscales when a service's utilization exceeds beyond a certain threshold.
 
 :bespoke:
   Allows a service author to implement their own autoscaling.
+  Currently set to max_instances in Kuberentes.
 
-Forecast policies
-^^^^^^^^^^^^^^^^^
+Forecast policies (Not Supported in Kubernetes)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forecast policies are used by the proportional decision policy. Two forecast policies
-have been implemented:
+Forecast policies are used by the proportional decision policy.
+Two forecast policies have been implemented:
 
 :current:
   Assumes current load will remain the same as the current value for the near future.

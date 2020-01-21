@@ -1,7 +1,7 @@
-paasta_tools.frameworks.constraints module
-==========================================
+paasta\_tools.frameworks.constraints module
+===========================================
 
 .. automodule:: paasta_tools.frameworks.constraints
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

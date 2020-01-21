@@ -1,7 +1,7 @@
-paasta_tools.api.auth_decorator module
-======================================
+paasta\_tools.api.auth\_decorator module
+========================================
 
 .. automodule:: paasta_tools.api.auth_decorator
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

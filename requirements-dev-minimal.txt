@@ -13,4 +13,5 @@ pytest
 pytest-asyncio
 requirements-tools
 Sphinx
+sphinx-rtd-theme
 zake

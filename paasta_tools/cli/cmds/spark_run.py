@@ -5,6 +5,7 @@ import os
 import socket
 import sys
 import time
+from typing import Mapping
 
 from boto3.exceptions import Boto3Error
 from ruamel.yaml import YAML
@@ -20,6 +21,8 @@ from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
+from paasta_tools.spark_tools import get_spark_resource_requirements
+from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import load_mesos_secret_for_spark
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -522,44 +525,24 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
 
 
 def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
-    num_executors = int(spark_config_dict["spark.cores.max"]) / int(
-        spark_config_dict["spark.executor.cores"]
-    )
-    memory_per_executor = calculate_memory_per_executor(
-        spark_config_dict["spark.executor.memory"],
-        spark_config_dict.get("spark.mesos.executor.memoryOverhead"),
-    )
+    paasta_print("Sending resource request metrics to Clusterman")
 
-    desired_resources = {
-        "cpus": int(spark_config_dict["spark.cores.max"]),
-        "mem": memory_per_executor * num_executors,
-        "disk": memory_per_executor
-        * num_executors,  # rough guess since spark does not collect this information
-    }
-    dimensions = {
-        "framework_name": spark_config_dict["spark.app.name"],
-        "webui_url": webui_url,
-    }
-
+    desired_resources = get_spark_resource_requirements(spark_config_dict, webui_url)
     constraints = parse_constraints_string(spark_config_dict["spark.mesos.constraints"])
     pool = constraints["pool"]
 
-    paasta_print("Sending resource request metrics to Clusterman")
     aws_region = get_aws_region_for_paasta_cluster(paasta_cluster)
     metrics_client = clusterman_metrics.ClustermanMetricsBotoClient(
         region_name=aws_region, app_identifier=pool
     )
 
-    estimated_cost = clusterman_metrics.util.costs.estimate_cost_per_hour(
-        cluster=paasta_cluster,
-        pool=pool,
-        cpus=desired_resources["cpus"],
-        mem=desired_resources["mem"],
+    cpus = desired_resources["cpus"][1]
+    mem = desired_resources["mem"][1]
+    est_cost = clusterman_metrics.util.costs.estimate_cost_per_hour(
+        cluster=paasta_cluster, pool=pool, cpus=cpus, mem=mem,
     )
-    message = "Resource request ({} cpus and {} MB memory total) is estimated to cost ${} per hour".format(
-        desired_resources["cpus"], desired_resources["mem"], estimated_cost
-    )
-    if clusterman_metrics.util.costs.should_warn(estimated_cost):
+    message = f"Resource request ({cpus} cpus and {mem} MB memory total) is estimated to cost ${est_cost} per hour"
+    if clusterman_metrics.util.costs.should_warn(est_cost):
         message = "WARNING: " + message
         paasta_print(PaastaColors.red(message))
     else:
@@ -568,34 +551,17 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     with metrics_client.get_writer(
         clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True
     ) as writer:
-        for resource, desired_quantity in desired_resources.items():
-            metric_key = clusterman_metrics.generate_key_with_dimensions(
-                f"requested_{resource}", dimensions
-            )
+        for _, (metric_key, desired_quantity) in desired_resources.items():
             writer.send((metric_key, int(time.time()), desired_quantity))
 
 
-def get_aws_region_for_paasta_cluster(paasta_cluster):
+def get_aws_region_for_paasta_cluster(paasta_cluster: str) -> str:
     with open(CLUSTERMAN_YAML_FILE_PATH, "r") as clusterman_yaml_file:
         clusterman_yaml = YAML().load(clusterman_yaml_file.read())
         return clusterman_yaml["clusters"][paasta_cluster]["aws_region"]
 
 
-def calculate_memory_per_executor(spark_memory_string, memory_overhead):
-    # expected to be in format "dg" where d is an integer
-    base_memory_per_executor = 1024 * int(spark_memory_string[:-1])
-
-    # by default, spark adds an overhead of 10% of the executor memory, with
-    # a minimum of 384mb
-    if memory_overhead is None:
-        memory_overhead = max(384, int(0.1 * base_memory_per_executor))
-    else:
-        memory_overhead = int(memory_overhead)
-
-    return base_memory_per_executor + memory_overhead
-
-
-def parse_constraints_string(constraints_string):
+def parse_constraints_string(constraints_string: str) -> Mapping[str, str]:
     constraints = {}
     for constraint in constraints_string.split(";"):
         if constraint[-1] == "\\":
@@ -686,7 +652,7 @@ def configure_and_run_docker_container(
         get_spark_env(args, spark_conf_str, spark_ui_port, access_key, secret_key)
     )
 
-    webui_url = f"http://{socket.getfqdn()}:{spark_ui_port}"
+    webui_url = get_webui_url(spark_ui_port)
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:

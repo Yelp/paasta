@@ -1,7 +1,7 @@
-paasta_tools.api.views.deploy_queue module
-==========================================
+paasta\_tools.api.views.deploy\_queue module
+============================================
 
 .. automodule:: paasta_tools.api.views.deploy_queue
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

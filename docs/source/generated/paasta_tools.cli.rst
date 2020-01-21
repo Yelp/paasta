@@ -1,13 +1,13 @@
-paasta_tools.cli package
-========================
+paasta\_tools.cli package
+=========================
 
 Subpackages
 -----------
 
 .. toctree::
 
-    paasta_tools.cli.cmds
-    paasta_tools.cli.fsm
+   paasta_tools.cli.cmds
+   paasta_tools.cli.fsm
 
 Submodules
 ----------
@@ -22,6 +22,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.cli
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

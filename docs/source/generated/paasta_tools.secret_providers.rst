@@ -1,5 +1,5 @@
-paasta_tools.secret_providers package
-=====================================
+paasta\_tools.secret\_providers package
+=======================================
 
 Submodules
 ----------
@@ -12,6 +12,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.secret_providers
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

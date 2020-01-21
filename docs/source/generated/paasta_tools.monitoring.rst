@@ -1,5 +1,5 @@
-paasta_tools.monitoring package
-===============================
+paasta\_tools.monitoring package
+================================
 
 Submodules
 ----------
@@ -18,6 +18,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.monitoring
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,12 +1,12 @@
-paasta_tools.api package
-========================
+paasta\_tools.api package
+=========================
 
 Subpackages
 -----------
 
 .. toctree::
 
-    paasta_tools.api.views
+   paasta_tools.api.views
 
 Submodules
 ----------
@@ -22,6 +22,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.api
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

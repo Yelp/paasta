@@ -1,7 +1,7 @@
-paasta_tools.cli.cmds.rollback module
-=====================================
+paasta\_tools.cli.cmds.rollback module
+======================================
 
 .. automodule:: paasta_tools.cli.cmds.rollback
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
