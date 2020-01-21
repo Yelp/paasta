@@ -255,9 +255,6 @@ def format_custom_resource(
             "name": f"{sanitised_service}-{sanitised_instance}",
             "namespace": namespace,
             "labels": {
-                "yelp.com/paasta_service": service,
-                "yelp.com/paasta_instance": instance,
-                "yelp.com/paasta_cluster": cluster,
                 paasta_prefixed("service"): service,
                 paasta_prefixed("instance"): instance,
                 paasta_prefixed("cluster"): cluster,
@@ -268,12 +265,9 @@ def format_custom_resource(
     }
     url = get_dashboard_url(kind, service, instance, cluster)
     if url:
-        resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_url")] = url
     config_hash = get_config_hash(resource)
-    resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"
     resource["metadata"]["annotations"][paasta_prefixed("desired_state")] = "running"
-    resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     resource["metadata"]["labels"][paasta_prefixed("config_sha")] = config_hash
     return resource
 

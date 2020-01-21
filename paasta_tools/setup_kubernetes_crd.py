@@ -116,7 +116,6 @@ def setup_kube_crd(
         metadata = crd_config.get("metadata", {})
         if "labels" not in metadata:
             metadata["labels"] = {}
-        metadata["labels"]["yelp.com/paasta_service"] = service
         metadata["labels"][paasta_prefixed("service")] = service
         desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get("apiVersion"),
