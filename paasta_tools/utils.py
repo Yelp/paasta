@@ -2289,7 +2289,7 @@ class SystemPaastaConfig:
 
     def get_envoy_admin_port(self) -> int:
         """ Get the port that Envoy's admin interface is listening on
-        from /etc/hosts. """
+        from /etc/services. """
         return socket.getservbyname(
             self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
         )
