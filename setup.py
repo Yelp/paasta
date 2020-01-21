@@ -63,6 +63,7 @@ setup(
         "paasta_tools/kubernetes/bin/paasta_cleanup_stale_nodes.py",
         "paasta_tools/kubernetes/bin/kubernetes_remove_evicted_pods.py",
         "paasta_tools/list_marathon_service_instances.py",
+        "paasta_tools/log_task_lifecycle_events.py",
         "paasta_tools/marathon_dashboard.py",
         "paasta_tools/monitoring/check_capacity.py",
         "paasta_tools/monitoring/check_marathon_has_apps.py",
@@ -83,7 +84,6 @@ setup(
         "paasta_tools/setup_kubernetes_cr.py",
         "paasta_tools/setup_marathon_job.py",
         "paasta_tools/synapse_srv_namespaces_fact.py",
-        "paasta_tools/subscribe_mesos_master.py",
     ]
     + glob.glob("paasta_tools/contrib/*"),
     entry_points={
