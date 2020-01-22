@@ -51,7 +51,7 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
         [
             pod
             for pod in si_pods
-            if pod.metadata.labels["flink-container-type"] == container_type
+            if pod.metadata.labels["flink.yelp.com/container-type"] == container_type
             and is_pod_ready(pod)
             and container_lifetime(pod).total_seconds() > 60
         ]
