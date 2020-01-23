@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 ifneq ($(shell echo ${TRAVIS}),true)
-	YELP_DH_VIRTUALENV = --index-url='https://pypi.yelpcorp.com/simple' --preinstall=pip-custom-platform --pip-tool=pip-custom-platform
+	YELP_DH_VIRTUALENV = --index-url='https://pypi.yelpcorp.com/simple' --preinstall=-rrequirements-bootstrap.txt --pip-tool=pip-custom-platform --extra-pip-arg --only-binary=:all:
 	YELP_DH_INSTALL = install -d completions/usr debian/package/.
 endif
 
