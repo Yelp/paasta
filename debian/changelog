@@ -1,3 +1,15 @@
+paasta-tools (0.93.3) xenial; urgency=medium
+
+  * 0.93.3 tagged with 'make release'
+    Commit: Fix failed HPA tests (#2632)
+    Use requirements-bootstrap.txt to pin version of pip
+    Fix failed HPA tests
+    Switch flink-container-type label to yelp.com/container-type
+    send clusterman metrics info as environment variables to Tron
+    Added autoscaling docs, Fixed a couple HPA bugs
+
+ -- Bronek Kozicki <bronek@yelp.com>  Thu, 23 Jan 2020 06:34:27 -0800
+
 paasta-tools (0.93.2) xenial; urgency=medium
 
   * 0.93.2 tagged with 'make release'

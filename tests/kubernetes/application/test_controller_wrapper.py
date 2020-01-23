@@ -153,7 +153,7 @@ def test_sync_horizontal_pod_autoscaler_no_autoscaling():
         == 0
     )
     assert (
-        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
@@ -170,7 +170,7 @@ def test_sync_horizontal_pod_autoscaler_delete_hpa_when_no_autoscaling():
         == 0
     )
     assert (
-        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 1
@@ -183,7 +183,7 @@ def test_sync_horizontal_pod_autoscaler_create_hpa():
     app = setup_app(config_dict, False)
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
-        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
@@ -207,7 +207,7 @@ def test_sync_horizontal_pod_autoscaler_update_hpa():
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
-    mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
+    mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
         name="fake_name",
         body=app.soa_config.get_autoscaling_metric_spec(
@@ -229,7 +229,7 @@ def test_sync_horizontal_pod_autoscaler_bespoke_autoscaler():
         == 0
     )
     assert (
-        mock_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler.call_count
+        mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
