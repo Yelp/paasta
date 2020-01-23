@@ -41,7 +41,7 @@ class fake_args:
 
 
 def mock_status_instance_side_effect(
-    service, instance, include_smartstack, include_mesos
+    service, instance, include_smartstack, include_envoy, include_mesos
 ):
     if instance in ["instance1", "instance6", "notaninstance", "api_error"]:
         # valid completed instance

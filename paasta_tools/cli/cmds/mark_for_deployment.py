@@ -1085,6 +1085,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 service=cluster_data.service,
                 instance=instance,
                 include_smartstack=False,
+                include_envoy=False,
                 include_mesos=False,
             ).result()
         except HTTPError as e:

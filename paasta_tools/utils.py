@@ -1736,6 +1736,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
     enforce_disk_quota: bool
+    envoy_admin_domain_name: str
+    envoy_admin_endpoint_format: str
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
@@ -2278,6 +2280,19 @@ class SystemPaastaConfig:
 
     def get_clusters(self) -> Sequence[str]:
         return self.config_dict.get("clusters", [])
+
+    def get_envoy_admin_endpoint_format(self) -> str:
+        """ Get the format string for Envoy's admin interface. """
+        return self.config_dict.get(
+            "envoy_admin_endpoint_format", "http://{host:s}:{port:d}/{endpoint:s}"
+        )
+
+    def get_envoy_admin_port(self) -> int:
+        """ Get the port that Envoy's admin interface is listening on
+        from /etc/services. """
+        return socket.getservbyname(
+            self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
+        )
 
 
 def _run(
