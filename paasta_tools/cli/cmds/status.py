@@ -917,16 +917,9 @@ def print_flink_status(
     else:
         output.append(f"    State: {status.state}")
 
-    if not should_job_info_be_shown(status.state):
-        # In case where the jobmanager of cluster is in crashloopbackoff
-        # The pods for the cluster will be available and we need to show the pods.
-        # So that paasta status -v and kubectl get pods show the same consistent result.
-        if verbose and len(status.pod_status) > 0:
-            append_pod_status(status.pod_status, output)
-        output.append(f"    No other information available in non-running state")
-        return 0
-
     pod_running_count = pod_evicted_count = pod_other_count = 0
+    # default for evicted in case where pod status is not available
+    evicted = f"{pod_evicted_count}"
     for pod in status.pod_status:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -945,6 +938,15 @@ def print_flink_status(
         f" {evicted} evicted,"
         f" {pod_other_count} other"
     )
+
+    if not should_job_info_be_shown(status.state):
+        # In case where the jobmanager of cluster is in crashloopbackoff
+        # The pods for the cluster will be available and we need to show the pods.
+        # So that paasta status -v and kubectl get pods show the same consistent result.
+        if verbose and len(status.pod_status) > 0:
+            append_pod_status(status.pod_status, output)
+        output.append(f"    No other information available in non-running state")
+        return 0
 
     output.append(
         "    Jobs:"
