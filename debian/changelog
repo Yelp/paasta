@@ -1,3 +1,12 @@
+paasta-tools (0.93.4) xenial; urgency=medium
+
+  * 0.93.4 tagged with 'make release'
+    Commit: Merge pull request #2638 from Yelp/update-dependencies-to-
+    0.93.2-state  Update requirements-bootstrap.txt to the state in
+    v0.93.2
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 24 Jan 2020 08:58:41 -0800
+
 paasta-tools (0.93.3) xenial; urgency=medium
 
   * 0.93.3 tagged with 'make release'
