@@ -82,6 +82,7 @@ setup(
         "paasta_tools/setup_kubernetes_cr.py",
         "paasta_tools/setup_marathon_job.py",
         "paasta_tools/synapse_srv_namespaces_fact.py",
+        "paasta_tools/paasta_docker_wrapper.sh",
     ]
     + glob.glob("paasta_tools/contrib/*"),
     entry_points={
