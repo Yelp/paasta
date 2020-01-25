@@ -1,3 +1,13 @@
+paasta-tools (0.93.6) xenial; urgency=medium
+
+  * 0.93.6 tagged with 'make release'
+    Commit: Revert "Merge pull request #2595 from Yelp/CORESERV-
+    7471_check_envoy_status" (#2640)  This reverts commit
+    326d73f39dc870972ea3fa2b827fe1bdb035c961, reversing changes made to
+    52a8b4218d47ca8bb0959ed0c9cd7be1fcbdbcfe.
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 24 Jan 2020 16:32:07 -0800
+
 paasta-tools (0.93.5) xenial; urgency=medium
 
   * 0.93.5 tagged with 'make release'
