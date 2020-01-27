@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
 
-def parse_args(argv):
+def parse_args():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
         "-s",
@@ -23,6 +23,14 @@ def parse_args(argv):
         help="Service credentials for Splunk API, user:pass",
         dest="splunk_creds",
         required=True,
+    )
+    parser.add_argument(
+        "-f",
+        "--criteria-filter",
+        help="Filter Splunk search results criteria field. Default: *",
+        dest="criteria_filter",
+        required=False,
+        default="*",
     )
     parser.add_argument(
         "-j",
@@ -81,7 +89,7 @@ def parse_args(argv):
         "-v", "--verbose", help="Debug mode.", action="store_true", dest="verbose",
     )
 
-    return parser.parse_args(argv)
+    return parser.parse_args()
 
 
 def tempdir():
@@ -102,7 +110,7 @@ def cwd(path):
         os.chdir(pwd)
 
 
-def get_report_from_splunk(creds, filename):
+def get_report_from_splunk(creds, filename, criteria_filter):
     """ Expect a table containing at least the following fields:
     criteria (<service> [marathon|kubernetes]-<cluster_name> <instance>)
     service_owner
@@ -116,9 +124,9 @@ def get_report_from_splunk(creds, filename):
     """
     url = "https://splunk-api.yelpcorp.com/servicesNS/nobody/yelp_performance/search/jobs/export"
     search = (
-        "| inputlookup {} |"
-        ' eval _time = search_time | where _time > relative_time(now(),"-7d")'
-    ).format(filename)
+        '| inputlookup {filename} | search criteria="{criteria_filter}"'
+        '| eval _time = search_time | where _time > relative_time(now(),"-7d")'
+    ).format(filename=filename, criteria_filter=criteria_filter)
     data = {"output_mode": "json", "search": search}
     creds = creds.split(":")
     resp = requests.post(url, data=data, auth=(creds[0], creds[1]))
@@ -280,7 +288,7 @@ def edit_soa_configs(filename, instance, cpu, mem):
         log.exception(f"Error in {filename}")
 
 
-def create_jira_ticket(serv, creds, description):
+def create_jira_ticket(serv, creds, description, JIRA):
     creds = creds.split(":")
     options = {"server": "https://jira.yelpcorp.com"}
     jira_cli = JIRA(options=options, basic_auth=(creds[0], creds[1]))  # noqa: F821
@@ -369,14 +377,14 @@ def bulk_rightsize(report, create_code_review, publish_code_review):
 
 
 def individual_rightsize(
-    report, create_tickets, jira_creds, create_review, publish_review
+    report, create_tickets, jira_creds, create_review, publish_review, JIRA
 ):
     for _, serv in report.items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
         summary, ticket_desc = generate_ticket_content(serv)
 
         if create_tickets is True:
-            branch = create_jira_ticket(serv, jira_creds, ticket_desc)
+            branch = create_jira_ticket(serv, jira_creds, ticket_desc, JIRA)
         else:
             branch = "rightsize-{}".format(int(time.time() * 1000))
 
@@ -399,9 +407,8 @@ def individual_rightsize(
             continue
 
 
-def main(argv=None):
-    args = parse_args(argv)
-
+def main():
+    args = parse_args()
     if args.verbose:
         log.setLevel(logging.DEBUG)
 
@@ -410,8 +417,12 @@ def main(argv=None):
             raise ValueError("No JIRA creds specified")
         # Only import the jira module if we need too
         from jira.client import JIRA  # noqa: F401
+    else:
+        JIRA = None
 
-    report = get_report_from_splunk(args.splunk_creds, args.csv_report)
+    report = get_report_from_splunk(
+        args.splunk_creds, args.csv_report, args.criteria_filter
+    )
 
     tmpdir = tempdir()  # Create a tmp dir even if we are not using it
 
@@ -432,6 +443,7 @@ def main(argv=None):
                 args.jira_creds,
                 args.create_reviews,
                 args.publish_reviews,
+                JIRA,
             )
 
     tmpdir.cleanup()  # Cleanup any tmpdire used
