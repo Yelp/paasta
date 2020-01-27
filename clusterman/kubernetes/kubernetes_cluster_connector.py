@@ -55,6 +55,9 @@ class KubernetesClusterConnector(ClusterConnector):
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
 
+    def get_resource_pending(self, resource_name: str) -> float:
+        return getattr(allocated_node_resources(self.get_unschedulable_pods()), resource_name)
+
     def get_resource_allocation(self, resource_name: str) -> float:
         return sum(
             getattr(allocated_node_resources(self._pods_by_ip[node_ip]), resource_name)
@@ -67,7 +70,7 @@ class KubernetesClusterConnector(ClusterConnector):
             for node in self._nodes_by_ip.values()
         )
 
-    def get_unschedulable_pods(self) -> int:
+    def get_unschedulable_pods(self) -> List[KubernetesPod]:
         unschedulable_pods = []
         for pod in self._get_pending_pods():
             is_unschedulable = False
@@ -76,7 +79,7 @@ class KubernetesClusterConnector(ClusterConnector):
                     is_unschedulable = True
             if is_unschedulable:
                 unschedulable_pods.append(pod)
-        return len(unschedulable_pods)
+        return unschedulable_pods
 
     def _get_pending_pods(self) -> List[KubernetesPod]:
         pool_label_key = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool')

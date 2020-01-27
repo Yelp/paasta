@@ -124,4 +124,8 @@ def test_get_pending_pods(mock_cluster_connector):
 
 
 def test_get_unschedulable_pods(mock_cluster_connector):
-    assert mock_cluster_connector.get_unschedulable_pods() == 1
+    assert len(mock_cluster_connector.get_unschedulable_pods()) == 1
+
+
+def test_pending_cpus(mock_cluster_connector):
+    assert mock_cluster_connector.get_resource_pending('cpus') == 1.5
