@@ -1,3 +1,11 @@
+paasta-tools (0.93.8) xenial; urgency=medium
+
+  * 0.93.8 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    u/bayke/add-separate-annotation-for-ip-requiring-services
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Mon, 27 Jan 2020 10:16:39 -0800
+
 paasta-tools (0.93.7) xenial; urgency=medium
 
   * 0.93.7 tagged with 'make release'
