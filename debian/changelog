@@ -1,3 +1,10 @@
+paasta-tools (0.93.7) xenial; urgency=medium
+
+  * 0.93.7 tagged with 'make release'
+    Commit: added unit test
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Mon, 27 Jan 2020 06:58:46 -0800
+
 paasta-tools (0.93.6) xenial; urgency=medium
 
   * 0.93.6 tagged with 'make release'
