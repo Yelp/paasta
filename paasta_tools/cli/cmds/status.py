@@ -803,6 +803,12 @@ def append_pod_status(pod_status, output: List[str]):
         rows.append((pod["name"], pod["host"], pod["phase"]))
         if pod["reason"] != "":
             rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
+        if "container_state" in pod and pod["container_state"] != "Running":
+            rows.append(
+                PaastaColors.grey(
+                    f"  {pod['container_state']}: {pod['container_state_reason']}"
+                )
+            )
     pods_table = format_table(rows)
     output.extend([f"      {line}" for line in pods_table])
 
