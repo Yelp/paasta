@@ -1,3 +1,11 @@
+paasta-tools (0.93.9) xenial; urgency=medium
+
+  * 0.93.9 tagged with 'make release'
+    Commit: Adding container state and reason in case container is not
+    running (#2643)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Mon, 27 Jan 2020 14:18:27 -0800
+
 paasta-tools (0.93.8) xenial; urgency=medium
 
   * 0.93.8 tagged with 'make release'
