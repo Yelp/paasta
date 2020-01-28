@@ -35,6 +35,7 @@ from typing import Union
 
 import requests
 import service_configuration_lib
+from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import models
@@ -180,6 +181,12 @@ class KubeCustomResource(NamedTuple):
     kind: str
     namespace: str
     name: str
+
+
+class KubeContainerResources(NamedTuple):
+    cpus: float
+    mem: float  # mb
+    disk: float  # mb
 
 
 class KubeService(NamedTuple):
@@ -1587,6 +1594,30 @@ def get_pod_status(pod: V1Pod,) -> PodStatus:
     # TODO: we probably also need to deduce extended statuses here, like
     # `CrashLoopBackOff`, `ContainerCreating` timeout, and etc.
     return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
+
+
+def parse_container_resources(resources: Mapping[str, str]) -> KubeContainerResources:
+    cpu_str = resources.get("cpu")
+    if not cpu_str:
+        cpus = None
+    elif cpu_str[-1] == "m":
+        cpus = float(cpu_str[:-1]) / 1000
+    else:
+        cpus = float(cpu_str)
+
+    mem_str = resources.get("memory")
+    if not mem_str:
+        mem_mb = None
+    else:
+        mem_mb = parse_size(mem_str) / 1000000
+
+    disk_str = resources.get("ephemeral-storage")
+    if not disk_str:
+        disk_mb = None
+    else:
+        disk_mb = parse_size(disk_str) / 1000000
+
+    return KubeContainerResources(cpus=cpus, mem=mem_mb, disk=disk_mb)
 
 
 def get_active_shas_for_service(
