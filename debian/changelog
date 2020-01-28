@@ -1,3 +1,16 @@
+clusterman (4.3.5) xenial bionic; urgency=low
+
+  * CLUSTERMAN-382 Add system metrics for k8s pending resources
+  * reload API client to (hopefully) fix PKI issues
+  * add c5d.12xlarge instance type
+  * CLUSTERMAN-382 Add unschedulable_pods system metric for k8s pools
+  * terminate instances by scheduler
+  * add scheduler attribute for instances
+  * reload pki keys
+
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 28 Jan 2020 10:58:50 -0800
+
 clusterman (4.3.3) xenial bionic; urgency=low
 
   * Fix bug with list-pools traceback
