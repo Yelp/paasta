@@ -213,16 +213,10 @@ class TronActionConfig(InstanceConfig):
     def get_spark_pool(self):
         return self.config_dict.get("spark_pool", "default")
 
-    def get_vault_token_file(self, system_paasta_config):
-        return self.config_dict.get(
-            "vault_token_file", system_paasta_config.get_vault_token_file()
-        )
-
     def get_env(self):
         env = super().get_env()
         spark_env = {}
         if self.get_executor() == "spark":
-            system_paasta_config = load_system_paasta_config()
             spark_ui_port = pick_random_port(
                 f"{self.get_service()}{self.get_instance()}".encode()
             )
@@ -230,19 +224,7 @@ class TronActionConfig(InstanceConfig):
                 spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
                 spark_ui_port=spark_ui_port,
                 mesos_leader=find_mesos_leader(self.get_spark_cluster()),
-                mesos_secret=load_mesos_secret_for_spark(
-                    secret_provider_name=system_paasta_config.get_secret_provider_name(),
-                    soa_dir=self.soa_dir,
-                    service_name=self.get_service(),
-                    cluster_name=self.get_cluster(),
-                    secret_provider_kwargs={
-                        "vault_cluster_config": system_paasta_config.get_vault_cluster_config(),
-                        "vault_auth_method": "token",
-                        "vault_token_file": self.get_vault_token_file(
-                            system_paasta_config
-                        ),
-                    },
-                ),
+                mesos_secret=load_mesos_secret_for_spark(),
                 paasta_cluster=self.get_spark_cluster(),
                 paasta_pool=self.get_spark_pool(),
                 paasta_service=self.get_service(),
