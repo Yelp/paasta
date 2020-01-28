@@ -1,6 +1,15 @@
 paasta-tools (0.93.9) xenial; urgency=medium
 
   * 0.93.9 tagged with 'make release'
+    Commit: Revert "Added a reminder in slack notifications to run
+    paasta status if it takes too long"  This reverts commit
+    0ab332800cf121b75b94518532e12ea6bd108b3f.
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 28 Jan 2020 15:29:14 -0800
+
+paasta-tools (0.93.9) xenial; urgency=medium
+
+  * 0.93.9 tagged with 'make release'
     Commit: Adding container state and reason in case container is not
     running (#2643)
 
