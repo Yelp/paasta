@@ -2,8 +2,6 @@ import logging
 import os
 import socket
 import sys
-from typing import Any
-from typing import Dict
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
@@ -14,12 +12,11 @@ from ruamel.yaml import YAML
 from typing_extensions import TypedDict
 
 from paasta_tools.clusterman import get_clusterman_metrics
-from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
-SPARK_MESOS_SECRET_KEY_NAME = "SHARED_SECRET(SPARK_MESOS_SECRET)"
+DEFAULT_SPARK_MESOS_SECRET_FILE = "/nail/etc/paasta_spark_secret"
 DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 DEFAULT_SPARK_SERVICE = "spark"
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
@@ -112,21 +109,16 @@ def get_default_event_log_dir(**kwargs) -> str:
     return None
 
 
-def load_mesos_secret_for_spark(
-    secret_provider_name: str,
-    soa_dir: str,
-    service_name: str,
-    cluster_name: str,
-    secret_provider_kwargs: Dict[str, Any],
-) -> str:
-    return decrypt_secret_environment_variables(
-        secret_provider_name=secret_provider_name,
-        environment={"SPARK_MESOS_SECRET": SPARK_MESOS_SECRET_KEY_NAME},
-        soa_dir=soa_dir,
-        service_name=service_name,
-        cluster_name=cluster_name,
-        secret_provider_kwargs=secret_provider_kwargs,
-    )["SPARK_MESOS_SECRET"]
+def load_mesos_secret_for_spark():
+    try:
+        with open(DEFAULT_SPARK_MESOS_SECRET_FILE, "r") as f:
+            return f.read()
+    except IOError as e:
+        paasta_print(
+            "Cannot load mesos secret from %s" % DEFAULT_SPARK_MESOS_SECRET_FILE,
+            file=sys.stderr,
+        )
+        raise e
 
 
 def _calculate_memory_per_executor(spark_memory_string, memory_overhead):

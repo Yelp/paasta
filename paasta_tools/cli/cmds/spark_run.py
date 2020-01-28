@@ -198,23 +198,6 @@ def add_subparser(subparsers):
         action="store_true",
         default=False,
     )
-    list_parser.add_argument(
-        "--vault-auth-method",
-        help="Override how we auth with vault, defaults to token if not present",
-        type=str,
-        dest="vault_auth_method",
-        required=False,
-        default="token",
-        choices=["token", "ldap"],
-    )
-    list_parser.add_argument(
-        "--vault-token-file",
-        help="Override vault token file, defaults to %(default)s",
-        type=str,
-        dest="vault_token_file",
-        required=False,
-        default="/var/spool/.paasta_vault_token",
-    )
 
     if clusterman_metrics:
         list_parser.add_argument(
@@ -453,17 +436,7 @@ def get_spark_config(
         "spark.mesos.executor.docker.volumes": ",".join(volumes),
         "spark.mesos.executor.docker.image": docker_img,
         "spark.mesos.principal": "spark",
-        "spark.mesos.secret": load_mesos_secret_for_spark(
-            secret_provider_name=system_paasta_config.get_secret_provider_name(),
-            soa_dir=DEFAULT_SOA_DIR,
-            service_name=args.service,
-            cluster_name=args.cluster,
-            secret_provider_kwargs={
-                "vault_cluster_config": system_paasta_config.get_vault_cluster_config(),
-                "vault_auth_method": args.vault_auth_method,
-                "vault_token_file": args.vault_token_file,
-            },
-        ),
+        "spark.mesos.secret": load_mesos_secret_for_spark(),
     }
 
     if not args.build and not args.image:
