@@ -983,7 +983,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 code_sha="aaaa123", system_paasta_config=mock.Mock()
             )
             assert mock_load_service_namespace_config.called
-            assert mock_service_namespace_config.is_in_smartstack.called
+            # assert mock_service_namespace_config.is_in_smartstack.called
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
             print(ret.metadata.annotations)
@@ -1044,7 +1044,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 code_sha="aaaa123", system_paasta_config=mock.Mock()
             )
             assert mock_load_service_namespace_config.called
-            assert mock_service_namespace_config.is_in_smartstack.called
+            # assert mock_service_namespace_config.is_in_smartstack.called
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
             print(ret.metadata.annotations)
@@ -2403,5 +2403,5 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configce3b0865"
+            == "config4d49de3b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
