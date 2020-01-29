@@ -999,7 +999,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     },
                     annotations={
                         "smartstack_registrations": '["kurupt.fm"]',
-                        "paasta.yelp.com/routable_ip": "false",
+                        "paasta.yelp.com/routable_ip": "true",  # "false",
                         "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
                         "iam.amazonaws.com/role": "",
                     },
