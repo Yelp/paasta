@@ -983,7 +983,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 code_sha="aaaa123", system_paasta_config=mock.Mock()
             )
             assert mock_load_service_namespace_config.called
-            # assert mock_service_namespace_config.is_in_smartstack.called
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
             print(ret.metadata.annotations)
@@ -999,7 +998,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     },
                     annotations={
                         "smartstack_registrations": '["kurupt.fm"]',
-                        "paasta.yelp.com/routable_ip": "true",  # "false",
+                        "paasta.yelp.com/routable_ip": "true",
                         "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
                         "iam.amazonaws.com/role": "",
                     },
@@ -1044,7 +1043,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                 code_sha="aaaa123", system_paasta_config=mock.Mock()
             )
             assert mock_load_service_namespace_config.called
-            # assert mock_service_namespace_config.is_in_smartstack.called
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
             print(ret.metadata.annotations)

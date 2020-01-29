@@ -1114,9 +1114,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "iam.amazonaws.com/role": self.get_iam_role(),
-            "paasta.yelp.com/routable_ip": "true"
-            # if service_namespace_config.is_in_smartstack()
-            # else "false",
+            "paasta.yelp.com/routable_ip": "true",
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
         if metrics_provider in {"http", "uwsgi"}:
