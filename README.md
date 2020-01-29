@@ -36,7 +36,7 @@ get to reuse them for other purposes. For example at Yelp Sensu is not just for
 PaaSTA, it can be used to monitor all sorts of things. Also Mesos can be
 re-used for things like custom frameworks. For example at Yelp we use the Mesos
 infrastructure to run our large-scale testing framework:
-[Seagull](http://www.slideshare.net/AmazonWebServices/arc348-seagull-how-yelp-built-a-system-for-task-execution).
+[Jolt](https://dcos.io/events/2017/jolt-distributed-fault-tolerant-tests-at-scale-on-mesos/).
 SmartStack is used at Yelp for service discovery for Non-PaaSTA things as well,
 like databases, legacy apps, and Puppet-defined apps. Most PaaS's do not
 allow for this type of component re-use.
