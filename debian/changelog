@@ -1,3 +1,10 @@
+paasta-tools (0.93.10) xenial; urgency=medium
+
+  * 0.93.10 tagged with 'make release'
+    Commit: README: replace Seagull with Jolt
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 29 Jan 2020 14:21:23 -0800
+
 paasta-tools (0.93.9) xenial; urgency=medium
 
   * 0.93.9 tagged with 'make release'
