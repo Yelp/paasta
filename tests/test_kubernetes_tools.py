@@ -998,8 +998,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         "paasta.yelp.com/service": mock_get_service.return_value,
                     },
                     annotations={
-                        "smartstack_registrations": '["kurupt.fm"]',
-                        "paasta.yelp.com/routable_ip": "false",
                         "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
                         "iam.amazonaws.com/role": "",
                     },
@@ -1060,7 +1058,6 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     },
                     annotations={
                         "smartstack_registrations": '["kurupt.fm"]',
-                        "paasta.yelp.com/routable_ip": "true",
                         "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
                         "iam.amazonaws.com/role": "",
                     },
@@ -2403,5 +2400,5 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configce3b0865"
+            == "configf543ccbb"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
