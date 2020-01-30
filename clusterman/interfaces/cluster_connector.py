@@ -34,6 +34,7 @@ class AgentMetadata(NamedTuple):
     agent_id: str = ''
     allocated_resources: ClustermanResources = ClustermanResources()
     batch_task_count: int = 0
+    is_safe_to_kill: bool = True
     state: AgentState = AgentState.UNKNOWN
     task_count: int = 0
     total_resources: ClustermanResources = ClustermanResources()
