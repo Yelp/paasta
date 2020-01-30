@@ -74,6 +74,7 @@ from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubeContainerResources
 from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -1946,6 +1947,23 @@ def test_get_kubernetes_app_deploy_status():
         get_kubernetes_app_deploy_status(mock_app, desired_instances=1)
         == KubernetesDeployStatus.Waiting
     )
+
+
+def test_parse_container_resources():
+    partial_cpus = {"cpu": "1200m", "memory": "100Mi", "ephemeral-storage": "1Gi"}
+    assert kubernetes_tools.parse_container_resources(
+        partial_cpus
+    ) == KubeContainerResources(1.2, 100, 1000)
+
+    whole_cpus = {"cpu": "2", "memory": "100Mi", "ephemeral-storage": "1Gi"}
+    assert kubernetes_tools.parse_container_resources(
+        whole_cpus
+    ) == KubeContainerResources(2, 100, 1000)
+
+    missing_resource = {"cpu": "2", "memory": "100Mi"}
+    assert kubernetes_tools.parse_container_resources(
+        missing_resource
+    ) == KubeContainerResources(2, 100, None)
 
 
 def test_get_kubernetes_app_by_name():
