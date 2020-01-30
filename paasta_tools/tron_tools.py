@@ -261,13 +261,13 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get("cpu_burst_add", 0)
 
     def get_executor(self):
-        return self.config_dict.get("executor", None)
+        return self.config_dict.get("executor", "paasta")
 
     def get_healthcheck_mode(self, _) -> None:
         return None
 
     def get_node(self):
-        return self.config_dict.get("node")
+        return self.config_dict.get("node", "paasta")
 
     def get_retries(self):
         return self.config_dict.get("retries")
@@ -353,7 +353,7 @@ class TronJobConfig:
         return self.name
 
     def get_node(self):
-        return self.config_dict.get("node")
+        return self.config_dict.get("node", "paasta")
 
     def get_schedule(self):
         return self.config_dict.get("schedule")
