@@ -1,3 +1,12 @@
+paasta-tools (0.93.11) xenial; urgency=medium
+
+  * 0.93.11 tagged with 'make release'
+    Commit: Merge pull request #2650 from
+    Yelp/u/bronek/delay_firewall_import  Delay paasta_tools imports
+    inside docker_wrapper.add_firewall
+
+ -- Bronek Kozicki <bronek@yelp.com>  Thu, 30 Jan 2020 06:47:14 -0800
+
 paasta-tools (0.93.10) xenial; urgency=medium
 
   * 0.93.10 tagged with 'make release'
