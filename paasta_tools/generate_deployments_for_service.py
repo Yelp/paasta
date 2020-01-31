@@ -25,7 +25,7 @@ For example, if the service paasta_test has an instance called main with no
 deploy group in its configuration in the hab cluster, then this script
 will create a key/value pair of 'paasta_test:paasta-hab.main': 'services-paasta_test:paasta-SHA',
 where SHA is the current SHA at the tip of the branch named hab in
-git@git.yelpcorp.com:services/paasta_test.git. If main had a deploy_group key with
+git@github.yelpcorp.com:services/paasta_test.git. If main had a deploy_group key with
 a value of 'master', the key would be paasta_test:master instead, and the SHA
 would be the SHA at the tip of master.
 
