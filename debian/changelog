@@ -1,3 +1,11 @@
+paasta-tools (0.93.12) xenial; urgency=medium
+
+  * 0.93.12 tagged with 'make release'
+    Commit: Merge pull request #2645 from Yelp/k8s-instance-cost  Add
+    Kubernetes to running task script
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 30 Jan 2020 16:09:58 -0800
+
 paasta-tools (0.93.11) xenial; urgency=medium
 
   * 0.93.11 tagged with 'make release'
