@@ -92,7 +92,7 @@ class ServiceNamespaceConfig(dict):
         return self.get("discover", "region")
 
     def is_in_smartstack(self) -> bool:
-        if self.get("proxy_port") is not None:
+        if self.get("proxy_port") is not None or self.get("registrations") is not None:
             return True
         else:
             return False
