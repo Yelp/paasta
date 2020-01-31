@@ -92,7 +92,7 @@ class TestTronActionConfig:
             assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
     def test_get_executor_default(self, action_config):
-        assert action_config.get_executor() is None
+        assert action_config.get_executor() == "paasta"
 
     @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
     def test_get_executor_paasta(self, executor, action_config):
@@ -309,9 +309,11 @@ class TestTronJobConfig:
             "monitoring": {"team": "noop"},
         }
 
-    def test_validate_all_actions(self):
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    def test_validate_all_actions(self, mock_get_pipeline_deploy_groups):
         job_dict = {
-            "node": "batch_server",
+            "node": "paasta",
+            "deploy_group": "test",
             "schedule": "daily 12:10:00",
             "service": "testservice",
             "actions": {
@@ -321,6 +323,7 @@ class TestTronJobConfig:
             "cleanup_action": {"command": "rm *", "cpus": "also bad"},
             "monitoring": {"team": "noop"},
         }
+        mock_get_pipeline_deploy_groups.return_value = ["test"]
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
         errors = job_config.validate()
         assert len(errors) == 3
@@ -401,36 +404,47 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    def test_validate_monitoring(self):
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    def test_validate_monitoring(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
+            "deploy_group": "test",
             "monitoring": {"team": "noop", "page": True},
             "actions": {"first": {"command": "echo first"}},
         }
+        mock_get_pipeline_deploy_groups.return_value = ["test"]
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
         errors = job_config.validate()
         assert len(errors) == 0
 
-    def test_validate_monitoring_without_team(self):
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    def test_validate_monitoring_without_team(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
             "monitoring": {"page": True},
+            "deploy_group": "test",
             "actions": {"first": {"command": "echo first"}},
         }
+        mock_get_pipeline_deploy_groups.return_value = ["test"]
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
         errors = job_config.validate()
         assert errors == []
         assert job_config.get_monitoring()["team"] == "default_team"
 
-    def test_validate_monitoring_with_invalid_team(self):
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    def test_validate_monitoring_with_invalid_team(
+        self, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
+            "deploy_group": "test",
             "schedule": "daily 12:10:00",
             "monitoring": {"team": "invalid_team", "page": True},
             "actions": {"first": {"command": "echo first"}},
         }
+        mock_get_pipeline_deploy_groups.return_value = ["test"]
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
         errors = job_config.validate()
         assert errors == [
@@ -538,12 +552,7 @@ class TestTronTools:
             cluster="test-cluster",
         )
         result = tron_tools.format_tron_action_dict(action_config)
-        assert result == {
-            "command": "echo something",
-            "requires": ["required_action"],
-            "retries": 2,
-            "expected_runtime": "30m",
-        }
+        assert result["executor"] == "mesos"
 
     def test_format_tron_action_dict_paasta(self):
         action_dict = {
@@ -590,6 +599,7 @@ class TestTronTools:
             result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
+            "node": "paasta",
             "command": "echo something",
             "requires": ["required_action"],
             "retries": 2,
@@ -651,6 +661,7 @@ class TestTronTools:
             result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
+            "node": "paasta",
             "command": "echo something",
             "requires": ["required_action"],
             "retries": 2,
