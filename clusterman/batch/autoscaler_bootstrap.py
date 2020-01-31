@@ -101,6 +101,15 @@ class AutoscalerBootstrapBatch(BatchDaemon, BatchLoggingMixin):
     def run(self):
         env = os.environ.copy()
         args = env.get('CMAN_ARGS', '')
+
+        # Pass through some arguments from the bootstrap script to the actual autoscaler; we prepend
+        # these args in case the user *wanted* to specify something different for the bootstrap and the
+        # batch (not sure why anyone would ever do this, but *shrug*) (if the arguments are specified twice
+        # argparse will just take the last one in the list).
+        if self.options.env_config_path:
+            args = f'--env-config-path "{self.options.env_config_path}" ' + args
+        if self.options.cluster_config_directory:
+            args = f'--cluster-config-directory "{self.options.cluster_config_directory}" ' + args
         env['CMAN_ARGS'] = args
         supervisord_proc = subprocess.Popen(
             '/bin/bash -c "supervisord -c clusterman/supervisord/supervisord.conf | '
