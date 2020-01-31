@@ -57,7 +57,7 @@ def test_get_service_info():
         assert "fake_runbook" in actual
         assert "Description: a fake service" in actual
         assert "http://bla" in actual
-        assert "Git Repo: git@git.yelpcorp.com:services/fake_service" in actual
+        assert "Git Repo: git@github.yelpcorp.com:services/fake_service" in actual
         assert "Deployed to the following" in actual
         assert (
             "clusterA (%s)"
