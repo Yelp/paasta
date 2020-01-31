@@ -68,6 +68,16 @@ SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "batch_count", "slave"])
 
 DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
 
+TERMINAL_STATES = (
+    "TASK_ERROR",
+    "TASK_KILLED",
+    "TASK_FAILED",
+    "TASK_FINISHED",
+    "TASK_DROPPED",
+    "TASK_GONE",
+    "TASK_GONE_BY_OPERATOR",
+)
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
@@ -1033,12 +1043,7 @@ def is_task_terminal(task: MesosTask,) -> bool:
     :param task: the task to be inspected
     :returns: a boolean indicating if the task is considered to be in a terminal state
     """
-    return task["state"] in [
-        "TASK_ERROR",
-        "TASK_KILLED",
-        "TASK_FAILED",
-        "TASK_FINISHED",
-    ]
+    return task["state"] in TERMINAL_STATES
 
 
 def is_mesos_available() -> bool:
