@@ -621,15 +621,38 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                     )
             except Exception as e:
                 log.error(
-                    "Non-fatal exception encountered when processing the status reminder:"
+                    f"Non-fatal exception encountered when processing the status reminder: {e}"
                 )
-                log.error(e)
 
         def schedule_callback():
             time_to_notify = self.timeout * (timeout_percentage_before_reminding / 100)
-            self.event_loop.call_later(time_to_notify, times_up)
+            self.paasta_status_reminder_handle = self.event_loop.call_later(
+                time_to_notify, times_up
+            )
 
-        self.event_loop.call_soon_threadsafe(schedule_callback)
+        try:
+            self.event_loop.call_soon_threadsafe(schedule_callback)
+        except Exception as e:
+            log.error(
+                f"Non-fatal error encountered scheduling the status reminder callback: {e}"
+            )
+
+    def cancel_paasta_status_reminder(self):
+        try:
+            handle = self.get_paasta_status_reminder_handle()
+            if handle is not None:
+                handle.cancel()
+                self.paasta_status_reminder_handle = None
+        except Exception as e:
+            log.error(
+                f"Non-fatal error encountered when canceling the paasta status reminder: {e}"
+            )
+
+    def get_paasta_status_reminder_handle(self):
+        try:
+            return self.paasta_status_reminder_handle
+        except AttributeError:
+            return None
 
     def states(self) -> Collection[str]:
         return [
@@ -851,10 +874,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 target=self.do_wait_for_deployment, args=(self.commit,), daemon=True
             )
             thread.start()
+            self.cancel_paasta_status_reminder()
             self.schedule_paasta_status_reminder()
 
     def on_exit_deploying(self):
         self.wait_for_deployment_green_lights[self.commit].clear()
+        self.cancel_paasta_status_reminder()
 
     def on_enter_start_rollback(self):
         self.update_slack_status(
