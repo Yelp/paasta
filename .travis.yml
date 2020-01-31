@@ -18,7 +18,7 @@ python:
   - "3.6"
 sudo: required
 env:
-  - TOXENV=py36-linux,docs,mypy
+  - TOXENV=py36-linux,docs,mypy,tests
   - TOXENV=general_itests
   - TOXENV=paasta_itests
   - TOXENV=example_cluster
