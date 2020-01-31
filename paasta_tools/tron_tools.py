@@ -273,7 +273,7 @@ class TronActionConfig(InstanceConfig):
         return None
 
     def get_node(self):
-        return self.config_dict.get("node", "paasta")
+        return self.config_dict.get("node")
 
     def get_retries(self):
         return self.config_dict.get("retries")

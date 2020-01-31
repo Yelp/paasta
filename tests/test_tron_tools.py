@@ -599,7 +599,6 @@ class TestTronTools:
             result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
-            "node": "paasta",
             "command": "echo something",
             "requires": ["required_action"],
             "retries": 2,
@@ -661,7 +660,6 @@ class TestTronTools:
             result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
-            "node": "paasta",
             "command": "echo something",
             "requires": ["required_action"],
             "retries": 2,
