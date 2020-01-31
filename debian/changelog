@@ -1,3 +1,11 @@
+paasta-tools (0.93.14) xenial; urgency=medium
+
+  * 0.93.14 tagged with 'make release'
+    Commit: Merge pull request #2627 from Yelp/PAASTA-16165  Add a
+    script that subscribes to the Mesos master"s event stream, and …
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 31 Jan 2020 13:43:13 -0800
+
 paasta-tools (0.93.13) xenial; urgency=medium
 
   * 0.93.13 tagged with 'make release'
