@@ -35,6 +35,7 @@ from typing import Union
 
 import requests
 import service_configuration_lib
+from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import models
@@ -128,6 +129,7 @@ log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
+PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 CONFIG_HASH_BLACKLIST = {"replicas"}
 KUBE_DEPLOY_STATEGY_MAP = {
     "crossover": "RollingUpdate",
@@ -136,6 +138,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 KUBERNETES_NAMESPACE = "paasta"
+DISCOVERY_ATTRIBUTES = {"region", "superregion", "ecosystem", "habitat"}
 
 
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -178,6 +181,12 @@ class KubeCustomResource(NamedTuple):
     kind: str
     namespace: str
     name: str
+
+
+class KubeContainerResources(NamedTuple):
+    cpus: float
+    mem: float  # mb
+    disk: float  # mb
 
 
 class KubeService(NamedTuple):
@@ -389,7 +398,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         hpa_config = self.config_dict["horizontal_autoscaling"]
-        min_replicas = hpa_config["min_replicas"]
+        min_replicas = hpa_config.get("min_replicas", 0)
         max_replicas = hpa_config["max_replicas"]
         selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         annotations = {"signalfx.com.custom.metrics": ""}
@@ -434,7 +443,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                     annotations[
                         f"signalfx.com.external.metric/{metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean().publish()'
+                    ] = f'data("{metric_name}", filter={filters}).mean(over=15m).publish()'
             else:
                 metrics.append(
                     V2beta1MetricSpec(
@@ -479,11 +488,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         autoscaling_params = self.get_autoscaling_params()
         metrics_provider = autoscaling_params["metrics_provider"]
-        # TODO support multiple metrics
         metrics = []
         target = autoscaling_params["setpoint"] * 100
         annotations: Dict[str, str] = {}
-        # TODO support bespoke PAASTA-15680
         selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         if autoscaling_params["decision_policy"] == "bespoke":
             log.error(
@@ -1114,6 +1121,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "iam.amazonaws.com/role": self.get_iam_role(),
+            "paasta.yelp.com/routable_ip": "true"
+            if service_namespace_config.is_in_smartstack()
+            else "false",
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
         if metrics_provider in {"http", "uwsgi"}:
@@ -1372,7 +1382,7 @@ async def get_tail_lines_for_kubernetes_pod(
             tail_lines_dict["stdout"].append(
                 kube_client.core.read_namespaced_pod_log(
                     name=pod.metadata.name,
-                    namespace="paasta",
+                    namespace=pod.metadata.namespace,
                     container=container.name,
                     tail_lines=num_tail_lines,
                 )
@@ -1589,11 +1599,41 @@ def get_pod_status(pod: V1Pod,) -> PodStatus:
     return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
 
 
-def get_active_shas_for_service(pod_list: Sequence[V1Pod],) -> Mapping[str, Set[str]]:
-    ret: Mapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
-    for pod in pod_list:
-        ret["config_sha"].add(pod.metadata.labels["paasta.yelp.com/config_sha"])
-        ret["git_sha"].add(pod.metadata.labels["paasta.yelp.com/git_sha"])
+def parse_container_resources(resources: Mapping[str, str]) -> KubeContainerResources:
+    cpu_str = resources.get("cpu")
+    if not cpu_str:
+        cpus = None
+    elif cpu_str[-1] == "m":
+        cpus = float(cpu_str[:-1]) / 1000
+    else:
+        cpus = float(cpu_str)
+
+    mem_str = resources.get("memory")
+    if not mem_str:
+        mem_mb = None
+    else:
+        mem_mb = parse_size(mem_str) / 1000000
+
+    disk_str = resources.get("ephemeral-storage")
+    if not disk_str:
+        disk_mb = None
+    else:
+        disk_mb = parse_size(disk_str) / 1000000
+
+    return KubeContainerResources(cpus=cpus, mem=mem_mb, disk=disk_mb)
+
+
+def get_active_shas_for_service(
+    obj_list: Sequence[Union[V1Pod, V1ReplicaSet, V1Deployment, V1StatefulSet]],
+) -> Mapping[str, Set[str]]:
+    ret: MutableMapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
+    for obj in obj_list:
+        config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
+        if config_sha is not None:
+            ret["config_sha"].add(config_sha)
+        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
+        if git_sha is not None:
+            ret["git_sha"].add(git_sha)
     return ret
 
 
@@ -1614,8 +1654,8 @@ def filter_nodes_by_blacklist(
     :returns: The list of nodes after the filter
     """
     if whitelist:
-        whitelist = (maybe_add_yelp_prefix(whitelist[0]), whitelist[1])
-    blacklist = [(maybe_add_yelp_prefix(entry[0]), entry[1]) for entry in blacklist]
+        whitelist = (paasta_prefixed(whitelist[0]), whitelist[1])
+    blacklist = [(paasta_prefixed(entry[0]), entry[1]) for entry in blacklist]
     return [
         node
         for node in nodes
@@ -1624,14 +1664,20 @@ def filter_nodes_by_blacklist(
     ]
 
 
-def maybe_add_yelp_prefix(attribute: str,) -> str:
-    return YELP_ATTRIBUTE_PREFIX + attribute if "/" not in attribute else attribute
+def paasta_prefixed(attribute: str,) -> str:
+    # discovery attributes are exempt for now
+    if attribute in DISCOVERY_ATTRIBUTES:
+        return YELP_ATTRIBUTE_PREFIX + attribute
+    elif "/" in attribute:
+        return attribute
+    else:
+        return PAASTA_ATTRIBUTE_PREFIX + attribute
 
 
 def get_nodes_grouped_by_attribute(
     nodes: Sequence[V1Node], attribute: str
 ) -> Mapping[str, Sequence[V1Node]]:
-    attribute = maybe_add_yelp_prefix(attribute)
+    attribute = paasta_prefixed(attribute)
     sorted_nodes = sorted(
         nodes, key=lambda node: node.metadata.labels.get(attribute, "")
     )
@@ -1885,7 +1931,9 @@ def sanitised_cr_name(service: str, instance: str) -> str:
     return f"{sanitised_service}-{sanitised_instance}"
 
 
-def get_cr(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
+def get_cr(
+    kube_client: KubeClient, cr_id: Mapping[str, str]
+) -> Optional[Mapping[str, Any]]:
     try:
         return kube_client.custom.get_namespaced_custom_object(**cr_id)
     except ApiException as e:
@@ -1895,18 +1943,8 @@ def get_cr(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
             raise
 
 
-def get_cr_status(kube_client: KubeClient, cr_id: dict) -> Optional[Mapping[str, Any]]:
-    return (get_cr(kube_client, cr_id) or {}).get("status")
-
-
-def get_cr_metadata(
-    kube_client: KubeClient, cr_id: dict
-) -> Optional[Mapping[str, Any]]:
-    return (get_cr(kube_client, cr_id) or {}).get("metadata")
-
-
 def set_cr_desired_state(
-    kube_client: KubeClient, cr_id: dict, desired_state: str
+    kube_client: KubeClient, cr_id: Mapping[str, str], desired_state: str
 ) -> str:
     cr = kube_client.custom.get_namespaced_custom_object(**cr_id)
     if cr.get("status", {}).get("state") == desired_state:

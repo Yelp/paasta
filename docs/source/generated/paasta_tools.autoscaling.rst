@@ -1,5 +1,5 @@
-paasta_tools.autoscaling package
-================================
+paasta\_tools.autoscaling package
+=================================
 
 Submodules
 ----------
@@ -18,6 +18,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.autoscaling
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

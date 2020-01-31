@@ -16,6 +16,7 @@ dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
 graphviz
 gunicorn
+humanfriendly
 humanize >= 0.5.1
 inotify >= 0.2.8
 ipaddress >= 1.0.22

@@ -14,6 +14,8 @@
 # limitations under the License.
 import logging
 
+from bravado.exception import HTTPNotFound
+
 from paasta_tools.api import client
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -22,6 +24,7 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import paasta_print
+from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger(__name__)
@@ -63,26 +66,39 @@ def paasta_autoscale(args):
             "Could not connect to paasta api. Maybe you misspelled the cluster?"
         )
         return 1
+    try:
+        if args.set is None:
+            log.debug("Getting the current autoscaler count...")
+            res, http = api.autoscaler.get_autoscaler_count(
+                service=service, instance=args.instance
+            ).result()
+        else:
+            log.debug(f"Setting desired instances to {args.set}.")
+            body = {"desired_instances": int(args.set)}
+            res, http = api.autoscaler.update_autoscaler_count(
+                service=service, instance=args.instance, json_body=body
+            ).result()
 
-    if args.set is None:
-        log.debug("Getting the current autoscaler count...")
-        res, http = api.autoscaler.get_autoscaler_count(
-            service=service, instance=args.instance
-        ).result()
-    else:
-        log.debug(f"Setting desired instances to {args.set}.")
-        body = {"desired_instances": int(args.set)}
-        res, http = api.autoscaler.update_autoscaler_count(
-            service=service, instance=args.instance, json_body=body
-        ).result()
-
-        _log_audit(
-            action="manual-scale",
-            action_details=body,
-            service=service,
-            instance=args.instance,
-            cluster=args.cluster,
+            _log_audit(
+                action="manual-scale",
+                action_details=body,
+                service=service,
+                instance=args.instance,
+                cluster=args.cluster,
+            )
+    except HTTPNotFound:
+        paasta_print(
+            PaastaColors.red(
+                f"ERROR: '{args.instance}' is not configured to autoscale, "
+                f"so paasta autoscale could not scale it up on demand. "
+                f"If you want to be able to boost this service, please configure autoscaling for the service "
+                f"in its config file by setting min and max instances. Example: \n"
+                f"{args.instance}:\n"
+                f"     min_instances: 5\n"
+                f"     max_instances: 50"
+            )
         )
+        return 0
 
     log.debug(f"Res: {res} Http: {http}")
     print(res["desired_instances"])

@@ -21,6 +21,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
@@ -40,13 +41,11 @@ class Application(ABC):
         """
         if not item.metadata.namespace:
             item.metadata.namespace = "paasta"
-        self.kube_deployment = KubeDeployment(
-            service=item.metadata.labels["paasta.yelp.com/service"],
-            instance=item.metadata.labels["paasta.yelp.com/instance"],
-            git_sha=item.metadata.labels["paasta.yelp.com/git_sha"],
-            config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
-            replicas=item.spec.replicas,
-        )
+        attrs = {
+            attr: item.metadata.labels[paasta_prefixed(attr)]
+            for attr in ["service", "instance", "git_sha", "config_sha"]
+        }
+        self.kube_deployment = KubeDeployment(replicas=item.spec.replicas, **attrs)
         self.item = item
         self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging
@@ -302,7 +301,7 @@ class DeploymentWrapper(Application):
             self.logging.info(
                 f"Updating new HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}/namespace"
             )
-            kube_client.autoscaling.patch_namespaced_horizontal_pod_autoscaler(
+            kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name,
                 namespace=self.item.metadata.namespace,
                 body=body,

@@ -127,8 +127,6 @@ INSTANCE_TYPES = (
     "cassandracluster",
     "kafkacluster",
 )
-INSTANCE_TYPES_K8S = {"flink", "cassandracluster", "kafkacluster"}
-INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
 
 
 class RollbackTypes(Enum):
@@ -1147,14 +1145,14 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
     if this is called with the string 'test', the returned
-    url will be git@git.yelpcorp.com:services/test.
+    url will be git@github.yelpcorp.com:services/test.
 
     :param service: The service name to get a URL for
     :returns: A git url to the service's repository"""
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    default_location = "git@git.yelpcorp.com:services/%s" % service
+    default_location = "git@github.yelpcorp.com:services/%s" % service
     return general_config.get("git_url", default_location)
 
 
@@ -2485,7 +2483,7 @@ def build_docker_image_name(service: str) -> str:
     will look for your images.
 
     :returns: a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
+    service's path in git. E.g. For github.yelpcorp.com:services/foo the
     docker image name is docker_registry/services-foo.
     """
     docker_registry_url = get_service_docker_registry(service)

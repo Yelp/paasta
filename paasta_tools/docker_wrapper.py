@@ -30,13 +30,6 @@ if "PATH" not in os.environ:
     os.environ["PATH"] = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 
-from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
-from paasta_tools.firewall import firewall_flock
-from paasta_tools.firewall import prepare_new_container
-from paasta_tools.mac_address import reserve_unique_mac_address
-from paasta_tools.utils import DEFAULT_SOA_DIR
-
-
 LOCK_DIRECTORY = "/var/lib/paasta/mac-address"
 ENV_MATCH_RE = re.compile(r"^(-\w*e\w*|--env(?P<file>-file)?)(=(?P<arg>\S.*))?$")
 MAX_HOSTNAME_LENGTH = 60
@@ -303,6 +296,13 @@ def append_cpuset_args(argv, env_args):
 
 
 def add_firewall(argv, service, instance):
+    # Delayed import to improve performance when add_firewall is not used
+    from paasta_tools.docker_wrapper_imports import DEFAULT_SYNAPSE_SERVICE_DIR
+    from paasta_tools.docker_wrapper_imports import firewall_flock
+    from paasta_tools.docker_wrapper_imports import prepare_new_container
+    from paasta_tools.docker_wrapper_imports import reserve_unique_mac_address
+    from paasta_tools.docker_wrapper_imports import DEFAULT_SOA_DIR
+
     output = ""
     try:
         mac_address, lockfile = reserve_unique_mac_address(LOCK_DIRECTORY)

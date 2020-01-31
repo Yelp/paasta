@@ -1,7 +1,7 @@
-paasta_tools.mesos.task module
-==============================
+paasta\_tools.mesos.task module
+===============================
 
 .. automodule:: paasta_tools.mesos.task
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

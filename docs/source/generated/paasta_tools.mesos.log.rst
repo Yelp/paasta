@@ -1,7 +1,7 @@
-paasta_tools.mesos.log module
-=============================
+paasta\_tools.mesos.log module
+==============================
 
 .. automodule:: paasta_tools.mesos.log
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

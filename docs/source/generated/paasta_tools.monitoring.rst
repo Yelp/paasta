@@ -1,5 +1,5 @@
-paasta_tools.monitoring package
-===============================
+paasta\_tools.monitoring package
+================================
 
 Submodules
 ----------
@@ -12,13 +12,12 @@ Submodules
    paasta_tools.monitoring.check_mesos_duplicate_frameworks
    paasta_tools.monitoring.check_mesos_outdated_tasks
    paasta_tools.monitoring.check_mesos_quorum
-   paasta_tools.monitoring.check_synapse_replication
    paasta_tools.monitoring.kill_orphaned_docker_containers
 
 Module contents
 ---------------
 
 .. automodule:: paasta_tools.monitoring
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,6 @@
+{
+    "clusters": [
+        "<%cluster%>"
+    ],
+    "cluster": "<%cluster%>"
+}

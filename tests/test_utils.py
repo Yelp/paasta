@@ -18,6 +18,7 @@ import stat
 import sys
 import time
 import warnings
+from typing import Any
 from typing import Dict
 from typing import List
 
@@ -26,13 +27,6 @@ import pytest
 from pytest import raises
 
 from paasta_tools import utils
-
-
-def test_instance_types_integrity():
-    for it in utils.INSTANCE_TYPES_K8S:
-        assert it in utils.INSTANCE_TYPES
-    for it in utils.INSTANCE_TYPES_WITH_SET_STATE:
-        assert it in utils.INSTANCE_TYPES
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -52,7 +46,7 @@ def test_get_git_url_provided_by_serviceyaml():
 
 def test_get_git_url_default():
     service = "giiiiiiiiiiit"
-    expected = "git@git.yelpcorp.com:services/%s" % service
+    expected = "git@github.yelpcorp.com:services/%s" % service
     with (
         mock.patch(
             "service_configuration_lib.read_service_configuration", autospec=True
@@ -764,7 +758,7 @@ def test_missing_cluster_configs_are_ignored():
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
     )
-    expected = []
+    expected: List[Any] = []
     with mock.patch(
         "os.path.join", autospec=True, return_value="%s/*" % fake_soa_dir
     ) as mock_join_path, mock.patch(
@@ -968,7 +962,7 @@ def test_load_tron_yaml_empty(mock_read_file, mock_read_service_info):
 
 
 def test_get_tron_instance_list_from_yaml_with_dicts():
-    fake_tron_job_config = {
+    fake_tron_job_config: Dict[str, Dict[str, Dict[str, Dict]]] = {
         "job1": {"actions": {"actionA": {}, "actionB": {}}},
         "job2": {"actions": {"actionC": {}, "actionD": {}}},
     }
@@ -1120,7 +1114,7 @@ def test_DeploymentsJson_read():
         json_patch.assert_called_once_with(
             file_mock.return_value.__enter__.return_value
         )
-        assert actual == utils.DeploymentsJsonV1(fake_json["v1"])
+        assert actual == utils.DeploymentsJsonV1(fake_json["v1"])  # type: ignore
 
 
 def test_get_running_mesos_docker_containers():
@@ -1194,10 +1188,15 @@ class TestInstanceConfig:
                 instance="fakeinstance",
                 cluster="fakecluster",
                 config_dict={},
-                branch_dict={},
+                branch_dict={
+                    "git_sha": "d15ea5e",
+                    "docker_image": "docker_image",
+                    "desired_state": "start",
+                    "force_bounce": None,
+                },
             )
         )
-        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {}, '/nail/etc/services')"
+        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', 'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
         assert actual == expect
 
     def test_get_monitoring(self):
@@ -1619,7 +1618,12 @@ class TestInstanceConfig:
                     "deploy_group": "fake_deploy_group",
                     "monitoring": {"team": "generic_team"},
                 },
-                branch_dict={"docker_image": "something"},
+                branch_dict={
+                    "git_sha": "c0defeed",
+                    "docker_image": "something",
+                    "desired_state": "start",
+                    "force_bounce": None,
+                },
             )
             assert fake_conf.get_env() == {
                 "SPECIAL_ENV": "TRUE",
@@ -1679,7 +1683,12 @@ class TestInstanceConfig:
             cluster="",
             instance="",
             config_dict={},
-            branch_dict={"force_bounce": "blurp"},
+            branch_dict={
+                "git_sha": "abcdef0",
+                "docker_image": "whale",
+                "desired_state": "start",
+                "force_bounce": "blurp",
+            },
         )
         assert fake_conf.get_force_bounce() == "blurp"
 
@@ -1689,7 +1698,12 @@ class TestInstanceConfig:
             cluster="",
             instance="",
             config_dict={},
-            branch_dict={"desired_state": "stop"},
+            branch_dict={
+                "git_sha": "abcdef0",
+                "docker_image": "whale",
+                "desired_state": "stop",
+                "force_bounce": None,
+            },
         )
         assert fake_conf.get_desired_state() == "stop"
 
@@ -2312,11 +2326,11 @@ def test_deep_merge_dictionaries_no_duplicate_keys_allowed():
     )
     del expected
 
-    overrides = {"a": "override"}
-    defaults = {"a": "default"}
+    overrides2 = {"a": "override"}
+    defaults2 = {"a": "default"}
 
     with raises(utils.DuplicateKeyError):
-        utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=False)
+        utils.deep_merge_dictionaries(overrides2, defaults2, allow_duplicate_keys=False)
 
     overrides = {"nested": {"a": "override"}}
     defaults = {"nested": {"a": "default"}}

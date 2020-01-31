@@ -323,8 +323,8 @@
                 },
                 "cfs_period_us": {
                     "type": "integer",
-                    "minimum": "1000",
-                    "maximum": "1000000",
+                    "minimum": 1000,
+                    "maximum": 1000000,
                     "exclusiveMinimum": false
                 },
                 "cpu_burst_add": {

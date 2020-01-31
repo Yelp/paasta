@@ -1,7 +1,7 @@
-paasta_tools.frameworks.native_scheduler module
-===============================================
+paasta\_tools.frameworks.native\_scheduler module
+=================================================
 
 .. automodule:: paasta_tools.frameworks.native_scheduler
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

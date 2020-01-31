@@ -1,7 +1,7 @@
-paasta_tools.remote_git module
-==============================
+paasta\_tools.remote\_git module
+================================
 
 .. automodule:: paasta_tools.remote_git
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

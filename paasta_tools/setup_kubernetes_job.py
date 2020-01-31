@@ -167,7 +167,7 @@ def create_application_object(
         return True, None
     except NoConfigurationForServiceError:
         error_msg = (
-            "Could not read kubernetes configuration file for %s.%s in cluster %s"
+            f"Could not read kubernetes configuration file for %s.%s in cluster %s"
             % (service, instance, cluster)
         )
         log.error(error_msg)

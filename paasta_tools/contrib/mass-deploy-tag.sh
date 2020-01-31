@@ -26,7 +26,7 @@ for service in ${services} ; do
 	fi
 	# git_repo=$(paasta info -s ${service} | grep -oP 'Git Repo: \K.*$')
 	git_repo=$(script -qc "paasta info -s ${service}" | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g" | grep 'Git Repo: ' | cut -d' ' -f3)
-	default_git_repo=git@git.yelpcorp.com:services/${service}.git
+	default_git_repo=git@github.yelpcorp.com:services/${service}.git
 	echo git clone ${git_repo-${default_git_repo}} ${service}
 	git clone ${git_repo} ${service}
 	unset git_repo

@@ -1,3 +1,145 @@
+paasta-tools (0.93.13) xenial; urgency=medium
+
+  * 0.93.13 tagged with 'make release'
+    Commit: Swap default service location from gitolite to GitHub
+    (#2652)  All `services/` repositories are on github.yelpcorp.com
+    now, and any stragglers outside of that namespace have their git_url
+    manually specified in their config. New repositories are always
+    created on GitHub, so changing the default host to GitHub lets new
+    services work without requiring extra config changes
+
+ -- Daniel Grigsby <dgrigsby@10-40-30-18-uswest1cdevc.dev.yelpcorp.com>  Fri, 31 Jan 2020 11:04:06 -0800
+
+paasta-tools (0.93.12) xenial; urgency=medium
+
+  * 0.93.12 tagged with 'make release'
+    Commit: Merge pull request #2645 from Yelp/k8s-instance-cost  Add
+    Kubernetes to running task script
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 30 Jan 2020 16:09:58 -0800
+
+paasta-tools (0.93.11) xenial; urgency=medium
+
+  * 0.93.11 tagged with 'make release'
+    Commit: Merge pull request #2650 from
+    Yelp/u/bronek/delay_firewall_import  Delay paasta_tools imports
+    inside docker_wrapper.add_firewall
+
+ -- Bronek Kozicki <bronek@yelp.com>  Thu, 30 Jan 2020 06:47:14 -0800
+
+paasta-tools (0.93.10) xenial; urgency=medium
+
+  * 0.93.10 tagged with 'make release'
+    Commit: README: replace Seagull with Jolt
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 29 Jan 2020 14:21:23 -0800
+
+paasta-tools (0.93.9) xenial; urgency=medium
+
+  * 0.93.9 tagged with 'make release'
+    Commit: Revert "Added a reminder in slack notifications to run
+    paasta status if it takes too long"  This reverts commit
+    0ab332800cf121b75b94518532e12ea6bd108b3f.
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 28 Jan 2020 15:29:14 -0800
+
+paasta-tools (0.93.9) xenial; urgency=medium
+
+  * 0.93.9 tagged with 'make release'
+    Commit: Adding container state and reason in case container is not
+    running (#2643)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Mon, 27 Jan 2020 14:18:27 -0800
+
+paasta-tools (0.93.8) xenial; urgency=medium
+
+  * 0.93.8 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    u/bayke/add-separate-annotation-for-ip-requiring-services
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Mon, 27 Jan 2020 10:16:39 -0800
+
+paasta-tools (0.93.7) xenial; urgency=medium
+
+  * 0.93.7 tagged with 'make release'
+    Commit: added unit test
+
+ -- Azret Kenzhaliev <bayke@yelp.com>  Mon, 27 Jan 2020 06:58:46 -0800
+
+paasta-tools (0.93.6) xenial; urgency=medium
+
+  * 0.93.6 tagged with 'make release'
+    Commit: Revert "Merge pull request #2595 from Yelp/CORESERV-
+    7471_check_envoy_status" (#2640)  This reverts commit
+    326d73f39dc870972ea3fa2b827fe1bdb035c961, reversing changes made to
+    52a8b4218d47ca8bb0959ed0c9cd7be1fcbdbcfe.
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 24 Jan 2020 16:32:07 -0800
+
+paasta-tools (0.93.5) xenial; urgency=medium
+
+  * 0.93.5 tagged with 'make release'
+    Commit: Showing pod status irrespective of state of flink cluster
+    (#2637)  * Showing pod status irrespective of state of flink cluster
+    * Review changes
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Fri, 24 Jan 2020 15:02:48 -0800
+
+paasta-tools (0.93.4) xenial; urgency=medium
+
+  * 0.93.4 tagged with 'make release'
+    Commit: Merge pull request #2638 from Yelp/update-dependencies-to-
+    0.93.2-state  Update requirements-bootstrap.txt to the state in
+    v0.93.2
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 24 Jan 2020 08:58:41 -0800
+
+paasta-tools (0.93.3) xenial; urgency=medium
+
+  * 0.93.3 tagged with 'make release'
+    Commit: Fix failed HPA tests (#2632)
+    Use requirements-bootstrap.txt to pin version of pip
+    Fix failed HPA tests
+    Switch flink-container-type label to yelp.com/container-type
+    send clusterman metrics info as environment variables to Tron
+    Added autoscaling docs, Fixed a couple HPA bugs
+
+ -- Bronek Kozicki <bronek@yelp.com>  Thu, 23 Jan 2020 06:34:27 -0800
+
+paasta-tools (0.93.2) xenial; urgency=medium
+
+  * 0.93.2 tagged with 'make release'
+    Commit: look for pod"s log in pod"s namespace (#2628)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 16 Jan 2020 08:48:04 -0800
+
+paasta-tools (0.93.1) xenial; urgency=medium
+
+  * 0.93.1 tagged with 'make release'
+    Commit: Merge pull request #2622 from Yelp/u/chl/CORESERV-
+    9114_let_ingress_envoy_know_kubernetes_services  let ingress envoy
+    know kubernets services
+
+ -- Chien-An Lai <chl@yelp.com>  Mon, 13 Jan 2020 15:07:46 -0800
+
+paasta-tools (0.93.0) xenial; urgency=medium
+
+  * 0.93.0 tagged with 'make release'
+    Commit: Merge pull request #2615 from Yelp/PAASTA-
+    8764_enocht_paasta_status_support  Paasta status support shorthand
+    notation
+
+ -- Enoch Tang <enocht@yelp.com>  Thu, 09 Jan 2020 10:15:52 -0800
+
+paasta-tools (0.92.2) xenial; urgency=medium
+
+  * 0.92.2 tagged with 'make release'
+    Commit: Merge pull request #2612 from
+    Yelp/u/mathieu/rightsizer_manual_mem_too
+    Add memory and bulk changes support to rightsizer
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Mon, 06 Jan 2020 15:15:49 -0800
+
 paasta-tools (0.92.1) xenial; urgency=medium
 
   * 0.92.1 tagged with 'make release'

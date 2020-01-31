@@ -1,0 +1,16 @@
+Kubernetes itest is done in a few steps.
+Before test:
+    Kind is required. It is intalled in before_script section in travis but its existence is assumed in devboxes.
+    https://kind.sigs.k8s.io/
+During test:
+    1. Tests are triggered by `make k8s_itests` command in root folder.
+    2. All environment variables are set in the Makefile and are exported. They are exposed to tox as well.
+    3. All leftover from old tests are removed. A Kind cluster is then created.
+    4. Tox runs
+    5. Files in deployments/paasta folder are copied, dynamically rendered, and pasted to .tmp deployments/.tmp folder.
+    6. PyTests run.
+    7. Before real tests run, paasta soa configurations are set up and paasta api starts.
+    8. Real tests run.
+After test:
+    PaaSTA api server stops. But kind cluster is not destroied and all the assets are not cleaned up. This is because creating
+    kind is slow and it's a good idea to reuse it. You need to run `make clean`.

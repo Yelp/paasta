@@ -1,5 +1,5 @@
-paasta_tools.metrics package
-============================
+paasta\_tools.metrics package
+=============================
 
 Submodules
 ----------
@@ -13,6 +13,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.metrics
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

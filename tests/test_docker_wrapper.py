@@ -5,6 +5,7 @@ import mock
 import pytest
 
 from paasta_tools import docker_wrapper
+from paasta_tools import docker_wrapper_imports
 
 
 @contextmanager
@@ -712,7 +713,7 @@ class TestMain:
     @pytest.yield_fixture
     def mock_mac_address(self):
         with mock.patch.object(
-            docker_wrapper,
+            docker_wrapper_imports,
             "reserve_unique_mac_address",
             return_value=("00:00:00:00:00:00", None),
         ) as mock_mac_address:
@@ -726,8 +727,8 @@ class TestMain:
             "--env=PAASTA_INSTANCE=myinstance",
         ]
 
-    @mock.patch.object(docker_wrapper, "firewall_flock", autospec=True)
-    @mock.patch.object(docker_wrapper, "prepare_new_container", autospec=True)
+    @mock.patch.object(docker_wrapper_imports, "firewall_flock", autospec=True)
+    @mock.patch.object(docker_wrapper_imports, "prepare_new_container", autospec=True)
     def test_mac_address(
         self,
         mock_prepare_new_container,
@@ -753,8 +754,8 @@ class TestMain:
 
         assert mock_prepare_new_container.mock_calls == [
             mock.call(
-                docker_wrapper.DEFAULT_SOA_DIR,
-                docker_wrapper.DEFAULT_SYNAPSE_SERVICE_DIR,
+                docker_wrapper_imports.DEFAULT_SOA_DIR,
+                docker_wrapper_imports.DEFAULT_SYNAPSE_SERVICE_DIR,
                 "myservice",
                 "myinstance",
                 "00:00:00:00:00:00",
@@ -810,12 +811,12 @@ class TestMain:
             )
 
     @mock.patch.object(
-        docker_wrapper,
+        docker_wrapper_imports,
         "firewall_flock",
         autospec=True,
         side_effect=Exception("Oh noes"),
     )
-    @mock.patch.object(docker_wrapper, "prepare_new_container", autospec=True)
+    @mock.patch.object(docker_wrapper_imports, "prepare_new_container", autospec=True)
     def test_prepare_new_container_error(
         self,
         mock_prepare_new_container,

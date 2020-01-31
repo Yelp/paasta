@@ -55,6 +55,7 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.marathon_tools import MarathonDeployStatus
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
@@ -94,13 +95,8 @@ def add_subparser(subparsers,) -> None:
         "status",
         help="Display the status of a PaaSTA service.",
         description=(
-            "'paasta status' works by SSH'ing to remote PaaSTA masters and "
-            "inspecting the local APIs, and reports on the overal health "
-            "of a service."
-        ),
-        epilog=(
-            "Note: This command requires SSH and sudo privileges on the remote PaaSTA "
-            "masters."
+            "'paasta status' queries the PaaSTA API in order to report "
+            "on the overall health of a service."
         ),
     )
     status_parser.add_argument(
@@ -155,6 +151,11 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     ).completer = lazy_choices_completer(list_teams)
     status_parser.add_argument(
         "-r", "--registration", help=f"Only {verb} instances with this registration."
+    )
+    status_parser.add_argument(
+        "service_instance",
+        nargs="?",
+        help=f'A shorthand notation to {verb} instances. For example: "paasta status example_happyhour.canary,main"',
     )
 
 
@@ -795,6 +796,23 @@ def should_job_info_be_shown(cluster_state):
     )
 
 
+def append_pod_status(pod_status, output: List[str]):
+    output.append(f"    Pods:")
+    rows: List[Union[str, Tuple[str, str, str]]] = [("Pod Name", "Host", "Phase")]
+    for pod in pod_status:
+        rows.append((pod["name"], pod["host"], pod["phase"]))
+        if pod["reason"] != "":
+            rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
+        if "container_state" in pod and pod["container_state"] != "Running":
+            rows.append(
+                PaastaColors.grey(
+                    f"  {pod['container_state']}: {pod['container_state_reason']}"
+                )
+            )
+    pods_table = format_table(rows)
+    output.extend([f"      {line}" for line in pods_table])
+
+
 def print_flink_status(
     cluster: str,
     service: str,
@@ -811,7 +829,7 @@ def print_flink_status(
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
-    config_sha = metadata.labels.get("paasta.yelp.com/config_sha")
+    config_sha = metadata.labels.get(paasta_prefixed("config_sha"))
     if config_sha is None:
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
@@ -825,7 +843,7 @@ def print_flink_status(
         )
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
-    dashboard_url = metadata.annotations.get("paasta.yelp.com/dashboard_url")
+    dashboard_url = metadata.annotations.get(paasta_prefixed("dashboard_url"))
     output.append(f"    URL: {dashboard_url}/")
 
     if status.state != "running":
@@ -835,11 +853,9 @@ def print_flink_status(
     else:
         output.append(f"    State: {status.state}")
 
-    if not should_job_info_be_shown(status.state):
-        output.append(f"    No other information available in non-running state")
-        return 0
-
     pod_running_count = pod_evicted_count = pod_other_count = 0
+    # default for evicted in case where pod status is not available
+    evicted = f"{pod_evicted_count}"
     for pod in status.pod_status:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -858,6 +874,15 @@ def print_flink_status(
         f" {evicted} evicted,"
         f" {pod_other_count} other"
     )
+
+    if not should_job_info_be_shown(status.state):
+        # In case where the jobmanager of cluster is in crashloopbackoff
+        # The pods for the cluster will be available and we need to show the pods.
+        # So that paasta status -v and kubectl get pods show the same consistent result.
+        if verbose and len(status.pod_status) > 0:
+            append_pod_status(status.pod_status, output)
+        output.append(f"    No other information available in non-running state")
+        return 0
 
     output.append(
         "    Jobs:"
@@ -934,14 +959,7 @@ def print_flink_status(
                         f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
                     )
     if verbose and len(status.pod_status) > 0:
-        output.append(f"    Pods:")
-        rows: List[Union[str, Tuple[str, str, str]]] = [("Pod Name", "Host", "Phase")]
-        for pod in status.pod_status:
-            rows.append((pod["name"], pod["host"], pod["phase"]))
-            if pod["reason"] != "":
-                rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
-        pods_table = format_table(rows)
-        output.extend([f"      {line}" for line in pods_table])
+        append_pod_status(status.pod_status, output)
     return 0
 
 
@@ -1251,7 +1269,22 @@ def apply_args_filters(
     clusters_services_instances: DefaultDict[
         str, DefaultDict[str, Dict[str, Type[InstanceConfig]]]
     ] = defaultdict(lambda: defaultdict(dict))
-
+    if args.service_instance:
+        if args.service or args.instances:
+            paasta_print(
+                PaastaColors.red(
+                    f"Invalid command. Do not include optional arguments -s or -i "
+                    f"when using shorthand notation."
+                )
+            )
+            return clusters_services_instances
+        if "." in args.service_instance:
+            args.service, args.instances = args.service_instance.split(".", 1)
+        else:
+            paasta_print(
+                PaastaColors.red(f'Use a "." to separate service and instance name')
+            )
+            return clusters_services_instances
     if args.service:
         try:
             validate_service_name(args.service, soa_dir=args.soa_dir)
@@ -1271,8 +1304,8 @@ def apply_args_filters(
 
         all_services = [args.service]
     else:
+        args.service = None
         all_services = list_services(soa_dir=args.soa_dir)
-
     if args.service is None and args.owner is None:
         args.service = figure_out_service_name(args, soa_dir=args.soa_dir)
 
@@ -1292,7 +1325,6 @@ def apply_args_filters(
     for service in all_services:
         if args.service and service != args.service:
             continue
-
         for instance_conf in get_instance_configs_for_service(
             service, soa_dir=args.soa_dir, clusters=clusters, instances=instances
         ):

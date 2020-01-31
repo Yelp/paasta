@@ -31,6 +31,7 @@ from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -93,17 +94,16 @@ def cleanup_kube_crd(
     soa_dir: str = DEFAULT_SOA_DIR,
     dry_run: bool = False,
 ) -> bool:
+    service_attr = paasta_prefixed("service")
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="paasta.yelp.com/service"
+        label_selector=service_attr
     )
 
     success = True
     for crd in existing_crds.items:
-        service = crd.metadata.labels["paasta.yelp.com/service"]
+        service = crd.metadata.labels[service_attr]
         if not service:
-            log.error(
-                f"CRD {crd.metadata.name} has empty paasta.yelp.com/service label"
-            )
+            log.error(f"CRD {crd.metadata.name} has empty {service_attr} label")
             continue
 
         crd_config = service_configuration_lib.read_extra_service_information(

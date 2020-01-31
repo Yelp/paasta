@@ -71,7 +71,6 @@ setup(
         "paasta_tools/monitoring/check_mesos_duplicate_frameworks.py",
         "paasta_tools/monitoring/check_mesos_quorum.py",
         "paasta_tools/monitoring/check_mesos_outdated_tasks.py",
-        "paasta_tools/monitoring/check_synapse_replication.py",
         "paasta_tools/monitoring/kill_orphaned_docker_containers.py",
         "paasta_tools/cli/paasta_tabcomplete.sh",
         "paasta_tools/paasta_cluster_boost.py",

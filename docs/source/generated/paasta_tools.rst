@@ -1,22 +1,23 @@
-paasta_tools package
-====================
+paasta\_tools package
+=====================
 
 Subpackages
 -----------
 
 .. toctree::
 
-    paasta_tools.api
-    paasta_tools.autoscaling
-    paasta_tools.cli
-    paasta_tools.deployd
-    paasta_tools.frameworks
-    paasta_tools.kubernetes
-    paasta_tools.mesos
-    paasta_tools.metrics
-    paasta_tools.monitoring
-    paasta_tools.secret_providers
-    paasta_tools.tron
+   paasta_tools.api
+   paasta_tools.autoscaling
+   paasta_tools.cli
+   paasta_tools.deployd
+   paasta_tools.frameworks
+   paasta_tools.instance
+   paasta_tools.kubernetes
+   paasta_tools.mesos
+   paasta_tools.metrics
+   paasta_tools.monitoring
+   paasta_tools.secret_providers
+   paasta_tools.tron
 
 Submodules
 ----------
@@ -47,6 +48,7 @@ Submodules
    paasta_tools.clusterman
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
+   paasta_tools.docker_wrapper_imports
    paasta_tools.drain_lib
    paasta_tools.dump_locally_running_services
    paasta_tools.firewall
@@ -100,6 +102,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
