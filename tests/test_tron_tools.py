@@ -72,6 +72,8 @@ class TestTronActionConfig:
         ), mock.patch(
             "paasta_tools.tron_tools.find_mesos_leader", autospec=True,
         ), mock.patch(
+            "paasta_tools.utils.get_service_docker_registry", autospec=True,
+        ), mock.patch(
             "paasta_tools.tron_tools.load_mesos_secret_for_spark", autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.get_default_event_log_dir", autospec=True,
@@ -551,7 +553,10 @@ class TestTronTools:
             branch_dict=branch_dict,
             cluster="test-cluster",
         )
-        result = tron_tools.format_tron_action_dict(action_config)
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ):
+            result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "mesos"
 
     def test_format_tron_action_dict_paasta(self):

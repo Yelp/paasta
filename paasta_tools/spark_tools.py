@@ -87,8 +87,14 @@ def get_default_event_log_dir(**kwargs) -> str:
         )
         return None
 
-    with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
-        spark_run_conf = YAML().load(fp.read())
+    try:
+        with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
+            spark_run_conf = YAML().load(fp.read())
+    except Exception as e:
+        log.warning(f"Failed to load {DEFAULT_SPARK_RUN_CONFIG}: {e}")
+        log.warning("Returning empty default configuration")
+        spark_run_conf = {}
+
     try:
         account_id = (
             boto3.client(
