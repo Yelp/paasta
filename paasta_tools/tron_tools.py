@@ -213,11 +213,11 @@ class TronActionConfig(InstanceConfig):
             command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + command
         return command
 
-    def get_spark_cluster(self):
-        return self.config_dict.get("spark_cluster", self.get_cluster())
+    def get_spark_paasta_cluster(self):
+        return self.config_dict.get("spark_paasta_cluster", self.get_cluster())
 
-    def get_spark_pool(self):
-        return self.config_dict.get("spark_pool", "default")
+    def get_spark_paasta_pool(self):
+        return self.config_dict.get("spark_paasta_pool", "batch")
 
     def get_vault_token_file(self, system_paasta_config):
         return self.config_dict.get(
@@ -235,7 +235,7 @@ class TronActionConfig(InstanceConfig):
             spark_env = get_mesos_spark_env(
                 spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
                 spark_ui_port=spark_ui_port,
-                mesos_leader=find_mesos_leader(self.get_spark_cluster()),
+                mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
                 mesos_secret=load_mesos_secret_for_spark(
                     secret_provider_name=system_paasta_config.get_secret_provider_name(),
                     soa_dir=self.soa_dir,
@@ -249,8 +249,8 @@ class TronActionConfig(InstanceConfig):
                         ),
                     },
                 ),
-                paasta_cluster=self.get_spark_cluster(),
-                paasta_pool=self.get_spark_pool(),
+                paasta_cluster=self.get_spark_paasta_cluster(),
+                paasta_pool=self.get_spark_paasta_pool(),
                 paasta_service=self.get_service(),
                 paasta_instance=self.get_instance(),
                 docker_img=self.get_docker_url(),
@@ -264,8 +264,8 @@ class TronActionConfig(InstanceConfig):
                     aws_credentials_yaml=self.config_dict.get("aws_credentials"),
                 ),
             )
-            env["EXECUTOR_CLUSTER"] = self.get_spark_cluster()
-            env["EXECUTOR_POOL"] = self.get_spark_pool()
+            env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
+            env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
             env["SPARK_OPTS"] = stringify_spark_env(spark_env)
             env["CLUSTERMAN_RESOURCES"] = json.dumps(
                 dict(

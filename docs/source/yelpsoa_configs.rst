@@ -609,6 +609,20 @@ Each Tron **action** of a job MAY specify the following:
     then the command should be something available in the docker container (it should NOT
     start with ``paasta local-run``).
 
+If a Tron **action** of a job is of executor type ``spark``, it MAY specify the following:
+
+  * ``spark_paasta_cluster``: The Paasta cluster on which to run spark jobs (spark executors).
+    Default to the same cluster the tron job (spark driver) is running on.
+
+  * ``spark_paasta_pool``: The Paasta pool on which to run spark jobs (spark executors).
+    Default to ``batch`` pool if not specified.
+
+  * ``spark_args``: Dictionary of spark configurations documented in
+    https://spark.apache.org/docs/latest/configuration.html. Note some configurations are non-
+    user-editable as they will be populated by paasta tools. See
+    https://github.com/Yelp/service_configuration_lib/blob/master/service_configuration_lib/spark_config.py#L9
+    for a complete list of such configurations.
+
 ``adhoc-[clustername].yaml``
 -------------------------------
 
