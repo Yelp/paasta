@@ -1,3 +1,12 @@
+paasta-tools (0.93.16) xenial; urgency=medium
+
+  * 0.93.16 tagged with 'make release'
+    Commit: Merge pull request #2655 from Yelp/u/siruitan/TRON-1470-
+    add_validation_n_doc_to_tron_spark_args  Add validation &
+    documentation to newly-added tron spark arguments
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 04 Feb 2020 15:21:43 -0800
+
 paasta-tools (0.93.15) xenial; urgency=medium
 
   * 0.93.15 tagged with 'make release'
