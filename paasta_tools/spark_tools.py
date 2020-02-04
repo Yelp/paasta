@@ -90,8 +90,14 @@ def get_default_event_log_dir(**kwargs) -> str:
         )
         return None
 
-    with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
-        spark_run_conf = YAML().load(fp.read())
+    try:
+        with open(DEFAULT_SPARK_RUN_CONFIG) as fp:
+            spark_run_conf = YAML().load(fp.read())
+    except Exception as e:
+        log.warning(f"Failed to load {DEFAULT_SPARK_RUN_CONFIG}: {e}")
+        log.warning("Returning empty default configuration")
+        spark_run_conf = {}
+
     try:
         account_id = (
             boto3.client(
@@ -104,7 +110,7 @@ def get_default_event_log_dir(**kwargs) -> str:
         log.warning("Failed to identify account ID, error: {}".format(str(e)))
         return None
 
-    for conf in spark_run_conf["environments"].values():
+    for conf in spark_run_conf.get("environments", {}).values():
         if account_id == conf["account_id"]:
             default_event_log_dir = conf["default_event_log_dir"]
             paasta_print(f"default event logging at: {default_event_log_dir}")

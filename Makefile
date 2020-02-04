@@ -31,7 +31,7 @@ docs: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e docs
 
 test: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e test
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
 
 .tox/py36-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
