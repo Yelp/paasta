@@ -94,10 +94,19 @@ class KubernetesClusterConnector(ClusterConnector):
             agent_id=node.metadata.name,
             allocated_resources=allocated_node_resources(self._pods_by_ip[node_ip]),
             batch_task_count=self._count_batch_tasks(node_ip),
+            is_safe_to_kill=self._is_node_safe_to_kill(node_ip),
             state=(AgentState.RUNNING if self._pods_by_ip[node_ip] else AgentState.IDLE),
             task_count=len(self._pods_by_ip[node_ip]),
             total_resources=total_node_resources(node),
         )
+
+    def _is_node_safe_to_kill(self, node_ip: str) -> bool:
+        safe_to_evict_key = self.pool_config.read_string('safe_to_evict_key', default='clusterman.com/safe_to_evict')
+        for pod in self._pods_by_ip[node_ip]:
+            pod_safe_to_evict = strtobool(pod.metadata.annotations.get(safe_to_evict_key, 'true'))
+            if not pod_safe_to_evict:
+                return False
+        return True
 
     def _get_nodes_by_ip(self) -> Mapping[str, KubernetesNode]:
         pool_label_selector = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool') \

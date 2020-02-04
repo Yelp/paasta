@@ -93,15 +93,15 @@ class PoolManager:
 
     def mark_stale(self, dry_run: bool) -> None:
         if dry_run:
-            logger.warn('Running in "dry-run" mode; cluster state will not be modified')
+            logger.warning('Running in "dry-run" mode; cluster state will not be modified')
 
         for group_id, group in self.resource_groups.items():
             logger.info(f'Marking {group_id} as stale!')
             try:
                 group.mark_stale(dry_run)
             except NotImplementedError as e:
-                logger.warn(f'Skipping {group_id} because of error:')
-                logger.warn(str(e))
+                logger.warning(f'Skipping {group_id} because of error:')
+                logger.warning(str(e))
 
     def modify_target_capacity(
         self,
@@ -436,6 +436,8 @@ class PoolManager:
 
     def _is_node_killable(self, node_metadata: ClusterNodeMetadata) -> bool:
         if node_metadata.agent.state == AgentState.UNKNOWN:
+            return False
+        elif not node_metadata.agent.is_safe_to_kill:
             return False
         elif self.max_tasks_to_kill > node_metadata.agent.task_count:
             return True

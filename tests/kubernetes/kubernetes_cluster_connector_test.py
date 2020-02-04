@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from copy import deepcopy
+
 import mock
 import pytest
 from kubernetes.client import V1Container
@@ -28,7 +30,59 @@ from clusterman.kubernetes.kubernetes_cluster_connector import KubernetesCluster
 
 
 @pytest.fixture
-def mock_cluster_connector():
+def pod1():
+    return V1Pod(
+        metadata=V1ObjectMeta(name='pod1', annotations=dict()),
+        status=V1PodStatus(phase='Running'),
+        spec=V1PodSpec(containers=[
+               V1Container(
+                    name='container1',
+                    resources=V1ResourceRequirements(requests={'cpu': '1.5'})
+                )
+            ]
+        )
+    )
+
+
+@pytest.fixture
+def pod2():
+    return V1Pod(
+        metadata=V1ObjectMeta(name='pod2', annotations={'clusterman.com/safe_to_evict': 'false'}),
+        status=V1PodStatus(phase='Running'),
+        spec=V1PodSpec(containers=[
+               V1Container(
+                    name='container1',
+                    resources=V1ResourceRequirements(requests={'cpu': '1.5'})
+                )
+            ]
+        )
+    )
+
+
+@pytest.fixture
+def pod3():
+    return V1Pod(
+        metadata=V1ObjectMeta(name='pod3', annotations=dict()),
+        status=V1PodStatus(
+            phase='Pending',
+            conditions=[
+                V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
+            ]
+        ),
+        spec=V1PodSpec(
+            containers=[
+                V1Container(
+                    name='container2',
+                    resources=V1ResourceRequirements(requests={'cpu': '1.5'})
+                )
+            ],
+            node_selector={'clusterman.com/pool': 'bar'}
+        )
+    )
+
+
+@pytest.fixture
+def mock_cluster_connector(pod1, pod2, pod3):
     with mock.patch('clusterman.kubernetes.kubernetes_cluster_connector.kubernetes'), \
             mock.patch('clusterman.kubernetes.kubernetes_cluster_connector.staticconf'):
         mock_cluster_connector = KubernetesClusterConnector('kubernetes-test', 'bar')
@@ -48,55 +102,13 @@ def mock_cluster_connector():
                 )
             )
         }
+        pod4 = deepcopy(pod1)
         mock_cluster_connector._pods_by_ip = {
             '10.10.10.1': [],
-            '10.10.10.2': [
-                V1Pod(
-                    metadata=V1ObjectMeta(name='pod1'),
-                    status=V1PodStatus(phase='Running'),
-                    spec=V1PodSpec(containers=[
-                           V1Container(
-                                name='container1',
-                                resources=V1ResourceRequirements(requests={'cpu': '1.5'})
-                            )
-                        ]
-                    )
-                ),
-            ]
+            '10.10.10.2': [pod1, pod2],
+            '10.10.10.3': [pod4],
         }
-        mock_cluster_connector._pods = [
-            V1Pod(
-                metadata=V1ObjectMeta(name='pod1'),
-                status=V1PodStatus(phase='Running'),
-                spec=V1PodSpec(
-                    containers=[
-                        V1Container(
-                            name='container1',
-                            resources=V1ResourceRequirements(requests={'cpu': '1.5'})
-                        )
-                    ],
-                    node_selector={'clusterman.com/pool': 'bar'}
-                )
-            ),
-            V1Pod(
-                metadata=V1ObjectMeta(name='pod2'),
-                status=V1PodStatus(
-                    phase='Pending',
-                    conditions=[
-                        V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
-                    ]
-                ),
-                spec=V1PodSpec(
-                    containers=[
-                        V1Container(
-                            name='container2',
-                            resources=V1ResourceRequirements(requests={'cpu': '1.5'})
-                        )
-                    ],
-                    node_selector={'clusterman.com/pool': 'bar'}
-                )
-            )
-        ]
+        mock_cluster_connector._pods = [pod1, pod2, pod3, pod4]
         return mock_cluster_connector
 
 
@@ -108,11 +120,12 @@ def mock_cluster_connector():
 ])
 def test_get_agent_metadata(mock_cluster_connector, ip_address, expected_state):
     agent_metadata = mock_cluster_connector.get_agent_metadata(ip_address)
+    assert agent_metadata.is_safe_to_kill == (ip_address != '10.10.10.2')
     assert agent_metadata.state == expected_state
 
 
 def test_allocation(mock_cluster_connector):
-    assert mock_cluster_connector.get_resource_allocation('cpus') == 1.5
+    assert mock_cluster_connector.get_resource_allocation('cpus') == 3.0
 
 
 def test_total_cpus(mock_cluster_connector):
