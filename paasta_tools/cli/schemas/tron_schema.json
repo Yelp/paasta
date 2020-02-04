@@ -145,7 +145,6 @@
         "job": {
             "type": "object",
             "required": [
-                "node",
                 "schedule",
                 "actions"
             ],
