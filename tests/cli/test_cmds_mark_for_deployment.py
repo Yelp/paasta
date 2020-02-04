@@ -371,7 +371,10 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         authors=["fakeuser1"],
     )
     mock_get_authors_to_be_notified.assert_called_once_with(
-        git_url="git@git.yelpcorp.com:services/repo", from_sha="aaaaaaaa", to_sha="abc123512", authors=["fakeuser1"]
+        git_url="git@git.yelpcorp.com:services/repo",
+        from_sha="aaaaaaaa",
+        to_sha="abc123512",
+        authors=["fakeuser1"],
     )
 
 
@@ -406,7 +409,10 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         authors="fakeuser1",
     )
     mock_get_authors_to_be_notified.assert_called_once_with(
-        git_url="git@git.yelpcorp.com:services/repo1", from_sha="asgdser23", to_sha="abc123512", authors="fakeuser1"
+        git_url="git@git.yelpcorp.com:services/repo1",
+        from_sha="asgdser23",
+        to_sha="abc123512",
+        authors="fakeuser1",
     )
 
 

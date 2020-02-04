@@ -281,7 +281,7 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
 
     if authors:
         authors_to_notify = authors
-    elif 'git.yelpcorp.com' in git_url:
+    elif "git.yelpcorp.com" in git_url:
         ret, git_authors = remote_git.get_authors(
             git_url=git_url, from_sha=from_sha, to_sha=to_sha
         )
