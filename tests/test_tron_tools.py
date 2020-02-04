@@ -86,6 +86,8 @@ class TestTronActionConfig:
                 "cpus": ("cpus|dimension=2", 1900),
                 "mem": ("mem|dimension=1", "42"),
             },
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
         ):
             env = action_config.get_env()
         if executor == "spark":
@@ -555,7 +557,7 @@ class TestTronTools:
         )
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ):
+        ), mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "mesos"
 
