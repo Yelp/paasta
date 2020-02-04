@@ -125,30 +125,35 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
     def run(self) -> None:
         self.load_pool_managers()  # Load the pools on the first run; do it here so we get logging
 
-        while self.running:
-            time.sleep(splay_event_time(
-                self.run_interval,
-                self.get_name() + self.options.cluster,
-            ))
+        try:
+            while self.running:
+                time.sleep(splay_event_time(
+                    self.run_interval,
+                    self.get_name() + self.options.cluster,
+                ))
 
-            for pool, manager in self.pool_managers.items():
-                logger.info(f'Reloading state for pool manager for pool {pool}')
-                manager.reload_state()
-                logger.info(f'Done reloading state for pool {pool}')
+                for pool, manager in self.pool_managers.items():
+                    logger.info(f'Reloading state for pool manager for pool {pool}')
+                    manager.reload_state()
+                    logger.info(f'Done reloading state for pool {pool}')
 
-            successful = self.write_all_metrics()
+                successful = self.write_all_metrics()
 
-            # Report successful run to Sensu.
-            if successful:
-                sensu_args = dict(
-                    check_name='check_clusterman_cluster_metrics_running',
-                    output='OK: clusterman cluster_metrics was successful',
-                    check_every='1m',
-                    source=self.options.cluster,
-                    ttl='10m',
-                    noop=self.options.disable_sensu,
-                )
-                sensu_checkin(**sensu_args)
+                # Report successful run to Sensu.
+                if successful:
+                    sensu_args = dict(
+                        check_name='check_clusterman_cluster_metrics_running',
+                        output='OK: clusterman cluster_metrics was successful',
+                        check_every='1m',
+                        source=self.options.cluster,
+                        ttl='10m',
+                        noop=self.options.disable_sensu,
+                    )
+                    sensu_checkin(**sensu_args)
+
+        except Exception:
+            # yelp_batch doesn't show the whole traceback when something fails
+            self.logger.exception('cluster metrics collector failed')
 
     def write_all_metrics(self) -> bool:
         successful = True
