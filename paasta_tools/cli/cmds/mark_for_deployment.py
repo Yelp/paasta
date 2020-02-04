@@ -279,9 +279,11 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
     if from_sha is None:
         return ""
 
+    authors_to_notify = []
+
     if authors:
         authors_to_notify = authors
-    else:
+    elif 'git.yelpcorp.com' in git_url:
         ret, git_authors = remote_git.get_authors(
             git_url=git_url, from_sha=from_sha, to_sha=to_sha
         )
@@ -289,6 +291,9 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
             authors_to_notify = git_authors.split()
         else:
             return f"(Could not get authors: {git_authors})"
+    else:
+        # We have no way of getting authors on the fly if the repository is not on gitolite
+        pass
 
     slacky_authors = ", ".join({f"<@{a}>" for a in authors_to_notify})
     log.debug(f"Authors: {slacky_authors}")
