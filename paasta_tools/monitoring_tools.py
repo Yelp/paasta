@@ -265,7 +265,7 @@ def list_teams(**kwargs):
     return teams
 
 
-def send_replication_event(instance_config, status, output):
+def send_replication_event(instance_config, status, output, team_override=None):
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param instance_config: an instance of LongRunningServiceConfig
@@ -279,7 +279,8 @@ def send_replication_event(instance_config, status, output):
     monitoring_overrides["runbook"] = get_runbook(
         monitoring_overrides, instance_config.service, soa_dir=instance_config.soa_dir
     )
-
+    if team_override:
+        monitoring_overrides["team"] = team_override
     check_name = "check_paasta_services_replication.%s" % instance_config.job_id
     send_event(
         service=instance_config.service,
