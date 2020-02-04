@@ -1,3 +1,13 @@
+paasta-tools (0.93.15) xenial; urgency=medium
+
+  * 0.93.15 tagged with 'make release'
+    Commit: Revert "Merge pull request #2644 from Yelp/revert-2610-
+    u/siruitan/TRON-1370-read_spark_mesos_secret_from_vault"  This
+    reverts commit 9ab1069e9c6d4e7b52bc820c054e2a246506fb45, reversing
+    changes made to 0ab332800cf121b75b94518532e12ea6bd108b3f.
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 04 Feb 2020 09:37:31 -0800
+
 paasta-tools (0.93.14) xenial; urgency=medium
 
   * 0.93.14 tagged with 'make release'
