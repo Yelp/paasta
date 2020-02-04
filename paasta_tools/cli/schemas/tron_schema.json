@@ -44,7 +44,8 @@
                 "executor": {
                     "enum": [
                         "ssh",
-                        "paasta"
+                        "paasta",
+                        "spark"
                     ]
                 },
                 "cpus": {
@@ -139,6 +140,15 @@
                 },
                 "trigger_timeout": {
                     "$ref": "#definitions/time_delta"
+                },
+                "spark_paasta_cluster": {
+                    "type": "string"
+                },
+                "spark_paasta_pool": {
+                    "type": "string"
+                },
+                "spark_args": {
+                    "type": "object"
                 }
             }
         },
