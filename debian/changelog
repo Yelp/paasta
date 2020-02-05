@@ -1,3 +1,19 @@
+paasta-tools (0.93.17) xenial; urgency=medium
+
+  * 0.93.17 tagged with 'make release'
+    Commit: Don"t try to retrieve authors from GitHub repos with
+    gitolite commands (#2657)  * Don"t try to retrieve authors from
+    GitHub repos with gitolite commands  The old way of finding authors
+    is to call a gitolite command that finds the authors between two
+    commits. For services on GitHub, we pass in the authors when making
+    a mark-for-deployment call, so there is no benefit to trying to call
+    this gitolite command on a GitHub repository.  This change was
+    prompted by the noisiness of timed deploys for shas already on
+    master not having authors passed in, and complaining about not being
+    able to find any authors from GitHub as a fallback
+
+ -- Daniel Grigsby <dgrigsby@10-40-30-18-uswest1cdevc.dev.yelpcorp.com>  Tue, 04 Feb 2020 17:13:08 -0800
+
 paasta-tools (0.93.16) xenial; urgency=medium
 
   * 0.93.16 tagged with 'make release'
