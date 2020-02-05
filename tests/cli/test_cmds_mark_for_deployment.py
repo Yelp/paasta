@@ -278,7 +278,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         deploy_group="test_deploy_group",
         commit="abc123432u49",
         old_git_sha="abc123455",
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
@@ -322,7 +322,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
         deploy_group=None,
         commit="abc123432u49",
         old_git_sha=None,
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
@@ -362,7 +362,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         deploy_group=None,
         commit="abc123512",
         old_git_sha="asgdser23",
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
@@ -371,7 +371,10 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         authors=["fakeuser1"],
     )
     mock_get_authors_to_be_notified.assert_called_once_with(
-        git_url=None, from_sha="aaaaaaaa", to_sha="abc123512", authors=["fakeuser1"]
+        git_url="git@git.yelpcorp.com:services/repo",
+        from_sha="aaaaaaaa",
+        to_sha="abc123512",
+        authors=["fakeuser1"],
     )
 
 
@@ -397,7 +400,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         deploy_group=None,
         commit="abc123512",
         old_git_sha="asgdser23",
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
@@ -406,7 +409,10 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         authors="fakeuser1",
     )
     mock_get_authors_to_be_notified.assert_called_once_with(
-        git_url=None, from_sha="asgdser23", to_sha="abc123512", authors="fakeuser1"
+        git_url="git@git.yelpcorp.com:services/repo1",
+        from_sha="asgdser23",
+        to_sha="abc123512",
+        authors="fakeuser1",
     )
 
 
@@ -436,7 +442,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         deploy_group=None,
         commit="abc123512",
         old_git_sha="asgdser23",
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
@@ -481,7 +487,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         deploy_group=None,
         commit="abc123456789",
         old_git_sha="oldsha1234",
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
@@ -524,7 +530,7 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         deploy_group=None,
         commit="asbjkslerj",
         old_git_sha="abscerwerr",
-        git_url=None,
+        git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
         auto_certify_delay=1,
