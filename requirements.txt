@@ -37,6 +37,8 @@ idna==2.6
 idna-ssl==1.0.1
 inotify==0.2.8
 ipaddress==1.0.22
+ipdb==0.12.3
+ipython==6.5.0
 isodate==0.5.1
 Jinja2==2.10.1
 jinja2-time==0.1.0
