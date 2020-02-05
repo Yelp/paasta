@@ -46,6 +46,7 @@ from sticht.slo import SLOSlackDeploymentProcess
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -1098,6 +1099,12 @@ class ClusterData:
         self.git_sha = git_sha
         self.instances_queue = instances_queue
 
+    def __repr__(self):
+        return (
+            f"ClusterData(cluster={self.cluster}, service={self.service}, "
+            f"git_sha={self.git_sha}, instances_queue={self.instances_queue})"
+        )
+
 
 def instances_deployed(cluster_data, instances_out, green_light):
     """Create a thread pool to run _run_instance_worker()
@@ -1340,13 +1347,10 @@ def _run_cluster_worker(cluster_data, green_light):
     cluster_data.instances_queue = instances_out
     if cluster_data.instances_queue.empty():
         paasta_print(f"Deploy to {cluster_data.cluster} complete!")
+    return cluster_data
 
 
-def wait_for_deployment(
-    service, deploy_group, git_sha, soa_dir, timeout, green_light=None, progress=None
-):
-    # Currently only 'marathon' instances are supported for wait_for_deployment because they
-    # are the only thing that are worth waiting on.
+def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
     )
@@ -1363,19 +1367,22 @@ def wait_for_deployment(
             )
             raise NoSuchCluster
 
+        # Currently only marathon, kubernetes and cassandra instances are
+        # supported for wait_for_deployment because they are the only thing
+        # that are worth waiting on.
         instances_queue = Queue()
-        for instance_config in service_configs.instance_configs(
-            cluster=cluster, instance_type_class=MarathonServiceConfig
-        ):
-            if instance_config.get_deploy_group() == deploy_group:
-                instances_queue.put(instance_config)
-                total_instances += 1
-        for instance_config in service_configs.instance_configs(
-            cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-        ):
-            if instance_config.get_deploy_group() == deploy_group:
-                instances_queue.put(instance_config)
-                total_instances += 1
+        instance_classes = [
+            MarathonServiceConfig,
+            KubernetesDeploymentConfig,
+            CassandraClusterDeploymentConfig,
+        ]
+        for instance_class in instance_classes:
+            for instance_config in service_configs.instance_configs(
+                cluster=cluster, instance_type_class=instance_class
+            ):
+                if instance_config.get_deploy_group() == deploy_group:
+                    instances_queue.put(instance_config)
+                    total_instances += 1
 
         if not instances_queue.empty():
             clusters_data.append(
@@ -1386,6 +1393,16 @@ def wait_for_deployment(
                     instances_queue=instances_queue,
                 )
             )
+
+    return clusters_data, total_instances
+
+
+def wait_for_deployment(
+    service, deploy_group, git_sha, soa_dir, timeout, green_light=None, progress=None
+):
+    clusters_data, total_instances = clusters_data_to_wait_for(
+        service, deploy_group, git_sha, soa_dir
+    )
 
     if not clusters_data:
         _log(
