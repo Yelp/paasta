@@ -1779,7 +1779,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron: Dict
     vault_cluster_map: Dict
     vault_environment: str
-    vault_token_file: str
     volumes: List[DockerVolume]
     zookeeper: str
 
@@ -2265,10 +2264,6 @@ class SystemPaastaConfig:
         This must match the environment keys in the secret json files
         used by all services in this cluster"""
         return self.config_dict.get("vault_environment")
-
-    def get_vault_token_file(self) -> Optional[str]:
-        """ Get the path of the file that stores vault token."""
-        return self.config_dict.get("vault_token_file")
 
     def get_vault_cluster_config(self) -> dict:
         """ Get a map from paasta_cluster to vault ecosystem. We need

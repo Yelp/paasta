@@ -74,8 +74,6 @@ class TestTronActionConfig:
         ), mock.patch(
             "paasta_tools.utils.get_service_docker_registry", autospec=True,
         ), mock.patch(
-            "paasta_tools.tron_tools.load_mesos_secret_for_spark", autospec=True,
-        ), mock.patch(
             "paasta_tools.tron_tools.get_default_event_log_dir", autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.stringify_spark_env", autospec=True,
