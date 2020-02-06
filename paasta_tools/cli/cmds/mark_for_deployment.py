@@ -1350,6 +1350,13 @@ def _run_cluster_worker(cluster_data, green_light):
     return cluster_data
 
 
+WAIT_FOR_INSTANCE_CLASSES = [
+    MarathonServiceConfig,
+    KubernetesDeploymentConfig,
+    CassandraClusterDeploymentConfig,
+]
+
+
 def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
@@ -1371,12 +1378,7 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
         # supported for wait_for_deployment because they are the only thing
         # that are worth waiting on.
         instances_queue = Queue()
-        instance_classes = [
-            MarathonServiceConfig,
-            KubernetesDeploymentConfig,
-            CassandraClusterDeploymentConfig,
-        ]
-        for instance_class in instance_classes:
+        for instance_class in WAIT_FOR_INSTANCE_CLASSES:
             for instance_config in service_configs.instance_configs(
                 cluster=cluster, instance_type_class=instance_class
             ):
