@@ -152,8 +152,8 @@ def help_formatter(prog):  # pragma: no cover
     return argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=35, width=100)
 
 
-def _get_validated_args(parser):
-    args = parser.parse_args()
+def _get_validated_args(argv, parser):
+    args = parser.parse_args(args=argv)
 
     if args.subcommand is None:
         logger.error('missing subcommand')
@@ -213,7 +213,7 @@ def get_parser(description=''):  # pragma: no cover
     return root_parser
 
 
-def parse_args(description):  # pragma: no cover
+def parse_args(argv, description):  # pragma: no cover
     """Parse arguments for the CLI too and any subcommands
 
     :param description: a string descripting the tool
@@ -221,5 +221,5 @@ def parse_args(description):  # pragma: no cover
     """
     root_parser = get_parser(description)
 
-    args = _get_validated_args(root_parser)
+    args = _get_validated_args(argv, root_parser)
     return args
