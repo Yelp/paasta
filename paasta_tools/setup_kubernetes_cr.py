@@ -30,6 +30,8 @@ from typing import Sequence
 
 import yaml
 
+from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
+from paasta_tools.cli.utils import LongRunningServiceLoaderSig
 from paasta_tools.flink_tools import get_flink_ingress_url_root
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
@@ -44,7 +46,9 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 
@@ -172,6 +176,9 @@ def setup_all_custom_resources(
         ensure_namespace(
             kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
         )
+        config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            crd.kube_kind.singular
+        ].loader
         results.append(
             setup_custom_resources(
                 kube_client=kube_client,
@@ -182,6 +189,7 @@ def setup_all_custom_resources(
                 cluster=cluster,
                 service=service,
                 instance=instance,
+                config_loader=config_loader,
             )
         )
     return all(results) if results else True
@@ -196,6 +204,7 @@ def setup_custom_resources(
     cluster: str,
     service: str = None,
     instance: str = None,
+    config_loader: LongRunningServiceLoaderSig = None,
 ) -> bool:
     succeded = True
     if config_dicts:
@@ -215,6 +224,7 @@ def setup_custom_resources(
             version=version,
             group=group,
             cluster=cluster,
+            config_loader=config_loader,
         ):
             succeded = False
     return succeded
@@ -238,6 +248,7 @@ def get_dashboard_url(
 
 def format_custom_resource(
     instance_config: Mapping[str, Any],
+    soa_config: InstanceConfig,
     service: str,
     instance: str,
     cluster: str,
@@ -266,15 +277,21 @@ def format_custom_resource(
         },
         "spec": instance_config,
     }
+
     url = get_dashboard_url(kind, service, instance, cluster)
     if url:
         resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_url")] = url
+
     config_hash = get_config_hash(resource)
+    docker_url = soa_config.get_docker_url()
+    code_sha = get_code_sha_from_dockerurl(docker_url)
+
     resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"
     resource["metadata"]["annotations"][paasta_prefixed("desired_state")] = "running"
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     resource["metadata"]["labels"][paasta_prefixed("config_sha")] = config_hash
+    resource["metadata"]["labels"][paasta_prefixed("git_sha")] = code_sha
     return resource
 
 
@@ -288,14 +305,17 @@ def reconcile_kubernetes_resource(
     group: str,
     cluster: str,
     instance: str = None,
+    config_loader: LongRunningServiceLoaderSig = None,
 ) -> bool:
 
     results = []
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
+        soa_config = config_loader(service=service, instance=instance, cluster=cluster)
         formatted_resource = format_custom_resource(
             instance_config=config,
+            soa_config=soa_config,
             service=service,
             instance=inst,
             cluster=cluster,
