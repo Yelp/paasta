@@ -1350,7 +1350,6 @@ def _run_cluster_worker(cluster_data, green_light):
     return cluster_data
 
 
-<<<<<<< HEAD
 WAIT_FOR_INSTANCE_CLASSES = [
     MarathonServiceConfig,
     KubernetesDeploymentConfig,
@@ -1358,8 +1357,6 @@ WAIT_FOR_INSTANCE_CLASSES = [
 ]
 
 
-=======
->>>>>>> add cassandracluster to wait_for_deployment
 def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
@@ -1381,16 +1378,7 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
         # supported for wait_for_deployment because they are the only thing
         # that are worth waiting on.
         instances_queue = Queue()
-<<<<<<< HEAD
         for instance_class in WAIT_FOR_INSTANCE_CLASSES:
-=======
-        instance_classes = [
-            MarathonServiceConfig,
-            KubernetesDeploymentConfig,
-            CassandraClusterDeploymentConfig,
-        ]
-        for instance_class in instance_classes:
->>>>>>> add cassandracluster to wait_for_deployment
             for instance_config in service_configs.instance_configs(
                 cluster=cluster, instance_type_class=instance_class
             ):
