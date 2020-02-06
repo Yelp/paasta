@@ -37,6 +37,7 @@ log.addHandler(logging.NullHandler())
 
 
 class CassandraClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
+    bounce_margin_factor: float
     replicas: int
 
 
