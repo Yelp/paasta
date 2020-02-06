@@ -269,6 +269,7 @@ def test_wait_for_deployment(
                 )
 
     mock_paasta_service_config_loader.return_value.clusters = ["cluster1", "cluster2"]
+    # TODO: mock clusters_data_to_wait_for instead of this
     mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [
             mock_marathon_instance_config("instance1"),
@@ -278,6 +279,8 @@ def test_wait_for_deployment(
             mock_marathon_instance_config("instance1"),
             mock_marathon_instance_config("instance2"),
         ],
+        [],
+        [],
         [],
         [],
     ]
@@ -290,6 +293,7 @@ def test_wait_for_deployment(
         )
 
     mock_paasta_service_config_loader.return_value.clusters = ["cluster1", "cluster2"]
+    # TODO: mock clusters_data_to_wait_for instead of this
     mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [
             mock_marathon_instance_config("instance1"),
@@ -299,6 +303,8 @@ def test_wait_for_deployment(
             mock_marathon_instance_config("instance1"),
             mock_marathon_instance_config("instance3"),
         ],
+        [],
+        [],
         [],
         [],
     ]
