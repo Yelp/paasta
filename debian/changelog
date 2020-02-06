@@ -1,3 +1,10 @@
+paasta-tools (0.93.18) xenial; urgency=medium
+
+  * 0.93.18 tagged with 'make release'
+    Commit: Released 0.93.17 via make release
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 06 Feb 2020 11:18:13 -0800
+
 paasta-tools (0.93.17) xenial; urgency=medium
 
   * 0.93.17 tagged with 'make release'
