@@ -35,7 +35,6 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
 from paasta_tools.spark_tools import get_default_event_log_dir
-from paasta_tools.spark_tools import load_mesos_secret_for_spark
 from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
@@ -69,6 +68,7 @@ VALID_MONITORING_KEYS = set(
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
+SPARK_MESOS_SECRET_KEY = "SHARED_SECRET(SPARK_MESOS_SECRET)"
 
 
 class TronNotConfigured(Exception):
@@ -219,16 +219,10 @@ class TronActionConfig(InstanceConfig):
     def get_spark_paasta_pool(self):
         return self.config_dict.get("spark_paasta_pool", "batch")
 
-    def get_vault_token_file(self, system_paasta_config):
-        return self.config_dict.get(
-            "vault_token_file", system_paasta_config.get_vault_token_file()
-        )
-
     def get_env(self):
         env = super().get_env()
         spark_env = {}
         if self.get_executor() == "spark":
-            system_paasta_config = load_system_paasta_config()
             spark_ui_port = pick_random_port(
                 f"{self.get_service()}{self.get_instance()}".encode()
             )
@@ -236,19 +230,7 @@ class TronActionConfig(InstanceConfig):
                 spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
                 spark_ui_port=spark_ui_port,
                 mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
-                mesos_secret=load_mesos_secret_for_spark(
-                    secret_provider_name=system_paasta_config.get_secret_provider_name(),
-                    soa_dir=self.soa_dir,
-                    service_name=self.get_service(),
-                    cluster_name=self.get_cluster(),
-                    secret_provider_kwargs={
-                        "vault_cluster_config": system_paasta_config.get_vault_cluster_config(),
-                        "vault_auth_method": "token",
-                        "vault_token_file": self.get_vault_token_file(
-                            system_paasta_config
-                        ),
-                    },
-                ),
+                mesos_secret=SPARK_MESOS_SECRET_KEY,
                 paasta_cluster=self.get_spark_paasta_cluster(),
                 paasta_pool=self.get_spark_paasta_pool(),
                 paasta_service=self.get_service(),
