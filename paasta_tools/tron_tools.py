@@ -203,6 +203,15 @@ class TronActionConfig(InstanceConfig):
     def get_deploy_group(self) -> Optional[str]:
         return self.config_dict.get("deploy_group", None)
 
+    def get_docker_url(self) -> str:
+        # It's okay for tronfig to contain things that aren't deployed yet - it's normal for developers to
+        # push tronfig well before the job is scheduled to run, and either they'll deploy the service before
+        # or get notified when the job fails.
+        #
+        # This logic ensures that we can still pass validation and run setup_tron_namespace even if
+        # there's nothing in deployments.json yet.
+        return "" if not self.get_docker_image() else super().get_docker_url()
+
     def get_cmd(self):
         command = self.config_dict.get("command")
         if self.get_executor() == "spark":
@@ -570,11 +579,7 @@ def format_tron_action_dict(action_config):
             for constraint in action_config.get_calculated_constraints()
         ]
 
-        # If deployments were not loaded
-        if not action_config.get_docker_image():
-            result["docker_image"] = ""
-        else:
-            result["docker_image"] = action_config.get_docker_url()
+        result["docker_image"] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
