@@ -20,8 +20,6 @@ humanfriendly
 humanize >= 0.5.1
 inotify >= 0.2.8
 ipaddress >= 1.0.22
-ipdb
-ipython<7
 isodate >= 0.5.0
 jsonschema[format]
 kazoo >= 2.0.0
