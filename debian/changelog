@@ -1,3 +1,9 @@
+clusterman (4.3.6) xenial bionic; urgency=low
+
+  * Add support for new instance types
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 07 Feb 2020 06:31:45 -0800
+
 clusterman (4.3.5) xenial bionic; urgency=low
 
   * CLUSTERMAN-382 Add system metrics for k8s pending resources
