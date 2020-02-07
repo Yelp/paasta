@@ -1,3 +1,11 @@
+paasta-tools (0.93.19) xenial; urgency=medium
+
+  * 0.93.19 tagged with 'make release'
+    Commit: Merge pull request #2662 from Yelp/drmorr/TRON-
+    16199/fix_validation  fix docker_url for validation
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 07 Feb 2020 10:45:40 -0800
+
 paasta-tools (0.93.18) xenial; urgency=medium
 
   * 0.93.18 tagged with 'make release'
