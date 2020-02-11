@@ -1376,17 +1376,27 @@ def list_deployments(
 async def get_tail_lines_for_kubernetes_pod(
     kube_client: KubeClient, pod: V1Pod, num_tail_lines: int
 ) -> MutableMapping[str, List[str]]:
-    tail_lines_dict: MutableMapping[str, List[str]] = {"stdout": [], "stderr": []}
+    tail_lines_dict: MutableMapping[str, List[str]] = {
+        "stdout": [],
+        "stderr": [],
+        "error_message": [],
+    }
     for container in pod.spec.containers:
         if container.name != HACHECK_POD_NAME:
-            tail_lines_dict["stdout"].append(
-                kube_client.core.read_namespaced_pod_log(
-                    name=pod.metadata.name,
-                    namespace=pod.metadata.namespace,
-                    container=container.name,
-                    tail_lines=num_tail_lines,
+            try:
+                tail_lines_dict["stdout"].append(
+                    kube_client.core.read_namespaced_pod_log(
+                        name=pod.metadata.name,
+                        namespace="paasta",
+                        container=container.name,
+                        tail_lines=num_tail_lines,
+                    )
                 )
-            )
+            except ApiException as e:
+                tail_lines_dict["error_message"].append(
+                    f"couldn't read stdout/stderr because {e.getResponseBody()}"
+                )
+
     return tail_lines_dict
 
 
