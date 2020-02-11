@@ -276,6 +276,7 @@ def test_reconcile_kubernetes_resource():
                 service="kurupt",
                 instance="fm",
                 config_sha="conf123",
+                git_sha="git123",
                 kind="flink",
                 name="foo",
                 namespace="paasta-flinks",
@@ -302,6 +303,7 @@ def test_reconcile_kubernetes_resource():
                 "labels": {
                     "yelp.com/paasta_config_sha": "conf123",
                     "paasta.yelp.com/config_sha": "conf123",
+                    "paasta.yelp.com/git_sha": "git123",
                 },
                 "name": "foo",
                 "namespace": "paasta-flinks",

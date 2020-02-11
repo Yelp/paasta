@@ -30,7 +30,6 @@ from typing import Sequence
 
 import yaml
 
-from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.cli.utils import LongRunningServiceLoaderSig
 from paasta_tools.flink_tools import get_flink_ingress_url_root
 from paasta_tools.kubernetes_tools import create_custom_resource
@@ -46,11 +45,11 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import load_v2_deployments_json
+from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 
@@ -176,9 +175,6 @@ def setup_all_custom_resources(
         ensure_namespace(
             kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
         )
-        config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-            crd.kube_kind.singular
-        ].loader
         results.append(
             setup_custom_resources(
                 kube_client=kube_client,
@@ -189,7 +185,6 @@ def setup_all_custom_resources(
                 cluster=cluster,
                 service=service,
                 instance=instance,
-                config_loader=config_loader,
             )
         )
     return all(results) if results else True
@@ -248,7 +243,6 @@ def get_dashboard_url(
 
 def format_custom_resource(
     instance_config: Mapping[str, Any],
-    soa_config: InstanceConfig,
     service: str,
     instance: str,
     cluster: str,
@@ -256,6 +250,7 @@ def format_custom_resource(
     version: str,
     group: str,
     namespace: str,
+    deployment: str,
 ) -> Mapping[str, Any]:
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
@@ -284,14 +279,12 @@ def format_custom_resource(
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_url")] = url
 
     config_hash = get_config_hash(resource)
-    docker_url = soa_config.get_docker_url()
-    code_sha = get_code_sha_from_dockerurl(docker_url)
 
     resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"
     resource["metadata"]["annotations"][paasta_prefixed("desired_state")] = "running"
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     resource["metadata"]["labels"][paasta_prefixed("config_sha")] = config_hash
-    resource["metadata"]["labels"][paasta_prefixed("git_sha")] = code_sha
+    resource["metadata"]["labels"][paasta_prefixed("git_sha")] = deployment
     return resource
 
 
@@ -305,17 +298,19 @@ def reconcile_kubernetes_resource(
     group: str,
     cluster: str,
     instance: str = None,
-    config_loader: LongRunningServiceLoaderSig = None,
 ) -> bool:
+
+    try:
+        deployments = load_v2_deployments_json(service=service)
+    except NoDeploymentsAvailable:
+        return True
 
     results = []
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
-        soa_config = config_loader(service=service, instance=instance, cluster=cluster)
         formatted_resource = format_custom_resource(
             instance_config=config,
-            soa_config=soa_config,
             service=service,
             instance=inst,
             cluster=cluster,
@@ -323,12 +318,16 @@ def reconcile_kubernetes_resource(
             version=version,
             group=group,
             namespace=f"paasta-{kind.plural}",
+            deployment=deployments.get_git_sha_for_deploy_group(config["deploy_group"]),
         )
         desired_resource = KubeCustomResource(
             service=service,
             instance=inst,
             config_sha=formatted_resource["metadata"]["labels"][
                 paasta_prefixed("config_sha")
+            ],
+            git_sha=formatted_resource["metadata"]["labels"][
+                paasta_prefixed("git_sha")
             ],
             kind=kind.singular,
             name=formatted_resource["metadata"]["name"],

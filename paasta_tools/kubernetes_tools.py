@@ -178,6 +178,7 @@ class KubeCustomResource(NamedTuple):
     service: str
     instance: str
     config_sha: str
+    git_sha: str
     kind: str
     namespace: str
     name: str
@@ -1466,6 +1467,7 @@ def list_custom_resources(
                     service=cr["metadata"]["labels"]["paasta.yelp.com/service"],
                     instance=cr["metadata"]["labels"]["paasta.yelp.com/instance"],
                     config_sha=cr["metadata"]["labels"]["paasta.yelp.com/config_sha"],
+                    git_sha=cr["metadata"]["labels"].get("paasta.yelp.com/git_sha", ""),
                     kind=cr["kind"],
                     namespace=cr["metadata"]["namespace"],
                     name=cr["metadata"]["name"],
