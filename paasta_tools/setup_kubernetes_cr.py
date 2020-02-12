@@ -179,6 +179,7 @@ def setup_all_custom_resources(
             setup_custom_resources(
                 kube_client=kube_client,
                 kind=crd.kube_kind,
+                crd=crd,
                 config_dicts=config_dicts,
                 version=crd.version,
                 group=crd.group,
@@ -194,6 +195,7 @@ def setup_custom_resources(
     kube_client: KubeClient,
     kind: KubeKind,
     version: str,
+    crd: CustomResourceDefinition,
     config_dicts: Mapping[str, Mapping[str, Any]],
     group: str,
     cluster: str,
@@ -218,6 +220,7 @@ def setup_custom_resources(
             version=version,
             group=group,
             cluster=cluster,
+            crd=crd,
         ):
             succeded = False
     return succeded
@@ -294,22 +297,28 @@ def reconcile_kubernetes_resource(
     kind: KubeKind,
     version: str,
     group: str,
+    crd: CustomResourceDefinition,
     cluster: str,
     instance: str = None,
 ) -> bool:
 
     try:
         deployments = load_v2_deployments_json(service=service)
-    except NoDeploymentsAvailable:
+    except NoDeploymentsAvailable as e:
+        log.error(str(e))
         return True
 
     results = []
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
-        config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[kind.singular]
+        config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
         soa_config = config_handler.loader(
-            service=service, instance=instance, cluster=cluster
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=DEFAULT_SOA_DIR,
         )
         deployment = deployments.get_git_sha_for_deploy_group(
             soa_config.get_deploy_group()
