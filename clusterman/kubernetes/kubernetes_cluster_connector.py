@@ -82,8 +82,7 @@ class KubernetesClusterConnector(ClusterConnector):
         return unschedulable_pods
 
     def _get_pending_pods(self) -> List[KubernetesPod]:
-        pool_label_key = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool')
-        node_selector = {pool_label_key: self.pool}
+        node_selector = {self.pool_label_key: self.pool}
         return [pod for pod in self._pods if pod.spec.node_selector == node_selector and pod.status.phase == 'Pending']
 
     def _get_agent_metadata(self, node_ip: str) -> AgentMetadata:
@@ -101,17 +100,15 @@ class KubernetesClusterConnector(ClusterConnector):
         )
 
     def _is_node_safe_to_kill(self, node_ip: str) -> bool:
-        safe_to_evict_key = self.pool_config.read_string('safe_to_evict_key', default='clusterman.com/safe_to_evict')
         for pod in self._pods_by_ip[node_ip]:
             annotations = pod.metadata.annotations or dict()
-            pod_safe_to_evict = strtobool(annotations.get(safe_to_evict_key, 'true'))
+            pod_safe_to_evict = strtobool(annotations.get(self.safe_to_evict_key, 'true'))
             if not pod_safe_to_evict:
                 return False
         return True
 
     def _get_nodes_by_ip(self) -> Mapping[str, KubernetesNode]:
-        pool_label_selector = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool') \
-            + '=' + self.pool
+        pool_label_selector = self.pool_label_key + '=' + self.pool
         pool_nodes = self._core_api.list_node(label_selector=pool_label_selector).items
         return {
             get_node_ip(node): node
@@ -140,3 +137,11 @@ class KubernetesClusterConnector(ClusterConnector):
                     count += (not strtobool(value))  # if it's safe to evict, it's NOT a batch task
                     break
         return count
+
+    @property
+    def pool_label_key(self):
+        return self.pool_config.read_string('pool_label_key', default='clusterman.com/pool')
+
+    @property
+    def safe_to_evict_key(self):
+        return self.pool_config.read_string('safe_to_evict_key', default='clusterman.com/safe_to_evict')
