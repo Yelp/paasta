@@ -315,7 +315,7 @@ def reconcile_kubernetes_resource(
         config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
         soa_config = config_handler.loader(
             service=service,
-            instance=instance,
+            instance=inst,
             cluster=cluster,
             load_deployments=False,
             soa_dir=DEFAULT_SOA_DIR,
