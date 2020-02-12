@@ -1717,6 +1717,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
     auto_hostname_unique_size: int
+    boost_regions: List[str]
     cluster: str
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
@@ -2304,6 +2305,9 @@ class SystemPaastaConfig:
 
     def get_pdb_max_unavailable(self) -> Union[str, int]:
         return self.config_dict.get("pdb_max_unavailable", 0)
+
+    def get_boost_regions(self) -> List[str]:
+        return self.config_dict.get("boost_regions", [])
 
 
 def _run(
