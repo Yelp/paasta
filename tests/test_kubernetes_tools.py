@@ -1855,7 +1855,7 @@ def test_list_custom_resources():
                             "paasta.yelp.com/service": "kurupt",
                             "paasta.yelp.com/instance": "fm",
                             "paasta.yelp.com/config_sha": "con123",
-                            "paasta.yelp.com/git_sha": "con123",
+                            "paasta.yelp.com/git_sha": "git123",
                         },
                         "name": "foo",
                         "namespace": "bar",

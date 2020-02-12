@@ -213,6 +213,7 @@ def test_format_custom_resource():
                     "paasta.yelp.com/instance": "radio_station",
                     "paasta.yelp.com/cluster": "mycluster",
                     "paasta.yelp.com/config_sha": mock_get_config_hash.return_value,
+                    "paasta.yelp.com/git_sha": "gitsha",
                 },
                 "annotations": {
                     "yelp.com/desired_state": "running",
@@ -233,6 +234,7 @@ def test_format_custom_resource():
                 version="v1",
                 group="yelp.com",
                 namespace="paasta-flinks",
+                deployment="gitsha",
             )
             == expected
         )
@@ -262,7 +264,11 @@ def test_paasta_config_flink_dashboard_url():
         )
 
 
-def test_reconcile_kubernetes_resource():
+@mock.patch(
+    "paasta_tools.setup_kubernetes_cr.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS):
     with mock.patch(
         "paasta_tools.setup_kubernetes_cr.format_custom_resource", autospec=True
     ) as mock_format_custom_resource, mock.patch(
@@ -333,13 +339,14 @@ def test_reconcile_kubernetes_resource():
         assert setup_kubernetes_cr.reconcile_kubernetes_resource(
             kube_client=mock_client,
             service="kurupt",
-            instance_configs={"fm": {"some": "config"}},
+            instance_configs={"fm": {"some": "config", "deploy_group": "foo"}},
             cluster="mycluster",
             custom_resources=mock_custom_resources,
             kind=mock_kind,
             version="v1",
             group="yelp.com",
         )
+        print(mock_update_custom_resource.mock_calls)
         assert not mock_create_custom_resource.called
         mock_update_custom_resource.assert_called_with(
             kube_client=mock_client,

@@ -30,7 +30,7 @@ from typing import Sequence
 
 import yaml
 
-from paasta_tools.cli.utils import LongRunningServiceLoaderSig
+from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.flink_tools import get_flink_ingress_url_root
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
@@ -199,7 +199,6 @@ def setup_custom_resources(
     cluster: str,
     service: str = None,
     instance: str = None,
-    config_loader: LongRunningServiceLoaderSig = None,
 ) -> bool:
     succeded = True
     if config_dicts:
@@ -219,7 +218,6 @@ def setup_custom_resources(
             version=version,
             group=group,
             cluster=cluster,
-            config_loader=config_loader,
         ):
             succeded = False
     return succeded
@@ -309,6 +307,13 @@ def reconcile_kubernetes_resource(
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
+        config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[kind.singular]
+        soa_config = config_handler.loader(
+            service=service, instance=instance, cluster=cluster
+        )
+        deployment = deployments.get_git_sha_for_deploy_group(
+            soa_config.get_deploy_group()
+        )
         formatted_resource = format_custom_resource(
             instance_config=config,
             service=service,
@@ -318,7 +323,7 @@ def reconcile_kubernetes_resource(
             version=version,
             group=group,
             namespace=f"paasta-{kind.plural}",
-            deployment=deployments.get_git_sha_for_deploy_group(config["deploy_group"]),
+            deployment=deployment,
         )
         desired_resource = KubeCustomResource(
             service=service,
@@ -326,9 +331,9 @@ def reconcile_kubernetes_resource(
             config_sha=formatted_resource["metadata"]["labels"][
                 paasta_prefixed("config_sha")
             ],
-            git_sha=formatted_resource["metadata"]["labels"][
+            git_sha=formatted_resource["metadata"]["labels"].get(
                 paasta_prefixed("git_sha")
-            ],
+            ),
             kind=kind.singular,
             name=formatted_resource["metadata"]["name"],
             namespace=f"paasta-{kind.plural}",
