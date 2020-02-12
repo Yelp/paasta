@@ -304,8 +304,7 @@ def reconcile_kubernetes_resource(
 
     try:
         deployments = load_v2_deployments_json(service=service)
-    except NoDeploymentsAvailable as e:
-        log.error(str(e))
+    except NoDeploymentsAvailable:
         return True
 
     results = []
