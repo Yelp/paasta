@@ -20,6 +20,7 @@ import datetime
 import logging
 import re
 import traceback
+from enum import Enum
 from typing import Any
 from typing import Dict
 from typing import List
@@ -39,6 +40,7 @@ from pyramid.view import view_config
 from requests.exceptions import ReadTimeout
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools import envoy_tools
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_remote_run
 from paasta_tools import smartstack_tools
@@ -66,8 +68,6 @@ from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.smartstack_tools import get_backends
-from paasta_tools.smartstack_tools import match_backends_and_tasks
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
@@ -147,6 +147,7 @@ def marathon_instance_status(
     instance: str,
     verbose: int,
     include_smartstack: bool,
+    include_envoy: bool,
     include_mesos: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
@@ -169,7 +170,7 @@ def marathon_instance_status(
         )
     )
 
-    if include_smartstack:
+    if include_smartstack or include_envoy:
         service_namespace_config = marathon_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
@@ -179,15 +180,26 @@ def marathon_instance_status(
             tasks = [
                 task for app, _ in matching_apps_with_clients for task in app.tasks
             ]
-
-            mstatus["smartstack"] = marathon_smartstack_status(
-                service,
-                instance,
-                job_config,
-                service_namespace_config,
-                tasks,
-                should_return_individual_backends=verbose > 0,
-            )
+            if include_smartstack:
+                mstatus["smartstack"] = marathon_service_mesh_status(
+                    service,
+                    ServiceMesh.SMARTSTACK,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    tasks,
+                    should_return_individual_backends=verbose > 0,
+                )
+            if include_envoy:
+                mstatus["envoy"] = marathon_service_mesh_status(
+                    service,
+                    ServiceMesh.ENVOY,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    tasks,
+                    should_return_individual_backends=verbose > 0,
+                )
 
     if include_mesos:
         mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
@@ -315,8 +327,75 @@ def build_marathon_task_dict(marathon_task: MarathonTask) -> MutableMapping[str,
     return task_dict
 
 
-def marathon_smartstack_status(
+class ServiceMesh(Enum):
+    SMARTSTACK = "smartstack"
+    ENVOY = "envoy"
+
+
+def _build_smartstack_location_dict_for_backends(
+    synapse_host: str,
+    registration: str,
+    tasks: Sequence[MarathonTask],
+    location: str,
+    should_return_individual_backends: bool,
+) -> MutableMapping[str, Any]:
+    sorted_smartstack_backends = sorted(
+        smartstack_tools.get_backends(
+            registration,
+            synapse_host=synapse_host,
+            synapse_port=settings.system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
+        ),
+        key=lambda backend: backend["status"],
+        reverse=True,  # put 'UP' backends above 'MAINT' backends
+    )
+    matched_smartstack_backends_and_tasks = smartstack_tools.match_backends_and_tasks(
+        sorted_smartstack_backends, tasks
+    )
+    return smartstack_tools.build_smartstack_location_dict(
+        location,
+        matched_smartstack_backends_and_tasks,
+        should_return_individual_backends,
+    )
+
+
+def _build_envoy_location_dict_for_backends(
+    envoy_host: str,
+    registration: str,
+    tasks: Sequence[MarathonTask],
+    location: str,
+    should_return_individual_backends: bool,
+) -> MutableMapping[str, Any]:
+    backends = envoy_tools.get_backends(
+        registration,
+        envoy_host=envoy_host,
+        envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
+    )
+    sorted_envoy_backends = sorted(
+        [backend[0] for backend in backends],
+        key=lambda backend: backend["eds_health_status"],
+    )
+    casper_proxied_backends = {
+        (backend["address"], backend["port_value"])
+        for backend, is_casper_proxied_backend in backends
+        if is_casper_proxied_backend
+    }
+
+    matched_envoy_backends_and_tasks = envoy_tools.match_backends_and_tasks(
+        sorted_envoy_backends, tasks,
+    )
+
+    return envoy_tools.build_envoy_location_dict(
+        location,
+        matched_envoy_backends_and_tasks,
+        should_return_individual_backends,
+        casper_proxied_backends,
+    )
+
+
+def marathon_service_mesh_status(
     service: str,
+    service_mesh: ServiceMesh,
     instance: str,
     job_config: marathon_tools.MarathonServiceConfig,
     service_namespace_config: ServiceNamespaceConfig,
@@ -336,37 +415,41 @@ def marathon_smartstack_status(
         for attribute_value, slaves in grouped_slaves.items()
     }
 
-    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
+    expected_instance_count = marathon_tools.get_expected_instance_count_for_namespace(
         service, instance, settings.cluster
     )
     expected_count_per_location = int(
-        expected_smartstack_count / len(slave_hostname_by_location)
+        expected_instance_count / len(slave_hostname_by_location)
     )
-    smartstack_status: MutableMapping[str, Any] = {
+    service_mesh_status: MutableMapping[str, Any] = {
         "registration": registration,
         "expected_backends_per_location": expected_count_per_location,
         "locations": [],
     }
 
     for location, hosts in slave_hostname_by_location.items():
-        synapse_host = hosts[0]
-        sorted_backends = sorted(
-            get_backends(
-                registration,
-                synapse_host=synapse_host,
-                synapse_port=settings.system_paasta_config.get_synapse_port(),
-                synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
-            ),
-            key=lambda backend: backend["status"],
-            reverse=True,  # put 'UP' backends above 'MAINT' backends
-        )
-        matched_backends_and_tasks = match_backends_and_tasks(sorted_backends, tasks)
-        location_dict = smartstack_tools.build_smartstack_location_dict(
-            location, matched_backends_and_tasks, should_return_individual_backends
-        )
-        smartstack_status["locations"].append(location_dict)
+        if service_mesh == ServiceMesh.SMARTSTACK:
+            service_mesh_status["locations"].append(
+                _build_smartstack_location_dict_for_backends(
+                    synapse_host=hosts[0],
+                    registration=registration,
+                    tasks=tasks,
+                    location=location,
+                    should_return_individual_backends=should_return_individual_backends,
+                )
+            )
+        elif service_mesh == ServiceMesh.ENVOY:
+            service_mesh_status["locations"].append(
+                _build_envoy_location_dict_for_backends(
+                    envoy_host=hosts[0],
+                    registration=registration,
+                    tasks=tasks,
+                    location=location,
+                    should_return_individual_backends=should_return_individual_backends,
+                )
+            )
 
-    return smartstack_status
+    return service_mesh_status
 
 
 @a_sync.to_blocking
@@ -521,6 +604,9 @@ def instance_status(request):
     include_smartstack = request.swagger_data.get("include_smartstack")
     if include_smartstack is None:
         include_smartstack = True
+    include_envoy = request.swagger_data.get("include_envoy")
+    if include_envoy is None:
+        include_envoy = True
     include_mesos = request.swagger_data.get("include_mesos")
     if include_mesos is None:
         include_mesos = True
@@ -570,6 +656,7 @@ def instance_status(request):
                 instance,
                 verbose,
                 include_smartstack=include_smartstack,
+                include_envoy=include_envoy,
                 include_mesos=include_mesos,
             )
         elif instance_type == "adhoc":

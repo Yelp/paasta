@@ -1,0 +1,234 @@
+{
+ "cluster_statuses": [
+  {
+   "name": "service1.main.egress_cluster",
+   "added_via_api": true,
+   "host_statuses": [
+    {
+     "address": {
+      "socket_address": {
+       "address": "10.46.6.88",
+       "port_value": 13833
+      }
+     },
+     "stats": [
+      {
+       "name": "cx_connect_fail"
+      },
+      {
+       "name": "cx_total"
+      },
+      {
+       "name": "rq_error"
+      },
+      {
+       "name": "rq_success"
+      },
+      {
+       "name": "rq_timeout"
+      },
+      {
+       "name": "rq_total"
+      },
+      {
+       "type": "GAUGE",
+       "name": "cx_active"
+      },
+      {
+       "type": "GAUGE",
+       "name": "rq_active"
+      }
+     ],
+     "health_status": {
+      "eds_health_status": "HEALTHY"
+     },
+     "weight": 1
+    }
+   ]
+  },
+  {
+   "name": "service1.main.egress_cluster",
+   "added_via_api": true,
+   "host_statuses": [
+    {
+     "address": {
+      "socket_address": {
+       "address": "10.46.6.90",
+       "port_value": 13833
+      }
+     },
+     "stats": [
+      {
+       "name": "cx_connect_fail"
+      },
+      {
+       "name": "cx_total"
+      },
+      {
+       "name": "rq_error"
+      },
+      {
+       "name": "rq_success"
+      },
+      {
+       "name": "rq_timeout"
+      },
+      {
+       "name": "rq_total"
+      },
+      {
+       "type": "GAUGE",
+       "name": "cx_active"
+      },
+      {
+       "type": "GAUGE",
+       "name": "rq_active"
+      }
+     ],
+     "health_status": {
+      "eds_health_status": "HEALTHY"
+     },
+     "weight": 1
+    }
+   ]
+  },
+  {
+   "name": "some_service7.main.egress_cluster",
+   "added_via_api": true,
+   "host_statuses": [
+    {
+     "address": {
+      "socket_address": {
+       "address": "10.46.6.88",
+       "port_value": 13833
+      }
+     },
+     "stats": [
+      {
+       "name": "cx_connect_fail"
+      },
+      {
+       "name": "cx_total"
+      },
+      {
+       "name": "rq_error"
+      },
+      {
+       "name": "rq_success"
+      },
+      {
+       "name": "rq_timeout"
+      },
+      {
+       "name": "rq_total"
+      },
+      {
+       "type": "GAUGE",
+       "name": "cx_active"
+      },
+      {
+       "type": "GAUGE",
+       "name": "rq_active"
+      }
+     ],
+     "health_status": {
+      "eds_health_status": "UNHEALTHY"
+     },
+     "weight": 1
+    }
+   ]
+  },
+  {
+   "name": "service2.main.egress_cluster",
+   "added_via_api": true,
+   "host_statuses": [
+    {
+     "address": {
+      "socket_address": {
+       "address": "10.46.6.103",
+       "port_value": 13810
+      }
+     },
+     "stats": [
+      {
+       "name": "cx_connect_fail"
+      },
+      {
+       "name": "cx_total"
+      },
+      {
+       "name": "rq_error"
+      },
+      {
+       "name": "rq_success"
+      },
+      {
+       "name": "rq_timeout"
+      },
+      {
+       "name": "rq_total"
+      },
+      {
+       "type": "GAUGE",
+       "name": "cx_active"
+      },
+      {
+       "type": "GAUGE",
+       "name": "rq_active"
+      }
+     ],
+     "health_status": {
+      "eds_health_status": "HEALTHY"
+     },
+     "weight": 1
+    }
+   ]
+  },
+{
+   "name": "spectre.main.egress_cluster",
+   "added_via_api": true,
+   "host_statuses": [
+    {
+     "address": {
+      "socket_address": {
+       "address": "10.46.6.106",
+       "port_value": 13819
+      }
+     },
+     "stats": [
+      {
+       "name": "cx_connect_fail"
+      },
+      {
+       "name": "cx_total"
+      },
+      {
+       "name": "rq_error"
+      },
+      {
+       "name": "rq_success"
+      },
+      {
+       "name": "rq_timeout"
+      },
+      {
+       "name": "rq_total"
+      },
+      {
+       "type": "GAUGE",
+       "name": "cx_active"
+      },
+      {
+       "type": "GAUGE",
+       "name": "rq_active"
+      }
+     ],
+     "health_status": {
+      "eds_health_status": "HEALTHY"
+     },
+     "weight": 1
+    }
+   ]
+  }
+ ]
+}
