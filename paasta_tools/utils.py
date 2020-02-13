@@ -3024,18 +3024,25 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def get_git_sha_from_dockerurl(docker_url: str) -> str:
+def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
+    """ We encode the sha of the code that built a docker image *in* the docker
+    url. This function takes that url as input and outputs the sha.
+    """
     parts = docker_url.split("/")
     parts = parts[-1].split("-")
-    return parts[-1][:8]
+    if long:
+        return parts[-1][:8]
+    else:
+        return parts[-1]
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
-    """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha
+    """ code_sha is hash extracted from docker url prefixed with "git", short
+    hash is used because it's embedded in marathon app names and there's length
+    limit.
     """
     try:
-        git_sha = get_git_sha_from_dockerurl(docker_url)
+        git_sha = get_git_sha_from_dockerurl(docker_url, long=False)
         return "git%s" % git_sha
     except Exception:
         return "gitUNKNOWN"

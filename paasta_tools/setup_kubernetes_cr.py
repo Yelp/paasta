@@ -46,10 +46,9 @@ from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 
@@ -251,7 +250,7 @@ def format_custom_resource(
     version: str,
     group: str,
     namespace: str,
-    deployment: str,
+    git_sha: str,
 ) -> Mapping[str, Any]:
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
@@ -285,7 +284,7 @@ def format_custom_resource(
     resource["metadata"]["annotations"][paasta_prefixed("desired_state")] = "running"
     resource["metadata"]["labels"]["yelp.com/paasta_config_sha"] = config_hash
     resource["metadata"]["labels"][paasta_prefixed("config_sha")] = config_hash
-    resource["metadata"]["labels"][paasta_prefixed("git_sha")] = deployment
+    resource["metadata"]["labels"][paasta_prefixed("git_sha")] = git_sha
     return resource
 
 
@@ -301,12 +300,6 @@ def reconcile_kubernetes_resource(
     cluster: str,
     instance: str = None,
 ) -> bool:
-
-    try:
-        deployments = load_v2_deployments_json(service=service)
-    except NoDeploymentsAvailable:
-        return True
-
     results = []
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
@@ -319,9 +312,7 @@ def reconcile_kubernetes_resource(
             load_deployments=False,
             soa_dir=DEFAULT_SOA_DIR,
         )
-        deployment = deployments.get_git_sha_for_deploy_group(
-            soa_config.get_deploy_group()
-        )
+        git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url())
         formatted_resource = format_custom_resource(
             instance_config=config,
             service=service,
@@ -331,7 +322,7 @@ def reconcile_kubernetes_resource(
             version=version,
             group=group,
             namespace=f"paasta-{kind.plural}",
-            deployment=deployment,
+            git_sha=git_sha,
         )
         desired_resource = KubeCustomResource(
             service=service,

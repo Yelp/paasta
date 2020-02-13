@@ -112,8 +112,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
@@ -1002,7 +1002,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             storage_class_name = "ebs"
         return storage_class_name
 
-    def get_kubernetes_metadata(self, code_sha: str) -> V1ObjectMeta:
+    def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
         return V1ObjectMeta(
             name="{service}-{instance}".format(
                 service=self.get_sanitised_service_name(),
@@ -1011,10 +1011,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             labels={
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
-                "yelp.com/paasta_git_sha": code_sha,
+                "yelp.com/paasta_git_sha": git_sha,
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
-                "paasta.yelp.com/git_sha": code_sha,
+                "paasta.yelp.com/git_sha": git_sha,
             },
         )
 
@@ -1042,13 +1042,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         try:
             system_paasta_config = load_system_paasta_config()
             docker_url = self.get_docker_url()
-            code_sha = get_code_sha_from_dockerurl(docker_url)
+            git_sha = get_git_sha_from_dockerurl(docker_url)
             complete_config: Union[V1StatefulSet, V1Deployment]
             if self.get_persistent_volumes():
                 complete_config = V1StatefulSet(
                     api_version="apps/v1",
                     kind="StatefulSet",
-                    metadata=self.get_kubernetes_metadata(code_sha),
+                    metadata=self.get_kubernetes_metadata(git_sha),
                     spec=V1StatefulSetSpec(
                         service_name="{service}-{instance}".format(
                             service=self.get_sanitised_service_name(),
@@ -1064,7 +1064,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             }
                         ),
                         template=self.get_pod_template_spec(
-                            code_sha=code_sha, system_paasta_config=system_paasta_config
+                            git_sha=git_sha, system_paasta_config=system_paasta_config
                         ),
                     ),
                 )
@@ -1072,7 +1072,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 complete_config = V1Deployment(
                     api_version="apps/v1",
                     kind="Deployment",
-                    metadata=self.get_kubernetes_metadata(code_sha),
+                    metadata=self.get_kubernetes_metadata(git_sha),
                     spec=V1DeploymentSpec(
                         replicas=self.get_desired_instances(),
                         min_ready_seconds=self.get_min_task_uptime(),
@@ -1084,7 +1084,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                         revision_history_limit=0,
                         template=self.get_pod_template_spec(
-                            code_sha=code_sha, system_paasta_config=system_paasta_config
+                            git_sha=git_sha, system_paasta_config=system_paasta_config
                         ),
                         strategy=self.get_deployment_strategy_config(),
                     ),
@@ -1111,7 +1111,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get("service_account_name", None)
 
     def get_pod_template_spec(
-        self, code_sha: str, system_paasta_config: SystemPaastaConfig
+        self, git_sha: str, system_paasta_config: SystemPaastaConfig
     ) -> V1PodTemplateSpec:
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -1147,10 +1147,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 labels={
                     "yelp.com/paasta_service": self.get_service(),
                     "yelp.com/paasta_instance": self.get_instance(),
-                    "yelp.com/paasta_git_sha": code_sha,
+                    "yelp.com/paasta_git_sha": git_sha,
                     "paasta.yelp.com/service": self.get_service(),
                     "paasta.yelp.com/instance": self.get_instance(),
-                    "paasta.yelp.com/git_sha": code_sha,
+                    "paasta.yelp.com/git_sha": git_sha,
                 },
                 annotations=annotations,
             ),

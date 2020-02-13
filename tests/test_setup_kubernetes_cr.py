@@ -125,8 +125,7 @@ def test_load_all_configs():
         assert "mc" in ret.keys()
 
 
-@mock.patch("paasta_tools.setup_kubernetes_cr.load_v2_deployments_json", autospec=True)
-def test_setup_custom_resources(mock_load_v2_deployments_json):
+def test_setup_custom_resources():
     with mock.patch(
         "paasta_tools.setup_kubernetes_cr.list_custom_resources", autospec=True
     ) as mock_list_cr, mock.patch(
@@ -241,7 +240,7 @@ def test_format_custom_resource():
                 version="v1",
                 group="yelp.com",
                 namespace="paasta-flinks",
-                deployment="gitsha",
+                git_sha="gitsha",
             )
             == expected
         )
@@ -271,14 +270,11 @@ def test_paasta_config_flink_dashboard_url():
         )
 
 
-@mock.patch("paasta_tools.setup_kubernetes_cr.load_v2_deployments_json", autospec=True)
 @mock.patch(
     "paasta_tools.setup_kubernetes_cr.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
     autospec=True,
 )
-def test_reconcile_kubernetes_resource(
-    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS, mock_load_v2_deployments_json
-):
+def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS):
     with mock.patch(
         "paasta_tools.setup_kubernetes_cr.format_custom_resource", autospec=True
     ) as mock_format_custom_resource, mock.patch(
