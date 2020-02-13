@@ -309,7 +309,7 @@ def reconcile_kubernetes_resource(
             service=service,
             instance=inst,
             cluster=cluster,
-            load_deployments=False,
+            load_deployments=True,
             soa_dir=DEFAULT_SOA_DIR,
         )
         git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url())
