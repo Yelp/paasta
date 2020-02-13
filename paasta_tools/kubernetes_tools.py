@@ -1365,7 +1365,7 @@ def list_deployments(
         KubeDeployment(
             service=item.metadata.labels["paasta.yelp.com/service"],
             instance=item.metadata.labels["paasta.yelp.com/instance"],
-            git_sha=item.metadata.labels["paasta.yelp.com/git_sha"],
+            git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas,
         )
@@ -1643,7 +1643,7 @@ def get_active_shas_for_service(
         config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
         if config_sha is not None:
             ret["config_sha"].add(config_sha)
-        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
+        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha", "")
         if git_sha is not None:
             ret["git_sha"].add(git_sha)
     return ret
