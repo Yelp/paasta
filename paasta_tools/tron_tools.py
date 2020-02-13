@@ -19,6 +19,7 @@ import os
 import pkgutil
 import re
 import subprocess
+import traceback
 from string import Formatter
 from typing import List
 from typing import Tuple
@@ -34,6 +35,7 @@ try:
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
+from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
 from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.tron.client import TronClient
@@ -69,6 +71,7 @@ VALID_MONITORING_KEYS = set(
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
 SPARK_MESOS_SECRET_KEY = "SHARED_SECRET(SPARK_MESOS_SECRET)"
+DEFAULT_AWS_REGION = "us-west-2"
 
 
 class TronNotConfigured(Exception):
@@ -252,7 +255,7 @@ class TronActionConfig(InstanceConfig):
                 user_spark_opts=self.config_dict.get("spark_args"),
                 event_log_dir=get_default_event_log_dir(
                     service=self.get_service(),
-                    aws_credentials_yaml=self.config_dict.get("aws_credentials"),
+                    aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
                 ),
             )
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
@@ -266,6 +269,25 @@ class TronActionConfig(InstanceConfig):
                     ).values()
                 )
             )
+            if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
+                try:
+                    access_key, secret_key = get_aws_credentials(
+                        service=self.get_service(),
+                        aws_credentials_yaml=self.config_dict.get(
+                            "aws_credentials_yaml"
+                        ),
+                    )
+                    env["AWS_ACCESS_KEY_ID"] = access_key
+                    env["AWS_SECRET_ACCESS_KEY"] = secret_key
+                except Exception:
+                    log.warning(
+                        f"Cannot set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment "
+                        f"variables for tron action {self.get_instance()} of service "
+                        f"{self.get_service()} via credentail file. Traceback:\n"
+                        f"{traceback.format_exc()}"
+                    )
+            if "AWS_DEFAULT_REGION" not in env:
+                env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
 
         return env
 

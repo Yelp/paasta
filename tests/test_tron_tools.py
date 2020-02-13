@@ -48,7 +48,11 @@ def test_parse_time_variables_parses_shortdate():
 class TestTronActionConfig:
     @pytest.fixture
     def action_config(self):
-        action_dict = {"name": "print", "command": "echo something"}
+        action_dict = {
+            "name": "print",
+            "command": "echo something",
+            "aws_credentials_yaml": "/some/yaml/path",
+        }
         return tron_tools.TronActionConfig(
             service="my_service",
             instance=tron_tools.compose_instance("cool_job", "print"),
@@ -86,10 +90,17 @@ class TestTronActionConfig:
             },
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
+        ), mock.patch(
+            "paasta_tools.tron_tools.get_aws_credentials",
+            autospec=True,
+            return_value=("access", "secret"),
         ):
             env = action_config.get_env()
         if executor == "spark":
             assert all([env["SPARK_OPTS"], env["CLUSTERMAN_RESOURCES"]])
+            assert env["AWS_ACCESS_KEY_ID"] == "access"
+            assert env["AWS_SECRET_ACCESS_KEY"] == "secret"
+            assert env["AWS_DEFAULT_REGION"] == "us-west-2"
         else:
             assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 

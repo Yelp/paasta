@@ -623,6 +623,11 @@ If a Tron **action** of a job is of executor type ``spark``, it MAY specify the 
     https://github.com/Yelp/service_configuration_lib/blob/master/service_configuration_lib/spark_config.py#L9
     for a complete list of such configurations.
 
+  * ``aws_credentials_yaml``: Path to the yaml file containing credentials to be set in the task's
+    AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. Default to
+    ``/etc/boto_cfg/<your-service-name>.yaml``. If the file path does not exist, or the file does
+    not contain keys for aws_access_key_id and aws_secret_access_key, those variables will be unset.
+
 ``adhoc-[clustername].yaml``
 -------------------------------
 
