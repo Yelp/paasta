@@ -798,15 +798,16 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             with pytest.raises(Exception):
                 self.deployment.get_desired_instances()
 
-    def test_format_kubernetes_app_dict(self):
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_git_sha_from_dockerurl", autospec=True
+    )
+    def test_format_kubernetes_app_dict(self, _):
         with mock.patch(
             "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
         ) as mock_load_system_config, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
             autospec=True,
         ) as mock_get_docker_url, mock.patch(
-            "paasta_tools.kubernetes_tools.get_code_sha_from_dockerurl", autospec=True
-        ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_service_name",
             autospec=True,
             return_value="kurupt",
@@ -981,7 +982,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             )
             mock_service_namespace_config.is_in_smartstack.return_value = False
             ret = self.deployment.get_pod_template_spec(
-                code_sha="aaaa123", system_paasta_config=mock.Mock()
+                git_sha="aaaa123", system_paasta_config=mock.Mock()
             )
             assert mock_load_service_namespace_config.called
             assert mock_service_namespace_config.is_in_smartstack.called
@@ -1042,7 +1043,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             )
             mock_service_namespace_config.is_in_smartstack.return_value = True
             ret = self.deployment.get_pod_template_spec(
-                code_sha="aaaa123", system_paasta_config=mock.Mock()
+                git_sha="aaaa123", system_paasta_config=mock.Mock()
             )
             assert mock_load_service_namespace_config.called
             assert mock_service_namespace_config.is_in_smartstack.called
@@ -2423,5 +2424,5 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configce3b0865"
+            == "config3b06ff5f"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
