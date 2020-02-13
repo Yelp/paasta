@@ -3030,10 +3030,8 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     """
     parts = docker_url.split("/")
     parts = parts[-1].split("-")
-    if long:
-        return parts[-1][:8]
-    else:
-        return parts[-1]
+    sha = parts[-1]
+    return sha if long else sha[:8]
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
