@@ -1,3 +1,10 @@
+paasta-tools (0.93.21) xenial; urgency=medium
+
+  * 0.93.21 tagged with 'make release'
+    Commit: use long git sha in k8s object labels
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 14 Feb 2020 06:56:26 -0800
+
 paasta-tools (0.93.20) xenial; urgency=medium
 
   * 0.93.20 tagged with 'make release'
