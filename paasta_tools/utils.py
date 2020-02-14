@@ -2856,30 +2856,6 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(
-    service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> "DeploymentsJsonV1":
-    deployment_file = os.path.join(soa_dir, service, "deployments.json")
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJsonV1(json.load(f)["v1"])
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
-
-
-def load_v2_deployments_json(
-    service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> "DeploymentsJsonV2":
-    deployment_file = os.path.join(soa_dir, service, "deployments.json")
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJsonV2(service=service, config_dict=json.load(f)["v2"])
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
-
-
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
 
 DeployGroup = str
@@ -2974,6 +2950,30 @@ class DeploymentsJsonV2:
             raise NoDeploymentsAvailable(e)
 
 
+def load_deployments_json(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> DeploymentsJsonV1:
+    deployment_file = os.path.join(soa_dir, service, "deployments.json")
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJsonV1(json.load(f)["v1"])
+    else:
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
+
+
+def load_v2_deployments_json(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> DeploymentsJsonV2:
+    deployment_file = os.path.join(soa_dir, service, "deployments.json")
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJsonV2(service=service, config_dict=json.load(f)["v2"])
+    else:
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
+
+
 def get_paasta_branch(cluster: str, instance: str) -> str:
     return SPACER.join((cluster, instance))
 
@@ -3024,18 +3024,23 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def get_git_sha_from_dockerurl(docker_url: str) -> str:
+def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
+    """ We encode the sha of the code that built a docker image *in* the docker
+    url. This function takes that url as input and outputs the sha.
+    """
     parts = docker_url.split("/")
     parts = parts[-1].split("-")
-    return parts[-1][:8]
+    sha = parts[-1]
+    return sha if long else sha[:8]
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
-    """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha
+    """ code_sha is hash extracted from docker url prefixed with "git", short
+    hash is used because it's embedded in marathon app names and there's length
+    limit.
     """
     try:
-        git_sha = get_git_sha_from_dockerurl(docker_url)
+        git_sha = get_git_sha_from_dockerurl(docker_url, long=False)
         return "git%s" % git_sha
     except Exception:
         return "gitUNKNOWN"
