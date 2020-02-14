@@ -31,12 +31,17 @@ before_install:
   # This probably ought to match the version in yelp_package/dockerfiles/itest/mesos/Dockerfile.
   # Having a recent enough version is important so that docker features like --cpu-shares work properly.
   - sudo bash -c 'echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list'
-  - sudo bash -c 'echo "deb http://apt.dockerproject.org/repo ubuntu-xenial main" > /etc/apt/sources.list.d/docker.list'
-  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 58118E89F3A912897C070ADBF76221572C52609D
   - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
+
+  # Docker repos, https://docs.docker.com/install/linux/docker-ce/ubuntu/
+  - sudo bash -c 'echo "deb http://download.docker.com/linux/ubuntu xenial stable" > /etc/apt/sources.list.d/docker.list'
+  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+  # Go repos
   - sudo add-apt-repository ppa:longsleep/golang-backports -y
+
   - sudo apt-get update
-  - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=1.13.1-0~ubuntu-xenial devscripts golang-1.13 --force-yes
+  - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-ce=18.03.1~ce-0~ubuntu devscripts golang-1.13 --force-yes
   - 'if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" -a "$DOCKER_USERNAME" != "" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi'
 install:
   - pip install coveralls tox==3.2 tox-pip-extensions==1.3.0
