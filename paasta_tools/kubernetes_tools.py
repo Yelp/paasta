@@ -1042,7 +1042,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         try:
             system_paasta_config = load_system_paasta_config()
             docker_url = self.get_docker_url()
-            git_sha = get_git_sha_from_dockerurl(docker_url)
+            git_sha = get_git_sha_from_dockerurl(docker_url, long=True)
             complete_config: Union[V1StatefulSet, V1Deployment]
             if self.get_persistent_volumes():
                 complete_config = V1StatefulSet(
