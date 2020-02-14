@@ -1,4 +1,4 @@
-paasta-tools (0.93.21) xenial; urgency=medium
+paasta-tools (0.93.22) xenial; urgency=medium
 
   * 0.93.21 tagged with 'make release'
     Commit: Merge pull request #2665 from ymilki/restore-CORESERV-
