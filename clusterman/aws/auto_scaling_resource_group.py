@@ -90,18 +90,17 @@ class AutoScalingResourceGroup(AWSResourceGroup):
     def market_weight(self, market: InstanceMarket) -> float:
         """ Returns the weight of a given market
 
-        ASGs have no concept of weight, so if ASG is available in the market's
-        AZ, we return 1 for that market.
+        ASGs can be defined with different instance weights. If we can find
+        the weight for a given instance type, we return it. Otherwise we
+        default to 1.
 
         :param market: The market for which we want the weight for
         :returns: The weight of a given market
         """
         if market.az in self._group_config['AvailabilityZones']:
-            if market.instance != self._launch_config['InstanceType']:
-                logger.warning(
-                    f'Instance type {market.instance} is different from launch '
-                    f'config instance type: {self._launch_config["InstanceType"]}'
-                )
+            for instance in self._group_config.get('Instances', []):
+                if market.instance == instance.get('InstanceType'):
+                    return int(instance.get('WeightedCapacity', '1'))
             return 1
         else:
             return 0
@@ -143,10 +142,7 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         """
         # We pretend like stale instances aren't in the ASG, but actually they are so
         # we have to double-count them in the target capacity computation
-        #
-        # N.B. If and when we start using multiple instance types in one ASG, and AWS
-        # allows us to weight them differently, this calculation will need to change
-        target_capacity += len(self.stale_instance_ids)
+        target_capacity += self._stale_capacity
 
         # Round target_cpacity to min or max if necessary
         max_size = self._group_config['MaxSize']
@@ -203,13 +199,18 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         """
         return [
             inst['InstanceId']
-            for inst in self._group_config['Instances']
+            for inst in self._group_config.get('Instances', [])
             if inst is not None
         ]
 
     @property
     def fulfilled_capacity(self) -> float:
-        return len(self._group_config['Instances'])
+        return sum(
+            [
+                int(instance.get('WeightedCapacity', '1'))
+                for instance in self._group_config.get('Instances', [])
+            ]
+        )
 
     @property
     def status(self) -> str:
@@ -237,10 +238,7 @@ class AutoScalingResourceGroup(AWSResourceGroup):
     def _target_capacity(self) -> float:
         # We pretend like stale instances aren't in the ASG, but actually they are so
         # we have to remove them manually from the existing target capacity
-        #
-        # N.B. If and when we start using multiple instance types in one ASG, and AWS
-        # allows us to weight them differently, this calculation will need to change
-        return self._group_config['DesiredCapacity'] - len(self.stale_instance_ids)
+        return self._group_config['DesiredCapacity'] - self._stale_capacity
 
     @classmethod
     def _get_resource_group_tags(cls) -> Mapping[str, Mapping[str, str]]:
@@ -251,3 +249,11 @@ class AutoScalingResourceGroup(AWSResourceGroup):
                 tags_dict = {tag['Key']: tag['Value'] for tag in asg['Tags']}
                 asg_id_to_tags[asg['AutoScalingGroupName']] = tags_dict
         return asg_id_to_tags
+
+    @property
+    def _stale_capacity(self) -> float:
+        return sum(
+            [int(instance.get('WeightedCapacity', '1'))
+             for instance in self._group_config.get('Instances', [])
+             if instance['InstanceId'] in self.stale_instance_ids]
+        )
