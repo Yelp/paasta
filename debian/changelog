@@ -1,3 +1,13 @@
+paasta-tools (0.93.20) xenial; urgency=medium
+
+  * 0.93.20 tagged with 'make release'
+    Commit: Assign git_sha label to kubernetes custom resources (#2661)
+    * add cassandracluster to wait_for_deployment * assign git_sha label
+    to kubernetes custom resources * use full git sha from deployments
+    everywhere (will cause big bounce in k8s clusters)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 14 Feb 2020 04:20:11 -0800
+
 paasta-tools (0.93.19) xenial; urgency=medium
 
   * 0.93.19 tagged with 'make release'
