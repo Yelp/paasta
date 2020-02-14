@@ -51,6 +51,7 @@ Submodules
    paasta_tools.docker_wrapper_imports
    paasta_tools.drain_lib
    paasta_tools.dump_locally_running_services
+   paasta_tools.envoy_tools
    paasta_tools.firewall
    paasta_tools.firewall_logging
    paasta_tools.firewall_update

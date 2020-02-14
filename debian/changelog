@@ -1,6 +1,14 @@
 paasta-tools (0.93.21) xenial; urgency=medium
 
   * 0.93.21 tagged with 'make release'
+    Commit: Merge pull request #2665 from ymilki/restore-CORESERV-
+    7471_check_envoy_status  Restore Report Envoy backend status #2595
+
+ -- Jonathan Chu <jrchu@yelp.com>  Fri, 14 Feb 2020 10:13:30 -0800
+
+paasta-tools (0.93.21) xenial; urgency=medium
+
+  * 0.93.21 tagged with 'make release'
     Commit: use long git sha in k8s object labels
 
  -- Maksym Melnychok <maksym@yelp.com>  Fri, 14 Feb 2020 06:56:26 -0800
