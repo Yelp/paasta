@@ -95,12 +95,12 @@ def drain_queue_process(context):
     ), staticconf.testing.PatchConfiguration(
         {'drain_termination_timeout_seconds': {'sfr': 0}},
     ):
-        context.draining_client.process_drain_queue(mock.Mock())
+        context.draining_client.process_drain_queue(mock.Mock(), mock.Mock())
 
 
 @behave.when('the termination queue is processed')
 def termination_queue_process(context):
-    context.draining_client.process_termination_queue(mock.Mock())
+    context.draining_client.process_termination_queue(mock.Mock(), mock.Mock())
 
 
 @behave.when('the warning queue is processed')
