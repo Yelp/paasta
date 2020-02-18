@@ -1,3 +1,11 @@
+paasta-tools (0.93.23) xenial; urgency=medium
+
+  * 0.93.23 tagged with 'make release'
+    Commit: don"t default to empty git_sha, we"re filtering out None"s
+    anyway
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 18 Feb 2020 03:15:26 -0800
+
 paasta-tools (0.93.22) xenial; urgency=medium
 
   * 0.93.21 tagged with 'make release'
