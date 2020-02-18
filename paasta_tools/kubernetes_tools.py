@@ -412,8 +412,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         type="Resource",
                         resource=V2beta1ResourceMetricSource(
                             name=metric_name,
-                            target_average_utilization=value["target_average_value"]
-                            * 100,
+                            target_average_utilization=int(
+                                value["target_average_value"] * 100
+                            ),
                         ),
                     )
                 )
