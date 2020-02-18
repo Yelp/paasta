@@ -1643,7 +1643,7 @@ def get_active_shas_for_service(
         config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
         if config_sha is not None:
             ret["config_sha"].add(config_sha)
-        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha", "")
+        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
         if git_sha is not None:
             ret["git_sha"].add(git_sha)
     return ret
