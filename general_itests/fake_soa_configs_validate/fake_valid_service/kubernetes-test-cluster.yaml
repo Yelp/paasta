@@ -11,9 +11,9 @@ main2:
       max_replicas: 100
       min_replicas: 1
       cpu:
-          target_average_value: 7
+          target_average_value: 0.7
       memory:
-          target_average_value: 7
+          target_average_value: 0.7
       uwsgi:
           target_average_value: 4
       http:
