@@ -149,6 +149,9 @@
                 },
                 "spark_args": {
                     "type": "object"
+                },
+                "aws_credentials_yaml": {
+                    "type": "string"
                 }
             }
         },
