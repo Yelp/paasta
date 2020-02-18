@@ -413,7 +413,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         type="Resource",
                         resource=V2beta1ResourceMetricSource(
                             name=metric_name,
-                            target_average_utilization=value["target_average_value"],
+                            target_average_utilization=int(
+                                value["target_average_value"] * 100
+                            ),
                         ),
                     )
                 )
@@ -490,7 +492,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         autoscaling_params = self.get_autoscaling_params()
         metrics_provider = autoscaling_params["metrics_provider"]
         metrics = []
-        target = autoscaling_params["setpoint"] * 100
+        target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
         selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
         if autoscaling_params["decision_policy"] == "bespoke":
@@ -504,7 +506,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 V2beta1MetricSpec(
                     type="Resource",
                     resource=V2beta1ResourceMetricSource(
-                        name="cpu", target_average_utilization=int(target)
+                        name="cpu", target_average_utilization=int(target * 100)
                     ),
                 )
             )

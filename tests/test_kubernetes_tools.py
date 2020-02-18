@@ -235,11 +235,11 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
         hpa_config = {
             "min_replicas": 1,
             "max_replicas": 3,
-            "cpu": {"target_average_value": 70},
-            "memory": {"target_average_value": 70},
-            "uwsgi": {"target_average_value": 70},
-            "http": {"target_average_value": 70, "dimensions": {"any": "random"}},
-            "external": {"target_value": 70, "signalflow_metrics_query": "fake_query"},
+            "cpu": {"target_average_value": 0.7},
+            "memory": {"target_average_value": 0.7},
+            "uwsgi": {"target_average_value": 0.7},
+            "http": {"target_average_value": 0.7, "dimensions": {"any": "random"}},
+            "external": {"target_value": 0.7, "signalflow_metrics_query": "fake_query"},
         }
         mock_config_dict = KubernetesDeploymentConfigDict(
             bounce_method="crossover", instances=3, horizontal_autoscaling=hpa_config,
@@ -1106,12 +1106,12 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
             "horizontal_autoscaling": {
                 "min_replicas": 1,
                 "max_replicas": 3,
-                "cpu": {"target_average_value": 70},
-                "memory": {"target_average_value": 70},
-                "uwsgi": {"target_average_value": 70},
-                "http": {"target_average_value": 70, "dimensions": {"any": "random"}},
+                "cpu": {"target_average_value": 0.7},
+                "memory": {"target_average_value": 0.7},
+                "uwsgi": {"target_average_value": 0.7},
+                "http": {"target_average_value": 0.7, "dimensions": {"any": "random"}},
                 "external": {
-                    "target_value": 70,
+                    "target_value": 0.7,
                     "signalflow_metrics_query": "fake_query",
                 },
             }
@@ -1156,7 +1156,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         type="Pods",
                         pods=V2beta1PodsMetricSource(
                             metric_name="uwsgi",
-                            target_average_value=70,
+                            target_average_value=0.7,
                             selector=V1LabelSelector(
                                 match_labels={"kubernetes_cluster": "cluster"}
                             ),
@@ -1165,13 +1165,13 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="http", target_value=70,
+                            metric_name="http", target_value=0.7,
                         ),
                     ),
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="external", target_value=70,
+                            metric_name="external", target_value=0.7,
                         ),
                     ),
                 ],
@@ -1254,7 +1254,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         type="Pods",
                         pods=V2beta1PodsMetricSource(
                             metric_name="http",
-                            target_average_value=50.0,
+                            target_average_value=0.5,
                             selector=V1LabelSelector(
                                 match_labels={"kubernetes_cluster": "cluster"}
                             ),
@@ -1299,7 +1299,7 @@ class TestKubernetesDeploymentConfig(unittest.TestCase):
                         type="Pods",
                         pods=V2beta1PodsMetricSource(
                             metric_name="uwsgi",
-                            target_average_value=50.0,
+                            target_average_value=0.5,
                             selector=V1LabelSelector(
                                 match_labels={"kubernetes_cluster": "cluster"}
                             ),
