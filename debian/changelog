@@ -1,3 +1,11 @@
+paasta-tools (0.93.24) xenial; urgency=medium
+
+  * 0.93.24 tagged with 'make release'
+    Commit: change kubernetes service autoscaling target metrics units
+    (#2667)  change kubernetes service autoscaling target metrics units
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 18 Feb 2020 11:26:51 -0800
+
 paasta-tools (0.93.23) xenial; urgency=medium
 
   * 0.93.23 tagged with 'make release'
