@@ -1,3 +1,12 @@
+paasta-tools (0.93.25) xenial; urgency=medium
+
+  * 0.93.25 tagged with 'make release'
+    Commit: Merge pull request #2669 from
+    Yelp/u/chl/fix_error_message_violates_swagger_error  fix error
+    messaage violates swag format error
+
+ -- Chien-An Lai <chl@yelp.com>  Tue, 18 Feb 2020 14:08:00 -0800
+
 paasta-tools (0.93.24) xenial; urgency=medium
 
   * 0.93.24 tagged with 'make release'
