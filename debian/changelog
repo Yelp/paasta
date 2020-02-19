@@ -1,3 +1,12 @@
+paasta-tools (0.93.26) xenial; urgency=medium
+
+  * 0.93.26 tagged with 'make release'
+    Commit: Merge pull request #2664 from Yelp/u/siruitan/PAASTA-16307-
+    add_aws_credentials_yaml_n_region  Add aws_credentials_yaml and
+    aws_region options
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 18 Feb 2020 16:22:11 -0800
+
 paasta-tools (0.93.25) xenial; urgency=medium
 
   * 0.93.25 tagged with 'make release'
