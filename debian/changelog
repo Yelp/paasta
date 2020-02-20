@@ -1,3 +1,12 @@
+paasta-tools (0.93.27) xenial; urgency=medium
+
+  * 0.93.27 tagged with 'make release'
+    Commit: Merge pull request #2670 from
+    Yelp/fix_k8s_envoy_status_output  Default hostname when getting
+    envoy status to raw IP address if lookup fails
+
+ -- Kaisen Chen <kaisen@yelp.com>  Thu, 20 Feb 2020 12:47:14 -0800
+
 paasta-tools (0.93.26) xenial; urgency=medium
 
   * 0.93.26 tagged with 'make release'
