@@ -242,10 +242,8 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
             )
             if "yelpcorp.com" in git_url:
                 trigger_deploys(service)
-        except Exception:
-            logline = "Failed to mark {} for deployment in deploy group {}! (attempt {}/{})".format(
-                commit, deploy_group, attempt, max_attempts
-            )
+        except Exception as e:
+            logline = f"Failed to mark {commit} for deployment in deploy group {deploy_group}! (attempt {attempt}/{max_attempts}, error: {e})"
             _log(service=service, line=logline, component="deploy", level="event")
             time.sleep(5 * attempt)
         else:
