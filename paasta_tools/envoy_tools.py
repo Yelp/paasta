@@ -146,16 +146,18 @@ def get_multiple_backends(
                                 casper_endpoint_found = True
                                 continue
 
+                        try:
+                            hostname = socket.gethostbyaddr(address)[0].split(".")[0]
+                        except socket.herror:
+                            # Default to the raw IP address if we can't lookup the hostname
+                            hostname = address
+
                         cluster_backends.append(
                             (
                                 EnvoyBackend(
                                     address=address,
                                     port_value=port_value,
-                                    hostname=socket.gethostbyaddr(
-                                        host_status["address"]["socket_address"][
-                                            "address"
-                                        ]
-                                    )[0].split(".")[0],
+                                    hostname=hostname,
                                     eds_health_status=host_status["health_status"][
                                         "eds_health_status"
                                     ],
