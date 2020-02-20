@@ -1,3 +1,12 @@
+paasta-tools (0.93.28) xenial; urgency=medium
+
+  * 0.93.28 tagged with 'make release'
+    Commit: Merge pull request #2671 from Yelp/u/siruitan/PAASTA-16324-
+    inject_spark_conf_str_into_docker_cmd  Inject spark config string
+    into docker command in tron
+
+ -- Aaron Tan <siruitan@yelp.com>  Thu, 20 Feb 2020 14:46:34 -0800
+
 paasta-tools (0.93.27) xenial; urgency=medium
 
   * 0.93.27 tagged with 'make release'
