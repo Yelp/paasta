@@ -52,6 +52,7 @@ from paasta_tools.utils import load_tron_yaml
 from paasta_tools.utils import extract_jobs_from_tron_yaml
 from paasta_tools.spark_tools import get_spark_resource_requirements
 from paasta_tools.spark_tools import get_webui_url
+from paasta_tools.spark_tools import inject_spark_conf_str
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -196,6 +197,32 @@ class TronActionConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
         self.job, self.action = decompose_instance(instance)
+        self.spark_ui_port = pick_random_port(
+            f"{self.get_service()}{self.get_instance()}".encode()
+        )
+
+    def get_spark_config_str(self):
+        spark_env = get_mesos_spark_env(
+            spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
+            spark_ui_port=self.spark_ui_port,
+            mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
+            mesos_secret=SPARK_MESOS_SECRET_KEY,
+            paasta_cluster=self.get_spark_paasta_cluster(),
+            paasta_pool=self.get_spark_paasta_pool(),
+            paasta_service=self.get_service(),
+            paasta_instance=self.get_instance(),
+            docker_img=self.get_docker_url(),
+            volumes=[
+                f"{v['hostPath']}:{v['containerPath']}:{v['mode']}"
+                for v in self.get_volumes(load_system_paasta_config().get_volumes())
+            ],
+            user_spark_opts=self.config_dict.get("spark_args"),
+            event_log_dir=get_default_event_log_dir(
+                service=self.get_service(),
+                aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
+            ),
+        )
+        return stringify_spark_env(spark_env)
 
     def get_job_name(self):
         return self.job
@@ -222,7 +249,9 @@ class TronActionConfig(InstanceConfig):
             # but the default value (/mnt/mesos/sandbox) doesn't get mounted in
             # our Docker containers, so we unset it here.  (Un-setting is fine,
             # since Spark will just write to /tmp instead).
-            command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + command
+            command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + inject_spark_conf_str(
+                command, self.get_spark_config_str()
+            )
         return command
 
     def get_spark_paasta_cluster(self):
@@ -235,37 +264,14 @@ class TronActionConfig(InstanceConfig):
         env = super().get_env()
         spark_env = {}
         if self.get_executor() == "spark":
-            spark_ui_port = pick_random_port(
-                f"{self.get_service()}{self.get_instance()}".encode()
-            )
-            spark_env = get_mesos_spark_env(
-                spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
-                spark_ui_port=spark_ui_port,
-                mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
-                mesos_secret=SPARK_MESOS_SECRET_KEY,
-                paasta_cluster=self.get_spark_paasta_cluster(),
-                paasta_pool=self.get_spark_paasta_pool(),
-                paasta_service=self.get_service(),
-                paasta_instance=self.get_instance(),
-                docker_img=self.get_docker_url(),
-                volumes=[
-                    f"{v['hostPath']}:{v['containerPath']}:{v['mode']}"
-                    for v in self.get_volumes(load_system_paasta_config().get_volumes())
-                ],
-                user_spark_opts=self.config_dict.get("spark_args"),
-                event_log_dir=get_default_event_log_dir(
-                    service=self.get_service(),
-                    aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
-                ),
-            )
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            env["SPARK_OPTS"] = stringify_spark_env(spark_env)
+            env["SPARK_OPTS"] = self.get_spark_config_str()
             env["CLUSTERMAN_RESOURCES"] = json.dumps(
                 dict(
                     get_spark_resource_requirements(
                         spark_config_dict=spark_env,
-                        webui_url=get_webui_url(spark_ui_port),
+                        webui_url=get_webui_url(self.spark_ui_port),
                     ).values()
                 )
             )

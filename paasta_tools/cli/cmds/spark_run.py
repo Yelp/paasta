@@ -23,6 +23,7 @@ from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
 from paasta_tools.spark_tools import get_spark_resource_requirements
 from paasta_tools.spark_tools import get_webui_url
+from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.spark_tools import load_mesos_secret_for_spark
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -716,12 +717,7 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
     # Spark options are passed as options to pyspark and spark-shell.
     # For jupyter, environment variable SPARK_OPTS is set instead.
     else:
-        for base_cmd in ("pyspark", "spark-shell", "spark-submit"):
-            if base_cmd in original_docker_cmd:
-                return original_docker_cmd.replace(
-                    base_cmd, base_cmd + " " + spark_conf_str, 1
-                )
-        return original_docker_cmd
+        return inject_spark_conf_str(original_docker_cmd, spark_conf_str)
 
 
 def build_and_push_docker_image(args):
