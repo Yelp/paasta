@@ -94,7 +94,7 @@ def main(args: argparse.Namespace) -> None:
 
         print(log_message)
         if not args.dry_run:
-            scribe_stream = get_autoscaler_scribe_stream(args.cluster, args.pool)
+            scribe_stream = get_autoscaler_scribe_stream(args.cluster, args.pool, args.scheduler)
             log_to_scribe(scribe_stream, f'{LOG_TEMPLATE} {log_message}')
 
 

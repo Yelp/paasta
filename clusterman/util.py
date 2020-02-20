@@ -82,10 +82,12 @@ def setup_logging(log_level_str: str = 'info') -> None:
     logging.getLogger('boto3').setLevel(max(logging.INFO, log_level))
 
 
-def get_autoscaler_scribe_stream(cluster, pool):
+def get_autoscaler_scribe_stream(cluster, pool, scheduler):
     scribe_stream = f'{LOG_STREAM_NAME}_{cluster}'
     if pool != 'default':
         scribe_stream += f'_{pool}'
+    if scheduler == 'kubernetes':
+        scribe_stream += '_k8s'
     return scribe_stream
 
 
