@@ -1,3 +1,12 @@
+paasta-tools (0.93.29) xenial; urgency=medium
+
+  * 0.93.29 tagged with 'make release'
+    Commit: Merge pull request #2675 from Yelp/u/siruitan/PAASTA-16324-
+    fix_spark_conf_str_bug  Fix bug for inject spark config into tron
+    action docker command
+
+ -- Aaron Tan <siruitan@yelp.com>  Fri, 21 Feb 2020 13:25:59 -0800
+
 paasta-tools (0.93.28) xenial; urgency=medium
 
   * 0.93.28 tagged with 'make release'
