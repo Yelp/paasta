@@ -734,24 +734,9 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
 
-    @mock.patch(
-        "service_configuration_lib.read_extra_service_information", autospec=True
-    )
-    def test_load_tron_yaml_picks_service_dir(
-        self, mock_read_extra_service_configuration
-    ):
-        config = "test"
-        mock_read_extra_service_configuration.return_value = config
-        assert config == tron_tools.load_tron_yaml(
-            service="foo", cluster="bar", soa_dir="test"
-        )
-        mock_read_extra_service_configuration.assert_called_once_with(
-            service_name="foo", extra_info="tron-bar", soa_dir="test"
-        )
-
-    @mock.patch("paasta_tools.tron_tools.load_tron_yaml", autospec=True)
-    def test_load_tron_service_config(self, mock_load_tron_yaml):
-        mock_load_tron_yaml.return_value = {
+    @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
+    def test_load_tron_service_config(self, mock_read_extra_service_information):
+        mock_read_extra_service_information.return_value = {
             "_template": {"actions": {"action1": {}}},
             "job1": {"actions": {"action1": {}}},
         }
@@ -771,13 +756,13 @@ class TestTronTools:
                 soa_dir="fake",
             )
         ]
-        mock_load_tron_yaml.assert_called_once_with(
-            service="service", cluster="test-cluster", soa_dir="fake"
+        mock_read_extra_service_information.assert_called_once_with(
+            service_name="service", extra_info="tron-test-cluster", soa_dir="fake"
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_tron_yaml", autospec=True)
-    def test_load_tron_service_config_empty(self, mock_load_tron_yaml):
-        mock_load_tron_yaml.return_value = {}
+    @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
+    def test_load_tron_service_config_empty(self, mock_read_extra_service_information):
+        mock_read_extra_service_information.return_value = {}
         job_configs = tron_tools.load_tron_service_config(
             service="service",
             cluster="test-cluster",
@@ -785,8 +770,8 @@ class TestTronTools:
             soa_dir="fake",
         )
         assert job_configs == []
-        mock_load_tron_yaml.assert_called_once_with(
-            service="service", cluster="test-cluster", soa_dir="fake"
+        mock_read_extra_service_information.assert_called_once_with(
+            service_name="service", extra_info="tron-test-cluster", soa_dir="fake"
         )
 
     @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
