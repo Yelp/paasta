@@ -102,9 +102,10 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
             self.pools[scheduler] = get_pool_name_list(self.options.cluster, scheduler)
         for scheduler, pools in self.pools.items():
             for pool in pools:
-                self.config.watchers.append({
-                    f'{pool}.{scheduler}': get_pool_config_path(self.options.cluster, pool, scheduler),
-                })
+                watcher = {
+                    f'{pool}.{scheduler}': get_pool_config_path(self.options.cluster, pool, scheduler)
+                }
+                self.add_watcher(watcher)
                 load_cluster_pool_config(self.options.cluster, pool, scheduler, None)
 
         self.region = staticconf.read_string('aws.region')
