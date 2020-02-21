@@ -13,7 +13,15 @@ Feature: make sure we're pruning the right instances on scale-down
          When we prune excess fulfilled capacity to 10
          Then 0 instances should be killed
 
-    Scenario: the killable instance would remove too much capacity
+    Scenario: the killable instance would remove too much cluster weight
+        Given a pool manager with 1 sfr resource group
+          And the fulfilled capacity of resource group 1 is 15
+          And the max weight to remove is 0
+         When we prune excess fulfilled capacity to 10
+         Then 0 instances should be killed
+          And the log should contain "would take us over our max_weight_to_remove"
+
+    Scenario: the killable instance would remove too much resource group capacity
         Given a pool manager with 1 sfr resource group
           And the fulfilled capacity of resource group 1 is 11
           And the killable instance has weight 2

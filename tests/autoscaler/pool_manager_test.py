@@ -103,6 +103,8 @@ def test_pool_manager_init(mock_pool_manager, mock_resource_groups):
         {
             'scaling_limits': {
                 'max_tasks_to_kill': 'inf',
+                'max_weight_to_add': 100,
+                'max_weight_to_remove': 100,
                 'min_capacity': 3,
                 'max_capacity': 3,
             },
@@ -271,10 +273,18 @@ class TestChooseNodesToPrune:
         mock_pool_manager._get_prioritized_killable_nodes = mock.Mock(return_value=[])
         assert mock_pool_manager._choose_nodes_to_prune(100, None) == {}
 
+    def test_killable_node_max_weight_to_remove(self, mock_logger, mock_pool_manager):
+        mock_pool_manager._get_prioritized_killable_nodes = mock.Mock(return_value=[
+            _make_metadata('sfr-1', 'i-1', weight=1000)
+        ])
+        assert mock_pool_manager._choose_nodes_to_prune(100, None) == {}
+        assert 'would take us over our max_weight_to_remove' in mock_logger.info.call_args[0][0]
+
     def test_killable_node_under_group_capacity(self, mock_logger, mock_pool_manager):
         mock_pool_manager._get_prioritized_killable_nodes = mock.Mock(return_value=[
             _make_metadata('sfr-1', 'i-1', weight=1000)
         ])
+        mock_pool_manager.max_weight_to_remove = 10000
         assert mock_pool_manager._choose_nodes_to_prune(100, None) == {}
         assert 'is at target capacity' in mock_logger.info.call_args[0][0]
 
