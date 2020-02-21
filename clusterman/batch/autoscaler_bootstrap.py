@@ -96,7 +96,7 @@ class AutoscalerBootstrapBatch(BatchDaemon, BatchLoggingMixin):
 
     def _get_local_log_stream(self, clog_prefix=None):
         # Ensure that the bootstrap logs go to the same scribe stream as the autoscaler
-        return get_autoscaler_scribe_stream(self.options.cluster, self.options.pool)
+        return get_autoscaler_scribe_stream(self.options.cluster, self.options.pool, self.options.scheduler)
 
     def run(self):
         env = os.environ.copy()

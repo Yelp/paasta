@@ -119,7 +119,7 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
         # This controls the name of the scribe log for this batch. Without this, the log
         # conflicts with other batches (like the Kew autoscaler).  We create a separate log for each
         # cluster and (non-default) pool, for easy distinguishmentability
-        return get_autoscaler_scribe_stream(self.options.cluster, self.options.pool)
+        return get_autoscaler_scribe_stream(self.options.cluster, self.options.pool, self.options.scheduler)
 
     @sensu_alert_triage()
     def _autoscale(self):
