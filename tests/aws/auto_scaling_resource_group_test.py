@@ -118,12 +118,9 @@ def test_launch_config_retry(mock_asrg, mock_launch_config):
 
 
 @pytest.mark.parametrize('instance_type', ['t2.2xlarge', 'm5.large'])
-@mock.patch('clusterman.aws.auto_scaling_resource_group.logger', autospec=True)
-def test_market_weight(mock_logger, mock_asrg, instance_type):
+def test_market_weight(mock_asrg, instance_type):
     market_weight = mock_asrg.market_weight(InstanceMarket(instance_type, 'us-west-2a'))
-
     assert market_weight == 1.0
-    assert mock_logger.warning.call_count == (1 if instance_type == 'm5.large' else 0)
 
 
 @pytest.mark.parametrize('dry_run', [True, False])

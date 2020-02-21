@@ -14,13 +14,14 @@ RUN     apt-get update \
             lsb-release \
             make \
             openssh-client \
+            python-pip \
             python3.7-dev \
             python3-pip \
             python-setuptools \
             virtualenv \
         && apt-get clean
 
-RUN     /usr/bin/pip3 install supervisor tox
+RUN     /usr/bin/pip install setuptools supervisor tox
 COPY    tox.ini requirements.txt requirements-bootstrap.txt /code/
 
 RUN     mkdir /home/nobody
