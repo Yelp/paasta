@@ -178,3 +178,12 @@ def get_spark_resource_requirements(
 
 def get_webui_url(port: int) -> str:
     return f"http://{socket.getfqdn()}:{port}"
+
+
+def inject_spark_conf_str(original_docker_cmd, spark_conf_str):
+    for base_cmd in ("pyspark", "spark-shell", "spark-submit"):
+        if base_cmd in original_docker_cmd:
+            return original_docker_cmd.replace(
+                base_cmd, base_cmd + " " + spark_conf_str, 1
+            )
+    return original_docker_cmd

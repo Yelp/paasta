@@ -7,10 +7,12 @@ import os
 import subprocess
 import tempfile
 import time
+from http.client import HTTPConnection
 
 import requests
 import ruamel.yaml as yaml
 
+requests_log = logging.getLogger("requests.packages.urllib3")
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
@@ -86,6 +88,14 @@ def parse_args():
         required=False,
     )
     parser.add_argument(
+        "-l",
+        "--local",
+        help="Do not create a branch. Implies -y and -b.",
+        action="store_true",
+        dest="no_branch",
+        default=False,
+    )
+    parser.add_argument(
         "-v", "--verbose", help="Debug mode.", action="store_true", dest="verbose",
     )
 
@@ -94,7 +104,7 @@ def parse_args():
 
 def tempdir():
     tmp = tempfile.TemporaryDirectory(prefix="repo", dir="/nail/tmp")
-    log.info(f"Created temp directory: {tmp.name}")
+    log.debug(f"Created temp directory: {tmp.name}")
     return tmp
 
 
@@ -127,6 +137,7 @@ def get_report_from_splunk(creds, filename, criteria_filter):
         '| inputlookup {filename} | search criteria="{criteria_filter}"'
         '| eval _time = search_time | where _time > relative_time(now(),"-7d")'
     ).format(filename=filename, criteria_filter=criteria_filter)
+    log.debug(f"Sending this query to Splunk: {search}\n")
     data = {"output_mode": "json", "search": search}
     creds = creds.split(":")
     resp = requests.post(url, data=data, auth=(creds[0], creds[1]))
@@ -285,7 +296,7 @@ def edit_soa_configs(filename, instance, cpu, mem):
     except FileNotFoundError:
         log.exception(f"Could not find {filename}")
     except KeyError:
-        log.exception(f"Error in {filename}")
+        log.exception(f"Error in {filename}. Will continue")
 
 
 def create_jira_ticket(serv, creds, description, JIRA):
@@ -361,9 +372,11 @@ def generate_ticket_content(serv):
     return (summary, ticket_desc)
 
 
-def bulk_rightsize(report, create_code_review, publish_code_review):
-    branch = "rightsize-bulk-{}".format(int(time.time()))
-    create_branch(branch)
+def bulk_rightsize(report, create_code_review, publish_code_review, create_new_branch):
+    if create_new_branch:
+        branch = "rightsize-bulk-{}".format(int(time.time()))
+        create_branch(branch)
+
     filenames = []
     for _, serv in report.items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
@@ -409,8 +422,19 @@ def individual_rightsize(
 
 def main():
     args = parse_args()
+
     if args.verbose:
         log.setLevel(logging.DEBUG)
+        requests_log.setLevel(logging.DEBUG)
+        HTTPConnection.debuglevel = 2
+        requests_log.propagate = True
+
+    # Safety checks
+    if args.no_branch and not args.YELPSOA_DIR:
+        log.error(
+            "You must specify --yelpsoa-configs-dir to work on if you use the --local option"
+        )
+        return False
 
     if args.ticket:
         if not args.jira_creds:
@@ -433,9 +457,11 @@ def main():
         clone_in(working_dir)
 
     with cwd(working_dir):
-        if args.bulk:
+        if args.bulk or args.no_branch:
             log.info("Running in bulk mode")
-            bulk_rightsize(report, args.create_reviews, args.publish_reviews)
+            bulk_rightsize(
+                report, args.create_reviews, args.publish_reviews, not args.no_branch
+            )
         else:
             individual_rightsize(
                 report,
