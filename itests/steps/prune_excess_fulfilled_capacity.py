@@ -66,6 +66,11 @@ def killable_instance_with_weight(context, weight):
     ])
 
 
+@behave.given('the max weight to remove is (?P<weight>\d+)')
+def max_weight_to_remove(context, weight):
+    context.pool_manager.max_weight_to_remove = int(weight)
+
+
 @behave.given('the killable instance has (?P<tasks>\d+) tasks')
 def killable_instance_with_tasks(context, tasks):
     def get_tasks_and_frameworks():
