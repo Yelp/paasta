@@ -70,7 +70,9 @@ class TestTronActionConfig:
     def test_get_env(self, action_config, executor):
         action_config.config_dict["executor"] = executor
         with mock.patch(
-            "paasta_tools.tron_tools.get_mesos_spark_env", autospec=True
+            "paasta_tools.tron_tools.get_mesos_spark_env",
+            autospec=True,
+            return_value={"foo": "bar"},
         ), mock.patch(
             "paasta_tools.tron_tools.pick_random_port", autospec=True,
         ), mock.patch(
@@ -88,7 +90,7 @@ class TestTronActionConfig:
                 "cpus": ("cpus|dimension=2", 1900),
                 "mem": ("mem|dimension=1", "42"),
             },
-        ), mock.patch(
+        ) as mock_get_spark_resource_requirements, mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
         ), mock.patch(
             "paasta_tools.tron_tools.get_aws_credentials",
@@ -96,13 +98,16 @@ class TestTronActionConfig:
             return_value=("access", "secret"),
         ):
             env = action_config.get_env()
-        if executor == "spark":
-            assert all([env["SPARK_OPTS"], env["CLUSTERMAN_RESOURCES"]])
-            assert env["AWS_ACCESS_KEY_ID"] == "access"
-            assert env["AWS_SECRET_ACCESS_KEY"] == "secret"
-            assert env["AWS_DEFAULT_REGION"] == "us-west-2"
-        else:
-            assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
+            if executor == "spark":
+                assert mock_get_spark_resource_requirements.call_args[1][
+                    "spark_config_dict"
+                ] == {"foo": "bar"}
+                assert all([env["SPARK_OPTS"], env["CLUSTERMAN_RESOURCES"]])
+                assert env["AWS_ACCESS_KEY_ID"] == "access"
+                assert env["AWS_SECRET_ACCESS_KEY"] == "secret"
+                assert env["AWS_DEFAULT_REGION"] == "us-west-2"
+            else:
+                assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
     def test_spark_get_cmd(self, action_config):
         action_config.config_dict["executor"] = "spark"

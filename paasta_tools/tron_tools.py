@@ -201,8 +201,8 @@ class TronActionConfig(InstanceConfig):
             f"{self.get_service()}{self.get_instance()}".encode()
         )
 
-    def get_spark_config_str(self):
-        spark_env = get_mesos_spark_env(
+    def get_spark_config_dict(self):
+        return get_mesos_spark_env(
             spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
             spark_ui_port=self.spark_ui_port,
             mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
@@ -222,7 +222,6 @@ class TronActionConfig(InstanceConfig):
                 aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
             ),
         )
-        return stringify_spark_env(spark_env)
 
     def get_job_name(self):
         return self.job
@@ -250,7 +249,7 @@ class TronActionConfig(InstanceConfig):
             # our Docker containers, so we unset it here.  (Un-setting is fine,
             # since Spark will just write to /tmp instead).
             command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + inject_spark_conf_str(
-                command, self.get_spark_config_str()
+                command, stringify_spark_env(self.get_spark_config_dict())
             )
         return command
 
@@ -262,15 +261,14 @@ class TronActionConfig(InstanceConfig):
 
     def get_env(self):
         env = super().get_env()
-        spark_env = {}
         if self.get_executor() == "spark":
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            env["SPARK_OPTS"] = self.get_spark_config_str()
+            env["SPARK_OPTS"] = stringify_spark_env(self.get_spark_config_dict())
             env["CLUSTERMAN_RESOURCES"] = json.dumps(
                 dict(
                     get_spark_resource_requirements(
-                        spark_config_dict=spark_env,
+                        spark_config_dict=self.get_spark_config_dict(),
                         webui_url=get_webui_url(self.spark_ui_port),
                     ).values()
                 )
