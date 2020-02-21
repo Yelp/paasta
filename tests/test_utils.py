@@ -2412,8 +2412,13 @@ def test_suggest_possibilities_one():
 
 def test_filter_templates_from_config_with_empty_dict():
     assert utils.filter_templates_from_config({}) == {}
+<<<<<<< HEAD
 
 
+=======
+
+
+>>>>>>> Refactor instance listing into a single function
 def test_filter_templates_from_config():
     config = {"_template": "foo", "instance0": "bar", "instance1": "baz"}
     assert utils.filter_templates_from_config(config) == {
