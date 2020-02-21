@@ -132,34 +132,13 @@ def test_total_cpus(mock_cluster_connector):
     assert mock_cluster_connector.get_resource_total('cpus') == 12
 
 
-def test_evict_pods_on_node(mock_cluster_connector):
-    with mock.patch(
-            'clusterman.kubernetes.kubernetes_cluster_connector.KubernetesClusterConnector.evict_pods_on_node',
-            autospec=True,
-    ) as mock_evict_pods_on_node:
-        mock_node = mock.Mock()
-        mock_evict_pods_on_node.return_value = None
-        mock_cluster_connector.evict_pods_on_node(mock_node)
-        assert mock_evict_pods_on_node.called
+def test_get_pending_pods(mock_cluster_connector):
+    assert len(mock_cluster_connector._get_pending_pods()) == 1
 
 
-def test_set_node_unscheduable(mock_cluster_connector):
-    with mock.patch(
-            'clusterman.kubernetes.kubernetes_cluster_connector.KubernetesClusterConnector.set_node_unschedulable',
-            autospec=True,
-    ) as mock_set_node_unschedulable:
-        mock_node = mock.Mock()
-        mock_set_node_unschedulable.return_value = None
-        mock_cluster_connector.set_node_unschedulable(mock_node)
-        assert mock_set_node_unschedulable.called
+def test_get_unschedulable_pods(mock_cluster_connector):
+    assert len(mock_cluster_connector.get_unschedulable_pods()) == 1
 
 
-def test_delete_node(mock_cluster_connector):
-    with mock.patch(
-            'clusterman.kubernetes.kubernetes_cluster_connector.KubernetesClusterConnector.delete_node',
-            autospec=True,
-    ) as mock_delete_node:
-        mock_node = mock.Mock()
-        mock_delete_node.return_value = None
-        mock_cluster_connector.delete_node(mock_node)
-        assert mock_delete_node.called
+def test_pending_cpus(mock_cluster_connector):
+    assert mock_cluster_connector.get_resource_pending('cpus') == 1.5
