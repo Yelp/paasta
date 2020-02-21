@@ -43,7 +43,7 @@ class AgentMetadata(NamedTuple):
 class ClusterConnector(metaclass=ABCMeta):
     SCHEDULER: str
 
-    def __init__(self, cluster: str, pool: str) -> None:
+    def __init__(self, cluster: str, pool: Optional[str]) -> None:
         self.cluster = cluster
         self.pool = pool
         self.pool_config = staticconf.NamespaceReaders(POOL_NAMESPACE.format(pool=self.pool, scheduler=self.SCHEDULER))
