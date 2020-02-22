@@ -15,18 +15,20 @@ import argparse
 
 import mock
 import pytest
+from botocore.exceptions import EndpointConnectionError
 
 try:
     from clusterman.batch.autoscaler import AutoscalerBatch
 except ImportError:
     pytest.mark.skip('Could not import the batch; are you in a Yelp-y environment?')
+from clusterman.exceptions import PoolConnectionError
 
 
 def batch(extra_args=None, mock_sensu=True):
     with mock.patch('clusterman.batch.autoscaler.setup_config'), \
             mock.patch('clusterman.batch.autoscaler.Autoscaler', signal=mock.Mock()):
         batch = AutoscalerBatch()
-        args = ['--cluster', 'mesos-test', '--pool', 'bar', '--scheduler', 'mesos'] + extra_args
+        args = ['--cluster', 'mesos-test', '--pool', 'bar', '--scheduler', 'mesos'] + (extra_args or [])
         parser = argparse.ArgumentParser()
         batch.parse_args(parser)
         batch.options = parser.parse_args(args)
@@ -61,7 +63,7 @@ def mock_pool_manager():
 @mock.patch('clusterman.batch.autoscaler.AutoscalerBatch.running', new_callable=mock.PropertyMock)
 @mock.patch('clusterman.batch.autoscaler.sensu_checkin', autospec=True)
 @pytest.mark.parametrize('dry_run', [True, False])
-def test_run(mock_sensu, mock_running, mock_time, mock_sleep, dry_run):
+def test_run_ok(mock_sensu, mock_running, mock_time, mock_sleep, dry_run):
     extra_args = ['--dry-run'] if dry_run else []
     batch_obj = batch(extra_args, mock_sensu=False)
     batch_obj.autoscaler.run_frequency = 600
@@ -75,3 +77,16 @@ def test_run(mock_sensu, mock_running, mock_time, mock_sleep, dry_run):
     assert batch_obj.autoscaler.run.call_args_list == [mock.call(dry_run=dry_run) for i in range(3)]
     assert mock_sleep.call_args_list == [mock.call(499), mock.call(287), mock.call(400)]
     assert mock_sensu.call_count == 6
+
+
+@mock.patch('clusterman.batch.autoscaler.AutoscalerBatch.running', new_callable=mock.PropertyMock)
+@pytest.mark.parametrize('exc', [PoolConnectionError, EndpointConnectionError(endpoint_url='')])
+def test_run_connection_error(mock_running, exc):
+    batch_obj = batch()
+    batch_obj._autoscale = mock.Mock(side_effect=exc)
+    mock_running.side_effect = [True, True, False]
+
+    batch_obj.run()
+
+    # exceptions raised did not prevent subsequent calls to autoscale
+    assert batch_obj._autoscale.call_count == 2
