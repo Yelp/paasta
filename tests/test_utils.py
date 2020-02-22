@@ -961,35 +961,6 @@ def test_get_services_for_cluster():
         assert get_instances_patch.call_count == 2
 
 
-def test_get_services_for_cluster_ignores_underscore():
-    cluster = "honey_bunches_of_oats"
-    soa_dir = "completely_wholesome"
-    instances = [
-        [
-            ("fake_service1", "this_is_testing"),
-            ("fake_service1", "all_the_things"),
-            ("fake_service1", "_ignore_me"),
-        ],
-        [("fake_service2", "my_nerf_broke")],
-    ]
-    expected = [
-        ("fake_service2", "my_nerf_broke"),
-        ("fake_service1", "this_is_testing"),
-        ("fake_service1", "all_the_things"),
-    ]
-    with mock.patch(
-        "os.path.abspath", autospec=True, return_value="chex_mix"
-    ), mock.patch(
-        "os.listdir", autospec=True, return_value=["dir1", "dir2"]
-    ), mock.patch(
-        "paasta_tools.utils.get_service_instance_list",
-        side_effect=lambda a, b, c, d: instances.pop(),
-        autospec=True,
-    ):
-        actual = utils.get_services_for_cluster(cluster, soa_dir=soa_dir)
-        assert expected == actual
-
-
 def test_color_text():
     expected = f"{utils.PaastaColors.RED}hi{utils.PaastaColors.DEFAULT}"
     actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "hi")

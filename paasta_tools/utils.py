@@ -2753,17 +2753,9 @@ def get_services_for_cluster(
     )
     instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
-        service_instance_list = get_service_instance_list(
-            srv_dir, cluster, instance_type, soa_dir
+        instance_list.extend(
+            get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
         )
-        for service_instance in service_instance_list:
-            service, instance = service_instance
-            if instance.startswith("_"):
-                log.debug(
-                    f"Ignoring {service}.{instance} as instance name begins with '_'."
-                )
-            else:
-                instance_list.append(service_instance)
     return instance_list
 
 
