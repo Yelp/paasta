@@ -15,7 +15,6 @@ from collections import defaultdict
 from distutils.util import strtobool
 from typing import List
 from typing import Mapping
-from typing import Optional
 
 import colorlog
 import kubernetes
@@ -40,7 +39,7 @@ class KubernetesClusterConnector(ClusterConnector):
     _nodes_by_ip: Mapping[str, KubernetesNode]
     _pods_by_ip: Mapping[str, List[KubernetesPod]]
 
-    def __init__(self, cluster: str, pool: Optional[str]) -> None:
+    def __init__(self, cluster: str, pool: str) -> None:
         super().__init__(cluster, pool)
         self.kubeconfig_path = f'clusters.{cluster}.kubeconfig_path'
         self._safe_to_evict_annotation = staticconf.read_string(
@@ -52,6 +51,7 @@ class KubernetesClusterConnector(ClusterConnector):
         logger.info('Reloading nodes')
         kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
         self._core_api = kubernetes.client.CoreV1Api()
+        self._pods = self._get_all_pods()
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
 
@@ -85,36 +85,6 @@ class KubernetesClusterConnector(ClusterConnector):
         node_selector = {self.pool_label_key: self.pool}
         return [pod for pod in self._pods if pod.spec.node_selector == node_selector and pod.status.phase == 'Pending']
 
-    def set_node_unschedulable(self, node_ip: str):
-        try:
-            agent_metadata = self._get_agent_metadata(node_ip)
-            self._core_api.patch_node(
-                name=agent_metadata.agent_id,
-                body={'spec': {'unschedulable': True}}
-            )
-        except Exception as e:
-            logger.warning(f'error when unscheduling pod: {e}')
-
-    def evict_pods_on_node(self, node_ip: str):
-        pods = self._pods_by_ip[node_ip]
-        for pod in pods:
-            try:
-                self._core_api.create_namespaced_pod_eviction(
-                    name=pod.metadata.name,
-                    namespace=pod.metadata.namespace,
-                    body=kubernetes.client.V1beta1Eviction()
-                )
-            except Exception as e:
-                logger.warning(f'error when evict pod: {e}')
-
-    def delete_node(self, node_ip: str):
-        agent_metadata = self._get_agent_metadata(node_ip)
-        self._core_api.delete_node(
-            name=agent_metadata.agent_id,
-            grace_period_seconds=0,
-            body=kubernetes.client.V1DeleteOptions()
-        )
-
     def _get_agent_metadata(self, node_ip: str) -> AgentMetadata:
         node = self._nodes_by_ip.get(node_ip)
         if not node:
@@ -122,8 +92,8 @@ class KubernetesClusterConnector(ClusterConnector):
         return AgentMetadata(
             agent_id=node.metadata.name,
             allocated_resources=allocated_node_resources(self._pods_by_ip[node_ip]),
-            is_safe_to_kill=self._is_node_safe_to_kill(node_ip),
             batch_task_count=self._count_batch_tasks(node_ip),
+            is_safe_to_kill=self._is_node_safe_to_kill(node_ip),
             state=(AgentState.RUNNING if self._pods_by_ip[node_ip] else AgentState.IDLE),
             task_count=len(self._pods_by_ip[node_ip]),
             total_resources=total_node_resources(node),
@@ -138,24 +108,24 @@ class KubernetesClusterConnector(ClusterConnector):
         return True
 
     def _get_nodes_by_ip(self) -> Mapping[str, KubernetesNode]:
-        if self.pool is not None:
-            pool_label_selector = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool') \
-                                  + '=' + self.pool
-            pool_nodes = self._core_api.list_node(label_selector=pool_label_selector).items
-        else:
-            pool_nodes = self._core_api.list_node().items
+        pool_label_selector = self.pool_label_key + '=' + self.pool
+        pool_nodes = self._core_api.list_node(label_selector=pool_label_selector).items
         return {
             get_node_ip(node): node
             for node in pool_nodes
         }
 
     def _get_pods_by_ip(self) -> Mapping[str, List[KubernetesPod]]:
-        all_pods = self._core_api.list_pod_for_all_namespaces().items
+        all_pods = self._pods
         pods_by_ip: Mapping[str, List[KubernetesPod]] = defaultdict(list)
         for pod in all_pods:
             if pod.status.phase == 'Running' and pod.status.host_ip in self._nodes_by_ip:
                 pods_by_ip[pod.status.host_ip].append(pod)
         return pods_by_ip
+
+    def _get_all_pods(self) -> List[KubernetesPod]:
+        all_pods = self._core_api.list_pod_for_all_namespaces().items
+        return all_pods
 
     def _count_batch_tasks(self, node_ip: str) -> int:
         count = 0
