@@ -61,10 +61,91 @@ class TestTronActionConfig:
             branch_dict={"docker_image": "foo:latest"},
         )
 
+    @pytest.fixture
+    def spark_action_config(self):
+        action_dict = {
+            "name": "print",
+            "command": "spark-submit something",
+            "aws_credentials_yaml": "/some/yaml/path",
+            "executor": "spark",
+            "spark_args": {"spark.eventLog.enabled": "false"},
+            "spark_paasta_cluster": "fake-spark-cluster",
+            "spark_paasta_pool": "fake-spark-pool",
+            "extra_volumes": [
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+            ],
+        }
+        return tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("cool_job", "print"),
+            cluster="fake-cluster",
+            config_dict=action_dict,
+            branch_dict={"docker_image": ""},
+        )
+
     def test_action_config(self, action_config):
         assert action_config.get_job_name() == "cool_job"
         assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
+
+    def test_get_spark_config_dict(self, spark_action_config):
+        spark_action_config.config_dict["spark_cluster_manager"] = "mesos"
+        spark_action_config.spark_ui_port = 12345
+        with mock.patch(
+            "paasta_tools.tron_tools.get_mesos_spark_env",
+            autospec=True,
+            return_value={"spark.master": "mesos://host:port"},
+        ) as mock_get_mesos_spark_env, mock.patch(
+            "paasta_tools.tron_tools.find_mesos_leader",
+            autospec=True,
+            return_value="mesos.leader.com",
+        ), mock.patch(
+            "paasta_tools.tron_tools.get_default_event_log_dir",
+            autospec=True,
+            return_value="/nail/etc",
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
+        ):
+            spark_action_config.get_spark_config_dict()
+            mock_get_mesos_spark_env.assert_called_once_with(
+                docker_img="",
+                event_log_dir="/nail/etc",
+                mesos_leader="mesos.leader.com",
+                paasta_cluster="fake-spark-cluster",
+                paasta_instance="cool_job.print",
+                paasta_pool="fake-spark-pool",
+                paasta_service="my_service",
+                spark_app_name="tron_spark_my_service_cool_job.print",
+                spark_ui_port=12345,
+                user_spark_opts={"spark.eventLog.enabled": "false"},
+                volumes=["/nail/tmp:/nail/tmp:rw"],
+            )
+
+    def test_get_spark_config_dict_k8s(self, spark_action_config):
+        spark_action_config.config_dict["spark_cluster_manager"] = "kubernetes"
+        spark_action_config.spark_ui_port = 12345
+        with mock.patch(
+            "paasta_tools.tron_tools.get_k8s_spark_env",
+            autospec=True,
+            return_value={"spark.master": "mesos://host:port"},
+        ) as mock_get_k8s_spark_env, mock.patch(
+            "paasta_tools.tron_tools.get_default_event_log_dir",
+            autospec=True,
+            return_value="/nail/etc",
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
+        ):
+            spark_action_config.get_spark_config_dict()
+            mock_get_k8s_spark_env.assert_called_once_with(
+                docker_img="",
+                event_log_dir="/nail/etc",
+                paasta_cluster="fake-spark-cluster",
+                paasta_instance="cool_job.print",
+                paasta_service="my_service",
+                spark_app_name="tron_spark_my_service_cool_job.print",
+                spark_ui_port=12345,
+                user_spark_opts={"spark.eventLog.enabled": "false"},
+            )
 
     @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
     def test_get_env(self, action_config, executor):
@@ -763,7 +844,39 @@ class TestTronTools:
         )
 
     @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
-    def test_format_tron_action_dict_spark(self, mock_system_paasta_config):
+    @pytest.mark.parametrize(
+        "spark_cluster_manager, expected_extra_volumes",
+        [
+            (
+                "mesos",
+                [
+                    {
+                        "container_path": "/nail/tmp",
+                        "host_path": "/nail/tmp",
+                        "mode": "RW",
+                    },
+                ],
+            ),
+            (
+                "kubernetes",
+                [
+                    {
+                        "container_path": "/nail/tmp",
+                        "host_path": "/nail/tmp",
+                        "mode": "RW",
+                    },
+                    {
+                        "container_path": "/etc/spark_k8s_secrets",
+                        "host_path": "/etc/pki/spark",
+                        "mode": "RO",
+                    },
+                ],
+            ),
+        ],
+    )
+    def test_format_tron_action_dict_spark(
+        self, mock_system_paasta_config, spark_cluster_manager, expected_extra_volumes,
+    ):
         action_dict = {
             "command": "echo something",
             "requires": ["required_action"],
@@ -784,6 +897,7 @@ class TestTronTools:
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
             "spark_args": {"spark.eventLog.enabled": "false"},
+            "spark_cluster_manager": spark_cluster_manager,
         }
         branch_dict = {
             "docker_image": "my_service:paasta-123abcde",
@@ -825,9 +939,7 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
-            "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
-            ],
+            "extra_volumes": expected_extra_volumes,
             "docker_parameters": mock.ANY,
             "constraints": [
                 {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}

@@ -152,6 +152,12 @@
                 },
                 "aws_credentials_yaml": {
                     "type": "string"
+                },
+                "spark_cluster_manager": {
+                    "enum": [
+                        "mesos",
+                        "kubernetes"
+                    ]
                 }
             }
         },
