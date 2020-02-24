@@ -74,6 +74,8 @@ class PoolManager:
         self.min_capacity = self.pool_config.read_int('scaling_limits.min_capacity')
         self.max_capacity = self.pool_config.read_int('scaling_limits.max_capacity')
         self.max_tasks_to_kill = read_int_or_inf(self.pool_config, 'scaling_limits.max_tasks_to_kill')
+        self.max_weight_to_add = self.pool_config.read_int('scaling_limits.max_weight_to_add')
+        self.max_weight_to_remove = self.pool_config.read_int('scaling_limits.max_weight_to_remove')
 
         if fetch_state:
             self.reload_state()
@@ -232,14 +234,11 @@ class PoolManager:
     ) -> float:
         """ Signals can return arbitrary values, so make sure we don't add or remove too much capacity """
 
-        max_weight_to_add = self.pool_config.read_int('scaling_limits.max_weight_to_add')
-        max_weight_to_remove = self.pool_config.read_int('scaling_limits.max_weight_to_remove')
-
         requested_delta = requested_target_capacity - self.target_capacity
         if requested_delta > 0:
-            delta = min(self.max_capacity - self.target_capacity, max_weight_to_add, requested_delta)
+            delta = min(self.max_capacity - self.target_capacity, self.max_weight_to_add, requested_delta)
         elif requested_delta < 0:
-            delta = max(self.min_capacity - self.target_capacity, -max_weight_to_remove, requested_delta)
+            delta = max(self.min_capacity - self.target_capacity, -self.max_weight_to_remove, requested_delta)
         else:
             delta = 0
 
@@ -307,9 +306,10 @@ class PoolManager:
         # Iterate through all of the idle agents and mark one at a time for removal until we reach our target capacity
         # or have reached our limit of tasks to kill.
         marked_nodes: Mapping[str, List[ClusterNodeMetadata]] = defaultdict(list)
-        killed_task_count = 0
+        removed_weight, killed_task_count = 0.0, 0
         for node_metadata in prioritized_killable_nodes:
             # Try to mark the node for removal; this could fail in a few different ways:
+            #  0) We've gone over our limit for max weight to remove
             #  1) The resource group the node belongs to can't be reduced further.
             #  2) Killing the node's tasks would take over the maximum number of tasks we are willing to kill.
             #  3) Killing the node would bring us under our target_capacity of non-orphaned nodes.
@@ -320,6 +320,13 @@ class PoolManager:
             instance_weight = node_metadata.instance.weight
 
             new_group_capacity = rem_group_capacities[group_id] - instance_weight
+            if instance_weight + removed_weight > self.max_weight_to_remove:  # case 0
+                logger.info(
+                    f'Killing instance {instance_id} with weight {instance_weight} would take us '
+                    f'over our max_weight_to_remove of {self.max_weight_to_remove}. Skipping this instance.'
+                )
+                continue
+
             if new_group_capacity < group_targets[group_id]:  # case 1
                 logger.info(
                     f'Resource group {group_id} is at target capacity; skipping {instance_id}'
@@ -346,6 +353,7 @@ class PoolManager:
             rem_group_capacities[group_id] -= instance_weight
             curr_capacity -= instance_weight
             killed_task_count += node_metadata.agent.task_count
+            removed_weight += instance_weight
             if node_metadata.agent.state != AgentState.ORPHANED:
                 remaining_non_orphan_capacity -= instance_weight
 

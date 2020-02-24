@@ -33,6 +33,11 @@ class PoolManagerError(ClustermanException):
     pass
 
 
+class PoolConnectionError(PoolManagerError):
+    """Raised when the pool master cannot be reached"""
+    pass
+
+
 class NoSignalConfiguredException(ClustermanException):
     pass
 

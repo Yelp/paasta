@@ -20,7 +20,7 @@ import colorlog
 import requests
 from mypy_extensions import TypedDict
 
-from clusterman.exceptions import PoolManagerError
+from clusterman.exceptions import PoolConnectionError
 from clusterman.util import ClustermanResources
 
 logger = colorlog.getLogger(__name__)
@@ -103,7 +103,7 @@ def mesos_post(url: str, endpoint: str) -> requests.Response:
                 f'Response Text: {response.text}\n'
             )
         logger.critical(log_message)
-        raise PoolManagerError(f'Mesos master unreachable: check the logs for details') from e
+        raise PoolConnectionError(f'Mesos master unreachable: check the logs for details') from e
 
     return response
 

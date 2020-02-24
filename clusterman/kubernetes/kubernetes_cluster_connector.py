@@ -131,10 +131,9 @@ class KubernetesClusterConnector(ClusterConnector):
         )
 
     def _is_node_safe_to_kill(self, node_ip: str) -> bool:
-        safe_to_evict_key = self.pool_config.read_string('safe_to_evict_key', default='clusterman.com/safe_to_evict')
         for pod in self._pods_by_ip[node_ip]:
             annotations = pod.metadata.annotations or dict()
-            pod_safe_to_evict = strtobool(annotations.get(safe_to_evict_key, 'true'))
+            pod_safe_to_evict = strtobool(annotations.get(self.safe_to_evict_key, 'true'))
             if not pod_safe_to_evict:
                 return False
         return True
