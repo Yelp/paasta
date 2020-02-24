@@ -4,7 +4,6 @@ from typing import Any
 from typing import List
 from typing import Optional
 
-import service_configuration_lib
 from mypy_extensions import TypedDict
 
 from paasta_tools.long_running_service_tools import load_service_namespace_config
@@ -18,8 +17,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -254,7 +253,7 @@ def load_paasta_native_job_config(
     instance_type="paasta_native",
     config_overrides=None,
 ) -> NativeServiceConfig:
-    service_paasta_native_jobs = read_service_config(
+    instance_config_dict = load_service_instance_config(
         service=service,
         instance=instance,
         instance_type=instance_type,
@@ -262,7 +261,6 @@ def load_paasta_native_job_config(
         soa_dir=soa_dir,
     )
     branch_dict: Optional[BranchDictV2] = None
-    instance_config_dict = service_paasta_native_jobs[instance].copy()
     instance_config_dict.update(config_overrides or {})
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
@@ -293,27 +291,6 @@ def load_paasta_native_job_config(
     service_config.service_namespace_config = service_namespace_config
 
     return service_config
-
-
-def read_service_config(
-    service, instance, instance_type, cluster, soa_dir=DEFAULT_SOA_DIR
-):
-    conf_file = f"{instance_type}-{cluster}"
-    full_path = f"{soa_dir}/{service}/{conf_file}.yaml"
-    paasta_print("Reading paasta-remote configuration file: %s" % full_path)
-
-    config = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir
-    )
-
-    if instance not in config:
-        raise UnknownNativeServiceError(
-            'No job named "{}" in config file {}: \n{}'.format(
-                instance, full_path, open(full_path).read()
-            )
-        )
-
-    return config
 
 
 class UnknownNativeServiceError(Exception):

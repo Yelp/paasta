@@ -18,7 +18,6 @@ from typing import List
 from typing import Tuple
 from typing import Type
 
-from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
@@ -26,6 +25,7 @@ from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_service_instance_configs
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoDeploymentsAvailable
 
@@ -132,10 +132,11 @@ class PaastaServiceConfigLoader:
     def _refresh_framework_config(
         self, cluster: str, instance_type_class: Type[InstanceConfig_T]
     ):
-        conf_name = self._framework_config_filename(cluster, instance_type_class)
-        log.info("Reading configuration file: %s.yaml", conf_name)
-        instances = read_extra_service_information(
-            service_name=self._service, extra_info=conf_name, soa_dir=self._soa_dir
+        instances = load_service_instance_configs(
+            service=self._service,
+            instance_type=instance_type_class.config_filename_prefix,
+            cluster=cluster,
+            soa_dir=self._soa_dir,
         )
         self._framework_configs[(cluster, instance_type_class)] = instances
 

@@ -74,7 +74,7 @@ def deployment_json():
 
 
 def marathon_cluster_config():
-    """Return a sample dict to mock service_configuration_lib.read_extra_service_information"""
+    """Return a sample dict to mock paasta_tools.utils.load_service_instance_configs"""
     return {
         "main": {
             "instances": 3,
@@ -111,20 +111,21 @@ def adhoc_cluster_config():
 
 
 @patch(
-    "paasta_tools.paasta_service_config_loader.read_extra_service_information",
+    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
-def test_marathon_instances(mock_read_extra_service_information):
-    mock_read_extra_service_information.return_value = marathon_cluster_config()
+def test_marathon_instances(mock_load_service_instance_configs):
+    mock_load_service_instance_configs.return_value = marathon_cluster_config()
     s = create_test_service()
     assert list(s.instances(TEST_CLUSTER_NAME, MarathonServiceConfig)) == [
         "main",
         "canary",
         "not_deployed",
     ]
-    mock_read_extra_service_information.assert_called_once_with(
-        extra_info="marathon-%s" % TEST_CLUSTER_NAME,
-        service_name=TEST_SERVICE_NAME,
+    mock_load_service_instance_configs.assert_called_once_with(
+        service=TEST_SERVICE_NAME,
+        instance_type="marathon",
+        cluster=TEST_CLUSTER_NAME,
         soa_dir=TEST_SOA_DIR,
     )
 
@@ -133,13 +134,13 @@ def test_marathon_instances(mock_read_extra_service_information):
     "paasta_tools.paasta_service_config_loader.load_v2_deployments_json", autospec=True
 )
 @patch(
-    "paasta_tools.paasta_service_config_loader.read_extra_service_information",
+    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
 def test_marathon_instances_configs(
-    mock_read_extra_service_information, mock_load_deployments_json
+    mock_load_service_instance_configs, mock_load_deployments_json
 ):
-    mock_read_extra_service_information.return_value = marathon_cluster_config()
+    mock_load_service_instance_configs.return_value = marathon_cluster_config()
     mock_load_deployments_json.return_value = deployment_json()
     s = create_test_service()
     expected = [
@@ -195,9 +196,10 @@ def test_marathon_instances_configs(
     assert (
         list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
     )
-    mock_read_extra_service_information.assert_called_once_with(
-        extra_info="marathon-%s" % TEST_CLUSTER_NAME,
-        service_name=TEST_SERVICE_NAME,
+    mock_load_service_instance_configs.assert_called_once_with(
+        service=TEST_SERVICE_NAME,
+        instance_type="marathon",
+        cluster=TEST_CLUSTER_NAME,
         soa_dir=TEST_SOA_DIR,
     )
     mock_load_deployments_json.assert_called_once_with(
@@ -209,13 +211,13 @@ def test_marathon_instances_configs(
     "paasta_tools.paasta_service_config_loader.load_v2_deployments_json", autospec=True
 )
 @patch(
-    "paasta_tools.paasta_service_config_loader.read_extra_service_information",
+    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
 def test_adhoc_instances_configs(
-    mock_read_extra_service_information, mock_load_deployments_json
+    mock_load_service_instance_configs, mock_load_deployments_json
 ):
-    mock_read_extra_service_information.return_value = adhoc_cluster_config()
+    mock_load_service_instance_configs.return_value = adhoc_cluster_config()
     mock_load_deployments_json.return_value = deployment_json()
     s = create_test_service()
     expected = [
@@ -269,9 +271,10 @@ def test_adhoc_instances_configs(
     for i in s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig):
         print(i, i.cluster)
     assert list(s.instance_configs(TEST_CLUSTER_NAME, AdhocJobConfig)) == expected
-    mock_read_extra_service_information.assert_called_once_with(
-        extra_info="adhoc-%s" % TEST_CLUSTER_NAME,
-        service_name=TEST_SERVICE_NAME,
+    mock_load_service_instance_configs.assert_called_once_with(
+        service=TEST_SERVICE_NAME,
+        instance_type="adhoc",
+        cluster=TEST_CLUSTER_NAME,
         soa_dir=TEST_SOA_DIR,
     )
     mock_load_deployments_json.assert_called_once_with(
@@ -284,23 +287,23 @@ def test_adhoc_instances_configs(
 )
 @patch("paasta_tools.marathon_tools.load_v2_deployments_json", autospec=True)
 @patch(
-    "paasta_tools.paasta_service_config_loader.read_extra_service_information",
+    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
 @patch(
-    "paasta_tools.marathon_tools.service_configuration_lib.read_extra_service_information",
-    autospec=True,
+    "paasta_tools.marathon_tools.load_service_instance_config", autospec=True,
 )
 def test_old_and_new_ways_load_the_same_marathon_configs(
-    mock_marathon_tools_read_extra_service_information,
-    mock_read_extra_service_information,
+    mock_marathon_tools_load_service_instance_config,
+    mock_load_service_instance_configs,
     mock_marathon_tools_load_deployments_json,
     mock_load_deployments_json,
 ):
-    mock_read_extra_service_information.return_value = marathon_cluster_config()
-    mock_marathon_tools_read_extra_service_information.return_value = (
-        marathon_cluster_config()
-    )
+    mock_load_service_instance_configs.return_value = marathon_cluster_config()
+    mock_marathon_tools_load_service_instance_config.side_effect = [
+        marathon_cluster_config().get("main"),
+        marathon_cluster_config().get("canary"),
+    ]
     mock_load_deployments_json.return_value = deployment_json()
     mock_marathon_tools_load_deployments_json.return_value = deployment_json()
     s = create_test_service()
@@ -330,23 +333,23 @@ def test_old_and_new_ways_load_the_same_marathon_configs(
 )
 @patch("paasta_tools.adhoc_tools.load_v2_deployments_json", autospec=True)
 @patch(
-    "paasta_tools.paasta_service_config_loader.read_extra_service_information",
+    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
 @patch(
-    "paasta_tools.adhoc_tools.service_configuration_lib.read_extra_service_information",
-    autospec=True,
+    "paasta_tools.adhoc_tools.load_service_instance_config", autospec=True,
 )
 def test_old_and_new_ways_load_the_same_adhoc_configs(
-    mock_adhoc_tools_read_extra_service_information,
-    mock_read_extra_service_information,
+    mock_adhoc_tools_load_service_instance_config,
+    mock_load_service_instance_configs,
     mock_adhoc_tools_load_deployments_json,
     mock_load_deployments_json,
 ):
-    mock_read_extra_service_information.return_value = adhoc_cluster_config()
-    mock_adhoc_tools_read_extra_service_information.return_value = (
-        adhoc_cluster_config()
-    )
+    mock_load_service_instance_configs.return_value = adhoc_cluster_config()
+    mock_adhoc_tools_load_service_instance_config.side_effect = [
+        adhoc_cluster_config().get("sample_batch"),
+        adhoc_cluster_config().get("interactive"),
+    ]
     mock_load_deployments_json.return_value = deployment_json()
     mock_adhoc_tools_load_deployments_json.return_value = deployment_json()
     s = create_test_service()

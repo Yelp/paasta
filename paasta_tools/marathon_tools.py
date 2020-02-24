@@ -74,7 +74,7 @@ from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import MarathonConfigDict
@@ -366,22 +366,11 @@ def load_marathon_service_config_no_cache(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    marathon_conf_file = "marathon-%s" % cluster
-    instance_configs = service_configuration_lib.read_extra_service_information(
-        service, marathon_conf_file, soa_dir=soa_dir
+    instance_config = load_service_instance_config(
+        service, instance, "marathon", cluster, soa_dir=soa_dir
     )
-
-    if instance.startswith("_"):
-        raise InvalidJobNameError(
-            f"Unable to load marathon job config for {service}.{instance} as instance name starts with '_'"
-        )
-    if instance not in instance_configs:
-        raise NoConfigurationForServiceError(
-            f"{instance} not found in config file {soa_dir}/{service}/{marathon_conf_file}.yaml."
-        )
-
     general_config = deep_merge_dictionaries(
-        overrides=instance_configs[instance], defaults=general_config
+        overrides=instance_config, defaults=general_config
     )
 
     branch_dict: Optional[BranchDictV2] = None

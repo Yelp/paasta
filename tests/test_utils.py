@@ -931,6 +931,152 @@ def test_read_service_instance_names_tron():
         assert sorted(expected) == sorted(actual)
 
 
+@mock.patch(
+    "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
+)
+@mock.patch(
+    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+    autospec=True,
+)
+def test_load_service_instance_configs(
+    mock_read_extra_service_information, mock_load_auto_configs
+):
+    mock_read_extra_service_information.return_value = {
+        "foo": {"cpus": 1},
+        "bar": {"cpus": 1},
+    }
+    mock_load_auto_configs.return_value = {
+        "bar": {"mem": 100},
+        "baz": {"mem": 200},
+    }
+    expected = {
+        "foo": {"cpus": 1},
+        "bar": {"cpus": 1, "mem": 100},
+    }
+    result = utils.load_service_instance_configs(
+        service="fake_service",
+        instance_type="kubernetes",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+    assert result == expected
+    mock_read_extra_service_information.assert_called_with(
+        service_name="fake_service", extra_info="kubernetes-fake", soa_dir="fake_dir",
+    )
+    mock_load_auto_configs.assert_called_with(
+        service="fake_service",
+        instance_type="kubernetes",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+
+
+def test_load_service_instance_config_underscore():
+    with pytest.raises(utils.InvalidJobNameError):
+        utils.load_service_instance_config(
+            service="fake_service",
+            instance="_underscore",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+
+
+@mock.patch(
+    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+    autospec=True,
+)
+def test_load_service_instance_config_not_found(mock_read_service_information):
+    mock_read_service_information.return_value = {"bar": {"cpus": 10}}
+    with pytest.raises(utils.NoConfigurationForServiceError):
+        utils.load_service_instance_config(
+            service="fake_service",
+            instance="foo",
+            instance_type="kubernetes",
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+
+
+@mock.patch(
+    "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
+)
+@mock.patch(
+    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+    autospec=True,
+)
+@pytest.mark.parametrize(
+    "user_config,auto_config,expected_config",
+    [
+        # Nothing in auto_config for 'foo'
+        ({"foo": {"cpus": 2}}, {"bar": {"cpus": 3}}, {"cpus": 2}),
+        # User config overrides auto_config for 'foo' cpus
+        ({"foo": {"cpus": 2, "mem": 80}}, {"foo": {"cpus": 3}}, {"cpus": 2, "mem": 80}),
+        # auto_config used for 'foo' cpus
+        ({"foo": {"mem": 80}}, {"foo": {"cpus": 3}}, {"cpus": 3, "mem": 80}),
+    ],
+)
+def test_load_service_instance_config(
+    mock_read_extra_service_information,
+    mock_load_auto_configs,
+    user_config,
+    auto_config,
+    expected_config,
+):
+    mock_read_extra_service_information.return_value = user_config
+    mock_load_auto_configs.return_value = auto_config
+    result = utils.load_service_instance_config(
+        service="fake_service",
+        instance="foo",
+        instance_type="kubernetes",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+    assert result == expected_config
+    mock_read_extra_service_information.assert_called_with(
+        service_name="fake_service", extra_info="kubernetes-fake", soa_dir="fake_dir",
+    )
+    mock_load_auto_configs.assert_called_with(
+        service="fake_service",
+        instance_type="kubernetes",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+
+
+@mock.patch(
+    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.utils.load_system_paasta_config", autospec=True,
+)
+@pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
+def test_load_service_instance_auto_configs(
+    mock_load_system_paasta_config,
+    mock_read_extra_service_information,
+    instance_type_enabled,
+):
+    mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
+        "marathon": instance_type_enabled,
+    }
+    result = utils.load_service_instance_auto_configs(
+        service="fake_service",
+        instance_type="marathon",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+    if instance_type_enabled:
+        mock_read_extra_service_information.assert_called_with(
+            service_name="fake_service",
+            extra_info=f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
+            soa_dir="fake_dir",
+        )
+        assert result == mock_read_extra_service_information.return_value
+    else:
+        assert result == {}
+
+
 def test_get_services_for_cluster():
     cluster = "honey_bunches_of_oats"
     soa_dir = "completely_wholesome"
@@ -2412,13 +2558,8 @@ def test_suggest_possibilities_one():
 
 def test_filter_templates_from_config_with_empty_dict():
     assert utils.filter_templates_from_config({}) == {}
-<<<<<<< HEAD
 
 
-=======
-
-
->>>>>>> Refactor instance listing into a single function
 def test_filter_templates_from_config():
     config = {"_template": "foo", "instance0": "bar", "instance1": "baz"}
     assert utils.filter_templates_from_config(config) == {

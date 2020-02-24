@@ -69,7 +69,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
@@ -88,6 +87,7 @@ PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get(
     "PAASTA_SYSTEM_CONFIG_DIR", "/etc/paasta/"
 )
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+AUTO_SOACONFIG_SUBDIR = "autotuned_defaults"
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     "itest",
@@ -1717,6 +1717,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
     auto_hostname_unique_size: int
+    auto_config_instance_types_enabled: Dict[str, bool]
     boost_regions: List[str]
     cluster: str
     cluster_autoscaler_max_decrease: float
@@ -1929,6 +1930,9 @@ class SystemPaastaConfig:
         :returns: The integer size of a small service
         """
         return self.config_dict.get("auto_hostname_unique_size", -1)
+
+    def get_auto_config_instance_types_enabled(self) -> Dict[str, bool]:
+        return self.config_dict.get("auto_config_instance_types_enabled", {})
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict["api_endpoints"]
@@ -2767,8 +2771,63 @@ def get_services_for_cluster(
     return instance_list
 
 
-def parse_yaml_file(yaml_file: str) -> Any:
-    return yaml.safe_load(open(yaml_file))
+def load_service_instance_configs(
+    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, Dict[str, Any]]:
+    conf_file = f"{instance_type}-{cluster}"
+    user_configs = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir
+    )
+    user_configs = filter_templates_from_config(user_configs)
+    auto_configs = load_service_instance_auto_configs(
+        service, instance_type, cluster, soa_dir
+    )
+    merged = {}
+    for instance_name, user_config in user_configs.items():
+        auto_config = auto_configs.get(instance_name, {})
+        merged[instance_name] = deep_merge_dictionaries(
+            overrides=user_config, defaults=auto_config,
+        )
+    return merged
+
+
+def load_service_instance_config(
+    service: str,
+    instance: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, Any]:
+    if instance.startswith("_"):
+        raise InvalidJobNameError(
+            f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"
+        )
+    conf_file = f"{instance_type}-{cluster}"
+    user_config = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir
+    ).get(instance)
+    if user_config is None:
+        raise NoConfigurationForServiceError(
+            f"{instance} not found in config file {soa_dir}/{service}/{conf_file}.yaml."
+        )
+
+    auto_config = load_service_instance_auto_configs(
+        service, instance_type, cluster, soa_dir
+    ).get(instance, {})
+    return deep_merge_dictionaries(overrides=user_config, defaults=auto_config,)
+
+
+def load_service_instance_auto_configs(
+    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, Dict[str, Any]]:
+    enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
+    conf_file = f"{instance_type}-{cluster}"
+    if enabled_types.get(instance_type):
+        return service_configuration_lib.read_extra_service_information(
+            service, f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}", soa_dir=soa_dir
+        )
+    else:
+        return {}
 
 
 def get_docker_host() -> str:
