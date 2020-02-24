@@ -866,11 +866,31 @@ def should_job_info_be_shown(cluster_state):
     )
 
 
+def get_pod_uptime(pod_deployed_timestamp: str):
+    pod_creation_time = datetime.strptime(pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ")
+    pod_uptime = datetime.utcnow() - pod_creation_time
+    pod_uptime_total_seconds = pod_uptime.total_seconds()
+    pod_uptime_days = divmod(pod_uptime_total_seconds, 86400)
+    pod_uptime_hours = divmod(pod_uptime_days[1], 3600)
+    pod_uptime_minutes = divmod(pod_uptime_hours[1], 60)
+    pod_uptime_seconds = divmod(pod_uptime_minutes[1], 1)
+    return f"{int(pod_uptime_days[0])}d{int(pod_uptime_hours[0])}h{int(pod_uptime_minutes[0])}m{int(pod_uptime_seconds[0])}s"
+
+
 def append_pod_status(pod_status, output: List[str]):
     output.append(f"    Pods:")
-    rows: List[Union[str, Tuple[str, str, str]]] = [("Pod Name", "Host", "Phase")]
+    rows: List[Union[str, Tuple[str, str, str, str]]] = [
+        ("Pod Name", "Host", "Phase", "Uptime")
+    ]
     for pod in pod_status:
-        rows.append((pod["name"], pod["host"], pod["phase"]))
+        rows.append(
+            (
+                pod["name"],
+                pod["host"],
+                pod["phase"],
+                get_pod_uptime(pod["deployed_timestamp"]),
+            )
+        )
         if pod["reason"] != "":
             rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
         if "container_state" in pod and pod["container_state"] != "Running":
