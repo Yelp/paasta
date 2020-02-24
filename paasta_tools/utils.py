@@ -1031,7 +1031,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
 
-LOG_COMPONENTS = OrderedDict(
+LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
     [
         (
             "build",
