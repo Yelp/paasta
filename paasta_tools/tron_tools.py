@@ -26,6 +26,7 @@ from typing import Tuple
 
 import yaml
 from service_configuration_lib import pick_random_port
+from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import get_mesos_spark_env
 from service_configuration_lib.spark_config import stringify_spark_env
@@ -48,8 +49,7 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import paasta_print
-from paasta_tools.utils import load_tron_yaml
-from paasta_tools.utils import extract_jobs_from_tron_yaml
+from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.spark_tools import get_spark_resource_requirements
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
@@ -672,8 +672,10 @@ def load_tron_service_config(
     service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR
 ):
     """Load all configured jobs for a service, and any additional config values."""
-    config = load_tron_yaml(service=service, cluster=cluster, soa_dir=soa_dir)
-    jobs = extract_jobs_from_tron_yaml(config)
+    config = read_extra_service_information(
+        service_name=service, extra_info=f"tron-{cluster}", soa_dir=soa_dir
+    )
+    jobs = filter_templates_from_config(config)
     job_configs = [
         TronJobConfig(
             name=name,

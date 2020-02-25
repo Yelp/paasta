@@ -2637,68 +2637,30 @@ def list_all_instances_for_service(
     return instances
 
 
-def get_tron_instance_list_from_yaml(
-    service: str, cluster: str, soa_dir: str
-) -> Collection[Tuple[str, str]]:
-    instance_list = []
-    try:
-        tron_config_content = load_tron_yaml(
-            service=service, cluster=cluster, soa_dir=soa_dir
-        )
-    except NoConfigurationForServiceError:
-        return []
-    jobs = extract_jobs_from_tron_yaml(config=tron_config_content)
-    for job_name, job in jobs.items():
-        action_names = get_action_names_from_job(job=job)
-        for name in action_names:
-            instance = f"{job_name}.{name}"
-            instance_list.append((service, instance))
-    return instance_list
-
-
-def get_action_names_from_job(job: dict) -> Collection[str]:
-    # Warning: This duplicates some logic from TronActionConfig, but can't be imported here
-    # dute to circular imports
-    actions = job.get("actions", {})
-    if isinstance(actions, dict):
-        return list(actions.keys())
-    elif actions is None:
-        return []
-    else:
-        raise TypeError("Tron actions must be a dictionary")
-
-
-def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
-    config = service_configuration_lib.read_extra_service_information(
-        service_name=service, extra_info=f"tron-{cluster}", soa_dir=soa_dir
-    )
-    if not config:
-        raise NoConfigurationForServiceError(
-            "No Tron configuration found for service %s" % service
-        )
-    return config
-
-
-def extract_jobs_from_tron_yaml(config: Dict) -> Dict[str, Any]:
+def filter_templates_from_config(config: Dict) -> Dict[str, Any]:
     config = {
         key: value for key, value in config.items() if not key.startswith("_")
     }  # filter templates
     return config or {}
 
 
-def get_instance_list_from_yaml(
-    service: str, conf_file: str, soa_dir: str
+def read_service_instance_names(
+    service: str, instance_type: str, cluster: str, soa_dir: str
 ) -> Collection[Tuple[str, str]]:
     instance_list = []
-    instances = service_configuration_lib.read_extra_service_information(
+    conf_file = f"{instance_type}-{cluster}"
+    config = service_configuration_lib.read_extra_service_information(
         service, conf_file, soa_dir=soa_dir
     )
-    for instance in instances:
-        if instance.startswith("_"):
-            log.debug(
-                f"Ignoring {service}.{instance} as instance name begins with '_'."
-            )
-        else:
+    config = filter_templates_from_config(config)
+    if instance_type == "tron":
+        for job_name, job in config.items():
+            action_names = list(job.get("actions", {}).keys())
+            for name in action_names:
+                instance = f"{job_name}.{name}"
+                instance_list.append((service, instance))
+    else:
+        for instance in config:
             instance_list.append((service, instance))
     return instance_list
 
@@ -2740,22 +2702,14 @@ def get_service_instance_list_no_cache(
 
     instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
-        conf_file = f"{srv_instance_type}-{cluster}"
-        log.debug(
-            f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml"
+        instance_list.extend(
+            read_service_instance_names(
+                service=service,
+                instance_type=srv_instance_type,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
         )
-        if srv_instance_type == "tron":
-            instance_list.extend(
-                get_tron_instance_list_from_yaml(
-                    service=service, cluster=cluster, soa_dir=soa_dir
-                )
-            )
-        else:
-            instance_list.extend(
-                get_instance_list_from_yaml(
-                    service=service, conf_file=conf_file, soa_dir=soa_dir
-                )
-            )
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
@@ -2799,17 +2753,9 @@ def get_services_for_cluster(
     )
     instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
-        service_instance_list = get_service_instance_list(
-            srv_dir, cluster, instance_type, soa_dir
+        instance_list.extend(
+            get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
         )
-        for service_instance in service_instance_list:
-            service, instance = service_instance
-            if instance.startswith("_"):
-                log.debug(
-                    f"Ignoring {service}.{instance} as instance name begins with '_'."
-                )
-            else:
-                instance_list.append(service_instance)
     return instance_list
 
 
