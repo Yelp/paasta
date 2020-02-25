@@ -55,6 +55,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
+from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -646,7 +647,8 @@ def format_kubernetes_pod_table(pods):
         )
         if pod.message is not None:
             rows.append(PaastaColors.grey(f"  {pod.message}"))
-        rows.extend(format_tail_lines_for_mesos_task(pod.tail_lines, pod.name))
+        if pod.containers is not None:
+            rows.extend(format_tail_lines_for_kubernetes_pod(pod.containers, pod.name))
 
     return format_table(rows)
 
