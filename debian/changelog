@@ -1,3 +1,11 @@
+paasta-tools (0.93.30) xenial; urgency=medium
+
+  * 0.93.30 tagged with 'make release'
+    Commit: Adding uptime for pod in paasta status for flink apps
+    (#2679)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Tue, 25 Feb 2020 07:20:57 -0800
+
 paasta-tools (0.93.29) xenial; urgency=medium
 
   * 0.93.29 tagged with 'make release'
