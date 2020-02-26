@@ -28,6 +28,7 @@ import yaml
 from service_configuration_lib import pick_random_port
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import get_mesos_spark_auth_env
 from service_configuration_lib.spark_config import get_mesos_spark_env
 from service_configuration_lib.spark_config import stringify_spark_env
 
@@ -71,7 +72,6 @@ VALID_MONITORING_KEYS = set(
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
-SPARK_MESOS_SECRET_KEY = "SHARED_SECRET(SPARK_MESOS_SECRET)"
 DEFAULT_AWS_REGION = "us-west-2"
 
 
@@ -206,7 +206,6 @@ class TronActionConfig(InstanceConfig):
             spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
             spark_ui_port=self.spark_ui_port,
             mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
-            mesos_secret=SPARK_MESOS_SECRET_KEY,
             paasta_cluster=self.get_spark_paasta_cluster(),
             paasta_pool=self.get_spark_paasta_pool(),
             paasta_service=self.get_service(),
@@ -265,6 +264,7 @@ class TronActionConfig(InstanceConfig):
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
             env["SPARK_OPTS"] = stringify_spark_env(self.get_spark_config_dict())
+            env.update(get_mesos_spark_auth_env())
             env["CLUSTERMAN_RESOURCES"] = json.dumps(
                 dict(
                     get_spark_resource_requirements(

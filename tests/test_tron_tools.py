@@ -106,6 +106,8 @@ class TestTronActionConfig:
                 assert env["AWS_ACCESS_KEY_ID"] == "access"
                 assert env["AWS_SECRET_ACCESS_KEY"] == "secret"
                 assert env["AWS_DEFAULT_REGION"] == "us-west-2"
+                assert env["SPARK_MESOS_PRINCIPAL"] == "spark"
+                assert env["SPARK_MESOS_SECRET"] == "SHARED_SECRET(SPARK_MESOS_SECRET)"
             else:
                 assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
