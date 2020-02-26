@@ -180,7 +180,7 @@
                     "default": 1,
                     "minimum": 0,
                     "maximum": 1,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": false,
                     "exclusiveMaximum": false
                 },
                 "bounce_priority": {
