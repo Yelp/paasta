@@ -1761,6 +1761,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: str
     paasta_native: PaastaNativeConfig
+    pdb_max_unavailable: Union[str, int]
     pki_backend: str
     previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
@@ -2300,6 +2301,9 @@ class SystemPaastaConfig:
         return socket.getservbyname(
             self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
         )
+
+    def get_pdb_max_unavailable(self) -> Union[str, int]:
+        return self.config_dict.get("pdb_max_unavailable", 0)
 
 
 def _run(
