@@ -109,12 +109,14 @@ def test_write_metrics(batch):
     new_callable=mock.PropertyMock,
 )
 @mock.patch('clusterman.batch.cluster_metrics_collector.sensu_checkin', autospec=True)
-def test_run(mock_sensu, mock_running, mock_time, mock_sleep, batch):
+@mock.patch('clusterman.batch.cluster_metrics_collector.ClusterMetricsCollector.reload_watchers', autospec=True)
+def test_run(mock_reload_watchers, mock_sensu, mock_running, mock_time, mock_sleep, batch):
     mock_running.side_effect = [True, True, True, True, False]
     mock_time.side_effect = [101, 113, 148, 188]
     batch.run_interval = 10
     batch.metrics_client = mock.MagicMock(spec_set=ClustermanMetricsBotoClient)
     batch.pools = {'mesos': ['pool-1', 'pool-2']}
+    mock_reload_watchers.return_value = None
 
     writer_context = batch.metrics_client.get_writer.return_value
     writer = writer_context.__enter__.return_value

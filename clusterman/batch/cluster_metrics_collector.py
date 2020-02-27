@@ -107,7 +107,6 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                 }
                 self.add_watcher(watcher)
                 load_cluster_pool_config(self.options.cluster, pool, scheduler, None)
-
         self.region = staticconf.read_string('aws.region')
         self.run_interval = staticconf.read_int('batches.cluster_metrics.run_interval_seconds')
         self.logger = logger
@@ -139,6 +138,9 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                     logger.info(f'Done reloading state for pool {pool}')
 
                 successful = self.write_all_metrics()
+
+                logger.info('Reloading watcher config files')
+                self.reload_watchers()
 
                 # Report successful run to Sensu.
                 if successful:

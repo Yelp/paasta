@@ -98,11 +98,6 @@ class AutoscalerBootstrapBatch(BatchDaemon, BatchLoggingMixin):
         }
         self.add_watcher(watcher)
 
-    @batch_configure
-    def reload_all_watcher_files(self) -> None:
-        setup_config(self.options)
-        self.reload_watchers()
-
     def _get_local_log_stream(self, clog_prefix=None):
         # Ensure that the bootstrap logs go to the same scribe stream as the autoscaler
         return get_autoscaler_scribe_stream(self.options.cluster, self.options.pool, self.options.scheduler)
@@ -147,8 +142,6 @@ class AutoscalerBootstrapBatch(BatchDaemon, BatchLoggingMixin):
                 # supervisord won't clean up its child processes if we restart or an exception is thrown
                 if not skip_supervisord_cleanup:
                     rpc.supervisor.shutdown()
-        logger.info('Reloading watcher config files')
-        self.reload_all_watcher_files()
 
         logger.info('Shutting down...')
         supervisord_proc.wait()
