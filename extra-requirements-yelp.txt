@@ -1,7 +1,7 @@
 clusterman-metrics==2.2.1
 monk==1.1.0
 pysensu-yelp==0.4.1
-yelp-batch==10.0.2
+yelp-batch==10.1.0
 yelp-clog==4.1.0
 yelp-lib==13.1.5
 yelp-meteorite==1.5.1
