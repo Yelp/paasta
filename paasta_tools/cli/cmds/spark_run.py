@@ -18,6 +18,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.mesos_tools import find_mesos_leader
+from paasta_tools.mesos_tools import MesosLeaderUnavailable
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
@@ -423,8 +424,15 @@ def get_spark_config(
         user_args["spark.eventLog.enabled"] = "true"
         user_args["spark.eventLog.dir"] = default_event_log_dir
 
+    try:
+        mesos_address = find_mesos_leader(args.cluster)
+    except MesosLeaderUnavailable as e:
+        print(
+            f"Couldn't reach the {args.cluster} Mesos leader from here. Please run this command from the environment that matches {args.cluster}.\nError: {e}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     # Spark options managed by PaaSTA
-    mesos_address = find_mesos_leader(args.cluster)
     paasta_instance = get_smart_paasta_instance_name(args)
     non_user_args = {
         "spark.master": "mesos://%s" % mesos_address,
