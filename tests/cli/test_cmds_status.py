@@ -1181,7 +1181,7 @@ class TestPrintKubernetesStatus:
                 host="fake_host1",
                 deployed_timestamp=1562963508,
                 phase="Running",
-                tail_lines=Struct(),
+                containers=[],
                 message=None,
             ),
             Struct(
@@ -1189,7 +1189,7 @@ class TestPrintKubernetesStatus:
                 host="fake_host2",
                 deployed_timestamp=1562963510,
                 phase="Running",
-                tail_lines=Struct(),
+                containers=[],
                 message=None,
             ),
             Struct(
@@ -1197,7 +1197,7 @@ class TestPrintKubernetesStatus:
                 host="fake_host3",
                 deployed_timestamp=1562963511,
                 phase="Failed",
-                tail_lines=Struct(),
+                containers=[],
                 message="Disk quota exceeded",
                 reason="Evicted",
             ),
@@ -1388,7 +1388,7 @@ class TestFormatKubernetesPodTable:
             host="paasta.cloud",
             deployed_timestamp=1565648600,
             phase="Running",
-            tail_lines=Struct(),
+            containers=[],
             message=None,
             reason=None,
         )

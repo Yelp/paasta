@@ -1741,6 +1741,71 @@ def test_list_all_deployments():
     ]
 
 
+@pytest.mark.parametrize(
+    "pod_logs,container_name,error_msg,expected",
+    [
+        (  # normal case: stdout read, container state error read
+            "a_line\nnext_line\n",
+            "my--container",
+            "term_error",
+            {
+                "stdout": ["a_line", "next_line", ""],
+                "stderr": [],
+                "error_message": "term_error",
+            },
+        ),
+        (  # exc case, container state error takes precedent
+            ApiException(http_resp=mock.MagicMock(data='{"message": "exc_error"}')),
+            "my--container",
+            "term_error",
+            {
+                "stdout": [],
+                "stderr": [],
+                "error_message": "couldn't read stdout/stderr: 'term_error'",
+            },
+        ),
+        (  # exc case, no container state error, so exc error used
+            ApiException(http_resp=mock.MagicMock(data='{"message": "exc_error"}')),
+            "my--container",
+            None,
+            {
+                "stdout": [],
+                "stderr": [],
+                "error_message": "couldn't read stdout/stderr: 'exc_error'",
+            },
+        ),
+    ],
+)
+def test_get_tail_lines_for_kubernetes_container(
+    event_loop, pod_logs, container_name, error_msg, expected,
+):
+    kube_client = mock.MagicMock()
+    kube_client.core.read_namespaced_pod_log.side_effect = [pod_logs]
+    container = mock.MagicMock()
+    container.name = container_name
+    container.state.waiting = None
+    container.state.terminated.message = error_msg
+    pod = mock.MagicMock()
+    pod.metadata.name = "my--pod"
+    pod.metadata.namespace = "my_namespace"
+
+    tail_lines = event_loop.run_until_complete(
+        kubernetes_tools.get_tail_lines_for_kubernetes_container(
+            kube_client=kube_client, pod=pod, container=container, num_tail_lines=10,
+        ),
+    )
+
+    assert tail_lines == expected
+    assert kube_client.core.read_namespaced_pod_log.call_args_list == [
+        mock.call(
+            name="my--pod",
+            namespace="my_namespace",
+            container=container_name,
+            tail_lines=10,
+        ),
+    ]
+
+
 @given(integers(min_value=0), floats(min_value=0, max_value=1.0))
 def test_max_unavailable(instances, bmf):
     res = max_unavailable(instances, bmf)
