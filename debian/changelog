@@ -1,3 +1,11 @@
+paasta-tools (0.94.0) xenial; urgency=medium
+
+  * 0.94.0 tagged with 'make release'
+    Commit: Merge pull request #2691 from
+    Yelp/drmorr/trying_to_fix_tests  fixing tests
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 28 Feb 2020 13:10:12 -0800
+
 paasta-tools (0.93.31) xenial; urgency=medium
 
   * 0.93.31 tagged with 'make release'
