@@ -16,7 +16,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
-from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
+from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
@@ -91,22 +91,20 @@ async def job_status(
         num_tail_lines = calculate_tail_lines(verbose)
 
         for pod in pod_list:
-            containers = [
-                dict(
-                    name=container.name,
-                    tail_lines=await get_tail_lines_for_kubernetes_container(
-                        client, pod, container, num_tail_lines,
-                    ),
+            if num_tail_lines > 0:
+                tail_lines = await get_tail_lines_for_kubernetes_pod(
+                    client, pod, num_tail_lines
                 )
-                for container in pod.status.container_statuses
-            ]
+            else:
+                tail_lines = {}
+
             kstatus["pods"].append(
                 {
                     "name": pod.metadata.name,
                     "host": pod.spec.node_name,
                     "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
                     "phase": pod.status.phase,
-                    "containers": containers,
+                    "tail_lines": tail_lines,
                     "reason": pod.status.reason,
                     "message": pod.status.message,
                 }
