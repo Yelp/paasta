@@ -19,12 +19,13 @@ def mock_pdr_for_service_instance():
 @pytest.fixture
 def mock_load_system_paasta_config():
     with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True,
+        "paasta_tools.kubernetes.application.controller_wrappers.load_system_paasta_config",
+        autospec=True,
     ) as mock_load_system_paasta_config:
         yield mock_load_system_paasta_config
 
 
-def test_brutal_bounce():
+def test_brutal_bounce(mock_load_system_paasta_config):
     # mock the new client used to brutal bounce in the background using threading.
     mock_cloned_client = mock.MagicMock()
 
@@ -66,7 +67,7 @@ def test_ensure_pod_disruption_budget_create(
     mock_pdr_for_service_instance,
     mock_load_system_paasta_config,
 ):
-    mock_load_system_paasta_config.return_value.get_pdb_max_unavailable = 3
+    mock_load_system_paasta_config.return_value.get_pdb_max_unavailable.return_value = 3
 
     mock_req_pdr = mock.Mock()
     mock_req_pdr.spec.max_unavailable = 10 if bounce_margin_factor_set else 3
