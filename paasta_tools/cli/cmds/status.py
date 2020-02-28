@@ -39,6 +39,7 @@ import humanize
 from bravado.exception import BravadoConnectionError
 from bravado.exception import BravadoTimeoutError
 from bravado.exception import HTTPError
+from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
@@ -78,7 +79,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
-
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -87,6 +87,18 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     AdhocJobConfig,
     MarathonServiceConfig,
     TronActionConfig,
+]
+
+InstanceStatusWriter = Callable[
+    [
+        Arg(str, "cluster"),
+        Arg(str, "service"),
+        Arg(str, "instance"),
+        Arg(List[str], "output"),
+        Arg(Any),
+        Arg(int, "verbose"),
+    ],
+    int,
 ]
 
 
@@ -249,19 +261,13 @@ def paasta_status_on_api_endpoint(
     if status.git_sha != "":
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
-    if status.marathon is not None:
-        return print_marathon_status(service, instance, output, status.marathon)
-    elif status.kubernetes is not None:
-        return print_kubernetes_status(service, instance, output, status.kubernetes)
-    elif status.tron is not None:
-        return print_tron_status(service, instance, output, status.tron, verbose)
-    elif status.adhoc is not None:
-        return print_adhoc_status(
-            cluster, service, instance, output, status.adhoc, verbose
-        )
-    elif status.flink is not None:
-        return print_flink_status(
-            cluster, service, instance, output, status.flink, verbose
+    instance_type = find_instance_type(status)
+    if instance_type is not None:
+        # check the actual status value and call the corresponding status writer
+        service_status_value = getattr(status, instance_type)
+        writer_callable = INSTANCE_TYPE_WRITERS.get(instance_type)
+        return writer_callable(
+            cluster, service, instance, output, service_status_value, verbose
         )
     else:
         paasta_print(
@@ -269,6 +275,20 @@ def paasta_status_on_api_endpoint(
             % instance
         )
         return 0
+
+
+def find_instance_type(status: Any) -> str:
+    """
+    find_instance_type finds the instance type from the status api response it iterates over all instance type
+    registered in `INSTANCE_TYPE_WRITERS`
+
+    :param status: paasta api status object
+    :return: the first matching instance type or else None
+    """
+    for instance_type in INSTANCE_TYPE_WRITERS.keys():
+        if instance_type in status and status[instance_type] is not None:
+            return instance_type
+    return None
 
 
 def print_adhoc_status(
@@ -299,7 +319,12 @@ def print_adhoc_status(
 
 
 def print_marathon_status(
-    service: str, instance: str, output: List[str], marathon_status
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    marathon_status,
+    verbose: int = 0,
 ) -> int:
     if marathon_status.error_message:
         output.append(marathon_status.error_message)
@@ -964,7 +989,12 @@ def print_flink_status(
 
 
 def print_kubernetes_status(
-    service: str, instance: str, output: List[str], kubernetes_status
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    kubernetes_status,
+    verbose: int = 0,
 ) -> int:
     if kubernetes_status.error_message:
         output.append(kubernetes_status.error_message)
@@ -1028,7 +1058,12 @@ def print_kubernetes_status(
 
 
 def print_tron_status(
-    service: str, instance: str, output: List[str], tron_status, verbose: int = 0
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    tron_status,
+    verbose: int = 0,
 ) -> int:
     output.append(f"    Tron job: {tron_status.job_name}")
     if verbose:
@@ -1046,6 +1081,60 @@ def print_tron_status(
         output.append(f"      Stdout: \n{tron_status.action_stdout}")
         output.append(f"      Stderr: \n{tron_status.action_stderr}")
 
+    return 0
+
+
+def print_kafka_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    kafka_status: Mapping[str, Any],
+    verbose: int = 0,
+) -> int:
+    status = kafka_status.get("status")
+    if status is None:
+        output.append(PaastaColors.red("    Kafka cluster is not available yet"))
+        return 1
+
+    # print kafka view url before operator status because if the kafka cluster is not available for some reason
+    # atleast the user can get a hold the kafka view url
+    if status.kafka_view_url is not None:
+        output.append(f"    Kafka View Url: {status.kafka_view_url}")
+
+    annotations = kafka_status.get("metadata").annotations
+    desired_state = annotations.get(paasta_prefixed("desired_state"))
+    if desired_state is None:
+        raise ValueError(
+            f"expected desired state in kafka annotation, but received none"
+        )
+    output.append(f"    State: {desired_state}")
+
+    cluster_ready = "true" if status.cluster_ready else PaastaColors.red("false")
+    output.append(f"    Ready: {cluster_ready}")
+
+    if status.cluster_ready:
+        health: Mapping[str, Any] = status.health
+        cluster_health = (
+            PaastaColors.green("healthy")
+            if health["healthy"]
+            else PaastaColors.red("unhealthy")
+        )
+        output.append(f"    Health: {cluster_health}")
+        if not health.get("healthy"):
+            output.append(f"     Reason: {health['message']}")
+            output.append(f"     Offline Partitions: {health['offline_partitions']}")
+            output.append(
+                f"     Under Replicated Partitions: {health['under_replicated_partitions']}"
+            )
+
+    brokers = status.brokers
+    output.append(f"    Brokers:")
+    rows = [["Broker Id", "Host", "Phase"]]
+    for broker in brokers:
+        rows.append([str(broker["id"]), str(broker["host"]), str(broker["phase"])])
+    brokers_table = format_table(rows)
+    output.extend([f"     {line}" for line in brokers_table])
     return 0
 
 
@@ -1492,3 +1581,15 @@ def status_marathon_job_human(
         return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
             status, name, desired_app_id
         )
+
+
+# Add other custom status writers here
+# See `print_tron_status` for reference
+INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
+    marathon=print_marathon_status,
+    kubernetes=print_kubernetes_status,
+    tron=print_tron_status,
+    adhoc=print_adhoc_status,
+    flink=print_flink_status,
+    kafkacluster=print_kafka_status,
+)
