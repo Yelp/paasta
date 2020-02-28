@@ -49,6 +49,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 
@@ -305,13 +306,18 @@ def reconcile_kubernetes_resource(
         if instance is not None and instance != inst:
             continue
         config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
-        soa_config = config_handler.loader(
-            service=service,
-            instance=inst,
-            cluster=cluster,
-            load_deployments=True,
-            soa_dir=DEFAULT_SOA_DIR,
-        )
+        try:
+            soa_config = config_handler.loader(
+                service=service,
+                instance=inst,
+                cluster=cluster,
+                load_deployments=True,
+                soa_dir=DEFAULT_SOA_DIR,
+            )
+        except NoDeploymentsAvailable as e:
+            log.error(e)
+            results.append(False)
+            continue
         git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
         formatted_resource = format_custom_resource(
             instance_config=config,
