@@ -1,3 +1,13 @@
+paasta-tools (0.94.1) xenial; urgency=medium
+
+  * 0.94.1 tagged with 'make release'
+    Commit: Revert "Merge pull request #2684 from Yelp/u/kawaiwan/make-
+    paasta-status-show-k8s-deploy-errors"  This reverts commit
+    d24407343be16e88c44c394e70eabe8a5dd71d89, reversing changes made to
+    5853d21c303630ef2f8510edd02e80ebac53b5bf.
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 28 Feb 2020 14:34:09 -0800
+
 paasta-tools (0.94.0) xenial; urgency=medium
 
   * 0.94.0 tagged with 'make release'
