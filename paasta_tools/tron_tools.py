@@ -43,6 +43,7 @@ from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -215,7 +216,7 @@ class TronActionConfig(InstanceConfig):
                 f"{v['hostPath']}:{v['containerPath']}:{v['mode']}"
                 for v in self.get_volumes(load_system_paasta_config().get_volumes())
             ],
-            user_spark_opts=self.config_dict.get("spark_args"),
+            user_spark_opts=self.config_dict.get("spark_args", {}),
             event_log_dir=get_default_event_log_dir(
                 service=self.get_service(),
                 aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
@@ -369,6 +370,17 @@ class TronActionConfig(InstanceConfig):
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
         return error_msgs
+
+    def format_docker_parameters(
+        self, with_labels: bool = True
+    ) -> List[DockerParameter]:
+        """Formats extra flags for running docker.  Will be added in the format
+        `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
+        Note: values must be strings"""
+        parameters = super().format_docker_parameters(with_labels=with_labels)
+        if self.get_executor() == "spark":
+            parameters.append({"key": "net", "value": "host"})
+        return parameters
 
 
 class TronJobConfig:

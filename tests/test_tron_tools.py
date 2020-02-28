@@ -762,6 +762,88 @@ class TestTronTools:
             service_name="service", extra_info="tron-test-cluster", soa_dir="fake"
         )
 
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_format_tron_action_dict_spark(self, mock_system_paasta_config):
+        action_dict = {
+            "command": "echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "spark",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "pool": "special_pool",
+            "env": {"SHELL": "/bin/bash"},
+            "extra_volumes": [
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+            "spark_args": {"spark.eventLog.enabled": "false"},
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.find_mesos_leader",
+            autospec=True,
+            return_value="mesos.leader.com",
+        ), mock.patch.object(
+            action_config, "get_spark_config_dict", return_value={},
+        ):
+            result = tron_tools.format_tron_action_dict(action_config)
+
+        assert result == {
+            "command": "unset MESOS_DIRECTORY MESOS_SANDBOX; echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "docker_image": mock.ANY,
+            "executor": "mesos",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "env": mock.ANY,
+            "extra_volumes": [
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+            ],
+            "docker_parameters": mock.ANY,
+            "constraints": [
+                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        expected_docker = "{}/{}".format(
+            "docker-registry.com:400", branch_dict["docker_image"]
+        )
+        assert result["docker_image"] == expected_docker
+        assert result["env"]["SHELL"] == "/bin/bash"
+        assert isinstance(result["docker_parameters"], list)
+        assert {"key": "net", "value": "host"} in result["docker_parameters"]
+
     @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
     def test_load_tron_service_config_empty(self, mock_read_extra_service_information):
         mock_read_extra_service_information.return_value = {}
