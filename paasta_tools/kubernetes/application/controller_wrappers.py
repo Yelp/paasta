@@ -25,6 +25,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.utils import load_system_paasta_config
 
 
 class Application(ABC):
@@ -119,12 +120,18 @@ class Application(ABC):
     def ensure_pod_disruption_budget(
         self, kube_client: KubeClient
     ) -> V1beta1PodDisruptionBudget:
+        if "bounce_margin_factor" in self.soa_config.config_dict:
+            max_unavailable = (
+                f"{int((1 - self.soa_config.get_bounce_margin_factor()) * 100)}%"
+            )
+        else:
+            system_paasta_config = load_system_paasta_config()
+            max_unavailable = system_paasta_config.get_pdb_max_unavailable()
+
         pdr = pod_disruption_budget_for_service_instance(
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
-            max_unavailable="{}%".format(
-                int((1 - self.soa_config.get_bounce_margin_factor()) * 100)
-            ),
+            max_unavailable=max_unavailable,
         )
         try:
             existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
