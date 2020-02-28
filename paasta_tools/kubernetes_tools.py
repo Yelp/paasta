@@ -1552,7 +1552,7 @@ def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
 
 
 def pod_disruption_budget_for_service_instance(
-    service: str, instance: str, max_unavailable: str
+    service: str, instance: str, max_unavailable: Union[str, int],
 ) -> V1beta1PodDisruptionBudget:
     return V1beta1PodDisruptionBudget(
         metadata=V1ObjectMeta(name=f"{service}-{instance}", namespace="paasta"),

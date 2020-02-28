@@ -120,6 +120,7 @@ class Application(ABC):
     def ensure_pod_disruption_budget(
         self, kube_client: KubeClient
     ) -> V1beta1PodDisruptionBudget:
+        max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
             max_unavailable = (
                 f"{int((1 - self.soa_config.get_bounce_margin_factor()) * 100)}%"
