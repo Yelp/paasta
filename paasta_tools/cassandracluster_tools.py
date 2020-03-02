@@ -122,10 +122,7 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         return sanitise_kubernetes_name(self.get_instance())
 
     def get_sanitised_deployment_name(self) -> str:
-        return "{service}-{instance}".format(
-            service=self.get_sanitised_service_name(),
-            instance=self.get_sanitised_instance_name(),
-        )
+        return self.get_sanitised_instance_name()
 
     def validate(
         self,
