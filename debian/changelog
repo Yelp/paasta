@@ -1,3 +1,12 @@
+paasta-tools (0.94.4) xenial; urgency=medium
+
+  * 0.94.4 tagged with 'make release'
+    Commit: Stop reading datacenter (aws region) attribute from
+    expected_slave_attributes, since yelp-autoconfigure-mesos doesn"t
+    set it. Use a setting in /etc/paasta instead. PAASTA-16304
+
+ -- Evan Krall <krall@yelp.com>  Mon, 02 Mar 2020 13:46:15 -0800
+
 paasta-tools (0.94.3) xenial; urgency=medium
 
   * 0.94.3 tagged with 'make release'
