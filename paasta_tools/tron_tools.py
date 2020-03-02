@@ -28,8 +28,10 @@ import yaml
 from service_configuration_lib import pick_random_port
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import get_k8s_spark_env
 from service_configuration_lib.spark_config import get_mesos_spark_auth_env
 from service_configuration_lib.spark_config import get_mesos_spark_env
+from service_configuration_lib.spark_config import K8S_AUTH_FOLDER
 from service_configuration_lib.spark_config import stringify_spark_env
 
 try:
@@ -44,6 +46,7 @@ from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
+from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -203,25 +206,41 @@ class TronActionConfig(InstanceConfig):
         )
 
     def get_spark_config_dict(self):
-        return get_mesos_spark_env(
-            spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
-            spark_ui_port=self.spark_ui_port,
-            mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
-            paasta_cluster=self.get_spark_paasta_cluster(),
-            paasta_pool=self.get_spark_paasta_pool(),
-            paasta_service=self.get_service(),
-            paasta_instance=self.get_instance(),
-            docker_img=self.get_docker_url(),
-            volumes=[
-                f"{v['hostPath']}:{v['containerPath']}:{v['mode']}"
-                for v in self.get_volumes(load_system_paasta_config().get_volumes())
-            ],
-            user_spark_opts=self.config_dict.get("spark_args", {}),
-            event_log_dir=get_default_event_log_dir(
-                service=self.get_service(),
-                aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
-            ),
-        )
+        if self.get_spark_cluster_manager() == "mesos":
+            spark_env = get_mesos_spark_env(
+                spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
+                spark_ui_port=self.spark_ui_port,
+                mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
+                paasta_cluster=self.get_spark_paasta_cluster(),
+                paasta_pool=self.get_spark_paasta_pool(),
+                paasta_service=self.get_service(),
+                paasta_instance=self.get_instance(),
+                docker_img=self.get_docker_url(),
+                volumes=[
+                    f"{v['hostPath']}:{v['containerPath']}:{v['mode'].lower()}"
+                    for v in self.get_volumes(load_system_paasta_config().get_volumes())
+                ],
+                user_spark_opts=self.config_dict.get("spark_args", {}),
+                event_log_dir=get_default_event_log_dir(
+                    service=self.get_service(),
+                    aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
+                ),
+            )
+        else:
+            spark_env = get_k8s_spark_env(
+                spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
+                spark_ui_port=self.spark_ui_port,
+                paasta_cluster=self.get_spark_paasta_cluster(),
+                paasta_service=self.get_service(),
+                paasta_instance=self.get_instance(),
+                docker_img=self.get_docker_url(),
+                user_spark_opts=self.config_dict.get("spark_args", {}),
+                event_log_dir=get_default_event_log_dir(
+                    service=self.get_service(),
+                    aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
+                ),
+            )
+        return spark_env
 
     def get_job_name(self):
         return self.job
@@ -259,6 +278,9 @@ class TronActionConfig(InstanceConfig):
     def get_spark_paasta_pool(self):
         return self.config_dict.get("spark_paasta_pool", "batch")
 
+    def get_spark_cluster_manager(self):
+        return self.config_dict.get("spark_cluster_manager", "mesos")
+
     def get_env(self):
         env = super().get_env()
         if self.get_executor() == "spark":
@@ -295,6 +317,23 @@ class TronActionConfig(InstanceConfig):
                 env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
 
         return env
+
+    def get_extra_volumes(self):
+        extra_volumes = super().get_extra_volumes()
+        if (
+            self.get_executor() == "spark"
+            and self.get_spark_cluster_manager() == "kubernetes"
+        ):
+            extra_volumes.append(
+                DockerVolume(
+                    {
+                        "hostPath": "/etc/pki/spark",
+                        "containerPath": K8S_AUTH_FOLDER,
+                        "mode": "RO",
+                    }
+                )
+            )
+        return extra_volumes
 
     def get_cpu_burst_add(self) -> float:
         """ For Tron jobs, we don't let them burst by default, because they
