@@ -1742,22 +1742,28 @@ def test_list_all_deployments():
 
 
 @pytest.mark.parametrize(
-    "pod_logs,container_name,error_msg,expected",
+    "pod_logs,container_name,term_error,expected",
     [
         (  # normal case: stdout read, container state error read
             "a_line\nnext_line\n",
             "my--container",
-            "term_error",
+            mock.Mock(message="term_error"),
             {
                 "stdout": ["a_line", "next_line", ""],
                 "stderr": [],
                 "error_message": "term_error",
             },
         ),
+        (  # no-error case: just stdout read
+            "a_line\nnext_line\n",
+            "my--container",
+            None,
+            {"stdout": ["a_line", "next_line", ""], "stderr": [], "error_message": ""},
+        ),
         (  # exc case, container state error takes precedent
             ApiException(http_resp=mock.MagicMock(data='{"message": "exc_error"}')),
             "my--container",
-            "term_error",
+            mock.Mock(message="term_error"),
             {
                 "stdout": [],
                 "stderr": [],
@@ -1767,7 +1773,7 @@ def test_list_all_deployments():
         (  # exc case, no container state error, so exc error used
             ApiException(http_resp=mock.MagicMock(data='{"message": "exc_error"}')),
             "my--container",
-            None,
+            mock.Mock(message=None),
             {
                 "stdout": [],
                 "stderr": [],
@@ -1777,14 +1783,15 @@ def test_list_all_deployments():
     ],
 )
 def test_get_tail_lines_for_kubernetes_container(
-    event_loop, pod_logs, container_name, error_msg, expected,
+    event_loop, pod_logs, container_name, term_error, expected,
 ):
     kube_client = mock.MagicMock()
     kube_client.core.read_namespaced_pod_log.side_effect = [pod_logs]
     container = mock.MagicMock()
     container.name = container_name
+    container.state.running = None
     container.state.waiting = None
-    container.state.terminated.message = error_msg
+    container.state.terminated = term_error
     pod = mock.MagicMock()
     pod.metadata.name = "my--pod"
     pod.metadata.namespace = "my_namespace"

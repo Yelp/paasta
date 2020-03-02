@@ -1391,11 +1391,11 @@ async def get_tail_lines_for_kubernetes_container(
     }
 
     if container.name != HACHECK_POD_NAME:
+        error = ""
         if container.state.waiting:
-            error = container.state.waiting.message
+            error = container.state.waiting.message or ""
         elif container.state.terminated:
-            error = container.state.terminated.message
-        error = error or ""  # if no errors, message will be None. convert to ""
+            error = container.state.terminated.message or ""
         tail_lines["error_message"] = error
 
         try:
