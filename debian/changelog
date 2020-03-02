@@ -1,3 +1,12 @@
+paasta-tools (0.94.2) xenial; urgency=medium
+
+  * 0.94.2 tagged with 'make release'
+    Commit: Merge pull request #2692 from Yelp/PAASTA-
+    16350_use_simple_deployment_name  Use simplified Cassandra
+    deployment name
+
+ -- Sheng Ran <ran@yelp.com>  Mon, 02 Mar 2020 07:45:21 -0800
+
 paasta-tools (0.94.1) xenial; urgency=medium
 
   * 0.94.1 tagged with 'make release'
