@@ -1292,9 +1292,25 @@
                     "type": "string",
                     "description": "The status of the pod"
                 },
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesContainer",
+                        "description": "List of containers in the pod"
+                    }
+                }
+            }
+        },
+        "KubernetesContainer": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the container"
+                },
                 "tail_lines": {
                     "$ref": "#/definitions/TaskTailLines",
-                    "description": "Stdout and stderr tail of the task"
+                    "description": "Stdout and stderr tail of the container"
                 }
             }
         },

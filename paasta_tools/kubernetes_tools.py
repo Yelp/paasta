@@ -46,6 +46,7 @@ from kubernetes.client import V1Capabilities
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
+from kubernetes.client import V1ContainerStatus
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
@@ -118,6 +119,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SystemPaastaConfig
@@ -1376,31 +1378,70 @@ def list_deployments(
 
 
 @async_timeout()
-async def get_tail_lines_for_kubernetes_pod(
-    kube_client: KubeClient, pod: V1Pod, num_tail_lines: int
-) -> MutableMapping[str, List[str]]:
-    tail_lines_dict: MutableMapping[str, Any] = {
+async def get_tail_lines_for_kubernetes_container(
+    kube_client: KubeClient,
+    pod: V1Pod,
+    container: V1ContainerStatus,
+    num_tail_lines: int,
+) -> MutableMapping[str, Any]:
+    tail_lines: MutableMapping[str, Any] = {
         "stdout": [],
         "stderr": [],
         "error_message": "",
     }
-    for container in pod.spec.containers:
-        if container.name != HACHECK_POD_NAME:
-            try:
-                tail_lines_dict["stdout"].append(
-                    kube_client.core.read_namespaced_pod_log(
-                        name=pod.metadata.name,
-                        namespace="paasta",
-                        container=container.name,
-                        tail_lines=num_tail_lines,
+
+    if container.name != HACHECK_POD_NAME:
+        error = ""
+        if container.state.waiting:
+            error = container.state.waiting.message or ""
+        elif container.state.terminated:
+            error = container.state.terminated.message or ""
+        tail_lines["error_message"] = error
+
+        try:
+            if num_tail_lines > 0:
+                log = kube_client.core.read_namespaced_pod_log(
+                    name=pod.metadata.name,
+                    namespace=pod.metadata.namespace,
+                    container=container.name,
+                    tail_lines=num_tail_lines,
+                )
+                tail_lines["stdout"].extend(log.split("\n"))
+        except ApiException as e:
+            # there is a potential race condition in which a pod's containers
+            # have not failed, but have when we get the container's logs. in this
+            # case, use the error from the exception, though it is less accurate.
+            if error == "":
+                body = json.loads(e.body)
+                error = body.get("message", "")
+            tail_lines["error_message"] = f"couldn't read stdout/stderr: '{error}'"
+
+    return tail_lines
+
+
+def format_tail_lines_for_kubernetes_pod(
+    pod_containers: Sequence, pod_name: str,
+) -> List[str]:
+    rows: List[str] = []
+    for container in pod_containers:
+        if container.tail_lines.error_message is not None:
+            rows.append(
+                PaastaColors.blue(
+                    f"errors for container {container.name} in pod {pod_name}"
+                )
+            )
+            rows.append(PaastaColors.red(f"  {container.tail_lines.error_message}"))
+
+        for stream_name in ("stdout", "stderr"):
+            stream_lines = getattr(container.tail_lines, stream_name, [])
+            if len(stream_lines) > 0:
+                rows.append(
+                    PaastaColors.blue(
+                        f"{stream_name} tail for {container.name} in pod {pod_name}"
                     )
                 )
-            except ApiException as e:
-                tail_lines_dict[
-                    "error_message"
-                ] = f"couldn't read stdout/stderr because {e.getResponseBody()}"
-
-    return tail_lines_dict
+                rows.extend(f"  {line}" for line in stream_lines)
+    return rows
 
 
 def create_custom_resource(
