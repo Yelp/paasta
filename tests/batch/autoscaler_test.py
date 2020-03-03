@@ -71,7 +71,9 @@ def test_run_ok(mock_sensu, mock_running, mock_time, mock_sleep, dry_run):
     mock_running.side_effect = [True, True, True, False]
     mock_time.side_effect = [101, 913, 2000]
 
-    with mock.patch('builtins.hash') as mock_hash:
+    with mock.patch('builtins.hash') as mock_hash, \
+            mock.patch.object(batch_obj, 'reload_watchers', autospec=True) as reload_watchers:
+        reload_watchers.return_value = False
         mock_hash.return_value = 0  # patch hash to ignore splaying
         batch_obj.run()
     assert batch_obj.autoscaler.run.call_args_list == [mock.call(dry_run=dry_run) for i in range(3)]
@@ -86,7 +88,9 @@ def test_run_connection_error(mock_running, exc):
     batch_obj._autoscale = mock.Mock(side_effect=exc)
     mock_running.side_effect = [True, True, False]
 
-    batch_obj.run()
+    with mock.patch.object(batch_obj, 'reload_watchers', autospec=True) as reload_watchers:
+        reload_watchers.return_value = False
+        batch_obj.run()
 
     # exceptions raised did not prevent subsequent calls to autoscale
     assert batch_obj._autoscale.call_count == 2

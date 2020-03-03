@@ -107,10 +107,12 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                 }
                 self.add_watcher(watcher)
                 load_cluster_pool_config(self.options.cluster, pool, scheduler, None)
+        self.initialize_clusterman_metrics_client()
+
+    def initialize_clusterman_metrics_client(self):
         self.region = staticconf.read_string('aws.region')
         self.run_interval = staticconf.read_int('batches.cluster_metrics.run_interval_seconds')
         self.logger = logger
-
         self.metrics_client = ClustermanMetricsBotoClient(region_name=self.region)
 
     def load_pool_managers(self) -> None:
@@ -140,7 +142,8 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                 successful = self.write_all_metrics()
 
                 logger.info('Reloading watcher config files')
-                self.reload_watchers()
+                if self.reload_watchers():
+                    self.initialize_clusterman_metrics_client()
 
                 # Report successful run to Sensu.
                 if successful:

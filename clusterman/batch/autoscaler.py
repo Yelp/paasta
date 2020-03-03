@@ -97,7 +97,12 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
         self.logger = logger
 
         self.apps = [self.options.pool]  # TODO (CLUSTERMAN-126) someday these should not be the same thing
+        self.initialize_autoscaler()
 
+        # We don't want to watch anything here because the autoscaler bootstrap script takes care of that for us
+        self.config.watchers.clear()
+
+    def initialize_autoscaler(self):
         pool_manager = PoolManager(
             self.options.cluster,
             self.options.pool,
@@ -111,9 +116,6 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
             monitoring_enabled=(not self.options.dry_run),
             pool_manager=pool_manager,
         )
-
-        # We don't want to watch anything here because the autoscaler bootstrap script takes care of that for us
-        self.config.watchers.clear()
 
     def _get_local_log_stream(self, clog_prefix=None):
         # Overrides the yelp_batch default, which is tmp_batch_<filename> (autoscaler in this case)
@@ -135,6 +137,10 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
     def run(self):
         while self.running:
             try:
+                logger.info('Reloading watcher config files')
+                if self.reload_watchers():
+                    self.initialize_autoscaler()
+
                 self._autoscale()
             except (PoolConnectionError, EndpointConnectionError) as e:
                 logger.exception(f'Encountered a connection error: {e}')
