@@ -2773,7 +2773,7 @@ def get_services_for_cluster(
 
 def load_service_instance_configs(
     service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
-) -> Dict[str, Dict[str, Any]]:
+) -> Dict[str, InstanceConfigDict]:
     conf_file = f"{instance_type}-{cluster}"
     user_configs = service_configuration_lib.read_extra_service_information(
         service, conf_file, soa_dir=soa_dir
@@ -2797,7 +2797,7 @@ def load_service_instance_config(
     instance_type: str,
     cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> Dict[str, Any]:
+) -> InstanceConfigDict:
     if instance.startswith("_"):
         raise InvalidJobNameError(
             f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"

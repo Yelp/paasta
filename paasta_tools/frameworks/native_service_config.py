@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import copy
 from typing import Any
+from typing import cast
 from typing import List
 from typing import Optional
 
@@ -245,20 +246,23 @@ class NativeServiceConfig(LongRunningServiceConfig):
 
 
 def load_paasta_native_job_config(
-    service,
-    instance,
-    cluster,
-    load_deployments=True,
-    soa_dir=DEFAULT_SOA_DIR,
-    instance_type="paasta_native",
-    config_overrides=None,
+    service: str,
+    instance: str,
+    cluster: str,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    instance_type: str = "paasta_native",
+    config_overrides: Optional[NativeServiceConfigDict] = None,
 ) -> NativeServiceConfig:
-    instance_config_dict = load_service_instance_config(
-        service=service,
-        instance=instance,
-        instance_type=instance_type,
-        cluster=cluster,
-        soa_dir=soa_dir,
+    instance_config_dict = cast(
+        NativeServiceConfigDict,
+        load_service_instance_config(
+            service=service,
+            instance=instance,
+            instance_type=instance_type,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        ),
     )
     branch_dict: Optional[BranchDictV2] = None
     instance_config_dict.update(config_overrides or {})
