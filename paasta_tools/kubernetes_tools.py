@@ -1424,7 +1424,7 @@ def format_tail_lines_for_kubernetes_pod(
 ) -> List[str]:
     rows: List[str] = []
     for container in pod_containers:
-        if container.tail_lines.error_message is not None:
+        if container.tail_lines.error_message:
             rows.append(
                 PaastaColors.blue(
                     f"errors for container {container.name} in pod {pod_name}"
