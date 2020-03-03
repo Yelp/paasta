@@ -2498,3 +2498,25 @@ def test_warning_big_bounce():
             ]
             == "config3b06ff5f"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+
+
+@pytest.mark.parametrize(
+    "node,expected",
+    [
+        (
+            mock.Mock(metadata=mock.Mock(labels={"yelp.com/hostname": "a_hostname"})),
+            "a_hostname",
+        ),
+        (mock.Mock(metadata=mock.Mock(labels={})), "a_node_name",),
+        (ApiException(), "a_node_name",),
+    ],
+)
+def test_get_pod_hostname(node, expected):
+    client = mock.MagicMock()
+    client.core.read_node.side_effect = [node]
+    pod = mock.MagicMock()
+    pod.spec.node_name = "a_node_name"
+
+    hostname = kubernetes_tools.get_pod_hostname(client, pod)
+
+    assert hostname == expected

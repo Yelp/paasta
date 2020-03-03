@@ -103,7 +103,7 @@ async def job_status(
             kstatus["pods"].append(
                 {
                     "name": pod.metadata.name,
-                    "host": pod.spec.node_name,
+                    "host": kubernetes_tools.get_pod_hostname(client, pod),
                     "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
                     "phase": pod.status.phase,
                     "containers": containers,

@@ -2014,3 +2014,14 @@ def set_cr_desired_state(
     kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
     status = cr.get("status")
     return status
+
+
+def get_pod_hostname(kube_client: KubeClient, pod: V1Pod) -> str:
+    """Gets the hostname of a pod's node from labels"""
+    try:
+        node = kube_client.core.read_node(name=pod.spec.node_name)
+    except ApiException:
+        # fall back to node name (which has the IP) if node somehow doesnt exist
+        return pod.spec.node_name
+    # if label has disappeared (say we changed it), default to node name
+    return node.metadata.labels.get("yelp.com/hostname", pod.spec.node_name)
