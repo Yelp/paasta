@@ -128,16 +128,20 @@ def test_run(mock_sensu, mock_running, mock_time, mock_sleep, batch):
             mock.patch.object(batch, 'write_metrics', autospec=True) as write_metrics, \
             mock.patch.object(batch, 'reload_watchers', autospec=True) as reload_watchers, \
             mock.patch('clusterman.batch.cluster_metrics_collector.PoolManager', autospec=True), \
-            mock.patch('clusterman.batch.cluster_metrics_collector.logger') as mock_logger:
+            mock.patch('clusterman.batch.cluster_metrics_collector.logger') as mock_logger, \
+            mock.patch('clusterman.batch.cluster_metrics_collector.ClusterMetricsCollector.'
+                       'initialize_clusterman_metrics_client') as mock_initialize_clusterman_metrics_client:
         def mock_write_metrics(writer, generator, pools, schedulers):
             if mock_time.call_count == 4:
                 raise socket.timeout('timed out')
             else:
                 return
 
-        reload_watchers.return_value = False
+        reload_watchers.return_value = True
+        mock_initialize_clusterman_metrics_client.return_value = None
         write_metrics.side_effect = mock_write_metrics
         batch.run()
+        mock_initialize_clusterman_metrics_client.assert_called_with()
 
         # Writing should have happened 3 times, for each metric type.
         # Each time, we create a new writer context and call write_metrics.
