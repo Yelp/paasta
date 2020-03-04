@@ -25,9 +25,17 @@ from multiprocessing import Queue
 from queue import Empty
 from time import sleep
 from typing import Any
+from typing import Callable
+from typing import ContextManager
 from typing import Dict
+from typing import Iterable
 from typing import List
+from typing import Mapping
+from typing import MutableSequence
+from typing import Sequence
 from typing import Set
+from typing import Tuple
+from typing import Type
 
 import isodate
 import pytz
@@ -67,7 +75,7 @@ DEFAULT_COMPONENTS = ["build", "deploy", "monitoring", "oom", "stdout", "stderr"
 log = logging.getLogger(__name__)
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers) -> None:
     status_parser = subparsers.add_parser(
         "logs",
         help="Streams logs relevant to a service across the PaaSTA components",
@@ -189,7 +197,7 @@ def completer_clusters(prefix, parsed_args, **kwargs):
         return list_clusters()
 
 
-def build_component_descriptions(components):
+def build_component_descriptions(components: Mapping[str, Mapping[str, Any]]) -> str:
     """Returns a colored description string for every log component
     based on its help attribute"""
     output = []
@@ -198,7 +206,7 @@ def build_component_descriptions(components):
     return "\n".join(output)
 
 
-def prefix(input_string, component):
+def prefix(input_string: str, component: str) -> str:
     """Returns a colored string with the right colored prefix with a given component"""
     return "{}: {}".format(LOG_COMPONENTS[component]["color"](component), input_string)
 
@@ -208,7 +216,11 @@ def prefix(input_string, component):
 # if not check_timestamp_in_range(...): return False
 # The default arguments for start_time and end_time are None when we aren't
 # filtering by time
-def check_timestamp_in_range(timestamp, start_time, end_time):
+def check_timestamp_in_range(
+    timestamp: datetime.datetime,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+) -> bool:
     """A convenience function to check if a datetime.datetime timestamp is within the given start and end times,
     returns true if start_time or end_time is None
 
@@ -226,15 +238,15 @@ def check_timestamp_in_range(timestamp, start_time, end_time):
 
 
 def paasta_log_line_passes_filter(
-    line,
-    levels,
-    service,
-    components,
-    clusters,
-    instances,
-    start_time=None,
-    end_time=None,
-):
+    line: str,
+    levels: Sequence[str],
+    service: str,
+    components: Iterable[str],
+    clusters: Sequence[str],
+    instances: Iterable[str],
+    start_time: datetime.datetime = None,
+    end_time: datetime.datetime = None,
+) -> bool:
     """Given a (JSON-formatted) log line, return True if the line should be
     displayed given the provided levels, components, and clusters; return False
     otherwise.
@@ -260,15 +272,15 @@ def paasta_log_line_passes_filter(
 
 
 def paasta_app_output_passes_filter(
-    line,
-    levels,
-    service,
-    components,
-    clusters,
-    instances,
-    start_time=None,
-    end_time=None,
-):
+    line: str,
+    levels: Sequence[str],
+    service: str,
+    components: Iterable[str],
+    clusters: Sequence[str],
+    instances: Iterable[str],
+    start_time: datetime.datetime = None,
+    end_time: datetime.datetime = None,
+) -> bool:
     try:
         parsed_line = json.loads(line)
     except ValueError:
@@ -291,7 +303,7 @@ def paasta_app_output_passes_filter(
     )
 
 
-def extract_utc_timestamp_from_log_line(line):
+def extract_utc_timestamp_from_log_line(line: str) -> datetime.datetime:
     """
     Extracts the timestamp from a log line of the format "<timestamp> <other data>" and returns a UTC datetime object
     or None if it could not parse the line
@@ -314,7 +326,7 @@ def extract_utc_timestamp_from_log_line(line):
     return utc_timestamp
 
 
-def parse_marathon_log_line(line, clusters, service):
+def parse_marathon_log_line(line: str, clusters: Sequence[str], service: str) -> str:
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ""
@@ -331,15 +343,15 @@ def parse_marathon_log_line(line, clusters, service):
 
 
 def marathon_log_line_passes_filter(
-    line,
-    levels,
-    service,
-    components,
-    clusters,
-    instances,
-    start_time=None,
-    end_time=None,
-):
+    line: str,
+    levels: Sequence[str],
+    service: str,
+    components: Iterable[str],
+    clusters: Sequence[str],
+    instances: Iterable[str],
+    start_time: datetime.datetime = None,
+    end_time: datetime.datetime = None,
+) -> bool:
     """Given a (JSON-formatted) log line where the message is a Marathon log line,
     return True if the line should be displayed given the provided service; return False
     otherwise."""
@@ -355,7 +367,9 @@ def marathon_log_line_passes_filter(
     return format_job_id(service, "") in parsed_line.get("message", "")
 
 
-def print_log(line, requested_levels, raw_mode=False):
+def print_log(
+    line: str, requested_levels: Sequence[str], raw_mode: bool = False
+) -> None:
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
     """
@@ -367,7 +381,7 @@ def print_log(line, requested_levels, raw_mode=False):
         paasta_print(prettify_log_line(line, requested_levels))
 
 
-def prettify_timestamp(timestamp):
+def prettify_timestamp(timestamp: datetime.datetime) -> str:
     """Returns more human-friendly form of 'timestamp' without microseconds and
     in local time.
     """
@@ -376,14 +390,14 @@ def prettify_timestamp(timestamp):
     return pretty_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def prettify_component(component):
+def prettify_component(component: str) -> str:
     try:
         return LOG_COMPONENTS[component]["color"]("[%s]" % component)
     except KeyError:
         return "UNPRETTIFIABLE COMPONENT %s" % component
 
 
-def prettify_level(level, requested_levels):
+def prettify_level(level: str, requested_levels: Sequence[str]) -> str:
     """Colorize level. 'event' is special and gets bolded; everything else gets
     lightened.
 
@@ -401,7 +415,7 @@ def prettify_level(level, requested_levels):
     return pretty_level
 
 
-def prettify_log_line(line, requested_levels):
+def prettify_log_line(line: str, requested_levels: Sequence[str]) -> str:
     """Given a line from the log, which is expected to be JSON and have all the
     things we expect, return a pretty formatted string containing relevant values.
     """
@@ -448,15 +462,15 @@ def register_log_reader(name):
     return outer
 
 
-def get_log_reader_class(name):
+def get_log_reader_class(name: str) -> Type["ScribeLogReader"]:
     return _log_reader_classes[name]
 
 
-def list_log_readers():
+def list_log_readers() -> Iterable[str]:
     return _log_reader_classes.keys()
 
 
-def get_log_reader():
+def get_log_reader() -> "ScribeLogReader":
     log_reader_config = load_system_paasta_config().get_log_reader()
     log_reader_class = get_log_reader_class(log_reader_config["driver"])
     return log_reader_class(**log_reader_config.get("options", {}))
@@ -500,7 +514,7 @@ class LogReader:
         self,
         service,
         line_count,
-        offset,
+        line_offset,
         levels,
         components,
         clusters,
@@ -552,7 +566,7 @@ class ScribeLogReader(LogReader):
         ),
     }
 
-    def __init__(self, cluster_map):
+    def __init__(self, cluster_map: Mapping[str, Any]) -> None:
         super().__init__()
 
         if scribereader is None:
@@ -561,7 +575,12 @@ class ScribeLogReader(LogReader):
             )
         self.cluster_map = cluster_map
 
-    def run_code_over_scribe_envs(self, clusters, components, callback):
+    def run_code_over_scribe_envs(
+        self,
+        clusters: Sequence[str],
+        components: Iterable[str],
+        callback: Callable[..., None],
+    ) -> None:
         """Iterates over the scribe environments for a given set of clusters and components, executing
         functions for each component
 
@@ -581,7 +600,7 @@ class ScribeLogReader(LogReader):
 
             if any([component in components for component in grouped_components]):
                 stream_info = self.get_stream_info("default")
-                callback("default", stream_info, scribe_env, cluster=None)
+                callback(components, stream_info, scribe_env, cluster=None)
 
             non_defaults = set(components) - grouped_components
             for component in non_defaults:
@@ -589,19 +608,25 @@ class ScribeLogReader(LogReader):
 
                 if stream_info.per_cluster:
                     for cluster in clusters:
-                        callback(component, stream_info, scribe_env, cluster=cluster)
+                        callback([component], stream_info, scribe_env, cluster=cluster)
                 else:
-                    callback(component, stream_info, scribe_env, cluster=None)
+                    callback([component], stream_info, scribe_env, cluster=None)
 
-    def get_stream_info(self, component):
+    def get_stream_info(self, component: str) -> ScribeComponentStreamInfo:
         if component in self.COMPONENT_STREAM_INFO:
             return self.COMPONENT_STREAM_INFO[component]
         else:
             return self.COMPONENT_STREAM_INFO["default"]
 
     def tail_logs(
-        self, service, levels, components, clusters, instances, raw_mode=False
-    ):
+        self,
+        service: str,
+        levels: Sequence[str],
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: Iterable[str],
+        raw_mode: bool = False,
+    ) -> None:
         """Sergeant function for spawning off all the right log tailing functions.
 
         NOTE: This function spawns concurrent processes and doesn't necessarily
@@ -629,10 +654,15 @@ class ScribeLogReader(LogReader):
         PAASTA-214 and https://reviewboard.yelpcorp.com/r/87320/ and feel free to
         implement one of the other options.
         """
-        queue = Queue()
+        queue: Queue = Queue()
         spawned_processes = []
 
-        def callback(component, stream_info, scribe_env, cluster):
+        def callback(
+            components: Iterable[str],
+            stream_info: ScribeComponentStreamInfo,
+            scribe_env: str,
+            cluster: str,
+        ) -> None:
             kw = {
                 "scribe_env": scribe_env,
                 "service": service,
@@ -732,15 +762,15 @@ class ScribeLogReader(LogReader):
 
     def print_logs_by_time(
         self,
-        service,
-        start_time,
-        end_time,
-        levels,
-        components,
-        clusters,
-        instances,
-        raw_mode,
-    ):
+        service: str,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+        levels: Sequence[str],
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: Iterable[str],
+        raw_mode: bool,
+    ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
 
         if "marathon" in components:
@@ -752,7 +782,12 @@ class ScribeLogReader(LogReader):
                 file=sys.stderr,
             )
 
-        def callback(component, stream_info, scribe_env, cluster):
+        def callback(
+            components: Iterable[str],
+            stream_info: ScribeComponentStreamInfo,
+            scribe_env: str,
+            cluster: str,
+        ) -> None:
             if stream_info.per_cluster:
                 stream_name = stream_info.stream_name_fn(service, cluster)
             else:
@@ -789,12 +824,23 @@ class ScribeLogReader(LogReader):
             print_log(line["raw_line"], levels, raw_mode)
 
     def print_last_n_logs(
-        self, service, line_count, levels, components, clusters, instances, raw_mode
-    ):
+        self,
+        service: str,
+        line_count: int,
+        levels: Sequence[str],
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: Iterable[str],
+        raw_mode: bool,
+    ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
 
-        def callback(component, stream_info, scribe_env, cluster):
-            stream_info = self.get_stream_info(component)
+        def callback(
+            components: Iterable[str],
+            stream_info: ScribeComponentStreamInfo,
+            scribe_env: str,
+            cluster: str,
+        ) -> None:
 
             if stream_info.per_cluster:
                 stream_name = stream_info.stream_name_fn(service, cluster)
@@ -828,20 +874,20 @@ class ScribeLogReader(LogReader):
 
     def filter_and_aggregate_scribe_logs(
         self,
-        scribe_reader_ctx,
-        scribe_env,
-        stream_name,
-        levels,
-        service,
-        components,
-        clusters,
-        instances,
-        aggregated_logs,
-        parser_fn=None,
-        filter_fn=None,
-        start_time=None,
-        end_time=None,
-    ):
+        scribe_reader_ctx: ContextManager,
+        scribe_env: str,
+        stream_name: str,
+        levels: Sequence[str],
+        service: str,
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: Iterable[str],
+        aggregated_logs: MutableSequence[Dict[str, Any]],
+        parser_fn: Callable = None,
+        filter_fn: Callable = None,
+        start_time: datetime.datetime = None,
+        end_time: datetime.datetime = None,
+    ) -> None:
         with scribe_reader_ctx as scribe_reader:
             try:
                 for line in scribe_reader:
@@ -888,7 +934,13 @@ class ScribeLogReader(LogReader):
                 else:
                     raise
 
-    def scribe_get_from_time(self, scribe_env, stream_name, start_time, end_time):
+    def scribe_get_from_time(
+        self,
+        scribe_env: str,
+        stream_name: str,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+    ) -> ContextManager:
         # Scribe connection details
         host_and_port = scribereader.get_env_scribe_host(scribe_env, tail=False)
         host = host_and_port["host"]
@@ -920,7 +972,9 @@ class ScribeLogReader(LogReader):
             max_date=end_date_yst,
         )
 
-    def scribe_get_last_n_lines(self, scribe_env, stream_name, line_count):
+    def scribe_get_last_n_lines(
+        self, scribe_env: str, stream_name: str, line_count: int
+    ) -> ContextManager:
         # Scribe connection details
         host_and_port = scribereader.get_env_scribe_host(scribe_env, tail=True)
         host = host_and_port["host"]
@@ -945,17 +999,17 @@ class ScribeLogReader(LogReader):
 
     def scribe_tail(
         self,
-        scribe_env,
-        stream_name,
-        service,
-        levels,
-        components,
-        clusters,
-        instances,
-        queue,
-        filter_fn,
-        parse_fn=None,
-    ):
+        scribe_env: str,
+        stream_name: str,
+        service: str,
+        levels: Sequence[str],
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: Iterable[str],
+        queue: Queue,
+        filter_fn: Callable,
+        parse_fn: Callable = None,
+    ) -> None:
         """Creates a scribetailer for a particular environment.
 
         When it encounters a line that it should report, it sticks it into the
@@ -992,7 +1046,9 @@ class ScribeLogReader(LogReader):
             else:
                 raise
 
-    def determine_scribereader_envs(self, components, cluster):
+    def determine_scribereader_envs(
+        self, components: Iterable[str], cluster: str
+    ) -> Set[str]:
         """Returns a list of environments that scribereader needs to connect
         to based on a given list of components and the cluster involved.
 
@@ -1011,7 +1067,7 @@ class ScribeLogReader(LogReader):
             envs.append(env)
         return set(envs)
 
-    def cluster_to_scribe_env(self, cluster):
+    def cluster_to_scribe_env(self, cluster: str) -> str:
         """Looks up the particular scribe env associated with a given paasta cluster.
 
         Scribe has its own "environment" key, which doesn't always map 1:1 with our
@@ -1028,7 +1084,9 @@ class ScribeLogReader(LogReader):
             return env
 
 
-def generate_start_end_time(from_string="30m", to_string=None):
+def generate_start_end_time(
+    from_string: str = "30m", to_string: str = None
+) -> Tuple[datetime.datetime, datetime.datetime]:
     """Parses the --from and --to command line arguments to create python
     datetime objects representing the start and end times for log retrieval
 
@@ -1077,7 +1135,9 @@ def generate_start_end_time(from_string="30m", to_string=None):
     return start_time, end_time
 
 
-def validate_filtering_args(args, log_reader):
+def validate_filtering_args(
+    args: argparse.Namespace, log_reader: ScribeLogReader
+) -> bool:
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
         paasta_print(
             PaastaColors.red(
@@ -1140,8 +1200,14 @@ def validate_filtering_args(args, log_reader):
 
 
 def pick_default_log_mode(
-    args, log_reader, service, levels, components, clusters, instances
-):
+    args: argparse.Namespace,
+    log_reader: ScribeLogReader,
+    service: str,
+    levels: Sequence[str],
+    components: Iterable[str],
+    clusters: Sequence[str],
+    instances: Iterable[str],
+) -> int:
     if log_reader.SUPPORTS_LINE_COUNT:
         paasta_print(
             PaastaColors.cyan(
@@ -1191,9 +1257,10 @@ def pick_default_log_mode(
             raw_mode=args.raw_mode,
         )
         return 0
+    return 1
 
 
-def paasta_logs(args):
+def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
@@ -1302,3 +1369,4 @@ def paasta_logs(args):
         instances=instances,
         raw_mode=args.raw_mode,
     )
+    return 0
