@@ -98,8 +98,6 @@ from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -151,35 +149,27 @@ def test_load_kubernetes_service_config_no_cache():
     with mock.patch(
         "service_configuration_lib.read_service_configuration", autospec=True
     ) as mock_read_service_configuration, mock.patch(
-        "service_configuration_lib.read_extra_service_information", autospec=True
-    ) as mock_read_extra_service_information, mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_instance_config", autospec=True
+    ) as mock_load_service_instance_config, mock.patch(
         "paasta_tools.kubernetes_tools.load_v2_deployments_json", autospec=True
     ) as mock_load_v2_deployments_json, mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True
     ) as mock_kube_deploy_config:
-        with pytest.raises(NoConfigurationForServiceError):
-            load_kubernetes_service_config_no_cache(
-                service="kurupt",
-                instance="fm",
-                cluster="brentford",
-                load_deployments=False,
-            )
-        with pytest.raises(InvalidJobNameError):
-            load_kubernetes_service_config_no_cache(
-                service="kurupt",
-                instance="_fm",
-                cluster="brentford",
-                load_deployments=False,
-            )
-
         mock_config = {"freq": "108.9"}
-        mock_read_extra_service_information.return_value = {"fm": mock_config}
+        mock_load_service_instance_config.return_value = mock_config
         mock_read_service_configuration.return_value = {}
         ret = load_kubernetes_service_config_no_cache(
             service="kurupt",
             instance="fm",
             cluster="brentford",
             load_deployments=False,
+            soa_dir="/nail/blah",
+        )
+        mock_load_service_instance_config.assert_called_with(
+            service="kurupt",
+            instance="fm",
+            instance_type="kubernetes",
+            cluster="brentford",
             soa_dir="/nail/blah",
         )
         mock_kube_deploy_config.assert_called_with(
