@@ -244,26 +244,35 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_bounce_start_deadline(self) -> float:
         return self.config_dict.get("bounce_start_deadline", 0)
 
+    def get_autoscaled_instances(self) -> int:
+        try:
+            zk_instances = get_instances_from_zookeeper(
+                service=self.service, instance=self.instance
+            )
+            log.debug("Got %d instances out of zookeeper" % zk_instances)
+            return zk_instances
+        except NoNodeError:
+            log.debug("No zookeeper data, returning None")
+            return None
+
+    def set_autoscaled_instances(self, instance_count: int) -> None:
+        """Set the number of instances in the same way that the autoscaler does."""
+        set_instances_for_marathon_service(
+            service=self.service, instance=self.instance, instance_count=instance_count,
+        )
+
     def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
         if self.get_max_instances() is not None:
-            try:
-                zk_instances = get_instances_from_zookeeper(
-                    service=self.service, instance=self.instance
-                )
-                log.debug("Got %d instances out of zookeeper" % zk_instances)
-            except NoNodeError:
-                log.debug(
-                    "No zookeeper data, returning max_instances (%d)"
-                    % self.get_max_instances()
-                )
+            autoscaled_instances = self.get_autoscaled_instances()
+            if autoscaled_instances is None:
                 return self.get_max_instances()
             else:
                 limited_instances = (
-                    self.limit_instance_count(zk_instances)
+                    self.limit_instance_count(autoscaled_instances)
                     if with_limit
-                    else zk_instances
+                    else autoscaled_instances
                 )
                 return limited_instances
         else:
