@@ -164,7 +164,10 @@ def get_report_from_splunk(creds, filename, criteria_filter):
         serv["old_mem"] = d["result"].get("current_mem")
         services_to_update[criteria] = serv
 
-    return services_to_update
+    return {
+        "search": search,
+        "results": services_to_update,
+    }
 
 
 def clone_in(target_dir):
@@ -177,20 +180,24 @@ def create_branch(branch_name):
     subprocess.check_call(("git", "checkout", "-b", branch_name))
 
 
-def bulk_commit(filenames):
-    message = "Rightsizer bulk update"
+def bulk_commit(filenames, originating_search):
+    message = f"Rightsizer bulk update\n\nSplunk search:\n{originating_search}"
     subprocess.check_call(["git", "add"] + filenames)
     subprocess.check_call(("git", "commit", "-n", "-m", message))
 
 
-def bulk_review(filenames, publish=False):
+def bulk_review(filenames, originating_search, publish=False):
     reviewers = set(get_reviewers_in_group("right-sizer"))
     for filename in filenames:
         reviewers = reviewers.union(get_reviewers(filename))
 
     reviewers_arg = " ".join(list(reviewers))
     summary = "Rightsizer bulk update"
-    description = "This is an automated bulk review. It will be shipped automatically if a primary reviewer gives a shipit. If you think this should not be shipped, talk to one of the primary reviewers."
+    description = (
+        "This is an automated bulk review. It will be shipped automatically if a primary reviewer gives a shipit. If you think this should not be shipped, talk to one of the primary reviewers. \n\n"
+        "This review is based on results from the following Splunk search:\n"
+        f"{originating_search}"
+    )
     review_cmd = [
         "review-branch",
         f"--summary={summary}",
@@ -378,21 +385,21 @@ def bulk_rightsize(report, create_code_review, publish_code_review, create_new_b
         create_branch(branch)
 
     filenames = []
-    for _, serv in report.items():
+    for _, serv in report["results"].items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
         filenames.append(filename)
         cpus = serv.get("cpus", None)
         mem = serv.get("mem", None)
         edit_soa_configs(filename, serv["instance"], cpus, mem)
     if create_code_review:
-        bulk_commit(filenames)
-        bulk_review(filenames, publish_code_review)
+        bulk_commit(filenames, report["search"])
+        bulk_review(filenames, report["search"], publish_code_review)
 
 
 def individual_rightsize(
     report, create_tickets, jira_creds, create_review, publish_review, JIRA
 ):
-    for _, serv in report.items():
+    for _, serv in report["results"].items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
         summary, ticket_desc = generate_ticket_content(serv)
 
