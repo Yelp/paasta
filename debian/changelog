@@ -1,3 +1,11 @@
+paasta-tools (0.94.6) xenial; urgency=medium
+
+  * 0.94.6 tagged with 'make release'
+    Commit: Merge pull request #2698 from Yelp/fix-kafkacluster-name
+    Filename should be kafkacluster
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 04 Mar 2020 10:42:49 -0800
+
 paasta-tools (0.94.5) xenial; urgency=medium
 
   * 0.94.5 tagged with 'make release'
