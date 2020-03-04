@@ -255,8 +255,6 @@ class DeploymentWrapper(Application):
                 target=self.deep_delete_and_create, args=[KubeClient()]
             ).start()
             return
-        if self.should_have_hpa():
-            self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
@@ -390,3 +388,17 @@ class StatefulSetWrapper(Application):
     def update(self, kube_client: KubeClient):
         update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
         self.ensure_pod_disruption_budget(kube_client)
+
+
+def get_application_wrapper(
+    formatted_application: Union[V1Deployment, V1StatefulSet]
+) -> Application:
+    app: Application
+    if isinstance(formatted_application, V1Deployment):
+        app = DeploymentWrapper(formatted_application)
+    elif isinstance(formatted_application, V1StatefulSet):
+        app = StatefulSetWrapper(formatted_application)
+    else:
+        raise Exception("Unknown kubernetes object to update")
+
+    return app

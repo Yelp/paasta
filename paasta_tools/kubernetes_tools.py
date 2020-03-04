@@ -925,51 +925,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_instance_name(self) -> str:
         return sanitise_kubernetes_name(self.get_instance())
 
-    def get_instances(self, with_limit: bool = True) -> int:
-        """
-        Return expected number of instances. If the controller is running, return
-        desired replicas. Otherwise, return the number of instances in yelpsoa_config
-        """
-        if self.get_max_instances() is not None:
-            try:
-                return (
-                    KubeClient()
-                    .deployments.read_namespaced_deployment(
-                        name=self.get_sanitised_deployment_name(), namespace="paasta"
-                    )
-                    .spec.replicas
+    def get_autoscaled_instances(self) -> int:
+        try:
+            return (
+                KubeClient()
+                .deployments.read_namespaced_deployment(
+                    name=self.get_sanitised_deployment_name(), namespace="paasta"
                 )
-            except ApiException as e:
-                log.error(e)
-                log.debug(
-                    "Error occured when trying to connect to Kubernetes API, \
-                    returning max_instances (%d)"
-                    % self.get_max_instances()
-                )
-                return self.get_max_instances()
-        else:
-            instances = self.config_dict.get("instances", 1)
-            log.debug("Autoscaling not enabled, returning %d instances" % instances)
-            return instances
+                .spec.replicas
+            )
+        except ApiException as e:
+            log.error(e)
+            log.debug(
+                "Error occured when trying to connect to Kubernetes API, \
+                returning max_instances (%d)"
+                % self.get_max_instances()
+            )
+            return None
+
+    def set_autoscaled_instances(self, instance_count: int) -> None:
+        raise NotImplementedError()
 
     def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance
         since we can't attach to multiple instances. In the future we might support
         statefulsets which are clever enough to manage EBS for you"""
-
-        if self.get_desired_state() == "start":
-            max_instances = self.get_max_instances()
-            instances = (
-                max_instances
-                if max_instances is not None
-                else self.config_dict.get("instances", 1)
-            )
-        elif self.get_desired_state() == "stop":
-            instances = 0
-            log.debug("Instance is set to stop. Returning '0' instances")
-        else:
-            raise Exception(f"The state of {self.service}.{self.instance} is unknown.")
-
+        instances = super().get_desired_instances()
         if self.get_aws_ebs_volumes() and instances not in [1, 0]:
             raise Exception(
                 "Number of instances must be 1 or 0 if an EBS volume is defined."
