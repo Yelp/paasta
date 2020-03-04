@@ -24,6 +24,7 @@ from paasta_tools.cli.cmds.spark_run import emit_resource_requirements
 from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
+from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import get_spark_config
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
@@ -551,6 +552,22 @@ def test_emit_resource_requirements(tmpdir):
             ],
             any_order=True,
         )
+
+
+@pytest.mark.parametrize(
+    "cmd,expected_name",
+    [
+        (
+            ["spark-submit", "path/to/my-script.py", "--some-configs", "values"],
+            "spark_run_my-script_fake_user",
+        ),
+        (["jupyterlab"], "paasta_spark_run_fake_user"),
+    ],
+)
+def test_get_spark_app_name(cmd, expected_name):
+    with mock.patch("paasta_tools.cli.cmds.spark_run.get_username", autospec=True) as m:
+        m.return_value = "fake_user"
+        assert get_spark_app_name(cmd) == expected_name
 
 
 def test_get_docker_cmd_add_spark_conf_str():
