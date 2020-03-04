@@ -40,11 +40,11 @@ def get_paasta_api_client(
 ) -> Any:
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
-
     if not cluster:
         cluster = system_paasta_config.get_cluster()
-
-    api_endpoints = system_paasta_config.get_api_endpoints()
+    # api_endpoints = system_paasta_config.get_api_endpoints()
+    api_endpoints = {'kubestage': 'http://localhost:56123', 'mesosstage': 'http://localhost:56123'}
+    print(api_endpoints)
     if cluster not in api_endpoints:
         log.error("Cluster %s not in paasta-api endpoints config", cluster)
         return None
