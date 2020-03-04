@@ -594,6 +594,21 @@ def run_docker_container(
     return 0
 
 
+def get_spark_app_name(original_docker_cmd):
+    # Use submitted batch name as default spark_run job name
+    if "spark-submit" in original_docker_cmd:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("cmd", choices=["spark-submit"])
+        parser.add_argument("others", nargs="+")
+        args, _ = parser.parse_known_args(original_docker_cmd)
+        scripts = [arg for arg in args.others if arg.endswith(".py")]
+        if len(scripts) > 0:
+            batch_name = scripts[0].split("/")[-1].replace(".py", "")
+            spark_app_name = "spark_run_{}_{}".format(batch_name, get_username())
+            return spark_app_name
+    return "paasta_spark_run_{}".format(get_username())
+
+
 def configure_and_run_docker_container(
     args: argparse.Namespace,
     docker_img: str,
@@ -617,13 +632,13 @@ def configure_and_run_docker_container(
                 file=sys.stderr,
             )
 
-    spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    spark_app_name = "paasta_spark_run_{}".format(get_username())
-    container_name = spark_app_name + "_" + str(spark_ui_port)
     original_docker_cmd = args.cmd or instance_config.get_cmd()
+    spark_ui_port = pick_random_port(args.service + str(os.getpid()))
+    spark_app_name = get_spark_app_name(original_docker_cmd)
+
+    container_name = spark_app_name + "_" + str(spark_ui_port)
     if "jupyter" not in original_docker_cmd:
         spark_app_name = container_name
-
     access_key, secret_key = get_aws_credentials(
         service=args.service,
         no_aws_credentials=args.no_aws_credentials,
