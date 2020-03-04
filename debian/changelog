@@ -1,3 +1,12 @@
+paasta-tools (0.94.5) xenial; urgency=medium
+
+  * 0.94.5 tagged with 'make release'
+    Commit: Merge pull request #2668 from rohangulati/u/rgulati/KAFKA-
+    25246  [KAFKA-25246] Adds support for kafka cluster status in
+    `paasta status`
+
+ -- Rohan Gulati <rgulati@yelp.com>  Wed, 04 Mar 2020 06:31:02 -0800
+
 paasta-tools (0.94.4) xenial; urgency=medium
 
   * 0.94.4 tagged with 'make release'
