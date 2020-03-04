@@ -82,9 +82,11 @@ def test_create_application_object():
         "paasta_tools.kubernetes.application.controller_wrappers.Application.load_local_config",
         autospec=True,
     ), mock.patch(
-        "paasta_tools.setup_kubernetes_job.DeploymentWrapper", autospec=True
+        "paasta_tools.kubernetes.application.controller_wrappers.DeploymentWrapper",
+        autospec=True,
     ) as mock_deployment_wrapper, mock.patch(
-        "paasta_tools.setup_kubernetes_job.StatefulSetWrapper", autospec=True
+        "paasta_tools.kubernetes.application.controller_wrappers.StatefulSetWrapper",
+        autospec=True,
     ) as mock_stateful_set_wrapper:
         mock_kube_client = mock.Mock()
         mock_deploy = mock.MagicMock(spec=V1Deployment)
