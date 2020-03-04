@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import defaultdict
 from typing import Any
 from typing import Dict
+from typing import Mapping
 from typing import Set
 
 import pytest
@@ -44,6 +46,7 @@ from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
+from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
@@ -911,6 +914,21 @@ class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)
 
+    def __iter__(self):
+        return iter(self.__dict__)
+
+    def __getitem__(self, property_name):
+        """Get a property value by name.
+        :type property_name: str
+        """
+        return self.__dict__[property_name]
+
+    def __setitem__(self, property_name, val):
+        """Set a property value by name.
+        :type property_name: str
+        """
+        self.__dict__[property_name] = val
+
 
 @pytest.fixture
 def mock_marathon_status():
@@ -971,6 +989,31 @@ def mock_kubernetes_status():
     )
 
 
+@pytest.fixture
+def mock_kafka_status() -> Mapping[str, Any]:
+    return defaultdict(
+        metadata=Struct(
+            name="kafka--k8s-local-main",
+            namespace="paasta-kafkaclusters",
+            annotations={"paasta.yelp.com/desired_state": "testing"},
+        ),
+        status=Struct(
+            brokers=[
+                {"host": "10.93.122.47", "id": 0, "phase": "running"},
+                {"host": "10.93.115.200", "id": 1, "phase": "pending"},
+            ],
+            cluster_ready=True,
+            health={
+                "healthy": False,
+                "message": "message",
+                "offline_partitions": 1,
+                "under_replicated_partitions": 1,
+            },
+            kafka_view_url="https://kafkaview.com",
+        ),
+    )
+
+
 def test_paasta_status_on_api_endpoint_marathon(
     system_paasta_config, mock_marathon_status
 ):
@@ -1025,6 +1068,7 @@ class TestPrintMarathonStatus:
         mock_marathon_status.error_message = "Things went wrong"
         output = []
         return_value = print_marathon_status(
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -1036,6 +1080,7 @@ class TestPrintMarathonStatus:
 
     def test_successful_return_value(self, mock_marathon_status):
         return_value = print_marathon_status(
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=[],
@@ -1100,6 +1145,7 @@ class TestPrintMarathonStatus:
 
         output = []
         print_marathon_status(
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -1133,6 +1179,7 @@ class TestPrintKubernetesStatus:
         mock_kubernetes_status.error_message = "Things went wrong"
         output = []
         return_value = print_kubernetes_status(
+            cluster="fake_Cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -1144,6 +1191,7 @@ class TestPrintKubernetesStatus:
 
     def test_successful_return_value(self, mock_kubernetes_status):
         return_value = print_kubernetes_status(
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=[],
@@ -1213,6 +1261,7 @@ class TestPrintKubernetesStatus:
 
         output = []
         print_kubernetes_status(
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -1236,6 +1285,61 @@ class TestPrintKubernetesStatus:
             f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})",
         ]
 
+        assert expected_output == output
+
+
+class TestPrintKafkaStatus:
+    def test_error(self, mock_kafka_status):
+        mock_kafka_status["status"] = None
+        output = []
+        return_value = print_kafka_status(
+            cluster="fake_Cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            kafka_status=mock_kafka_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert output == [PaastaColors.red("    Kafka cluster is not available yet")]
+
+    def test_successful_return_value(self, mock_kafka_status):
+        return_value = print_kafka_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            kafka_status=mock_kafka_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+    def test_output(self, mock_kafka_status):
+        output = []
+        print_kafka_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            kafka_status=mock_kafka_status,
+            verbose=0,
+        )
+
+        status = mock_kafka_status["status"]
+        expected_output = [
+            f"    Kafka View Url: {status.kafka_view_url}",
+            f"    State: testing",
+            f"    Ready: {str(status.cluster_ready).lower()}",
+            f"    Health: {PaastaColors.red('unhealthy')}",
+            f"     Reason: {status.health['message']}",
+            f"     Offline Partitions: {status.health['offline_partitions']}",
+            f"     Under Replicated Partitions: {status.health['under_replicated_partitions']}",
+            f"    Brokers:",
+            f"     Broker Id  Host           Phase",
+            f"     0          10.93.122.47   running",
+            f"     1          10.93.115.200  pending",
+        ]
         assert expected_output == output
 
 

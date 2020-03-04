@@ -669,6 +669,18 @@
                         }
                     },
                     "description": "Nullable Flink instance status and metadata"
+                },
+                "kafkacluster": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "$ref": "#/definitions/InstanceStatusKafkaCluster"
+                        },
+                        "metadata": {
+                            "$ref": "#/definitions/InstanceMetadataKafkaCluster"
+                        }
+                    },
+                    "description": "Nullable KafkaCluster instance status and metadata"
                 }
             }
         },
@@ -1374,6 +1386,18 @@
         "InstanceMetadataFlink": {
             "type": "object",
             "description": "Flink instance metadata"
+        },
+        "InstanceStatusKafkaCluster": {
+            "type": "object",
+            "description": "Kafka instance status"
+        },
+        "InstanceMetadataKafkaCluster": {
+            "type": "object",
+            "description": "Kafka instance metadata"
+        },
+        "InstanceSpecKafkaCluster": {
+            "type": "object",
+            "description": "Kafka instance spec"
         },
         "InstanceTasks": {
             "type": "array",
