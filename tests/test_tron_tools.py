@@ -119,6 +119,7 @@ class TestTronActionConfig:
                 spark_ui_port=12345,
                 user_spark_opts={"spark.eventLog.enabled": "false"},
                 volumes=["/nail/tmp:/nail/tmp:rw"],
+                needs_docker_cfg=True,
             )
 
     def test_get_spark_config_dict_k8s(self, spark_action_config):
@@ -189,6 +190,7 @@ class TestTronActionConfig:
                 assert env["AWS_DEFAULT_REGION"] == "us-west-2"
                 assert env["SPARK_MESOS_PRINCIPAL"] == "spark"
                 assert env["SPARK_MESOS_SECRET"] == "SHARED_SECRET(SPARK_MESOS_SECRET)"
+                assert env["SPARK_USER"] == "root"
             else:
                 assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
