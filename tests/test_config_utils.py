@@ -81,7 +81,7 @@ def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
     for config_type in config_utils.KNOWN_CONFIG_TYPES:
         filepath = f"service/{config_type}-cluster.yaml"
         config_utils.validate_auto_config_file(filepath)
-        mock_validate.assert_called_with(filepath, f"auto/{config_type}")
+        mock_validate.assert_called_with(filepath, f"autotuned_defaults/{config_type}")
 
 
 @mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)

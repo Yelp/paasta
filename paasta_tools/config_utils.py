@@ -100,7 +100,9 @@ def validate_auto_config_file(filepath: str):
     basename = os.path.basename(filepath)
     for file_type in KNOWN_CONFIG_TYPES:
         if basename.startswith(file_type):
-            return bool(validate_schema(filepath, f"auto/{file_type}"))
+            return bool(
+                validate_schema(filepath, f"{AUTO_SOACONFIG_SUBDIR}/{file_type}")
+            )
     else:
         logging.info(f"{filepath} is invalid because it has no validator defined")
         return False
