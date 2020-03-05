@@ -473,7 +473,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return self.get_hpa_metric_spec(name, cluster, namespace)
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
-        if min_replicas is not None or max_replicas is not None:
+        if min_replicas is None or max_replicas is None:
             log.error(
                 f"Please specify min_instances and max_instances for autoscaling to work: {min_replicas}, {max_replicas}"
             )
