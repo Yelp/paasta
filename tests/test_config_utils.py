@@ -17,11 +17,13 @@ def mock_subprocess():
 
 @pytest.fixture
 def updater(tmpdir):
-    updater = config_utils.AutoConfigUpdater("test_source", "remote", tmp_dir=tmpdir)
+    updater = config_utils.AutoConfigUpdater(
+        "test_source", "remote", working_dir=tmpdir
+    )
 
     with updater:
         # make a valid service dir we can write in
-        os.mkdir(os.path.join(updater.working_dir.name, "foo"))
+        os.mkdir(os.path.join(updater.working_dir, "foo"))
         yield updater
 
 
@@ -113,12 +115,12 @@ def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
 def test_auto_config_updater_context(branch, tmpdir, mock_subprocess):
     remote = "git_remote"
     updater = config_utils.AutoConfigUpdater(
-        "test_source", remote, branch=branch, tmp_dir=tmpdir
+        "test_source", remote, branch=branch, working_dir=tmpdir
     )
     initial_wd = os.getcwd()
 
     with updater:
-        clone_dir = updater.working_dir.name
+        clone_dir = updater.working_dir
         assert os.path.isdir(clone_dir)
         expected_calls = [mock.call.check_call(["git", "clone", remote, clone_dir])]
         if branch != "master":
@@ -130,6 +132,28 @@ def test_auto_config_updater_context(branch, tmpdir, mock_subprocess):
 
     # Clean up after exiting context
     assert not os.path.exists(clone_dir)
+    assert os.getcwd() == initial_wd
+
+
+@pytest.mark.parametrize("branch", ["master", "other_test"])
+def test_auto_config_updater_context_no_clone(branch, tmpdir, mock_subprocess):
+    remote = "git_remote"
+    working_dir = tmpdir.mkdir("testing")
+    updater = config_utils.AutoConfigUpdater(
+        "test_source", remote, branch=branch, working_dir=working_dir, do_clone=False,
+    )
+    initial_wd = os.getcwd()
+
+    with updater:
+        if branch == "master":
+            expected_calls = []
+        else:
+            expected_calls = [mock.call.check_call(["git", "checkout", "-b", branch])]
+        assert mock_subprocess.mock_calls == expected_calls
+        assert os.getcwd() == working_dir
+
+    # Existing directory not deleted
+    assert os.path.exists(working_dir)
     assert os.getcwd() == initial_wd
 
 

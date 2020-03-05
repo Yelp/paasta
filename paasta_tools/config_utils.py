@@ -142,39 +142,43 @@ class AutoConfigUpdater:
         config_source: str,
         git_remote: str,
         branch: str = "master",
-        tmp_dir: Optional[str] = None,
+        working_dir: Optional[str] = None,
+        do_clone: bool = True,
     ):
         self.config_source = config_source
         self.git_remote = git_remote
         self.branch = branch
-        self.tmp_dir = tmp_dir
+        self.working_dir = working_dir
+        self.do_clone = do_clone
         self.files_changed: Set[str] = set()
+        self.tmp_dir = None
 
     def __enter__(self):
-        self.working_dir = TemporaryDirectory(dir=self.tmp_dir)
-        subprocess.check_call(["git", "clone", self.git_remote, self.working_dir.name])
+        if self.do_clone:
+            self.tmp_dir = TemporaryDirectory(dir=self.working_dir)
+            self.working_dir = self.tmp_dir.name
+            subprocess.check_call(["git", "clone", self.git_remote, self.working_dir])
         self.pwd = os.getcwd()
-        os.chdir(self.working_dir.name)
+        os.chdir(self.working_dir)
         if self.branch != "master":
             subprocess.check_call(["git", "checkout", "-b", self.branch])
         return self
 
     def __exit__(self, type, value, traceback):
         os.chdir(self.pwd)
-        self.working_dir.cleanup()
+        if self.tmp_dir:
+            self.tmp_dir.cleanup()
 
     def write_configs(self, service: str, extra_info: str, configs: Dict[str, Any]):
         result = write_auto_config_data(
-            service, extra_info, configs, soa_dir=self.working_dir.name
+            service, extra_info, configs, soa_dir=self.working_dir
         )
         if result:
             self.files_changed.add(result)
 
     def get_existing_configs(self, service: str, extra_info: str) -> Dict[str, Any]:
         return read_extra_service_information(
-            service,
-            f"{AUTO_SOACONFIG_SUBDIR}/{extra_info}",
-            soa_dir=self.working_dir.name,
+            service, f"{AUTO_SOACONFIG_SUBDIR}/{extra_info}", soa_dir=self.working_dir,
         )
 
     def validate(self):
