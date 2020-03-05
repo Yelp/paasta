@@ -1229,6 +1229,7 @@ class TestPrintKubernetesStatus:
                 host="fake_host1",
                 deployed_timestamp=1562963508,
                 phase="Running",
+                ready=True,
                 containers=[],
                 message=None,
             ),
@@ -1237,6 +1238,7 @@ class TestPrintKubernetesStatus:
                 host="fake_host2",
                 deployed_timestamp=1562963510,
                 phase="Running",
+                ready=True,
                 containers=[],
                 message=None,
             ),
@@ -1245,6 +1247,7 @@ class TestPrintKubernetesStatus:
                 host="fake_host3",
                 deployed_timestamp=1562963511,
                 phase="Failed",
+                ready=False,
                 containers=[],
                 message="Disk quota exceeded",
                 reason="Evicted",
@@ -1492,6 +1495,7 @@ class TestFormatKubernetesPodTable:
             host="paasta.cloud",
             deployed_timestamp=1565648600,
             phase="Running",
+            ready=True,
             containers=[],
             message=None,
             reason=None,
@@ -1543,13 +1547,17 @@ class TestFormatKubernetesPodTable:
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Host deployed to"] == "Unknown"
 
+    @pytest.mark.parametrize("phase,ready", [("Failed", False), ("Running", False)])
     def test_unhealthy(
         self,
         mock_naturaltime,
         mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
+        phase,
+        ready,
     ):
-        mock_kubernetes_pod.phase = "Failed"
+        mock_kubernetes_pod.phase = phase
+        mock_kubernetes_pod.ready = ready
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")
