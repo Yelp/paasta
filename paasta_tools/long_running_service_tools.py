@@ -20,6 +20,7 @@ from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 
+
 log = logging.getLogger(__name__)
 logging.getLogger("marathon").setLevel(logging.WARNING)
 
