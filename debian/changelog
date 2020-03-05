@@ -1,3 +1,12 @@
+paasta-tools (0.94.7) xenial; urgency=medium
+
+  * 0.94.7 tagged with 'make release'
+    Commit: Merge pull request #2697 from Yelp/u/siruitan/PAASTA-16199-
+    fix_docker_registry_permission_issue  Fix docker registry permission
+    issue
+
+ -- Aaron Tan <siruitan@yelp.com>  Thu, 05 Mar 2020 10:40:54 -0800
+
 paasta-tools (0.94.6) xenial; urgency=medium
 
   * 0.94.6 tagged with 'make release'
