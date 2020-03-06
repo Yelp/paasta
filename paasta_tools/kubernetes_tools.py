@@ -1667,7 +1667,6 @@ def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
 
 
 is_pod_ready = _is_it_ready
-
 is_node_ready = _is_it_ready
 
 

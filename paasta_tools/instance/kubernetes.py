@@ -106,6 +106,7 @@ async def job_status(
                     "host": kubernetes_tools.get_pod_hostname(client, pod),
                     "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
                     "phase": pod.status.phase,
+                    "ready": kubernetes_tools.is_pod_ready(pod),
                     "containers": containers,
                     "reason": pod.status.reason,
                     "message": pod.status.message,

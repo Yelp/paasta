@@ -1295,6 +1295,10 @@
                     "type": "string",
                     "description": "name of the pod in Kubernetes"
                 },
+                "host": {
+                    "type": "string",
+                    "description": "name of the pod's host"
+                },
                 "deployed_timestamp": {
                     "type": "number",
                     "format": "float",
@@ -1304,12 +1308,30 @@
                     "type": "string",
                     "description": "The status of the pod"
                 },
+                "ready": {
+                    "type": "boolean",
+                    "description": "Whether or not the pod is ready (i.e. all containers up)"
+                },
                 "containers": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/KubernetesContainer",
                         "description": "List of containers in the pod"
                     }
+                },
+                "reason": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "short message explaining the pod's state"
+                },
+                "message": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "long message explaining the pod's state"
                 }
             }
         },

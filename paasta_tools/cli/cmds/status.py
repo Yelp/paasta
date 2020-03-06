@@ -655,6 +655,8 @@ def format_kubernetes_pod_table(pods):
             health_check_status = PaastaColors.grey("N/A")
         elif pod.phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
+            if not pod.ready:
+                health_check_status = PaastaColors.red("Unhealthy")
         elif pod.phase == "Failed" and pod.reason == "Evicted":
             health_check_status = PaastaColors.red("Evicted")
         else:
@@ -672,7 +674,7 @@ def format_kubernetes_pod_table(pods):
         )
         if pod.message is not None:
             rows.append(PaastaColors.grey(f"  {pod.message}"))
-        if pod.containers is not None:
+        if len(pod.containers) > 0:
             rows.extend(format_tail_lines_for_kubernetes_pod(pod.containers, pod.name))
 
     return format_table(rows)
