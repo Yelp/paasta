@@ -159,8 +159,7 @@ def get_kubernetes_task_allocation_info() -> Iterable[TaskAllocationInfo]:
                 "resources": get_kubernetes_resource_request(container.resources),
                 "container_type": get_container_type(container.name, instance),
             }
-        container_statuses = pod.status.container_statuses or []
-        for container in container_statuses:
+        for container in pod.status.container_statuses:
             if not container.state.running:
                 continue
             # docker://abcdef
