@@ -155,6 +155,10 @@ def is_mesos_leader(hostname: str = MY_HOSTNAME) -> bool:
     return get_mesos_leader() == hostname
 
 
+class MesosLeaderUnavailable(Exception):
+    pass
+
+
 def find_mesos_leader(cluster):
     """ Find the leader with redirect given one mesos master.
     """
@@ -165,7 +169,11 @@ def find_mesos_leader(cluster):
         raise ValueError("Mesos master is required to find leader")
 
     url = f"http://{master}:{MESOS_MASTER_PORT}/redirect"
-    response = requests.get(url)
+    try:
+        # Timeouts here are for connect, read
+        response = requests.get(url, timeout=(5, 30))
+    except Exception as e:
+        raise MesosLeaderUnavailable(e)
     hostname = urlparse(response.url).hostname
     return f"{hostname}:{MESOS_MASTER_PORT}"
 
