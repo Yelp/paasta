@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import socket
 import sys
 import time
@@ -301,6 +302,11 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_spark_run)
 
 
+def sanitize_container_name(container_name):
+    # container_name only allows [a-zA-Z0-9][a-zA-Z0-9_.-]
+    return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
+
+
 def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvidia):
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append("--rm")
@@ -315,7 +321,7 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
             cmd.append("--tty=true")
 
     cmd.append("--user=%d:%d" % (os.geteuid(), os.getegid()))
-    cmd.append("--name=%s" % container_name)
+    cmd.append("--name=%s" % sanitize_container_name(container_name))
     for k, v in env.items():
         cmd.append("--env")
         if k in SENSITIVE_ENV:
@@ -576,6 +582,7 @@ def parse_constraints_string(constraints_string: str) -> Mapping[str, str]:
 def run_docker_container(
     container_name, volumes, environment, docker_img, docker_cmd, dry_run, nvidia
 ) -> int:
+
     docker_run_args = dict(
         container_name=container_name,
         volumes=volumes,
@@ -594,19 +601,26 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd):
+def get_spark_app_name(original_docker_cmd, spark_ui_port):
     # Use submitted batch name as default spark_run job name
+    spark_app_name = "paasta_spark_run"
     if "spark-submit" in original_docker_cmd:
         parser = argparse.ArgumentParser()
         parser.add_argument("cmd", choices=["spark-submit"])
         parser.add_argument("others", nargs="+")
         args, _ = parser.parse_known_args(original_docker_cmd)
         scripts = [arg for arg in args.others if arg.endswith(".py")]
+        # if we are able to find the running script from cmd, update
+        # the app name to be the first batch name we found
         if len(scripts) > 0:
             batch_name = scripts[0].split("/")[-1].replace(".py", "")
-            spark_app_name = "spark_run_{}_{}".format(batch_name, get_username())
-            return spark_app_name
-    return "paasta_spark_run_{}".format(get_username())
+            spark_app_name = "paasta_" + batch_name
+
+    if "jupyter-lab" in original_docker_cmd:
+        spark_app_name = "paasta_jupyter"
+
+    spark_app_name += "_{}_{}".format(get_username(), spark_ui_port)
+    return spark_app_name
 
 
 def configure_and_run_docker_container(
@@ -634,11 +648,8 @@ def configure_and_run_docker_container(
 
     original_docker_cmd = args.cmd or instance_config.get_cmd()
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    spark_app_name = get_spark_app_name(original_docker_cmd)
+    spark_app_name = get_spark_app_name(original_docker_cmd, spark_ui_port)
 
-    container_name = spark_app_name + "_" + str(spark_ui_port)
-    if "jupyter" not in original_docker_cmd:
-        spark_app_name = container_name
     access_key, secret_key = get_aws_credentials(
         service=args.service,
         no_aws_credentials=args.no_aws_credentials,
@@ -695,7 +706,7 @@ def configure_and_run_docker_container(
                 raise
 
     return run_docker_container(
-        container_name=container_name,
+        container_name=spark_app_name,
         volumes=volumes,
         environment=environment,
         docker_img=docker_img,
