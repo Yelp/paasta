@@ -1,3 +1,4 @@
+import unittest
 from typing import Any
 from typing import Dict
 from typing import Sequence
@@ -7,7 +8,6 @@ import pytest
 from hypothesis import given
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
-from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1Capabilities
@@ -25,10 +25,6 @@ from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
-from kubernetes.client import V1NodeAffinity
-from kubernetes.client import V1NodeSelector
-from kubernetes.client import V1NodeSelectorRequirement
-from kubernetes.client import V1NodeSelectorTerm
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
@@ -224,8 +220,8 @@ def test_load_kubernetes_service_config():
         assert ret == mock_load_kubernetes_service_config_no_cache.return_value
 
 
-class TestKubernetesDeploymentConfig:
-    def setup_method(self, method):
+class TestKubernetesDeploymentConfig(unittest.TestCase):
+    def setUp(self):
         hpa_config = {
             "min_replicas": 1,
             "max_replicas": 3,
@@ -967,9 +963,6 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
             return_value=[],
         ) as mock_get_pod_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-            autospec=True,
-        ) as mock_get_node_affinity, mock.patch(
             "paasta_tools.kubernetes_tools.load_service_namespace_config",
             autospec=True,
         ) as mock_load_service_namespace_config:
@@ -985,6 +978,7 @@ class TestKubernetesDeploymentConfig:
             assert mock_service_namespace_config.is_in_smartstack.called
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
+            print(ret.metadata.annotations)
             assert ret == V1PodTemplateSpec(
                 metadata=V1ObjectMeta(
                     labels={
@@ -1007,9 +1001,6 @@ class TestKubernetesDeploymentConfig:
                     containers=mock_get_kubernetes_containers.return_value,
                     share_process_namespace=True,
                     node_selector={"yelp.com/pool": "default"},
-                    affinity=V1Affinity(
-                        node_affinity=mock_get_node_affinity.return_value,
-                    ),
                     restart_policy="Always",
                     volumes=[],
                 ),
@@ -1033,9 +1024,6 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
             return_value=[],
         ) as mock_get_pod_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-            autospec=True,
-        ) as mock_get_node_affinity, mock.patch(
             "paasta_tools.kubernetes_tools.load_service_namespace_config",
             autospec=True,
         ) as mock_load_service_namespace_config:
@@ -1051,6 +1039,7 @@ class TestKubernetesDeploymentConfig:
             assert mock_service_namespace_config.is_in_smartstack.called
             assert mock_get_pod_volumes.called
             assert mock_get_volumes.called
+            print(ret.metadata.annotations)
             assert ret == V1PodTemplateSpec(
                 metadata=V1ObjectMeta(
                     labels={
@@ -1073,72 +1062,10 @@ class TestKubernetesDeploymentConfig:
                     containers=mock_get_kubernetes_containers.return_value,
                     share_process_namespace=True,
                     node_selector={"yelp.com/pool": "default"},
-                    affinity=V1Affinity(
-                        node_affinity=mock_get_node_affinity.return_value,
-                    ),
                     restart_policy="Always",
                     volumes=[],
                 ),
             )
-
-    @pytest.mark.parametrize(
-        "whitelist,blacklist,expected",
-        [
-            # no blacklist or whitelist, only node affinity should be pool
-            (None, [], []),
-            (  # whitelist only
-                ("habitat", ["habitat_a", "habitat_b"]),
-                [],
-                [
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat",
-                        operator="In",
-                        values=["habitat_a", "habitat_b"],
-                    ),
-                ],
-            ),
-            (  # blacklist only
-                None,
-                [("habitat", "habitat_a"), ("habitat", "habitat_b")],
-                [
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat", operator="NotIn", values=["habitat_a"]
-                    ),
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat", operator="NotIn", values=["habitat_b"]
-                    ),
-                ],
-            ),
-            (  # whitelist and blacklist
-                ("habitat", ["habitat_a", "habitat_b"]),
-                [("region", "region_a"), ("habitat", "habitat_c")],
-                [
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat",
-                        operator="In",
-                        values=["habitat_a", "habitat_b"],
-                    ),
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/region", operator="NotIn", values=["region_a"]
-                    ),
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat", operator="NotIn", values=["habitat_c"]
-                    ),
-                ],
-            ),
-        ],
-    )
-    def test_get_node_affinity(self, whitelist, blacklist, expected):
-        self.deployment.config_dict["deploy_whitelist"] = whitelist
-        self.deployment.config_dict["deploy_blacklist"] = blacklist
-
-        node_affinity = self.deployment.get_node_affinity()
-
-        assert node_affinity == V1NodeAffinity(
-            required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                node_selector_terms=[V1NodeSelectorTerm(match_expressions=expected,)],
-            ),
-        )
 
     def test_get_kubernetes_metadata(self):
         with mock.patch(
@@ -2559,7 +2486,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configc7d4fe91"
+            == "config3b06ff5f"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
