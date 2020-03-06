@@ -91,6 +91,7 @@ async def job_status(
         num_tail_lines = calculate_tail_lines(verbose)
 
         for pod in pod_list:
+            container_statuses = pod.status.container_statuses or []
             containers = [
                 dict(
                     name=container.name,
@@ -98,7 +99,7 @@ async def job_status(
                         client, pod, container, num_tail_lines,
                     ),
                 )
-                for container in pod.status.container_statuses
+                for container in container_statuses
             ]
             kstatus["pods"].append(
                 {
