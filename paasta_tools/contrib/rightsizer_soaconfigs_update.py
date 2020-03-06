@@ -54,6 +54,19 @@ def parse_args():
         dest="branch",
     )
     parser.add_argument(
+        "--push-to-remote",
+        help="Actually push to remote. Otherwise files will only be modified and validated.",
+        action="store_true",
+        dest="push_to_remote",
+    )
+    parser.add_argument(
+        "--local-dir",
+        help="Act on configs in the local directory rather than cloning the git_remote",
+        required=False,
+        default=None,
+        dest="local_dir",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         help="Logging verbosity",
@@ -101,18 +114,25 @@ def main(args):
     extra_message = get_extra_message(report["search"])
 
     results = get_recommendations_by_service_file(report["results"])
-    source_identifier = args.csv_report
-
-    with AutoConfigUpdater(
-        source_identifier, args.git_remote, branch=args.branch, tmp_dir="/nail/tmp"
-    ) as updater:
+    updater = AutoConfigUpdater(
+        config_source=args.csv_report,
+        git_remote=args.git_remote,
+        branch=args.branch,
+        working_dir=args.local_dir or "/nail/tmp",
+        do_clone=args.local_dir is None,
+    )
+    with updater:
         for (service, extra_info), instance_recommendations in results.items():
             existing_recommendations = updater.get_existing_configs(service, extra_info)
             for instance_name, recommendation in instance_recommendations.items():
                 existing_recommendations.setdefault(instance_name, {})
                 existing_recommendations[instance_name].update(recommendation)
             updater.write_configs(service, extra_info, existing_recommendations)
-        updater.commit_to_remote(extra_message=extra_message)
+
+        if args.push_to_remote:
+            updater.commit_to_remote(extra_message=extra_message)
+        else:
+            updater.validate()
 
 
 if __name__ == "__main__":
