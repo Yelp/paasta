@@ -1,3 +1,13 @@
+paasta-tools (0.94.9) xenial; urgency=medium
+
+  * 0.94.9 tagged with 'make release'
+    Commit: Revert "Merge pull request #2696 from Yelp/u/kawaiwan/k8s-
+    deploy-blacklist-whitelist"  This reverts commit
+    e29686130e99a6ac0ed001aa00e9cb0be43c2d79, reversing changes made to
+    d3d46455322e00a7b726455092ac0ee755a3dcc6.
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 05 Mar 2020 18:55:05 -0800
+
 paasta-tools (0.94.8) xenial; urgency=medium
 
   * 0.94.8 tagged with 'make release'
