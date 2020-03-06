@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2015-2016 Yelp Inc.
 #
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -84,8 +83,6 @@ def get_autoscaler_count(request):
 
     instance_type = get_instance_type(service, instance, cluster, soa_dir)
     service_config = get_service_config(instance_type, service, instance, cluster, soa_dir)
-    print(service_config)
-    print(service_config.get_sanitised_deployment_name())
 
     response_body = {
         "desired_instances": service_config.get_instances(),
@@ -131,8 +128,6 @@ def update_autoscaler_count(request):
         )
 
     if instance_type == 'marathon':
-        # Dump whatever number from the client to zk. get_instances() will limit
-        # readings from zk to [min_instances, max_instances].
         set_instances_for_marathon_service(service=service, instance=instance, instance_count=desired_instances)
     elif instance_type == 'kubernetes':
         kube_client = KubeClient()
