@@ -2491,21 +2491,26 @@ def test_warning_big_bounce():
 
 
 @pytest.mark.parametrize(
-    "node,expected",
+    "pod_node_name,node,expected",
     [
-        (
+        (  # ok case
+            "a_node_name",
             mock.Mock(metadata=mock.Mock(labels={"yelp.com/hostname": "a_hostname"})),
             "a_hostname",
         ),
-        (mock.Mock(metadata=mock.Mock(labels={})), "a_node_name",),
-        (ApiException(), "a_node_name",),
+        # error case: no node name, not scheduled
+        (None, ApiException(), "NotScheduled"),
+        # pod has no hostname label, default to node_name
+        ("a_node_name", mock.Mock(metadata=mock.Mock(labels={})), "a_node_name",),
+        # ApiException, default to node_name
+        ("a_node_name", ApiException(), "a_node_name",),
     ],
 )
-def test_get_pod_hostname(node, expected):
+def test_get_pod_hostname(pod_node_name, node, expected):
     client = mock.MagicMock()
     client.core.read_node.side_effect = [node]
     pod = mock.MagicMock()
-    pod.spec.node_name = "a_node_name"
+    pod.spec.node_name = pod_node_name
 
     hostname = kubernetes_tools.get_pod_hostname(client, pod)
 

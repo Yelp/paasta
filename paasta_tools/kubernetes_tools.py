@@ -2005,6 +2005,8 @@ def set_cr_desired_state(
 
 def get_pod_hostname(kube_client: KubeClient, pod: V1Pod) -> str:
     """Gets the hostname of a pod's node from labels"""
+    if not pod.spec.node_name:  # can be none, if pod not yet scheduled
+        return "NotScheduled"
     try:
         node = kube_client.core.read_node(name=pod.spec.node_name)
     except ApiException:
