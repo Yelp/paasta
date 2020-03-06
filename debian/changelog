@@ -1,3 +1,12 @@
+paasta-tools (0.94.8) xenial; urgency=medium
+
+  * 0.94.8 tagged with 'make release'
+    Commit: Merge pull request #2701 from Yelp/u/kawaiwan/accurate-pod-
+    status  Make pods with at least one container down properly show up
+    as unhealthy
+
+ -- Chien-An Lai <chl@yelp.com>  Thu, 05 Mar 2020 16:04:52 -0800
+
 paasta-tools (0.94.7) xenial; urgency=medium
 
   * 0.94.7 tagged with 'make release'
