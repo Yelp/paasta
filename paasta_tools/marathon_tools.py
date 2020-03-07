@@ -22,7 +22,6 @@ import json
 import logging
 import os
 import socket
-import sys
 from collections import defaultdict
 from math import ceil
 from typing import Any
@@ -63,7 +62,6 @@ from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_hashes
-from paasta_tools.utils import _log
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint
@@ -1578,37 +1576,6 @@ def get_num_at_risk_tasks(app: MarathonApp, draining_hosts: Sequence[str]) -> in
             num_at_risk_tasks += 1
     log.debug("%s has %d tasks running on at-risk hosts." % (app.id, num_at_risk_tasks))
     return num_at_risk_tasks
-
-
-def broadcast_log_all_services_running_here(
-    line: str, component: str = "monitoring"
-) -> None:
-    """Log a line of text to paasta logs of all services running on this host.
-
-    :param line: text to log
-    :param component: paasta log component
-    """
-    system_paasta_config = load_system_paasta_config()
-    cluster = system_paasta_config.get_cluster()
-
-    services = mesos_services_running_here(
-        framework_filter=lambda _: True,
-        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
-    )
-    for service, instance, _ in services:
-        _log(
-            line=line,
-            service=service,
-            instance=instance,
-            component=component,
-            cluster=cluster,
-        )
-
-
-def broadcast_log_all_services_running_here_from_stdin(
-    component: str = "monitoring",
-) -> None:
-    broadcast_log_all_services_running_here(sys.stdin.read().strip())
 
 
 def take_up_slack(client: MarathonClient, app: MarathonApp) -> None:

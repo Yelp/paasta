@@ -1112,3 +1112,15 @@ class TestTronTools:
         ]
         result = tron_tools.list_tron_clusters("foo")
         assert sorted(result) == ["dev-cluster2", "prod"]
+
+
+def test_parse_service_instance_from_executor_id_happy():
+    actual = tron_tools.parse_service_instance_from_executor_id(
+        "schematizer.traffic_generator.28414.turnstyle.46da87d7-6092-4ed4-b926-ffa7b21c7785"
+    )
+    assert actual == ("schematizer", "traffic_generator.turnstyle")
+
+
+def test_parse_service_instance_from_executor_id_sad():
+    actual = tron_tools.parse_service_instance_from_executor_id("UNKNOWN")
+    assert actual == ("unknown_service", "unknown_job.unknown_action")
