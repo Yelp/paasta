@@ -235,6 +235,7 @@ class TronActionConfig(InstanceConfig):
                 paasta_service=self.get_service(),
                 paasta_instance=self.get_instance(),
                 docker_img=self.get_docker_url(),
+                volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
                 user_spark_opts=self.config_dict.get("spark_args", {}),
                 event_log_dir=get_default_event_log_dir(
                     service=self.get_service(),

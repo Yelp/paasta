@@ -145,6 +145,18 @@ class TestTronActionConfig:
                 paasta_service="my_service",
                 spark_app_name="tron_spark_my_service_cool_job.print",
                 spark_ui_port=12345,
+                volumes=[
+                    {
+                        "hostPath": "/etc/pki/spark",
+                        "containerPath": "/etc/spark_k8s_secrets",
+                        "mode": "RO",
+                    },
+                    {
+                        "containerPath": "/nail/tmp",
+                        "hostPath": "/nail/tmp",
+                        "mode": "RW",
+                    },
+                ],
                 user_spark_opts={"spark.eventLog.enabled": "false"},
             )
 
