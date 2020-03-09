@@ -34,7 +34,7 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.6
+RUN virtualenv /venv -ppython3.6 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 
