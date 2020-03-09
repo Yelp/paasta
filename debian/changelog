@@ -1,3 +1,10 @@
+paasta-tools (0.94.12) xenial; urgency=medium
+
+  * 0.94.12 tagged with 'make release'
+    Commit: Merge branch "overload-the-meaning-of-force"
+
+ -- Timothy Zhu <tzhu@yelp.com>  Mon, 09 Mar 2020 15:28:39 -0700
+
 paasta-tools (0.94.11) xenial; urgency=medium
 
   * 0.94.11 tagged with 'make release'
