@@ -78,6 +78,7 @@ def paasta_autoscale(args):
             res, http = api.autoscaler.update_autoscaler_count(
                 service=service, instance=args.instance, json_body=body
             ).result()
+
             _log_audit(
                 action="manual-scale",
                 action_details=body,

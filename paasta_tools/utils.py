@@ -1920,8 +1920,7 @@ class SystemPaastaConfig:
         :returns: The name of the cluster defined in the paasta configuration
         """
         try:
-            # return self.config_dict["cluster"]
-            return 'kubestage'
+            return self.config_dict["cluster"]
         except KeyError:
             raise PaastaNotConfiguredError(
                 "Could not find cluster in configuration directory: %s" % self.directory
