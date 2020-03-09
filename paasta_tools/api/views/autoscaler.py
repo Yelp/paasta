@@ -15,22 +15,21 @@
 """
 PaaSTA service list (instances) etc.
 """
-from kubernetes.client import V1Deployment
-from kubernetes.client import V1DeploymentSpec
-from kubernetes.client import V1LabelSelector
-
 from pyramid.response import Response
 from pyramid.view import view_config
 
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
-from paasta_tools.kubernetes_tools import set_instances_for_kubernetes_service
 from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import validate_service_instance
+
+
+SERVICE_CONFIG_MAP = {
+    "marathon": load_marathon_service_config,
+    "kubernetes": load_kubernetes_service_config,
+}
 
 
 def get_instance_type(service, instance, cluster, soa_dir):
@@ -48,22 +47,12 @@ def get_instance_type(service, instance, cluster, soa_dir):
 
 def get_service_config(instance_type, service, instance, cluster, soa_dir):
     try:
-        if instance_type == 'marathon':
-            service_config = load_marathon_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=True,
-            )
-        elif instance_type == 'kubernetes':
-            service_config = load_kubernetes_service_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                load_deployments=True,
-            )
+        if instance_type in SERVICE_CONFIG_MAP:
+            service_config = SERVICE_CONFIG_MAP[instance_type](service=service,
+                                                               instance=instance,
+                                                               cluster=cluster,
+                                                               soa_dir=soa_dir,
+                                                               load_deployments=True,)
         else:
             error_message = f"Autoscaling is not supported for {service}.{instance} because instance type is neither " \
                             f"marathon or kubernetes."
@@ -119,21 +108,16 @@ def update_autoscaler_count(request):
     if desired_instances > max_instances:
         desired_instances = max_instances
         status = (
-                "WARNING desired_instances is greater than max_instances %d" % max_instances
+            "WARNING desired_instances is greater than max_instances %d" % max_instances
         )
     elif desired_instances < min_instances:
         desired_instances = min_instances
         status = (
-                "WARNING desired_instances is less than min_instances %d" % min_instances
+            "WARNING desired_instances is less than min_instances %d" % min_instances
         )
 
-    if instance_type == 'marathon':
-        set_instances_for_marathon_service(service=service, instance=instance, instance_count=desired_instances)
-    elif instance_type == 'kubernetes':
-        kube_client = KubeClient()
-        set_instances_for_kubernetes_service(kube_client=kube_client,
-                                             service_config=service_config,
-                                             instance_count=desired_instances)
+    if instance_type in SERVICE_CONFIG_MAP:
+        service_config.set_autoscaled_instances(instance_count=desired_instances)
     else:
         error_message = f"Autoscaling is not supported for {service}.{instance} because instance type is neither " \
                         f"marathon or kubernetes."

@@ -944,7 +944,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
     def set_autoscaled_instances(self, instance_count: int) -> None:
-        raise NotImplementedError()
+        """Set the number of instances in the same way that the autoscaler does."""
+        kube_client = KubeClient()
+        set_instances_for_kubernetes_service(kube_client=kube_client,
+                                             service_config=self,
+                                             instance_count=instance_count)
 
     def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance

@@ -1364,8 +1364,7 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
 
     total_instances = 0
     clusters_data = []
-    # api_endpoints = load_system_paasta_config().get_api_endpoints()
-    api_endpoints = {'kubestage': 'http://localhost:56123', 'mesosstage': 'http://localhost:56123'}
+    api_endpoints = load_system_paasta_config().get_api_endpoints()
     for cluster in service_configs.clusters:
         if cluster not in api_endpoints:
             paasta_print(
