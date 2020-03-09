@@ -949,143 +949,107 @@ class TestKubernetesDeploymentConfig:
                 in ret.spec.template.metadata.labels.__setitem__.mock_calls
             )
 
-    def test_get_pod_template_spec_non_smartstack_service(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-            autospec=True,
-        ) as mock_get_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-            autospec=True,
-        ) as mock_get_service, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-            autospec=True,
-        ) as mock_get_instance, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-            autospec=True,
-        ) as mock_get_kubernetes_containers, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-            autospec=True,
-            return_value=[],
-        ) as mock_get_pod_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-            autospec=True,
-        ) as mock_get_node_affinity, mock.patch(
-            "paasta_tools.kubernetes_tools.load_service_namespace_config",
-            autospec=True,
-        ) as mock_load_service_namespace_config:
-            mock_service_namespace_config = mock.Mock()
-            mock_load_service_namespace_config.return_value = (
-                mock_service_namespace_config
-            )
-            mock_service_namespace_config.is_in_smartstack.return_value = False
-            ret = self.deployment.get_pod_template_spec(
-                git_sha="aaaa123", system_paasta_config=mock.Mock()
-            )
-            assert mock_load_service_namespace_config.called
-            assert mock_service_namespace_config.is_in_smartstack.called
-            assert mock_get_pod_volumes.called
-            assert mock_get_volumes.called
-            assert ret == V1PodTemplateSpec(
-                metadata=V1ObjectMeta(
-                    labels={
-                        "yelp.com/paasta_git_sha": "aaaa123",
-                        "yelp.com/paasta_instance": mock_get_instance.return_value,
-                        "yelp.com/paasta_service": mock_get_service.return_value,
-                        "paasta.yelp.com/git_sha": "aaaa123",
-                        "paasta.yelp.com/instance": mock_get_instance.return_value,
-                        "paasta.yelp.com/service": mock_get_service.return_value,
-                    },
-                    annotations={
-                        "smartstack_registrations": '["kurupt.fm"]',
-                        "paasta.yelp.com/routable_ip": "false",
-                        "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
-                        "iam.amazonaws.com/role": "",
-                    },
-                ),
-                spec=V1PodSpec(
-                    service_account_name=None,
-                    containers=mock_get_kubernetes_containers.return_value,
-                    share_process_namespace=True,
-                    node_selector={"yelp.com/pool": "default"},
-                    affinity=V1Affinity(
-                        node_affinity=mock_get_node_affinity.return_value,
-                    ),
-                    restart_policy="Always",
-                    volumes=[],
-                ),
-            )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
+        autospec=True,
+        return_value=[],
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
+        autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True,
+    )
+    @pytest.mark.parametrize(
+        "in_smtstk,routable_ip,node_affinity,spec_affinity",
+        [
+            (True, "true", None, {}),
+            (False, "false", None, {}),
+            # an affinity obj is only added if there is a node affinity
+            (
+                False,
+                "false",
+                "a_node_affinity",
+                {"affinity": V1Affinity(node_affinity="a_node_affinity")},
+            ),
+        ],
+    )
+    def test_get_pod_template_spec(
+        self,
+        mock_load_service_namespace_config,
+        mock_get_node_affinity,
+        mock_get_pod_volumes,
+        mock_get_kubernetes_containers,
+        mock_get_instance,
+        mock_get_service,
+        mock_get_volumes,
+        in_smtstk,
+        routable_ip,
+        node_affinity,
+        spec_affinity,
+    ):
+        mock_service_namespace_config = mock.Mock()
+        mock_load_service_namespace_config.return_value = mock_service_namespace_config
+        mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
+        mock_get_node_affinity.return_value = node_affinity
 
-    def test_get_pod_template_spec_smartstack_service(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
-            autospec=True,
-        ) as mock_get_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-            autospec=True,
-        ) as mock_get_service, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-            autospec=True,
-        ) as mock_get_instance, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
-            autospec=True,
-        ) as mock_get_kubernetes_containers, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_volumes",
-            autospec=True,
-            return_value=[],
-        ) as mock_get_pod_volumes, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_node_affinity",
-            autospec=True,
-        ) as mock_get_node_affinity, mock.patch(
-            "paasta_tools.kubernetes_tools.load_service_namespace_config",
-            autospec=True,
-        ) as mock_load_service_namespace_config:
-            mock_service_namespace_config = mock.Mock()
-            mock_load_service_namespace_config.return_value = (
-                mock_service_namespace_config
-            )
-            mock_service_namespace_config.is_in_smartstack.return_value = True
-            ret = self.deployment.get_pod_template_spec(
-                git_sha="aaaa123", system_paasta_config=mock.Mock()
-            )
-            assert mock_load_service_namespace_config.called
-            assert mock_service_namespace_config.is_in_smartstack.called
-            assert mock_get_pod_volumes.called
-            assert mock_get_volumes.called
-            assert ret == V1PodTemplateSpec(
-                metadata=V1ObjectMeta(
-                    labels={
-                        "yelp.com/paasta_git_sha": "aaaa123",
-                        "yelp.com/paasta_instance": mock_get_instance.return_value,
-                        "yelp.com/paasta_service": mock_get_service.return_value,
-                        "paasta.yelp.com/git_sha": "aaaa123",
-                        "paasta.yelp.com/instance": mock_get_instance.return_value,
-                        "paasta.yelp.com/service": mock_get_service.return_value,
-                    },
-                    annotations={
-                        "smartstack_registrations": '["kurupt.fm"]',
-                        "paasta.yelp.com/routable_ip": "true",
-                        "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
-                        "iam.amazonaws.com/role": "",
-                    },
-                ),
-                spec=V1PodSpec(
-                    service_account_name=None,
-                    containers=mock_get_kubernetes_containers.return_value,
-                    share_process_namespace=True,
-                    node_selector={"yelp.com/pool": "default"},
-                    affinity=V1Affinity(
-                        node_affinity=mock_get_node_affinity.return_value,
-                    ),
-                    restart_policy="Always",
-                    volumes=[],
-                ),
-            )
+        ret = self.deployment.get_pod_template_spec(
+            git_sha="aaaa123", system_paasta_config=mock.Mock()
+        )
+
+        assert mock_load_service_namespace_config.called
+        assert mock_service_namespace_config.is_in_smartstack.called
+        assert mock_get_pod_volumes.called
+        assert mock_get_volumes.called
+        pod_spec_kwargs = dict(
+            service_account_name=None,
+            containers=mock_get_kubernetes_containers.return_value,
+            share_process_namespace=True,
+            node_selector={"yelp.com/pool": "default"},
+            restart_policy="Always",
+            volumes=[],
+        )
+        pod_spec_kwargs.update(spec_affinity)
+        assert ret == V1PodTemplateSpec(
+            metadata=V1ObjectMeta(
+                labels={
+                    "yelp.com/paasta_git_sha": "aaaa123",
+                    "yelp.com/paasta_instance": mock_get_instance.return_value,
+                    "yelp.com/paasta_service": mock_get_service.return_value,
+                    "paasta.yelp.com/git_sha": "aaaa123",
+                    "paasta.yelp.com/instance": mock_get_instance.return_value,
+                    "paasta.yelp.com/service": mock_get_service.return_value,
+                },
+                annotations={
+                    "smartstack_registrations": '["kurupt.fm"]',
+                    "paasta.yelp.com/routable_ip": routable_ip,
+                    "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
+                    "iam.amazonaws.com/role": "",
+                },
+            ),
+            spec=V1PodSpec(**pod_spec_kwargs),
+        )
 
     @pytest.mark.parametrize(
         "whitelist,blacklist,expected",
         [
-            # no blacklist or whitelist, only node affinity should be pool
-            (None, [], []),
             (  # whitelist only
                 ("habitat", ["habitat_a", "habitat_b"]),
                 [],
@@ -1139,6 +1103,11 @@ class TestKubernetesDeploymentConfig:
                 node_selector_terms=[V1NodeSelectorTerm(match_expressions=expected,)],
             ),
         )
+
+    def test_get_node_affinity_no_blacklist_or_whitelist(self):
+        self.deployment.config_dict["deploy_whitelist"] = None
+        self.deployment.config_dict["deploy_blacklist"] = []
+        assert self.deployment.get_node_affinity() is None
 
     def test_get_kubernetes_metadata(self):
         with mock.patch(
@@ -2559,7 +2528,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configc7d4fe91"
+            == "config3b06ff5f"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 

@@ -1139,6 +1139,28 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if "hpa" in annotations:
                 annotations["hpa"] = json.dumps(annotations["hpa"])
 
+        pod_spec_kwargs = dict(
+            service_account_name=self.get_kubernetes_service_account_name(),
+            containers=self.get_kubernetes_containers(
+                docker_volumes=docker_volumes,
+                aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                system_paasta_config=system_paasta_config,
+                service_namespace_config=service_namespace_config,
+            ),
+            share_process_namespace=True,
+            node_selector=self.get_node_selector(),
+            restart_policy="Always",
+            volumes=self.get_pod_volumes(
+                docker_volumes=docker_volumes,
+                aws_ebs_volumes=self.get_aws_ebs_volumes(),
+            ),
+        )
+        # need to check if there are node selectors/affinities. if there are none
+        # and we create an empty affinity object, k8s will deselect all nodes.
+        node_affinity = self.get_node_affinity()
+        if node_affinity is not None:
+            pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
+
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
@@ -1151,23 +1173,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 },
                 annotations=annotations,
             ),
-            spec=V1PodSpec(
-                service_account_name=self.get_kubernetes_service_account_name(),
-                containers=self.get_kubernetes_containers(
-                    docker_volumes=docker_volumes,
-                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
-                    system_paasta_config=system_paasta_config,
-                    service_namespace_config=service_namespace_config,
-                ),
-                share_process_namespace=True,
-                node_selector=self.get_node_selector(),
-                affinity=V1Affinity(node_affinity=self.get_node_affinity()),
-                restart_policy="Always",
-                volumes=self.get_pod_volumes(
-                    docker_volumes=docker_volumes,
-                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
-                ),
-            ),
+            spec=V1PodSpec(**pod_spec_kwargs),
         )
 
     def get_node_selector(self) -> Mapping[str, str]:
@@ -1176,7 +1182,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """
         return {"yelp.com/pool": self.get_pool()}
 
-    def get_node_affinity(self) -> V1NodeAffinity:
+    def get_node_affinity(self) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -1198,6 +1204,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     (f"yelp.com/{location_type}", "NotIn", [not_allowed])
                 )
         # package everything into a node affinity - lots of layers :P
+        if len(requirements) == 0:
+            return None
         term = V1NodeSelectorTerm(
             match_expressions=[
                 V1NodeSelectorRequirement(key=key, operator=op, values=vs,)
