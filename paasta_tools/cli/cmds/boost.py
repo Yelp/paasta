@@ -26,7 +26,7 @@ def add_subparser(subparsers):
         "boost",
         help="Set, print the status, or clear a capacity boost for a given region in a PaaSTA cluster",
         description=(
-            "'paasta boost' is used to temporary provision more capacity in a given cluster "
+            "'paasta boost' is used to temporarily provision more capacity in a given cluster "
             "It operates by ssh'ing to a Mesos master of a remote cluster, and "
             "interacting with the boost in the local zookeeper cluster. If you set or clear "
             "a boost, you may want to run the cluster autoscaler manually afterward."
