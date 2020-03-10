@@ -1,3 +1,11 @@
+paasta-tools (0.95.0) xenial; urgency=medium
+
+  * 0.95.0 tagged with 'make release'
+    Commit: Merge pull request #2699 from Yelp/auto-config-tools  Tools
+    for committing autotuned_default configs
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 10 Mar 2020 10:49:38 -0700
+
 paasta-tools (0.94.12) xenial; urgency=medium
 
   * 0.94.12 tagged with 'make release'

@@ -46,6 +46,7 @@ Submodules
    paasta_tools.cleanup_marathon_jobs
    paasta_tools.cleanup_tron_namespaces
    paasta_tools.clusterman
+   paasta_tools.config_utils
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
    paasta_tools.docker_wrapper_imports
