@@ -74,6 +74,13 @@ def parse_args():
         default=False,
     )
     parser.add_argument(
+        "--app",
+        help="Splunk app of the CSV file",
+        default="yelp_performance",
+        required=False,
+        dest="splunk_app",
+    )
+    parser.add_argument(
         "-c",
         "--csv-report",
         help="Splunk csv file from which to pull data.",
@@ -120,7 +127,7 @@ def cwd(path):
         os.chdir(pwd)
 
 
-def get_report_from_splunk(creds, filename, criteria_filter):
+def get_report_from_splunk(creds, app, filename, criteria_filter):
     """ Expect a table containing at least the following fields:
     criteria (<service> [marathon|kubernetes]-<cluster_name> <instance>)
     service_owner
@@ -132,7 +139,7 @@ def get_report_from_splunk(creds, filename, criteria_filter):
     current_mem (Optional if current_cpus is specified)
     suggested_mem (Optional if suggested_cpus is specified)
     """
-    url = "https://splunk-api.yelpcorp.com/servicesNS/nobody/yelp_performance/search/jobs/export"
+    url = f"https://splunk-api.yelpcorp.com/servicesNS/nobody/{app}/search/jobs/export"
     search = (
         '| inputlookup {filename} | search criteria="{criteria_filter}"'
         '| eval _time = search_time | where _time > relative_time(now(),"-7d")'
@@ -452,7 +459,7 @@ def main():
         JIRA = None
 
     report = get_report_from_splunk(
-        args.splunk_creds, args.csv_report, args.criteria_filter
+        args.splunk_creds, args.splunk_app, args.csv_report, args.criteria_filter
     )
 
     tmpdir = tempdir()  # Create a tmp dir even if we are not using it
