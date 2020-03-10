@@ -1,3 +1,10 @@
+paasta-tools (0.95.1) xenial; urgency=medium
+
+  * 0.95.1 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta
+
+ -- Lydian Lee <tingyenl@yelp.com>  Tue, 10 Mar 2020 15:28:37 -0700
+
 paasta-tools (0.95.0) xenial; urgency=medium
 
   * 0.95.0 tagged with 'make release'
