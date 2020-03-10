@@ -1,3 +1,12 @@
+paasta-tools (0.95.1) xenial; urgency=medium
+
+  * 0.95.1 tagged with 'make release'
+    Commit: Merge pull request #2707 from Yelp/u/siruitan/BATCHPROC-53-
+    bump_srv_config_lib_to_2_4_0  Bump service-configuration-lib version
+    to 2.4.1
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 10 Mar 2020 15:20:28 -0700
+
 paasta-tools (0.95.0) xenial; urgency=medium
 
   * 0.95.0 tagged with 'make release'
