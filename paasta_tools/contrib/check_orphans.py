@@ -36,7 +36,7 @@ class ExitCode(Enum):
 
 def get_zk_hosts(path: str) -> List[str]:
     with open(path) as f:
-        x = yaml.load(f)
+        x = yaml.safe_load(f)
     return [f"{host}:{port}" for host, port in x]
 
 
