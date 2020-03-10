@@ -108,9 +108,6 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                 self.add_watcher(watcher_config)
                 load_cluster_pool_config(self.options.cluster, pool, scheduler, None)
         self.logger = logger
-        self.initialize_clusterman_metrics_client()
-
-    def initialize_clusterman_metrics_client(self):
         self.region = staticconf.read_string('aws.region')
         self.run_interval = staticconf.read_int('batches.cluster_metrics.run_interval_seconds')
         self.metrics_client = ClustermanMetricsBotoClient(region_name=self.region)
@@ -128,6 +125,8 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
         self.load_pool_managers()  # Load the pools on the first run; do it here so we get logging
 
         try:
+            # self.running is a property from yelp_batch which checks version_checker if a watcher config has changed.
+            # If so, the entire batch restarts and configs for the service are reloaded.
             while self.running:
                 time.sleep(splay_event_time(
                     self.run_interval,
@@ -140,13 +139,6 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                     logger.info(f'Done reloading state for pool {pool}')
 
                 successful = self.write_all_metrics()
-
-                logger.info('Reloading watcher config files')
-                if self.reload_watchers():
-                    logger.info(
-                        'Watcher config files have changed, reloading pool managers and clusterman metrics client')
-                    self.load_pool_managers()
-                    self.initialize_clusterman_metrics_client()
 
                 # Report successful run to Sensu.
                 if successful:

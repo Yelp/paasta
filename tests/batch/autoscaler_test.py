@@ -71,16 +71,9 @@ def test_run_ok(mock_sensu, mock_running, mock_time, mock_sleep, dry_run):
     mock_running.side_effect = [True, True, True, False]
     mock_time.side_effect = [101, 913, 2000]
 
-    with mock.patch('builtins.hash') as mock_hash, \
-            mock.patch.object(batch_obj, 'reload_watchers', autospec=True) as reload_watchers, \
-            mock.patch('clusterman.batch.autoscaler.AutoscalerBatch.initialize_autoscaler') \
-            as mock_initialize_autoscaler:
-        reload_watchers.return_value = True
-        mock_initialize_autoscaler.return_value = None
+    with mock.patch('builtins.hash') as mock_hash:
         mock_hash.return_value = 0  # patch hash to ignore splaying
         batch_obj.run()
-        mock_initialize_autoscaler.assert_called_with()
-
     assert batch_obj.autoscaler.run.call_args_list == [mock.call(dry_run=dry_run) for i in range(3)]
     assert mock_sleep.call_args_list == [mock.call(499), mock.call(287), mock.call(400)]
     assert mock_sensu.call_count == 6
@@ -93,9 +86,7 @@ def test_run_connection_error(mock_running, exc):
     batch_obj._autoscale = mock.Mock(side_effect=exc)
     mock_running.side_effect = [True, True, False]
 
-    with mock.patch.object(batch_obj, 'reload_watchers', autospec=True) as reload_watchers:
-        reload_watchers.return_value = False
-        batch_obj.run()
+    batch_obj.run()
 
     # exceptions raised did not prevent subsequent calls to autoscale
     assert batch_obj._autoscale.call_count == 2
