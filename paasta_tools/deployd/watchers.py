@@ -23,7 +23,7 @@ from paasta_tools.deployd.common import get_marathon_clients_from_config
 from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
-from paasta_tools.long_running_service_tools import AUTOSCALING_ZK_ROOT
+from paasta_tools.marathon_tools import AUTOSCALING_ZK_ROOT
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import deformat_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients

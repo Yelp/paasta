@@ -20,8 +20,8 @@ from pyramid.view import view_config
 
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import set_instances_for_marathon_service
 
 
 @view_config(route_name="service.autoscaler.get", request_method="GET", renderer="json")
