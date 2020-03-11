@@ -39,6 +39,7 @@ from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
 from kubernetes.client import models
+from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
@@ -61,6 +62,10 @@ from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1Namespace
 from kubernetes.client import V1Node
+from kubernetes.client import V1NodeAffinity
+from kubernetes.client import V1NodeSelector
+from kubernetes.client import V1NodeSelectorRequirement
+from kubernetes.client import V1NodeSelectorTerm
 from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
@@ -1134,6 +1139,28 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if "hpa" in annotations:
                 annotations["hpa"] = json.dumps(annotations["hpa"])
 
+        pod_spec_kwargs = dict(
+            service_account_name=self.get_kubernetes_service_account_name(),
+            containers=self.get_kubernetes_containers(
+                docker_volumes=docker_volumes,
+                aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                system_paasta_config=system_paasta_config,
+                service_namespace_config=service_namespace_config,
+            ),
+            share_process_namespace=True,
+            node_selector=self.get_node_selector(),
+            restart_policy="Always",
+            volumes=self.get_pod_volumes(
+                docker_volumes=docker_volumes,
+                aws_ebs_volumes=self.get_aws_ebs_volumes(),
+            ),
+        )
+        # need to check if there are node selectors/affinities. if there are none
+        # and we create an empty affinity object, k8s will deselect all nodes.
+        node_affinity = self.get_node_affinity()
+        if node_affinity is not None:
+            pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
+
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
@@ -1146,26 +1173,53 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 },
                 annotations=annotations,
             ),
-            spec=V1PodSpec(
-                service_account_name=self.get_kubernetes_service_account_name(),
-                containers=self.get_kubernetes_containers(
-                    docker_volumes=docker_volumes,
-                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
-                    system_paasta_config=system_paasta_config,
-                    service_namespace_config=service_namespace_config,
-                ),
-                share_process_namespace=True,
-                node_selector=self.get_node_selector(),
-                restart_policy="Always",
-                volumes=self.get_pod_volumes(
-                    docker_volumes=docker_volumes,
-                    aws_ebs_volumes=self.get_aws_ebs_volumes(),
-                ),
-            ),
+            spec=V1PodSpec(**pod_spec_kwargs),
         )
 
     def get_node_selector(self) -> Mapping[str, str]:
+        """Converts simple node restrictions into node selectors. Unlike node
+        affinities, selectors will show up in `kubectl describe`.
+        """
         return {"yelp.com/pool": self.get_pool()}
+
+    def get_node_affinity(self) -> Optional[V1NodeAffinity]:
+        """Converts deploy_whitelist and deploy_blacklist in node affinities.
+
+        note: At the time of writing, `kubectl describe` does not show affinities,
+        only selectors. To see affinities, use `kubectl get pod -o json` instead.
+        """
+        requirements = []
+        # convert whitelist into a node selector req
+        whitelist = self.get_deploy_whitelist()
+        if whitelist:
+            location_type, alloweds = whitelist
+            requirements.append((f"yelp.com/{location_type}", "In", alloweds))
+        # convert blacklist into multiple node selector reqs
+        blacklist = self.get_deploy_blacklist()
+        if blacklist:
+            # not going to prune for duplicates, or group blacklist items for
+            # same location_type. makes testing easier and k8s can handle it.
+            for location_type, not_allowed in blacklist:
+                requirements.append(
+                    (f"yelp.com/{location_type}", "NotIn", [not_allowed])
+                )
+        # package everything into a node affinity - lots of layers :P
+        if len(requirements) == 0:
+            return None
+        term = V1NodeSelectorTerm(
+            match_expressions=[
+                V1NodeSelectorRequirement(key=key, operator=op, values=vs,)
+                for key, op, vs in requirements
+            ]
+        )
+        selector = V1NodeSelector(node_selector_terms=[term])
+        return V1NodeAffinity(
+            # this means that the selectors are only used during scheduling.
+            # changing it while the pod is running will not cause an eviction.
+            # this should be fine since if there are whitelist/blacklist config
+            # changes, we will bounce anyway.
+            required_during_scheduling_ignored_during_execution=selector,
+        )
 
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]
