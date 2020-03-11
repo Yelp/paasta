@@ -44,11 +44,10 @@ from paasta_tools.bounce_lib import filter_tasks_in_smartstack
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
-from paasta_tools.long_running_service_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import AutoscalingParamsDict
+from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.marathon_tools import get_marathon_clients
@@ -57,6 +56,7 @@ from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
+from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_all_running_tasks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
