@@ -30,6 +30,7 @@ mypy-extensions >= 0.3.0
 objgraph
 ply
 progressbar2 >= 3.10.0
+prometheus-client
 pymesos >= 0.2.0
 pyramid >= 1.8
 pyramid-swagger >= 2.3.0

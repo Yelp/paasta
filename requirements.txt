@@ -59,6 +59,7 @@ PasteDeploy==1.5.2
 ply==3.4
 poyo==0.4.0
 progressbar2==3.10.1
+prometheus-client==0.7.1
 protobuf==3.7.1
 py==1.5.2
 pyasn1==0.4.2
