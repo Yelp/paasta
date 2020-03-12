@@ -27,11 +27,10 @@ def main() -> None:
             cluster=system_paasta_config.get_cluster(),
             instance_type_class=KubernetesDeploymentConfig,
         ):
-            # Force min_instances = max_instances so that we scale up.
             max_instances = instance_config.get_max_instances()
             if max_instances is not None:
-                instance_config.config_dict["min_instances"] = max_instances
                 formatted_application = instance_config.format_kubernetes_app()
+                formatted_application.spec.replicas = max_instances
                 wrapper = get_application_wrapper(formatted_application)
                 wrapper.soa_config = instance_config
                 print(f"Scaling up {service}.{instance_config.instance}")
