@@ -1,3 +1,11 @@
+paasta-tools (0.95.3) xenial; urgency=medium
+
+  * 0.95.3 tagged with 'make release'
+    Commit: Merge pull request #2715 from Yelp/kube-state-
+    metrics_collector  Kube state metrics collector
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 12 Mar 2020 11:55:19 -0700
+
 paasta-tools (0.95.2) xenial; urgency=medium
 
   * 0.95.2 tagged with 'make release'
