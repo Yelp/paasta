@@ -61,6 +61,7 @@ setup(
         "paasta_tools/get_mesos_leader.py",
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",
         "paasta_tools/kubernetes/bin/paasta_cleanup_stale_nodes.py",
+        "paasta_tools/kubernetes/bin/kube_state_metrics_collector.py",
         "paasta_tools/kubernetes/bin/kubernetes_remove_evicted_pods.py",
         "paasta_tools/list_marathon_service_instances.py",
         "paasta_tools/log_task_lifecycle_events.py",

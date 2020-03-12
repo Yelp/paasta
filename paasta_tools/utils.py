@@ -1713,6 +1713,13 @@ class KubeCustomResourceDict(TypedDict, total=False):
     group: str
 
 
+class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
+    unaggregated_metrics: List[str]
+    summed_metric_to_group_keys: Dict[str, List[str]]
+    label_metric_to_label_key: Dict[str, List[str]]
+    label_renames: Dict[str, str]
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
@@ -1751,6 +1758,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
     hacheck_sidecar_image_url: str
+    kube_state_metrics_collector: KubeStateMetricsCollectorConfigDict
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     local_run_config: LocalRunConfig
@@ -2312,6 +2320,11 @@ class SystemPaastaConfig:
 
     def get_boost_regions(self) -> List[str]:
         return self.config_dict.get("boost_regions", [])
+
+    def get_kube_state_metrics_collector_config(
+        self,
+    ) -> KubeStateMetricsCollectorConfigDict:
+        return self.config_dict.get("kube_state_metrics_collector", {})
 
 
 def _run(
