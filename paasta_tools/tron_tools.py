@@ -191,6 +191,7 @@ class TronActionConfig(InstanceConfig):
         config_dict,
         branch_dict,
         soa_dir=DEFAULT_SOA_DIR,
+        for_validation=False,
     ):
         super().__init__(
             cluster=cluster,
@@ -201,16 +202,24 @@ class TronActionConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
         self.job, self.action = decompose_instance(instance)
-        self.spark_ui_port = pick_random_port(
-            f"{self.get_service()}{self.get_instance()}".encode()
+        self.spark_ui_port = (
+            pick_random_port(f"{self.get_service()}{self.get_instance()}".encode())
+            if not for_validation
+            else "2333"
         )
+        # Indicate whether this config object is created for validation
+        self.for_validation = for_validation
 
     def get_spark_config_dict(self):
         if self.get_spark_cluster_manager() == "mesos":
             spark_env = get_mesos_spark_env(
                 spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
                 spark_ui_port=self.spark_ui_port,
-                mesos_leader=find_mesos_leader(self.get_spark_paasta_cluster()),
+                mesos_leader=(
+                    find_mesos_leader(self.get_spark_paasta_cluster())
+                    if not self.for_validation
+                    else "N/A"
+                ),
                 paasta_cluster=self.get_spark_paasta_cluster(),
                 paasta_pool=self.get_spark_paasta_pool(),
                 paasta_service=self.get_service(),
@@ -423,6 +432,11 @@ class TronActionConfig(InstanceConfig):
         parameters = super().format_docker_parameters(with_labels=with_labels)
         if self.get_executor() == "spark":
             parameters.append({"key": "net", "value": "host"})
+            if self.get_spark_cluster_manager() == "kubernetes":
+                # TODO: this is a temprary solution to circumvent permission issue of reading
+                # SSL ceritficates of k8s clusters. We should remove this clause once a stable
+                # solution is available.
+                parameters.append({"key": "user", "value": "root"})
         return parameters
 
 
@@ -437,6 +451,7 @@ class TronJobConfig:
         service: Optional[str] = None,
         load_deployments: bool = True,
         soa_dir: str = DEFAULT_SOA_DIR,
+        for_validation: bool = False,
     ) -> None:
         self.name = name
         self.config_dict = config_dict
@@ -444,6 +459,8 @@ class TronJobConfig:
         self.service = service
         self.load_deployments = load_deployments
         self.soa_dir = soa_dir
+        # Indicate whether this config object is created for validation
+        self.for_validation = for_validation
 
     def get_name(self):
         return self.name
@@ -537,6 +554,7 @@ class TronJobConfig:
             config_dict=action_dict,
             branch_dict=branch_dict,
             soa_dir=self.soa_dir,
+            for_validation=self.for_validation,
         )
 
     def get_actions(self):
@@ -724,7 +742,11 @@ def load_tron_instance_config(
 
 
 def load_tron_service_config(
-    service, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR
+    service,
+    cluster,
+    load_deployments=True,
+    soa_dir=DEFAULT_SOA_DIR,
+    for_validation=False,
 ):
     """Load all configured jobs for a service, and any additional config values."""
     config = read_extra_service_information(
@@ -739,6 +761,7 @@ def load_tron_service_config(
             config_dict=job,
             load_deployments=load_deployments,
             soa_dir=soa_dir,
+            for_validation=for_validation,
         )
         for name, job in jobs.items()
     ]
@@ -774,7 +797,11 @@ def validate_complete_config(
     service: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> List[str]:
     job_configs = load_tron_service_config(
-        service=service, cluster=cluster, load_deployments=False, soa_dir=soa_dir
+        service=service,
+        cluster=cluster,
+        load_deployments=False,
+        soa_dir=soa_dir,
+        for_validation=True,
     )
 
     # PaaSTA-specific validation
