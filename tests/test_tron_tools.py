@@ -88,9 +88,16 @@ class TestTronActionConfig:
         assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
 
-    def test_get_spark_config_dict(self, spark_action_config):
+    @pytest.mark.parametrize(
+        "for_validation, mesos_leader_arg",
+        [(True, "N/A"), (False, "mesos.leader.com"),],
+    )
+    def test_get_spark_config_dict(
+        self, spark_action_config, for_validation, mesos_leader_arg
+    ):
         spark_action_config.config_dict["spark_cluster_manager"] = "mesos"
         spark_action_config.spark_ui_port = 12345
+        spark_action_config.for_validation = for_validation
         with mock.patch(
             "paasta_tools.tron_tools.get_mesos_spark_env",
             autospec=True,
@@ -110,7 +117,7 @@ class TestTronActionConfig:
             mock_get_mesos_spark_env.assert_called_once_with(
                 docker_img="",
                 event_log_dir="/nail/etc",
-                mesos_leader="mesos.leader.com",
+                mesos_leader=mesos_leader_arg,
                 paasta_cluster="fake-spark-cluster",
                 paasta_instance="cool_job.print",
                 paasta_pool="fake-spark-pool",
