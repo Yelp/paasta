@@ -396,7 +396,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         hpa_config = self.config_dict["horizontal_autoscaling"]
         min_replicas = hpa_config.get("min_replicas", 0)
         max_replicas = hpa_config["max_replicas"]
-        selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
+        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         annotations = {"signalfx.com.custom.metrics": ""}
         metrics = []
         for metric_name, value in hpa_config.items():
@@ -489,7 +489,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         metrics = []
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
-        selector = V1LabelSelector(match_labels={"kubernetes_cluster": cluster})
+        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         if autoscaling_params["decision_policy"] == "bespoke":
             log.error(
                 f"Sorry, bespoke is not implemented yet. Please use a different decision \
