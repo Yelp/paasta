@@ -90,9 +90,13 @@ class AutoscalerBootstrapBatch(BatchDaemon, BatchLoggingMixin):
             self.options.pool,
             self.options.scheduler,
         )
-        self.config.watchers.append(
-            {self.options.pool: get_pool_config_path(self.options.cluster, self.options.pool, self.options.scheduler)},
-        )
+        watcher_config = {
+            self.options.pool:
+                get_pool_config_path(self.options.cluster,
+                                     self.options.pool,
+                                     self.options.scheduler)
+        }
+        self.add_watcher(watcher_config)
 
     def _get_local_log_stream(self, clog_prefix=None):
         # Ensure that the bootstrap logs go to the same scribe stream as the autoscaler

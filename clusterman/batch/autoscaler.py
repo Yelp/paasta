@@ -97,7 +97,6 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
         self.logger = logger
 
         self.apps = [self.options.pool]  # TODO (CLUSTERMAN-126) someday these should not be the same thing
-
         pool_manager = PoolManager(
             self.options.cluster,
             self.options.pool,
@@ -113,7 +112,7 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
         )
 
         # We don't want to watch anything here because the autoscaler bootstrap script takes care of that for us
-        self.config.watchers.clear()
+        self.clear_watchers()
 
     def _get_local_log_stream(self, clog_prefix=None):
         # Overrides the yelp_batch default, which is tmp_batch_<filename> (autoscaler in this case)
@@ -133,6 +132,8 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
             self.autoscaler.run(dry_run=self.options.dry_run)
 
     def run(self):
+        # self.running is a property from yelp_batch which checks version_checker if a watcher config has changed.
+        # If so, the entire batch restarts and configs for the service are reloaded.
         while self.running:
             try:
                 self._autoscale()

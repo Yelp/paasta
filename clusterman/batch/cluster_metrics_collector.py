@@ -102,15 +102,14 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
             self.pools[scheduler] = get_pool_name_list(self.options.cluster, scheduler)
         for scheduler, pools in self.pools.items():
             for pool in pools:
-                self.config.watchers.append({
-                    f'{pool}.{scheduler}': get_pool_config_path(self.options.cluster, pool, scheduler),
-                })
+                watcher_config = {
+                    f'{pool}.{scheduler}': get_pool_config_path(self.options.cluster, pool, scheduler)
+                }
+                self.add_watcher(watcher_config)
                 load_cluster_pool_config(self.options.cluster, pool, scheduler, None)
-
+        self.logger = logger
         self.region = staticconf.read_string('aws.region')
         self.run_interval = staticconf.read_int('batches.cluster_metrics.run_interval_seconds')
-        self.logger = logger
-
         self.metrics_client = ClustermanMetricsBotoClient(region_name=self.region)
 
     def load_pool_managers(self) -> None:
@@ -126,6 +125,8 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
         self.load_pool_managers()  # Load the pools on the first run; do it here so we get logging
 
         try:
+            # self.running is a property from yelp_batch which checks version_checker if a watcher config has changed.
+            # If so, the entire batch restarts and configs for the service are reloaded.
             while self.running:
                 time.sleep(splay_event_time(
                     self.run_interval,
