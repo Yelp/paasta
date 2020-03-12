@@ -1,3 +1,11 @@
+paasta-tools (0.95.2) xenial; urgency=medium
+
+  * 0.95.2 tagged with 'make release'
+    Commit: Merge pull request #2713 from Yelp/oom-logger-kubepods
+    Handle /kubepods cgroup in OOM logger
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 12 Mar 2020 11:31:31 -0700
+
 paasta-tools (0.95.1) xenial; urgency=medium
 
   * 0.95.1 tagged with 'make release'
