@@ -155,7 +155,7 @@ def test_aggregated_metric(
     gauges["test_metric", "b"].set.assert_called_once_with(9 + 11)
 
 
-def test_label_joining(
+def test_label_joining_old(
     mock_get_kube_state_metrics_url,
     mock_text_string_to_metric_families,
     mock_system_paasta_config,
@@ -188,6 +188,49 @@ def test_label_joining(
         paasta_cluster="westeros-prod",
         kubernetes_cluster="westeros-prod",
         dest="abc",
+        is_good="true",
+    )
+    mock_metrics_interface.create_gauge.return_value.set.assert_called_once_with(4)
+
+
+def test_label_joining(
+    mock_get_kube_state_metrics_url,
+    mock_text_string_to_metric_families,
+    mock_system_paasta_config,
+    mock_metrics_interface,
+):
+    mock_system_paasta_config.get_kube_state_metrics_collector_config.return_value = {
+        "unaggregated_metrics": ["test_metric"],
+        "label_metric_to_label_key": {
+            "test_labels": {
+                "source_key": "source_key",
+                "destination_keys": ["dest_key"],
+            },
+        },
+    }
+    mock_text_string_to_metric_families.return_value = [
+        Family(
+            name="test_metric",
+            samples=[Sample(name="test_metric", labels={"dest_key": "abc"}, value=4),],
+        ),
+        Family(
+            name="test_labels",
+            samples=[
+                Sample(
+                    name="test_labels",
+                    labels={"source_key": "abc", "is_good": "true",},
+                    value=1,
+                ),
+            ],
+        ),
+    ]
+
+    collect_and_emit_metrics()
+    mock_metrics_interface.create_gauge.assert_called_once_with(
+        "test_metric",
+        paasta_cluster="westeros-prod",
+        kubernetes_cluster="westeros-prod",
+        dest_key="abc",
         is_good="true",
     )
     mock_metrics_interface.create_gauge.return_value.set.assert_called_once_with(4)

@@ -20,6 +20,7 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import requests
 from prometheus_client.parser import text_string_to_metric_families
@@ -114,16 +115,25 @@ def _yield_metrics(
 
 def _extract_label_key_to_labels(
     metric_family_name_to_family: Dict[str, Any],
-    label_metric_to_label_key: Dict[str, List[str]],
+    label_metric_to_label_key: Dict[str, Union[List[str], Dict[str, List[str]]]],
 ) -> Dict[str, Dict[str, Dict[str, str]]]:
     label_key_to_labels: Dict[str, Dict[str, Dict[str, str]]] = defaultdict(
         lambda: defaultdict(dict)
     )
-    for label_metric, (label_key, dest_key) in label_metric_to_label_key.items():
+    for label_metric, key_mapping in label_metric_to_label_key.items():
+        if isinstance(key_mapping, list):
+            label_key, dest_key = key_mapping
+            label_key = key_mapping[0]
+            dest_keys = [key_mapping[1]]
+        else:
+            label_key = key_mapping["source_key"]
+            dest_keys = key_mapping["destination_keys"]
+
         family = metric_family_name_to_family[label_metric]
         for sample in family.samples:
             label_key_value = sample.labels.pop(label_key)
-            label_key_to_labels[dest_key][label_key_value].update(sample.labels)
+            for dest_key in dest_keys:
+                label_key_to_labels[dest_key][label_key_value].update(sample.labels)
 
     return label_key_to_labels
 
