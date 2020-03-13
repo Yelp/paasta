@@ -1190,7 +1190,7 @@ class TestKubernetesDeploymentConfig:
                             metric_name="uwsgi",
                             target_average_value=0.7,
                             selector=V1LabelSelector(
-                                match_labels={"kubernetes_cluster": "cluster"}
+                                match_labels={"paasta_cluster": "cluster"}
                             ),
                         ),
                     ),
@@ -1288,7 +1288,7 @@ class TestKubernetesDeploymentConfig:
                             metric_name="http",
                             target_average_value=0.5,
                             selector=V1LabelSelector(
-                                match_labels={"kubernetes_cluster": "cluster"}
+                                match_labels={"paasta_cluster": "cluster"}
                             ),
                         ),
                     )
@@ -1333,7 +1333,7 @@ class TestKubernetesDeploymentConfig:
                             metric_name="uwsgi",
                             target_average_value=0.5,
                             selector=V1LabelSelector(
-                                match_labels={"kubernetes_cluster": "cluster"}
+                                match_labels={"paasta_cluster": "cluster"}
                             ),
                         ),
                     )
