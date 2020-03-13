@@ -27,12 +27,10 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
-from kubernetes.client import V1Deployment
-from kubernetes.client import V1StatefulSet
-
 from paasta_tools.kubernetes.application.controller_wrappers import Application
-from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
-from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
+from paasta_tools.kubernetes.application.controller_wrappers import (
+    get_application_wrapper,
+)
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
@@ -179,14 +177,7 @@ def create_application_object(
         log.error(str(e))
         return False, None
 
-    app: Optional[Application] = None
-    if isinstance(formatted_application, V1Deployment):
-        app = DeploymentWrapper(formatted_application)
-    elif isinstance(formatted_application, V1StatefulSet):
-        app = StatefulSetWrapper(formatted_application)
-    else:
-        raise Exception("Unknown kubernetes object to update")
-
+    app = get_application_wrapper(formatted_application)
     app.load_local_config(soa_dir, cluster)
     return True, app
 

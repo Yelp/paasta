@@ -7,7 +7,6 @@ from typing import Optional
 from typing import Tuple
 
 import service_configuration_lib
-from kazoo.exceptions import NoNodeError
 from mypy_extensions import TypedDict
 
 from paasta_tools.utils import BranchDictV2
@@ -20,12 +19,10 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import ZookeeperPool
 
 log = logging.getLogger(__name__)
 logging.getLogger("marathon").setLevel(logging.WARNING)
 
-AUTOSCALING_ZK_ROOT = "/autoscaling"
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
 
@@ -244,26 +241,24 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_bounce_start_deadline(self) -> float:
         return self.config_dict.get("bounce_start_deadline", 0)
 
+    def get_autoscaled_instances(self) -> int:
+        raise NotImplementedError()
+
+    def set_autoscaled_instances(self, instance_count: int) -> None:
+        raise NotImplementedError()
+
     def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
         if self.get_max_instances() is not None:
-            try:
-                zk_instances = get_instances_from_zookeeper(
-                    service=self.service, instance=self.instance
-                )
-                log.debug("Got %d instances out of zookeeper" % zk_instances)
-            except NoNodeError:
-                log.debug(
-                    "No zookeeper data, returning max_instances (%d)"
-                    % self.get_max_instances()
-                )
+            autoscaled_instances = self.get_autoscaled_instances()
+            if autoscaled_instances is None:
                 return self.get_max_instances()
             else:
                 limited_instances = (
-                    self.limit_instance_count(zk_instances)
+                    self.limit_instance_count(autoscaled_instances)
                     if with_limit
-                    else zk_instances
+                    else autoscaled_instances
                 )
                 return limited_instances
         else:
@@ -428,29 +423,6 @@ def load_service_namespace_config(
 
 class InvalidSmartstackMode(Exception):
     pass
-
-
-def get_instances_from_zookeeper(service: str, instance: str) -> int:
-    with ZookeeperPool() as zookeeper_client:
-        (instances, _) = zookeeper_client.get(
-            "%s/instances" % compose_autoscaling_zookeeper_root(service, instance)
-        )
-        return int(instances)
-
-
-def compose_autoscaling_zookeeper_root(service: str, instance: str) -> str:
-    return f"{AUTOSCALING_ZK_ROOT}/{service}/{instance}"
-
-
-def set_instances_for_marathon_service(
-    service: str, instance: str, instance_count: int, soa_dir: str = DEFAULT_SOA_DIR
-) -> None:
-    zookeeper_path = "%s/instances" % compose_autoscaling_zookeeper_root(
-        service, instance
-    )
-    with ZookeeperPool() as zookeeper_client:
-        zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count).encode("utf8"))
 
 
 def get_proxy_port_for_instance(

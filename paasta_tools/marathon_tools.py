@@ -41,6 +41,7 @@ from typing import TypeVar
 import pytz
 import requests
 import service_configuration_lib
+from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
@@ -83,6 +84,8 @@ from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
+from paasta_tools.utils import ZookeeperPool
+
 
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
@@ -90,6 +93,7 @@ from paasta_tools.utils import time_cache
 # with you. We need to know what it is so we can decompose Mesos task ids.
 MESOS_TASK_SPACER = "."
 PUPPET_SERVICE_DIR = "/etc/nerve/puppet_services.d"
+AUTOSCALING_ZK_ROOT = "/autoscaling"
 
 
 # A set of config attributes that don't get included in the hash of the config.
@@ -886,6 +890,23 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         Useful for graceful shard migrations. Defaults to None"""
         return self.config_dict.get("previous_marathon_shards", None)
 
+    def get_autoscaled_instances(self) -> int:
+        try:
+            zk_instances = get_instances_from_zookeeper(
+                service=self.service, instance=self.instance
+            )
+            log.debug("Got %d instances out of zookeeper" % zk_instances)
+            return zk_instances
+        except NoNodeError:
+            log.debug("No zookeeper data, returning None")
+            return None
+
+    def set_autoscaled_instances(self, instance_count: int) -> None:
+        """Set the number of instances in the same way that the autoscaler does."""
+        set_instances_for_marathon_service(
+            service=self.service, instance=self.instance, instance_count=instance_count,
+        )
+
 
 class MarathonDeployStatus:
     """ An enum to represent Marathon app deploy status.
@@ -1603,3 +1624,26 @@ def take_up_slack(client: MarathonClient, app: MarathonApp) -> None:
 def get_short_task_id(task_id: str) -> str:
     """Return just the Marathon-generated UUID of a Mesos task id."""
     return task_id.split(MESOS_TASK_SPACER)[-1]
+
+
+def get_instances_from_zookeeper(service: str, instance: str) -> int:
+    with ZookeeperPool() as zookeeper_client:
+        (instances, _) = zookeeper_client.get(
+            "%s/instances" % compose_autoscaling_zookeeper_root(service, instance)
+        )
+        return int(instances)
+
+
+def compose_autoscaling_zookeeper_root(service: str, instance: str) -> str:
+    return f"{AUTOSCALING_ZK_ROOT}/{service}/{instance}"
+
+
+def set_instances_for_marathon_service(
+    service: str, instance: str, instance_count: int, soa_dir: str = DEFAULT_SOA_DIR
+) -> None:
+    zookeeper_path = "%s/instances" % compose_autoscaling_zookeeper_root(
+        service, instance
+    )
+    with ZookeeperPool() as zookeeper_client:
+        zookeeper_client.ensure_path(zookeeper_path)
+        zookeeper_client.set(zookeeper_path, str(instance_count).encode("utf8"))
