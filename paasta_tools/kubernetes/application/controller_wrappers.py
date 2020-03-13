@@ -12,6 +12,7 @@ from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
@@ -279,12 +280,17 @@ class DeploymentWrapper(Application):
             f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
         )
         hpa_exists = self.exists_hpa(kube_client)
-        # NO autoscaling
-        if not self.should_have_hpa():
-            # Remove HPA if autoscaling is disabled
-            if hpa_exists:
+        if hpa_exists:
+            if not self.should_have_hpa():
+                # Remove HPA if autoscaling is disabled
                 self.delete_horizontal_pod_autoscaler(kube_client)
-            return
+                return
+            elif autoscaling_is_paused():
+                self.logging.info(
+                    f"Autoscaler is paused. Setting min instances to {self.item.spec.replicas}."
+                    f"HPA will not scale down service."
+                )
+                self.soa_config.set_min_instances(self.item.spec.replicas)
 
         body = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name,
@@ -292,10 +298,11 @@ class DeploymentWrapper(Application):
             namespace=self.item.metadata.namespace,
         )
         if not body:
-            raise Exception(
+            self.logging.info(
                 f"CRIT: autoscaling misconfigured for {self.kube_deployment.service}."
-                + f"{self.kube_deployment.instance}.Please correct the configuration and update pre-commit hook."
+                f"{self.kube_deployment.instance}.Please correct the configuration and update pre-commit hook."
             )
+            return
         self.logging.debug(body)
         if not hpa_exists:
             self.logging.info(

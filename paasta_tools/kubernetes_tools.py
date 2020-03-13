@@ -512,13 +512,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
-        if autoscaling_params["decision_policy"] == "bespoke":
-            log.error(
-                f"Sorry, bespoke is not implemented yet. Please use a different decision \
-                policy if possible for {name}/name in namespace{namespace}"
-            )
-            return None
-        elif metrics_provider == "mesos_cpu":
+        if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta1MetricSpec(
                     type="Resource",

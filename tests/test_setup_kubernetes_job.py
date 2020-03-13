@@ -199,10 +199,13 @@ def test_setup_kube_deployment_create_update():
         side_effect=simple_create_application_object,
     ) as mock_create_application_object, mock.patch(
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
-    ) as mock_list_all_deployments:
+    ) as mock_list_all_deployments, mock.patch(
+        "paasta_tools.setup_kubernetes_job.autoscaling_is_paused", autospec=True
+    ) as mock_autoscaling_is_paused:
         mock_client = mock.Mock()
         # No instances created
         mock_service_instances: Sequence[str] = []
+        mock_autoscaling_is_paused.return_value = False
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,

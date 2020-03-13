@@ -27,6 +27,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
+from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
@@ -140,7 +141,10 @@ def setup_kube_deployments(
             not in existing_apps
         ):
             app.create(kube_client)
-        elif app and app.kube_deployment not in existing_kube_deployments:
+        elif app and (
+            app.kube_deployment not in existing_kube_deployments
+            or autoscaling_is_paused()
+        ):
             app.update(kube_client)
         else:
             log.debug(f"{app} is up to date, no action taken")
