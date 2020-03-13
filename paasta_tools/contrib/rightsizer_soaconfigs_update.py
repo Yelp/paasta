@@ -67,6 +67,13 @@ def parse_args():
         dest="local_dir",
     )
     parser.add_argument(
+        "--source-id",
+        help="String to attribute the changes in the commit message. Defaults to csv report name",
+        required=False,
+        default=None,
+        dest="source_id",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         help="Logging verbosity",
@@ -112,10 +119,11 @@ def main(args):
         args.splunk_creds, args.splunk_app, args.csv_report, args.criteria_filter
     )
     extra_message = get_extra_message(report["search"])
+    config_source = args.source_id or args.csv_report
 
     results = get_recommendations_by_service_file(report["results"])
     updater = AutoConfigUpdater(
-        config_source=args.csv_report,
+        config_source=config_source,
         git_remote=args.git_remote,
         branch=args.branch,
         working_dir=args.local_dir or "/nail/tmp",
