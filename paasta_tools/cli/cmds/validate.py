@@ -354,25 +354,31 @@ def validate_unique_instance_names(service_path):
     check_passed = True
 
     for cluster in list_clusters(service, soa_dir):
-        service_instances = get_service_instance_list(
-            service=service, cluster=cluster, soa_dir=soa_dir
-        )
-        instance_names = [service_instance[1] for service_instance in service_instances]
-        instance_name_to_count = Counter(instance_names)
-        duplicate_instance_names = [
-            instance_name
-            for instance_name, count in instance_name_to_count.items()
-            if count > 1
-        ]
-        if duplicate_instance_names:
-            check_passed = False
-            paasta_print(
-                duplicate_instance_names_message(
-                    service, cluster, duplicate_instance_names
-                )
+        for instance_type in ["marathon", "kubernetes"]:
+            service_instances = get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type=instance_type,
+                soa_dir=soa_dir,
             )
-        else:
-            paasta_print(no_duplicate_instance_names_message(service, cluster))
+            instance_names = [
+                service_instance[1] for service_instance in service_instances
+            ]
+            instance_name_to_count = Counter(instance_names)
+            duplicate_instance_names = [
+                instance_name
+                for instance_name, count in instance_name_to_count.items()
+                if count > 1
+            ]
+            if duplicate_instance_names:
+                check_passed = False
+                paasta_print(
+                    duplicate_instance_names_message(
+                        service, cluster, duplicate_instance_names
+                    )
+                )
+            else:
+                paasta_print(no_duplicate_instance_names_message(service, cluster))
 
     return check_passed
 

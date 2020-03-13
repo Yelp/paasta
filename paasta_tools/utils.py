@@ -2750,7 +2750,7 @@ def get_service_instance_list(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
