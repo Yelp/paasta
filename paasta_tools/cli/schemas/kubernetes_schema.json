@@ -336,6 +336,41 @@
                     },
                     "uniqueItems": true
                 },
+                "node_selectors": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^[a-zA-Z0-9]+[a-zA-Z0-9-_./]*[a-zA-Z0-9]+$": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "operator": {
+                                            "enum": [
+                                                "In",
+                                                "NotIn"
+                                            ]
+                                        },
+                                        "values": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "uniqueItems": true
+                                        }
+                                    },
+                                    "required": [
+                                        "operator",
+                                        "value"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                },
                 "pool": {
                     "type": "string"
                 },
