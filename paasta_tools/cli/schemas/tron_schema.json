@@ -270,6 +270,9 @@
                         "check_that_every_day_has_a_successful_run": {
                             "type": "boolean"
                         },
+                        "page_for_expected_runtime": {
+                            "type": "boolean"
+                        },
                         "priority": {
                             "type": "string"
                         }
