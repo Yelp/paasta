@@ -130,7 +130,7 @@ def cwd(path):
 def get_report_from_splunk(creds, app, filename, criteria_filter):
     """ Expect a table containing at least the following fields:
     criteria (<service> [marathon|kubernetes]-<cluster_name> <instance>)
-    service_owner
+    service_owner (Optional)
     project (Required to create tickets)
     estimated_monthly_savings (Optional)
     search_time (Unix time)
@@ -161,7 +161,7 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
         serv["service"] = criteria.split(" ")[0]
         serv["cluster"] = criteria.split(" ")[1]
         serv["instance"] = criteria.split(" ")[2]
-        serv["owner"] = d["result"]["service_owner"]
+        serv["owner"] = d["result"].get("service_owner", "Unavailable")
         serv["date"] = d["result"]["_time"].split(" ")[0]
         serv["money"] = d["result"].get("estimated_monthly_savings", 0)
         serv["project"] = d["result"].get("project", "Unavailable")
