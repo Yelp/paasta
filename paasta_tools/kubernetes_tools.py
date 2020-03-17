@@ -1270,13 +1270,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         converted to node affinities.
         """
         raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
-        return [
-            # operator is validated by schema to be either "In" or "NotIn"
-            # values is validated to be a list/array of strings
-            (to_node_label(label), config["operator"], config["values"])
-            for label, config in raw_selectors.items()
-            if type(config) is dict
-        ]
+        requirements = []
+
+        for label, config in raw_selectors.items():
+            # non-dict raw selectors become node selectors, not affinities
+            if type(config) is not dict:
+                continue
+            if config["operator"] in {"In", "NotIn"}:
+                values = config["values"]
+            elif config["operator"] in {"Exists", "DoesNotExist"}:
+                values = []
+            elif config["operator"] in {"Gt", "Lt"}:
+                # config["value"] is validated by jsonschema to be an int. but,
+                # k8s expects singleton list of the int represented as a str
+                # for these operators.
+                values = [str(config["value"])]
+            else:
+                raise ValueError(
+                    f"Unknown k8s node affinity operator: {config['operator']}"
+                )
+            requirements.append((to_node_label(label), config["operator"], values))
+        return requirements
 
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]

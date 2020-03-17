@@ -347,6 +347,7 @@
                                 },
                                 {
                                     "type": "object",
+                                    "additionalProperties": false,
                                     "properties": {
                                         "operator": {
                                             "enum": [
@@ -360,6 +361,40 @@
                                                 "type": "string"
                                             },
                                             "uniqueItems": true
+                                        }
+                                    },
+                                    "required": [
+                                        "operator",
+                                        "values"
+                                    ]
+                                },
+                                {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "operator": {
+                                            "enum": [
+                                                "Exists",
+                                                "DoesNotExist"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "operator"
+                                    ]
+                                },
+                                {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "operator": {
+                                            "enum": [
+                                                "Gt",
+                                                "Lt"
+                                            ]
+                                        },
+                                        "value": {
+                                            "type": "integer"
                                         }
                                     },
                                     "required": [

@@ -1140,15 +1140,34 @@ class TestKubernetesDeploymentConfig:
             (  # node_selectors config case, complex items become requirements
                 {
                     "select_key": "select_value",
-                    "affinity_key": {"operator": "In", "values": ["affinity_value"]},
+                    "in_key": {"operator": "In", "values": ["a_value"]},
+                    "out_key": {"operator": "NotIn", "values": ["a_value"]},
+                    "exists_key": {"operator": "Exists"},
+                    "dne_key": {"operator": "DoesNotExist"},
+                    "gt_key": {"operator": "Gt", "value": 100},
+                    "lt_key": {"operator": "Lt", "value": 200},
                 },
-                [("affinity_key", "In", ["affinity_value"])],
+                [
+                    ("in_key", "In", ["a_value"]),
+                    ("out_key", "NotIn", ["a_value"]),
+                    ("exists_key", "Exists", []),
+                    ("dne_key", "DoesNotExist", []),
+                    ("gt_key", "Gt", ["100"]),
+                    ("lt_key", "Lt", ["200"]),
+                ],
             ),
         ],
     )
     def test_raw_selectors_to_requirements(self, node_selectors, expected):
         self.deployment.config_dict["node_selectors"] = node_selectors
         assert self.deployment._raw_selectors_to_requirements() == expected
+
+    def test_raw_selectors_to_requirements_error(self):
+        self.deployment.config_dict["node_selectors"] = {
+            "error_key": {"operator": "BadOperator"},
+        }
+        with pytest.raises(ValueError):
+            self.deployment._raw_selectors_to_requirements()
 
     def test_get_kubernetes_metadata(self):
         with mock.patch(
