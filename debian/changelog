@@ -1,3 +1,12 @@
+paasta-tools (0.95.7) xenial; urgency=medium
+
+  * 0.95.7 tagged with 'make release'
+    Commit: Merge pull request #2718 from Yelp/u/siruitan/PAASTA-16402-
+    avoid_connecting_mesos_leader_in_paasta_validate  Avoid connecting
+    to mesos leader during paasta validate
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 17 Mar 2020 14:04:31 -0700
+
 paasta-tools (0.95.6) xenial; urgency=medium
 
   * 0.95.6 tagged with 'make release'
