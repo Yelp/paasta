@@ -1,3 +1,10 @@
+paasta-tools (0.95.6) xenial; urgency=medium
+
+  * 0.95.6 tagged with 'make release'
+    Commit: Added new page_for_expected_runtime tron option
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 17 Mar 2020 11:02:21 -0700
+
 paasta-tools (0.95.5) xenial; urgency=medium
 
   * 0.95.5 tagged with 'make release'
