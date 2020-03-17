@@ -1040,66 +1040,115 @@ class TestKubernetesDeploymentConfig:
         )
 
     @pytest.mark.parametrize(
-        "whitelist,blacklist,expected",
+        "raw_selectors,expected",
         [
-            (  # whitelist only
-                ("habitat", ["habitat_a", "habitat_b"]),
-                [],
-                [
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat",
-                        operator="In",
-                        values=["habitat_a", "habitat_b"],
-                    ),
+            ({}, {"yelp.com/pool": "default"}),  # no node_selectors case
+            (  # node_selectors configs case, simple items become k8s selectors
+                {
+                    "select_key": "select_value",
+                    "affinity_key": {"operator": "In", "values": ["affinity_value"]},
+                },
+                {"yelp.com/pool": "default", "select_key": "select_value"},
+            ),
+        ],
+    )
+    def test_get_node_selectors(self, raw_selectors, expected):
+        if raw_selectors:
+            self.deployment.config_dict["node_selectors"] = raw_selectors
+        assert self.deployment.get_node_selector() == expected
+
+    @mock.patch.object(
+        KubernetesDeploymentConfig,
+        "_whitelist_blacklist_to_requirements",
+        mock.Mock(return_value=[("habitat", "In", ["habitat_a"])]),
+    )
+    @mock.patch.object(
+        KubernetesDeploymentConfig,
+        "_raw_selectors_to_requirements",
+        mock.Mock(return_value=[("instance_type", "In", ["a1.1xlarge"])]),
+    )
+    def test_get_node_affinity_with_reqs(self):
+        assert self.deployment.get_node_affinity() == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="habitat", operator="In", values=["habitat_a"],
+                            ),
+                            V1NodeSelectorRequirement(
+                                key="instance_type",
+                                operator="In",
+                                values=["a1.1xlarge"],
+                            ),
+                        ]
+                    )
                 ],
             ),
-            (  # blacklist only
+        )
+
+    @mock.patch.object(
+        KubernetesDeploymentConfig,
+        "_whitelist_blacklist_to_requirements",
+        mock.Mock(return_value=[]),
+    )
+    @mock.patch.object(
+        KubernetesDeploymentConfig,
+        "_raw_selectors_to_requirements",
+        mock.Mock(return_value=[]),
+    )
+    def test_get_node_affinity_no_reqs(self):
+        assert self.deployment.get_node_affinity() is None
+
+    @pytest.mark.parametrize(
+        "whitelist,blacklist,expected",
+        [
+            (None, [], []),  # no whitelist/blacklist case
+            (  # whitelist only case
+                ("habitat", ["habitat_a", "habitat_b"]),
+                [],
+                [("yelp.com/habitat", "In", ["habitat_a", "habitat_b"])],
+            ),
+            (  # blacklist only case
                 None,
                 [("habitat", "habitat_a"), ("habitat", "habitat_b")],
                 [
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat", operator="NotIn", values=["habitat_a"]
-                    ),
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat", operator="NotIn", values=["habitat_b"]
-                    ),
+                    ("yelp.com/habitat", "NotIn", ["habitat_a"]),
+                    ("yelp.com/habitat", "NotIn", ["habitat_b"]),
                 ],
             ),
-            (  # whitelist and blacklist
+            (  # whitelist and blacklist case
                 ("habitat", ["habitat_a", "habitat_b"]),
                 [("region", "region_a"), ("habitat", "habitat_c")],
                 [
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat",
-                        operator="In",
-                        values=["habitat_a", "habitat_b"],
-                    ),
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/region", operator="NotIn", values=["region_a"]
-                    ),
-                    V1NodeSelectorRequirement(
-                        key="yelp.com/habitat", operator="NotIn", values=["habitat_c"]
-                    ),
+                    ("yelp.com/habitat", "In", ["habitat_a", "habitat_b"]),
+                    ("yelp.com/region", "NotIn", ["region_a"]),
+                    ("yelp.com/habitat", "NotIn", ["habitat_c"]),
                 ],
             ),
         ],
     )
-    def test_get_node_affinity(self, whitelist, blacklist, expected):
+    def test_whitelist_blacklist_to_requirements(self, whitelist, blacklist, expected):
         self.deployment.config_dict["deploy_whitelist"] = whitelist
         self.deployment.config_dict["deploy_blacklist"] = blacklist
+        assert self.deployment._whitelist_blacklist_to_requirements() == expected
 
-        node_affinity = self.deployment.get_node_affinity()
-
-        assert node_affinity == V1NodeAffinity(
-            required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                node_selector_terms=[V1NodeSelectorTerm(match_expressions=expected,)],
+    @pytest.mark.parametrize(
+        "node_selectors,expected",
+        [
+            ({}, []),  # no node_selectors case
+            (  # node_selectors config case, complex items become requirements
+                {
+                    "select_key": "select_value",
+                    "affinity_key": {"operator": "In", "values": ["affinity_value"]},
+                },
+                [("affinity_key", "In", ["affinity_value"])],
             ),
-        )
-
-    def test_get_node_affinity_no_blacklist_or_whitelist(self):
-        self.deployment.config_dict["deploy_whitelist"] = None
-        self.deployment.config_dict["deploy_blacklist"] = []
-        assert self.deployment.get_node_affinity() is None
+        ],
+    )
+    def test_raw_selectors_to_requirements(self, node_selectors, expected):
+        self.deployment.config_dict["node_selectors"] = node_selectors
+        assert self.deployment._raw_selectors_to_requirements() == expected
 
     def test_get_kubernetes_metadata(self):
         with mock.patch(
@@ -2591,3 +2640,28 @@ def test_get_pod_hostname(pod_node_name, node, expected):
     hostname = kubernetes_tools.get_pod_hostname(client, pod)
 
     assert hostname == expected
+
+
+@mock.patch("paasta_tools.kubernetes_tools.kube_client", autospec=True)
+@pytest.mark.parametrize(
+    "label,version_info,expected",
+    [
+        ("a_random_label", None, "a_random_label"),  # non-special case
+        (  # instance_type -> beta k8s label
+            "instance_type",
+            mock.Mock(major="1", minor="16"),
+            "beta.kubernetes.io/instance-type",
+        ),
+        (  # instance_type -> non-beta k8s label
+            "instance_type",
+            mock.Mock(major="1", minor="17"),
+            "node.kubernetes.io/instance-type",
+        ),
+        ("habitat", None, "yelp.com/habitat"),  # hiera case
+    ],
+)
+def test_to_node_label(mock_client, label, version_info, expected):
+    mock_client.VersionApi.return_value = mock.Mock(
+        get_code=mock.Mock(return_value=version_info)
+    )
+    assert kubernetes_tools.to_node_label(label) == expected

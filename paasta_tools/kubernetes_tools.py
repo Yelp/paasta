@@ -226,6 +226,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     service_account_name: str
     autoscaling: AutoscalingParamsDict
     horizontal_autoscaling: Dict[str, Any]
+    node_selectors: Dict[str, Union[str, Dict[str, Any]]]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1208,7 +1209,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Converts simple node restrictions into node selectors. Unlike node
         affinities, selectors will show up in `kubectl describe`.
         """
-        return {"yelp.com/pool": self.get_pool()}
+        raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
+        node_selectors = {
+            to_node_label(label): value
+            for label, value in raw_selectors.items()
+            if type(value) is str
+        }
+        node_selectors["yelp.com/pool"] = self.get_pool()
+        return node_selectors
 
     def get_node_affinity(self) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
@@ -1216,21 +1224,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         note: At the time of writing, `kubectl describe` does not show affinities,
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
-        requirements = []
-        # convert whitelist into a node selector req
-        whitelist = self.get_deploy_whitelist()
-        if whitelist:
-            location_type, alloweds = whitelist
-            requirements.append((f"yelp.com/{location_type}", "In", alloweds))
-        # convert blacklist into multiple node selector reqs
-        blacklist = self.get_deploy_blacklist()
-        if blacklist:
-            # not going to prune for duplicates, or group blacklist items for
-            # same location_type. makes testing easier and k8s can handle it.
-            for location_type, not_allowed in blacklist:
-                requirements.append(
-                    (f"yelp.com/{location_type}", "NotIn", [not_allowed])
-                )
+        requirements = self._whitelist_blacklist_to_requirements()
+        requirements.extend(self._raw_selectors_to_requirements())
         # package everything into a node affinity - lots of layers :P
         if len(requirements) == 0:
             return None
@@ -1248,6 +1243,40 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # changes, we will bounce anyway.
             required_during_scheduling_ignored_during_execution=selector,
         )
+
+    def _whitelist_blacklist_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
+        """Converts deploy_whitelist and deploy_blacklist to a list of
+        requirements, which can be converted to node affinities.
+        """
+        requirements = []
+        # convert whitelist into a node selector req
+        whitelist = self.get_deploy_whitelist()
+        if whitelist:
+            location_type, alloweds = whitelist
+            requirements.append((to_node_label(location_type), "In", alloweds))
+        # convert blacklist into multiple node selector reqs
+        blacklist = self.get_deploy_blacklist()
+        if blacklist:
+            # not going to prune for duplicates, or group blacklist items for
+            # same location_type. makes testing easier and k8s can handle it.
+            for location_type, not_allowed in blacklist:
+                requirements.append(
+                    (to_node_label(location_type), "NotIn", [not_allowed])
+                )
+        return requirements
+
+    def _raw_selectors_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
+        """Converts certain node_selectors into requirements, which can be
+        converted to node affinities.
+        """
+        raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
+        return [
+            # operator is validated by schema to be either "In" or "NotIn"
+            # values is validated to be a list/array of strings
+            (to_node_label(label), config["operator"], config["values"])
+            for label, config in raw_selectors.items()
+            if type(config) is dict
+        ]
 
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]
@@ -2215,3 +2244,25 @@ def get_pod_hostname(kube_client: KubeClient, pod: V1Pod) -> str:
         return pod.spec.node_name
     # if label has disappeared (say we changed it), default to node name
     return node.metadata.labels.get("yelp.com/hostname", pod.spec.node_name)
+
+
+def to_node_label(label: str) -> str:
+    """k8s-ifies certain special node labels"""
+    if label in {"instance_type", "instance-type"}:
+        # kube_client is assumed to already be configured
+        version_info = kube_client.VersionApi().get_code()
+        if int(version_info.major) == 1 and int(version_info.minor) < 17:
+            # the beta instance-type label is deprecated as of k8s v1.17
+            return "beta.kubernetes.io/instance-type"
+        else:
+            return "node.kubernetes.io/instance-type"
+    elif label in {
+        "datacenter",
+        "ecosystem",
+        "habitat",
+        "hostname",
+        "region",
+        "superregion",
+    }:
+        return f"yelp.com/{label}"
+    return label
