@@ -1274,7 +1274,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         for label, config in raw_selectors.items():
             # non-dict raw selectors become node selectors, not affinities
-            if type(config) is not dict:
+            if type(config) is list:
+                # specifying an array/list value for a label is shorthand for
+                # the "In" operator
+                config = {"operator": "In", "values": config}
+            elif type(config) is not dict:
                 continue
             if config["operator"] in {"In", "NotIn"}:
                 values = config["values"]

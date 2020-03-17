@@ -1139,7 +1139,8 @@ class TestKubernetesDeploymentConfig:
             ({}, []),  # no node_selectors case
             (  # node_selectors config case, complex items become requirements
                 {
-                    "select_key": "select_value",
+                    "select_key": "select_value",  # simple item, excluded
+                    "implicit_in_key": ["implicit_value"],  # shorthand "In" case
                     "in_key": {"operator": "In", "values": ["a_value"]},
                     "out_key": {"operator": "NotIn", "values": ["a_value"]},
                     "exists_key": {"operator": "Exists"},
@@ -1148,6 +1149,7 @@ class TestKubernetesDeploymentConfig:
                     "lt_key": {"operator": "Lt", "value": 200},
                 },
                 [
+                    ("implicit_in_key", "In", ["implicit_value"]),
                     ("in_key", "In", ["a_value"]),
                     ("out_key", "NotIn", ["a_value"]),
                     ("exists_key", "Exists", []),
