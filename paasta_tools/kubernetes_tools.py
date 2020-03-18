@@ -994,6 +994,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self, instance_count: int, kube_client: KubeClient
     ) -> None:
         """Set the number of instances in the same way that the autoscaler does."""
+        kube_client = KubeClient()
         set_instances_for_kubernetes_service(
             kube_client=kube_client, service_config=self, instance_count=instance_count
         )
