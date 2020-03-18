@@ -1904,13 +1904,29 @@ def test_update_deployment():
 
 
 @mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
-def test_set_instances_for_kubernetes_service(mock_kube_deploy_config):
+def test_set_instances_for_kubernetes_service_deployment(mock_kube_deploy_config):
     replicas = 5
     mock_client = mock.Mock()
-    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = 'fake_deployment'
+    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+        "fake_deployment"
+    )
+    mock_kube_deploy_config.get_persistent_volumes.return_value = False
     mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
     set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
     assert mock_client.deployments.patch_namespaced_deployment_scale.call_count == 1
+
+
+@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
+def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_config):
+    replicas = 5
+    mock_client = mock.Mock()
+    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+        "fake_stateful_set"
+    )
+    mock_kube_deploy_config.get_persistent_volumes.return_value = True
+    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+    set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
+    assert mock_client.deployments.patch_namespaced_stateful_set_scale.call_count == 1
 
 
 def test_create_custom_resource():

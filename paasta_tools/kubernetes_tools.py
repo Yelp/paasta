@@ -925,15 +925,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_sanitised_instance_name(self) -> str:
         return sanitise_kubernetes_name(self.get_instance())
 
-    def get_autoscaled_instances(self) -> int:
+    def get_autoscaled_instances(self) -> Optional[int]:
         try:
-            return (
-                KubeClient()
-                .deployments.read_namespaced_deployment(
-                    name=self.get_sanitised_deployment_name(), namespace="paasta"
+            if self.get_persistent_volumes():
+                return (
+                    KubeClient()
+                    .deployments.read_namespaced_stateful_set(
+                        name=self.get_sanitised_deployment_name(), namespace="paasta"
+                    )
+                    .spec.replicas
                 )
-                .spec.replicas
-            )
+            else:
+                return (
+                    KubeClient()
+                    .deployments.read_namespaced_deployment(
+                        name=self.get_sanitised_deployment_name(), namespace="paasta"
+                    )
+                    .spec.replicas
+                )
         except ApiException as e:
             log.error(e)
             log.debug(
@@ -946,9 +955,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def set_autoscaled_instances(self, instance_count: int) -> None:
         """Set the number of instances in the same way that the autoscaler does."""
         kube_client = KubeClient()
-        set_instances_for_kubernetes_service(kube_client=kube_client,
-                                             service_config=self,
-                                             instance_count=instance_count)
+        set_instances_for_kubernetes_service(
+            kube_client=kube_client, service_config=self, instance_count=instance_count
+        )
 
     def get_desired_instances(self) -> int:
         """ For now if we have an EBS instance it means we can only have 1 instance
@@ -1604,15 +1613,21 @@ def create_pod_disruption_budget(
 
 
 def set_instances_for_kubernetes_service(
-    kube_client: KubeClient, service_config: KubernetesDeploymentConfig, instance_count: int
+    kube_client: KubeClient,
+    service_config: KubernetesDeploymentConfig,
+    instance_count: int,
 ) -> None:
-    deployment_name = service_config.get_sanitised_deployment_name()
-    scale_deployment_body = service_config.format_kubernetes_app()
-    scale_deployment_body.spec.replicas = instance_count
-
-    kube_client.deployments.patch_namespaced_deployment_scale(name=deployment_name,
-                                                              namespace="paasta",
-                                                              body=scale_deployment_body)
+    name = service_config.get_sanitised_deployment_name()
+    formatted_application = service_config.format_kubernetes_app()
+    formatted_application.spec.replicas = instance_count
+    if service_config.get_persistent_volumes():
+        kube_client.deployments.patch_namespaced_stateful_set_scale(
+            name=name, namespace="paasta", body=formatted_application
+        )
+    else:
+        kube_client.deployments.patch_namespaced_deployment_scale(
+            name=name, namespace="paasta", body=formatted_application
+        )
 
 
 def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
