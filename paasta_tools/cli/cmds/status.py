@@ -1048,6 +1048,9 @@ def print_flink_status(
             lambda j: j["name"],
         )
     )
+
+    allowed_max_jobs_printed = 3
+    job_printed_count = 0
     for job in unique_jobs:
         job_id = job["jid"]
         if verbose:
@@ -1056,8 +1059,9 @@ def print_flink_status(
         else:
             fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime.fromtimestamp(int(job["start-time"]) // 1000)
-        output.append(
-            fmt.format(
+        if verbose or job_printed_count < allowed_max_jobs_printed:
+            job_printed_count += 1
+            job_info_str = fmt.format(
                 job_id=job_id,
                 job_name=get_flink_job_name(job),
                 allowed_max_job_name_length=allowed_max_job_name_length,
@@ -1065,7 +1069,9 @@ def print_flink_status(
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
-        )
+            color_fn = PaastaColors.green if job.get("state") and job.get("state") == "RUNNING" else PaastaColors.red
+            output.append(color_fn(job_info_str))
+
         if verbose and job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
             root_exception = exceptions["root-exception"]
