@@ -83,6 +83,10 @@ class PushNotFastForwardError(Exception):
     pass
 
 
+class ValidationError(Exception):
+    pass
+
+
 def _push_to_remote(branch: str) -> None:
     try:
         subprocess.check_output(
@@ -191,7 +195,7 @@ class AutoConfigUpdater:
     def commit_to_remote(self, extra_message: str = ""):
         if not self.validate():
             log.error("Files failed validation, not committing changes")
-            return
+            raise ValidationError
 
         # TODO: more identifying information, like hostname or paasta_tools version?
         message = f"Update to {AUTO_SOACONFIG_SUBDIR} configs from {self.config_source}"
