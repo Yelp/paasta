@@ -1141,21 +1141,23 @@ class TestKubernetesDeploymentConfig:
                 {
                     "select_key": "select_value",  # simple item, excluded
                     "implicit_in_key": ["implicit_value"],  # shorthand "In" case
-                    "in_key": {"operator": "In", "values": ["a_value"]},
-                    "out_key": {"operator": "NotIn", "values": ["a_value"]},
-                    "exists_key": {"operator": "Exists"},
-                    "dne_key": {"operator": "DoesNotExist"},
-                    "gt_key": {"operator": "Gt", "value": 100},
-                    "lt_key": {"operator": "Lt", "value": 200},
+                    "a_key": [
+                        {"operator": "In", "values": ["a_value"]},
+                        {"operator": "NotIn", "values": ["a_value"]},
+                        {"operator": "Exists"},
+                        {"operator": "DoesNotExist"},
+                        {"operator": "Gt", "value": 100},
+                        {"operator": "Lt", "value": 200},
+                    ],
                 },
                 [
                     ("implicit_in_key", "In", ["implicit_value"]),
-                    ("in_key", "In", ["a_value"]),
-                    ("out_key", "NotIn", ["a_value"]),
-                    ("exists_key", "Exists", []),
-                    ("dne_key", "DoesNotExist", []),
-                    ("gt_key", "Gt", ["100"]),
-                    ("lt_key", "Lt", ["200"]),
+                    ("a_key", "In", ["a_value"]),
+                    ("a_key", "NotIn", ["a_value"]),
+                    ("a_key", "Exists", []),
+                    ("a_key", "DoesNotExist", []),
+                    ("a_key", "Gt", ["100"]),
+                    ("a_key", "Lt", ["200"]),
                 ],
             ),
         ],
@@ -1166,7 +1168,7 @@ class TestKubernetesDeploymentConfig:
 
     def test_raw_selectors_to_requirements_error(self):
         self.deployment.config_dict["node_selectors"] = {
-            "error_key": {"operator": "BadOperator"},
+            "error_key": [{"operator": "BadOperator"}],
         }
         with pytest.raises(ValueError):
             self.deployment._raw_selectors_to_requirements()

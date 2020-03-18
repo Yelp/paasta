@@ -353,61 +353,68 @@
                                     "uniqueItems": true
                                 },
                                 {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "operator": {
-                                            "enum": [
-                                                "In",
-                                                "NotIn"
-                                            ]
-                                        },
-                                        "values": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
+                                    "type": "array",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "operator": {
+                                                        "enum": [
+                                                            "In",
+                                                            "NotIn"
+                                                        ]
+                                                    },
+                                                    "values": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "uniqueItems": true
+                                                    }
+                                                },
+                                                "required": [
+                                                    "operator",
+                                                    "values"
+                                                ]
                                             },
-                                            "uniqueItems": true
-                                        }
-                                    },
-                                    "required": [
-                                        "operator",
-                                        "values"
-                                    ]
-                                },
-                                {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "operator": {
-                                            "enum": [
-                                                "Exists",
-                                                "DoesNotExist"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "operator"
-                                    ]
-                                },
-                                {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "operator": {
-                                            "enum": [
-                                                "Gt",
-                                                "Lt"
-                                            ]
-                                        },
-                                        "value": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "required": [
-                                        "operator",
-                                        "value"
-                                    ]
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "operator": {
+                                                        "enum": [
+                                                            "Exists",
+                                                            "DoesNotExist"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "operator"
+                                                ]
+                                            },
+                                            {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "operator": {
+                                                        "enum": [
+                                                            "Gt",
+                                                            "Lt"
+                                                        ]
+                                                    },
+                                                    "value": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "operator",
+                                                    "value"
+                                                ]
+                                            }
+                                        ]
+                                    }
                                 }
                             ]
                         }

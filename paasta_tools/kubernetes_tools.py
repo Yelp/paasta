@@ -1272,28 +1272,31 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
         requirements = []
 
-        for label, config in raw_selectors.items():
-            # non-dict raw selectors become node selectors, not affinities
-            if type(config) is list:
-                # specifying an array/list value for a label is shorthand for
-                # the "In" operator
-                config = {"operator": "In", "values": config}
-            elif type(config) is not dict:
+        for label, configs in raw_selectors.items():
+            if type(configs) is not list or len(configs) == 0:
                 continue
-            if config["operator"] in {"In", "NotIn"}:
-                values = config["values"]
-            elif config["operator"] in {"Exists", "DoesNotExist"}:
-                values = []
-            elif config["operator"] in {"Gt", "Lt"}:
-                # config["value"] is validated by jsonschema to be an int. but,
-                # k8s expects singleton list of the int represented as a str
-                # for these operators.
-                values = [str(config["value"])]
-            else:
-                raise ValueError(
-                    f"Unknown k8s node affinity operator: {config['operator']}"
-                )
-            requirements.append((to_node_label(label), config["operator"], values))
+            elif type(configs[0]) is str:
+                # specifying an array/list of strings for a label is shorthand
+                # for the "In" operator
+                configs = [{"operator": "In", "values": configs}]
+
+            label = to_node_label(label)
+            for config in configs:
+                if config["operator"] in {"In", "NotIn"}:
+                    values = config["values"]
+                elif config["operator"] in {"Exists", "DoesNotExist"}:
+                    values = []
+                elif config["operator"] in {"Gt", "Lt"}:
+                    # config["value"] is validated by jsonschema to be an int. but,
+                    # k8s expects singleton list of the int represented as a str
+                    # for these operators.
+                    values = [str(config["value"])]
+                else:
+                    raise ValueError(
+                        f"Unknown k8s node affinity operator: {config['operator']}"
+                    )
+                requirements.append((label, config["operator"], values))
+
         return requirements
 
     def sanitize_for_config_hash(

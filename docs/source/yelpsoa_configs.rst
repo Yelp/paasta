@@ -170,35 +170,30 @@ These options are only applicable to tasks scheduled on Kubernetes.
 
         node_selectors:
           instance_type:
-            operator: NotIn
-            values: ["c3.8xlarge"]
+            - operator: NotIn
+              values: ["c3.8xlarge"]
 
     * Requires that a node have the ``vip`` label::
 
         node_selectors:
           vip:
-            operator: Exists
+            - operator: Exists
 
     * Requires that a node not have the ``vip`` label::
 
         node_selectors:
           vip:
-            operator: DoesNotExist
+            - operator: DoesNotExist
 
     * Requires that a node have a label ``priority`` with a value greater than 1
       and less than 5::
 
         node_selectors:
           priority:
-            operator: Gt
-            value: 3
-
-    * Requires that a node have a priority less than 3::
-
-        node_selectors:
-          priority:
-            operator: Lt
-            value: 3
+            - operator: Gt
+              value: 1
+            - operator: Lt
+              value: 5
 
     .. note::
 
