@@ -33,6 +33,7 @@ def instance_config():
         cluster="fake_cluster",
         soa_dir="fake_soa_dir",
         job_id=job_id,
+        config_dict={},
     )
     mock_instance_config.get_replication_crit_percentage.return_value = 90
     mock_instance_config.get_registrations.return_value = [job_id]
