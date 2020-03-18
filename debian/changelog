@@ -1,3 +1,11 @@
+paasta-tools (0.95.8) xenial; urgency=medium
+
+  * 0.95.8 tagged with 'make release'
+    Commit: Merge pull request #2723 from Yelp/rightsizer-keys-optional
+    Include all schemas and fix key error for autotuned_defaults
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 17 Mar 2020 18:18:41 -0700
+
 paasta-tools (0.95.7) xenial; urgency=medium
 
   * 0.95.7 tagged with 'make release'
