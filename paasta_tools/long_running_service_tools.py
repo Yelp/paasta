@@ -244,9 +244,6 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_autoscaled_instances(self) -> int:
         raise NotImplementedError()
 
-    def set_autoscaled_instances(self, instance_count: int) -> None:
-        raise NotImplementedError()
-
     def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
