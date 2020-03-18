@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import socket
 import sys
 import time
@@ -609,14 +610,14 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd, spark_ui_port):
+def get_spark_app_name(original_docker_cmd: str, spark_ui_port: int) -> str:
     # Use submitted batch name as default spark_run job name
     spark_app_name = "paasta_spark_run"
     if "spark-submit" in original_docker_cmd:
         parser = argparse.ArgumentParser()
         parser.add_argument("cmd", choices=["spark-submit"])
         parser.add_argument("others", nargs="+")
-        args, _ = parser.parse_known_args(original_docker_cmd)
+        args, _ = parser.parse_known_args(shlex.split(original_docker_cmd))
         scripts = [arg for arg in args.others if arg.endswith(".py")]
         # if we are able to find the running script from cmd, update
         # the app name to be the first batch name we found
