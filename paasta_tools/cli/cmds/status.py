@@ -1069,7 +1069,11 @@ def print_flink_status(
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
-            color_fn = PaastaColors.green if job.get("state") and job.get("state") == "RUNNING" else PaastaColors.red
+            color_fn = (
+                PaastaColors.green
+                if job.get("state") and job.get("state") == "RUNNING"
+                else PaastaColors.red
+            )
             output.append(color_fn(job_info_str))
 
         if verbose and job_id in status.exceptions:
