@@ -327,10 +327,11 @@ def _dns_servers():
                 yield parts[1]
 
 
-def ensure_shared_chains():
+def ensure_shared_chains(conf):
     _ensure_dns_chain()
-    _ensure_internet_chain()
-    _ensure_common_chain()
+    if conf.get_network_mode() != "local":
+        _ensure_internet_chain()
+        _ensure_common_chain()
 
 
 def _ensure_common_chain():
