@@ -1,3 +1,12 @@
+paasta-tools (0.95.9) xenial; urgency=medium
+
+  * 0.95.9 tagged with 'make release'
+    Commit: Merge pull request #2722 from Yelp/u/enocht/PAASTA-
+    15842_k8s_bespoke_policy  Implement k8s bespoke policies for paasta
+    API
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Thu, 19 Mar 2020 14:41:55 -0700
+
 paasta-tools (0.95.8) xenial; urgency=medium
 
   * 0.95.8 tagged with 'make release'
