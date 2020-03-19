@@ -894,3 +894,16 @@ def test_reserved_maintenence_resources_ignores_non_maintenance():
         }
     )
     assert all([actual[x] == 5 for x in ["cpus", "mem", "disk"]])
+
+
+def test_suffixed_number_value():
+    assert metastatus_lib.suffixed_number_value("5k") == 5 * 1000
+    assert metastatus_lib.suffixed_number_value("5M") == 5 * 1000 ** 2
+    assert metastatus_lib.suffixed_number_value("5G") == 5 * 1000 ** 3
+    assert metastatus_lib.suffixed_number_value("5T") == 5 * 1000 ** 4
+    assert metastatus_lib.suffixed_number_value("5P") == 5 * 1000 ** 5
+    assert metastatus_lib.suffixed_number_value("5Ki") == 5 * 1024
+    assert metastatus_lib.suffixed_number_value("5Mi") == 5 * 1024 ** 2
+    assert metastatus_lib.suffixed_number_value("5Gi") == 5 * 1024 ** 3
+    assert metastatus_lib.suffixed_number_value("5Ti") == 5 * 1024 ** 4
+    assert metastatus_lib.suffixed_number_value("5Pi") == 5 * 1024 ** 5
