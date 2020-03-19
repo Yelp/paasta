@@ -94,6 +94,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import set_instances_for_kubernetes_service
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
@@ -1900,6 +1901,32 @@ def test_update_deployment():
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
+
+
+@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
+def test_set_instances_for_kubernetes_service_deployment(mock_kube_deploy_config):
+    replicas = 5
+    mock_client = mock.Mock()
+    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+        "fake_deployment"
+    )
+    mock_kube_deploy_config.get_persistent_volumes.return_value = False
+    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+    set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
+    assert mock_client.deployments.patch_namespaced_deployment_scale.call_count == 1
+
+
+@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
+def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_config):
+    replicas = 5
+    mock_client = mock.Mock()
+    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+        "fake_stateful_set"
+    )
+    mock_kube_deploy_config.get_persistent_volumes.return_value = True
+    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+    set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
+    assert mock_client.deployments.patch_namespaced_stateful_set_scale.call_count == 1
 
 
 def test_create_custom_resource():
