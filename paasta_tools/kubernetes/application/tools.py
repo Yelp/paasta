@@ -10,7 +10,6 @@ from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWr
 from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +73,3 @@ def list_namespaced_applications(
         elif application_type == V1StatefulSet:
             apps.extend(list_namespaced_stateful_sets(kube_client, namespace))
     return apps
-
-
-def get_app_name(service: str, instance: str):
-    return sanitise_kubernetes_name(f"{service}-{instance}")
