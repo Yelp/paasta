@@ -803,19 +803,13 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
             autospec=True,
         ) as mock_get_docker_url, mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_service_name",
-            autospec=True,
-            return_value="kurupt",
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_instance_name",
-            autospec=True,
-            return_value="fm",
-        ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
             autospec=True,
+            return_value="kurupt",
         ) as mock_get_service, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
             autospec=True,
+            return_value="fm",
         ) as mock_get_instance, mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_desired_instances",
             autospec=True,
@@ -1858,15 +1852,15 @@ def test_max_unavailable(instances, bmf):
 
 def test_pod_disruption_budget_for_service_instance():
     x = pod_disruption_budget_for_service_instance(
-        service="foo", instance="bar", max_unavailable="10%"
+        service="foo_1", instance="bar_1", max_unavailable="10%"
     )
 
-    assert x.metadata.name == "foo-bar"
+    assert x.metadata.name == "foo--1-bar--1"
     assert x.metadata.namespace == "paasta"
     assert x.spec.max_unavailable == "10%"
     assert x.spec.selector.match_labels == {
-        "paasta.yelp.com/service": "foo",
-        "paasta.yelp.com/instance": "bar",
+        "paasta.yelp.com/service": "foo_1",
+        "paasta.yelp.com/instance": "bar_1",
     }
 
 
@@ -2098,6 +2092,17 @@ def test_parse_container_resources():
     assert kubernetes_tools.parse_container_resources(
         missing_resource
     ) == KubeContainerResources(2, 100, None)
+
+
+@mock.patch.object(kubernetes_tools, "sanitise_kubernetes_name", autospec=True)
+def test_get_kubernetes_app_name(mock_sanitise):
+    mock_sanitise.side_effect = ["sanitised--service", "sanitised--instance"]
+    app_name = kubernetes_tools.get_kubernetes_app_name("a_service", "an_instance")
+    assert app_name == "sanitised--service-sanitised--instance"
+    assert mock_sanitise.call_args_list == [
+        mock.call("a_service"),
+        mock.call("an_instance"),
+    ]
 
 
 def test_get_kubernetes_app_by_name():

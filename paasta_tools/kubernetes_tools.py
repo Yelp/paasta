@@ -995,10 +995,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
         return V1ObjectMeta(
-            name="{service}-{instance}".format(
-                service=self.get_sanitised_service_name(),
-                instance=self.get_sanitised_instance_name(),
-            ),
+            name=self.get_sanitised_deployment_name(),
             labels={
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
@@ -1010,10 +1007,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_sanitised_deployment_name(self) -> str:
-        return "{service}-{instance}".format(
-            service=self.get_sanitised_service_name(),
-            instance=self.get_sanitised_instance_name(),
-        )
+        return get_kubernetes_app_name(self.get_service(), self.get_instance())
 
     def get_min_task_uptime(self) -> int:
         return self.config_dict.get("bounce_health_params", {}).get(
@@ -1041,10 +1035,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     kind="StatefulSet",
                     metadata=self.get_kubernetes_metadata(git_sha),
                     spec=V1StatefulSetSpec(
-                        service_name="{service}-{instance}".format(
-                            service=self.get_sanitised_service_name(),
-                            instance=self.get_sanitised_instance_name(),
-                        ),
+                        service_name=self.get_sanitised_deployment_name(),
                         volume_claim_templates=self.get_volume_claim_templates(),
                         replicas=self.get_desired_instances(),
                         revision_history_limit=0,
@@ -1591,7 +1582,9 @@ def pod_disruption_budget_for_service_instance(
     service: str, instance: str, max_unavailable: Union[str, int],
 ) -> V1beta1PodDisruptionBudget:
     return V1beta1PodDisruptionBudget(
-        metadata=V1ObjectMeta(name=f"{service}-{instance}", namespace="paasta"),
+        metadata=V1ObjectMeta(
+            name=get_kubernetes_app_name(service, instance), namespace="paasta",
+        ),
         spec=V1beta1PodDisruptionBudgetSpec(
             max_unavailable=max_unavailable,
             selector=V1LabelSelector(
@@ -1796,6 +1789,13 @@ def get_nodes_grouped_by_attribute(
         )
         if key
     }
+
+
+def get_kubernetes_app_name(service: str, instance: str) -> str:
+    return "{service}-{instance}".format(
+        service=sanitise_kubernetes_name(service),
+        instance=sanitise_kubernetes_name(instance),
+    )
 
 
 def get_kubernetes_app_by_name(
