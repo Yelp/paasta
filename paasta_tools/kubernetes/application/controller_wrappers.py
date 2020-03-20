@@ -267,6 +267,7 @@ class DeploymentWrapper(Application):
             )
             # with bespoke autoscaler, setup_kubernetes_job sets the number of instances directly; no HPA is required.
             and self.soa_config.get_autoscaling_params()["decision_policy"] != "bespoke"
+            and self.soa_config.get_desired_state() != "stop"
         )
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
