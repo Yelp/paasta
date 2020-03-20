@@ -1,3 +1,12 @@
+paasta-tools (0.95.11) xenial; urgency=medium
+
+  * 0.95.11 tagged with 'make release'
+    Commit: Merge pull request #2733 from Yelp/u/kawaiwan/list-sanitized-
+    k8s-instances  Add option in list_kubernetes_service_instances to
+    show sanitised names
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 20 Mar 2020 13:37:08 -0700
+
 paasta-tools (0.95.10) xenial; urgency=medium
 
   * 0.95.10 tagged with 'make release'
