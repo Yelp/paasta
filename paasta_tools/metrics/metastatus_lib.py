@@ -15,6 +15,7 @@
 import copy
 import itertools
 import math
+import re
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
@@ -659,6 +660,11 @@ def calculate_resource_utilization_for_slaves(
 
 
 _IEC_NUMBER_SUFFIXES = {
+    "k": 1000,
+    "M": 1000 ** 2,
+    "G": 1000 ** 3,
+    "T": 1000 ** 4,
+    "P": 1000 ** 5,
     "Ki": 1024,
     "Mi": 1024 ** 2,
     "Gi": 1024 ** 3,
@@ -668,11 +674,14 @@ _IEC_NUMBER_SUFFIXES = {
 
 
 def suffixed_number_value(s: str) -> int:
-    suff = s[-2:]
+    pattern = r"(?P<number>\d+)(?P<suff>\w*)"
+    match = re.match(pattern, s)
+    number, suff = match.groups()
+
     if suff in _IEC_NUMBER_SUFFIXES:
-        return int(s[:-2]) * _IEC_NUMBER_SUFFIXES[suff]
+        return int(number) * _IEC_NUMBER_SUFFIXES[suff]
     else:
-        return int(s)
+        return int(number)
 
 
 def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, int]:

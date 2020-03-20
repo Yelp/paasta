@@ -1,3 +1,53 @@
+paasta-tools (0.95.11) xenial; urgency=medium
+
+  * 0.95.11 tagged with 'make release'
+    Commit: Merge pull request #2733 from Yelp/u/kawaiwan/list-sanitized-
+    k8s-instances  Add option in list_kubernetes_service_instances to
+    show sanitised names
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 20 Mar 2020 13:37:08 -0700
+
+paasta-tools (0.95.10) xenial; urgency=medium
+
+  * 0.95.10 tagged with 'make release'
+    Commit: Make suffixed_number_value understand basic SI suffixes too.
+    PAASTA-16370
+
+ -- Evan Krall <krall@yelp.com>  Fri, 20 Mar 2020 11:50:15 -0700
+
+paasta-tools (0.95.9) xenial; urgency=medium
+
+  * 0.95.9 tagged with 'make release'
+    Commit: Merge pull request #2722 from Yelp/u/enocht/PAASTA-
+    15842_k8s_bespoke_policy  Implement k8s bespoke policies for paasta
+    API
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Thu, 19 Mar 2020 14:41:55 -0700
+
+paasta-tools (0.95.8) xenial; urgency=medium
+
+  * 0.95.8 tagged with 'make release'
+    Commit: Merge pull request #2723 from Yelp/rightsizer-keys-optional
+    Include all schemas and fix key error for autotuned_defaults
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 17 Mar 2020 18:18:41 -0700
+
+paasta-tools (0.95.7) xenial; urgency=medium
+
+  * 0.95.7 tagged with 'make release'
+    Commit: Merge pull request #2718 from Yelp/u/siruitan/PAASTA-16402-
+    avoid_connecting_mesos_leader_in_paasta_validate  Avoid connecting
+    to mesos leader during paasta validate
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 17 Mar 2020 14:04:31 -0700
+
+paasta-tools (0.95.6) xenial; urgency=medium
+
+  * 0.95.6 tagged with 'make release'
+    Commit: Added new page_for_expected_runtime tron option
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 17 Mar 2020 11:02:21 -0700
+
 paasta-tools (0.95.5) xenial; urgency=medium
 
   * 0.95.5 tagged with 'make release'
