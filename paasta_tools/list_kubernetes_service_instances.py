@@ -29,6 +29,7 @@ Command line options:
 import argparse
 import sys
 
+from paasta_tools import kubernetes_tools
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -55,6 +56,14 @@ def parse_args():
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
+    parser.add_argument(
+        "--sanitise",
+        action="store_true",
+        help=(
+            "Whether or not to sanitise service instance names before displaying "
+            "them. Kubernets apps created by PaaSTA use sanitised names."
+        ),
+    )
     args = parser.parse_args()
     return args
 
@@ -68,7 +77,11 @@ def main():
     )
     service_instances = []
     for name, instance in instances:
-        service_instances.append(compose_job_id(name, instance))
+        if args.sanitise:
+            app_name = kubernetes_tools.get_kubernetes_app_name(name, instance)
+        else:
+            app_name = compose_job_id(name, instance)
+        service_instances.append(app_name)
     paasta_print("\n".join(service_instances))
     sys.exit(0)
 
