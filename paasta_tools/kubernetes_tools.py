@@ -317,6 +317,26 @@ class InvalidKubernetesConfig(Exception):
         )
 
 
+class KubeClient:
+    def __init__(self) -> None:
+        kube_config.load_kube_config(
+            config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
+            context=os.environ.get("KUBECONTEXT"),
+        )
+        models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
+            fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
+                *args, **kwargs
+            ),
+            fset=_set_disrupted_pods,
+        )
+        self.deployments = kube_client.AppsV1Api()
+        self.core = kube_client.CoreV1Api()
+        self.policy = kube_client.PolicyV1beta1Api()
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
+        self.custom = kube_client.CustomObjectsApi()
+        self.autoscaling = kube_client.AutoscalingV2beta1Api()
+
+
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
     config_dict: KubernetesDeploymentConfigDict
 
@@ -952,9 +972,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-    def set_autoscaled_instances(self, instance_count: int) -> None:
+    def set_autoscaled_instances(
+        self, instance_count: int, kube_client: KubeClient
+    ) -> None:
         """Set the number of instances in the same way that the autoscaler does."""
-        kube_client = KubeClient()
         set_instances_for_kubernetes_service(
             kube_client=kube_client, service_config=self, instance_count=instance_count
         )
@@ -1334,26 +1355,6 @@ def get_kubernetes_services_running_here_for_nerve(
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list
-
-
-class KubeClient:
-    def __init__(self) -> None:
-        kube_config.load_kube_config(
-            config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
-            context=os.environ.get("KUBECONTEXT"),
-        )
-        models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
-            fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
-                *args, **kwargs
-            ),
-            fset=_set_disrupted_pods,
-        )
-        self.deployments = kube_client.AppsV1Api()
-        self.core = kube_client.CoreV1Api()
-        self.policy = kube_client.PolicyV1beta1Api()
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
-        self.custom = kube_client.CustomObjectsApi()
-        self.autoscaling = kube_client.AutoscalingV2beta1Api()
 
 
 def force_delete_pods(
