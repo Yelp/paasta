@@ -184,7 +184,7 @@ class LongRunningServiceConfig(InstanceConfig):
         This option exists primarily for sensitive services that wish to opt into this functionality.
         """
         default = "full"
-        return self.config_dict.get("network_mode", default)
+        return self.config_dict.get("inbound_network_mode", default)
 
     def get_registrations(self) -> List[str]:
         registrations = self.config_dict.get("registrations", [])
