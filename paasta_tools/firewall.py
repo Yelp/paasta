@@ -327,9 +327,9 @@ def _dns_servers():
                 yield parts[1]
 
 
-def ensure_shared_chains(conf):
+def ensure_shared_chains(conf=None):
     _ensure_dns_chain()
-    if conf.get_network_mode() != "local":
+    if conf is None or conf.get_network_mode() != "local":
         _ensure_internet_chain()
         _ensure_common_chain()
 
