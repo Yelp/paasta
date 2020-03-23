@@ -4,7 +4,7 @@ volumes:
   nail-etc:
 
 services:
-  paastatools:
+  paasta_tools:
     build:
       context: ../
       dockerfile: ./yelp_package/dockerfiles/itest/k8s/Dockerfile
