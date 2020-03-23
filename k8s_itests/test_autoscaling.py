@@ -5,13 +5,7 @@ terminate_on_exit = []
 
 
 def setup_module(module):
-    # Kill paasta api server on exit
-    terminate_on_exit.append(init_all())
-
-
-def teardown_module(module):
-    for p in terminate_on_exit:
-        p.kill()
+    init_all()
 
 
 class TestSetupKubernetesJobs:

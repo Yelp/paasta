@@ -6,7 +6,7 @@ export KUBE_RESOURCE_DIR=$(CWD)/deployments/kind/resources
 export KIND_CLUSTER=$(CLUSTER)
 export SOA_DIR=$(PAASTA_CONFIG_DIR)/fake_soa_config
 export PAASTA_SYSTEM_CONFIG_DIR=$(PAASTA_CONFIG_DIR)/fake_etc_paasta
-export PAASTA_API_PORT= `ephemeral-port-reserve`
+export PAASTA_API_PORT=$(shell ephemeral-port-reserve)
 export KUBECONFIG=$(shell ./kind get kubeconfig-path --name=$(KIND_CLUSTER))
 
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
