@@ -42,10 +42,9 @@ WORKDIR /work
 ADD requirements.txt /work/
 RUN virtualenv /venv -ppython3.6 --no-download
 ENV PATH=/venv/bin:$PATH
-RUN pip install -U pip
 RUN pip install -r requirements.txt
 ADD yelp_package/dockerfiles/itest/k8s/wait_paasta_api.sh /venv/bin
 
 ADD . /work/
 RUN pip install -e /work/
-RUN pip install -U pytest
+RUN pip install pytest
