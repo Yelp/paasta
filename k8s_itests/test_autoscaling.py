@@ -1,3 +1,5 @@
+import os
+
 from k8s_itests.utils import cmd
 from k8s_itests.utils import init_all
 
@@ -11,3 +13,11 @@ def setup_module(module):
 class TestSetupKubernetesJobs:
     def test_autoscaling(self):
         cmd("kubectl get hpa -n paasta", False)
+
+    def test_paasta_status(self):
+        instance = "autoscaling"
+        service = "compute-infra-test-service"
+        cmd(
+            f"python -m paasta_tools.cli.cli status  -c {os.environ['KIND_CLUSTER']} -s {service} -i {instance}",
+            False,
+        )
