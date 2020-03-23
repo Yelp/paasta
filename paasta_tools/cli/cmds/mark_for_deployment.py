@@ -575,11 +575,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         else:
             self.update_slack_thread(
                 f"Marked `{self.commit[:8]}` for {self.deploy_group}."
-                + (
-                    "\n" + self.get_authors()
-                    if self.deploy_group_is_set_to_notify("notify_after_mark")
-                    else ""
-                )
             )
             log.debug("triggering mfd_succeeded")
             self.trigger("mfd_succeeded")
@@ -886,7 +881,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_start_rollback(self):
         self.update_slack_status(
-            f"Rolling back ({self.deploy_group}) to {self.old_git_sha}"
+            f"{self.get_authors()}: Rolling back ({self.deploy_group}) to {self.old_git_sha}"
         )
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
@@ -900,13 +895,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         else:
             self.update_slack_thread(
                 f"Marked `{self.old_git_sha[:8]}` for {self.deploy_group}."
-                + (
-                    "\n" + self.get_authors()
-                    if self.deploy_group_is_set_to_notify("notify_after_mark")
-                    else ""
-                )
             )
-
             self.trigger("mfd_succeeded")
 
     def on_enter_rolling_back(self):
