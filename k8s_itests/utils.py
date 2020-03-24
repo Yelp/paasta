@@ -25,14 +25,10 @@ def start_paasta_api():
 
 def paasta_apply():
     print("Applying SOA configurations")
-    service_instances = cmd(
-        "python -m paasta_tools.list_kubernetes_service_instances -d {}".format(
-            os.environ["SOA_DIR"]
-        ),
-    )
+    service_instances = cmd("python -m paasta_tools.list_kubernetes_service_instances")
     cmd(
-        "python -m paasta_tools.setup_kubernetes_job {} -v -d {}".format(
-            service_instances.stdout.strip(), os.environ["SOA_DIR"]
+        "python -m paasta_tools.setup_kubernetes_job {} -v".format(
+            service_instances.stdout.strip()
         ),
         False,
     )
@@ -40,4 +36,3 @@ def paasta_apply():
 
 def init_all():
     paasta_apply()
-    return start_paasta_api()

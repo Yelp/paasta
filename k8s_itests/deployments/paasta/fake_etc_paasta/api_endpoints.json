@@ -1,5 +1,5 @@
 {
     "api_endpoints": {
-        "<%cluster%>": "http://localhost:$(PAASTA_API_PORT)"
+        "<%cluster%>": "http://0.0.0.0:$(PAASTA_API_PORT)"
     }
 }

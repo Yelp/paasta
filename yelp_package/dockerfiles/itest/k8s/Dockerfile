@@ -17,7 +17,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sou
 
 # Need Python 3.6
 RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
+    apt-get install -y --no-install-recommends curl software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update > /dev/null && \
@@ -32,16 +32,19 @@ RUN apt-get update > /dev/null && \
         virtualenv > /dev/null \
     && apt-get clean > /dev/null
 
+# Install kubectl
+RUN curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+RUN chmod +x ./kubectl
+RUN mv ./kubectl /usr/local/bin/kubectl
+
 WORKDIR /work
 
 ADD requirements.txt /work/
 RUN virtualenv /venv -ppython3.6 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
-
-COPY yelp_package/dockerfiles/xenial/mesos-slave-secret /etc/
-COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/xenial/mesos-slave-secret /nail/etc/
-COPY yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
+ADD yelp_package/dockerfiles/itest/k8s/wait_paasta_api.sh /venv/bin
 
 ADD . /work/
 RUN pip install -e /work/
+RUN pip install pytest

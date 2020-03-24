@@ -1,0 +1,54 @@
+version: '2.3'
+
+volumes:
+  nail-etc:
+
+services:
+  paasta_tools:
+    build:
+      context: ../
+      dockerfile: ./yelp_package/dockerfiles/itest/k8s/Dockerfile
+    network_mode: host
+    environment:
+      KIND_CLUSTER: ${KIND_CLUSTER}
+      KUBECONTEXT: kubernetes-admin@${KIND_CLUSTER}
+      KUBECONFIG: ${KUBECONFIG}
+      KUBE_RESOURCE_DIR: ${KUBE_RESOURCE_DIR}
+      USER: ${USER}
+      PAASTA_API_PORT: ${PAASTA_API_PORT}
+    volumes:
+      - ../:/work:rw
+      - nail-etc:/nail/etc
+      - /etc/boto:/etc/boto:rw
+      - /etc/kubernetes:/etc/kubernetes:rw
+      - ${KUBECONFIG}:${KUBECONFIG}:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${SOA_DIR}:/nail/etc/services:rw
+      - ./deployments/.tmp/fake_etc_paasta:/etc/paasta:rw
+    command:
+      bash -c "/venv/bin/wait_paasta_api.sh -- pytest ./k8s_itests -s"
+    depends_on:
+      - paasta_api
+
+  paasta_api:
+    build:
+      context: ../
+      dockerfile: ./yelp_package/dockerfiles/itest/api/Dockerfile
+    command: bash -c 'pip install -e /work && exec paasta-api -D -c ${KIND_CLUSTER} ${PAASTA_API_PORT}'
+    network_mode: host
+    environment:
+      KIND_CLUSTER: ${KIND_CLUSTER}
+      KUBECONTEXT: kubernetes-admin@${KIND_CLUSTER}
+      KUBECONFIG: ${KUBECONFIG}
+      KUBE_RESOURCE_DIR: ${KUBE_RESOURCE_DIR}
+      USER: ${USER}
+      PAASTA_API_PORT: ${PAASTA_API_PORT}
+    volumes:
+      - ../:/work:rw
+      - nail-etc:/nail/etc
+      - /etc/boto:/etc/boto:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${KUBECONFIG}:${KUBECONFIG}:rw
+      - /etc/kubernetes:/etc/kubernetes:rw
+      - ${SOA_DIR}:/nail/etc/services:rw
+      - ./deployments/.tmp/fake_etc_paasta:/etc/paasta:rw
