@@ -1,3 +1,319 @@
+paasta-tools (0.95.11) xenial; urgency=medium
+
+  * 0.95.11 tagged with 'make release'
+    Commit: Merge pull request #2733 from Yelp/u/kawaiwan/list-sanitized-
+    k8s-instances  Add option in list_kubernetes_service_instances to
+    show sanitised names
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 20 Mar 2020 13:37:08 -0700
+
+paasta-tools (0.95.10) xenial; urgency=medium
+
+  * 0.95.10 tagged with 'make release'
+    Commit: Make suffixed_number_value understand basic SI suffixes too.
+    PAASTA-16370
+
+ -- Evan Krall <krall@yelp.com>  Fri, 20 Mar 2020 11:50:15 -0700
+
+paasta-tools (0.95.9) xenial; urgency=medium
+
+  * 0.95.9 tagged with 'make release'
+    Commit: Merge pull request #2722 from Yelp/u/enocht/PAASTA-
+    15842_k8s_bespoke_policy  Implement k8s bespoke policies for paasta
+    API
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Thu, 19 Mar 2020 14:41:55 -0700
+
+paasta-tools (0.95.8) xenial; urgency=medium
+
+  * 0.95.8 tagged with 'make release'
+    Commit: Merge pull request #2723 from Yelp/rightsizer-keys-optional
+    Include all schemas and fix key error for autotuned_defaults
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 17 Mar 2020 18:18:41 -0700
+
+paasta-tools (0.95.7) xenial; urgency=medium
+
+  * 0.95.7 tagged with 'make release'
+    Commit: Merge pull request #2718 from Yelp/u/siruitan/PAASTA-16402-
+    avoid_connecting_mesos_leader_in_paasta_validate  Avoid connecting
+    to mesos leader during paasta validate
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 17 Mar 2020 14:04:31 -0700
+
+paasta-tools (0.95.6) xenial; urgency=medium
+
+  * 0.95.6 tagged with 'make release'
+    Commit: Added new page_for_expected_runtime tron option
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 17 Mar 2020 11:02:21 -0700
+
+paasta-tools (0.95.5) xenial; urgency=medium
+
+  * 0.95.5 tagged with 'make release'
+    Commit: Merge branch "PAASTA-16066"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 13 Mar 2020 11:48:36 -0700
+
+paasta-tools (0.95.4) xenial; urgency=medium
+
+  * 0.95.4 tagged with 'make release'
+    Commit: use paasta_cluster intead of kubernetes_cluster for HPA
+    (#2717)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Thu, 12 Mar 2020 14:01:26 -0700
+
+paasta-tools (0.95.3) xenial; urgency=medium
+
+  * 0.95.3 tagged with 'make release'
+    Commit: Merge pull request #2715 from Yelp/kube-state-
+    metrics_collector  Kube state metrics collector
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 12 Mar 2020 11:55:19 -0700
+
+paasta-tools (0.95.2) xenial; urgency=medium
+
+  * 0.95.2 tagged with 'make release'
+    Commit: Merge pull request #2713 from Yelp/oom-logger-kubepods
+    Handle /kubepods cgroup in OOM logger
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 12 Mar 2020 11:31:31 -0700
+
+paasta-tools (0.95.1) xenial; urgency=medium
+
+  * 0.95.1 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta
+
+ -- Lydian Lee <tingyenl@yelp.com>  Tue, 10 Mar 2020 15:28:37 -0700
+
+paasta-tools (0.95.0) xenial; urgency=medium
+
+  * 0.95.0 tagged with 'make release'
+    Commit: Merge pull request #2699 from Yelp/auto-config-tools  Tools
+    for committing autotuned_default configs
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 10 Mar 2020 10:49:38 -0700
+
+paasta-tools (0.94.12) xenial; urgency=medium
+
+  * 0.94.12 tagged with 'make release'
+    Commit: Merge branch "overload-the-meaning-of-force"
+
+ -- Timothy Zhu <tzhu@yelp.com>  Mon, 09 Mar 2020 15:28:39 -0700
+
+paasta-tools (0.94.11) xenial; urgency=medium
+
+  * 0.94.11 tagged with 'make release'
+    Commit: Bump sticht to 1.1.5 to get several bug fixes:
+    https://github.com/Yelp/sticht/pull/7
+    https://github.com/Yelp/sticht/pull/8
+    https://github.com/Yelp/sticht/pull/10
+    https://github.com/Yelp/sticht/pull/11
+
+ -- Evan Krall <krall@yelp.com>  Mon, 09 Mar 2020 13:47:12 -0700
+
+paasta-tools (0.94.10) xenial; urgency=medium
+
+  * 0.94.10 tagged with 'make release'
+    Commit: Revert "Make pod container statuses an empty list if it is
+    None, in the case where the pod has no containers yet"  This reverts
+    commit ee4dcf338e843b5912e56202fdd4173af8b6d068.
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 05 Mar 2020 20:15:46 -0800
+
+paasta-tools (0.94.9) xenial; urgency=medium
+
+  * 0.94.9 tagged with 'make release'
+    Commit: Revert "Merge pull request #2696 from Yelp/u/kawaiwan/k8s-
+    deploy-blacklist-whitelist"  This reverts commit
+    e29686130e99a6ac0ed001aa00e9cb0be43c2d79, reversing changes made to
+    d3d46455322e00a7b726455092ac0ee755a3dcc6.
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Thu, 05 Mar 2020 18:55:05 -0800
+
+paasta-tools (0.94.8) xenial; urgency=medium
+
+  * 0.94.8 tagged with 'make release'
+    Commit: Merge pull request #2701 from Yelp/u/kawaiwan/accurate-pod-
+    status  Make pods with at least one container down properly show up
+    as unhealthy
+
+ -- Chien-An Lai <chl@yelp.com>  Thu, 05 Mar 2020 16:04:52 -0800
+
+paasta-tools (0.94.7) xenial; urgency=medium
+
+  * 0.94.7 tagged with 'make release'
+    Commit: Merge pull request #2697 from Yelp/u/siruitan/PAASTA-16199-
+    fix_docker_registry_permission_issue  Fix docker registry permission
+    issue
+
+ -- Aaron Tan <siruitan@yelp.com>  Thu, 05 Mar 2020 10:40:54 -0800
+
+paasta-tools (0.94.6) xenial; urgency=medium
+
+  * 0.94.6 tagged with 'make release'
+    Commit: Merge pull request #2698 from Yelp/fix-kafkacluster-name
+    Filename should be kafkacluster
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 04 Mar 2020 10:42:49 -0800
+
+paasta-tools (0.94.5) xenial; urgency=medium
+
+  * 0.94.5 tagged with 'make release'
+    Commit: Merge pull request #2668 from rohangulati/u/rgulati/KAFKA-
+    25246  [KAFKA-25246] Adds support for kafka cluster status in
+    `paasta status`
+
+ -- Rohan Gulati <rgulati@yelp.com>  Wed, 04 Mar 2020 06:31:02 -0800
+
+paasta-tools (0.94.4) xenial; urgency=medium
+
+  * 0.94.4 tagged with 'make release'
+    Commit: Stop reading datacenter (aws region) attribute from
+    expected_slave_attributes, since yelp-autoconfigure-mesos doesn"t
+    set it. Use a setting in /etc/paasta instead. PAASTA-16304
+
+ -- Evan Krall <krall@yelp.com>  Mon, 02 Mar 2020 13:46:15 -0800
+
+paasta-tools (0.94.3) xenial; urgency=medium
+
+  * 0.94.3 tagged with 'make release'
+    Commit: Merge pull request #2681 from Yelp/u/siruitan/BATCHPROC-53-
+    init_paasta_support_for_tron_on_k8s  Initial paasta support for tron
+    on k8s
+
+ -- Aaron Tan <siruitan@yelp.com>  Mon, 02 Mar 2020 11:26:43 -0800
+
+paasta-tools (0.94.2) xenial; urgency=medium
+
+  * 0.94.2 tagged with 'make release'
+    Commit: Merge pull request #2692 from Yelp/PAASTA-
+    16350_use_simple_deployment_name  Use simplified Cassandra
+    deployment name
+
+ -- Sheng Ran <ran@yelp.com>  Mon, 02 Mar 2020 07:45:21 -0800
+
+paasta-tools (0.94.1) xenial; urgency=medium
+
+  * 0.94.1 tagged with 'make release'
+    Commit: Revert "Merge pull request #2684 from Yelp/u/kawaiwan/make-
+    paasta-status-show-k8s-deploy-errors"  This reverts commit
+    d24407343be16e88c44c394e70eabe8a5dd71d89, reversing changes made to
+    5853d21c303630ef2f8510edd02e80ebac53b5bf.
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Fri, 28 Feb 2020 14:34:09 -0800
+
+paasta-tools (0.94.0) xenial; urgency=medium
+
+  * 0.94.0 tagged with 'make release'
+    Commit: Merge pull request #2691 from
+    Yelp/drmorr/trying_to_fix_tests  fixing tests
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 28 Feb 2020 13:10:12 -0800
+
+paasta-tools (0.93.31) xenial; urgency=medium
+
+  * 0.93.31 tagged with 'make release'
+    Commit: Merge pull request #2686 from
+    Yelp/drmorr/allow_zero_bounce_margin_factor_for_k8s  allow 0 bounce
+    margin factor for k8s
+
+ -- Aaron Tan <siruitan@yelp.com>  Wed, 26 Feb 2020 15:57:05 -0800
+
+paasta-tools (0.93.30) xenial; urgency=medium
+
+  * 0.93.30 tagged with 'make release'
+    Commit: Adding uptime for pod in paasta status for flink apps
+    (#2679)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Tue, 25 Feb 2020 07:20:57 -0800
+
+paasta-tools (0.93.29) xenial; urgency=medium
+
+  * 0.93.29 tagged with 'make release'
+    Commit: Merge pull request #2675 from Yelp/u/siruitan/PAASTA-16324-
+    fix_spark_conf_str_bug  Fix bug for inject spark config into tron
+    action docker command
+
+ -- Aaron Tan <siruitan@yelp.com>  Fri, 21 Feb 2020 13:25:59 -0800
+
+paasta-tools (0.93.28) xenial; urgency=medium
+
+  * 0.93.28 tagged with 'make release'
+    Commit: Merge pull request #2671 from Yelp/u/siruitan/PAASTA-16324-
+    inject_spark_conf_str_into_docker_cmd  Inject spark config string
+    into docker command in tron
+
+ -- Aaron Tan <siruitan@yelp.com>  Thu, 20 Feb 2020 14:46:34 -0800
+
+paasta-tools (0.93.27) xenial; urgency=medium
+
+  * 0.93.27 tagged with 'make release'
+    Commit: Merge pull request #2670 from
+    Yelp/fix_k8s_envoy_status_output  Default hostname when getting
+    envoy status to raw IP address if lookup fails
+
+ -- Kaisen Chen <kaisen@yelp.com>  Thu, 20 Feb 2020 12:47:14 -0800
+
+paasta-tools (0.93.26) xenial; urgency=medium
+
+  * 0.93.26 tagged with 'make release'
+    Commit: Merge pull request #2664 from Yelp/u/siruitan/PAASTA-16307-
+    add_aws_credentials_yaml_n_region  Add aws_credentials_yaml and
+    aws_region options
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 18 Feb 2020 16:22:11 -0800
+
+paasta-tools (0.93.25) xenial; urgency=medium
+
+  * 0.93.25 tagged with 'make release'
+    Commit: Merge pull request #2669 from
+    Yelp/u/chl/fix_error_message_violates_swagger_error  fix error
+    messaage violates swag format error
+
+ -- Chien-An Lai <chl@yelp.com>  Tue, 18 Feb 2020 14:08:00 -0800
+
+paasta-tools (0.93.24) xenial; urgency=medium
+
+  * 0.93.24 tagged with 'make release'
+    Commit: change kubernetes service autoscaling target metrics units
+    (#2667)  change kubernetes service autoscaling target metrics units
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Tue, 18 Feb 2020 11:26:51 -0800
+
+paasta-tools (0.93.23) xenial; urgency=medium
+
+  * 0.93.23 tagged with 'make release'
+    Commit: don"t default to empty git_sha, we"re filtering out None"s
+    anyway
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 18 Feb 2020 03:15:26 -0800
+
+paasta-tools (0.93.22) xenial; urgency=medium
+
+  * 0.93.21 tagged with 'make release'
+    Commit: Merge pull request #2665 from ymilki/restore-CORESERV-
+    7471_check_envoy_status  Restore Report Envoy backend status #2595
+
+ -- Jonathan Chu <jrchu@yelp.com>  Fri, 14 Feb 2020 10:13:30 -0800
+
+paasta-tools (0.93.21) xenial; urgency=medium
+
+  * 0.93.21 tagged with 'make release'
+    Commit: use long git sha in k8s object labels
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 14 Feb 2020 06:56:26 -0800
+
+paasta-tools (0.93.20) xenial; urgency=medium
+
+  * 0.93.20 tagged with 'make release'
+    Commit: Assign git_sha label to kubernetes custom resources (#2661)
+    * add cassandracluster to wait_for_deployment * assign git_sha label
+    to kubernetes custom resources * use full git sha from deployments
+    everywhere (will cause big bounce in k8s clusters)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 14 Feb 2020 04:20:11 -0800
+
 paasta-tools (0.93.19) xenial; urgency=medium
 
   * 0.93.19 tagged with 'make release'

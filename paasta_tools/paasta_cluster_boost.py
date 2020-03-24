@@ -70,23 +70,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_regions(pool: str) -> list:
-    """ Return the regions where we have slaves running for a given pool
-    """
-    system_paasta_config = load_system_paasta_config()
-    expected_slave_attributes = system_paasta_config.get_expected_slave_attributes()
-    if expected_slave_attributes is None:
-        return []
-
-    regions = []  # type: list
-    for slave in expected_slave_attributes:
-        slave_region = slave["datacenter"]
-        if slave["pool"] == pool:
-            if slave_region not in regions:
-                regions.append(slave_region)
-    return regions
-
-
 def paasta_cluster_boost(
     action: str, pool: str, boost: float, duration: int, override: bool
 ) -> bool:
@@ -99,10 +82,9 @@ def paasta_cluster_boost(
         paasta_print("ERROR: cluster_boost feature is not enabled.")
         return False
 
-    regions = get_regions(pool)
-
+    regions = system_config.get_boost_regions()
     if len(regions) == 0:
-        paasta_print(f"ERROR: no slaves found in pool {pool}")
+        paasta_print(f"ERROR: no boost_regions configured in {system_config.directory}")
         return False
 
     for region in regions:

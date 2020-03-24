@@ -133,6 +133,7 @@ def test_setup_custom_resources():
     ) as mock_reconcile_kubernetes_resource:
         mock_client = mock.Mock()
         mock_kind = mock.Mock()
+        mock_crd = mock.Mock()
         assert setup_kubernetes_cr.setup_custom_resources(
             kube_client=mock_client,
             kind=mock_kind,
@@ -140,6 +141,7 @@ def test_setup_custom_resources():
             config_dicts={},
             group="yelp.com",
             cluster="mycluster",
+            crd=mock_crd,
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, False]
@@ -150,6 +152,7 @@ def test_setup_custom_resources():
             config_dicts={"kurupt": "something", "mc": "another"},
             group="yelp.com",
             cluster="mycluster",
+            crd=mock_crd,
         )
 
         mock_reconcile_kubernetes_resource.side_effect = [True, True]
@@ -160,6 +163,7 @@ def test_setup_custom_resources():
             config_dicts={"kurupt": "something", "mc": "another"},
             group="yelp.com",
             cluster="mycluster",
+            crd=mock_crd,
         )
         mock_reconcile_kubernetes_resource.assert_has_calls(
             [
@@ -173,6 +177,7 @@ def test_setup_custom_resources():
                     custom_resources=mock_list_cr.return_value,
                     version="v1",
                     group="yelp.com",
+                    crd=mock_crd,
                 ),
                 mock.call(
                     kube_client=mock_client,
@@ -184,6 +189,7 @@ def test_setup_custom_resources():
                     custom_resources=mock_list_cr.return_value,
                     version="v1",
                     group="yelp.com",
+                    crd=mock_crd,
                 ),
             ]
         )
@@ -213,6 +219,7 @@ def test_format_custom_resource():
                     "paasta.yelp.com/instance": "radio_station",
                     "paasta.yelp.com/cluster": "mycluster",
                     "paasta.yelp.com/config_sha": mock_get_config_hash.return_value,
+                    "paasta.yelp.com/git_sha": "gitsha",
                 },
                 "annotations": {
                     "yelp.com/desired_state": "running",
@@ -233,6 +240,7 @@ def test_format_custom_resource():
                 version="v1",
                 group="yelp.com",
                 namespace="paasta-flinks",
+                git_sha="gitsha",
             )
             == expected
         )
@@ -262,7 +270,11 @@ def test_paasta_config_flink_dashboard_url():
         )
 
 
-def test_reconcile_kubernetes_resource():
+@mock.patch(
+    "paasta_tools.setup_kubernetes_cr.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS):
     with mock.patch(
         "paasta_tools.setup_kubernetes_cr.format_custom_resource", autospec=True
     ) as mock_format_custom_resource, mock.patch(
@@ -276,6 +288,7 @@ def test_reconcile_kubernetes_resource():
                 service="kurupt",
                 instance="fm",
                 config_sha="conf123",
+                git_sha="git123",
                 kind="flink",
                 name="foo",
                 namespace="paasta-flinks",
@@ -292,6 +305,7 @@ def test_reconcile_kubernetes_resource():
             kind=mock_kind,
             version="v1",
             group="yelp.com",
+            crd=mock.Mock(),
         )
         assert not mock_create_custom_resource.called
         assert not mock_update_custom_resource.called
@@ -302,6 +316,7 @@ def test_reconcile_kubernetes_resource():
                 "labels": {
                     "yelp.com/paasta_config_sha": "conf123",
                     "paasta.yelp.com/config_sha": "conf123",
+                    "paasta.yelp.com/git_sha": "git123",
                 },
                 "name": "foo",
                 "namespace": "paasta-flinks",
@@ -316,6 +331,7 @@ def test_reconcile_kubernetes_resource():
             kind=mock_kind,
             version="v1",
             group="yelp.com",
+            crd=mock.Mock(),
         )
         assert not mock_create_custom_resource.called
         assert not mock_update_custom_resource.called
@@ -337,6 +353,7 @@ def test_reconcile_kubernetes_resource():
             kind=mock_kind,
             version="v1",
             group="yelp.com",
+            crd=mock.Mock(),
         )
         assert not mock_create_custom_resource.called
         mock_update_custom_resource.assert_called_with(
@@ -358,6 +375,7 @@ def test_reconcile_kubernetes_resource():
             kind=mock_kind,
             version="v1",
             group="yelp.com",
+            crd=mock.Mock(),
         )
         mock_create_custom_resource.assert_called_with(
             kube_client=mock_client,
@@ -378,6 +396,7 @@ def test_reconcile_kubernetes_resource():
             kind=mock_kind,
             version="v1",
             group="yelp.com",
+            crd=mock.Mock(),
         )
         mock_create_custom_resource.assert_called_with(
             kube_client=mock_client,

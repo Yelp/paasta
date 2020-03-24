@@ -41,6 +41,7 @@ repos:
     rev: 3.7.7
     hooks:
     -   id: flake8
+        args: ['--ignore', 'E231']
         exclude: ^docs/source/conf.py$
 -   repo: https://github.com/Yelp/detect-secrets
     rev: 0.9.1

@@ -53,7 +53,7 @@ Here is an example that includes all configuration
        max_replicas: 3
        min_replicas: 1
        uwsgi:
-         target_average_value: 53
+         target_average_value: 0.53
          dimensions:
              paasta_yelp_com_instance: main_uswest1_autoscaling
              some_unique_signalfx_dimension: value_of_dimension
@@ -61,9 +61,9 @@ Here is an example that includes all configuration
        http:
          target_average_value: 53
        cpu:
-         target_average_value: 70
+         target_average_value: 0.7
        memory:
-         target_average_value: 70
+         target_average_value: 0.7
        your-own-sfx-metrics:
          target_value: 2333
          signalflow_metrics_query: "data('your_own_sfx_metrics', filter('some_dimension', 'value')).mean(over="30m").publish()"
@@ -92,7 +92,7 @@ cpu
 Please check here for `algorthm detail <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
 
 :target_average_value (required):
-  An Integer from 0 (exclusive) to 100 (inclusive), (0 - 100].
+  A number from 0 (exclusive) to 1 (inclusive), (0 - 1].
   This is the percentage of cpu used.
 
 memory
@@ -110,15 +110,14 @@ When ``dimensions`` is not provided, the average values of all HTTP metrics expo
 You can find your HTTP metrics and its dimensions on SignalFX.
 
 When ``dimensions`` is provided, the value retrieved from signalfx with
-``data('http', filter('dimension_key', 'dimension_value')).mean(over=15m).publish()``
+``data('http', filter('dimension_key', 'dimension_value')).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()``
 is used together with ``target_average_value``, and current number of running pods to calculate the desired number of pods.
 This field exists to make it easier for folks who want to do autoscaling across clusters with their existing http metrics.
 You can achieve the same function with your own custom metrics.
 Any suggestions/demands are welcome.
 
 :target_average_value (required):
-  An Integer from 0 (exclusive) to 100 (inclusive), (0 - 100].
-  This is 100 times of the average value exposed by your http endpoint.
+  A number
 
 :dimensions:
   Any number of custom key value pairs that are strings.

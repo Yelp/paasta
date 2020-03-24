@@ -25,6 +25,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.utils import load_system_paasta_config
 
 
 class Application(ABC):
@@ -119,12 +120,19 @@ class Application(ABC):
     def ensure_pod_disruption_budget(
         self, kube_client: KubeClient
     ) -> V1beta1PodDisruptionBudget:
+        max_unavailable: Union[str, int]
+        if "bounce_margin_factor" in self.soa_config.config_dict:
+            max_unavailable = (
+                f"{int((1 - self.soa_config.get_bounce_margin_factor()) * 100)}%"
+            )
+        else:
+            system_paasta_config = load_system_paasta_config()
+            max_unavailable = system_paasta_config.get_pdb_max_unavailable()
+
         pdr = pod_disruption_budget_for_service_instance(
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
-            max_unavailable="{}%".format(
-                int((1 - self.soa_config.get_bounce_margin_factor()) * 100)
-            ),
+            max_unavailable=max_unavailable,
         )
         try:
             existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
@@ -247,8 +255,6 @@ class DeploymentWrapper(Application):
                 target=self.deep_delete_and_create, args=[KubeClient()]
             ).start()
             return
-        if self.should_have_hpa():
-            self.item.spec.replicas = self.get_existing_app(kube_client).spec.replicas
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
         self.ensure_pod_disruption_budget(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
@@ -261,6 +267,7 @@ class DeploymentWrapper(Application):
             )
             # with bespoke autoscaler, setup_kubernetes_job sets the number of instances directly; no HPA is required.
             and self.soa_config.get_autoscaling_params()["decision_policy"] != "bespoke"
+            and self.soa_config.get_desired_state() != "stop"
         )
 
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
@@ -382,3 +389,17 @@ class StatefulSetWrapper(Application):
     def update(self, kube_client: KubeClient):
         update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
         self.ensure_pod_disruption_budget(kube_client)
+
+
+def get_application_wrapper(
+    formatted_application: Union[V1Deployment, V1StatefulSet]
+) -> Application:
+    app: Application
+    if isinstance(formatted_application, V1Deployment):
+        app = DeploymentWrapper(formatted_application)
+    elif isinstance(formatted_application, V1StatefulSet):
+        app = StatefulSetWrapper(formatted_application)
+    else:
+        raise Exception("Unknown kubernetes object to update")
+
+    return app

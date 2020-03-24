@@ -20,6 +20,7 @@ choice==0.1
 click==6.6
 cookiecutter==1.4.0
 croniter==0.3.20
+cryptography==2.3.1
 decorator==4.1.2
 docker-py==1.2.3
 docutils==0.12
@@ -58,6 +59,7 @@ PasteDeploy==1.5.2
 ply==3.4
 poyo==0.4.0
 progressbar2==3.10.1
+prometheus-client==0.7.1
 protobuf==3.7.1
 py==1.5.2
 pyasn1==0.4.2
@@ -88,14 +90,14 @@ rsa==3.4.2
 ruamel.yaml==0.15.96
 s3transfer==0.1.13
 sensu-plugin==0.3.1
-service-configuration-lib==2.1.0
+service-configuration-lib==2.4.1
 setuptools==39.0.1
 signalfx==1.0.17
 simplejson==3.10.0
 six==1.11.0
 slackclient==1.2.1
 sseclient-py==1.7
-sticht==1.1.1
+sticht==1.1.5
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2

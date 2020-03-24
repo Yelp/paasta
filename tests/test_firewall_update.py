@@ -65,6 +65,9 @@ def test_parse_args_default_cron():
     assert not args.verbose
 
 
+@mock.patch(
+    "paasta_tools.utils.load_system_paasta_config", autospec=True,
+)
 @mock.patch.object(
     firewall_update,
     "load_system_paasta_config",
@@ -77,7 +80,7 @@ def test_parse_args_default_cron():
     autospec=True,
     return_value=(("myservice", "hassecurity", "02:42:a9:fe:00:0a", "1.1.1.1"),),
 )
-def test_smartstack_dependencies_of_running_firewalled_services(_, __, tmpdir):
+def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpdir):
     soa_dir = tmpdir.mkdir("yelpsoa")
     myservice_dir = soa_dir.mkdir("myservice")
 

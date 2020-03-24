@@ -149,6 +149,15 @@
                 },
                 "spark_args": {
                     "type": "object"
+                },
+                "aws_credentials_yaml": {
+                    "type": "string"
+                },
+                "spark_cluster_manager": {
+                    "enum": [
+                        "mesos",
+                        "kubernetes"
+                    ]
                 }
             }
         },
@@ -259,6 +268,9 @@
                             "type": "string"
                         },
                         "check_that_every_day_has_a_successful_run": {
+                            "type": "boolean"
+                        },
+                        "page_for_expected_runtime": {
                             "type": "boolean"
                         },
                         "priority": {

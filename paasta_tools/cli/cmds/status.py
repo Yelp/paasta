@@ -21,9 +21,11 @@ from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
+from enum import Enum
 from itertools import groupby
 from typing import Any
 from typing import Callable
+from typing import Collection
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
@@ -39,6 +41,7 @@ import humanize
 from bravado.exception import BravadoConnectionError
 from bravado.exception import BravadoTimeoutError
 from bravado.exception import HTTPError
+from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
@@ -53,6 +56,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
+from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -78,7 +82,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
-
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -87,6 +90,18 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     AdhocJobConfig,
     MarathonServiceConfig,
     TronActionConfig,
+]
+
+InstanceStatusWriter = Callable[
+    [
+        Arg(str, "cluster"),
+        Arg(str, "service"),
+        Arg(str, "instance"),
+        Arg(List[str], "output"),
+        Arg(Any),
+        Arg(int, "verbose"),
+    ],
+    int,
 ]
 
 
@@ -249,19 +264,13 @@ def paasta_status_on_api_endpoint(
     if status.git_sha != "":
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
-    if status.marathon is not None:
-        return print_marathon_status(service, instance, output, status.marathon)
-    elif status.kubernetes is not None:
-        return print_kubernetes_status(service, instance, output, status.kubernetes)
-    elif status.tron is not None:
-        return print_tron_status(service, instance, output, status.tron, verbose)
-    elif status.adhoc is not None:
-        return print_adhoc_status(
-            cluster, service, instance, output, status.adhoc, verbose
-        )
-    elif status.flink is not None:
-        return print_flink_status(
-            cluster, service, instance, output, status.flink, verbose
+    instance_type = find_instance_type(status)
+    if instance_type is not None:
+        # check the actual status value and call the corresponding status writer
+        service_status_value = getattr(status, instance_type)
+        writer_callable = INSTANCE_TYPE_WRITERS.get(instance_type)
+        return writer_callable(
+            cluster, service, instance, output, service_status_value, verbose
         )
     else:
         paasta_print(
@@ -269,6 +278,20 @@ def paasta_status_on_api_endpoint(
             % instance
         )
         return 0
+
+
+def find_instance_type(status: Any) -> str:
+    """
+    find_instance_type finds the instance type from the status api response it iterates over all instance type
+    registered in `INSTANCE_TYPE_WRITERS`
+
+    :param status: paasta api status object
+    :return: the first matching instance type or else None
+    """
+    for instance_type in INSTANCE_TYPE_WRITERS.keys():
+        if instance_type in status and status[instance_type] is not None:
+            return instance_type
+    return None
 
 
 def print_adhoc_status(
@@ -299,7 +322,12 @@ def print_adhoc_status(
 
 
 def print_marathon_status(
-    service: str, instance: str, output: List[str], marathon_status
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    marathon_status,
+    verbose: int = 0,
 ) -> int:
     if marathon_status.error_message:
         output.append(marathon_status.error_message)
@@ -352,6 +380,14 @@ def print_marathon_status(
             marathon_status.smartstack.locations,
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
+
+    if marathon_status.envoy is not None:
+        envoy_status_human = get_envoy_status_human(
+            marathon_status.envoy.registration,
+            marathon_status.envoy.expected_backends_per_location,
+            marathon_status.envoy.locations,
+        )
+        output.extend([f"    {line}" for line in envoy_status_human])
 
     return 0
 
@@ -619,6 +655,8 @@ def format_kubernetes_pod_table(pods):
             health_check_status = PaastaColors.grey("N/A")
         elif pod.phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
+            if not pod.ready:
+                health_check_status = PaastaColors.red("Unhealthy")
         elif pod.phase == "Failed" and pod.reason == "Evicted":
             health_check_status = PaastaColors.red("Evicted")
         else:
@@ -636,7 +674,8 @@ def format_kubernetes_pod_table(pods):
         )
         if pod.message is not None:
             rows.append(PaastaColors.grey(f"  {pod.message}"))
-        rows.extend(format_tail_lines_for_mesos_task(pod.tail_lines, pod.name))
+        if len(pod.containers) > 0:
+            rows.extend(format_tail_lines_for_kubernetes_pod(pod.containers, pod.name))
 
     return format_table(rows)
 
@@ -667,7 +706,7 @@ def format_kubernetes_replicaset_table(replicasets):
 
 
 def get_smartstack_status_human(
-    registration, expected_backends_per_location, locations
+    registration: str, expected_backends_per_location: int, locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
@@ -688,8 +727,8 @@ def get_smartstack_status_human(
     return output
 
 
-def build_smartstack_backends_table(backends):
-    rows = [("Name", "LastCheck", "LastChange", "Status")]
+def build_smartstack_backends_table(backends: Iterable[Any]) -> List[str]:
+    rows: List[Tuple[str, ...]] = [("Name", "LastCheck", "LastChange", "Status")]
     for backend in backends:
         if backend.status == "UP":
             status = PaastaColors.default(backend.status)
@@ -705,10 +744,70 @@ def build_smartstack_backends_table(backends):
         else:
             check_duration = str(backend.check_duration)
 
-        row = (
+        row: Tuple[str, ...] = (
             f"{backend.hostname}:{backend.port}",
             f"{backend.check_status}/{backend.check_code} in {check_duration}ms",
             humanize.naturaltime(timedelta(seconds=backend.last_change)),
+            status,
+        )
+
+        if not backend.has_associated_task:
+            row = tuple(
+                PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row
+            )
+
+        rows.append(row)
+
+    return format_table(rows)
+
+
+def get_envoy_status_human(
+    registration: str, expected_backends_per_location: int, locations: Collection[Any],
+) -> List[str]:
+    if len(locations) == 0:
+        return [f"Envoy: ERROR - {registration} is NOT in Envoy at all!"]
+
+    output = ["Envoy:"]
+    output.append(f"  Service Name: {registration}")
+    output.append(f"  Backends:")
+    for location in locations:
+        backend_status = envoy_backend_report(
+            expected_backends_per_location, location.running_backends_count
+        )
+        output.append(f"    {location.name} - {backend_status}")
+
+        if location.backends:
+            color = (
+                PaastaColors.green
+                if location.is_proxied_through_casper
+                else PaastaColors.grey
+            )
+            is_proxied_through_casper_output = color(
+                f"{location.is_proxied_through_casper}"
+            )
+            output.append(
+                f"      Proxied through Casper: {is_proxied_through_casper_output}"
+            )
+
+            backends_table = build_envoy_backends_table(location.backends)
+            output.extend([f"      {line}" for line in backends_table])
+
+    return output
+
+
+def build_envoy_backends_table(backends: Iterable[Any]) -> List[str]:
+    rows: List[Tuple[str, ...]] = [("Hostname:Port", "Weight", "Status")]
+    for backend in backends:
+        if backend.eds_health_status == "HEALTHY":
+            status = PaastaColors.default(backend.eds_health_status)
+        elif backend.eds_health_status == "UNHEALTHY":
+            status = PaastaColors.red(backend.eds_health_status)
+        else:
+            status = PaastaColors.yellow(backend.eds_health_status)
+
+        row: Tuple[str, ...] = (
+            f"{backend.hostname}:{backend.port_value}",
+            f"{backend.weight}",
             status,
         )
 
@@ -796,11 +895,31 @@ def should_job_info_be_shown(cluster_state):
     )
 
 
+def get_pod_uptime(pod_deployed_timestamp: str):
+    pod_creation_time = datetime.strptime(pod_deployed_timestamp, "%Y-%m-%dT%H:%M:%SZ")
+    pod_uptime = datetime.utcnow() - pod_creation_time
+    pod_uptime_total_seconds = pod_uptime.total_seconds()
+    pod_uptime_days = divmod(pod_uptime_total_seconds, 86400)
+    pod_uptime_hours = divmod(pod_uptime_days[1], 3600)
+    pod_uptime_minutes = divmod(pod_uptime_hours[1], 60)
+    pod_uptime_seconds = divmod(pod_uptime_minutes[1], 1)
+    return f"{int(pod_uptime_days[0])}d{int(pod_uptime_hours[0])}h{int(pod_uptime_minutes[0])}m{int(pod_uptime_seconds[0])}s"
+
+
 def append_pod_status(pod_status, output: List[str]):
     output.append(f"    Pods:")
-    rows: List[Union[str, Tuple[str, str, str]]] = [("Pod Name", "Host", "Phase")]
+    rows: List[Union[str, Tuple[str, str, str, str]]] = [
+        ("Pod Name", "Host", "Phase", "Uptime")
+    ]
     for pod in pod_status:
-        rows.append((pod["name"], pod["host"], pod["phase"]))
+        rows.append(
+            (
+                pod["name"],
+                pod["host"],
+                pod["phase"],
+                get_pod_uptime(pod["deployed_timestamp"]),
+            )
+        )
         if pod["reason"] != "":
             rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
         if "container_state" in pod and pod["container_state"] != "Running":
@@ -929,6 +1048,9 @@ def print_flink_status(
             lambda j: j["name"],
         )
     )
+
+    allowed_max_jobs_printed = 3
+    job_printed_count = 0
     for job in unique_jobs:
         job_id = job["jid"]
         if verbose:
@@ -937,8 +1059,9 @@ def print_flink_status(
         else:
             fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
         start_time = datetime.fromtimestamp(int(job["start-time"]) // 1000)
-        output.append(
-            fmt.format(
+        if verbose or job_printed_count < allowed_max_jobs_printed:
+            job_printed_count += 1
+            job_info_str = fmt.format(
                 job_id=job_id,
                 job_name=get_flink_job_name(job),
                 allowed_max_job_name_length=allowed_max_job_name_length,
@@ -946,7 +1069,13 @@ def print_flink_status(
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
-        )
+            color_fn = (
+                PaastaColors.green
+                if job.get("state") and job.get("state") == "RUNNING"
+                else PaastaColors.red
+            )
+            output.append(color_fn(job_info_str))
+
         if verbose and job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
             root_exception = exceptions["root-exception"]
@@ -964,7 +1093,12 @@ def print_flink_status(
 
 
 def print_kubernetes_status(
-    service: str, instance: str, output: List[str], kubernetes_status
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    kubernetes_status,
+    verbose: int = 0,
 ) -> int:
     if kubernetes_status.error_message:
         output.append(kubernetes_status.error_message)
@@ -1028,7 +1162,12 @@ def print_kubernetes_status(
 
 
 def print_tron_status(
-    service: str, instance: str, output: List[str], tron_status, verbose: int = 0
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    tron_status,
+    verbose: int = 0,
 ) -> int:
     output.append(f"    Tron job: {tron_status.job_name}")
     if verbose:
@@ -1046,6 +1185,60 @@ def print_tron_status(
         output.append(f"      Stdout: \n{tron_status.action_stdout}")
         output.append(f"      Stderr: \n{tron_status.action_stderr}")
 
+    return 0
+
+
+def print_kafka_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    kafka_status: Mapping[str, Any],
+    verbose: int = 0,
+) -> int:
+    status = kafka_status.get("status")
+    if status is None:
+        output.append(PaastaColors.red("    Kafka cluster is not available yet"))
+        return 1
+
+    # print kafka view url before operator status because if the kafka cluster is not available for some reason
+    # atleast the user can get a hold the kafka view url
+    if status.kafka_view_url is not None:
+        output.append(f"    Kafka View Url: {status.kafka_view_url}")
+
+    annotations = kafka_status.get("metadata").annotations
+    desired_state = annotations.get(paasta_prefixed("desired_state"))
+    if desired_state is None:
+        raise ValueError(
+            f"expected desired state in kafka annotation, but received none"
+        )
+    output.append(f"    State: {desired_state}")
+
+    cluster_ready = "true" if status.cluster_ready else PaastaColors.red("false")
+    output.append(f"    Ready: {cluster_ready}")
+
+    if status.cluster_ready:
+        health: Mapping[str, Any] = status.health
+        cluster_health = (
+            PaastaColors.green("healthy")
+            if health["healthy"]
+            else PaastaColors.red("unhealthy")
+        )
+        output.append(f"    Health: {cluster_health}")
+        if not health.get("healthy"):
+            output.append(f"     Reason: {health['message']}")
+            output.append(f"     Offline Partitions: {health['offline_partitions']}")
+            output.append(
+                f"     Under Replicated Partitions: {health['under_replicated_partitions']}"
+            )
+
+    brokers = status.brokers
+    output.append(f"    Brokers:")
+    rows = [["Broker Id", "Host", "Phase"]]
+    for broker in brokers:
+        rows.append([str(broker["id"]), str(broker["host"]), str(broker["phase"])])
+    brokers_table = format_table(rows)
+    output.extend([f"     {line}" for line in brokers_table])
     return 0
 
 
@@ -1411,7 +1604,22 @@ def desired_state_human(desired_state, instances):
         return PaastaColors.red("Unknown (desired_state: %s)" % desired_state)
 
 
-def haproxy_backend_report(normal_instance_count, up_backends):
+class BackendType(Enum):
+    ENVOY = "Envoy"
+    HAPROXY = "haproxy"
+
+
+def envoy_backend_report(normal_instance_count: int, up_backends: int) -> str:
+    return _backend_report(normal_instance_count, up_backends, BackendType.ENVOY)
+
+
+def haproxy_backend_report(normal_instance_count: int, up_backends: int) -> str:
+    return _backend_report(normal_instance_count, up_backends, BackendType.HAPROXY)
+
+
+def _backend_report(
+    normal_instance_count: int, up_backends: int, system_name: BackendType
+) -> str:
     """Given that a service is in smartstack, this returns a human readable
     report of the up backends"""
     # TODO: Take into account a configurable threshold, PAASTA-1102
@@ -1430,7 +1638,7 @@ def haproxy_backend_report(normal_instance_count, up_backends):
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold("UP")
-    return f"{status} - in haproxy with {count} total backends {up_string} in this namespace."
+    return f"{status} - in {system_name} with {count} total backends {up_string} in this namespace."
 
 
 def marathon_app_deploy_status_human(status, backoff_seconds=None):
@@ -1492,3 +1700,15 @@ def status_marathon_job_human(
         return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
             status, name, desired_app_id
         )
+
+
+# Add other custom status writers here
+# See `print_tron_status` for reference
+INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
+    marathon=print_marathon_status,
+    kubernetes=print_kubernetes_status,
+    tron=print_tron_status,
+    adhoc=print_adhoc_status,
+    flink=print_flink_status,
+    kafkacluster=print_kafka_status,
+)

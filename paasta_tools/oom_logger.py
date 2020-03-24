@@ -73,8 +73,11 @@ def capture_oom_events_from_stdin():
     process_name_regex = re.compile(
         r"^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(.+)\sinvoked\soom-killer:"
     )
-    oom_regex = re.compile(
+    oom_regex_docker = re.compile(
         r"^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /docker/(\w{12})\w+ killed as a"
+    )
+    oom_regex_kubernetes = re.compile(
+        r"^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /kubepods/[a-zA-Z]+/pod[-\w]+/(\w{12})\w+ killed as a"
     )
     process_name = ""
 
@@ -85,7 +88,11 @@ def capture_oom_events_from_stdin():
         r = process_name_regex.search(syslog)
         if r:
             process_name = r.group(1)
-        r = oom_regex.search(syslog)
+        r = oom_regex_docker.search(syslog)
+        if r:
+            yield (int(r.group(1)), r.group(2), r.group(3), process_name)
+            process_name = ""
+        r = oom_regex_kubernetes.search(syslog)
         if r:
             yield (int(r.group(1)), r.group(2), r.group(3), process_name)
             process_name = ""

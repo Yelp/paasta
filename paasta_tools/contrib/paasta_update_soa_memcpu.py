@@ -7,10 +7,12 @@ import os
 import subprocess
 import tempfile
 import time
+from http.client import HTTPConnection
 
 import requests
 import ruamel.yaml as yaml
 
+requests_log = logging.getLogger("requests.packages.urllib3")
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
 
@@ -72,6 +74,13 @@ def parse_args():
         default=False,
     )
     parser.add_argument(
+        "--app",
+        help="Splunk app of the CSV file",
+        default="yelp_performance",
+        required=False,
+        dest="splunk_app",
+    )
+    parser.add_argument(
         "-c",
         "--csv-report",
         help="Splunk csv file from which to pull data.",
@@ -86,6 +95,14 @@ def parse_args():
         required=False,
     )
     parser.add_argument(
+        "-l",
+        "--local",
+        help="Do not create a branch. Implies -y and -b.",
+        action="store_true",
+        dest="no_branch",
+        default=False,
+    )
+    parser.add_argument(
         "-v", "--verbose", help="Debug mode.", action="store_true", dest="verbose",
     )
 
@@ -94,7 +111,7 @@ def parse_args():
 
 def tempdir():
     tmp = tempfile.TemporaryDirectory(prefix="repo", dir="/nail/tmp")
-    log.info(f"Created temp directory: {tmp.name}")
+    log.debug(f"Created temp directory: {tmp.name}")
     return tmp
 
 
@@ -110,10 +127,10 @@ def cwd(path):
         os.chdir(pwd)
 
 
-def get_report_from_splunk(creds, filename, criteria_filter):
+def get_report_from_splunk(creds, app, filename, criteria_filter):
     """ Expect a table containing at least the following fields:
     criteria (<service> [marathon|kubernetes]-<cluster_name> <instance>)
-    service_owner
+    service_owner (Optional)
     project (Required to create tickets)
     estimated_monthly_savings (Optional)
     search_time (Unix time)
@@ -122,11 +139,12 @@ def get_report_from_splunk(creds, filename, criteria_filter):
     current_mem (Optional if current_cpus is specified)
     suggested_mem (Optional if suggested_cpus is specified)
     """
-    url = "https://splunk-api.yelpcorp.com/servicesNS/nobody/yelp_performance/search/jobs/export"
+    url = f"https://splunk-api.yelpcorp.com/servicesNS/nobody/{app}/search/jobs/export"
     search = (
         '| inputlookup {filename} | search criteria="{criteria_filter}"'
         '| eval _time = search_time | where _time > relative_time(now(),"-7d")'
     ).format(filename=filename, criteria_filter=criteria_filter)
+    log.debug(f"Sending this query to Splunk: {search}\n")
     data = {"output_mode": "json", "search": search}
     creds = creds.split(":")
     resp = requests.post(url, data=data, auth=(creds[0], creds[1]))
@@ -143,7 +161,7 @@ def get_report_from_splunk(creds, filename, criteria_filter):
         serv["service"] = criteria.split(" ")[0]
         serv["cluster"] = criteria.split(" ")[1]
         serv["instance"] = criteria.split(" ")[2]
-        serv["owner"] = d["result"]["service_owner"]
+        serv["owner"] = d["result"].get("service_owner", "Unavailable")
         serv["date"] = d["result"]["_time"].split(" ")[0]
         serv["money"] = d["result"].get("estimated_monthly_savings", 0)
         serv["project"] = d["result"].get("project", "Unavailable")
@@ -153,7 +171,10 @@ def get_report_from_splunk(creds, filename, criteria_filter):
         serv["old_mem"] = d["result"].get("current_mem")
         services_to_update[criteria] = serv
 
-    return services_to_update
+    return {
+        "search": search,
+        "results": services_to_update,
+    }
 
 
 def clone_in(target_dir):
@@ -166,20 +187,24 @@ def create_branch(branch_name):
     subprocess.check_call(("git", "checkout", "-b", branch_name))
 
 
-def bulk_commit(filenames):
-    message = "Rightsizer bulk update"
+def bulk_commit(filenames, originating_search):
+    message = f"Rightsizer bulk update\n\nSplunk search:\n{originating_search}"
     subprocess.check_call(["git", "add"] + filenames)
     subprocess.check_call(("git", "commit", "-n", "-m", message))
 
 
-def bulk_review(filenames, publish=False):
+def bulk_review(filenames, originating_search, publish=False):
     reviewers = set(get_reviewers_in_group("right-sizer"))
     for filename in filenames:
         reviewers = reviewers.union(get_reviewers(filename))
 
     reviewers_arg = " ".join(list(reviewers))
     summary = "Rightsizer bulk update"
-    description = "This is an automated bulk review. It will be shipped automatically if a primary reviewer gives a shipit. If you think this should not be shipped, talk to one of the primary reviewers."
+    description = (
+        "This is an automated bulk review. It will be shipped automatically if a primary reviewer gives a shipit. If you think this should not be shipped, talk to one of the primary reviewers. \n\n"
+        "This review is based on results from the following Splunk search:\n"
+        f"{originating_search}"
+    )
     review_cmd = [
         "review-branch",
         f"--summary={summary}",
@@ -285,7 +310,7 @@ def edit_soa_configs(filename, instance, cpu, mem):
     except FileNotFoundError:
         log.exception(f"Could not find {filename}")
     except KeyError:
-        log.exception(f"Error in {filename}")
+        log.exception(f"Error in {filename}. Will continue")
 
 
 def create_jira_ticket(serv, creds, description, JIRA):
@@ -361,25 +386,27 @@ def generate_ticket_content(serv):
     return (summary, ticket_desc)
 
 
-def bulk_rightsize(report, create_code_review, publish_code_review):
-    branch = "rightsize-bulk-{}".format(int(time.time()))
-    create_branch(branch)
+def bulk_rightsize(report, create_code_review, publish_code_review, create_new_branch):
+    if create_new_branch:
+        branch = "rightsize-bulk-{}".format(int(time.time()))
+        create_branch(branch)
+
     filenames = []
-    for _, serv in report.items():
+    for _, serv in report["results"].items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
         filenames.append(filename)
         cpus = serv.get("cpus", None)
         mem = serv.get("mem", None)
         edit_soa_configs(filename, serv["instance"], cpus, mem)
     if create_code_review:
-        bulk_commit(filenames)
-        bulk_review(filenames, publish_code_review)
+        bulk_commit(filenames, report["search"])
+        bulk_review(filenames, report["search"], publish_code_review)
 
 
 def individual_rightsize(
     report, create_tickets, jira_creds, create_review, publish_review, JIRA
 ):
-    for _, serv in report.items():
+    for _, serv in report["results"].items():
         filename = "{}/{}.yaml".format(serv["service"], serv["cluster"])
         summary, ticket_desc = generate_ticket_content(serv)
 
@@ -409,8 +436,19 @@ def individual_rightsize(
 
 def main():
     args = parse_args()
+
     if args.verbose:
         log.setLevel(logging.DEBUG)
+        requests_log.setLevel(logging.DEBUG)
+        HTTPConnection.debuglevel = 2
+        requests_log.propagate = True
+
+    # Safety checks
+    if args.no_branch and not args.YELPSOA_DIR:
+        log.error(
+            "You must specify --yelpsoa-configs-dir to work on if you use the --local option"
+        )
+        return False
 
     if args.ticket:
         if not args.jira_creds:
@@ -421,7 +459,7 @@ def main():
         JIRA = None
 
     report = get_report_from_splunk(
-        args.splunk_creds, args.csv_report, args.criteria_filter
+        args.splunk_creds, args.splunk_app, args.csv_report, args.criteria_filter
     )
 
     tmpdir = tempdir()  # Create a tmp dir even if we are not using it
@@ -433,9 +471,11 @@ def main():
         clone_in(working_dir)
 
     with cwd(working_dir):
-        if args.bulk:
+        if args.bulk or args.no_branch:
             log.info("Running in bulk mode")
-            bulk_rightsize(report, args.create_reviews, args.publish_reviews)
+            bulk_rightsize(
+                report, args.create_reviews, args.publish_reviews, not args.no_branch
+            )
         else:
             individual_rightsize(
                 report,

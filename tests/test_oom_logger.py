@@ -39,6 +39,22 @@ def sys_stdin():
 
 
 @pytest.fixture
+def sys_stdin_kubernetes():
+    return [
+        "some random line1\n",
+        "1500316299 dev37-devc [30533610.306528] apache2 invoked oom-killer: "
+        "gfp_mask=0x24000c0, order=0, oom_score_adj=0\n",
+        "some random line2\n",
+        "1500316300 dev37-devc [30533610.306529] Task in "
+        "/kubepods/burstable/podf91e9681-4741-4ef4-8f5a-182c5683df8b/"
+        "0e4a814eda03622476ff47871e6c397e5b8747af209b44f3b3e1c5289b0f9772 "
+        "killed as a result of limit of /kubepods/burstable/"
+        "podf91e9681-4741-4ef4-8f5a-182c5683df8b/"
+        "0e4a814eda03622476ff47871e6c397e5b8747af209b44f3b3e1c5289b0f9772\n",
+    ]
+
+
+@pytest.fixture
 def sys_stdin_process_name_with_slashes():
     return [
         "some random line1\n",
@@ -112,6 +128,16 @@ def test_capture_oom_events_from_stdin(mock_sys_stdin, sys_stdin):
         test_output.append(a_tuple)
 
     assert test_output == [(1500316300, "dev37-devc", "a687af92e281", "apache2")]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes(mock_sys_stdin, sys_stdin_kubernetes):
+    mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes
+    test_output = []
+    for a_tuple in capture_oom_events_from_stdin():
+        test_output.append(a_tuple)
+
+    assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)

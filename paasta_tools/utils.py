@@ -69,7 +69,6 @@ import choice
 import dateutil.tz
 import requests_cache
 import service_configuration_lib
-import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
@@ -88,6 +87,7 @@ PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get(
     "PAASTA_SYSTEM_CONFIG_DIR", "/etc/paasta/"
 )
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+AUTO_SOACONFIG_SUBDIR = "autotuned_defaults"
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     "itest",
@@ -1031,7 +1031,7 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
 
-LOG_COMPONENTS = OrderedDict(
+LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
     [
         (
             "build",
@@ -1713,10 +1713,19 @@ class KubeCustomResourceDict(TypedDict, total=False):
     group: str
 
 
+class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
+    unaggregated_metrics: List[str]
+    summed_metric_to_group_keys: Dict[str, List[str]]
+    label_metric_to_label_key: Dict[str, List[str]]
+    label_renames: Dict[str, str]
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
     auto_hostname_unique_size: int
+    auto_config_instance_types_enabled: Dict[str, bool]
+    boost_regions: List[str]
     cluster: str
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
@@ -1743,10 +1752,13 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
     enforce_disk_quota: bool
+    envoy_admin_domain_name: str
+    envoy_admin_endpoint_format: str
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
     hacheck_sidecar_image_url: str
+    kube_state_metrics_collector: KubeStateMetricsCollectorConfigDict
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     local_run_config: LocalRunConfig
@@ -1759,6 +1771,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: str
     paasta_native: PaastaNativeConfig
+    pdb_max_unavailable: Union[str, int]
     pki_backend: str
     previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
@@ -1925,6 +1938,9 @@ class SystemPaastaConfig:
         :returns: The integer size of a small service
         """
         return self.config_dict.get("auto_hostname_unique_size", -1)
+
+    def get_auto_config_instance_types_enabled(self) -> Dict[str, bool]:
+        return self.config_dict.get("auto_config_instance_types_enabled", {})
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict["api_endpoints"]
@@ -2286,6 +2302,30 @@ class SystemPaastaConfig:
     def get_clusters(self) -> Sequence[str]:
         return self.config_dict.get("clusters", [])
 
+    def get_envoy_admin_endpoint_format(self) -> str:
+        """ Get the format string for Envoy's admin interface. """
+        return self.config_dict.get(
+            "envoy_admin_endpoint_format", "http://{host:s}:{port:d}/{endpoint:s}"
+        )
+
+    def get_envoy_admin_port(self) -> int:
+        """ Get the port that Envoy's admin interface is listening on
+        from /etc/services. """
+        return socket.getservbyname(
+            self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
+        )
+
+    def get_pdb_max_unavailable(self) -> Union[str, int]:
+        return self.config_dict.get("pdb_max_unavailable", 0)
+
+    def get_boost_regions(self) -> List[str]:
+        return self.config_dict.get("boost_regions", [])
+
+    def get_kube_state_metrics_collector_config(
+        self,
+    ) -> KubeStateMetricsCollectorConfigDict:
+        return self.config_dict.get("kube_state_metrics_collector", {})
+
 
 def _run(
     command: Union[str, List[str]],
@@ -2622,68 +2662,30 @@ def list_all_instances_for_service(
     return instances
 
 
-def get_tron_instance_list_from_yaml(
-    service: str, cluster: str, soa_dir: str
-) -> Collection[Tuple[str, str]]:
-    instance_list = []
-    try:
-        tron_config_content = load_tron_yaml(
-            service=service, cluster=cluster, soa_dir=soa_dir
-        )
-    except NoConfigurationForServiceError:
-        return []
-    jobs = extract_jobs_from_tron_yaml(config=tron_config_content)
-    for job_name, job in jobs.items():
-        action_names = get_action_names_from_job(job=job)
-        for name in action_names:
-            instance = f"{job_name}.{name}"
-            instance_list.append((service, instance))
-    return instance_list
-
-
-def get_action_names_from_job(job: dict) -> Collection[str]:
-    # Warning: This duplicates some logic from TronActionConfig, but can't be imported here
-    # dute to circular imports
-    actions = job.get("actions", {})
-    if isinstance(actions, dict):
-        return list(actions.keys())
-    elif actions is None:
-        return []
-    else:
-        raise TypeError("Tron actions must be a dictionary")
-
-
-def load_tron_yaml(service: str, cluster: str, soa_dir: str) -> Dict[str, Any]:
-    config = service_configuration_lib.read_extra_service_information(
-        service_name=service, extra_info=f"tron-{cluster}", soa_dir=soa_dir
-    )
-    if not config:
-        raise NoConfigurationForServiceError(
-            "No Tron configuration found for service %s" % service
-        )
-    return config
-
-
-def extract_jobs_from_tron_yaml(config: Dict) -> Dict[str, Any]:
+def filter_templates_from_config(config: Dict) -> Dict[str, Any]:
     config = {
         key: value for key, value in config.items() if not key.startswith("_")
     }  # filter templates
     return config or {}
 
 
-def get_instance_list_from_yaml(
-    service: str, conf_file: str, soa_dir: str
+def read_service_instance_names(
+    service: str, instance_type: str, cluster: str, soa_dir: str
 ) -> Collection[Tuple[str, str]]:
     instance_list = []
-    instances = service_configuration_lib.read_extra_service_information(
+    conf_file = f"{instance_type}-{cluster}"
+    config = service_configuration_lib.read_extra_service_information(
         service, conf_file, soa_dir=soa_dir
     )
-    for instance in instances:
-        if instance.startswith("_"):
-            log.debug(
-                f"Ignoring {service}.{instance} as instance name begins with '_'."
-            )
-        else:
+    config = filter_templates_from_config(config)
+    if instance_type == "tron":
+        for job_name, job in config.items():
+            action_names = list(job.get("actions", {}).keys())
+            for name in action_names:
+                instance = f"{job_name}.{name}"
+                instance_list.append((service, instance))
+    else:
+        for instance in config:
             instance_list.append((service, instance))
     return instance_list
 
@@ -2725,22 +2727,14 @@ def get_service_instance_list_no_cache(
 
     instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
-        conf_file = f"{srv_instance_type}-{cluster}"
-        log.debug(
-            f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml"
+        instance_list.extend(
+            read_service_instance_names(
+                service=service,
+                instance_type=srv_instance_type,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
         )
-        if srv_instance_type == "tron":
-            instance_list.extend(
-                get_tron_instance_list_from_yaml(
-                    service=service, cluster=cluster, soa_dir=soa_dir
-                )
-            )
-        else:
-            instance_list.extend(
-                get_instance_list_from_yaml(
-                    service=service, conf_file=conf_file, soa_dir=soa_dir
-                )
-            )
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
@@ -2784,22 +2778,69 @@ def get_services_for_cluster(
     )
     instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
-        service_instance_list = get_service_instance_list(
-            srv_dir, cluster, instance_type, soa_dir
+        instance_list.extend(
+            get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
         )
-        for service_instance in service_instance_list:
-            service, instance = service_instance
-            if instance.startswith("_"):
-                log.debug(
-                    f"Ignoring {service}.{instance} as instance name begins with '_'."
-                )
-            else:
-                instance_list.append(service_instance)
     return instance_list
 
 
-def parse_yaml_file(yaml_file: str) -> Any:
-    return yaml.safe_load(open(yaml_file))
+def load_service_instance_configs(
+    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, InstanceConfigDict]:
+    conf_file = f"{instance_type}-{cluster}"
+    user_configs = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir
+    )
+    user_configs = filter_templates_from_config(user_configs)
+    auto_configs = load_service_instance_auto_configs(
+        service, instance_type, cluster, soa_dir
+    )
+    merged = {}
+    for instance_name, user_config in user_configs.items():
+        auto_config = auto_configs.get(instance_name, {})
+        merged[instance_name] = deep_merge_dictionaries(
+            overrides=user_config, defaults=auto_config,
+        )
+    return merged
+
+
+def load_service_instance_config(
+    service: str,
+    instance: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> InstanceConfigDict:
+    if instance.startswith("_"):
+        raise InvalidJobNameError(
+            f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"
+        )
+    conf_file = f"{instance_type}-{cluster}"
+    user_config = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir
+    ).get(instance)
+    if user_config is None:
+        raise NoConfigurationForServiceError(
+            f"{instance} not found in config file {soa_dir}/{service}/{conf_file}.yaml."
+        )
+
+    auto_config = load_service_instance_auto_configs(
+        service, instance_type, cluster, soa_dir
+    ).get(instance, {})
+    return deep_merge_dictionaries(overrides=user_config, defaults=auto_config,)
+
+
+def load_service_instance_auto_configs(
+    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, Dict[str, Any]]:
+    enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
+    conf_file = f"{instance_type}-{cluster}"
+    if enabled_types.get(instance_type):
+        return service_configuration_lib.read_extra_service_information(
+            service, f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}", soa_dir=soa_dir
+        )
+    else:
+        return {}
 
 
 def get_docker_host() -> str:
@@ -2854,30 +2895,6 @@ def print_with_indent(line: str, indent: int = 2) -> None:
 
 class NoDeploymentsAvailable(Exception):
     pass
-
-
-def load_deployments_json(
-    service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> "DeploymentsJsonV1":
-    deployment_file = os.path.join(soa_dir, service, "deployments.json")
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJsonV1(json.load(f)["v1"])
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
-
-
-def load_v2_deployments_json(
-    service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> "DeploymentsJsonV2":
-    deployment_file = os.path.join(soa_dir, service, "deployments.json")
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJsonV2(service=service, config_dict=json.load(f)["v2"])
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
 
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
@@ -2974,6 +2991,30 @@ class DeploymentsJsonV2:
             raise NoDeploymentsAvailable(e)
 
 
+def load_deployments_json(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> DeploymentsJsonV1:
+    deployment_file = os.path.join(soa_dir, service, "deployments.json")
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJsonV1(json.load(f)["v1"])
+    else:
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
+
+
+def load_v2_deployments_json(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> DeploymentsJsonV2:
+    deployment_file = os.path.join(soa_dir, service, "deployments.json")
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJsonV2(service=service, config_dict=json.load(f)["v2"])
+    else:
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
+
+
 def get_paasta_branch(cluster: str, instance: str) -> str:
     return SPACER.join((cluster, instance))
 
@@ -3024,18 +3065,23 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def get_git_sha_from_dockerurl(docker_url: str) -> str:
+def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
+    """ We encode the sha of the code that built a docker image *in* the docker
+    url. This function takes that url as input and outputs the sha.
+    """
     parts = docker_url.split("/")
     parts = parts[-1].split("-")
-    return parts[-1][:8]
+    sha = parts[-1]
+    return sha if long else sha[:8]
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
-    """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha
+    """ code_sha is hash extracted from docker url prefixed with "git", short
+    hash is used because it's embedded in marathon app names and there's length
+    limit.
     """
     try:
-        git_sha = get_git_sha_from_dockerurl(docker_url)
+        git_sha = get_git_sha_from_dockerurl(docker_url, long=False)
         return "git%s" % git_sha
     except Exception:
         return "gitUNKNOWN"

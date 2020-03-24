@@ -16,14 +16,13 @@ from typing import Optional
 
 import service_configuration_lib
 
-from paasta_tools.kubernetes_tools import InvalidJobNameError
-from paasta_tools.kubernetes_tools import NoConfigurationForServiceError
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
 
@@ -101,22 +100,11 @@ def load_kafkacluster_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    kafkacluster_conf_file = "kafkacluster-%s" % cluster
-    instance_configs = service_configuration_lib.read_extra_service_information(
-        service, kafkacluster_conf_file, soa_dir=soa_dir
+    instance_config = load_service_instance_config(
+        service, instance, "kafkacluster", cluster, soa_dir=soa_dir
     )
-
-    if instance.startswith("_"):
-        raise InvalidJobNameError(
-            f"Unable to load kubernetes job config for {service}.{instance} as instance name starts with '_'"
-        )
-    if instance not in instance_configs:
-        raise NoConfigurationForServiceError(
-            f"{instance} not found in config file {soa_dir}/{service}/{kafkacluster_conf_file}.yaml."
-        )
-
     general_config = deep_merge_dictionaries(
-        overrides=instance_configs[instance], defaults=general_config
+        overrides=instance_config, defaults=general_config
     )
 
     branch_dict: Optional[BranchDictV2] = None

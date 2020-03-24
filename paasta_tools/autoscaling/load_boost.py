@@ -145,7 +145,7 @@ def set_boost_factor(
         log.error(f"Cannot set a boost factor smaller than {MIN_BOOST_FACTOR}")
         return False
 
-    if factor > MAX_BOOST_FACTOR:
+    if not override and factor > MAX_BOOST_FACTOR:
         log.warning(
             "Boost factor {} does not sound reasonable. Defaulting to {}".format(
                 factor, MAX_BOOST_FACTOR

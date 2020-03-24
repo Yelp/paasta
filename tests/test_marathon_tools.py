@@ -33,7 +33,6 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -80,55 +79,19 @@ class TestMarathonTools:
         ) as mock_load_deployments_json, mock.patch(
             "service_configuration_lib.read_service_configuration", autospec=True
         ) as mock_read_service_configuration, mock.patch(
-            "service_configuration_lib.read_extra_service_information", autospec=True
-        ) as mock_read_extra_service_information, mock.patch(
+            "paasta_tools.marathon_tools.load_service_instance_config", autospec=True
+        ) as mock_load_service_instance_config, mock.patch(
             "paasta_tools.marathon_tools.deep_merge_dictionaries", autospec=True
         ):
-            mock_read_extra_service_information.return_value = {fake_instance: {}}
+            mock_load_service_instance_config.return_value = {}
             marathon_tools.load_marathon_service_config(
                 fake_name, fake_instance, fake_cluster, soa_dir=fake_dir
             )
             assert mock_read_service_configuration.call_count == 1
-            assert mock_read_extra_service_information.call_count == 1
+            assert mock_load_service_instance_config.call_count == 1
             mock_load_deployments_json.assert_called_once_with(
                 fake_name, soa_dir=fake_dir
             )
-
-    def test_load_marathon_service_config_bails_with_no_config(self):
-        fake_name = "folk"
-        fake_instance = "solo"
-        fake_cluster = "amnesia"
-        fake_dir = "/nail/home/sanfran"
-        with mock.patch(
-            "paasta_tools.marathon_tools.load_v2_deployments_json", autospec=True
-        ), mock.patch(
-            "service_configuration_lib.read_service_configuration", autospec=True
-        ), mock.patch(
-            "service_configuration_lib.read_extra_service_information", autospec=True
-        ) as mock_read_extra_service_information:
-            mock_read_extra_service_information.return_value = {}
-            with raises(marathon_tools.NoConfigurationForServiceError):
-                marathon_tools.load_marathon_service_config(
-                    fake_name, fake_instance, fake_cluster, soa_dir=fake_dir
-                )
-
-    def test_load_marathon_service_config_bails_with_underscore_instance(self):
-        fake_name = "folk"
-        fake_instance = "_ignore_me"
-        fake_cluster = "amnesia"
-        fake_dir = "/nail/home/sanfran"
-        with mock.patch(
-            "paasta_tools.marathon_tools.load_v2_deployments_json", autospec=True
-        ), mock.patch(
-            "service_configuration_lib.read_service_configuration", autospec=True
-        ), mock.patch(
-            "service_configuration_lib.read_extra_service_information", autospec=True
-        ) as mock_read_extra_service_information:
-            mock_read_extra_service_information.return_value = {}
-            with raises(InvalidJobNameError):
-                marathon_tools.load_marathon_service_config(
-                    fake_name, fake_instance, fake_cluster, soa_dir=fake_dir
-                )
 
     def test_read_service_config(self):
         fake_name = "jazz"
@@ -153,10 +116,10 @@ class TestMarathonTools:
             autospec=True,
             return_value=self.fake_srv_config,
         ) as read_service_configuration_patch, mock.patch(
-            "service_configuration_lib.read_extra_service_information",
+            "paasta_tools.marathon_tools.load_service_instance_config",
             autospec=True,
-            return_value={fake_instance: config_copy},
-        ) as read_extra_info_patch:
+            return_value=config_copy,
+        ) as load_service_instance_config_patch:
             actual = marathon_tools.load_marathon_service_config(
                 fake_name,
                 fake_instance,
@@ -173,9 +136,9 @@ class TestMarathonTools:
             read_service_configuration_patch.assert_any_call(
                 fake_name, soa_dir=fake_dir
             )
-            assert read_extra_info_patch.call_count == 1
-            read_extra_info_patch.assert_any_call(
-                fake_name, "marathon-amnesia", soa_dir=fake_dir
+            assert load_service_instance_config_patch.call_count == 1
+            load_service_instance_config_patch.assert_any_call(
+                fake_name, fake_instance, "marathon", fake_cluster, soa_dir=fake_dir
             )
 
     def test_read_service_config_and_deployments(self):
@@ -204,10 +167,10 @@ class TestMarathonTools:
             autospec=True,
             return_value=self.fake_srv_config,
         ) as read_service_configuration_patch, mock.patch(
-            "service_configuration_lib.read_extra_service_information",
+            "paasta_tools.marathon_tools.load_service_instance_config",
             autospec=True,
-            return_value={fake_instance: config_copy},
-        ) as read_extra_info_patch, mock.patch(
+            return_value=config_copy,
+        ) as load_service_instance_config_patch, mock.patch(
             "paasta_tools.marathon_tools.load_v2_deployments_json",
             autospec=True,
             return_value=deployments_json_mock,
@@ -244,9 +207,9 @@ class TestMarathonTools:
             read_service_configuration_patch.assert_any_call(
                 fake_name, soa_dir=fake_dir
             )
-            assert read_extra_info_patch.call_count == 1
-            read_extra_info_patch.assert_any_call(
-                fake_name, "marathon-amnesia", soa_dir=fake_dir
+            assert load_service_instance_config_patch.call_count == 1
+            load_service_instance_config_patch.assert_any_call(
+                fake_name, fake_instance, "marathon", fake_cluster, soa_dir=fake_dir
             )
 
     def test_get_all_namespaces_for_service(self):

@@ -180,7 +180,7 @@
                     "default": 1,
                     "minimum": 0,
                     "maximum": 1,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": false,
                     "exclusiveMaximum": false
                 },
                 "bounce_priority": {
@@ -208,10 +208,10 @@
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "integer",
-                                    "default": 70,
+                                    "type": "number",
+                                    "default": 0.7,
                                     "minimum": 0,
-                                    "maximum": 100,
+                                    "maximum": 1,
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 }
@@ -225,10 +225,10 @@
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "integer",
-                                    "default": 70,
+                                    "type": "number",
+                                    "default": 0.7,
                                     "minimum": 0,
-                                    "maximum": 100,
+                                    "maximum": 1,
                                     "exclusiveMinimum": true,
                                     "exclusiveMaximum": false
                                 }
@@ -242,12 +242,7 @@
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "integer",
-                                    "default": 70,
-                                    "minimum": 0,
-                                    "maximum": 100,
-                                    "exclusiveMinimum": true,
-                                    "exclusiveMaximum": false
+                                    "type": "number"
                                 },
                                 "dimensions": {
                                     "type": "object",
@@ -268,12 +263,7 @@
                             "additionalProperties": false,
                             "properties": {
                                 "target_average_value": {
-                                    "type": "number",
-                                    "default": 70,
-                                    "minimum": 0,
-                                    "maximum": 100,
-                                    "exclusiveMinimum": true,
-                                    "exclusiveMaximum": false
+                                    "type": "number"
                                 },
                                 "dimensions": {
                                     "type": "object",
