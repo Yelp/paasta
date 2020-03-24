@@ -148,7 +148,6 @@ def main() -> None:
     kube_client = KubeClient()
 
     evicted_pods = evicted_pods_per_service(kube_client)
-    # notify_service_owners(evicted_pods, args.soa_dir, args.dry_run)
     remove_pods(kube_client, evicted_pods, args.dry_run)
 
 
