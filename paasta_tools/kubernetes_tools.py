@@ -150,8 +150,6 @@ DISCOVERY_ATTRIBUTES = {"region", "superregion", "ecosystem", "habitat"}
 # For detail, https://github.com/kubernetes-client/python/issues/553
 # This hack should be removed when the issue got fixed.
 # This is no better way to work around rn.
-
-
 class MonkeyPatchAutoScalingConditions(V2beta1HorizontalPodAutoscalerStatus):
     @property
     def conditions(self) -> Sequence[V2beta1HorizontalPodAutoscalerCondition]:
@@ -461,7 +459,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                     annotations[
                         f"signalfx.com.external.metric/{metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
+                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_instance").mean(over="15m").publish()'
             else:
                 metrics.append(
                     V2beta1MetricSpec(
@@ -1803,6 +1801,10 @@ def get_kubernetes_app_by_name(
     name: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Union[V1Deployment, V1StatefulSet]:
     try:
+        print("==666666666666666666666666666666666")
+        print(name)
+        print(namespace)
+        print("==666666666666666666666666666666666")
         app = kube_client.deployments.read_namespaced_deployment_status(
             name=name, namespace=namespace
         )
