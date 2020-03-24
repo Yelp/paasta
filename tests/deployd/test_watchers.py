@@ -6,6 +6,7 @@ from pytest import raises
 from requests.exceptions import RequestException
 
 from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 
 class FakePyinotify:  # pragma: no cover
@@ -575,6 +576,12 @@ class TestYelpSoaEventHandler(unittest.TestCase):
         name = mock.PropertyMock(return_value="marathon-cluster.yaml")
         type(mock_event).name = name
         mock_event.path = "/blah/test-service"
+        assert "test-service" == self.handler.get_service_name_from_event(mock_event)
+
+        mock_event = mock.Mock()
+        name = mock.PropertyMock(return_value="marathon-cluster.yaml")
+        type(mock_event).name = name
+        mock_event.path = f"/blah/test-service/{AUTO_SOACONFIG_SUBDIR}"
         assert "test-service" == self.handler.get_service_name_from_event(mock_event)
 
         name = mock.PropertyMock(return_value="deployments.json")
