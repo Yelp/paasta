@@ -1,3 +1,11 @@
+paasta-tools (0.95.12) xenial; urgency=medium
+
+  * 0.95.12 tagged with 'make release'
+    Commit: Merge pull request #2744 from Yelp/refactor_imports_pin  Pin
+    aspy.refactor_imports in pre-commit to get a reproducible build
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 24 Mar 2020 11:41:13 -0700
+
 paasta-tools (0.95.11) xenial; urgency=medium
 
   * 0.95.11 tagged with 'make release'
