@@ -324,9 +324,10 @@ def kubernetes_status(
         replicaset_list=replicaset_list,
     )
 
-    kstatus["autoscaling_status"] = autoscaling_status(
-        kube_client, job_config, job_config.get_kubernetes_namespace()
-    )
+    if job_config.is_autoscaling_enabled() is True:
+        kstatus["autoscaling_status"] = autoscaling_status(
+            kube_client, job_config, job_config.get_kubernetes_namespace()
+        )
 
     evicted_count = 0
     for pod in pod_list:

@@ -412,7 +412,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         hpa_config = self.config_dict["horizontal_autoscaling"]
-        min_replicas = hpa_config.get("min_replicas", 0)
+        min_replicas = hpa_config.get("min_replicas", 1)
         max_replicas = hpa_config["max_replicas"]
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         annotations = {"signalfx.com.custom.metrics": ""}
@@ -459,7 +459,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                     annotations[
                         f"signalfx.com.external.metric/{metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_instance").mean(over="15m").publish()'
+                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
             else:
                 metrics.append(
                     V2beta1MetricSpec(
@@ -969,6 +969,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 % self.get_max_instances()
             )
             return None
+
+    def get_min_instances(self) -> Optional[int]:
+        return self.config_dict.get(
+            "min_instances",
+            self.config_dict.get("horizontal_autoscaling", {}).get("min_replicas", 1),
+        )
+
+    def get_max_instances(self) -> Optional[int]:
+        return self.config_dict.get(
+            "max_instances",
+            self.config_dict.get("horizontal_autoscaling", {}).get(
+                "max_replicas", None
+            ),
+        )
 
     def set_autoscaled_instances(
         self, instance_count: int, kube_client: KubeClient
