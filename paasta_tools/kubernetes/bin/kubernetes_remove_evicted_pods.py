@@ -85,6 +85,7 @@ def notify_service_owners(
     for service in services.keys():
         check_name = f"pod-eviction.{service}"
         check_output = "The following pods have been evicted and will be removed from the cluster:\n"
+
         for pod in services[service]:
             check_output += f"- {pod.podname}: {pod.eviction_msg}\n"
         if dry_run:
@@ -148,7 +149,7 @@ def main() -> None:
     kube_client = KubeClient()
 
     evicted_pods = evicted_pods_per_service(kube_client)
-    notify_service_owners(evicted_pods, args.soa_dir, args.dry_run)
+    # notify_service_owners(evicted_pods, args.soa_dir, args.dry_run)
     remove_pods(kube_client, evicted_pods, args.dry_run)
 
 
