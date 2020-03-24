@@ -46,7 +46,7 @@ from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
 
 
 log = logging.getLogger(__name__)
-DEFAULT_ALERT_AFTER = "5m"
+DEFAULT_ALERT_AFTER = "10m"
 
 
 def check_healthy_kubernetes_tasks_for_service_instance(
@@ -89,6 +89,14 @@ def check_kubernetes_pod_replication(
     proxy_port = get_proxy_port_for_instance(instance_config)
 
     registrations = instance_config.get_registrations()
+
+    # If this instance does not autoscale and only has 1 instance, set alert after to 20m.
+    # Otherwise, set it to 10 min.
+    if (
+        instance_config.get_max_instances() is None
+        and instance_config.get_instances() == 1
+    ):
+        default_alert_after = "20m"
     if "monitoring" not in instance_config.config_dict:
         instance_config.config_dict["monitoring"] = {}
     instance_config.config_dict["monitoring"][
@@ -96,6 +104,7 @@ def check_kubernetes_pod_replication(
     ] = instance_config.config_dict["monitoring"].get(
         "alert_after", default_alert_after
     )
+
     # if the primary registration does not match the service_instance name then
     # the best we can do is check k8s for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
