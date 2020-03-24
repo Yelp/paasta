@@ -29,6 +29,7 @@ from paasta_tools.marathon_tools import deformat_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
@@ -369,7 +370,12 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
         returns None if it is not an event we're interested in"""
         starts_with = ["marathon-", "deployments.json"]
         if any([event.name.startswith(x) for x in starts_with]):
-            service_name = event.path.split("/")[-1]
+            dir_name = event.path.split("/")[-1]
+            # we also have a subdir for autotuned_defaults
+            if dir_name == AUTO_SOACONFIG_SUBDIR:
+                service_name = event.path.split("/")[-2]
+            else:
+                service_name = dir_name
         elif event.name.endswith(".json") and event.path.split("/")[-1] == "secrets":
             # this is needed because we put the secrets json files in a
             # subdirectory so the service name would be "secrets" otherwise
