@@ -1801,10 +1801,6 @@ def get_kubernetes_app_by_name(
     name: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Union[V1Deployment, V1StatefulSet]:
     try:
-        print("==666666666666666666666666666666666")
-        print(name)
-        print(namespace)
-        print("==666666666666666666666666666666666")
         app = kube_client.deployments.read_namespaced_deployment_status(
             name=name, namespace=namespace
         )
