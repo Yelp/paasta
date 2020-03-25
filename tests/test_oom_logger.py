@@ -102,7 +102,12 @@ def sys_stdin_without_process_name():
 def docker_inspect():
     return {
         "Config": {
-            "Env": ["PAASTA_SERVICE=fake_service", "PAASTA_INSTANCE=fake_instance"]
+            "Env": [
+                "PAASTA_SERVICE=fake_service",
+                "PAASTA_INSTANCE=fake_instance",
+                "PAASTA_RESOURCE_MEM=512",
+                "MESOS_CONTAINER_NAME=mesos-a04c14a6-83ea-4047-a802-92b850b1624e",
+            ]
         }
     }
 
@@ -117,6 +122,8 @@ def log_line():
         service="fake_service",
         instance="fake_instance",
         process_name="apache2",
+        mesos_container_id="a04c14a6-83ea-4047-a802-92b850b1624e",
+        mem_limit="512",
     )
 
 
@@ -197,6 +204,8 @@ def test_log_to_scribe(log_line):
                 "service": log_line.service,
                 "instance": log_line.instance,
                 "process_name": log_line.process_name,
+                "mesos_container_id": log_line.mesos_container_id,
+                "mem_limit": log_line.mem_limit,
             }
         ),
     )

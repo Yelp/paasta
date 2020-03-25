@@ -65,6 +65,8 @@ LogLine = namedtuple(
         "service",
         "instance",
         "process_name",
+        "mesos_container_id",
+        "mem_limit",
     ],
 )
 
@@ -113,7 +115,8 @@ def log_to_scribe(logger, log_line):
     """Send the event to 'tmp_paasta_oom_events'."""
     line = (
         '{"timestamp": %d, "hostname": "%s", "container_id": "%s", "cluster": "%s", '
-        '"service": "%s", "instance": "%s", "process_name": "%s"}'
+        '"service": "%s", "instance": "%s", "process_name": "%s", '
+        '"mesos_container_id": "%s", "mem_limit": "%s"}'
         % (
             log_line.timestamp,
             log_line.hostname,
@@ -122,6 +125,8 @@ def log_to_scribe(logger, log_line):
             log_line.service,
             log_line.instance,
             log_line.process_name,
+            log_line.mesos_container_id,
+            log_line.mem_limit,
         )
     )
     logger.log_line("tmp_paasta_oom_events", line)
@@ -184,6 +189,8 @@ def main():
         env_vars = get_container_env_as_dict(docker_inspect)
         service = env_vars.get("PAASTA_SERVICE", "unknown")
         instance = env_vars.get("PAASTA_INSTANCE", "unknown")
+        mesos_container_id = env_vars.get("MESOS_CONTAINER_NAME", "mesos-null")
+        mem_limit = env_vars.get("PAASTA_RESOURCE_MEM", "unknown")
         log_line = LogLine(
             timestamp=timestamp,
             hostname=hostname,
@@ -192,6 +199,8 @@ def main():
             service=service,
             instance=instance,
             process_name=process_name,
+            mesos_container_id=mesos_container_id,
+            mem_limit=mem_limit,
         )
         log_to_scribe(scribe_logger, log_line)
         log_to_paasta(log_line)
