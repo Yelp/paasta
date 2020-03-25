@@ -2991,9 +2991,7 @@ class DeploymentsJsonV2:
             raise NoDeploymentsAvailable(e)
 
 
-def load_deployments_json(
-    service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> DeploymentsJsonV1:
+def load_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> Any:
     deployment_file = os.path.join(soa_dir, service, "deployments.json")
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:

@@ -256,7 +256,7 @@ def paasta_status_on_api_endpoint(
         return 1
     except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
-        output.append(e)
+        output.append(str(e))
         return 1
 
     if status.git_sha != "":
