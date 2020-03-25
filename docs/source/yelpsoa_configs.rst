@@ -41,7 +41,7 @@ Example::
 All configuration files that define something to launch on a PaaSTA Cluster can
 specify the following options:
 
-  * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
+  * ``cpus``: Number of CPUs an instance needs. Defaults to 1. CPUs in Mesos
     are "shares" and represent a minimal amount of a CPU to share with a task
     relative to the other tasks on a host.  A task can burst to use any
     available free CPU, but is guaranteed to get the CPU shares specified.  For
@@ -50,7 +50,7 @@ specify the following options:
   * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use while bursting; if unspecified, PaaSTA defaults to 1 for long-running services, and 0 for scheduled jobs (Tron).
     For example, if a service specifies that it needs 2 CPUs normally and 1 for burst, the service may go up to 3 CPUs, if needed.
 
-  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
+  * ``mem``: Memory (in MB) an instance needs. Defaults to 4096 (4GB). In Mesos
     memory is constrained to the specified limit, and tasks will reach
     out-of-memory (OOM) conditions if they attempt to exceed these limits, and
     then be killed.  There is currently not way to detect if this condition is

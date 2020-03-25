@@ -1278,7 +1278,7 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig(
             service="", cluster="", instance="", config_dict={}, branch_dict=None
         )
-        assert fake_conf.get_cpus() == 0.25
+        assert fake_conf.get_cpus() == 1
 
     def test_get_mem_in_config(self):
         fake_conf = utils.InstanceConfig(
@@ -1294,7 +1294,7 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig(
             service="", instance="", cluster="", config_dict={}, branch_dict=None
         )
-        assert fake_conf.get_mem() == 1024
+        assert fake_conf.get_mem() == 4096
 
     def test_zero_cpu_burst(self):
         fake_conf = utils.InstanceConfig(
@@ -1621,9 +1621,9 @@ class TestInstanceConfig:
             "PAASTA_CLUSTER": "fake_cluster",
             "PAASTA_DEPLOY_GROUP": "fake_cluster.fake_instance",
             "PAASTA_DOCKER_IMAGE": "",
-            "PAASTA_RESOURCE_CPUS": "0.25",
+            "PAASTA_RESOURCE_CPUS": "1",
             "PAASTA_RESOURCE_DISK": "1024",
-            "PAASTA_RESOURCE_MEM": "1024",
+            "PAASTA_RESOURCE_MEM": "4096",
         }
 
     def test_get_env_handles_non_strings_and_returns_strings(self):
@@ -1640,9 +1640,9 @@ class TestInstanceConfig:
             "PAASTA_CLUSTER": "fake_cluster",
             "PAASTA_DEPLOY_GROUP": "None",
             "PAASTA_DOCKER_IMAGE": "",
-            "PAASTA_RESOURCE_CPUS": "0.25",
+            "PAASTA_RESOURCE_CPUS": "1",
             "PAASTA_RESOURCE_DISK": "1024",
-            "PAASTA_RESOURCE_MEM": "1024",
+            "PAASTA_RESOURCE_MEM": "4096",
         }
 
     def test_get_env_with_config(self):
@@ -1675,9 +1675,9 @@ class TestInstanceConfig:
                 "PAASTA_DEPLOY_GROUP": "fake_deploy_group",
                 "PAASTA_DOCKER_IMAGE": "something",
                 "PAASTA_MONITORING_TEAM": "generic_team",
-                "PAASTA_RESOURCE_CPUS": "0.25",
+                "PAASTA_RESOURCE_CPUS": "1",
                 "PAASTA_RESOURCE_DISK": "1024",
-                "PAASTA_RESOURCE_MEM": "1024",
+                "PAASTA_RESOURCE_MEM": "4096",
                 "PAASTA_GIT_SHA": "somethin",
             }
 
