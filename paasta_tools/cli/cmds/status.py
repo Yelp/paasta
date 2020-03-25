@@ -912,11 +912,19 @@ def append_pod_status(pod_status, output: List[str]):
         ("Pod Name", "Host", "Phase", "Uptime")
     ]
     for pod in pod_status:
+        color_fn = (
+            PaastaColors.green
+            if pod["phase"] == "Running" and pod["container_state"] == "Running"
+            else PaastaColors.red
+            if pod["phase"] in ("Failed", "CrashLoopBackOff")
+            else PaastaColors.yellow
+        )
+
         rows.append(
             (
                 pod["name"],
                 pod["host"],
-                pod["phase"],
+                color_fn(pod["phase"]),
                 get_pod_uptime(pod["deployed_timestamp"]),
             )
         )
@@ -1094,9 +1102,9 @@ def print_flink_status(
                     output.append(
                         f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
                     )
-    if verbose > 1 and len(status.pod_status) > 0:
+    if verbose and len(status.pod_status) > 0:
         append_pod_status(status.pod_status, output)
-    if verbose == 1:
+    if verbose == 1 and status.exceptions:
         output.append(
             PaastaColors.yellow(f"    Use -vv to view pod information and exceptions")
         )
