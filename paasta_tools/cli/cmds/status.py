@@ -1096,6 +1096,10 @@ def print_flink_status(
                     )
     if verbose > 1 and len(status.pod_status) > 0:
         append_pod_status(status.pod_status, output)
+    if verbose == 1:
+        output.append(
+            PaastaColors.yellow(f"    Use -vv to view pod information and exceptions")
+        )
     return 0
 
 
