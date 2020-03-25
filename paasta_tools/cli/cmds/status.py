@@ -916,7 +916,9 @@ def append_pod_status(pod_status, output: List[str]):
             PaastaColors.green
             if pod["phase"] == "Running" and pod["container_state"] == "Running"
             else PaastaColors.red
-            if pod["phase"] in ("Failed", "CrashLoopBackOff")
+            # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
+            if pod["phase"] == "Failed"
+            or pod["container_state_reason"] == "CrashLoopBackOff"
             else PaastaColors.yellow
         )
 
@@ -1036,7 +1038,7 @@ def print_flink_status(
     )
 
     output.append(f"    Jobs:")
-    if verbose:
+    if verbose > 1:
         output.append(
             f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
         )
