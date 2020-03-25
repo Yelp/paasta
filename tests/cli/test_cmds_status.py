@@ -999,8 +999,18 @@ def mock_kafka_status() -> Mapping[str, Any]:
         ),
         status=Struct(
             brokers=[
-                {"host": "10.93.122.47", "id": 0, "phase": "running"},
-                {"host": "10.93.115.200", "id": 1, "phase": "pending"},
+                {
+                    "host": "10.93.122.47",
+                    "id": 0,
+                    "phase": "running",
+                    "deployed_timestamp": "2020-03-25T16:24:21Z",
+                },
+                {
+                    "host": "10.93.115.200",
+                    "id": 1,
+                    "phase": "pending",
+                    "deployed_timestamp": "2020-03-25T16:24:21Z",
+                },
             ],
             cluster_ready=True,
             health={
@@ -1318,7 +1328,9 @@ class TestPrintKafkaStatus:
         )
         assert return_value == 0
 
-    def test_output(self, mock_kafka_status):
+    @patch("paasta_tools.cli.cmds.status.get_pod_uptime", autospec=True)
+    def test_output(self, mock_get_pod_uptime, mock_kafka_status):
+        mock_get_pod_uptime.return_value = "0d0h20m18s"
         output = []
         print_kafka_status(
             cluster="fake_cluster",
@@ -1339,9 +1351,9 @@ class TestPrintKafkaStatus:
             f"     Offline Partitions: {status.health['offline_partitions']}",
             f"     Under Replicated Partitions: {status.health['under_replicated_partitions']}",
             f"    Brokers:",
-            f"     Broker Id  Host           Phase",
-            f"     0          10.93.122.47   running",
-            f"     1          10.93.115.200  pending",
+            f"     Broker Id  Host           Phase    Uptime",
+            f"     0          10.93.122.47   running  0d0h20m18s",
+            f"     1          10.93.115.200  pending  0d0h20m18s",
         ]
         assert expected_output == output
 

@@ -1234,9 +1234,23 @@ def print_kafka_status(
 
     brokers = status.brokers
     output.append(f"    Brokers:")
-    rows = [["Broker Id", "Host", "Phase"]]
+    headers = ["Broker Id", "Host", "Phase", "Uptime"]
+    if verbose:
+        headers.append("Message")
+    rows = [headers]
     for broker in brokers:
-        rows.append([str(broker["id"]), str(broker["host"]), str(broker["phase"])])
+        row = [
+            str(broker["id"]),
+            str(broker["host"]),
+            str(broker["phase"]),
+            str(get_pod_uptime(broker["deployed_timestamp"])),
+        ]
+        if verbose:
+            msg = ""
+            if broker.get("reason", "") != "":
+                msg = PaastaColors.grey(f"{broker['reason']}: {broker['message']}")
+            row.append(msg)
+        rows.append(row)
     brokers_table = format_table(rows)
     output.extend([f"     {line}" for line in brokers_table])
     return 0
