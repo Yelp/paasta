@@ -1076,7 +1076,11 @@ def print_flink_status(
             )
             output.append(job_info_str)
         else:
-            output.append(PaastaColors.yellow(f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"))
+            output.append(
+                PaastaColors.yellow(
+                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
+                )
+            )
             break
 
         if verbose > 1 and job_id in status.exceptions:
