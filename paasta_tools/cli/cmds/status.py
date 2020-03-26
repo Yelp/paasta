@@ -1203,7 +1203,7 @@ def print_kafka_status(
 
     # print kafka view url before operator status because if the kafka cluster is not available for some reason
     # atleast the user can get a hold the kafka view url
-    if status.kafka_view_url is not None:
+    if "kafka_view_url" in status and status.kafka_view_url is not None:
         output.append(f"    Kafka View Url: {status.kafka_view_url}")
 
     annotations = kafka_status.get("metadata").annotations
