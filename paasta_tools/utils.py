@@ -707,19 +707,28 @@ class InstanceConfig:
         if inbound_network_mode is None and outbound_firewall is None:
             return True, ""
 
-        if inbound_network_mode is not None and inbound_network_mode not in ("full", "restrict"):
+        if inbound_network_mode is not None and inbound_network_mode not in (
+            "full",
+            "restrict",
+        ):
             return (
                 False,
                 'Unrecognized inbound_network_mode value "%s"' % inbound_network_mode,
             )
 
-        if outbound_firewall is not None and outbound_firewall not in ("block", "monitor"):
+        if outbound_firewall is not None and outbound_firewall not in (
+            "block",
+            "monitor",
+        ):
             return (
                 False,
                 'Unrecognized outbound_firewall value "%s"' % outbound_firewall,
             )
 
-        unknown_keys = set(security.keys()) - {"inbound_network_mode", "outbound_firewall"}
+        unknown_keys = set(security.keys()) - {
+            "inbound_network_mode",
+            "outbound_firewall",
+        }
         if unknown_keys:
             return (
                 False,

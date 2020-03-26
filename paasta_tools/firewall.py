@@ -181,6 +181,7 @@ def _yocalhost_rule(port, comment, protocol="tcp"):
         target_parameters=(),
     )
 
+
 def _reject_remaining_inbound_traffic_rule(port, protocol="tcp"):
     """Return an iptables rule denying all other traffic.
 
@@ -191,9 +192,7 @@ def _reject_remaining_inbound_traffic_rule(port, protocol="tcp"):
         src="0.0.0.0/0.0.0.0",
         dst="0.0.0.0/0.0.0.0",
         target="REJECT",
-        matches=(
-            (protocol, (("dport", (str(port),)),)),
-        ),
+        matches=((protocol, (("dport", (str(port),)),)),),
         target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
     )
 
