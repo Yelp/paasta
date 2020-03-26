@@ -3,7 +3,8 @@ Feature: make sure the autoscaler scales to the proper amount
     Scenario Outline: make sure the autoscaler requests the right number of resources
        Given an autoscaler object
         When the signal resource request is <value>
-        Then the autoscaler should scale rg1 to <rg1_target> capacity
+        Then no exception is raised
+         And the autoscaler should scale rg1 to <rg1_target> capacity
          And the autoscaler should scale rg2 to <rg2_target> capacity
 
       Examples:

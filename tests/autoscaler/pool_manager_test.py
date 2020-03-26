@@ -71,6 +71,8 @@ def mock_resource_groups():
             terminate_instances_by_id=mock.Mock(return_value=[]),
             spec=AWSResourceGroup,
             mark_stale=mock.Mock(side_effect=NotImplementedError),
+            min_capacity=0,
+            max_capacity=float('inf'),
         )
         for i in range(7)
     }
