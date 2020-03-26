@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import math
 import traceback
-from bisect import bisect
 from collections import defaultdict
 from typing import cast
 from typing import Collection
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -375,46 +376,34 @@ class PoolManager:
 
         # If we're scaling down the logic is identical but reversed, so we multiply everything by -1
         coeff = -1 if new_target_capacity < self.target_capacity else 1
-
-        groups_to_change = sorted(
-            non_stale_groups,
-            key=lambda g: coeff * g.target_capacity,
-        )
-
-        targets_to_change = [coeff * g.target_capacity for g in groups_to_change]
-        num_groups_to_change = len(groups_to_change)
-
-        while True:
-            # If any resource groups are currently above the new target "uniform" capacity, we need to recompute
-            # the target while taking into account the over-supplied resource groups.  We never decrease the
-            # capacity of a resource group here, so we just find the first index is above the desired target
-            # and remove those from consideration.  We have to repeat this multiple times, as new resource
-            # groups could be over the new "uniform" capacity after we've subtracted the overage value
-            #
-            # (For scaling down, apply the same logic for resource groups below the target "uniform" capacity
-            # instead; i.e., groups will below the target capacity will not be increased)
-            capacity_per_group, remainder = divmod(new_target_capacity, num_groups_to_change)
-            pos = bisect(targets_to_change, coeff * capacity_per_group)
-            residual = sum(targets_to_change[pos:num_groups_to_change])
-
-            if residual == 0:
-                for i in range(num_groups_to_change):
-                    targets_to_change[i] = coeff * (capacity_per_group + (1 if i < remainder else 0))
-                break
-
-            new_target_capacity -= coeff * residual
-            num_groups_to_change = pos
-
-        targets: MutableMapping[str, float] = {}
+        targets: Dict[str, float] = {g.id: g.target_capacity for g in non_stale_groups}
 
         # For stale groups, we set target_capacity to 0. This is a noop on SpotFleetResourceGroup.
         for stale_group in stale_groups:
             targets[stale_group.id] = 0
 
-        for group_to_change, new_target in zip(groups_to_change, targets_to_change):
-            targets[group_to_change.id] = new_target / coeff
+        def is_constrained(group):
+            if coeff > 0:
+                return targets[group.id] + coeff > group.max_capacity
+            else:
+                return targets[group.id] + coeff < group.min_capacity
 
-        return {group_id: targets[group_id] for group_id in self.resource_groups}
+        while sum(targets.values()) * coeff < math.ceil(new_target_capacity) * coeff:
+            try:
+                group = sorted(
+                    [g for g in non_stale_groups if not is_constrained(g)],
+                    key=lambda g: (coeff * targets[g.id], g.id),
+                )[0]
+            except IndexError:
+                logger.warning(' '.join([
+                    'All resource groups are stale or constrained.',
+                    f'The closest we could get to {new_target_capacity} is {sum(targets.values())}',
+                ]))
+                break
+
+            targets[group.id] += coeff
+
+        return targets
 
     def get_market_capacities(
         self,

@@ -88,6 +88,16 @@ class ResourceGroup(metaclass=ABCMeta):
         """
         pass
 
+    @property
+    def min_capacity(self) -> float:
+        """The lowest value that will be respected by modify_target_capacity."""
+        return 0
+
+    @property
+    def max_capacity(self) -> float:
+        """The highest value that will be respected by modify_target_capacity."""
+        return float('inf')
+
     @abstractmethod
     def terminate_instances_by_id(
         self,

@@ -71,6 +71,8 @@ def mock_resource_groups():
             terminate_instances_by_id=mock.Mock(return_value=[]),
             spec=AWSResourceGroup,
             mark_stale=mock.Mock(side_effect=NotImplementedError),
+            min_capacity=0,
+            max_capacity=float('inf'),
         )
         for i in range(7)
     }
@@ -399,6 +401,48 @@ def test_compute_new_resource_group_targets_all_rgs_are_stale(mock_pool_manager)
 
     with pytest.raises(AllResourceGroupsAreStaleError):
         mock_pool_manager._compute_new_resource_group_targets(9)
+
+
+def test_compute_new_resource_group_targets_max_capacity(mock_pool_manager):
+    for group in mock_pool_manager.resource_groups.values():
+        group.target_capacity = 1
+
+    constrained_group = list(mock_pool_manager.resource_groups.values())[0]
+    constrained_group.max_capacity = 1
+
+    new_targets = mock_pool_manager._compute_new_resource_group_targets(19)
+    assert sorted(list(new_targets.values())) == [1, 3, 3, 3, 3, 3, 3]
+    assert new_targets[constrained_group.id] == 1
+
+
+def test_compute_new_resource_group_targets_min_capacity(mock_pool_manager):
+    for group in mock_pool_manager.resource_groups.values():
+        group.target_capacity = 10
+
+    constrained_group = list(mock_pool_manager.resource_groups.values())[0]
+    constrained_group.min_capacity = 8
+
+    new_targets = mock_pool_manager._compute_new_resource_group_targets(44)
+    assert sorted(list(new_targets.values())) == [6, 6, 6, 6, 6, 6, 8]
+    assert new_targets[constrained_group.id] == 8
+
+
+def test_compute_new_resource_group_targets_all_rgs_have_max_capacity(mock_pool_manager):
+    for group in mock_pool_manager.resource_groups.values():
+        group.target_capacity = 1
+        group.max_capacity = 2
+
+    new_targets = mock_pool_manager._compute_new_resource_group_targets(21)
+    assert list(new_targets.values()) == [2] * 7
+
+
+def test_compute_new_resource_group_targets_all_rgs_have_min_capacity(mock_pool_manager):
+    for group in mock_pool_manager.resource_groups.values():
+        group.target_capacity = 10
+        group.min_capacity = 5
+
+    new_targets = mock_pool_manager._compute_new_resource_group_targets(21)
+    assert list(new_targets.values()) == [5] * 7
 
 
 @pytest.mark.parametrize('non_stale_capacity', [1, 5])

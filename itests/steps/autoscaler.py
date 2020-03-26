@@ -35,8 +35,10 @@ from itests.environment import boto_patches
 @behave.fixture
 def autoscaler_patches(context):
     behave.use_fixture(boto_patches, context)
-    rg1 = mock.Mock(spec=SpotFleetResourceGroup, target_capacity=10, fulfilled_capacity=10, is_stale=False)
-    rg2 = mock.Mock(spec=SpotFleetResourceGroup, target_capacity=10, fulfilled_capacity=10, is_stale=False)
+    rg1 = mock.Mock(spec=SpotFleetResourceGroup, id='rg1', target_capacity=10,
+                    fulfilled_capacity=10, is_stale=False, min_capacity=0, max_capacity=float('inf'))
+    rg2 = mock.Mock(spec=SpotFleetResourceGroup, id='rg2', target_capacity=10,
+                    fulfilled_capacity=10, is_stale=False, min_capacity=0, max_capacity=float('inf'))
 
     resource_totals = {'cpus': 80, 'mem': 1000, 'disk': 1000, 'gpus': 0}
 
@@ -184,6 +186,11 @@ def signal_resource_request(context, value):
         context.autoscaler.run()
     except Exception as e:
         context.exception = e
+    else:
+        try:
+            del(context.exception)
+        except AttributeError:
+            pass
 
     if not hasattr(context, 'exception'):
         # run it a second time to make sure nothing's changed

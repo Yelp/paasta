@@ -145,20 +145,18 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         target_capacity += self._stale_capacity
 
         # Round target_cpacity to min or max if necessary
-        max_size = self._group_config['MaxSize']
-        min_size = self._group_config['MinSize']
-        if target_capacity > max_size:
+        if target_capacity > self.max_capacity:
             logger.warning(
-                f'New target_capacity={target_capacity} exceeds ASG MaxSize={max_size}, '
+                f'New target_capacity={target_capacity} exceeds ASG MaxSize={self.max_capacity}, '
                 'setting to max instead'
             )
-            target_capacity = max_size
-        elif target_capacity < min_size:
+            target_capacity = self.max_capacity
+        elif target_capacity < self.min_capacity:
             logger.warning(
-                f'New target_capacity={target_capacity} falls below ASG MinSize={min_size}, '
+                f'New target_capacity={target_capacity} falls below ASG MinSize={self.min_capacity}, '
                 'setting to min instead'
             )
-            target_capacity = min_size
+            target_capacity = self.min_capacity
 
         kwargs = dict(
             AutoScalingGroupName=self.group_id,
@@ -173,6 +171,14 @@ class AutoScalingResourceGroup(AWSResourceGroup):
             return
 
         autoscaling.set_desired_capacity(**kwargs)
+
+    @property
+    def min_capacity(self) -> int:
+        return self._group_config['MinSize']
+
+    @property
+    def max_capacity(self) -> int:
+        return self._group_config['MaxSize']
 
     @timed_cached_property(ttl=CACHE_TTL_SECONDS)
     def stale_instance_ids(self):
