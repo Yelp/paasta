@@ -104,10 +104,7 @@ def autoscaling_status(
             if getattr(hpa.status, "last_scale_time")
             else "N/A"
         )
-    except ApiException as e:
-        if e.status == 404:
-            # This means that HPA doesn't exist. Return nothing.
-            return {}
+    except Exception as e:
         error_message = f"Error while reading autoscaling information: {e}"
         raise RuntimeError(error_message)
     return status

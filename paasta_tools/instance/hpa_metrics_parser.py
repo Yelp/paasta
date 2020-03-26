@@ -9,7 +9,6 @@ class HPAMetricsParser:
         Parse target metrics.
         """
         metric_spec = getattr(metric, metric.type.lower())
-        print(metric_spec)
         status = {}
         switchers = {
             "Pods": self.parse_pod_metric,
@@ -38,7 +37,6 @@ class HPAMetricsParser:
         )
         return status
 
-    # External metrics
     def parse_external_metric(self, metric_spec, status):
         status[self.NAME] = metric_spec.metric_name
         status[self.TARGET] = (
@@ -55,7 +53,6 @@ class HPAMetricsParser:
             else metric_spec.current_value
         )
 
-    # Pod metrics
     def parse_pod_metric(self, metric_spec, status):
         status[self.NAME] = metric_spec.metric_name
         status[self.TARGET] = metric_spec.target_average_value
@@ -64,7 +61,6 @@ class HPAMetricsParser:
         status[self.NAME] = metric_spec.metric_name
         status[self.CURRENT] = metric_spec.current_value
 
-    # Resource metrics
     def parse_resource_metric(self, metric_spec, status):
         status[self.NAME] = metric_spec.name
         status[self.TARGET] = (
