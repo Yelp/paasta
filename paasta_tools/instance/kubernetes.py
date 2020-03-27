@@ -81,32 +81,28 @@ def autoscaling_status(
     namespace: str,
 ):
     status = {}
-    try:
-        hpa = kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
-            name=job_config.get_sanitised_deployment_name(), namespace=namespace
-        )
-        status["min_instances"] = hpa.spec.min_replicas
-        status["max_instances"] = hpa.spec.max_replicas
-        # Parse metrics sources, based on
-        # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta1ExternalMetricSource.md#v2beta1externalmetricsource
-        metric_stats = []
-        parser = HPAMetricsParser(hpa)
-        if hpa.spec.metrics is not None:
-            for metric_spec in hpa.spec.metrics:
-                metric_stats.append(parser.parse_target(metric_spec))
-        if hpa.status.current_metrics is not None:
-            for metric_spec in hpa.status.current_metrics:
-                metric_stats.append(parser.parse_current(metric_spec))
-        status["metrics"] = metric_stats
-        status["desired_replicas"] = hpa.status.desired_replicas
-        status["last_scale_time"] = (
-            hpa.status.last_scale_time.replace(tzinfo=pytz.UTC).isoformat()
-            if getattr(hpa.status, "last_scale_time")
-            else "N/A"
-        )
-    except Exception as e:
-        error_message = f"Error while reading autoscaling information: {e}"
-        raise RuntimeError(error_message)
+    hpa = kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
+        name=job_config.get_sanitised_deployment_name(), namespace=namespace
+    )
+    status["min_instances"] = hpa.spec.min_replicas
+    status["max_instances"] = hpa.spec.max_replicas
+    # Parse metrics sources, based on
+    # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta1ExternalMetricSource.md#v2beta1externalmetricsource
+    metric_stats = []
+    parser = HPAMetricsParser(hpa)
+    if hpa.spec.metrics is not None:
+        for metric_spec in hpa.spec.metrics:
+            metric_stats.append(parser.parse_target(metric_spec))
+    if hpa.status.current_metrics is not None:
+        for metric_spec in hpa.status.current_metrics:
+            metric_stats.append(parser.parse_current(metric_spec))
+    status["metrics"] = metric_stats
+    status["desired_replicas"] = hpa.status.desired_replicas
+    status["last_scale_time"] = (
+        hpa.status.last_scale_time.replace(tzinfo=pytz.UTC).isoformat()
+        if getattr(hpa.status, "last_scale_time")
+        else "N/A"
+    )
     return status
 
 
@@ -322,9 +318,13 @@ def kubernetes_status(
     )
 
     if job_config.is_autoscaling_enabled() is True:
-        kstatus["autoscaling_status"] = autoscaling_status(
-            kube_client, job_config, job_config.get_kubernetes_namespace()
-        )
+        try:
+            kstatus["autoscaling_status"] = autoscaling_status(
+                kube_client, job_config, job_config.get_kubernetes_namespace()
+            )
+        except Exception as e:
+            error_message = f"Error while reading autoscaling information: {e}"
+            kstatus["error_message"] = error_message
 
     evicted_count = 0
     for pod in pod_list:
