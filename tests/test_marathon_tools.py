@@ -2355,7 +2355,7 @@ class TestMarathonServiceConfig:
         ):
             assert (
                 marathon_config.format_marathon_app_dict()["id"]
-                == "service.instance.gitabcdef.configec492e1d"
+                == "service.instance.gitabcdef.configb402f7ff"
             ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -2420,9 +2420,9 @@ def test_format_marathon_app_dict_no_smartstack():
                     "image": "fake_docker_registry:443/abcdef",
                     "network": "BRIDGE",
                     "parameters": [
-                        {"key": "memory-swap", "value": "1088m"},
+                        {"key": "memory-swap", "value": "4160m"},
                         {"key": "cpu-period", "value": "100000"},
-                        {"key": "cpu-quota", "value": "125000"},
+                        {"key": "cpu-quota", "value": "200000"},
                         {"key": "storage-opt", "value": "size=1073741824"},
                         {"key": "label", "value": "paasta_service=service"},
                         {"key": "label", "value": "paasta_instance=instance"},
@@ -2447,13 +2447,13 @@ def test_format_marathon_app_dict_no_smartstack():
                 "volumes": [],
             },
             "instances": 1,
-            "mem": 1024,
+            "mem": 4096.0,
             "cmd": None,
             "args": [],
             "backoff_factor": 2,
             "backoff_seconds": mock.ANY,
             "max_launch_delay_seconds": 300,
-            "cpus": 0.25,
+            "cpus": 1.0,
             "disk": 1024.0,
             "uris": ["file:///root/.dockercfg"],
             "health_checks": [],
@@ -2522,9 +2522,9 @@ def test_format_marathon_app_dict_with_smartstack():
                     "image": "fake_docker_registry:443/abcdef",
                     "network": "BRIDGE",
                     "parameters": [
-                        {"key": "memory-swap", "value": "1088m"},
+                        {"key": "memory-swap", "value": "4160m"},
                         {"key": "cpu-period", "value": "100000"},
-                        {"key": "cpu-quota", "value": "125000"},
+                        {"key": "cpu-quota", "value": "200000"},
                         {"key": "storage-opt", "value": "size=1073741824"},
                         {"key": "label", "value": "paasta_service=service"},
                         {"key": "label", "value": "paasta_instance=instance"},
@@ -2549,13 +2549,13 @@ def test_format_marathon_app_dict_with_smartstack():
                 "volumes": [],
             },
             "instances": 1,
-            "mem": 1024,
+            "mem": 4096.0,
             "cmd": None,
             "args": [],
             "backoff_factor": 2,
             "backoff_seconds": mock.ANY,
             "max_launch_delay_seconds": 300,
-            "cpus": 0.25,
+            "cpus": 1.0,
             "disk": 1024.0,
             "uris": ["file:///root/.dockercfg"],
             "health_checks": [
@@ -2696,9 +2696,9 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     "image": "fake_docker_registry:443/abcdef",
                     "network": "BRIDGE",
                     "parameters": [
-                        {"key": "memory-swap", "value": "1088m"},
+                        {"key": "memory-swap", "value": "4160m"},
                         {"key": "cpu-period", "value": "100000"},
-                        {"key": "cpu-quota", "value": "125000"},
+                        {"key": "cpu-quota", "value": "200000"},
                         {"key": "storage-opt", "value": "size=1073741824"},
                         {"key": "label", "value": "paasta_service=service"},
                         {"key": "label", "value": "paasta_instance=instance"},
@@ -2723,10 +2723,10 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                 "volumes": fake_extra_volumes + fake_system_volumes,
             },
             "instances": 1,
-            "mem": 1024.0,
+            "mem": 4096.0,
             "cmd": None,
             "args": [],
-            "cpus": 0.25,
+            "cpus": 1.0,
             "disk": 1024.0,
             "uris": ["file:///root/.dockercfg"],
             "backoff_factor": 2,

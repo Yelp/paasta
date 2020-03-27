@@ -365,10 +365,10 @@ class InstanceConfig:
     def get_mem(self) -> float:
         """Gets the memory required from the service's configuration.
 
-        Defaults to 1024 (1G) if no value specified in the config.
+        Defaults to 4096 (4G) if no value specified in the config.
 
-        :returns: The amount of memory specified by the config, 1024 if not specified"""
-        mem = self.config_dict.get("mem", 1024)
+        :returns: The amount of memory specified by the config, 4096 if not specified"""
+        mem = self.config_dict.get("mem", 4096)
         return mem
 
     def get_mem_swap(self) -> str:
@@ -385,10 +385,10 @@ class InstanceConfig:
     def get_cpus(self) -> float:
         """Gets the number of cpus required from the service's configuration.
 
-        Defaults to .25 (1/4 of a cpu) if no value specified in the config.
+        Defaults to 1 cpu if no value specified in the config.
 
-        :returns: The number of cpus specified in the config, .25 if not specified"""
-        cpus = self.config_dict.get("cpus", 0.25)
+        :returns: The number of cpus specified in the config, 1 if not specified"""
+        cpus = self.config_dict.get("cpus", 1)
         return cpus
 
     def get_cpu_burst_add(self) -> float:
