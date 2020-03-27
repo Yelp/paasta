@@ -1222,7 +1222,7 @@ def print_kafka_status(
 
     # print kafka view url before operator status because if the kafka cluster is not available for some reason
     # atleast the user can get a hold the kafka view url
-    if status.kafka_view_url is not None:
+    if "kafka_view_url" in status and status.kafka_view_url is not None:
         output.append(f"    Kafka View Url: {status.kafka_view_url}")
 
     annotations = kafka_status.get("metadata").annotations
@@ -1253,9 +1253,23 @@ def print_kafka_status(
 
     brokers = status.brokers
     output.append(f"    Brokers:")
-    rows = [["Broker Id", "Host", "Phase"]]
+    headers = ["Broker Id", "Host", "Phase", "Uptime"]
+    if verbose:
+        headers.append("Message")
+    rows = [headers]
     for broker in brokers:
-        rows.append([str(broker["id"]), str(broker["host"]), str(broker["phase"])])
+        row = [
+            str(broker["id"]),
+            str(broker["host"]),
+            str(broker["phase"]),
+            str(get_pod_uptime(broker["deployed_timestamp"])),
+        ]
+        if verbose:
+            msg = ""
+            if broker.get("reason", "") != "":
+                msg = PaastaColors.grey(f"{broker['reason']}: {broker['message']}")
+            row.append(msg)
+        rows.append(row)
     brokers_table = format_table(rows)
     output.extend([f"     {line}" for line in brokers_table])
     return 0
