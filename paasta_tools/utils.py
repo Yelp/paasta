@@ -1758,7 +1758,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
     hacheck_sidecar_image_url: str
-    kube_state_metrics_collector: KubeStateMetricsCollectorConfigDict
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     local_run_config: LocalRunConfig
