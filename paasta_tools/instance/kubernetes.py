@@ -322,9 +322,11 @@ def kubernetes_status(
             kstatus["autoscaling_status"] = autoscaling_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
-        except Exception as e:
-            error_message = f"Error while reading autoscaling information: {e}"
-            kstatus["error_message"] = error_message
+        except ApiException as e:
+            error_message = (
+                f"Error while reading autoscaling information: {e.getResponseBody()}"
+            )
+            kstatus["error_message"].append(error_message)
 
     evicted_count = 0
     for pod in pod_list:
