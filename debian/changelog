@@ -1,3 +1,9 @@
+clusterman (4.3.9) xenial bionic; urgency=low
+
+  * CLUSTERMAN-504 Calculate node resources using node.status.allocatable
+
+ -- gabrielv <gabrielv@yelp.com>  Fri, 27 Mar 2020 03:18:18 -0700
+
 clusterman (4.3.8) xenial bionic; urgency=low
 
   * CLUSTERMAN-478 Add support for ASG weights
