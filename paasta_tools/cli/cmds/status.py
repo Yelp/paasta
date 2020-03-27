@@ -16,7 +16,6 @@ import concurrent.futures
 import difflib
 import shutil
 import sys
-import traceback
 from collections import defaultdict
 from collections import OrderedDict
 from datetime import datetime
@@ -255,10 +254,9 @@ def paasta_status_on_api_endpoint(
             PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
         )
         return 1
-    except Exception:
-        tb = sys.exc_info()[2]
+    except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
-        output.extend(line.strip() for line in traceback.format_tb(tb))
+        output.append(str(e))
         return 1
 
     if status.git_sha != "":

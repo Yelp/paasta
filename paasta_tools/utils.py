@@ -2985,13 +2985,16 @@ class DeploymentsJsonV2:
             raise NoDeploymentsAvailable(e)
 
 
-def load_deployments_json(
-    service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> DeploymentsJsonV1:
+def load_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> Any:
     deployment_file = os.path.join(soa_dir, service, "deployments.json")
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
-            return DeploymentsJsonV1(json.load(f)["v1"])
+            config_dict = json.load(f)
+            return (
+                DeploymentsJsonV1(config_dict["v1"])
+                if "v1" in config_dict
+                else DeploymentsJsonV2(service=service, config_dict=config_dict["v2"])
+            )
     else:
         e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
         raise NoDeploymentsAvailable(e)
