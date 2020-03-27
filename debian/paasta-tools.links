@@ -23,7 +23,6 @@ opt/venvs/paasta-tools/bin/generate_services_file.py usr/bin/generate_services_f
 opt/venvs/paasta-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
 opt/venvs/paasta-tools/bin/get_mesos_leader.py usr/bin/get_mesos_leader
 opt/venvs/paasta-tools/bin/kill_orphaned_docker_containers.py usr/bin/kill_orphaned_docker_containers
-opt/venvs/paasta-tools/bin/kube_state_metrics_collector.py usr/bin/kube_state_metrics_collector
 opt/venvs/paasta-tools/bin/kubernetes_remove_evicted_pods.py usr/bin/kubernetes_remove_evicted_pods
 opt/venvs/paasta-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 opt/venvs/paasta-tools/bin/paasta-api usr/bin/paasta-api
