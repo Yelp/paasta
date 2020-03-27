@@ -129,7 +129,7 @@ def test_allocation(mock_cluster_connector):
 
 
 def test_total_cpus(mock_cluster_connector):
-    assert mock_cluster_connector.get_resource_total('cpus') == 12
+    assert mock_cluster_connector.get_resource_total('cpus') == 10.5
 
 
 def test_get_pending_pods(mock_cluster_connector):

@@ -81,8 +81,8 @@ def get_node_ip(node: KubernetesNode) -> str:
 
 def total_node_resources(node: KubernetesNode) -> ClustermanResources:
     return ClustermanResources(
-        cpus=ResourceParser.cpus(node.status.capacity),
-        mem=ResourceParser.mem(node.status.capacity),
-        disk=ResourceParser.disk(node.status.capacity),
-        gpus=ResourceParser.gpus(node.status.capacity),
+        cpus=ResourceParser.cpus(node.status.allocatable),
+        mem=ResourceParser.mem(node.status.allocatable),
+        disk=ResourceParser.disk(node.status.allocatable),
+        gpus=ResourceParser.gpus(node.status.allocatable),
     )
