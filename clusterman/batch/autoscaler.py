@@ -34,38 +34,28 @@ from clusterman.exceptions import AutoscalerError
 from clusterman.exceptions import ClustermanSignalError
 from clusterman.exceptions import PoolConnectionError
 from clusterman.util import get_autoscaler_scribe_stream
-from clusterman.util import sensu_checkin
 from clusterman.util import setup_logging
 from clusterman.util import splay_event_time
-from clusterman.util import Status
 
 logger = colorlog.getLogger(__name__)
 colorlog.getLogger('clusterman_metrics')  # This just adds a handler to the clusterman_metrics logger
-SIGNAL_CHECK_NAME = 'check_clusterman_autoscaler_signal'
-SERVICE_CHECK_NAME = 'check_clusterman_autoscaler_service'
-DEFAULT_TTL = '25m'
-DEFAULT_CHECK_EVERY = '10m'
 
 
 def sensu_alert_triage(fail=False):
     def decorator(fn):
         def wrapper(self):
             msg = ''
-            signal_failed, service_failed = False, False
             error = None
             try:
                 fn(self)
             except ClustermanSignalError as e:
                 msg = str(e)
                 logger.exception(f'Autoscaler signal failed: {msg}')
-                signal_failed = True
                 error = e
             except Exception as e:
                 msg = str(e)
                 logger.exception(f'Autoscaler service failed: {msg}')
-                service_failed = True
                 error = e
-            self._do_sensu_checkins(signal_failed, service_failed, msg)
             if fail and error:
                 raise AutoscalerError from error
         return wrapper
@@ -139,53 +129,6 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
                 self._autoscale()
             except (PoolConnectionError, EndpointConnectionError) as e:
                 logger.exception(f'Encountered a connection error: {e}')
-
-    def _do_sensu_checkins(self, signal_failed, service_failed, msg):
-        check_every = ('{minutes}m'.format(minutes=int(self.autoscaler.run_frequency // 60))
-                       if self.autoscaler else DEFAULT_CHECK_EVERY)
-        # magic-y numbers here; an alert will time out after two autoscaler run periods plus a five minute buffer
-        alert_delay = (
-            '{minutes}m'.format(minutes=int(self.autoscaler.run_frequency // 60) * 2 + 5)
-            if self.autoscaler
-            else DEFAULT_TTL
-        )
-
-        sensu_args = dict(
-            scheduler=self.options.scheduler,
-            check_every=check_every,
-            source=f'{self.options.cluster}_{self.options.pool}',
-            ttl=alert_delay,
-            alert_after=alert_delay,
-            noop=self.options.dry_run,
-            pool=self.options.pool,
-        )
-
-        # Check in for the signal
-        signal_sensu_args = dict(
-            **sensu_args,
-            check_name=SIGNAL_CHECK_NAME,
-            app=self.apps[0],
-        )
-
-        if signal_failed:
-            signal_sensu_args['output'] = f'FAILED: clusterman autoscaler signal failed ({msg})'
-            signal_sensu_args['status'] = Status.CRITICAL
-        else:
-            signal_sensu_args['output'] = f'OK: clusterman autoscaler signal is fine'
-        sensu_checkin(**signal_sensu_args)
-
-        # Check in for the service
-        service_sensu_args = dict(
-            **sensu_args,
-            check_name=SERVICE_CHECK_NAME,
-        )
-
-        if service_failed:
-            service_sensu_args['output'] = f'FAILED: clusterman autoscaler failed ({msg})'
-            service_sensu_args['status'] = Status.CRITICAL
-        else:
-            service_sensu_args['output'] = f'OK: clusterman autoscaler is fine'
-        sensu_checkin(**service_sensu_args)
 
 
 if __name__ == '__main__':

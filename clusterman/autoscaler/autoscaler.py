@@ -111,7 +111,7 @@ class Autoscaler:
 
     @property
     def run_frequency(self) -> int:
-        return self.signal.period_minutes * 60
+        return 60
 
     def run(self, dry_run: bool = False, timestamp: Optional[arrow.Arrow] = None) -> None:
         """ Do a single check to scale the fleet up or down if necessary.
