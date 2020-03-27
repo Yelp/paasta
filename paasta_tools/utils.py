@@ -2320,11 +2320,6 @@ class SystemPaastaConfig:
     def get_boost_regions(self) -> List[str]:
         return self.config_dict.get("boost_regions", [])
 
-    def get_kube_state_metrics_collector_config(
-        self,
-    ) -> KubeStateMetricsCollectorConfigDict:
-        return self.config_dict.get("kube_state_metrics_collector", {})
-
 
 def _run(
     command: Union[str, List[str]],
