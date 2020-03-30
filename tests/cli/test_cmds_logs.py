@@ -629,7 +629,10 @@ def test_prettify_level_less_than_or_equal_to_one_requested_levels():
 def test_prettify_log_line_invalid_json():
     line = "i am not json"
     levels = []
-    assert logs.prettify_log_line(line, levels) == "Invalid JSON: %s" % line
+    assert (
+        logs.prettify_log_line(line, levels, strip_headers=False)
+        == "Invalid JSON: %s" % line
+    )
 
 
 def test_prettify_log_line_valid_json_missing_key():
@@ -637,7 +640,7 @@ def test_prettify_log_line_valid_json_missing_key():
         {"component": "fake_component", "oops_i_spelled_timestamp_rong": "1999-09-09"}
     )
     levels = []
-    actual = logs.prettify_log_line(line, levels)
+    actual = logs.prettify_log_line(line, levels, strip_headers=False)
     assert "JSON missing keys: %s" % line in actual
 
 
@@ -653,13 +656,35 @@ def test_prettify_log_line_valid_json():
     requested_levels = ["fake_requested_level1", "fake_requested_level2"]
     line = json.dumps(parsed_line)
 
-    actual = logs.prettify_log_line(line, requested_levels)
+    actual = logs.prettify_log_line(line, requested_levels, strip_headers=False)
     expected_timestamp = logs.prettify_timestamp(parsed_line["timestamp"])
     assert expected_timestamp in actual
     assert parsed_line["component"] in actual
     assert parsed_line["cluster"] in actual
     assert parsed_line["instance"] in actual
     assert parsed_line["level"] in actual
+    assert parsed_line["message"] in actual
+
+
+def test_prettify_log_line_valid_json_strip_headers():
+    parsed_line = {
+        "message": "fake_message",
+        "component": "fake_component",
+        "level": "fake_level",
+        "cluster": "fake_cluster",
+        "instance": "fake_instance",
+        "timestamp": "2015-03-12T21:20:04.602002",
+    }
+    requested_levels = ["fake_requested_level1", "fake_requested_level2"]
+    line = json.dumps(parsed_line)
+
+    actual = logs.prettify_log_line(line, requested_levels, strip_headers=True)
+    expected_timestamp = logs.prettify_timestamp(parsed_line["timestamp"])
+    assert expected_timestamp in actual
+    assert parsed_line["component"] not in actual
+    assert parsed_line["cluster"] not in actual
+    assert parsed_line["instance"] not in actual
+    assert parsed_line["level"] not in actual
     assert parsed_line["message"] in actual
 
 
@@ -675,7 +700,7 @@ def test_prettify_log_line_valid_json_requested_level_is_only_event():
     }
     line = json.dumps(parsed_line)
 
-    actual = logs.prettify_log_line(line, requested_levels)
+    actual = logs.prettify_log_line(line, requested_levels, strip_headers=False)
     assert parsed_line["level"] not in actual
 
 
@@ -729,7 +754,14 @@ def test_scribereader_print_last_n_logs():
         mock_scribereader.get_stream_tailer.return_value = fake_iter
 
         logs.ScribeLogReader(cluster_map={}).print_last_n_logs(
-            service, 100, levels, components, clusters, instances, raw_mode=False
+            service,
+            100,
+            levels,
+            components,
+            clusters,
+            instances,
+            raw_mode=False,
+            strip_headers=False,
         )
 
         # one call per component per environment except marathon which runs 1/env/cluster
@@ -782,6 +814,7 @@ def test_scribereader_print_logs_by_time():
             clusters,
             instances,
             raw_mode=False,
+            strip_headers=False,
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from
@@ -797,6 +830,7 @@ def test_scribereader_print_logs_by_time():
             clusters,
             instances,
             raw_mode=False,
+            strip_headers=False,
         )
 
         # Please see comment in test_scribereader_print_last_n_logs for where this number comes from

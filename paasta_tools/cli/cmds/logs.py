@@ -169,6 +169,13 @@ def add_subparser(subparsers) -> None:
         "--lines +100 would give you the first 100 lines of logs. Defaults to the latest line's offset",
         type=int,
     )
+    status_parser.add_argument(
+        "-sh",
+        "--strip-headers",
+        dest="strip_headers",
+        help="Print log lines without header information.",
+        action="store_true",
+    )
     default_component_string = ",".join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
     epilog = (
@@ -368,7 +375,10 @@ def marathon_log_line_passes_filter(
 
 
 def print_log(
-    line: str, requested_levels: Sequence[str], raw_mode: bool = False
+    line: str,
+    requested_levels: Sequence[str],
+    raw_mode: bool = False,
+    strip_headers: bool = False,
 ) -> None:
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
@@ -378,7 +388,7 @@ def print_log(
             line, end=" "
         )  # suppress trailing newline since scribereader already attached one
     else:
-        paasta_print(prettify_log_line(line, requested_levels))
+        paasta_print(prettify_log_line(line, requested_levels, strip_headers))
 
 
 def prettify_timestamp(timestamp: datetime.datetime) -> str:
@@ -415,7 +425,9 @@ def prettify_level(level: str, requested_levels: Sequence[str]) -> str:
     return pretty_level
 
 
-def prettify_log_line(line: str, requested_levels: Sequence[str]) -> str:
+def prettify_log_line(
+    line: str, requested_levels: Sequence[str], strip_headers: bool
+) -> str:
     """Given a line from the log, which is expected to be JSON and have all the
     things we expect, return a pretty formatted string containing relevant values.
     """
@@ -427,19 +439,27 @@ def prettify_log_line(line: str, requested_levels: Sequence[str]) -> str:
 
     try:
         pretty_level = prettify_level(parsed_line["level"], requested_levels)
-        return (
-            "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(level)s%(message)s"
-            % (
+        if strip_headers:
+            return "%(timestamp)s %(message)s" % (
                 {
                     "timestamp": prettify_timestamp(parsed_line["timestamp"]),
-                    "component": prettify_component(parsed_line["component"]),
-                    "cluster": "[%s]" % parsed_line["cluster"],
-                    "instance": "[%s]" % parsed_line["instance"],
-                    "level": "%s" % pretty_level,
                     "message": parsed_line["message"],
                 }
             )
-        )
+        else:
+            return (
+                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(level)s%(message)s"
+                % (
+                    {
+                        "timestamp": prettify_timestamp(parsed_line["timestamp"]),
+                        "component": prettify_component(parsed_line["component"]),
+                        "cluster": "[%s]" % parsed_line["cluster"],
+                        "instance": "[%s]" % parsed_line["instance"],
+                        "level": "%s" % pretty_level,
+                        "message": parsed_line["message"],
+                    }
+                )
+            )
     except KeyError:
         log.debug(
             "JSON parsed correctly but was missing a key. Skipping. Line: %r" % line
@@ -488,7 +508,14 @@ class LogReader:
     # Supporting at least one of these log retrieval modes is required
 
     def tail_logs(
-        self, service, levels, components, clusters, instances, raw_mode=False
+        self,
+        service,
+        levels,
+        components,
+        clusters,
+        instances,
+        raw_mode=False,
+        strip_headers=False,
     ):
         raise NotImplementedError("tail_logs is not implemented")
 
@@ -502,11 +529,20 @@ class LogReader:
         clusters,
         instances,
         raw_mode,
+        strip_headers,
     ):
         raise NotImplementedError("print_logs_by_time is not implemented")
 
     def print_last_n_logs(
-        self, service, line_count, levels, components, clusters, instances, raw_mode
+        self,
+        service,
+        line_count,
+        levels,
+        components,
+        clusters,
+        instances,
+        raw_mode,
+        strip_headers,
     ):
         raise NotImplementedError("print_last_n_logs is not implemented")
 
@@ -520,6 +556,7 @@ class LogReader:
         clusters,
         instances,
         raw_mode,
+        strip_headers,
     ):
         raise NotImplementedError("print_logs_by_offset is not implemented")
 
@@ -626,6 +663,7 @@ class ScribeLogReader(LogReader):
         clusters: Sequence[str],
         instances: Iterable[str],
         raw_mode: bool = False,
+        strip_headers: bool = False,
     ) -> None:
         """Sergeant function for spawning off all the right log tailing functions.
 
@@ -730,7 +768,7 @@ class ScribeLogReader(LogReader):
                 # in test code to smooth this out, then pulling the trigger on
                 # moving that test to integration land where it belongs.
                 line = queue.get(block=True, timeout=0.1)
-                print_log(line, levels, raw_mode)
+                print_log(line, levels, raw_mode, strip_headers)
             except Empty:
                 try:
                     # If there's nothing in the queue, take this opportunity to make
@@ -770,6 +808,7 @@ class ScribeLogReader(LogReader):
         clusters: Sequence[str],
         instances: Iterable[str],
         raw_mode: bool,
+        strip_headers: bool,
     ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
 
@@ -821,7 +860,7 @@ class ScribeLogReader(LogReader):
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
         for line in aggregated_logs:
-            print_log(line["raw_line"], levels, raw_mode)
+            print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
     def print_last_n_logs(
         self,
@@ -832,6 +871,7 @@ class ScribeLogReader(LogReader):
         clusters: Sequence[str],
         instances: Iterable[str],
         raw_mode: bool,
+        strip_headers: bool,
     ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
 
@@ -870,7 +910,7 @@ class ScribeLogReader(LogReader):
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
         for line in aggregated_logs:
-            print_log(line["raw_line"], levels, raw_mode)
+            print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
     def filter_and_aggregate_scribe_logs(
         self,
@@ -1223,6 +1263,7 @@ def pick_default_log_mode(
             clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
+            strip_headers=args.strip_headers,
         )
         return 0
     elif log_reader.SUPPORTS_TIME:
@@ -1242,6 +1283,7 @@ def pick_default_log_mode(
             clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
+            strip_headers=args.strip_headers,
         )
         return 0
     elif log_reader.SUPPORTS_TAILING:
@@ -1255,6 +1297,7 @@ def pick_default_log_mode(
             clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
+            strip_headers=args.strip_headers,
         )
         return 0
     return 1
@@ -1318,6 +1361,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
+            strip_headers=args.strip_headers,
         )
         return 0
 
@@ -1337,6 +1381,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
+            strip_headers=args.strip_headers,
         )
         return 0
     elif args.line_count is not None and args.line_offset is not None:
@@ -1349,6 +1394,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             clusters=clusters,
             instances=instances,
             raw_mode=args.raw_mode,
+            strip_headers=args.strip_headers,
         )
         return 0
 
@@ -1368,5 +1414,6 @@ def paasta_logs(args: argparse.Namespace) -> int:
         clusters=clusters,
         instances=instances,
         raw_mode=args.raw_mode,
+        strip_headers=args.strip_headers,
     )
     return 0
