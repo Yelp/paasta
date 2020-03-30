@@ -1,3 +1,10 @@
+paasta-tools (0.95.16) xenial; urgency=medium
+
+  * 0.95.16 tagged with 'make release'
+    Commit: Merge branch "drmorr/revert_paasta_status_hpa"
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 30 Mar 2020 10:10:52 -0700
+
 paasta-tools (0.95.15) xenial; urgency=medium
 
   * 0.95.15 tagged with 'make release'
