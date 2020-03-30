@@ -17,11 +17,11 @@ Here is a list of different Horizontal Pod Autoscaler(HPA) metric sources used f
   cpu/memory
 
 :Custom Metrics:
-  http/uwsgi when dimensions are not provided
+  http/uwsgi when signalflow_metrics_query are not provided
 
 :External Metrics:
   your_own_average_value
-  http/uwsgi when dimensions are provided
+  http/uwsgi when signalflow_metrics_query are provided
 
 The algorithms for all metrics are mostly the same but vary in detail.
 In short, resource metrics and custom metrics scales your service proportionally based on the average value of metrics provided by all ready (healthy and running) pods in the same cluster.
@@ -55,9 +55,10 @@ Here is an example that includes all configuration
        uwsgi:
          target_average_value: 0.53
          dimensions:
-             paasta_yelp_com_instance: main_uswest1_autoscaling
+             paasta_instance: main_uswest1_autoscaling
              some_unique_signalfx_dimension: value_of_dimension
              more_dimension: more_values
+         signalflow_metrics_query: "data('your_own_sfx_metrics', filter('some_dimension', 'value')).mean(over="30m").publish()"
        http:
          target_average_value: 53
        cpu:
@@ -106,11 +107,11 @@ Expects a JSON-formatted dictionary with a ``utilization`` field containing a nu
 Note that this is the same as in Marathon autoscaler.
 The endpoint is ``/status`` and cannot be changed as of Paasta v0.93.0.
 
-When ``dimensions`` is not provided, the average values of all HTTP metrics exposed by HTTP endpoints of all running pods is compared with ``target_average_value``, and current number of running pods to calculate desired number of pods.
-You can find your HTTP metrics and its dimensions on SignalFX.
+When ``signalflow_metrics_query`` is not provided, the average values of all HTTP metrics exposed by HTTP endpoints of all running pods is compared with ``target_average_value``, and current number of running pods to calculate desired number of pods.
+You can find your HTTP metrics and its dimensions on SignalFX. Some common dimensions include `paasta_cluster`, `paasta_instance`, and `paasta_service`
 
-When ``dimensions`` is provided, the value retrieved from signalfx with
-``data('http', filter('dimension_key', 'dimension_value')).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()``
+When ``signalflow_metrics_query`` is provided, the value retrieved from signalfx with
+``signalflow_metrics_query``
 is used together with ``target_average_value``, and current number of running pods to calculate the desired number of pods.
 This field exists to make it easier for folks who want to do autoscaling across clusters with their existing http metrics.
 You can achieve the same function with your own custom metrics.

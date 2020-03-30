@@ -14,6 +14,7 @@ autoscaling:
       target_average_value: 70
       dimensions:
         fake-dimension: fake
+      signalflow_metrics_query: 'this does not work anyway'
     external:
       target_value: 20
       signalflow_metrics_query: 'this does not work anyway'

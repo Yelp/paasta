@@ -1136,7 +1136,11 @@ class TestKubernetesDeploymentConfig:
                 "cpu": {"target_average_value": 0.7},
                 "memory": {"target_average_value": 0.7},
                 "uwsgi": {"target_average_value": 0.7},
-                "http": {"target_average_value": 0.7, "dimensions": {"any": "random"}},
+                "http": {
+                    "target_average_value": 0.7,
+                    "dimensions": {"any": "random"},
+                    "signalflow_metrics_query": "fake_query",
+                },
                 "external": {
                     "target_value": 0.7,
                     "signalflow_metrics_query": "fake_query",
@@ -1156,7 +1160,7 @@ class TestKubernetesDeploymentConfig:
         annotations = {
             "signalfx.com.custom.metrics": "",
             "signalfx.com.external.metric/external": "fake_query",
-            "signalfx.com.external.metric/http": 'data("http", filter=filter("any", "random")).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()',
+            "signalfx.com.external.metric/http": "fake_query",
         }
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",

@@ -435,7 +435,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                 )
             elif metric_name in {"http", "uwsgi"}:
-                if "dimensions" not in value:
+                if "signalflow_metrics_query" not in value:
                     metrics.append(
                         V2beta1MetricSpec(
                             type="Pods",
@@ -456,12 +456,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             ),
                         )
                     )
-                    filters = " and ".join(
-                        f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
-                    )
-                    annotations[
-                        f"signalfx.com.external.metric/{metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
+                    annotations[f"signalfx.com.external.metric/{metric_name}"] = value[
+                        "signalflow_metrics_query"
+                    ]
             else:
                 metrics.append(
                     V2beta1MetricSpec(

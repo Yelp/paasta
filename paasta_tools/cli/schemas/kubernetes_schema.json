@@ -273,6 +273,9 @@
                                             "type": "string"
                                         }
                                     }
+                                },
+                                "signalflow_metrics_query": {
+                                    "type": "string"
                                 }
                             },
                             "required": [
