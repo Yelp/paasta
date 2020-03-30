@@ -170,7 +170,7 @@ def add_subparser(subparsers) -> None:
         type=int,
     )
     status_parser.add_argument(
-        "-sh",
+        "-S",
         "--strip-headers",
         dest="strip_headers",
         help="Print log lines without header information.",
