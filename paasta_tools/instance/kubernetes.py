@@ -5,6 +5,7 @@ from typing import MutableMapping
 from typing import Sequence
 
 import a_sync
+import pytz
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client.rest import ApiException
@@ -16,6 +17,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
+from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -71,6 +73,37 @@ def set_cr_desired_state(
             f"{service}.{instance}: {e}"
         )
         raise RuntimeError(error_message)
+
+
+def autoscaling_status(
+    kube_client: kubernetes_tools.KubeClient,
+    job_config: LongRunningServiceConfig,
+    namespace: str,
+):
+    status = {}
+    hpa = kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
+        name=job_config.get_sanitised_deployment_name(), namespace=namespace
+    )
+    status["min_instances"] = hpa.spec.min_replicas
+    status["max_instances"] = hpa.spec.max_replicas
+    # Parse metrics sources, based on
+    # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta1ExternalMetricSource.md#v2beta1externalmetricsource
+    metric_stats = []
+    parser = HPAMetricsParser(hpa)
+    if hpa.spec.metrics is not None:
+        for metric_spec in hpa.spec.metrics:
+            metric_stats.append(parser.parse_target(metric_spec))
+    if hpa.status.current_metrics is not None:
+        for metric_spec in hpa.status.current_metrics:
+            metric_stats.append(parser.parse_current(metric_spec))
+    status["metrics"] = metric_stats
+    status["desired_replicas"] = hpa.status.desired_replicas
+    status["last_scale_time"] = (
+        hpa.status.last_scale_time.replace(tzinfo=pytz.UTC).isoformat()
+        if getattr(hpa.status, "last_scale_time")
+        else "N/A"
+    )
+    return status
 
 
 @a_sync.to_blocking
@@ -283,6 +316,17 @@ def kubernetes_status(
         pod_list=pod_list,
         replicaset_list=replicaset_list,
     )
+
+    if job_config.is_autoscaling_enabled() is True:
+        try:
+            kstatus["autoscaling_status"] = autoscaling_status(
+                kube_client, job_config, job_config.get_kubernetes_namespace()
+            )
+        except ApiException as e:
+            error_message = (
+                f"Error while reading autoscaling information: {e.getResponseBody()}"
+            )
+            kstatus["error_message"].append(error_message)
 
     evicted_count = 0
     for pod in pod_list:

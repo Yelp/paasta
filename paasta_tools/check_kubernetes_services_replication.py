@@ -93,7 +93,7 @@ def check_kubernetes_pod_replication(
     # If this instance does not autoscale and only has 1 instance, set alert after to 20m.
     # Otherwise, set it to 10 min.
     if (
-        instance_config.get_max_instances() is None
+        not instance_config.is_autoscaling_enabled()
         and instance_config.get_instances() == 1
     ):
         default_alert_after = "20m"
