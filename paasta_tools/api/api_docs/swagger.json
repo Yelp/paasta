@@ -1253,35 +1253,6 @@
                         "$ref": "#/definitions/KubernetesPod"
                     }
                 },
-                "autoscaling_status": {
-                    "type": "object",
-                    "description": "HPA associated to this app",
-                    "properties": {
-                        "min_instances": {
-                            "type": "integer",
-                            "description": "min_instances as specified in yelpsoa_configs"
-                        },
-                        "max_instances": {
-                            "type": "integer",
-                            "description": "min_instances as specified in yelpsoa_configs"
-                        },
-                        "desired_replicas": {
-                            "type": "integer",
-                            "description": "desired number of _instances as calculated by HPA"
-                        },
-                        "last_scale_time": {
-                            "type": "string",
-                            "description": "timestamp of last autoscale"
-                        },
-                        "metrics": {
-                            "type": "array",
-                            "description": "Current metrics",
-                            "items": {
-                                "$ref": "#/definitions/HPAMetric"
-                            }
-                        }
-                    }
-                },
                 "error_message": {
                     "type": "string",
                     "description": "Error message when a kubernetes object (Deployment/Statefulset) cannot be found"
@@ -1292,23 +1263,6 @@
                 "app_count",
                 "bounce_method"
             ]
-        },
-        "HPAMetric": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "name of the metric"
-                },
-                "target_value": {
-                    "type": "string",
-                    "description": "setpoint/target_value as specified in yelpsoa_configs"
-                },
-                "current_value": {
-                    "type": "string",
-                    "description": "setpoint/target_value as specified in yelpsoa_configs"
-                }
-            }
         },
         "KubernetesReplicaSet": {
             "type": "object",

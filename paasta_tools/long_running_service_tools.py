@@ -247,7 +247,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
-        if self.is_autoscaling_enabled():
+        if self.get_max_instances() is not None:
             autoscaled_instances = self.get_autoscaled_instances()
             if autoscaled_instances is None:
                 return self.get_max_instances()
@@ -265,9 +265,6 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_min_instances(self) -> int:
         return self.config_dict.get("min_instances", 1)
-
-    def is_autoscaling_enabled(self) -> bool:
-        return self.get_max_instances() is not None
 
     def get_max_instances(self) -> Optional[int]:
         return self.config_dict.get("max_instances", None)

@@ -150,6 +150,8 @@ DISCOVERY_ATTRIBUTES = {"region", "superregion", "ecosystem", "habitat"}
 # For detail, https://github.com/kubernetes-client/python/issues/553
 # This hack should be removed when the issue got fixed.
 # This is no better way to work around rn.
+
+
 class MonkeyPatchAutoScalingConditions(V2beta1HorizontalPodAutoscalerStatus):
     @property
     def conditions(self) -> Sequence[V2beta1HorizontalPodAutoscalerCondition]:
@@ -412,7 +414,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
         hpa_config = self.config_dict["horizontal_autoscaling"]
-        min_replicas = hpa_config.get("min_replicas", 1)
+        min_replicas = hpa_config.get("min_replicas", 0)
         max_replicas = hpa_config["max_replicas"]
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         annotations = {"signalfx.com.custom.metrics": ""}
@@ -969,20 +971,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 % self.get_max_instances()
             )
             return None
-
-    def get_min_instances(self) -> Optional[int]:
-        return self.config_dict.get(
-            "min_instances",
-            self.config_dict.get("horizontal_autoscaling", {}).get("min_replicas", 1),
-        )
-
-    def get_max_instances(self) -> Optional[int]:
-        return self.config_dict.get(
-            "max_instances",
-            self.config_dict.get("horizontal_autoscaling", {}).get(
-                "max_replicas", None
-            ),
-        )
 
     def set_autoscaled_instances(
         self, instance_count: int, kube_client: KubeClient
