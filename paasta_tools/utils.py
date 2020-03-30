@@ -701,17 +701,34 @@ class InstanceConfig:
         if security is None:
             return True, ""
 
+        inbound_network_mode = security.get("inbound_network_mode")
         outbound_firewall = security.get("outbound_firewall")
-        if outbound_firewall is None:
+
+        if inbound_network_mode is None and outbound_firewall is None:
             return True, ""
 
-        if outbound_firewall not in ("block", "monitor"):
+        if inbound_network_mode is not None and inbound_network_mode not in (
+            "full",
+            "restrict",
+        ):
+            return (
+                False,
+                'Unrecognized inbound_network_mode value "%s"' % inbound_network_mode,
+            )
+
+        if outbound_firewall is not None and outbound_firewall not in (
+            "block",
+            "monitor",
+        ):
             return (
                 False,
                 'Unrecognized outbound_firewall value "%s"' % outbound_firewall,
             )
 
-        unknown_keys = set(security.keys()) - {"outbound_firewall"}
+        unknown_keys = set(security.keys()) - {
+            "inbound_network_mode",
+            "outbound_firewall",
+        }
         if unknown_keys:
             return (
                 False,
@@ -863,6 +880,17 @@ class InstanceConfig:
             return None
         dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
+
+    def get_inbound_firewall_mode(self) -> Optional[str]:
+        """Return 'full', 'restrict', or None as configured in security->inbound_firewall_mode
+
+        Defaults to None if not specified in the config
+
+        :returns: A string specified in the config, None if not specified"""
+        security = self.config_dict.get("security")
+        if not security:
+            return None
+        return security.get("inbound_firewall_mode")
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall

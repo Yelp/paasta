@@ -84,6 +84,7 @@ class ServiceGroup(collections.namedtuple("ServiceGroup", ("service", "instance"
         rules.extend(_well_known_rules(conf))
         rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
         rules.extend(_cidr_rules(conf))
+
         return tuple(rules)
 
     def update_rules(self, soa_dir, synapse_service_dir):
@@ -181,6 +182,21 @@ def _yocalhost_rule(port, comment, protocol="tcp"):
     )
 
 
+def _reject_remaining_inbound_traffic_rule(port, protocol="tcp"):
+    """Return an iptables rule denying all other traffic.
+
+    This should eventually be turned into a deny-allow,
+    but is opt-in at the service level for now."""
+    return iptables.Rule(
+        protocol=protocol,
+        src="0.0.0.0/0.0.0.0",
+        dst="0.0.0.0/0.0.0.0",
+        target="REJECT",
+        matches=((protocol, (("dport", (str(port),)),)),),
+        target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
+    )
+
+
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
     for dep in conf.get_dependencies() or ():
         namespace = dep.get("smartstack")
@@ -215,6 +231,10 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         service_namespaces = get_all_namespaces_for_service(service, soa_dir=soa_dir)
         port = dict(service_namespaces)[namespace]["proxy_port"]
         yield _yocalhost_rule(port, "proxy_port " + namespace)
+
+        # Allow services to opt out of network visibility beyond localhost
+        if conf.get_inbound_network_mode() == "restrict":
+            yield _reject_remaining_inbound_traffic_rule(port)
 
 
 def _ports_valid(ports):

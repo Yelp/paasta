@@ -351,6 +351,12 @@
                 "security": {
                     "type": "object",
                     "properties": {
+                        "inbound_network_mode": {
+                            "enum": [
+                                "full",
+                                "restrict"
+                            ]
+                        },
                         "outbound_firewall": {
                             "enum": [
                                 "block",
