@@ -1174,11 +1174,12 @@ def print_kubernetes_status(
         output.append(f"       min_instances: {autoscaling_status['min_instances']}")
         output.append(f"       max_instances: {autoscaling_status['min_instances']}")
         output.append(
-            f"       desired instances: {autoscaling_status['desired_replicas']}"
+            f"       Desired instances: {autoscaling_status['desired_replicas']}"
         )
         output.append(
-            f"       last scale time: {autoscaling_status['last_scale_time']}"
+            f"       Last scale time: {autoscaling_status['last_scale_time']}"
         )
+        output.append(f"       Dashboard: y/sfx-autoscaling")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
             output.append(f"       Metrics:")
