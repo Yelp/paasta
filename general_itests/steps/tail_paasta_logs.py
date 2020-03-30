@@ -97,8 +97,8 @@ def step_impl(context):
     # thread's work deposited in the shared queue.
     assert context.print_log_patch.call_count == 2
     context.print_log_patch.assert_any_call(
-        "fake log line added for env1", context.levels, False
+        "fake log line added for env1", context.levels, False, False
     )
     context.print_log_patch.assert_any_call(
-        "fake log line added for env2", context.levels, False
+        "fake log line added for env2", context.levels, False, False
     )
