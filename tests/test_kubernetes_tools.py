@@ -786,6 +786,9 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_aws_ebs_volumes",
             autospec=True,
         ) as mock_get_aws_ebs_volumes:
+            mock_get_aws_ebs_volumes.return_value = []
+            assert self.deployment.get_desired_instances() == 3
+
             mock_get_aws_ebs_volumes.return_value = ["some-ebs-vol"]
             with pytest.raises(Exception):
                 self.deployment.get_desired_instances()
