@@ -1,3 +1,10 @@
+paasta-tools (0.95.15) xenial; urgency=medium
+
+  * 0.95.15 tagged with 'make release'
+    Commit: Merge branch "u/jmalt/PAASTA-16280_strip_log_header"
+
+ -- Joseph Malt <jmalt@yelp.com>  Mon, 30 Mar 2020 09:33:40 -0700
+
 paasta-tools (0.95.14) xenial; urgency=medium
 
   * 0.95.14 tagged with 'make release'
