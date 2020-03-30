@@ -1,3 +1,11 @@
+paasta-tools (0.95.14) xenial; urgency=medium
+
+  * 0.95.14 tagged with 'make release'
+    Commit: Merge pull request #2750 from Yelp/PAASTA-16381-new-defaults
+    Increase default cpu/mem for tasks
+
+ -- Rohan Gulati <rgulati@yelp.com>  Mon, 30 Mar 2020 06:20:31 -0700
+
 paasta-tools (0.95.13) xenial; urgency=medium
 
   * 0.95.13 tagged with 'make release'
