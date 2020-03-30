@@ -910,21 +910,11 @@ def append_pod_status(pod_status, output: List[str]):
         ("Pod Name", "Host", "Phase", "Uptime")
     ]
     for pod in pod_status:
-        color_fn = (
-            PaastaColors.green
-            if pod["phase"] == "Running" and pod["container_state"] == "Running"
-            else PaastaColors.red
-            # pods can get stuck in phase: Running and state: CrashLoopBackOff, so check for that
-            if pod["phase"] == "Failed"
-            or pod["container_state_reason"] == "CrashLoopBackOff"
-            else PaastaColors.yellow
-        )
-
         rows.append(
             (
                 pod["name"],
                 pod["host"],
-                color_fn(pod["phase"]),
+                pod["phase"],
                 get_pod_uptime(pod["deployed_timestamp"]),
             )
         )
@@ -1036,7 +1026,7 @@ def print_flink_status(
     )
 
     output.append(f"    Jobs:")
-    if verbose > 1:
+    if verbose:
         output.append(
             f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
         )
@@ -1061,7 +1051,7 @@ def print_flink_status(
     job_printed_count = 0
     for job in unique_jobs:
         job_id = job["jid"]
-        if verbose > 1:
+        if verbose:
             fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
         {dashboard_url}"""
         else:
@@ -1069,29 +1059,22 @@ def print_flink_status(
         start_time = datetime.fromtimestamp(int(job["start-time"]) // 1000)
         if verbose or job_printed_count < allowed_max_jobs_printed:
             job_printed_count += 1
+            job_info_str = fmt.format(
+                job_id=job_id,
+                job_name=get_flink_job_name(job),
+                allowed_max_job_name_length=allowed_max_job_name_length,
+                state=(job.get("state") or "unknown"),
+                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            )
             color_fn = (
                 PaastaColors.green
                 if job.get("state") and job.get("state") == "RUNNING"
                 else PaastaColors.red
             )
-            job_info_str = fmt.format(
-                job_id=job_id,
-                job_name=get_flink_job_name(job),
-                allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state") or "unknown")),
-                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
-                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
-            )
-            output.append(job_info_str)
-        else:
-            output.append(
-                PaastaColors.yellow(
-                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
-                )
-            )
-            break
+            output.append(color_fn(job_info_str))
 
-        if verbose > 1 and job_id in status.exceptions:
+        if verbose and job_id in status.exceptions:
             exceptions = status.exceptions[job_id]
             root_exception = exceptions["root-exception"]
             if root_exception is not None:
@@ -1104,8 +1087,6 @@ def print_flink_status(
                     )
     if verbose and len(status.pod_status) > 0:
         append_pod_status(status.pod_status, output)
-    if verbose == 1 and status.exceptions:
-        output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
     return 0
 
 
@@ -1168,6 +1149,30 @@ def print_kubernetes_status(
         )
         output.extend([f"        {line}" for line in replicasets_table])
 
+    if kubernetes_status.autoscaling_status and verbose > 0:
+        autoscaling_status = kubernetes_status.autoscaling_status
+        output.append("    Autoscaling status:")
+        output.append(f"       min_instances: {autoscaling_status['min_instances']}")
+        output.append(f"       max_instances: {autoscaling_status['min_instances']}")
+        output.append(
+            f"       desired instances: {autoscaling_status['desired_replicas']}"
+        )
+        output.append(
+            f"       last scale time: {autoscaling_status['last_scale_time']}"
+        )
+        NA = PaastaColors.red("N/A")
+        if len(autoscaling_status["metrics"]) > 0:
+            output.append(f"       Metrics:")
+        for metric in autoscaling_status["metrics"]:
+            output.append(f"         {metric['name']}:")
+            current_metric = (
+                NA
+                if getattr(metric, "current_value") is None
+                else getattr(metric, "current_value")
+            )
+            output.append(f"           Current Value: {current_metric}")
+            output.append(f"           Target Value: {metric.target_value}")
+
     if kubernetes_status.smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
             kubernetes_status.smartstack.registration,
@@ -1220,7 +1225,7 @@ def print_kafka_status(
 
     # print kafka view url before operator status because if the kafka cluster is not available for some reason
     # atleast the user can get a hold the kafka view url
-    if "kafka_view_url" in status and status.kafka_view_url is not None:
+    if status.kafka_view_url is not None:
         output.append(f"    Kafka View Url: {status.kafka_view_url}")
 
     annotations = kafka_status.get("metadata").annotations
@@ -1251,23 +1256,9 @@ def print_kafka_status(
 
     brokers = status.brokers
     output.append(f"    Brokers:")
-    headers = ["Broker Id", "Host", "Phase", "Uptime"]
-    if verbose:
-        headers.append("Message")
-    rows = [headers]
+    rows = [["Broker Id", "Host", "Phase"]]
     for broker in brokers:
-        row = [
-            str(broker["id"]),
-            str(broker["host"]),
-            str(broker["phase"]),
-            str(get_pod_uptime(broker["deployed_timestamp"])),
-        ]
-        if verbose:
-            msg = ""
-            if broker.get("reason", "") != "":
-                msg = PaastaColors.grey(f"{broker['reason']}: {broker['message']}")
-            row.append(msg)
-        rows.append(row)
+        rows.append([str(broker["id"]), str(broker["host"]), str(broker["phase"])])
     brokers_table = format_table(rows)
     output.extend([f"     {line}" for line in brokers_table])
     return 0
