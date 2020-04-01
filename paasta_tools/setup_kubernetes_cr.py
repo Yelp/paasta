@@ -188,7 +188,7 @@ def setup_all_custom_resources(
                 instance=instance,
             )
         )
-    return all(results) if results else True
+    return any(results) if results else True
 
 
 def setup_custom_resources(
