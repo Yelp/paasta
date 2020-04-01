@@ -1,6 +1,5 @@
 import time
 import unittest
-from concurrent.futures import ThreadPoolExecutor
 from queue import Empty
 
 import mock
@@ -124,49 +123,6 @@ class TestDelayDeadlineQueue:
         ):  # This timeout is only there so that if this test fails it doesn't take forever.
             pass
         assert time.time() > wait_until
-
-    def test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
-        self, queue
-    ):
-        """
-        Set up several threads waiting for work; insert several pieces of work; make sure each thread finishes.
-        """
-        tpe = ThreadPoolExecutor()
-
-        def time_get():
-            start_time = time.time()
-            with queue.get(timeout=1.0) as si:
-                pass
-            return (time.time() - start_time, si)
-
-        fut1 = tpe.submit(time_get)
-        fut2 = tpe.submit(time_get)
-        fut3 = tpe.submit(time_get)
-
-        begin = time.time()
-        si1 = make_si(wait_until=begin, bounce_by=begin)
-        queue.put(si1)
-        si2 = make_si(wait_until=begin + 0.01, bounce_by=begin + 0.01)
-        queue.put(si2)
-        si3 = make_si(wait_until=begin + 0.02, bounce_by=begin + 0.02)
-        queue.put(si3)
-
-        times = sorted([x.result(timeout=2.0) for x in [fut1, fut2, fut3]])
-        assert times[0][0] < 0.01
-        assert times[0][1] == si1
-        assert 0.01 < times[1][0] < 0.02
-        assert times[1][1] == si2
-        assert 0.02 < times[2][0] < 0.03
-        assert times[2][1] == si3
-
-    def test_return_immediately_when_blocking_on_distant_wait_until_and_available_task_comes_in(
-        self, queue
-    ):
-        """Same as above, except there's a far-off unavailable item already."""
-        queue.put(make_si(wait_until=time.time() + 100, bounce_by=time.time() + 100))
-        self.test_return_immediately_when_blocking_on_empty_queue_and_available_task_comes_in(
-            queue
-        )
 
 
 def test_exponential_back_off():
