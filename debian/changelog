@@ -1,3 +1,9 @@
+clusterman (4.3.10) xenial bionic; urgency=low
+
+  * Add support for ie3n instance family
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 01 Apr 2020 06:25:32 -0700
+
 clusterman (4.3.9) xenial bionic; urgency=low
 
   * CLUSTERMAN-504 Calculate node resources using node.status.allocatable
