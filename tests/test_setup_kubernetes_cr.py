@@ -50,6 +50,7 @@ def test_setup_all_custom_resources():
         mock_system_config = mock.Mock(
             get_cluster=mock.Mock(return_value="westeros-prod")
         )
+        # if some CRs setup okay should return True
         mock_setup.side_effect = [True, False]
 
         mock_client = mock.Mock()
@@ -74,7 +75,7 @@ def test_setup_all_custom_resources():
             ),
         ]
 
-        assert not setup_kubernetes_cr.setup_all_custom_resources(
+        assert setup_kubernetes_cr.setup_all_custom_resources(
             mock_client,
             "/nail/soa",
             mock_system_config,
@@ -89,6 +90,7 @@ def test_setup_all_custom_resources():
         mock_system_config = mock.Mock(
             get_cluster=mock.Mock(return_value="westeros-prod")
         )
+        # if all CRs setup okay should return True
         assert setup_kubernetes_cr.setup_all_custom_resources(
             mock_client,
             "/nail/soa",
@@ -100,6 +102,18 @@ def test_setup_all_custom_resources():
         mock_system_config = mock.Mock(
             get_cluster=mock.Mock(return_value="westeros-prod")
         )
+        assert setup_kubernetes_cr.setup_all_custom_resources(
+            mock_client, "/nail/soa", mock_system_config, custom_resource_definitions=[]
+        )
+
+        mock_setup.side_effect = []
+        # if no CRs setup should return True
+        assert setup_kubernetes_cr.setup_all_custom_resources(
+            mock_client, "/nail/soa", mock_system_config, custom_resource_definitions=[]
+        )
+
+        mock_setup.side_effect = [False, False]
+        # if all CRs setup fail should return False
         assert setup_kubernetes_cr.setup_all_custom_resources(
             mock_client, "/nail/soa", mock_system_config, custom_resource_definitions=[]
         )
