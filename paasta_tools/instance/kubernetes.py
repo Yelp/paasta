@@ -1,5 +1,6 @@
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Sequence
@@ -9,6 +10,7 @@ import pytz
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client.rest import ApiException
+from mypy_extensions import TypedDict
 
 from paasta_tools import cassandracluster_tools
 from paasta_tools import flink_tools
@@ -37,6 +39,14 @@ INSTANCE_TYPE_CR_ID = dict(
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
 )
+
+
+class KubernetesAutoscalingStatusDict(TypedDict):
+    min_instances: int
+    max_instances: int
+    metrics: List
+    desired_replicas: int
+    last_scale_time: str
 
 
 def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
@@ -79,13 +89,23 @@ def autoscaling_status(
     kube_client: kubernetes_tools.KubeClient,
     job_config: LongRunningServiceConfig,
     namespace: str,
-):
-    status = {}
-    hpa = kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
-        name=job_config.get_sanitised_deployment_name(), namespace=namespace
-    )
-    status["min_instances"] = hpa.spec.min_replicas
-    status["max_instances"] = hpa.spec.max_replicas
+) -> KubernetesAutoscalingStatusDict:
+    try:
+        hpa = kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
+            name=job_config.get_sanitised_deployment_name(), namespace=namespace
+        )
+    except ApiException as e:
+        if e.status == 404:
+            return KubernetesAutoscalingStatusDict(
+                min_instances=-1,
+                max_instances=-1,
+                metrics=[],
+                desired_replicas=-1,
+                last_scale_time="unknown (could not find HPA object)",
+            )
+        else:
+            raise
+
     # Parse metrics sources, based on
     # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta1ExternalMetricSource.md#v2beta1externalmetricsource
     metric_stats = []
@@ -96,14 +116,19 @@ def autoscaling_status(
     if hpa.status.current_metrics is not None:
         for metric_spec in hpa.status.current_metrics:
             metric_stats.append(parser.parse_current(metric_spec))
-    status["metrics"] = metric_stats
-    status["desired_replicas"] = hpa.status.desired_replicas
-    status["last_scale_time"] = (
+    last_scale_time = (
         hpa.status.last_scale_time.replace(tzinfo=pytz.UTC).isoformat()
         if getattr(hpa.status, "last_scale_time")
         else "N/A"
     )
-    return status
+
+    return KubernetesAutoscalingStatusDict(
+        min_instances=hpa.spec.min_instances,
+        max_instances=hpa.spec.max_instances,
+        metrics=metric_stats,
+        desired_replicas=hpa.status.desired_replicas,
+        last_scale_time=last_scale_time,
+    )
 
 
 @a_sync.to_blocking
@@ -168,12 +193,16 @@ async def job_status(
     app = kubernetes_tools.get_kubernetes_app_by_name(
         name=app_id, kube_client=client, namespace=namespace
     )
-    deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(
-        app=app, desired_instances=job_config.get_instances()
+    desired_instances = (
+        job_config.get_instances() if job_config.get_desired_state() != "stop" else 0
+    )
+    deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
+        app=app, kube_client=client, desired_instances=desired_instances,
     )
     kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
         deploy_status
     )
+    kstatus["deploy_status_message"] = message
     kstatus["running_instance_count"] = (
         app.status.ready_replicas if app.status.ready_replicas else 0
     )
@@ -325,14 +354,10 @@ def kubernetes_status(
             kstatus["autoscaling_status"] = autoscaling_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
-        except ApiException as e:
-            error_message = f"Error while reading autoscaling information: {e}"
-            kstatus["error_message"].append(error_message)
         except Exception as e:
-            error_message = (
-                f"Unknown error happened. Please contact #compute-infra for help: {e}"
-            )
-            kstatus["error_message"].append(error_message)
+            kstatus[
+                "error_message"
+            ] = f"Unknown error happened. Please contact #compute-infra for help: {e}"
 
     evicted_count = 0
     for pod in pod_list:
