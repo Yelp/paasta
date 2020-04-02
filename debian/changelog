@@ -1,3 +1,12 @@
+paasta-tools (0.95.17) xenial; urgency=medium
+
+  * 0.95.17 tagged with 'make release'
+    Commit: Merge pull request #2759 from Yelp/u/gabrielv/PAASTA-16466-
+    paasta-status-exception  PAASTA-16466 Fix `paasta status` regression
+    with evicted pods
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 02 Apr 2020 09:52:40 -0700
+
 paasta-tools (0.95.16) xenial; urgency=medium
 
   * 0.95.16 tagged with 'make release'

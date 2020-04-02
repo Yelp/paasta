@@ -6,6 +6,7 @@ Submodules
 
 .. toctree::
 
+   paasta_tools.instance.hpa_metrics_parser
    paasta_tools.instance.kubernetes
 
 Module contents
