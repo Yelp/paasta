@@ -326,12 +326,12 @@ def kubernetes_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
         except ApiException as e:
-            error_message = (
-                f"Error while reading autoscaling information: {e.getResponseBody()}"
-            )
+            error_message = f"Error while reading autoscaling information: {e}"
             kstatus["error_message"].append(error_message)
         except Exception as e:
-            error_message = f"Unknown error happened. Please contact #compute-infra for help: {e.getResponseBody()}"
+            error_message = (
+                f"Unknown error happened. Please contact #compute-infra for help: {e}"
+            )
             kstatus["error_message"].append(error_message)
 
     evicted_count = 0
