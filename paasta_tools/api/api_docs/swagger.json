@@ -1366,17 +1366,13 @@
                     }
                 },
                 "reason": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
+                    "type": "string",
+                    "x-nullable": true,
                     "description": "short message explaining the pod's state"
                 },
                 "message": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
+                    "type": "string",
+                    "x-nullable": true,
                     "description": "long message explaining the pod's state"
                 }
             }
