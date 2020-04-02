@@ -317,7 +317,10 @@ def kubernetes_status(
         replicaset_list=replicaset_list,
     )
 
-    if job_config.is_autoscaling_enabled() is True:
+    if (
+        job_config.is_autoscaling_enabled() is True
+        and job_config.get_autoscaling_params.get("decision_policy", "") != "bespoke"
+    ):
         try:
             kstatus["autoscaling_status"] = autoscaling_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
@@ -326,6 +329,9 @@ def kubernetes_status(
             error_message = (
                 f"Error while reading autoscaling information: {e.getResponseBody()}"
             )
+            kstatus["error_message"].append(error_message)
+        except Exception as e:
+            error_message = f"Unknown error happened. Please contact #compute-infra for help: {e.getResponseBody()}"
             kstatus["error_message"].append(error_message)
 
     evicted_count = 0
