@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 logging.getLogger("marathon").setLevel(logging.WARNING)
 
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
+ZK_RESUME_AUTOSCALE_PATH = "/autoscaling/resumed"
 DEFAULT_CONTAINER_PORT = 8888
 
 

@@ -46,6 +46,7 @@ from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
+from paasta_tools.long_running_service_tools import ZK_RESUME_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import AutoscalingParamsDict
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
@@ -838,6 +839,26 @@ def autoscaling_is_paused():
         return True
     else:
         return False
+
+
+def is_autoscaling_resumed():
+    with ZookeeperPool() as zk:
+        try:
+            resumed = zk.get(ZK_RESUME_AUTOSCALE_PATH)[0].decode("utf8")
+        except (NoNodeError, ValueError, AttributeError):
+            resumed = "True"
+
+    return True if resumed == "True" else False
+
+
+def write_autoscaling_resumed():
+    with ZookeeperPool() as zk:
+        try:
+            zk.ensure_path(ZK_RESUME_AUTOSCALE_PATH)
+            zk.set(ZK_RESUME_AUTOSCALE_PATH, "True".encode("utf-8"))
+        except Exception as e:
+            error_msg = f"Could not update zk resume state: {e} "
+            log.error(error_msg)
 
 
 def autoscale_services(
