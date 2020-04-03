@@ -4,11 +4,6 @@
             "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
             "desired_state": "start",
             "force_bounce": null
-        },
-        "compute-infra-test-service:<%cluster%>.bespoke_test": {
-            "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
-            "desired_state": "start",
-            "force_bounce": null
         }
     },
     "v2": {
@@ -16,15 +11,10 @@
             "<%cluster%>.autoscaling": {
                 "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
                 "git_sha": "a0ec9b362e29123022e5cebb6612aedc58a0889b"
-            },
-            "<%cluster%>.bespoke_test": {
-                "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
-                "git_sha": "a0ec9b362e29123022e5cebb6612aedc58a0889b"
             }
         },
         "controls": {
-            "compute-infra-test-service:<%cluster%>.autoscaling": {},
-            "compute-infra-test-service:<%cluster%>.bespoke_test": {}
+            "compute-infra-test-service:<%cluster%>.autoscaling": {}
         }
     }
 }

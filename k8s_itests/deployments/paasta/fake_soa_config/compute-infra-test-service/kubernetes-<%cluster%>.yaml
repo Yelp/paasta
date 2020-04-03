@@ -17,9 +17,3 @@ autoscaling:
     external:
       target_value: 20
       signalflow_metrics_query: 'this does not work anyway'
-
-bespoke_test:
-  cpus: .1
-  mem: 100
-  autoscaling:
-    decision_policy: bespoke
