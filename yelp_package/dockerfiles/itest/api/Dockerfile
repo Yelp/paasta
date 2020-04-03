@@ -35,9 +35,9 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.6 --no-download
+RUN pip install virtualenv==16.7.7
+RUN virtualenv /venv -ppython3.6 --no-download && venv/run/pip install -r requirements.txt
 ENV PATH=/venv/bin:$PATH
-RUN pip install -r requirements.txt
 
 COPY yelp_package/dockerfiles/xenial/mesos-slave-secret /etc/
 COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/xenial/mesos-slave-secret /nail/etc/
