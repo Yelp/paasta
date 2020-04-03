@@ -344,9 +344,7 @@ def test_process_termination_queue(mock_draining_client):
         'clusterman.draining.queue.DrainingClient.get_host_to_terminate', autospec=True,
     ) as mock_get_host_to_terminate, mock.patch(
         'clusterman.draining.queue.DrainingClient.delete_terminate_messages', autospec=True,
-    ) as mock_delete_terminate_messages, mock.patch(
-        'clusterman.draining.queue.kube_delete_node', autospec=True,
-    ) as mock_kube_delete_node:
+    ) as mock_delete_terminate_messages:
         mock_mesos_client = mock.Mock()
         mock_kubernetes_client = mock.Mock()
         mock_get_host_to_terminate.return_value = None
@@ -378,10 +376,8 @@ def test_process_termination_queue(mock_draining_client):
         mock_host = mock.Mock(hostname='', ip='10.1.1.1', instance_id='i123', scheduler='kubernetes')
         mock_draining_client.draining_host_ttl_cache[mock_host.instance_id] = arrow.now()
         mock_get_host_to_terminate.return_value = mock_host
-        mock_kube_delete_node.return_value = None
         mock_draining_client.process_termination_queue(mock_mesos_client, mock_kubernetes_client)
         assert mock_draining_client.get_host_to_terminate.called
-        assert mock_kube_delete_node.called
         mock_terminate.assert_called_with(mock_host)
         mock_delete_terminate_messages.assert_called_with(mock_draining_client, [mock_host])
 
