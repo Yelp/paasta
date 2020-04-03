@@ -1,6 +1,14 @@
 paasta-tools (0.95.17) xenial; urgency=medium
 
   * 0.95.17 tagged with 'make release'
+    Commit: Make autoscaling status not throw error when HPA is missing
+    (#2762)
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Fri, 03 Apr 2020 10:10:21 -0700
+
+paasta-tools (0.95.17) xenial; urgency=medium
+
+  * 0.95.17 tagged with 'make release'
     Commit: Merge pull request #2759 from Yelp/u/gabrielv/PAASTA-16466-
     paasta-status-exception  PAASTA-16466 Fix `paasta status` regression
     with evicted pods
