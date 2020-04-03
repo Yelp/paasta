@@ -55,6 +55,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
+from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
@@ -670,6 +671,8 @@ def format_kubernetes_pod_table(pods):
                 health_check_status,
             )
         )
+        if pod.events:
+            rows.extend(format_pod_event_messages(pod.events, pod.name))
         if pod.message is not None:
             rows.append(PaastaColors.grey(f"  {pod.message}"))
         if len(pod.containers) > 0:

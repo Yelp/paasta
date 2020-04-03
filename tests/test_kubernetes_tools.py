@@ -1837,6 +1837,45 @@ def test_get_tail_lines_for_kubernetes_container(
     ]
 
 
+@pytest.mark.parametrize("messages_num", [3, 0])
+@mock.patch("paasta_tools.kubernetes_tools.get_pod_events", autospec=True)
+def test_get_pod_event_messages(mock_get_pod_events, messages_num, event_loop):
+    pod = mock.MagicMock()
+    pod.metadata.name = "my--pod"
+    pod.metadata.namespace = "my_namespace"
+
+    events = []
+    for i in range(messages_num):
+        event = mock.MagicMock()
+        event.message = f"message_{i}"
+        event.last_timestamp = i
+        events.append(event)
+
+    kube_client = mock.MagicMock()
+    mock_get_pod_events.return_value = events
+    pod_event_messages = event_loop.run_until_complete(
+        kubernetes_tools.get_pod_event_messages(kube_client=kube_client, pod=pod)
+    )
+
+    assert len(pod_event_messages) == messages_num
+    if messages_num == 3:
+        assert {"message": "message_0", "timeStamp": "0"} in pod_event_messages
+        assert {"message": "message_1", "timeStamp": "1"} in pod_event_messages
+        assert {"message": "message_2", "timeStamp": "2"} in pod_event_messages
+
+
+def test_format_pod_event_messages():
+    pod_event_messages = [
+        {"message": "message_1", "timeStamp": "1"},
+        {"message": "message_2", "timeStamp": "2"},
+    ]
+    pod_name = "test_pod"
+    rows = kubernetes_tools.format_pod_event_messages(pod_event_messages, pod_name)
+
+    assert rows[1] == f"   Event at 1: message_1"
+    assert rows[2] == f"   Event at 2: message_2"
+
+
 @given(integers(min_value=0), floats(min_value=0, max_value=1.0))
 def test_max_unavailable(instances, bmf):
     res = max_unavailable(instances, bmf)
