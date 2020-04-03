@@ -97,7 +97,7 @@ simplejson==3.10.0
 six==1.11.0
 slackclient==1.2.1
 sseclient-py==1.7
-sticht==1.1.5
+sticht==1.1.6
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2
