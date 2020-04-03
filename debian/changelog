@@ -1,3 +1,10 @@
+paasta-tools (0.95.18) xenial; urgency=medium
+
+  * 0.95.18 tagged with 'make release'
+    Commit: Released 0.95.17 via make release
+
+ -- Mingqi Zhu <mingqiz@yelp.com>  Fri, 03 Apr 2020 10:19:58 -0700
+
 paasta-tools (0.95.17) xenial; urgency=medium
 
   * 0.95.17 tagged with 'make release'
