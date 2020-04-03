@@ -77,7 +77,14 @@ def capture_oom_events_from_stdin():
         r"^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /docker/(\w{12})\w+ killed as a"
     )
     oom_regex_kubernetes = re.compile(
-        r"^(\d+)\s([a-zA-Z0-9\-]+)\s.*Task in /kubepods/[a-zA-Z]+/pod[-\w]+/(\w{12})\w+ killed as a"
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*Task\sin\s/kubepods/(?:[a-zA-Z]+/)? # start of message; non capturing, optional group for the qos cgroup
+        pod[-\w]+/(\w{12})\w+\s # containerid
+        killed\sas\sa*  # eom
+        """,
+        re.VERBOSE,
     )
     process_name = ""
 
