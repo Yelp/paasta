@@ -37,8 +37,6 @@ from clusterman.aws.util import RESOURCE_GROUPS_REV
 from clusterman.config import load_cluster_pool_config
 from clusterman.config import POOL_NAMESPACE
 from clusterman.config import setup_config
-from clusterman.draining.kubernetes import kube_delete_node
-from clusterman.draining.kubernetes import kube_drain
 from clusterman.draining.mesos import down
 from clusterman.draining.mesos import drain
 from clusterman.draining.mesos import operator_api
@@ -249,11 +247,6 @@ class DrainingClient():
                     logger.error(f'Failed to up {hostname_ip} continuing to terminate anyway: {e}')
             elif host_to_terminate.scheduler == 'kubernetes':
                 logger.info(f'Kubernetes hosts to delete k8s node and terminate: {host_to_terminate}')
-                try:
-                    logger.info(f'Deleting kubernetes node')
-                    kube_delete_node(kube_operator_client, host_to_terminate)
-                except Exception as e:
-                    logger.warning(f'Failed to delete {host_to_terminate.ip} node continuing to terminate anyway: {e}')
                 terminate_host(host_to_terminate)
             else:
                 logger.info(f'Host to terminate immediately: {host_to_terminate}')
@@ -283,7 +276,6 @@ class DrainingClient():
                     self.submit_host_for_termination(host_to_process)
             elif host_to_process.scheduler == 'kubernetes':
                 logger.info(f'Kubernetes host to drain and submit for termination: {host_to_process}')
-                kube_drain(kube_operator_client, host_to_process)
                 self.submit_host_for_termination(host_to_process, delay=0)
             else:
                 logger.info(f'Host to submit for termination immediately: {host_to_process}')
