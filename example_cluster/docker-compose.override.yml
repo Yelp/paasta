@@ -78,7 +78,7 @@ services:
   registry:
     image: registry:2
     ports:
-      - '5000:5000'
+      - '15000:5000'
   git:
     build: ../yelp_package/dockerfiles/gitremote/
     command: /usr/sbin/sshd -D
