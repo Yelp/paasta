@@ -49,9 +49,8 @@ def test_update_autoscaler_pause():
         mock_time.time = mock.Mock(return_value=0)
 
         response = pause_autoscaler.update_service_autoscaler_pause(request)
-        assert mock_zk_ensure.call_count == 2
-        mock_zk_set.assert_any_call("/autoscaling/paused", b"6000")
-        mock_zk_set.assert_any_call("/autoscaling/resumed", b"False")
+        assert mock_zk_ensure.call_count == 1
+        mock_zk_set.assert_called_once_with("/autoscaling/paused", b"6000")
         assert response is None
 
 
@@ -71,7 +70,6 @@ def test_delete_autoscaler_pause():
         mock_time.time = mock.Mock(return_value=0)
 
         response = pause_autoscaler.delete_service_autoscaler_pause(request)
-        assert mock_zk_ensure.call_count == 2
-        mock_zk_del.assert_any_call("/autoscaling/paused")
-        mock_zk_del.assert_any_call("/autoscaling/resumed")
+        assert mock_zk_ensure.call_count == 1
+        mock_zk_del.assert_called_once_with("/autoscaling/paused")
         assert response is None

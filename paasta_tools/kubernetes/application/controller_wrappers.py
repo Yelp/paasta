@@ -13,6 +13,8 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
+from paasta_tools.autoscaling.autoscaling_service_lib import is_autoscaling_resumed
+from paasta_tools.autoscaling.autoscaling_service_lib import write_autoscaling_paused
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
@@ -291,6 +293,9 @@ class DeploymentWrapper(Application):
                     f"HPA will not scale down service."
                 )
                 self.soa_config.set_min_instances(self.item.spec.replicas)
+                write_autoscaling_paused(kube_client, self.soa_config, self.item, True)
+            elif not is_autoscaling_resumed(self.item):
+                write_autoscaling_paused(kube_client, self.soa_config, self.item, False)
 
         body = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name,

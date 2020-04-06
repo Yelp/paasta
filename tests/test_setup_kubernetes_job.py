@@ -191,6 +191,7 @@ def test_setup_kube_deployment_create_update():
         )
         fake_app.create = fake_create
         fake_app.update = fake_update
+        fake_app.item = None
         return True, fake_app
 
     with mock.patch(
@@ -203,15 +204,12 @@ def test_setup_kube_deployment_create_update():
         "paasta_tools.setup_kubernetes_job.autoscaling_is_paused", autospec=True
     ) as mock_autoscaling_is_paused, mock.patch(
         "paasta_tools.setup_kubernetes_job.is_autoscaling_resumed", autospec=True
-    ) as mock_is_autoscaling_resumed, mock.patch(
-        "paasta_tools.setup_kubernetes_job.write_autoscaling_resumed", autospec=True
-    ) as mock_write_autoscaling_resumed:
+    ) as mock_is_autoscaling_resumed:
         mock_client = mock.Mock()
         # No instances created
         mock_service_instances: Sequence[str] = []
         mock_autoscaling_is_paused.return_value = False
         mock_is_autoscaling_resumed.return_value = True
-        mock_write_autoscaling_resumed.return_value = None
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,

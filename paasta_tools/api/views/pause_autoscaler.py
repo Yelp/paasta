@@ -22,7 +22,6 @@ from pyramid.view import view_config
 
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
-from paasta_tools.long_running_service_tools import ZK_RESUME_AUTOSCALE_PATH
 from paasta_tools.utils import ZookeeperPool
 
 
@@ -52,8 +51,6 @@ def update_service_autoscaler_pause(request):
         try:
             zk.ensure_path(ZK_PAUSE_AUTOSCALE_PATH)
             zk.set(ZK_PAUSE_AUTOSCALE_PATH, str(expiry_time).encode("utf-8"))
-            zk.ensure_path(ZK_RESUME_AUTOSCALE_PATH)
-            zk.set(ZK_RESUME_AUTOSCALE_PATH, str("False").encode("utf-8"))
         except Exception as e:
             raise ApiFailure(e, 500)
     return
@@ -69,8 +66,6 @@ def delete_service_autoscaler_pause(request):
         try:
             zk.ensure_path(ZK_PAUSE_AUTOSCALE_PATH)
             zk.delete(ZK_PAUSE_AUTOSCALE_PATH)
-            zk.ensure_path(ZK_RESUME_AUTOSCALE_PATH)
-            zk.delete(ZK_RESUME_AUTOSCALE_PATH)
         except Exception as e:
             raise ApiFailure(e, 500)
     return

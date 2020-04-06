@@ -24,7 +24,6 @@ log = logging.getLogger(__name__)
 logging.getLogger("marathon").setLevel(logging.WARNING)
 
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
-ZK_RESUME_AUTOSCALE_PATH = "/autoscaling/resumed"
 DEFAULT_CONTAINER_PORT = 8888
 
 
@@ -291,7 +290,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_max_instances(self) -> Optional[int]:
         return self.config_dict.get("max_instances", None)
 
-    def set_min_instances(self, instance_count):
+    def set_min_instances(self, instance_count: int) -> None:
         if "min_instances" in self.config_dict:
             self.config_dict["min_instances"] = instance_count
 
