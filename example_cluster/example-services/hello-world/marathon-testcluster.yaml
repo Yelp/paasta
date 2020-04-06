@@ -5,3 +5,4 @@ main:
   mem: 100
   deploy_group: testcluster.everything
   disk: 40
+  cap_add: ["DAC_OVERRIDE", "CHOWN", "SETGID", "SETUID"]
