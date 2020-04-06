@@ -1186,15 +1186,16 @@ def print_kubernetes_status(
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
             output.append(f"       Metrics:")
+
+        metrics_table: List[List[str]] = [["Metric", "Current", "Target"]]
         for metric in autoscaling_status["metrics"]:
-            output.append(f"         {metric['name']}:")
             current_metric = (
                 NA
                 if getattr(metric, "current_value") is None
                 else getattr(metric, "current_value")
             )
-            output.append(f"           Current Value: {current_metric}")
-            output.append(f"           Target Value: {metric.target_value}")
+            metrics_table.append([metric["name"], current_metric, metric.target_value])
+        output.extend(["         " + s for s in format_table(metrics_table)])
 
     if kubernetes_status.smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
