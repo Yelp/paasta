@@ -1168,8 +1168,11 @@ def print_kubernetes_status(
         )
         output.extend([f"        {line}" for line in replicasets_table])
 
-    if kubernetes_status.autoscaling_status and verbose > 0:
+    try:
         autoscaling_status = kubernetes_status.autoscaling_status
+    except AttributeError:
+        autoscaling_status = None
+    if autoscaling_status and verbose > 0:
         output.append("    Autoscaling status:")
         output.append(f"       min_instances: {autoscaling_status['min_instances']}")
         output.append(f"       max_instances: {autoscaling_status['min_instances']}")
