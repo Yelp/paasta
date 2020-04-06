@@ -146,8 +146,8 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 KUBERNETES_NAMESPACE = "paasta"
-DISCOVERY_ATTRIBUTES = {"region", "superregion", "ecosystem", "habitat"}
 MAX_EVENTS_TO_RETRIEVE = 200
+DISCOVERY_ATTRIBUTES = {"region", "superregion", "ecosystem", "habitat", "pool"}
 
 
 # For detail, https://github.com/kubernetes-client/python/issues/553
