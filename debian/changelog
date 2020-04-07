@@ -1,3 +1,10 @@
+paasta-tools (0.95.19) xenial; urgency=medium
+
+  * 0.95.19 tagged with 'make release'
+    Commit: Merge branch "u/mingqiz/autoscaling-status-client"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 06 Apr 2020 17:25:14 -0700
+
 paasta-tools (0.95.18) xenial; urgency=medium
 
   * 0.95.18 tagged with 'make release'
