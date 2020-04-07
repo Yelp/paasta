@@ -18,6 +18,6 @@ class TestSetupKubernetesJobs:
         instance = "autoscaling"
         service = "compute-infra-test-service"
         cmd(
-            f"python -m paasta_tools.cli.cli status  -c {os.environ['KIND_CLUSTER']} -s {service} -i {instance}",
+            f"python -m paasta_tools.cli.cli status  -c {os.environ['KIND_CLUSTER']} -s {service} -i {instance} -v",
             False,
         )

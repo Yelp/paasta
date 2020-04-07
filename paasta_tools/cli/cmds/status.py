@@ -1168,6 +1168,35 @@ def print_kubernetes_status(
         )
         output.extend([f"        {line}" for line in replicasets_table])
 
+    try:
+        autoscaling_status = kubernetes_status.autoscaling_status
+    except AttributeError:
+        autoscaling_status = None
+    if autoscaling_status and verbose > 0:
+        output.append("    Autoscaling status:")
+        output.append(f"       min_instances: {autoscaling_status['min_instances']}")
+        output.append(f"       max_instances: {autoscaling_status['min_instances']}")
+        output.append(
+            f"       Desired instances: {autoscaling_status['desired_replicas']}"
+        )
+        output.append(
+            f"       Last scale time: {autoscaling_status['last_scale_time']}"
+        )
+        output.append(f"       Dashboard: y/sfx-autoscaling")
+        NA = PaastaColors.red("N/A")
+        if len(autoscaling_status["metrics"]) > 0:
+            output.append(f"       Metrics:")
+
+        metrics_table: List[List[str]] = [["Metric", "Current", "Target"]]
+        for metric in autoscaling_status["metrics"]:
+            current_metric = (
+                NA
+                if getattr(metric, "current_value") is None
+                else getattr(metric, "current_value")
+            )
+            metrics_table.append([metric["name"], current_metric, metric.target_value])
+        output.extend(["         " + s for s in format_table(metrics_table)])
+
     if kubernetes_status.smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
             kubernetes_status.smartstack.registration,
