@@ -1,3 +1,12 @@
+paasta-tools (0.95.20) xenial; urgency=medium
+
+  * 0.95.20 tagged with 'make release'
+    Commit: Merge pull request #2761 from Yelp/drmorr/PAASTA-
+    16476/more_detailed_k8s_status_message  Provide better status
+    updates from Kubernetes
+
+ -- David Morrison <drmorr@yelp.com>  Tue, 07 Apr 2020 10:15:15 -0700
+
 paasta-tools (0.95.19) xenial; urgency=medium
 
   * 0.95.19 tagged with 'make release'
