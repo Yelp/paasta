@@ -38,12 +38,12 @@ from mypy_extensions import TypedDict
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -501,12 +501,12 @@ class SmartstackReplicationChecker(abc.ABC):
 
     @abc.abstractmethod
     def get_allowed_locations_and_hosts(
-        self, instance_config: InstanceConfig
+        self, instance_config: LongRunningServiceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
         pass
 
     def get_replication_for_instance(
-        self, instance_config: InstanceConfig
+        self, instance_config: LongRunningServiceConfig
     ) -> Dict[str, Dict[str, int]]:
         """Returns the number of registered instances in each discoverable location.
 
@@ -530,7 +530,7 @@ class SmartstackReplicationChecker(abc.ABC):
         return hosts[0].hostname
 
     def _get_replication_info(
-        self, location: str, hostname: str, instance_config: InstanceConfig
+        self, location: str, hostname: str, instance_config: LongRunningServiceConfig
     ) -> Dict[str, int]:
         """Returns service.instance and the number of instances registered in smartstack
         at the location as a dict.
@@ -582,7 +582,7 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         super().__init__(system_paasta_config=system_paasta_config)
 
     def get_allowed_locations_and_hosts(
-        self, instance_config: InstanceConfig
+        self, instance_config: LongRunningServiceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
         where deployment of the instance is allowed.
@@ -592,7 +592,7 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         """
         discover_location_type = marathon_tools.load_service_namespace_config(
             service=instance_config.service,
-            namespace=instance_config.instance,
+            namespace=instance_config.get_nerve_namespace(),
             soa_dir=instance_config.soa_dir,
         ).get_discover()
         attribute_to_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
@@ -617,11 +617,11 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
         super().__init__(system_paasta_config=system_paasta_config)
 
     def get_allowed_locations_and_hosts(
-        self, instance_config: InstanceConfig
+        self, instance_config: LongRunningServiceConfig
     ) -> Dict[str, Sequence[SmartstackHost]]:
         discover_location_type = kubernetes_tools.load_service_namespace_config(
             service=instance_config.service,
-            namespace=instance_config.instance,
+            namespace=instance_config.get_nerve_namespace(),
             soa_dir=instance_config.soa_dir,
         ).get_discover()
 

@@ -204,7 +204,7 @@ def smartstack_status(
 
     expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
         service=service,
-        namespace=instance,
+        namespace=job_config.get_nerve_namespace(),
         cluster=settings.cluster,
         instance_type_class=KubernetesDeploymentConfig,
     )
