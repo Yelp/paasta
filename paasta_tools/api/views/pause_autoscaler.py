@@ -53,7 +53,6 @@ def update_service_autoscaler_pause(request):
             zk.set(ZK_PAUSE_AUTOSCALE_PATH, str(expiry_time).encode("utf-8"))
         except Exception as e:
             raise ApiFailure(e, 500)
-
     return
 
 

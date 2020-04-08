@@ -29,11 +29,14 @@ from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import Union
 
 import a_sync
 import aiohttp
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+from kubernetes.client import V1Deployment
+from kubernetes.client import V1StatefulSet
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 
@@ -44,6 +47,9 @@ from paasta_tools.bounce_lib import filter_tasks_in_smartstack
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import write_annotation_for_kubernetes_service
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import AutoscalingParamsDict
@@ -838,6 +844,25 @@ def autoscaling_is_paused():
         return True
     else:
         return False
+
+
+def is_autoscaling_resumed(formatted_application: Union[V1Deployment, V1StatefulSet]):
+    if formatted_application.metadata.annotations:
+        if "is_paused" in formatted_application.metadata.annotations:
+            return formatted_application.metadata.annotations["is_paused"] == "False"
+    return True
+
+
+def write_autoscaling_paused(
+    kube_client: KubeClient,
+    service_config: KubernetesDeploymentConfig,
+    formatted_application: Union[V1Deployment, V1StatefulSet],
+    paused: bool,
+) -> None:
+    annotation = {"is_paused": str(paused)}
+    write_annotation_for_kubernetes_service(
+        kube_client, service_config, formatted_application, annotation
+    )
 
 
 def autoscale_services(

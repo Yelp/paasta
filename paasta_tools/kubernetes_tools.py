@@ -512,13 +512,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
-        if autoscaling_params["decision_policy"] == "bespoke":
-            log.error(
-                f"Sorry, bespoke is not implemented yet. Please use a different decision \
-                policy if possible for {name}/name in namespace{namespace}"
-            )
-            return None
-        elif metrics_provider == "mesos_cpu":
+        if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta1MetricSpec(
                     type="Resource",
@@ -1041,7 +1035,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
             },
+            annotations=self.get_annotations(),
         )
+
+    def get_annotations(self) -> Optional[Dict]:
+        # fetches annotations if k8s deployments already exists
+        try:
+            kube_client = KubeClient()
+            deployment = kube_client.deployments.read_namespaced_deployment(
+                name=self.get_sanitised_deployment_name(), namespace="paasta"
+            )
+            return deployment.metadata.annotations
+        except Exception:
+            return None
 
     def get_sanitised_deployment_name(self) -> str:
         return get_kubernetes_app_name(self.get_service(), self.get_instance())
@@ -1640,6 +1646,25 @@ def set_instances_for_kubernetes_service(
         )
 
 
+def write_annotation_for_kubernetes_service(
+    kube_client: KubeClient,
+    service_config: KubernetesDeploymentConfig,
+    formatted_application: Union[V1Deployment, V1StatefulSet],
+    annotation: Dict,
+) -> None:
+    name = formatted_application.metadata.name
+    formatted_application.metadata.annotations = annotation
+    print(annotation)
+    if service_config.get_persistent_volumes():
+        kube_client.deployments.patch_namespaced_stateful_set(
+            name=name, namespace="paasta", body=formatted_application
+        )
+    else:
+        kube_client.deployments.patch_namespaced_deployment(
+            name=name, namespace="paasta", body=formatted_application
+        )
+
+
 def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
     return list_deployments(kube_client)
 
@@ -1845,6 +1870,16 @@ def update_deployment(
     kube_client: KubeClient, formatted_deployment: V1Deployment
 ) -> None:
     return kube_client.deployments.replace_namespaced_deployment(
+        name=formatted_deployment.metadata.name,
+        namespace="paasta",
+        body=formatted_deployment,
+    )
+
+
+def patch_deployment(
+    kube_client: KubeClient, formatted_deployment: V1Deployment
+) -> None:
+    return kube_client.deployments.patch_namespaced_deployment(
         name=formatted_deployment.metadata.name,
         namespace="paasta",
         body=formatted_deployment,
