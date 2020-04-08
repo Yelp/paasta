@@ -2270,12 +2270,7 @@ def get_pod_hostname(kube_client: KubeClient, pod: V1Pod) -> str:
 def to_node_label(label: str) -> str:
     """k8s-ifies certain special node labels"""
     if label in {"instance_type", "instance-type"}:
-        version_info = kube_client.VersionApi().get_code()
-        if int(version_info.major) == 1 and int(version_info.minor) < 17:
-            # the beta instance-type label is deprecated as of k8s v1.17
-            return "beta.kubernetes.io/instance-type"
-        else:
-            return "node.kubernetes.io/instance-type"
+        return "node.kubernetes.io/instance-type"
     elif label in {
         "datacenter",
         "ecosystem",

@@ -173,16 +173,16 @@ These options are only applicable to tasks scheduled on Kubernetes.
             - operator: NotIn
               values: ["c3.8xlarge"]
 
-    * Requires that a node have the ``vip`` label::
+    * Requires that a node have the ``ssd`` label::
 
         node_selectors:
-          vip:
+          ssd:
             - operator: Exists
 
-    * Requires that a node not have the ``vip`` label::
+    * Requires that a node not have the ``ssd`` label::
 
         node_selectors:
-          vip:
+          ssd:
             - operator: DoesNotExist
 
     * Requires that a node have a label ``priority`` with a value greater than 1

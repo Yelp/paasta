@@ -2665,26 +2665,13 @@ def test_get_pod_hostname(pod_node_name, node, expected):
     assert hostname == expected
 
 
-@mock.patch("paasta_tools.kubernetes_tools.kube_client", autospec=True)
 @pytest.mark.parametrize(
-    "label,version_info,expected",
+    "label,expected",
     [
-        ("a_random_label", None, "a_random_label"),  # non-special case
-        (  # instance_type -> beta k8s label
-            "instance_type",
-            mock.Mock(major="1", minor="16"),
-            "beta.kubernetes.io/instance-type",
-        ),
-        (  # instance_type -> non-beta k8s label
-            "instance_type",
-            mock.Mock(major="1", minor="17"),
-            "node.kubernetes.io/instance-type",
-        ),
-        ("habitat", None, "yelp.com/habitat"),  # hiera case
+        ("a_random_label", "a_random_label"),  # non-special case
+        ("instance_type", "node.kubernetes.io/instance-type"),  # instance_type
+        ("habitat", "yelp.com/habitat"),  # hiera case
     ],
 )
-def test_to_node_label(mock_client, label, version_info, expected):
-    mock_client.VersionApi.return_value = mock.Mock(
-        get_code=mock.Mock(return_value=version_info)
-    )
+def test_to_node_label(label, expected):
     assert kubernetes_tools.to_node_label(label) == expected
