@@ -1,3 +1,12 @@
+paasta-tools (0.95.21) xenial; urgency=medium
+
+  * 0.95.21 tagged with 'make release'
+    Commit: Merge pull request #2731 from Yelp/u/enocht/PAASTA-
+    16333_pause_service_autoscaler_for_k8s  pause HPA for kubernetes
+    services using zk
+
+ -- Enoch Tang <enocht@yelp.com>  Wed, 08 Apr 2020 08:30:59 -0700
+
 paasta-tools (0.95.20) xenial; urgency=medium
 
   * 0.95.20 tagged with 'make release'
