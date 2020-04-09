@@ -75,6 +75,10 @@ class KubernetesClusterConnector(ClusterConnector):
         unschedulable_pods = []
         for pod in self._get_pending_pods():
             is_unschedulable = False
+            if not pod.status or not pod.status.conditions:
+                logger.info('No conditions in pod status, skipping')
+                continue
+
             for condition in pod.status.conditions:
                 if condition.reason == 'Unschedulable':
                     is_unschedulable = True
