@@ -82,7 +82,27 @@ def pod3():
 
 
 @pytest.fixture
-def mock_cluster_connector(pod1, pod2, pod3):
+def pod5():
+    return V1Pod(
+        metadata=V1ObjectMeta(name='pod3', annotations=dict()),
+        status=V1PodStatus(
+            phase='Pending',
+            conditions=None,
+        ),
+        spec=V1PodSpec(
+            containers=[
+                V1Container(
+                    name='container2',
+                    resources=V1ResourceRequirements(requests={'cpu': '1.5'})
+                )
+            ],
+            node_selector={'clusterman.com/pool': 'bar'}
+        )
+    )
+
+
+@pytest.fixture
+def mock_cluster_connector(pod1, pod2, pod3, pod5):
     with mock.patch('clusterman.kubernetes.kubernetes_cluster_connector.kubernetes'), \
             mock.patch('clusterman.kubernetes.kubernetes_cluster_connector.staticconf'):
         mock_cluster_connector = KubernetesClusterConnector('kubernetes-test', 'bar')
@@ -106,9 +126,9 @@ def mock_cluster_connector(pod1, pod2, pod3):
         mock_cluster_connector._pods_by_ip = {
             '10.10.10.1': [],
             '10.10.10.2': [pod1, pod2],
-            '10.10.10.3': [pod4],
+            '10.10.10.3': [pod4, pod5],
         }
-        mock_cluster_connector._pods = [pod1, pod2, pod3, pod4]
+        mock_cluster_connector._pods = [pod1, pod2, pod3, pod4, pod5]
         return mock_cluster_connector
 
 
@@ -133,7 +153,7 @@ def test_total_cpus(mock_cluster_connector):
 
 
 def test_get_pending_pods(mock_cluster_connector):
-    assert len(mock_cluster_connector._get_pending_pods()) == 1
+    assert len(mock_cluster_connector._get_pending_pods()) == 2
 
 
 def test_get_unschedulable_pods(mock_cluster_connector):
