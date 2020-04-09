@@ -975,7 +975,6 @@ def mock_kubernetes_status():
         running_instance_count=2,
         expected_instance_count=2,
         deploy_status="Running",
-        deploy_status_message="some reason",
         bounce_method="crossover",
         create_timestamp=1562963508,
         namespace="paasta",

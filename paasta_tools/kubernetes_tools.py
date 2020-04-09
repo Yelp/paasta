@@ -54,7 +54,6 @@ from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
-from kubernetes.client import V1Event
 from kubernetes.client import V1ExecAction
 from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
@@ -94,7 +93,6 @@ from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta1MetricSpec
 from kubernetes.client import V2beta1PodsMetricSource
 from kubernetes.client import V2beta1ResourceMetricSource
-from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 
@@ -146,7 +144,6 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 KUBERNETES_NAMESPACE = "paasta"
-MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
     "region",
     "superregion",
@@ -343,7 +340,6 @@ class KubeClient:
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
         self.autoscaling = kube_client.AutoscalingV2beta1Api()
-        self.request = kube_client.ApiClient().request
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -1911,96 +1907,13 @@ def update_stateful_set(
     )
 
 
-def get_events_for_object(
-    kube_client: KubeClient,
-    obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
-    kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
-) -> List[V1Event]:
-    host = KubeConfiguration().host
-
-    # The python kubernetes client doesn't support the V1Events API
-    # yet, so we have to make the request by hand (we need the V1Events
-    # API so that we can query by the involvedObject.name/kind)
-    #
-    # Also, as best as I can tell, the list_namespaced_event API call under the
-    # CoreV1 API does _not_ return the events that we're interested in.
-    events = kube_client.request(
-        "GET",
-        f"{host}/api/v1/namespaces/{obj.metadata.namespace}/events",
-        query_params={
-            "fieldSelector": f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
-            "limit": MAX_EVENTS_TO_RETRIEVE,
-        },
-    )
-    parsed_events = json.loads(events.data)
-    return parsed_events["items"]
-
-
-def get_all_events_for_service(
-    app: Union[V1Deployment, V1StatefulSet], kube_client: KubeClient
-) -> List[V1Event]:
-    """ There is no universal API for getting all the events pertaining to
-    a particular object and all its sub-objects, so here we just enumerate
-    all the kinds of objects that we care about, and get all the relevent
-    events for each of those kinds """
-    events: List[V1Event] = []
-    ls = (
-        f'paasta.yelp.com/service={app.metadata.labels["paasta.yelp.com/service"]},'
-        f'paasta.yelp.com/instance={app.metadata.labels["paasta.yelp.com/instance"]}'
-    )
-    for pod in kube_client.core.list_namespaced_pod(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        events += get_events_for_object(kube_client, pod, "Pod")
-
-    for depl in kube_client.deployments.list_namespaced_deployment(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        events += get_events_for_object(kube_client, depl, "Deployment")
-
-    for rs in kube_client.deployments.list_namespaced_replica_set(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        events += get_events_for_object(kube_client, rs, "ReplicaSet")
-
-    for ss in kube_client.deployments.list_namespaced_stateful_set(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        events += get_events_for_object(kube_client, ss, "StatefulSet")
-
-    return sorted(
-        events,
-        key=lambda x: (
-            x.get("lastTimestamp")
-            or x.get("eventTime")
-            or x.get("firstTimestamp")
-            or 0  # prevent errors in case none of the fields exist
-        ),
-    )
-
-
 def get_kubernetes_app_deploy_status(
-    app: Union[V1Deployment, V1StatefulSet],
-    kube_client: KubeClient,
-    desired_instances: int,
-) -> Tuple[int, str]:
-    # Try to get a real status message but we don't ever want to crash if this fails
-    try:
-        event_stream = get_all_events_for_service(app, kube_client)
-        if not event_stream:
-            # events only stick around for so long
-            deploy_message = "Unknown; no recent events"
-        else:
-            deploy_message = event_stream[-1]["message"]
-    except Exception as e:
-        deploy_message = f"Error getting status message: {str(e)}"
-
-    if app.status.ready_replicas is None:
-        if desired_instances == 0:
-            deploy_status = KubernetesDeployStatus.Stopped
-        else:
-            deploy_status = KubernetesDeployStatus.Waiting
-    elif app.status.ready_replicas != desired_instances:
+    app: Union[V1Deployment, V1StatefulSet], desired_instances: int
+) -> int:
+    if (
+        app.status.ready_replicas is None
+        or app.status.ready_replicas < desired_instances
+    ):
         deploy_status = KubernetesDeployStatus.Waiting
     # updated_replicas can currently be None for stateful sets so we may not correctly detect status for now
     # when https://github.com/kubernetes/kubernetes/pull/62943 lands in a release this should work for both:
@@ -2012,7 +1925,7 @@ def get_kubernetes_app_deploy_status(
         deploy_status = KubernetesDeployStatus.Stopped
     else:
         deploy_status = KubernetesDeployStatus.Running
-    return deploy_status, deploy_message
+    return deploy_status
 
 
 class KubernetesDeployStatus:
