@@ -1,3 +1,11 @@
+paasta-tools (0.95.22) xenial; urgency=medium
+
+  * 0.95.22 tagged with 'make release'
+    Commit: Revert "Provide better status updates from Kubernetes"  This
+    reverts commit cf53b1c49a882620df8aeaae58645d05a11b4ad3.
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 09 Apr 2020 10:22:57 -0700
+
 paasta-tools (0.95.21) xenial; urgency=medium
 
   * 0.95.21 tagged with 'make release'
