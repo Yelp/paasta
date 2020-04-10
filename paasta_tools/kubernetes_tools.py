@@ -1936,6 +1936,12 @@ def patch_deployment(
     )
 
 
+def delete_deployment(kube_client: KubeClient, deployment_name: str) -> None:
+    return kube_client.deployments.delete_namespaced_deployment(
+        name=deployment_name, namespace="paasta",
+    )
+
+
 def create_stateful_set(
     kube_client: KubeClient, formatted_stateful_set: V1StatefulSet
 ) -> None:
