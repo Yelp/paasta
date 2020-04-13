@@ -248,7 +248,7 @@ class HealthcheckDict(TypedDict, total=False):
     timeoutSeconds: float
     maxConsecutiveFailures: int
     path: str
-    command: CommandDict
+    command: str
 
 
 # These are more-or-less duplicated from native_service_config, but this code uses camelCase, not snake_case.
@@ -845,7 +845,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 HealthcheckDict(
                     {
                         "protocol": "COMMAND",
-                        "command": {"value": self.get_healthcheck_cmd()},
+                        "command": self.get_healthcheck_cmd(),
                         "gracePeriodSeconds": graceperiodseconds,
                         "intervalSeconds": intervalseconds,
                         "timeoutSeconds": timeoutseconds,
