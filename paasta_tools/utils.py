@@ -1779,6 +1779,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dockercfg_location: str
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
+    enable_envoy_readiness_check: bool
     enforce_disk_quota: bool
     envoy_admin_domain_name: str
     envoy_admin_endpoint_format: str
@@ -1797,6 +1798,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: str
+    readiness_check_script: str
     paasta_native: PaastaNativeConfig
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
@@ -2295,6 +2297,10 @@ class SystemPaastaConfig:
         return self.config_dict.get(
             "nerve_readiness_check_script", "/check_smartstack_up.sh"
         )
+
+    def get_readiness_check_script(self) -> str:
+        """Script to check readiness in proxy services"""
+        return self.config_dict.get("readiness_check_script", "/check_readiness.sh")
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get("taskproc", {})

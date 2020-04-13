@@ -1068,6 +1068,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "check_haproxy", True
         )
 
+    def get_enable_envoy_readiness_check(self) -> bool:
+        """Enables a k8s readiness check on the Pod to ensure that all registrations
+        are UP in envoy"""
+        return self.config_dict.get("bounce_health_params", {}).get(
+            "check_envoy", False
+        )
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 

@@ -20,6 +20,7 @@ import pytest
 import requests
 from staticconf.testing import MockConfiguration
 
+from paasta_tools.envoy_tools import are_services_up_in_pod
 from paasta_tools.envoy_tools import ENVOY_DEFAULT_ENABLED
 from paasta_tools.envoy_tools import ENVOY_DEFAULT_FULL_MESH
 from paasta_tools.envoy_tools import ENVOY_FULL_MESH_CONFIG_NAMESPACE
@@ -248,3 +249,304 @@ def test_service_is_full_mesh_true():
         {"service.instance": True}, namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE
     ):
         assert service_is_full_mesh("service.instance")
+
+
+class TestServicesUpInPod:
+    host_ip = "10.1.1.1"
+    pod_ip = "10.40.1.1"
+    pod_port = 8888
+
+    @pytest.fixture
+    def cluster(self):
+        def _make_cluster(health, ip=self.pod_ip):
+            return (
+                {
+                    "eds_health_status": health,
+                    "address": ip,
+                    "port_value": self.pod_port,
+                },
+                False,
+            )
+
+        return _make_cluster
+
+    @pytest.fixture
+    def mock_get_multiple_clusters(self):
+        with mock.patch(
+            "paasta_tools.envoy_tools.get_multiple_clusters", autospec=True
+        ) as mock_get_multiple_clusters:
+            yield mock_get_multiple_clusters
+
+    @pytest.fixture
+    def enable_full_mesh(self, registrations):
+        with MockConfiguration(
+            {registration: True for registration in registrations},
+            namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE,
+        ):
+            yield
+
+    @pytest.fixture
+    def mock_load_system_paasta_config(self, system_paasta_config):
+        with mock.patch(
+            "paasta_tools.envoy_tools.load_system_paasta_config", autospec=True
+        ) as mock_load_system_paasta_config:
+            mock_load_system_paasta_config.return_value = system_paasta_config
+            yield
+
+    def test_are_services_up_on_port_no_clusters(
+        self, mock_load_system_paasta_config, mock_get_multiple_clusters
+    ):
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_all_backends_healthy(
+        self, mock_load_system_paasta_config, mock_get_multiple_clusters, cluster
+    ):
+        mock_get_multiple_clusters.return_value = [
+            cluster("HEALTHY"),
+            cluster("HEALTHY"),
+            cluster("HEALTHY"),
+        ]
+        assert are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_unhealthy_service(
+        self, mock_load_system_paasta_config, mock_get_multiple_clusters, cluster
+    ):
+        mock_get_multiple_clusters.side_effect = [
+            [
+                # service1.instance1
+                cluster("HEALTHY"),
+                cluster("HEALTHY"),
+                cluster("HEALTHY"),
+            ],
+            [
+                # service1.instance2
+                cluster("UNHEALTHY"),
+                cluster("UNHEALTHY"),
+                cluster("UNHEALTHY"),
+            ],
+        ]
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_partial_health_backend(
+        self, mock_load_system_paasta_config, mock_get_multiple_clusters, cluster
+    ):
+        mock_get_multiple_clusters.return_value = [
+            cluster("HEALTHY"),
+            cluster("HEALTHY"),
+            cluster("UNHEALTHY"),
+        ]
+        assert are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_missing_backend(
+        self, mock_load_system_paasta_config, mock_get_multiple_clusters, cluster
+    ):
+        mock_get_multiple_clusters.side_effect = [
+            [cluster("HEALTHY"), cluster("HEALTHY"), cluster("HEALTHY")],
+            [cluster("HEALTHY"), cluster("HEALTHY"), cluster("HEALTHY")],
+            [],
+        ]
+        # all up and present but service1.instance3 not present
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=[
+                "service1.instance1",
+                "service1.instance2",
+                "service1.instance3",
+            ],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    @pytest.mark.parametrize(
+        "registrations", [["service1.instance1", "service1.instance2"]]
+    )
+    def test_are_services_up_on_port_all_backends_healthy_no_frontend(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_multiple_clusters,
+        cluster,
+        enable_full_mesh,
+    ):
+        mock_get_multiple_clusters.side_effect = [
+            [
+                # service1.instance1 backennd
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance1 frontend
+                cluster("HEALTHY"),
+            ],
+            [
+                # service1.instance2 backennd
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [],  # service1.instance2 frontend
+        ]
+
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    @pytest.mark.parametrize(
+        "registrations", [["service1.instance1", "service1.instance2"]]
+    )
+    def test_are_services_up_on_port_all_backends_and_frontends_healthy(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_multiple_clusters,
+        cluster,
+        enable_full_mesh,
+    ):
+        mock_get_multiple_clusters.side_effect = [
+            [
+                # service1.instance1 backennd
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance1 frontend
+                cluster("HEALTHY"),
+            ],
+            [
+                # service1.instance2 backennd
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance2 frontend
+                cluster("HEALTHY"),
+            ],
+        ]
+
+        assert are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    @pytest.mark.parametrize(
+        "registrations", [["service1.instance1", "service1.instance2"]]
+    )
+    def test_are_services_up_on_port_all_backends_healthy_frontend_unhealthy(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_multiple_clusters,
+        cluster,
+        enable_full_mesh,
+    ):
+        mock_get_multiple_clusters.side_effect = [
+            [
+                # service1.instance1 backennd
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance1 frontend
+                cluster("UNHEALTHY"),
+            ],
+            [
+                # service1.instance2 backennd
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance2 frontend
+                cluster("HEALTHY"),
+            ],
+        ]
+
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    @pytest.mark.parametrize(
+        "registrations", [["service1.instance1", "service1.instance2"]]
+    )
+    def test_are_services_up_on_port_unhealthy_backend_healthy_frontend(
+        self,
+        mock_load_system_paasta_config,
+        mock_get_multiple_clusters,
+        cluster,
+        enable_full_mesh,
+    ):
+        mock_get_multiple_clusters.side_effect = [
+            [
+                # service1.instance1
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+                cluster("HEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance1 frontend
+                cluster("HEALTHY"),
+            ],
+            [
+                # service1.instance2
+                cluster("UNHEALTHY", ip=self.host_ip),
+                cluster("UNHEALTHY", ip=self.host_ip),
+                cluster("UNHEALTHY", ip=self.host_ip),
+            ],
+            [
+                # service1.instance2 frontend
+                cluster("HEALTHY"),
+            ],
+        ]
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            registrations=["service1.instance1", "service1.instance2"],
+            host_ip=self.host_ip,
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )

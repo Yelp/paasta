@@ -34,6 +34,7 @@ from mypy_extensions import TypedDict
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import get_user_agent
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -317,3 +318,81 @@ def build_envoy_location_dict(
         "backends": envoy_backends,
         "is_proxied_through_casper": is_proxied_through_casper,
     }
+
+
+def are_services_up_in_pod(
+    envoy_host: str,
+    envoy_admin_port: int,
+    registrations: Collection[str],
+    host_ip: str,
+    pod_ip: str,
+    pod_port: int,
+) -> bool:
+    """Returns whether a service in a k8s pod is reachable via envoy
+
+    :param envoy_host: The host that this check should contact for replication information.
+    :param envoy_admin_port: The port that Envoy's admin interface is listening on
+    :param registrations: The service_name.instance_name of the services
+    :param host_ip: IP of the host where the pod lives
+    :param pod_ip: IP of the pod itself
+    :param pod_port: The port to reach the service in the pod
+    """
+    services_with_atleast_one_backend_up = {
+        registration: False for registration in registrations
+    }
+    services_with_atleast_one_frontend_up = {
+        registration: False for registration in registrations
+    }
+
+    # Needed to find envoy clusters
+    settings.system_paasta_config = load_system_paasta_config()
+
+    for registration in registrations:
+        backends = get_backends(
+            registration, envoy_host=envoy_host, envoy_admin_port=envoy_admin_port
+        )
+
+        if service_is_full_mesh(registration):
+            # With full mesh, there should exist
+            # - an ingress cluster with a single backend matching the
+            # pod ip and container port
+            # - an egress cluster with one of the backends matching the
+            # host ip and an unknown port
+
+            for be in backends:
+                if (
+                    be[0]["eds_health_status"] == "HEALTHY"
+                    and be[0]["address"] == host_ip
+                ):
+                    services_with_atleast_one_backend_up[registration] = True
+
+            frontends = get_frontends(
+                registration, envoy_host=envoy_host, envoy_admin_port=envoy_admin_port,
+            )
+
+            for fe in frontends:
+                if (
+                    fe[0]["eds_health_status"] == "HEALTHY"
+                    and fe[0]["address"] == pod_ip
+                    and fe[0]["port_value"] == pod_port
+                ):
+                    services_with_atleast_one_frontend_up[registration] = True
+        else:
+            # With no full mesh, there should exist
+            # - an egress cluster with one of the backends matching the
+            # pod ip and container port
+
+            for be in backends:
+                if (
+                    be[0]["eds_health_status"] == "HEALTHY"
+                    and be[0]["address"] == pod_ip
+                    and be[0]["port_value"] == pod_port
+                ):
+                    services_with_atleast_one_backend_up[registration] = True
+
+            # We don't need to validate frontends
+            services_with_atleast_one_frontend_up[registration] = True
+
+    return all(services_with_atleast_one_backend_up.values()) and all(
+        services_with_atleast_one_frontend_up.values()
+    )
