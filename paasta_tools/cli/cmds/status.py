@@ -1194,7 +1194,12 @@ def print_kubernetes_status(
                 if getattr(metric, "current_value") is None
                 else getattr(metric, "current_value")
             )
-            metrics_table.append([metric["name"], current_metric, metric.target_value])
+            target_metric = (
+                NA
+                if getattr(metric, "target_value") is None
+                else getattr(metric, "target_value")
+            )
+            metrics_table.append([metric["name"], current_metric, target_metric])
         output.extend(["         " + s for s in format_table(metrics_table)])
 
     if kubernetes_status.smartstack is not None:
