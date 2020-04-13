@@ -21,11 +21,14 @@ import requests
 from staticconf.testing import MockConfiguration
 
 from paasta_tools.envoy_tools import ENVOY_DEFAULT_ENABLED
+from paasta_tools.envoy_tools import ENVOY_DEFAULT_FULL_MESH
+from paasta_tools.envoy_tools import ENVOY_FULL_MESH_CONFIG_NAMESPACE
 from paasta_tools.envoy_tools import ENVOY_TOGGLES_CONFIG_NAMESPACE
 from paasta_tools.envoy_tools import get_backends
 from paasta_tools.envoy_tools import get_casper_endpoints
 from paasta_tools.envoy_tools import get_frontends
 from paasta_tools.envoy_tools import match_backends_and_tasks
+from paasta_tools.envoy_tools import service_is_full_mesh
 from paasta_tools.envoy_tools import service_is_in_envoy
 
 
@@ -219,3 +222,29 @@ def test_service_is_in_envoy_true():
         {"service.instance": True}, namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE
     ):
         assert service_is_in_envoy("service.instance")
+
+
+def test_service_is_full_mesh_no_config():
+    assert (
+        service_is_full_mesh("service.instance", config_file="does.not.exist")
+        == ENVOY_DEFAULT_FULL_MESH
+    )
+
+
+def test_service_is_full_mesh_default():
+    with MockConfiguration({}, namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE):
+        assert service_is_full_mesh("service.instance") == ENVOY_DEFAULT_FULL_MESH
+
+
+def test_service_is_full_mesh_false():
+    with MockConfiguration(
+        {"service.instance": False}, namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE
+    ):
+        assert not service_is_full_mesh("service.instance")
+
+
+def test_service_is_full_mesh_true():
+    with MockConfiguration(
+        {"service.instance": True}, namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE
+    ):
+        assert service_is_full_mesh("service.instance")

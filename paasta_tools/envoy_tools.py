@@ -40,6 +40,9 @@ from paasta_tools.utils import SystemPaastaConfig
 ENVOY_TOGGLES_CONFIG_NAMESPACE = "envoy_toggles"
 ENVOY_TOGGLES_CONFIG_FILE = "/nail/srv/configs/envoy_toggles.yaml"
 ENVOY_DEFAULT_ENABLED = False
+ENVOY_FULL_MESH_CONFIG_NAMESPACE = "envoy_full_mesh_toggles"
+ENVOY_FULL_MESH_CONFIG_FILE = "/nail/srv/configs/envoy_full_mesh_toggles.yaml"
+ENVOY_DEFAULT_FULL_MESH = False
 
 
 EnvoyBackend = TypedDict(
@@ -71,6 +74,26 @@ def service_is_in_envoy(
         service_name,
         default=ENVOY_DEFAULT_ENABLED,
         namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE,
+    )
+
+    return envoy_enabled
+
+
+def service_is_full_mesh(
+    service_name: str, config_file: str = ENVOY_FULL_MESH_CONFIG_FILE
+) -> bool:
+    try:
+        staticconf.YamlConfiguration(
+            config_file, namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE
+        )
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+
+    envoy_enabled = staticconf.get_bool(
+        service_name,
+        default=ENVOY_DEFAULT_FULL_MESH,
+        namespace=ENVOY_FULL_MESH_CONFIG_NAMESPACE,
     )
 
     return envoy_enabled
