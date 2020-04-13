@@ -106,11 +106,19 @@ specify the following options:
     validate that the bind mounts are "safe".
 
 
-``Placement Options (Constraints)``
------------------------------------
+Placement Options
+-----------------
 
-Constraint options control how Mesos schedules a task, whether it is scheduled by
-Marathon, Tron, or ``paasta remote-run``.
+Placement options provide control over how PaaSTA schedules a task, whether it
+is scheduled by Marathon (on Mesos), Kubernetes, Tron, or ``paasta remote-run``.
+Most commonly, it is used to restrict tasks to specific locations.
+
+.. _general-placement-options:
+
+General
+^^^^^^^
+
+These options are applicable to tasks scheduled through Mesos or Kubernetes.
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
@@ -126,6 +134,83 @@ Marathon, Tron, or ``paasta remote-run``.
     is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
     a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
     of whitelisting may be specified.
+
+  * ``pool``: The pool of machines a PaaSTA app runs in. If no pool is set,
+    an app will automatically be set to run in ``default`` pool.
+
+    Warning: In order for an service to be launched in a particular pool, there
+    *must* exist some nodes that already exist with that particular
+    pool attribute set.
+
+.. _k8s-placement-options:
+
+Kubernetes
+^^^^^^^^^^
+
+These options are only applicable to tasks scheduled on Kubernetes.
+
+  * ``node_selectors``: A map of labels a node is required to have for a task
+    to be launched on said node. There are several ways to define a selector.
+    The simplest is a key-value pair. For example, this selector restricts a
+    task to c3.8xlarge instances::
+
+      node_selectors:
+        instance_type: c3.8xlarge
+
+    The value can also be a list of multiple values. For example, this selector
+    restricts a task to both c3.8xlarge and m5.2xlarge instances::
+
+      node_selectors:
+        instance_type: ["c3.8xlarge", "m5.2xlarge"]
+
+    For more complex cases, an operator, and optionally a value (or values) must
+    be set. Here are some examples:
+
+    * Restricts a task to instances that are not c3.8xlarges::
+
+        node_selectors:
+          instance_type:
+            - operator: NotIn
+              values: ["c3.8xlarge"]
+
+    * Requires that a node have the ``ssd`` label::
+
+        node_selectors:
+          ssd:
+            - operator: Exists
+
+    * Requires that a node not have the ``ssd`` label::
+
+        node_selectors:
+          ssd:
+            - operator: DoesNotExist
+
+    * Requires that a node have a label ``priority`` with a value greater than 1
+      and less than 5::
+
+        node_selectors:
+          priority:
+            - operator: Gt
+              value: 1
+            - operator: Lt
+              value: 5
+
+    .. note::
+
+      The label ``instance_type`` is special. If set as a node selector,
+      PaaSTA will automatically convert it to a canonical version set by
+      Kubernetes on all AWS nodes.
+
+For more information on selector operators, see the official Kubernetes
+documentation on `node affinities
+<https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.
+
+.. _mesos-placement-options:
+
+Mesos
+^^^^^
+
+These options are applicable only to tasks scheduled on Mesos.
 
   * ``constraints``: Overrides the default placement constraints for services.
     Should be defined as an array of arrays (E.g ``[["habitat", "GROUP_BY"]]``
@@ -145,18 +230,6 @@ Marathon, Tron, or ``paasta remote-run``.
     constraints instead of replacing them. See ``constraints`` for details on
     format and the default constraints.
 
-  * ``pool``: Changes the "pool" constrained automatically added to all PaaSTA
-    Marathon apps. The default pool is ``default``, which equates to::
-
-       ["pool", "LIKE", "default"]
-
-    This constraint is automatically appended to the list of constraints for
-    a service unless overridden with the ``constraints`` input.
-
-    Warning: In order for an service to be launched in a particular pool, there
-    *must* exist some Mesos slaves that already exist with that particular
-    pool attribute set.
-
 ``kubernetes-[clustername].yaml``
 -------------------------------
 
@@ -173,7 +246,8 @@ instance MAY have:
 
   * Anything in the `Common Settings`_.
 
-  * Only ``pool`` from `Placement Options (Constraints)`_.
+  * Anything from :ref:`General Placement Options <general-placement-options>`
+    and :ref:`Kubernetes Placement Options <k8s-placement-options>`.
 
   * ``cap_add``: List of capabilities that are passed to Docker. Defaults
     to empty list. Example::
@@ -338,7 +412,8 @@ instance MAY have:
 
   * Anything in the `Common Settings`_.
 
-  * Anything in the `Placement Options (Constraints)`_.
+  * Anything from :ref:`General Placement Options <general-placement-options>`
+    and :ref:`Mesos Placement Options <mesos-placement-options>`.
 
   * ``cap_add``: List of capabilities that are passed to Docker. Defaults
     to empty list. Example::
@@ -590,7 +665,9 @@ Each Tron **action** of a job MAY specify the following:
 
   * Anything in the `Common Settings`_.
 
-  * Anything in the `Placement Options (Constraints)`_.
+  * Anything from :ref:`General Placement Options <general-placement-options>`
+    and :ref:`Mesos Placement Options <mesos-placement-options>` (currently, Tron
+    only supports Mesos workloads).
 
   * ``service``: Uses a docker image from different service. When ``service`` is set
     for an action, that setting takes precedence over what is set for the job.
