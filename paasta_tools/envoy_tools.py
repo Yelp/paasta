@@ -99,21 +99,52 @@ def get_backends(
         services = [service]
     else:
         services = None
-    return get_multiple_backends(
-        services, envoy_host=envoy_host, envoy_admin_port=envoy_admin_port,
+    return get_multiple_clusters(
+        services,
+        envoy_host=envoy_host,
+        envoy_admin_port=envoy_admin_port,
+        cluster_type="egress",
     )
 
 
-def get_multiple_backends(
-    services: Optional[Collection[str]], envoy_host: str, envoy_admin_port: int,
-):
-    """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of backends.
+def get_frontends(
+    service: str, envoy_host: str, envoy_admin_port: int,
+) -> List[Tuple[EnvoyBackend, bool]]:
+    """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of frontends.
 
-    :param services: If None, return backends for all services, otherwise only return backends for these particular
+    :param service: If None, return frontends for all services, otherwise only return frontends for this particular
+                    service.
+    :param envoy_host: The host that this check should contact for replication information.
+    :param envoy_admin_port: The port that Envoy's admin interface is listening on
+    :returns frontends: A list of dicts representing the frontends of all
+                       services or the requested service
+    """
+    if service:
+        services = [service]
+    else:
+        services = None
+    return get_multiple_clusters(
+        services,
+        envoy_host=envoy_host,
+        envoy_admin_port=envoy_admin_port,
+        cluster_type="ingress",
+    )
+
+
+def get_multiple_clusters(
+    services: Optional[Collection[str]],
+    envoy_host: str,
+    envoy_admin_port: int,
+    cluster_type: str,
+):
+    """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of clusters.
+
+    :param services: If None, return clusters for all services, otherwise only return clusters for these particular
                      services.
     :param envoy_host: The host that this check should contact for replication information.
     :param envoy_admin_port: The port that Envoy's admin interface is listening on
-    :returns backends: A list of dicts representing the backends of all
+    :param cluster_type: One of "ingress" or "egress"
+    :returns clusters: A list of dicts representing the clusters of all
                        services or the requested service
     """
     clusters_info = retrieve_envoy_clusters(
@@ -124,14 +155,16 @@ def get_multiple_backends(
 
     casper_endpoints = get_casper_endpoints(clusters_info)
 
-    backends: List[Tuple[EnvoyBackend, bool]] = []
+    clusters: List[Tuple[EnvoyBackend, bool]] = []
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
-            if cluster_status["name"].endswith(".egress_cluster"):
-                service_name = cluster_status["name"][: -len(".egress_cluster")]
+            if cluster_status["name"].endswith(f".{cluster_type}_cluster"):
+
+                # Extract service name from the cluster name
+                service_name = ".".join(cluster_status["name"].split(".", 3)[0:2])
 
                 if services is None or service_name in services:
-                    cluster_backends = []
+                    cluster_sets = []
                     casper_endpoint_found = False
                     for host_status in cluster_status["host_statuses"]:
                         address = host_status["address"]["socket_address"]["address"]
@@ -139,8 +172,8 @@ def get_multiple_backends(
                             "port_value"
                         ]
 
-                        # Check if this endpoint is actually a casper backend
-                        # If so, omit from the service's list of backends
+                        # Check if this endpoint is actually a casper backend (only applies for egress)
+                        # If so, omit from the service's list of clusters
                         if not service_name.startswith("spectre."):
                             if (address, port_value) in casper_endpoints:
                                 casper_endpoint_found = True
@@ -152,7 +185,7 @@ def get_multiple_backends(
                             # Default to the raw IP address if we can't lookup the hostname
                             hostname = address
 
-                        cluster_backends.append(
+                        cluster_sets.append(
                             (
                                 EnvoyBackend(
                                     address=address,
@@ -166,8 +199,8 @@ def get_multiple_backends(
                                 casper_endpoint_found,
                             )
                         )
-                    backends += cluster_backends
-    return backends
+                    clusters += cluster_sets
+    return clusters
 
 
 def match_backends_and_tasks(
@@ -178,7 +211,7 @@ def match_backends_and_tasks(
     be included. If a task's port does not match with any backends, (None, task) will be included.
 
     :param backends: An iterable of Envoy backend dictionaries, e.g. the list returned by
-                     envoy_tools.get_multiple_backends.
+                     envoy_tools.get_multiple_clusters.
     :param tasks: An iterable of MarathonTask objects.
     """
 

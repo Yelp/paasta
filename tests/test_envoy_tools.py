@@ -13,6 +13,7 @@
 # limitations under the License.
 import json
 import os
+import socket
 
 import mock
 import pytest
@@ -20,6 +21,7 @@ import requests
 
 from paasta_tools.envoy_tools import get_backends
 from paasta_tools.envoy_tools import get_casper_endpoints
+from paasta_tools.envoy_tools import get_frontends
 from paasta_tools.envoy_tools import match_backends_and_tasks
 
 
@@ -75,6 +77,35 @@ def test_get_backends(mock_paasta_tools_settings):
                 ),
             ]
             assert expected == get_backends("service1.main", "host", 123)
+
+
+def test_get_frontends(mock_paasta_tools_settings):
+    testdir = os.path.dirname(os.path.realpath(__file__))
+    testdata = os.path.join(testdir, "envoy_admin_clusters_snapshot.txt")
+    with open(testdata, "r") as fd:
+        mock_envoy_admin_clusters_data = json.load(fd)
+
+    mock_response = mock.Mock()
+    mock_response.json.return_value = mock_envoy_admin_clusters_data
+    mock_get = mock.Mock(return_value=(mock_response))
+
+    with mock.patch.object(requests.Session, "get", mock_get):
+        with mock.patch(
+            "socket.gethostbyaddr", side_effect=socket.herror, autospec=True,
+        ):
+            expected = [
+                (
+                    {
+                        "address": "0.0.0.0",
+                        "port_value": 8888,
+                        "hostname": "0.0.0.0",
+                        "eds_health_status": "HEALTHY",
+                        "weight": 1,
+                    },
+                    False,
+                ),
+            ]
+            assert expected == get_frontends("service1.main", "host", 123)
 
 
 def test_get_casper_endpoints():

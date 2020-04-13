@@ -1,6 +1,52 @@
 {
  "cluster_statuses": [
   {
+   "name": "service1.main.0.0.0.0.8888.ingress_cluster",
+   "added_via_api": true,
+   "host_statuses": [
+    {
+     "address": {
+      "socket_address": {
+       "address": "0.0.0.0",
+       "port_value": 8888
+      }
+     },
+     "stats": [
+      {
+       "name": "cx_connect_fail"
+      },
+      {
+       "name": "cx_total"
+      },
+      {
+       "name": "rq_error"
+      },
+      {
+       "name": "rq_success"
+      },
+      {
+       "name": "rq_timeout"
+      },
+      {
+       "name": "rq_total"
+      },
+      {
+       "type": "GAUGE",
+       "name": "cx_active"
+      },
+      {
+       "type": "GAUGE",
+       "name": "rq_active"
+      }
+     ],
+     "health_status": {
+      "eds_health_status": "HEALTHY"
+     },
+     "weight": 1
+    }
+   ]
+  },
+  {
    "name": "service1.main.egress_cluster",
    "added_via_api": true,
    "host_statuses": [
