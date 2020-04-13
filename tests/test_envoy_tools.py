@@ -18,11 +18,15 @@ import socket
 import mock
 import pytest
 import requests
+from staticconf.testing import MockConfiguration
 
+from paasta_tools.envoy_tools import ENVOY_DEFAULT_ENABLED
+from paasta_tools.envoy_tools import ENVOY_TOGGLES_CONFIG_NAMESPACE
 from paasta_tools.envoy_tools import get_backends
 from paasta_tools.envoy_tools import get_casper_endpoints
 from paasta_tools.envoy_tools import get_frontends
 from paasta_tools.envoy_tools import match_backends_and_tasks
+from paasta_tools.envoy_tools import service_is_in_envoy
 
 
 @pytest.fixture
@@ -189,3 +193,29 @@ def test_match_backends_and_tasks():
             return tuple(sorted((t[0] or {}).items())), t[1]
 
         assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
+
+
+def test_service_is_in_envoy_no_config():
+    assert (
+        service_is_in_envoy("service.instance", config_file="does.not.exist")
+        == ENVOY_DEFAULT_ENABLED
+    )
+
+
+def test_service_is_in_envoy_default():
+    with MockConfiguration({}, namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE):
+        assert service_is_in_envoy("service.instance") == ENVOY_DEFAULT_ENABLED
+
+
+def test_service_is_in_envoy_false():
+    with MockConfiguration(
+        {"service.instance": False}, namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE
+    ):
+        assert not service_is_in_envoy("service.instance")
+
+
+def test_service_is_in_envoy_true():
+    with MockConfiguration(
+        {"service.instance": True}, namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE
+    ):
+        assert service_is_in_envoy("service.instance")

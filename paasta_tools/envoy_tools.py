@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
+import errno
 import socket
 from typing import AbstractSet
 from typing import Any
@@ -27,12 +28,18 @@ from typing import Set
 from typing import Tuple
 
 import requests
+import staticconf
 from mypy_extensions import TypedDict
 
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import SystemPaastaConfig
+
+
+ENVOY_TOGGLES_CONFIG_NAMESPACE = "envoy_toggles"
+ENVOY_TOGGLES_CONFIG_FILE = "/nail/srv/configs/envoy_toggles.yaml"
+ENVOY_DEFAULT_ENABLED = False
 
 
 EnvoyBackend = TypedDict(
@@ -47,6 +54,26 @@ EnvoyBackend = TypedDict(
     },
     total=False,
 )
+
+
+def service_is_in_envoy(
+    service_name: str, config_file: str = ENVOY_TOGGLES_CONFIG_FILE
+) -> bool:
+    try:
+        staticconf.YamlConfiguration(
+            config_file, namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE
+        )
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+
+    envoy_enabled = staticconf.get_bool(
+        service_name,
+        default=ENVOY_DEFAULT_ENABLED,
+        namespace=ENVOY_TOGGLES_CONFIG_NAMESPACE,
+    )
+
+    return envoy_enabled
 
 
 def retrieve_envoy_clusters(
