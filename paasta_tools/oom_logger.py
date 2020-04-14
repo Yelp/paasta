@@ -46,13 +46,18 @@ from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import load_system_paasta_config
 
 
+# Sorry to any non-yelpers but this won't
+# do much as our metrics and logging libs
+# are not open source
 try:
     import yelp_meteorite
 except ImportError:
-    # Sorry to any non-yelpers but you won't
-    # get metrics emitted as our metrics lib
-    # is currently not open source
     yelp_meteorite = None
+
+try:
+    from clog.loggers import ScribeLogger
+except ImportError:
+    ScribeLogger = None
 
 
 LogLine = namedtuple(
@@ -179,11 +184,10 @@ def send_sfx_event(service, instance, cluster):
 
 
 def main():
-    try:
-        from clog.loggers import ScribeLogger
-    except ImportError:
+    if ScribeLogger is None:
         print("Scribe logger unavailable, exiting.", file=sys.stderr)
         sys.exit(1)
+
     scribe_logger = ScribeLogger(host="169.254.255.254", port=1463, retry_interval=5)
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()
