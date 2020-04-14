@@ -1195,7 +1195,6 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/service": mock_get_service.return_value,
                 },
                 name="kurupt-fm",
-                annotations=None,
             )
 
     def test_get_hpa_metric_spec(self):

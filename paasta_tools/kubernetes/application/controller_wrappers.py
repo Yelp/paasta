@@ -294,7 +294,7 @@ class DeploymentWrapper(Application):
                 )
                 self.soa_config.set_min_instances(self.item.spec.replicas)
                 write_autoscaling_paused(kube_client, self.soa_config, self.item, True)
-            elif not is_autoscaling_resumed(self.item):
+            elif not is_autoscaling_resumed(self.soa_config):
                 write_autoscaling_paused(kube_client, self.soa_config, self.item, False)
 
         body = self.soa_config.get_autoscaling_metric_spec(

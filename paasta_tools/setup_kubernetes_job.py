@@ -141,13 +141,18 @@ def setup_kube_deployments(
                 app.kube_deployment.service,
                 app.kube_deployment.instance,
             ) not in existing_apps:
+                log.debug(f"Creating {app} because it does not exist yet.")
                 app.create(kube_client)
-            elif (
-                app.kube_deployment not in existing_kube_deployments
-                or autoscaling_is_paused()
-            ):
+            elif app.kube_deployment not in existing_kube_deployments:
+                log.debug(f"Updating {app} because configs have changed.")
                 app.update(kube_client)
-            elif not autoscaling_is_paused() and not is_autoscaling_resumed(app.item):
+            elif autoscaling_is_paused() and is_autoscaling_resumed(app.soa_config):
+                log.debug(f"Updating {app} because autoscaler needs to be paused.")
+                app.update(kube_client)
+            elif not autoscaling_is_paused() and not is_autoscaling_resumed(
+                app.soa_config
+            ):
+                log.debug(f"Updating {app} because autoscaler needs to be resumed.")
                 app.update(kube_client)
             else:
                 log.debug(f"{app} is up to date, no action taken")

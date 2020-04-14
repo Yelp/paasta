@@ -47,6 +47,7 @@ from paasta_tools.bounce_lib import filter_tasks_in_smartstack
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
+from paasta_tools.kubernetes_tools import get_annotations_for_deployment
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import write_annotation_for_kubernetes_service
@@ -846,10 +847,12 @@ def autoscaling_is_paused():
         return False
 
 
-def is_autoscaling_resumed(formatted_application: Union[V1Deployment, V1StatefulSet]):
-    if formatted_application.metadata.annotations:
-        if "is_paused" in formatted_application.metadata.annotations:
-            return formatted_application.metadata.annotations["is_paused"] == "False"
+def is_autoscaling_resumed(service_config: KubernetesDeploymentConfig):
+    kube_client = KubeClient()
+    annotations = get_annotations_for_deployment(kube_client, service_config)
+    if annotations:
+        if "is_paused" in annotations:
+            return annotations["is_paused"] == "False"
     return True
 
 

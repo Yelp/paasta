@@ -192,6 +192,7 @@ def test_setup_kube_deployment_create_update():
         fake_app.create = fake_create
         fake_app.update = fake_update
         fake_app.item = None
+        fake_app.soa_config = None
         return True, fake_app
 
     with mock.patch(
@@ -330,7 +331,7 @@ def test_setup_kube_deployment_create_update():
 
         # update because autoscaler has been paused
         mock_autoscaling_is_paused.return_value = True
-        mock_is_autoscaling_resumed.return_value = False
+        mock_is_autoscaling_resumed.return_value = True
         fake_create.reset_mock()
         fake_update.reset_mock()
         mock_service_instances = ["kurupt.garage"]
