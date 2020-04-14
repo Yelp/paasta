@@ -136,7 +136,10 @@ log = logging.getLogger(__name__)
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
-CONFIG_HASH_BLACKLIST = {"replicas"}
+CONFIG_HASH_BLACKLIST = {
+    "replicas",
+    "metadata",
+}
 KUBE_DEPLOY_STATEGY_MAP = {
     "crossover": "RollingUpdate",
     "downthenup": "Recreate",
