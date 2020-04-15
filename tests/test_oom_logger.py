@@ -21,6 +21,7 @@ from paasta_tools.oom_logger import capture_oom_events_from_stdin
 from paasta_tools.oom_logger import log_to_scribe
 from paasta_tools.oom_logger import LogLine
 from paasta_tools.oom_logger import main
+from paasta_tools.oom_logger import send_sfx_event
 
 
 @pytest.fixture
@@ -251,8 +252,33 @@ def test_log_to_scribe(log_line):
     )
 
 
+@patch("paasta_tools.oom_logger.get_instance_config", autospec=True)
+@patch("paasta_tools.oom_logger.yelp_meteorite", autospec=None)
+def test_send_sfx_event(mock_meteorite, mock_get_instance_config):
+    service = "foo"
+    instance = "bar"
+    cluster = "baz"
+
+    send_sfx_event(service, instance, cluster)
+
+    expected_dimensions = {
+        "paasta_service": service,
+        "paasta_instance": instance,
+        "paasta_cluster": cluster,
+        "paasta_pool": mock_get_instance_config.return_value.get_pool.return_value,
+    }
+    mock_meteorite.events.emit_event.assert_called_once_with(
+        "paasta.service.oom_events", dimensions=expected_dimensions
+    )
+    mock_meteorite.create_counter.assert_called_once_with(
+        "paasta.service.oom_count", default_dimensions=expected_dimensions
+    )
+    assert mock_meteorite.create_counter.return_value.count.call_count == 1
+
+
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 @patch("paasta_tools.oom_logger.ScribeLogger", autospec=None)
+@patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
 @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_scribe", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
@@ -262,6 +288,7 @@ def test_main(
     mock_log_to_paasta,
     mock_log_to_scribe,
     mock_load_system_paasta_config,
+    mock_send_sfx_event,
     mock_scribelogger,
     mock_sys_stdin,
     sys_stdin,
@@ -281,3 +308,6 @@ def test_main(
     main()
     mock_log_to_paasta.assert_called_once_with(log_line)
     mock_log_to_scribe.assert_called_once_with(scribe_logger, log_line)
+    mock_send_sfx_event.assert_called_once_with(
+        "fake_service", "fake_instance", "fake_cluster"
+    )
