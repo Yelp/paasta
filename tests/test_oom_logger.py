@@ -253,27 +253,37 @@ def test_log_to_scribe(log_line):
 
 
 @patch("paasta_tools.oom_logger.get_instance_config", autospec=True)
-@patch("paasta_tools.oom_logger.yelp_meteorite", autospec=None)
-def test_send_sfx_event(mock_meteorite, mock_get_instance_config):
+def test_send_sfx_event(mock_get_instance_config):
     service = "foo"
     instance = "bar"
     cluster = "baz"
 
-    send_sfx_event(service, instance, cluster)
+    # Try to use the autospec if it's available
+    from paasta_tools.oom_logger import yelp_meteorite
 
-    expected_dimensions = {
-        "paasta_service": service,
-        "paasta_instance": instance,
-        "paasta_cluster": cluster,
-        "paasta_pool": mock_get_instance_config.return_value.get_pool.return_value,
-    }
-    mock_meteorite.events.emit_event.assert_called_once_with(
-        "paasta.service.oom_events", dimensions=expected_dimensions
-    )
-    mock_meteorite.create_counter.assert_called_once_with(
-        "paasta.service.oom_count", default_dimensions=expected_dimensions
-    )
-    assert mock_meteorite.create_counter.return_value.count.call_count == 1
+    if yelp_meteorite is None:
+        autospec = None
+    else:
+        autospec = True
+
+    with patch(
+        "paasta_tools.oom_logger.yelp_meteorite", autospec=autospec
+    ) as mock_meteorite:
+        send_sfx_event(service, instance, cluster)
+
+        expected_dimensions = {
+            "paasta_service": service,
+            "paasta_instance": instance,
+            "paasta_cluster": cluster,
+            "paasta_pool": mock_get_instance_config.return_value.get_pool.return_value,
+        }
+        mock_meteorite.events.emit_event.assert_called_once_with(
+            "paasta.service.oom_events", dimensions=expected_dimensions
+        )
+        mock_meteorite.create_counter.assert_called_once_with(
+            "paasta.service.oom_count", default_dimensions=expected_dimensions
+        )
+        assert mock_meteorite.create_counter.return_value.count.call_count == 1
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
