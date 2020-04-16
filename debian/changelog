@@ -1,3 +1,12 @@
+paasta-tools (0.95.24) xenial; urgency=medium
+
+  * 0.95.24 tagged with 'make release'
+    Commit: Merge pull request #2781 from Yelp/u/enocht/PAASTA-
+    16556_fix_revision_annotation_feedback_loop  Remove annotations from
+    metadata spec and improve pause HPA
+
+ -- Enoch Tang <enocht@yelp.com>  Thu, 16 Apr 2020 12:52:52 -0700
+
 paasta-tools (0.95.23) xenial; urgency=medium
 
   * 0.95.23 tagged with 'make release'
