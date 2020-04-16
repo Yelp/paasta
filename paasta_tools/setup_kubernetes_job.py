@@ -28,7 +28,7 @@ from typing import Sequence
 from typing import Tuple
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
-from paasta_tools.autoscaling.autoscaling_service_lib import is_autoscaling_resumed
+from paasta_tools.autoscaling.autoscaling_service_lib import is_deployment_marked_paused
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
@@ -146,11 +146,13 @@ def setup_kube_deployments(
             elif app.kube_deployment not in existing_kube_deployments:
                 log.debug(f"Updating {app} because configs have changed.")
                 app.update(kube_client)
-            elif autoscaling_is_paused() and is_autoscaling_resumed(app.soa_config):
+            elif autoscaling_is_paused() and not is_deployment_marked_paused(
+                kube_client, app.soa_config
+            ):
                 log.debug(f"Updating {app} because autoscaler needs to be paused.")
                 app.update(kube_client)
-            elif not autoscaling_is_paused() and not is_autoscaling_resumed(
-                app.soa_config
+            elif not autoscaling_is_paused() and is_deployment_marked_paused(
+                kube_client, app.soa_config
             ):
                 log.debug(f"Updating {app} because autoscaler needs to be resumed.")
                 app.update(kube_client)

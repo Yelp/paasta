@@ -847,16 +847,14 @@ def autoscaling_is_paused():
         return False
 
 
-def is_autoscaling_resumed(service_config: KubernetesDeploymentConfig):
-    kube_client = KubeClient()
+def is_deployment_marked_paused(
+    kube_client: KubeClient, service_config: KubernetesDeploymentConfig
+):
     annotations = get_annotations_for_deployment(kube_client, service_config)
-    if annotations:
-        if "is_paused" in annotations:
-            return annotations["is_paused"] == "False"
-    return True
+    return annotations.get("is_paused", "False") == "True"
 
 
-def write_autoscaling_paused(
+def mark_deployment_as_paused(
     kube_client: KubeClient,
     service_config: KubernetesDeploymentConfig,
     formatted_application: Union[V1Deployment, V1StatefulSet],
