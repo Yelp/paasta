@@ -131,7 +131,7 @@ def compose_sensu_status(
     instance_name = f"{instance.service}.{instance.instance}"
     if not is_check_enabled:
         return (Status.OK, f"This check is disabled for {instance_name}.")
-    if len(oom_events) == 0:
+    if not oom_events:
         return (
             Status.OK,
             f"No oom events for {instance_name} in the last {interval_string}.",
