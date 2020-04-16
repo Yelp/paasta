@@ -2201,7 +2201,7 @@ class TestMarathonServiceConfig:
         expected = [
             {
                 "protocol": "COMMAND",
-                "command": {"value": fake_command},
+                "command": fake_command,
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
@@ -2233,7 +2233,7 @@ class TestMarathonServiceConfig:
         expected = [
             {
                 "protocol": "COMMAND",
-                "command": {"value": fake_command},
+                "command": fake_command,
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": fake_timeout,
