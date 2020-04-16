@@ -1039,19 +1039,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
             },
-            annotations=self.get_annotations(),
         )
-
-    def get_annotations(self) -> Optional[Dict]:
-        # fetches annotations if k8s deployments already exists
-        try:
-            kube_client = KubeClient()
-            deployment = kube_client.deployments.read_namespaced_deployment(
-                name=self.get_sanitised_deployment_name(), namespace="paasta"
-            )
-            return deployment.metadata.annotations
-        except Exception:
-            return None
 
     def get_sanitised_deployment_name(self) -> str:
         return get_kubernetes_app_name(self.get_service(), self.get_instance())
@@ -1699,6 +1687,16 @@ def set_instances_for_kubernetes_service(
         )
 
 
+def get_annotations_for_deployment(
+    kube_client: KubeClient, service_config: KubernetesDeploymentConfig
+) -> Dict:
+    name = service_config.get_sanitised_deployment_name()
+    deployment = kube_client.deployments.read_namespaced_deployment(
+        name=name, namespace="paasta"
+    )
+    return deployment.metadata.annotations if deployment.metadata.annotations else {}
+
+
 def write_annotation_for_kubernetes_service(
     kube_client: KubeClient,
     service_config: KubernetesDeploymentConfig,
@@ -1707,7 +1705,6 @@ def write_annotation_for_kubernetes_service(
 ) -> None:
     name = formatted_application.metadata.name
     formatted_application.metadata.annotations = annotation
-    print(annotation)
     if service_config.get_persistent_volumes():
         kube_client.deployments.patch_namespaced_stateful_set(
             name=name, namespace="paasta", body=formatted_application

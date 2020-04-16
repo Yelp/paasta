@@ -192,6 +192,7 @@ def test_setup_kube_deployment_create_update():
         fake_app.create = fake_create
         fake_app.update = fake_update
         fake_app.item = None
+        fake_app.soa_config = None
         return True, fake_app
 
     with mock.patch(
@@ -203,13 +204,13 @@ def test_setup_kube_deployment_create_update():
     ) as mock_list_all_deployments, mock.patch(
         "paasta_tools.setup_kubernetes_job.autoscaling_is_paused", autospec=True
     ) as mock_autoscaling_is_paused, mock.patch(
-        "paasta_tools.setup_kubernetes_job.is_autoscaling_resumed", autospec=True
-    ) as mock_is_autoscaling_resumed:
+        "paasta_tools.setup_kubernetes_job.is_deployment_marked_paused", autospec=True
+    ) as mock_is_deployment_marked_paused:
         mock_client = mock.Mock()
         # No instances created
         mock_service_instances: Sequence[str] = []
         mock_autoscaling_is_paused.return_value = False
-        mock_is_autoscaling_resumed.return_value = True
+        mock_is_deployment_marked_paused.return_value = False
         setup_kube_deployments(
             kube_client=mock_client,
             service_instances=mock_service_instances,
@@ -330,7 +331,7 @@ def test_setup_kube_deployment_create_update():
 
         # update because autoscaler has been paused
         mock_autoscaling_is_paused.return_value = True
-        mock_is_autoscaling_resumed.return_value = False
+        mock_is_deployment_marked_paused.return_value = False
         fake_create.reset_mock()
         fake_update.reset_mock()
         mock_service_instances = ["kurupt.garage"]
@@ -353,7 +354,7 @@ def test_setup_kube_deployment_create_update():
 
         # update because autoscaler has been resumed
         mock_autoscaling_is_paused.return_value = False
-        mock_is_autoscaling_resumed.return_value = False
+        mock_is_deployment_marked_paused.return_value = True
         fake_create.reset_mock()
         fake_update.reset_mock()
         mock_service_instances = ["kurupt.garage"]
