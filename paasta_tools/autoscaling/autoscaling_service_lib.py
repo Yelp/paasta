@@ -269,17 +269,16 @@ def deserialize_historical_load(historical_load_bytes):
     return historical_load
 
 
-async def get_json_body_from_service(host, port, endpoint, timeout=2):
-    async with aiohttp.ClientSession(
-        conn_timeout=timeout, read_timeout=timeout
-    ) as session:
-        async with session.get(
-            f"http://{host}:{port}/{endpoint}", headers={"User-Agent": get_user_agent()}
-        ) as response:
-            return await response.json()
+async def get_json_body_from_service(host, port, endpoint, session):
+    async with session.get(
+        f"http://{host}:{port}/{endpoint}", headers={"User-Agent": get_user_agent()}
+    ) as response:
+        return await response.json()
 
 
-async def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
+async def get_http_utilization_for_a_task(
+    task, service, instance, endpoint, json_mapper, session
+):
     """
     Gets the task utilization by fetching json from an http endpoint
     and applying a function that maps it to a utilization.
@@ -293,21 +292,20 @@ async def get_http_utilization_for_a_task(task, service, endpoint, json_mapper):
     """
     try:
         return json_mapper(
-            await get_json_body_from_service(task.host, task.ports[0], endpoint)
+            await get_json_body_from_service(
+                host=task.host, port=task.ports[0], endpoint=endpoint, session=session
+            )
         )
     except aiohttp.ServerTimeoutError:
         # If we time out querying an endpoint, assume the task is fully loaded
         # This won't trigger in the event of DNS error or when a request is refused
         log.error(
-            "Received a timeout when querying %s on %s:%s. Assuming the service "
-            "is at full utilization." % (service, task.host, task.ports[0])
+            f"Received a timeout when querying {service}.{instance} on {task.host}:{task.ports[0]}. Assuming the service is at full utilization."
         )
         return 1.0
     except Exception as e:
         log.error(
-            "Caught exception when querying {} on {}:{} : {}".format(
-                service, task.host, task.ports[0], str(e)
-            )
+            f"Caught exception when querying {service}.{instance} on {task.host}:{task.ports[0]} : {str(e)}"
         )
 
 
@@ -331,14 +329,27 @@ async def get_http_utilization_for_all_tasks(
     endpoint = endpoint.lstrip("/")
     utilization = []
     service = marathon_service_config.get_service()
+    instance = marathon_service_config.get_instance()
 
-    futures = [
-        asyncio.ensure_future(
-            get_http_utilization_for_a_task(task, service, endpoint, json_mapper)
-        )
-        for task in marathon_tasks
-    ]
-    await asyncio.wait(futures)
+    # Using a single aiohttp session reduces the number of errors seen. Launching
+    # hundreds of unique sessions seems to increase (timeout) errors.
+    # However, using 1 session is slower because the default number of connections
+    # is 100, but still seems to be a sane amount.
+    async with aiohttp.ClientSession(conn_timeout=2, read_timeout=2) as session:
+        futures = [
+            asyncio.ensure_future(
+                get_http_utilization_for_a_task(
+                    task=task,
+                    service=service,
+                    instance=instance,
+                    endpoint=endpoint,
+                    json_mapper=json_mapper,
+                    session=session,
+                )
+            )
+            for task in marathon_tasks
+        ]
+        await asyncio.wait(futures)
 
     for future in futures:
         result = future.result()

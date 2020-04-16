@@ -345,24 +345,19 @@ def test_mesos_cpu_metrics_provider():
 
 @pytest.mark.asyncio
 async def test_get_json_body_from_service():
-    with asynctest.patch(
-        "paasta_tools.autoscaling.autoscaling_service_lib.aiohttp.ClientSession",
-        autospec=True,
-    ) as mock_client_session:
-        mock_get = mock_client_session.return_value.__aenter__.return_value.get
-        mock_get.return_value.__aenter__.return_value.json = asynctest.CoroutineMock(
-            return_value=mock.sentinel.json_body
+    session = asynctest.MagicMock()
+    session.get.return_value.__aenter__.return_value.json = asynctest.CoroutineMock(
+        return_value=mock.sentinel.json_body
+    )
+    assert (
+        await autoscaling_service_lib.get_json_body_from_service(
+            "fake-host", "fake-port", "fake-endpoint", session
         )
-        assert (
-            await autoscaling_service_lib.get_json_body_from_service(
-                "fake-host", "fake-port", "fake-endpoint"
-            )
-            == mock.sentinel.json_body
-        )
-        mock_client_session.assert_called_once_with(conn_timeout=2, read_timeout=2)
-        mock_get.assert_called_once_with(
-            "http://fake-host:fake-port/fake-endpoint", headers={"User-Agent": mock.ANY}
-        )
+        == mock.sentinel.json_body
+    )
+    session.get.assert_called_once_with(
+        "http://fake-host:fake-port/fake-endpoint", headers={"User-Agent": mock.ANY}
+    )
 
 
 def test_get_http_utilization_for_all_tasks():
@@ -435,7 +430,7 @@ def test_get_http_utilization_for_all_tasks_no_data():
                 json_mapper=mock_json_mapper,
             )
         mock_log_error.assert_called_once_with(
-            "Caught exception when querying fake-service on fake_host:30101 : 'Detailed message'"
+            "Caught exception when querying fake-service.fake-instance on fake_host:30101 : 'Detailed message'"
         )
 
 
