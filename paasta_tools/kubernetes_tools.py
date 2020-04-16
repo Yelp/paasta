@@ -1749,6 +1749,12 @@ def pods_for_service_instance(
     ).items
 
 
+def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
+    return kube_client.core.list_pod_for_all_namespaces(
+        field_selector=f"spec.nodeName={node.metadata.name}"
+    ).items
+
+
 def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 
