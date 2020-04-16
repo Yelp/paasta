@@ -16,7 +16,6 @@ import argparse
 import json
 import sys
 import time
-from collections import namedtuple
 from random import choice
 
 from pysensu_yelp import Status
@@ -34,8 +33,6 @@ except ImportError:
 
 
 OOM_EVENTS_STREAM = "tmp_paasta_oom_events"
-
-OOMEvent = namedtuple("OOMEvent", ["hostname", "container_id", "process_name"])
 
 
 def compose_check_name_for_service_instance(check_name, service, instance):
@@ -118,13 +115,7 @@ def latest_oom_events(cluster, superregion, interval=60):
     for e in read_oom_events_from_scribe(cluster, superregion):
         if e["timestamp"] > start_timestamp:
             key = (e["service"], e["instance"])
-            res.setdefault(key, []).append(
-                OOMEvent(
-                    hostname=e.get("hostname", ""),
-                    container_id=e.get("container_id", ""),
-                    process_name=e.get("process_name", ""),
-                )
-            )
+            res.setdefault(key, set()).add(e.get("container_id", ""))
     return res
 
 
@@ -146,13 +137,10 @@ def compose_sensu_status(
             f"No oom events for {instance_name} in the last {interval_string}.",
         )
     elif len(oom_events) >= alert_threshold:
-        process_names = ",".join(
-            sorted({e.process_name for e in oom_events if e.process_name})
-        )
         return (
             Status.CRITICAL,
-            f"The Out Of Memory killer killed {len(oom_events)} processes ({process_names}) "
-            f"in the last {interval_string} in {instance_name} containers.",
+            f"The Out Of Memory killer killed processes for {instance_name} "
+            f"in the last {interval_string}.",
         )
     else:
         # If the number of OOM kills isn't above the alert threshold,
