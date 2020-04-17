@@ -123,8 +123,8 @@ def autoscaling_status(
     )
 
     return KubernetesAutoscalingStatusDict(
-        min_instances=hpa.spec.min_instances,
-        max_instances=hpa.spec.max_instances,
+        min_instances=hpa.spec.min_replicas,
+        max_instances=hpa.spec.max_replicas,
         metrics=metric_stats,
         desired_replicas=hpa.status.desired_replicas,
         last_scale_time=last_scale_time,
