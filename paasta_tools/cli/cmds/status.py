@@ -819,14 +819,14 @@ def build_envoy_backends_table(backends: Iterable[Any]) -> List[str]:
     return format_table(rows)
 
 
-def kubernetes_app_deploy_status_human(status, backoff_seconds=None):
+def kubernetes_app_deploy_status_human(status, message, backoff_seconds=None):
     status_string = kubernetes_tools.KubernetesDeployStatus.tostring(status)
 
-    if status == kubernetes_tools.KubernetesDeployStatus.Waiting:
-        deploy_status = (
-            "%s (new tasks waiting for capacity to become available)"
-            % PaastaColors.red(status_string)
-        )
+    if status in {
+        kubernetes_tools.KubernetesDeployStatus.Waiting,
+        kubernetes_tools.KubernetesDeployStatus.Stopped,
+    }:
+        deploy_status = PaastaColors.red(status_string)
     elif status == kubernetes_tools.KubernetesDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)
     elif status == kubernetes_tools.KubernetesDeployStatus.Running:
@@ -834,6 +834,8 @@ def kubernetes_app_deploy_status_human(status, backoff_seconds=None):
     else:
         deploy_status = status_string
 
+    if message:
+        deploy_status += f" ({message})"
     return deploy_status
 
 
@@ -1130,7 +1132,9 @@ def print_kubernetes_status(
     output.append(f"    State:      {bouncing_status} - Desired state: {desired_state}")
 
     status = KubernetesDeployStatus.fromstring(kubernetes_status.deploy_status)
-    deploy_status = kubernetes_app_deploy_status_human(status)
+    deploy_status = kubernetes_app_deploy_status_human(
+        status, kubernetes_status.deploy_status_message
+    )
 
     output.append(
         "    {}".format(

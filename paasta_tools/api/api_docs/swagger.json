@@ -1211,6 +1211,10 @@
                         "NotRunning"
                     ]
                 },
+                "deploy_status_message": {
+                    "type": "string",
+                    "description": "Reason for the deploy status"
+                },
                 "backoff_seconds": {
                     "type": "integer",
                     "format": "int32",
