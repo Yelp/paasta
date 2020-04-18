@@ -335,7 +335,7 @@ async def get_http_utilization_for_all_tasks(
     # hundreds of unique sessions seems to increase (timeout) errors.
     # However, using 1 session is slower because the default number of connections
     # is 100, but still seems to be a sane amount.
-    async with aiohttp.ClientSession(conn_timeout=2, read_timeout=2) as session:
+    async with aiohttp.ClientSession(conn_timeout=10, read_timeout=10) as session:
         futures = [
             asyncio.ensure_future(
                 get_http_utilization_for_a_task(
