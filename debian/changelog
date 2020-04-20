@@ -1,3 +1,11 @@
+paasta-tools (0.95.26) xenial; urgency=medium
+
+  * 0.95.26 tagged with 'make release'
+    Commit: Merge pull request #2788 from Yelp/session_timeout  Up the
+    timeout for aio session for autoscaling
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 20 Apr 2020 10:23:37 -0700
+
 paasta-tools (0.95.25) xenial; urgency=medium
 
   * 0.95.25 tagged with 'make release'
