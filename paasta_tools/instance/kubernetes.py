@@ -20,6 +20,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
+from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -150,6 +151,7 @@ async def job_status(
 
         for pod in pod_list:
             container_statuses = pod.status.container_statuses or []
+            pod_event_messages = await get_pod_event_messages(client, pod)
             containers = [
                 dict(
                     name=container.name,
@@ -169,6 +171,7 @@ async def job_status(
                     "containers": containers,
                     "reason": pod.status.reason,
                     "message": pod.status.message,
+                    "events": pod_event_messages,
                 }
             )
         for replicaset in replicaset_list:

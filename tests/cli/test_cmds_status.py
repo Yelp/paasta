@@ -1243,6 +1243,7 @@ class TestPrintKubernetesStatus:
                 ready=True,
                 containers=[],
                 message=None,
+                events=[],
             ),
             Struct(
                 name="app_2",
@@ -1252,6 +1253,7 @@ class TestPrintKubernetesStatus:
                 ready=True,
                 containers=[],
                 message=None,
+                events=[],
             ),
             Struct(
                 name="app_3",
@@ -1262,6 +1264,7 @@ class TestPrintKubernetesStatus:
                 containers=[],
                 message="Disk quota exceeded",
                 reason="Evicted",
+                events=[],
             ),
         ]
         mock_kubernetes_status.replicasets = [
@@ -1512,12 +1515,13 @@ class TestFormatKubernetesPodTable:
             containers=[],
             message=None,
             reason=None,
+            events=[],
         )
 
     @pytest.fixture
     def mock_kubernetes_replicaset(self):
         return Struct(
-            name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600
+            name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600,
         )
 
     def test_format_kubernetes_pod_table(
@@ -1556,6 +1560,7 @@ class TestFormatKubernetesPodTable:
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.host = None
+        mock_kubernetes_pod.events = []
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Host deployed to"] == "Unknown"
@@ -1571,6 +1576,7 @@ class TestFormatKubernetesPodTable:
     ):
         mock_kubernetes_pod.phase = phase
         mock_kubernetes_pod.ready = ready
+        mock_kubernetes_pod.events = []
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")
@@ -1583,6 +1589,7 @@ class TestFormatKubernetesPodTable:
     ):
         mock_kubernetes_pod.phase = "Failed"
         mock_kubernetes_pod.reason = "Evicted"
+        mock_kubernetes_pod.events = []
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
@@ -1594,6 +1601,7 @@ class TestFormatKubernetesPodTable:
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.phase = None
+        mock_kubernetes_pod.events = []
         output = format_kubernetes_pod_table([mock_kubernetes_pod])
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.grey("N/A")

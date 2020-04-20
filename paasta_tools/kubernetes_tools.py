@@ -1514,6 +1514,41 @@ async def get_tail_lines_for_kubernetes_container(
     return tail_lines
 
 
+def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
+    try:
+        pod_events = kube_client.core.list_namespaced_event(
+            namespace=pod.metadata.namespace,
+            field_selector=f"involvedObject.name={pod.metadata.name}",
+        )
+        return pod_events.items if pod_events else []
+    except ApiException:
+        return []
+
+
+@async_timeout()
+async def get_pod_event_messages(kube_client: KubeClient, pod: V1Pod) -> List[Dict]:
+    pod_events = get_pod_events(kube_client, pod)
+    pod_event_messages = []
+    if pod_events:
+        for event in pod_events:
+            message = {
+                "message": event.message,
+                "timeStamp": str(event.last_timestamp),
+            }
+            pod_event_messages.append(message)
+    return pod_event_messages
+
+
+def format_pod_event_messages(
+    pod_event_messages: List[Dict], pod_name: str
+) -> List[str]:
+    rows: List[str] = list()
+    rows.append(PaastaColors.blue(f"Pod Events for {pod_name}"))
+    for message in pod_event_messages:
+        rows.append(f"   Event at {message['timeStamp']}: {message['message']}")
+    return rows
+
+
 def format_tail_lines_for_kubernetes_pod(
     pod_containers: Sequence, pod_name: str,
 ) -> List[str]:
@@ -1527,7 +1562,7 @@ def format_tail_lines_for_kubernetes_pod(
             )
             rows.append(PaastaColors.red(f"  {container.tail_lines.error_message}"))
 
-        for stream_name in ("stdout", "stderr"):
+        for stream_name in ("Stdout", "stderr"):
             stream_lines = getattr(container.tail_lines, stream_name, [])
             if len(stream_lines) > 0:
                 rows.append(
