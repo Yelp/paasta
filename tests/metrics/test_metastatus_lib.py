@@ -684,8 +684,8 @@ def test_calculate_resource_utilization_for_kube_nodes():
     )["free"]
 
     assert free.cpus == 480
-    assert int(free.mem) == 730
-    assert int(free.disk) == 180
+    assert free.mem == 730
+    assert free.disk == 180
 
 
 def test_healthcheck_result_for_resource_utilization_ok():
@@ -917,6 +917,7 @@ def test_reserved_maintenence_resources_ignores_non_maintenance():
 
 def test_suffixed_number_value():
     assert metastatus_lib.suffixed_number_value("5k") == 5 * 1000
+    assert metastatus_lib.suffixed_number_value("5m") == int(5 * 1000 ** -1)
     assert metastatus_lib.suffixed_number_value("5M") == 5 * 1000 ** 2
     assert metastatus_lib.suffixed_number_value("5G") == 5 * 1000 ** 3
     assert metastatus_lib.suffixed_number_value("5T") == 5 * 1000 ** 4

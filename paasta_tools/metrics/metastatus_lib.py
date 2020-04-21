@@ -28,7 +28,6 @@ from typing import Tuple
 from typing import TypeVar
 
 import a_sync
-from humanfriendly import parse_size
 from humanize import naturalsize
 from kubernetes.client import V1Node
 from kubernetes.client import V1Pod
@@ -62,7 +61,7 @@ from paasta_tools.utils import print_with_indent
 
 
 DEFAULT_KUBERNETES_CPU_REQUEST = "100m"
-DEFAULT_KUBERNETES_MEMORY_REQUEST = "200MB"
+DEFAULT_KUBERNETES_MEMORY_REQUEST = "200M"
 DEFAULT_KUBERNETES_DISK_REQUEST = "0"
 
 
@@ -256,21 +255,21 @@ class ResourceParser:
     @staticmethod
     def cpus(resources):
         resources = resources or {}
-        cpu_str = resources.get("cpu", DEFAULT_KUBERNETES_CPU_REQUEST)
-        if cpu_str[-1] == "m":
-            return float(cpu_str[:-1]) / 1000
-        else:
-            return float(cpu_str)
+        return suffixed_number_value(
+            resources.get("cpu", DEFAULT_KUBERNETES_CPU_REQUEST)
+        )
 
     @staticmethod
     def mem(resources):
         resources = resources or {}
-        return parse_size(resources.get("memory", DEFAULT_KUBERNETES_MEMORY_REQUEST))
+        return suffixed_number_value(
+            resources.get("memory", DEFAULT_KUBERNETES_MEMORY_REQUEST)
+        )
 
     @staticmethod
     def disk(resources):
         resources = resources or {}
-        return parse_size(
+        return suffixed_number_value(
             resources.get("ephemeral-storage", DEFAULT_KUBERNETES_DISK_REQUEST)
         )
 
@@ -707,6 +706,7 @@ def calculate_resource_utilization_for_slaves(
 
 _IEC_NUMBER_SUFFIXES = {
     "k": 1000,
+    "m": 1000 ** -1,
     "M": 1000 ** 2,
     "G": 1000 ** 3,
     "T": 1000 ** 4,
@@ -725,7 +725,7 @@ def suffixed_number_value(s: str) -> int:
     number, suff = match.groups()
 
     if suff in _IEC_NUMBER_SUFFIXES:
-        return int(number) * _IEC_NUMBER_SUFFIXES[suff]
+        return int(int(number) * _IEC_NUMBER_SUFFIXES[suff])
     else:
         return int(number)
 
