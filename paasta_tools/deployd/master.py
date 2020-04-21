@@ -28,7 +28,6 @@ from paasta_tools.list_marathon_service_instances import (
 )
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.metrics.metrics_lib import get_metrics_interface
-from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
@@ -123,10 +122,6 @@ class DeployDaemon(PaastaThread):
         leader_counter.count()
         self.log.info("Starting all watcher threads")
         self.start_watchers()
-        self.log.info(
-            "All watchers started, now adding all services for initial bounce"
-        )
-        self.add_all_services()
         self.log.info("Prioritising services that we know need a bounce...")
         if self.config.get_deployd_startup_oracle_enabled():
             self.prioritise_bouncing_services()
@@ -189,27 +184,6 @@ class DeployDaemon(PaastaThread):
             )
             worker.start()
             self.workers.append(worker)
-
-    def add_all_services(self) -> None:
-        instances = get_services_for_cluster(
-            cluster=self.config.get_cluster(),
-            instance_type="marathon",
-            soa_dir=DEFAULT_SOA_DIR,
-        )
-        for service, instance in instances:
-            self.instances_to_bounce.put(
-                ServiceInstance(
-                    service=service,
-                    instance=instance,
-                    watcher="daemon_start",
-                    bounce_by=time.time()
-                    + self.config.get_deployd_startup_bounce_deadline(),
-                    wait_until=time.time(),
-                    failures=0,
-                    bounce_start_time=time.time(),
-                    enqueue_time=time.time(),
-                )
-            )
 
     def prioritise_bouncing_services(self) -> None:
         service_instances = get_service_instances_that_need_bouncing(

@@ -87,8 +87,6 @@ class TestDeployDaemon(unittest.TestCase):
             "paasta_tools.deployd.master.DeployDaemon.prioritise_bouncing_services",
             autospec=True,
         ) as mock_prioritise_bouncing_services, mock.patch(
-            "paasta_tools.deployd.master.DeployDaemon.add_all_services", autospec=True
-        ) as mock_add_all_services, mock.patch(
             "paasta_tools.deployd.master.DeployDaemon.start_workers",
             autospec=True,
             side_effect=lambda self: setattr(
@@ -108,7 +106,6 @@ class TestDeployDaemon(unittest.TestCase):
             )
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
-            assert mock_add_all_services.called
             assert not mock_prioritise_bouncing_services.called
             assert mock_start_workers.called
             assert mock_main_loop.called
