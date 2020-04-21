@@ -1342,9 +1342,36 @@ def get_kubernetes_secret_hashes(
     return hashes
 
 
+def get_k8s_pods() -> Mapping[str, Any]:
+    return requests.get("http://127.0.0.1:10255/pods").json()
+
+
+def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
+    """Returns all k8s paasta services, even if not in smartstack. Returns a service, instance, port
+    tuple to match the return value of other similar functions"""
+    services = []
+    try:
+        pods = get_k8s_pods()
+    except requests.exceptions.ConnectionError:
+        log.debug("Failed to connect to the kublet when trying to get pods")
+        return []
+    for pod in pods["items"]:
+        try:
+            service = pod["metadata"]["labels"]["paasta.yelp.com/service"]
+            instance = pod["metadata"]["labels"]["paasta.yelp.com/instance"]
+            services.append((service, instance, 0))
+        except KeyError:
+            log.debug(f"Skipping listing what looks like a non-paasta pod: {pod}")
+    return services
+
+
 def get_kubernetes_services_running_here() -> Sequence[KubeService]:
     services = []
-    pods = requests.get("http://127.0.0.1:10255/pods").json()
+    try:
+        pods = get_k8s_pods()
+    except requests.exceptions.ConnectionError:
+        log.debug("Failed to connect to the kublet when trying to get pods")
+        return []
     for pod in pods["items"]:
         if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
             "metadata"

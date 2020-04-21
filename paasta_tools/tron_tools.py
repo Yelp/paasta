@@ -34,6 +34,8 @@ from service_configuration_lib.spark_config import get_mesos_spark_env
 from service_configuration_lib.spark_config import K8S_AUTH_FOLDER
 from service_configuration_lib.spark_config import stringify_spark_env
 
+from paasta_tools.mesos_tools import mesos_services_running_here
+
 try:
     from yaml.cyaml import CSafeDumper as Dumper
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
@@ -868,3 +870,22 @@ def get_tron_dashboard_for_cluster(cluster: str):
     if "Tron" not in dashboards:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
     return dashboards["Tron"]
+
+
+def tron_jobs_running_here() -> List[Tuple[str, str, int]]:
+    return mesos_services_running_here(
+        framework_filter=lambda fw: fw["name"].startswith("tron"),
+        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
+    )
+
+
+def parse_service_instance_from_executor_id(task_id: str) -> Tuple[str, str]:
+    """Parses tron mesos task ids, like schematizer.traffic_generator.28414.turnstyle.46da87d7-6092-4ed4-b926-ffa7b21c7785"""
+    try:
+        service, job, job_run, action, uuid = task_id.split(".")
+    except Exception as e:
+        log.warning(
+            f"Couldn't parse the mesos task id into a valid tron job: {task_id}: {e}"
+        )
+        service, job, action = "unknown_service", "unknown_job", "unknown_action"
+    return service, f"{job}.{action}"
