@@ -1,3 +1,11 @@
+paasta-tools (0.95.27) xenial; urgency=medium
+
+  * 0.95.27 tagged with 'make release'
+    Commit: Merge pull request #2724 from Yelp/PAASTA-16378  Made
+    paasta_broadcast_log work with k8s and mesos
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 21 Apr 2020 10:33:06 -0700
+
 paasta-tools (0.95.26) xenial; urgency=medium
 
   * 0.95.26 tagged with 'make release'
