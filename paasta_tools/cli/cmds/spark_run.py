@@ -441,6 +441,8 @@ def get_spark_config(
         "spark.executorEnv.PAASTA_INSTANCE": paasta_instance,
         "spark.executorEnv.PAASTA_CLUSTER": args.cluster,
         "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
+        "spark.executorEnv.AWS_SECRET_ACCESS_KEY": secret_key,
+        "spark.executorEnv.AWS_ACCESS_KEY_ID": access_key,
         "spark.mesos.executor.docker.parameters": f"label=paasta_service={args.service},label=paasta_instance={paasta_instance}",
         "spark.mesos.executor.docker.volumes": ",".join(volumes),
         "spark.mesos.executor.docker.image": docker_img,
