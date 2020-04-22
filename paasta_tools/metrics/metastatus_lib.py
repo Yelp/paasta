@@ -109,15 +109,15 @@ def get_mesos_cpu_status(
     return total, used, available
 
 
-def get_kube_cpu_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_cpu_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available CPUs.
     """
 
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(node.status.allocatable["cpu"])
         total += suffixed_number_value(node.status.capacity["cpu"])
@@ -146,14 +146,14 @@ def get_mesos_memory_status(
     return total, used, available
 
 
-def get_kube_memory_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_memory_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available memory in Mi.
     """
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(node.status.allocatable["memory"])
         total += suffixed_number_value(node.status.capacity["memory"])
@@ -184,15 +184,15 @@ def get_mesos_disk_status(
     return total, used, available
 
 
-def get_kube_disk_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_disk_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available disk space in Mi.
     """
 
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(node.status.allocatable["ephemeral-storage"])
         total += suffixed_number_value(node.status.capacity["ephemeral-storage"])
@@ -222,15 +222,15 @@ def get_mesos_gpu_status(
     return total, used, available
 
 
-def get_kube_gpu_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_gpu_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available GPUs.
     """
 
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(
             node.status.allocatable.get("nvidia.com/gpu", "0")
@@ -329,7 +329,7 @@ def percent_used(total: float, used: float) -> float:
 
 
 def assert_cpu_health(
-    cpu_status: Tuple[int, int, int], threshold: int = 10
+    cpu_status: Tuple[float, float, float], threshold: int = 10
 ) -> HealthCheckResult:
     total, used, available = cpu_status
     try:
@@ -354,7 +354,7 @@ def assert_cpu_health(
 
 
 def assert_memory_health(
-    memory_status: Tuple[int, int, int], threshold: int = 10
+    memory_status: Tuple[float, float, float], threshold: int = 10
 ) -> HealthCheckResult:
     total: float
     used: float
@@ -385,7 +385,7 @@ def assert_memory_health(
 
 
 def assert_disk_health(
-    disk_status: Tuple[int, int, int], threshold: int = 10
+    disk_status: Tuple[float, float, float], threshold: int = 10
 ) -> HealthCheckResult:
     total: float
     used: float
@@ -416,7 +416,7 @@ def assert_disk_health(
 
 
 def assert_gpu_health(
-    gpu_status: Tuple[int, int, int], threshold: int = 0
+    gpu_status: Tuple[float, float, float], threshold: int = 0
 ) -> HealthCheckResult:
     total, used, available = gpu_status
 
@@ -719,18 +719,18 @@ _IEC_NUMBER_SUFFIXES = {
 }
 
 
-def suffixed_number_value(s: str) -> int:
+def suffixed_number_value(s: str) -> float:
     pattern = r"(?P<number>\d+)(?P<suff>\w*)"
     match = re.match(pattern, s)
     number, suff = match.groups()
 
     if suff in _IEC_NUMBER_SUFFIXES:
-        return int(int(number) * _IEC_NUMBER_SUFFIXES[suff])
+        return float(number) * _IEC_NUMBER_SUFFIXES[suff]
     else:
-        return int(number)
+        return float(number)
 
 
-def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, int]:
+def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, float]:
     return {k: suffixed_number_value(v) for k, v in d.items()}
 
 
