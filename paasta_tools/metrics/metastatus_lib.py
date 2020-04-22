@@ -30,12 +30,14 @@ from typing import TypeVar
 import a_sync
 from humanize import naturalsize
 from kubernetes.client import V1Node
+from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter
 
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_pod_status
+from paasta_tools.kubernetes_tools import get_pods_by_node
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
@@ -56,6 +58,11 @@ from paasta_tools.mesos_tools import MesosTask
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+
+
+DEFAULT_KUBERNETES_CPU_REQUEST = "100m"
+DEFAULT_KUBERNETES_MEMORY_REQUEST = "200M"
+DEFAULT_KUBERNETES_DISK_REQUEST = "0"
 
 
 class ResourceInfo(namedtuple("ResourceInfo", ["cpus", "mem", "disk", "gpus"])):
@@ -102,15 +109,15 @@ def get_mesos_cpu_status(
     return total, used, available
 
 
-def get_kube_cpu_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_cpu_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available CPUs.
     """
 
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(node.status.allocatable["cpu"])
         total += suffixed_number_value(node.status.capacity["cpu"])
@@ -139,14 +146,14 @@ def get_mesos_memory_status(
     return total, used, available
 
 
-def get_kube_memory_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_memory_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available memory in Mi.
     """
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(node.status.allocatable["memory"])
         total += suffixed_number_value(node.status.capacity["memory"])
@@ -177,15 +184,15 @@ def get_mesos_disk_status(
     return total, used, available
 
 
-def get_kube_disk_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_disk_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available disk space in Mi.
     """
 
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(node.status.allocatable["ephemeral-storage"])
         total += suffixed_number_value(node.status.capacity["ephemeral-storage"])
@@ -215,15 +222,15 @@ def get_mesos_gpu_status(
     return total, used, available
 
 
-def get_kube_gpu_status(nodes: Sequence[V1Node],) -> Tuple[int, int, int]:
+def get_kube_gpu_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
     :returns: Tuple of total, used, and available GPUs.
     """
 
-    total = 0
-    available = 0
+    total = 0.0
+    available = 0.0
     for node in nodes:
         available += suffixed_number_value(
             node.status.allocatable.get("nvidia.com/gpu", "0")
@@ -242,6 +249,44 @@ def filter_mesos_state_metrics(dictionary: Mapping[str, Any]) -> Mapping[str, An
 def filter_kube_resources(dictionary: Mapping[str, str]) -> Mapping[str, str]:
     valid_keys = ["cpu", "memory", "ephemeral-storage", "nvidia.com/gpu"]
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
+
+
+class ResourceParser:
+    @staticmethod
+    def cpus(resources):
+        resources = resources or {}
+        return suffixed_number_value(
+            resources.get("cpu", DEFAULT_KUBERNETES_CPU_REQUEST)
+        )
+
+    @staticmethod
+    def mem(resources):
+        resources = resources or {}
+        return suffixed_number_value(
+            resources.get("memory", DEFAULT_KUBERNETES_MEMORY_REQUEST)
+        )
+
+    @staticmethod
+    def disk(resources):
+        resources = resources or {}
+        return suffixed_number_value(
+            resources.get("ephemeral-storage", DEFAULT_KUBERNETES_DISK_REQUEST)
+        )
+
+
+def allocated_node_resources(pods: Sequence[V1Pod]) -> Mapping[str, float]:
+    cpus = mem = disk = 0
+    for pod in pods:
+        cpus += sum(
+            ResourceParser.cpus(c.resources.requests) for c in pod.spec.containers
+        )
+        mem += sum(
+            ResourceParser.mem(c.resources.requests) for c in pod.spec.containers
+        )
+        disk += sum(
+            ResourceParser.disk(c.resources.requests) for c in pod.spec.containers
+        )
+    return {"cpu": cpus, "memory": mem, "ephemeral-storage": disk}
 
 
 def healthcheck_result_for_resource_utilization(
@@ -284,7 +329,7 @@ def percent_used(total: float, used: float) -> float:
 
 
 def assert_cpu_health(
-    cpu_status: Tuple[int, int, int], threshold: int = 10
+    cpu_status: Tuple[float, float, float], threshold: int = 10
 ) -> HealthCheckResult:
     total, used, available = cpu_status
     try:
@@ -309,7 +354,7 @@ def assert_cpu_health(
 
 
 def assert_memory_health(
-    memory_status: Tuple[int, int, int], threshold: int = 10
+    memory_status: Tuple[float, float, float], threshold: int = 10
 ) -> HealthCheckResult:
     total: float
     used: float
@@ -340,7 +385,7 @@ def assert_memory_health(
 
 
 def assert_disk_health(
-    disk_status: Tuple[int, int, int], threshold: int = 10
+    disk_status: Tuple[float, float, float], threshold: int = 10
 ) -> HealthCheckResult:
     total: float
     used: float
@@ -371,7 +416,7 @@ def assert_disk_health(
 
 
 def assert_gpu_health(
-    gpu_status: Tuple[int, int, int], threshold: int = 0
+    gpu_status: Tuple[float, float, float], threshold: int = 0
 ) -> HealthCheckResult:
     total, used, available = gpu_status
 
@@ -661,6 +706,7 @@ def calculate_resource_utilization_for_slaves(
 
 _IEC_NUMBER_SUFFIXES = {
     "k": 1000,
+    "m": 1000 ** -1,
     "M": 1000 ** 2,
     "G": 1000 ** 3,
     "T": 1000 ** 4,
@@ -673,23 +719,23 @@ _IEC_NUMBER_SUFFIXES = {
 }
 
 
-def suffixed_number_value(s: str) -> int:
+def suffixed_number_value(s: str) -> float:
     pattern = r"(?P<number>\d+)(?P<suff>\w*)"
     match = re.match(pattern, s)
     number, suff = match.groups()
 
     if suff in _IEC_NUMBER_SUFFIXES:
-        return int(number) * _IEC_NUMBER_SUFFIXES[suff]
+        return float(number) * _IEC_NUMBER_SUFFIXES[suff]
     else:
-        return int(number)
+        return float(number)
 
 
-def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, int]:
+def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, float]:
     return {k: suffixed_number_value(v) for k, v in d.items()}
 
 
 def calculate_resource_utilization_for_kube_nodes(
-    nodes: Sequence[V1Node],
+    nodes: Sequence[V1Node], pods_by_node: Mapping[str, Sequence[V1Pod]],
 ) -> ResourceUtilizationDict:
     """ Given a list of Kubernetes nodes, calculate the total available
     resource available and the resources consumed in that list of nodes.
@@ -699,16 +745,23 @@ def calculate_resource_utilization_for_kube_nodes(
     is a ResourceInfo tuple, exposing a number for cpu, disk and mem.
     """
     resource_total_dict: _Counter[str] = Counter()
-    for node in nodes:
-        filtered_resources = filter_kube_resources(node.status.capacity)
-        resource_total_dict.update(
-            Counter(suffixed_number_dict_values(filtered_resources))
-        )
     resource_free_dict: _Counter[str] = Counter()
     for node in nodes:
-        filtered_resources = filter_kube_resources(node.status.allocatable)
+        allocatable_resources = suffixed_number_dict_values(
+            filter_kube_resources(node.status.allocatable)
+        )
+        resource_total_dict.update(Counter(allocatable_resources))
+        allocated_resources = allocated_node_resources(pods_by_node[node.metadata.name])
         resource_free_dict.update(
-            Counter(suffixed_number_dict_values(filtered_resources))
+            Counter(
+                {
+                    "cpu": allocatable_resources["cpu"] - allocated_resources["cpu"],
+                    "ephemeral-storage": allocatable_resources["ephemeral-storage"]
+                    - allocated_resources["ephemeral-storage"],
+                    "memory": allocatable_resources["memory"]
+                    - allocated_resources["memory"],
+                }
+            )
         )
     return {
         "free": ResourceInfo(
@@ -832,8 +885,13 @@ def get_resource_utilization_by_grouping_kube(
 
     node_groupings = group_slaves_by_key_func(grouping_func, nodes, sort_func)
 
+    pods_by_node = {}
+    for node in nodes:
+        pods_by_node[node.metadata.name] = get_pods_by_node(kube_client, node)
     return {
-        attribute_value: calculate_resource_utilization_for_kube_nodes(nodes)
+        attribute_value: calculate_resource_utilization_for_kube_nodes(
+            nodes, pods_by_node
+        )
         for attribute_value, nodes in node_groupings.items()
     }
 

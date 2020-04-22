@@ -17,10 +17,14 @@ import re
 
 import mock
 import pytest
+from kubernetes.client import V1Container
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeStatus
+from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1Pod
+from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodStatus
+from kubernetes.client import V1ResourceRequirements
 from mock import Mock
 from mock import patch
 
@@ -643,30 +647,45 @@ def test_calculate_resource_utilization_for_slaves():
 def test_calculate_resource_utilization_for_kube_nodes():
     fake_nodes = [
         V1Node(
+            metadata=V1ObjectMeta(name="fake_node1"),
             status=V1NodeStatus(
                 allocatable={
-                    "cpu": "480",
-                    "ephemeral-storage": "180Mi",
-                    "memory": "730Mi",
-                    "nvidia.com/gpu": "2",
-                },
-                capacity={
                     "cpu": "500",
                     "ephemeral-storage": "200Mi",
                     "memory": "750Mi",
-                    "nvidia.com/gpu": "5",
                 },
-            )
+            ),
         )
     ]
+    fake_pods_by_node = {
+        "fake_node1": [
+            V1Pod(
+                metadata=V1ObjectMeta(name="pod1"),
+                status=V1PodStatus(phase="Running"),
+                spec=V1PodSpec(
+                    containers=[
+                        V1Container(
+                            name="container1",
+                            resources=V1ResourceRequirements(
+                                requests={
+                                    "cpu": "20",
+                                    "ephemeral-storage": "20Mi",
+                                    "memory": "20Mi",
+                                }
+                            ),
+                        )
+                    ]
+                ),
+            )
+        ]
+    }
     free = metastatus_lib.calculate_resource_utilization_for_kube_nodes(
-        nodes=fake_nodes
+        nodes=fake_nodes, pods_by_node=fake_pods_by_node
     )["free"]
 
     assert free.cpus == 480
     assert free.mem == 730
     assert free.disk == 180
-    assert free.gpus == 2
 
 
 def test_healthcheck_result_for_resource_utilization_ok():
@@ -898,6 +917,7 @@ def test_reserved_maintenence_resources_ignores_non_maintenance():
 
 def test_suffixed_number_value():
     assert metastatus_lib.suffixed_number_value("5k") == 5 * 1000
+    assert metastatus_lib.suffixed_number_value("5m") == 5 * 1000 ** -1
     assert metastatus_lib.suffixed_number_value("5M") == 5 * 1000 ** 2
     assert metastatus_lib.suffixed_number_value("5G") == 5 * 1000 ** 3
     assert metastatus_lib.suffixed_number_value("5T") == 5 * 1000 ** 4
