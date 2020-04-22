@@ -13,6 +13,7 @@
 import json
 import os
 import re
+import sys
 from typing import Any
 from typing import Dict
 from typing import List
@@ -53,14 +54,15 @@ def get_hmac_for_secret(
             except KeyError:
                 print(
                     "Failed to get secret signature at environments:{}:signature in json"
-                    " file".format(secret_environment)
+                    " file".format(secret_environment),
+                    file=sys.stderr,
                 )
                 return None
     except IOError:
-        print(f"Failed to open json secret at {secret_path}")
+        print(f"Failed to open json secret at {secret_path}", file=sys.stderr)
         return None
     except json.decoder.JSONDecodeError:
-        print(f"Failed to deserialise json secret at {secret_path}")
+        print(f"Failed to deserialise json secret at {secret_path}", file=sys.stderr)
         return None
 
 

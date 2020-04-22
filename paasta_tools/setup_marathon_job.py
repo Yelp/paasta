@@ -929,8 +929,7 @@ def main() -> None:
             service, instance, _, __ = decompose_job_id(service_instance)
         except InvalidJobNameError:
             log.error(
-                "Invalid service instance specified. Format is service%sinstance."
-                % SPACER
+                f"Invalid service instance specified ({service_instance}). Format is service{SPACER}instance."
             )
             num_failed_deployments = num_failed_deployments + 1
         else:
