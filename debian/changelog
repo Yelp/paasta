@@ -1,3 +1,12 @@
+paasta-tools (0.95.28) xenial; urgency=medium
+
+  * 0.95.28 tagged with 'make release'
+    Commit: Merge pull request #2773 from Yelp/u/enocht/PAASTA-
+    16382_delete_pcm_cron_job  Delete and reschedule paasta contract
+    monitor deployments for better alerting
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Wed, 22 Apr 2020 12:04:49 -0700
+
 paasta-tools (0.95.27) xenial; urgency=medium
 
   * 0.95.27 tagged with 'make release'
