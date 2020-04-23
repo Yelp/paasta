@@ -1,3 +1,12 @@
+paasta-tools (0.95.29) xenial; urgency=medium
+
+  * 0.95.29 tagged with 'make release'
+    Commit: Merge pull request #2794 from
+    nisan1101/bump_version_for_service_configuration_lib_to_2.4.3  Bump
+    version for service configuration lib to 2.4.3
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 23 Apr 2020 11:38:57 -0700
+
 paasta-tools (0.95.28) xenial; urgency=medium
 
   * 0.95.28 tagged with 'make release'
