@@ -441,8 +441,6 @@ def get_spark_config(
         "spark.executorEnv.PAASTA_INSTANCE": paasta_instance,
         "spark.executorEnv.PAASTA_CLUSTER": args.cluster,
         "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
-        "spark.executorEnv.AWS_SECRET_ACCESS_KEY": secret_key,
-        "spark.executorEnv.AWS_ACCESS_KEY_ID": access_key,
         "spark.mesos.executor.docker.parameters": f"label=paasta_service={args.service},label=paasta_instance={paasta_instance}",
         "spark.mesos.executor.docker.volumes": ",".join(volumes),
         "spark.mesos.executor.docker.image": docker_img,
@@ -478,6 +476,12 @@ def get_spark_config(
                 sys.exit(1)
             # Update default configuration
             user_args[fields[0]] = fields[1]
+
+    # Pass aws credentials to executors to grant access to S3 bucket
+    if "spark.executorEnv.AWS_SECRET_ACCESS_KEY" not in user_args and \
+            "spark.executorEnv.AWS_ACCESS_KEY_ID" not in user_args:
+        non_user_args["spark.executorEnv.AWS_SECRET_ACCESS_KEY"] = secret_key
+        non_user_args["spark.executorEnv.AWS_ACCESS_KEY_ID"] = access_key
 
     if "spark.sql.shuffle.partitions" not in user_args:
         num_partitions = str(2 * int(user_args["spark.cores.max"]))
