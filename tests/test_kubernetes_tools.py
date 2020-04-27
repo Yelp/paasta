@@ -67,6 +67,7 @@ from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import get_active_shas_for_service
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
@@ -2029,6 +2030,32 @@ def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_confi
     mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
     set_instances_for_kubernetes_service(mock_client, mock_kube_deploy_config, replicas)
     assert mock_client.deployments.patch_namespaced_stateful_set_scale.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "has_persistent_volumes, expected_annotations",
+    [(True, {"I-am": "stateful_set"},), (False, {"I-am": "deployment"},),],
+)
+@mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
+def test_get_annotations_for_kubernetes_service(
+    mock_kube_deploy_config, has_persistent_volumes, expected_annotations
+):
+    mock_client = mock.Mock()
+    mock_client.deployments.read_namespaced_stateful_set.return_value = V1StatefulSet(
+        metadata=V1ObjectMeta(annotations={"I-am": "stateful_set"})
+    )
+    mock_client.deployments.read_namespaced_deployment.return_value = V1Deployment(
+        metadata=V1ObjectMeta(annotations={"I-am": "deployment"})
+    )
+    mock_kube_deploy_config.get_sanitised_deployment_name.return_value = (
+        "fake_k8s_service"
+    )
+    mock_kube_deploy_config.get_persistent_volumes.return_value = has_persistent_volumes
+    mock_kube_deploy_config.format_kubernetes_app.return_value = mock.Mock()
+    annotations = get_annotations_for_kubernetes_service(
+        mock_client, mock_kube_deploy_config
+    )
+    assert annotations == expected_annotations
 
 
 def test_create_custom_resource():

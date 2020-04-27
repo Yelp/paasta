@@ -1753,14 +1753,19 @@ def set_instances_for_kubernetes_service(
         )
 
 
-def get_annotations_for_deployment(
+def get_annotations_for_kubernetes_service(
     kube_client: KubeClient, service_config: KubernetesDeploymentConfig
 ) -> Dict:
     name = service_config.get_sanitised_deployment_name()
-    deployment = kube_client.deployments.read_namespaced_deployment(
-        name=name, namespace="paasta"
-    )
-    return deployment.metadata.annotations if deployment.metadata.annotations else {}
+    if service_config.get_persistent_volumes():
+        k8s_service = kube_client.deployments.read_namespaced_stateful_set(
+            name=name, namespace="paasta"
+        )
+    else:
+        k8s_service = kube_client.deployments.read_namespaced_deployment(
+            name=name, namespace="paasta"
+        )
+    return k8s_service.metadata.annotations if k8s_service.metadata.annotations else {}
 
 
 def write_annotation_for_kubernetes_service(
