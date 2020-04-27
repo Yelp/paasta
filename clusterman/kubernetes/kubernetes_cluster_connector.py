@@ -21,6 +21,8 @@ import colorlog
 import kubernetes
 import staticconf
 from kubernetes.client.models.v1_node import V1Node as KubernetesNode
+from kubernetes.client.models.v1_node_selector_requirement import V1NodeSelectorRequirement
+from kubernetes.client.models.v1_node_selector_term import V1NodeSelectorTerm
 from kubernetes.client.models.v1_pod import V1Pod as KubernetesPod
 
 from clusterman.interfaces.cluster_connector import AgentMetadata
@@ -86,9 +88,49 @@ class KubernetesClusterConnector(ClusterConnector):
                 unschedulable_pods.append(pod)
         return unschedulable_pods
 
+    def _selector_term_matches_requirement(
+        self,
+        selector_term: V1NodeSelectorTerm,
+        selector_requirement: V1NodeSelectorRequirement
+    ) -> bool:
+        if selector_term.match_expressions:
+            for match_expression in selector_term.match_expressions:
+                if match_expression == selector_requirement:
+                    return True
+        return False
+
+    def _pod_matches_node_selector_or_affinity(self, pod: KubernetesPod) -> bool:
+        if pod.spec.node_selector:
+            for key, value in pod.spec.node_selector.items():
+                if key == self.pool_label_key:
+                    return value == self.pool
+
+        selector_requirement = V1NodeSelectorRequirement(
+            key=self.pool_label_key, operator='In', values=[self.pool]
+        )
+
+        if pod.spec.affinity and pod.spec.affinity.node_affinity:
+            node_affinity = pod.spec.affinity.node_affinity
+            if node_affinity.required_during_scheduling_ignored_during_execution:
+                node_selector_terms = node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms  # noqa: E501
+                for selector_term in node_selector_terms:
+                    if self._selector_term_matches_requirement(selector_term, selector_requirement):
+                        return True
+            if node_affinity.preferred_during_scheduling_ignored_during_execution:
+                for preferred_scheduling_term in node_affinity.preferred_during_scheduling_ignored_during_execution:
+                    if self._selector_term_matches_requirement(
+                        preferred_scheduling_term.preference,
+                        selector_requirement
+                    ):
+                        return True
+        return False
+
     def _get_pending_pods(self) -> List[KubernetesPod]:
-        node_selector = {self.pool_label_key: self.pool}
-        return [pod for pod in self._pods if pod.spec.node_selector == node_selector and pod.status.phase == 'Pending']
+        return [
+            pod for pod in self._pods
+            if pod.status.phase == 'Pending'
+            and self._pod_matches_node_selector_or_affinity(pod)
+        ]
 
     def set_node_unschedulable(self, node_ip: str):
         try:
