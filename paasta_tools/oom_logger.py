@@ -15,7 +15,7 @@
 """
 paasta_oom_logger is supposed to be used as a syslog-ng destination.
 It looks for OOM events in the log, adds PaaSTA service and instance names
-and send JSON-encoded messages the Scribe stream 'tmp_paasta_oom_events'.
+and send JSON-encoded messages the stream 'tmp_paasta_oom_events'.
 
 syslog-ng.conf:
 
@@ -55,9 +55,9 @@ except ImportError:
     yelp_meteorite = None
 
 try:
-    from clog.loggers import ScribeLogger
+    import clog
 except ImportError:
-    ScribeLogger = None
+    clog = None
 
 
 LogLine = namedtuple(
@@ -123,7 +123,7 @@ def get_container_env_as_dict(docker_inspect):
     return env_vars
 
 
-def log_to_scribe(logger, log_line):
+def log_to_clog(log_line):
     """Send the event to 'tmp_paasta_oom_events'."""
     line = (
         '{"timestamp": %d, "hostname": "%s", "container_id": "%s", "cluster": "%s", '
@@ -141,7 +141,7 @@ def log_to_scribe(logger, log_line):
             log_line.mem_limit,
         )
     )
-    logger.log_line("tmp_paasta_oom_events", line)
+    clog.log_line("tmp_paasta_oom_events", line)
 
 
 def log_to_paasta(log_line):
@@ -184,11 +184,12 @@ def send_sfx_event(service, instance, cluster):
 
 
 def main():
-    if ScribeLogger is None:
-        print("Scribe logger unavailable, exiting.", file=sys.stderr)
+    if clog is None:
+        print("CLog logger unavailable, exiting.", file=sys.stderr)
         sys.exit(1)
 
-    scribe_logger = ScribeLogger(host="169.254.255.254", port=1463, retry_interval=5)
+    clog.config.configure(monk_disable=False)
+
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()
     for (
@@ -217,7 +218,7 @@ def main():
             mesos_container_id=mesos_container_id,
             mem_limit=mem_limit,
         )
-        log_to_scribe(scribe_logger, log_line)
+        log_to_clog(log_line)
         log_to_paasta(log_line)
         send_sfx_event(service, instance, cluster)
 

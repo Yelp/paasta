@@ -1421,20 +1421,9 @@ try:
     # again after importing it.
     warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-    @register_log_writer("scribe")
-    class ScribeLogWriter(LogWriter):
-        def __init__(
-            self,
-            scribe_host: str = "169.254.255.254",
-            scribe_port: int = 1463,
-            scribe_disable: bool = False,
-            **kwargs: Any,
-        ) -> None:
-            clog.config.configure(
-                scribe_host=scribe_host,
-                scribe_port=scribe_port,
-                scribe_disable=scribe_disable,
-            )
+    class CLogWriter(LogWriter):
+        def __init__(self, **kwargs: Any):
+            clog.config.configure(**kwargs)
 
         def log(
             self,
@@ -1481,6 +1470,34 @@ try:
                 instance=instance,
             )
             clog.log_line(log_name, formatted_line)
+
+    @register_log_writer("monk")
+    class MonkLogWriter(CLogWriter):
+        def __init__(
+            self,
+            monk_host: str = "169.254.255.254",
+            monk_port: int = 1473,
+            monk_disable: bool = False,
+            **kwargs: Any,
+        ) -> None:
+            super().__init__(
+                monk_host=monk_host, monk_port=monk_port, monk_disable=monk_disable,
+            )
+
+    @register_log_writer("scribe")
+    class ScribeLogWriter(CLogWriter):
+        def __init__(
+            self,
+            scribe_host: str = "169.254.255.254",
+            scribe_port: int = 1463,
+            scribe_disable: bool = False,
+            **kwargs: Any,
+        ) -> None:
+            super().__init__(
+                scribe_host=scribe_host,
+                scribe_port=scribe_port,
+                scribe_disable=scribe_disable,
+            )
 
 
 except ImportError:

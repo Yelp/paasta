@@ -18,7 +18,7 @@ from mock import Mock
 from mock import patch
 
 from paasta_tools.oom_logger import capture_oom_events_from_stdin
-from paasta_tools.oom_logger import log_to_scribe
+from paasta_tools.oom_logger import log_to_clog
 from paasta_tools.oom_logger import LogLine
 from paasta_tools.oom_logger import main
 from paasta_tools.oom_logger import send_sfx_event
@@ -231,10 +231,10 @@ def test_capture_oom_events_from_stdin_without_process_name(
     ]
 
 
-def test_log_to_scribe(log_line):
-    logger = Mock()
-    log_to_scribe(logger, log_line)
-    logger.log_line.assert_called_once_with(
+@patch("paasta_tools.oom_logger.clog", autospec=True)
+def test_log_to_clog(mock_clog, log_line):
+    log_to_clog(log_line)
+    mock_clog.log_line.assert_called_once_with(
         "tmp_paasta_oom_events",
         json.dumps(
             {
@@ -287,19 +287,19 @@ def test_send_sfx_event(mock_get_instance_config):
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
-@patch("paasta_tools.oom_logger.ScribeLogger", autospec=None)
+@patch("paasta_tools.oom_logger.clog", autospec=True)
 @patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
 @patch("paasta_tools.oom_logger.load_system_paasta_config", autospec=True)
-@patch("paasta_tools.oom_logger.log_to_scribe", autospec=True)
+@patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
 @patch("paasta_tools.oom_logger.get_docker_client", autospec=True)
 def test_main(
     mock_get_docker_client,
     mock_log_to_paasta,
-    mock_log_to_scribe,
+    mock_log_to_clog,
     mock_load_system_paasta_config,
     mock_send_sfx_event,
-    mock_scribelogger,
+    mock_clog,
     mock_sys_stdin,
     sys_stdin,
     docker_inspect,
@@ -312,12 +312,10 @@ def test_main(
     mock_load_system_paasta_config.return_value.get_cluster.return_value = (
         "fake_cluster"
     )
-    scribe_logger = Mock()
-    mock_scribelogger.return_value = scribe_logger
 
     main()
     mock_log_to_paasta.assert_called_once_with(log_line)
-    mock_log_to_scribe.assert_called_once_with(scribe_logger, log_line)
+    mock_log_to_clog.assert_called_once_with(log_line)
     mock_send_sfx_event.assert_called_once_with(
         "fake_service", "fake_instance", "fake_cluster"
     )
