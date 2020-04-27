@@ -1,3 +1,11 @@
+paasta-tools (0.95.30) xenial; urgency=medium
+
+  * 0.95.30 tagged with 'make release'
+    Commit: Merge pull request #2795 from Yelp/u/flavr/support-monk  Add
+    support for logging to Monk
+
+ -- Flavien Raynaud <flavr@yelp.com>  Mon, 27 Apr 2020 01:52:03 -0700
+
 paasta-tools (0.95.29) xenial; urgency=medium
 
   * 0.95.29 tagged with 'make release'
