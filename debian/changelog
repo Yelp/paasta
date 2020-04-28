@@ -1,3 +1,12 @@
+paasta-tools (0.95.31) xenial; urgency=medium
+
+  * 0.95.31 tagged with 'make release'
+    Commit: Merge pull request #2786 from Yelp/u/siruitan/PAASTA-16565-
+    do_not_update_hpa_for_stateful_sets  Do not attempt to update HPA
+    configs of a stateful set
+
+ -- Aaron Tan <siruitan@yelp.com>  Tue, 28 Apr 2020 09:05:26 -0700
+
 paasta-tools (0.95.30) xenial; urgency=medium
 
   * 0.95.30 tagged with 'make release'
