@@ -638,7 +638,6 @@ Example Job
         convert_logs:
           requires: [verify_logs_present]
           command: "convert_logs /var/log/app/log_%(shortdate-1)s.txt /var/log/app_converted/log_%(shortdate-1)s.txt"
-          executor: paasta
           service: test_service
           deploy_group: prod
           cpus: .5
@@ -673,8 +672,8 @@ Each Tron **action** of a job MAY specify the following:
     for an action, that setting takes precedence over what is set for the job.
 
   * ``executor``: Configures Tron to execute the command in a particular way.
-    Set to ``paasta`` to configure Tron to launch the job on he PaaSTA cluster.
-    Defaults to ``ssh``, which is the classic Tron execution method. When ``executor``
+    Set to ``paasta`` to configure Tron to launch the job on the PaaSTA cluster.
+    Defaults to ``paasta``. When ``executor``
     is NOT ``paasta`` (and is using ``ssh``), all of these paasta-specific options
     listed here in this documentation will have no effect. It is OK to have a job
     composed of mixed ``paasta`` and ``ssh`` actions.
@@ -682,7 +681,7 @@ Each Tron **action** of a job MAY specify the following:
   * ``deploy_group``: Same setting as the ``Job``, but on a per-action basis. Defaults
     to the setting for the entire job.
 
-  * ``command``: The command to run. If the action is configured with ``executor: paasta``,
+  * ``command``: The command to run. If the action is configured with ``executor: paasta`` (default),
     then the command should be something available in the docker container (it should NOT
     start with ``paasta local-run``).
 
