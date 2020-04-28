@@ -126,7 +126,10 @@ class DeployDaemon(PaastaThread):
         self.log.info(
             "All watchers started, now adding all services for initial bounce"
         )
-        self.add_all_services()
+
+        # Fill the queue if we are not using the persistent ZK queue
+        if not self.config.get_deployd_use_zk_queue():
+            self.add_all_services()
         self.log.info("Prioritising services that we know need a bounce...")
         if self.config.get_deployd_startup_oracle_enabled():
             self.prioritise_bouncing_services()
