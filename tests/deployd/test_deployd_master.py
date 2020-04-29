@@ -1,9 +1,8 @@
 import sys
-import unittest
 from queue import Empty
 
 import mock
-from pytest import raises
+import pytest
 
 from paasta_tools.deployd.common import ServiceInstance
 
@@ -38,7 +37,8 @@ from paasta_tools.deployd.master import DeployDaemon  # noqa
 from paasta_tools.deployd.master import main  # noqa
 
 
-class TestDeployDaemon(unittest.TestCase):
+class TestDeployDaemon:
+    @pytest.fixture(autouse=True)
     def setUp(self):
         with mock.patch(
             "paasta_tools.deployd.master.PaastaQueue", autospec=True
@@ -51,8 +51,10 @@ class TestDeployDaemon(unittest.TestCase):
             autospec=True,
         ), mock.patch(
             "paasta_tools.deployd.master.load_system_paasta_config", autospec=True
-        ) as mock_config_getter:
-            mock_config = mock.Mock(
+        ) as mock_config_getter, mock.patch(
+            "paasta_tools.deployd.master.KazooClient", autospec=True
+        ):
+            self.mock_config = mock.Mock(
                 get_deployd_log_level=mock.Mock(return_value="INFO"),
                 get_deployd_number_workers=mock.Mock(return_value=5),
                 get_deployd_big_bounce_rate=mock.Mock(return_value=10),
@@ -61,7 +63,7 @@ class TestDeployDaemon(unittest.TestCase):
                 get_deployd_startup_oracle_enabled=mock.Mock(return_value=False),
                 get_deployd_use_zk_queue=mock.Mock(return_value=False),
             )
-            mock_config_getter.return_value = mock_config
+            mock_config_getter.return_value = self.mock_config
             self.deployd = DeployDaemon()
 
     def test_run(self):
@@ -76,7 +78,8 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_election_class.called
             mock_election.run.assert_called_with(self.deployd.startup)
 
-    def test_startup(self):
+    @pytest.mark.parametrize("use_zk_queue", [True, False])
+    def test_startup(self, use_zk_queue):
         assert not hasattr(self.deployd, "is_leader")
         assert not self.deployd.started
         with mock.patch(
@@ -97,6 +100,8 @@ class TestDeployDaemon(unittest.TestCase):
         ) as mock_start_workers, mock.patch(
             "paasta_tools.deployd.master.DeployDaemon.main_loop", autospec=True
         ) as mock_main_loop:
+            self.mock_config.get_deployd_use_zk_queue.return_value = use_zk_queue
+
             self.deployd.startup()
             assert self.deployd.started
             assert self.deployd.is_leader
@@ -108,7 +113,7 @@ class TestDeployDaemon(unittest.TestCase):
             )
             assert mock_q_metrics.return_value.start.called
             assert mock_start_watchers.called
-            assert mock_add_all_services.called
+            assert mock_add_all_services.called == (not use_zk_queue)
             assert not mock_prioritise_bouncing_services.called
             assert mock_start_workers.called
             assert mock_main_loop.called
@@ -139,7 +144,7 @@ class TestDeployDaemon(unittest.TestCase):
             mock_all_workers_dead.return_value = True
             mock_all_watchers_running.return_value = True
             self.deployd.control.get.return_value = None
-            with raises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.deployd.main_loop()
             assert not mock_sleep.called
             assert not mock_check_and_start_workers.called
@@ -147,7 +152,7 @@ class TestDeployDaemon(unittest.TestCase):
             mock_all_workers_dead.return_value = False
             mock_all_watchers_running.return_value = False
             self.deployd.control.get.return_value = None
-            with raises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.deployd.main_loop()
             assert not mock_sleep.called
             assert not mock_check_and_start_workers.called
@@ -156,7 +161,7 @@ class TestDeployDaemon(unittest.TestCase):
             mock_all_watchers_running.return_value = True
             mock_sleep.side_effect = [None, LoopBreak]
             self.deployd.control.get.side_effect = Empty
-            with raises(LoopBreak):
+            with pytest.raises(LoopBreak):
                 self.deployd.main_loop()
             assert mock_sleep.call_count == 2
             assert mock_check_and_start_workers.call_count == 2
@@ -317,7 +322,7 @@ class TestDeployDaemon(unittest.TestCase):
             assert mock_start.call_count == 3
 
             FakeWatchers.PaastaWatcher.is_ready = False
-            with raises(SystemExit):
+            with pytest.raises(SystemExit):
                 self.deployd.start_watchers()
 
 
@@ -329,7 +334,7 @@ def test_main():
     ):
         mock_deployd = mock.Mock()
         mock_deployd_class.return_value = mock_deployd
-        with raises(LoopBreak):
+        with pytest.raises(LoopBreak):
             main()
         assert mock_deployd_class.called
         assert mock_deployd.start.called
