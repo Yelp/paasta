@@ -1,4 +1,6 @@
+from collections import defaultdict
 from typing import Any
+from typing import DefaultDict
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -19,6 +21,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
+from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
@@ -109,14 +112,25 @@ def autoscaling_status(
 
     # Parse metrics sources, based on
     # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta1ExternalMetricSource.md#v2beta1externalmetricsource
-    metric_stats = []
     parser = HPAMetricsParser(hpa)
+
+    # https://github.com/python/mypy/issues/7217
+    metrics_by_name: DefaultDict[str, HPAMetricsDict] = defaultdict(
+        lambda: HPAMetricsDict()
+    )
+
     if hpa.spec.metrics is not None:
         for metric_spec in hpa.spec.metrics:
-            metric_stats.append(parser.parse_target(metric_spec))
+            parsed = parser.parse_target(metric_spec)
+            metrics_by_name[parsed["name"]].update(parsed)
+
     if hpa.status.current_metrics is not None:
         for metric_spec in hpa.status.current_metrics:
-            metric_stats.append(parser.parse_current(metric_spec))
+            parsed = parser.parse_current(metric_spec)
+            metrics_by_name[parsed["name"]].update(parsed)
+
+    metric_stats = list(metrics_by_name.values())
+
     last_scale_time = (
         hpa.status.last_scale_time.replace(tzinfo=pytz.UTC).isoformat()
         if getattr(hpa.status, "last_scale_time")
