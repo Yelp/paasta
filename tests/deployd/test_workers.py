@@ -28,6 +28,7 @@ class TestPaastaDeployWorker(unittest.TestCase):
             self.worker = PaastaDeployWorker(
                 1, self.mock_instances_to_bounce, mock_config, self.mock_metrics
             )
+            self.worker.max_failures = 20
 
     def test_setup(self):
         with mock.patch(
