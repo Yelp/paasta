@@ -78,14 +78,19 @@ def test_parse_args_default_cron():
     firewall,
     "services_running_here",
     autospec=True,
-    return_value=(("myservice", "hassecurity", "02:42:a9:fe:00:0a", "1.1.1.1"),),
+    return_value=(("myservice", "hassecurityinbound", "02:42:a9:fe:00:0a", "1.1.1.1"),
+                  ("myservice", "hassecurityoutbound", "02:42:a9:fe:00:0a", "1.1.1.1"),),
 )
 def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpdir):
     soa_dir = tmpdir.mkdir("yelpsoa")
     myservice_dir = soa_dir.mkdir("myservice")
 
     marathon_config = {
-        "hassecurity": {
+        "hassecurityinbound": {
+            "dependencies_reference": "my_ref",
+            "security": {"inbound_network_mode": "restrict"},
+        },
+        "hassecurityoutbound": {
             "dependencies_reference": "my_ref",
             "security": {"outbound_firewall": "block"},
         },
@@ -106,8 +111,10 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpd
         soa_dir=str(soa_dir)
     )
     assert dict(result) == {
-        "mydependency.depinstance": {("myservice", "hassecurity")},
-        "another.one": {("myservice", "hassecurity")},
+        "mydependency.depinstance": {("myservice", "hassecurityinbound"),
+                                     ("myservice", "hassecurityoutbound"),},
+        "another.one": {("myservice", "hassecurityinbound"),
+                        ("myservice", "hassecurityoutbound"),},
     }
 
 
