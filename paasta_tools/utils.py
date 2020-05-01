@@ -881,8 +881,8 @@ class InstanceConfig:
         dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
 
-    def get_inbound_firewall_mode(self) -> Optional[str]:
-        """Return 'full', 'restrict', or None as configured in security->inbound_firewall_mode
+    def get_inbound_network_mode(self) -> Optional[str]:
+        """Return 'full', 'restrict', or None as configured in security->inbound_network_mode
 
         Defaults to None if not specified in the config
 
@@ -890,7 +890,7 @@ class InstanceConfig:
         security = self.config_dict.get("security")
         if not security:
             return None
-        return security.get("inbound_firewall_mode")
+        return security.get("inbound_network_mode")
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
