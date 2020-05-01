@@ -883,8 +883,13 @@ class InstanceConfig:
 
     def get_inbound_network_mode(self) -> Optional[str]:
         """Return 'full', 'restrict', or None as configured in security->inbound_network_mode
-
         Defaults to None if not specified in the config
+
+        Setting this to a value other than `full` is uncommon, as doing so will restrict the
+        availability of your service. The only other supported value is `restrict` currently,
+        which will reject all remaining inbound traffic to the service port after all other rules.
+
+        This option exists primarily for sensitive services that wish to opt into this functionality.
 
         :returns: A string specified in the config, None if not specified"""
         security = self.config_dict.get("security")

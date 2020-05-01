@@ -174,23 +174,6 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_nerve_namespace(self) -> str:
         return decompose_job_id(self.get_registrations()[0])[1]
 
-    def get_inbound_network_mode(self) -> str:
-        """Retrieve the requested inbound network mode for the given service.
-
-        Setting this to a value other than `full` is uncommon, as doing so will restrict the
-        availability of your service. The only other supported value is `restrict` currently,
-        which will reject all remaining inbound traffic to the service port after all other rules.
-
-        This option exists primarily for sensitive services that wish to opt into this functionality.
-        """
-        default = "full"
-        security = self.config_dict.get("security")
-
-        if security is None:
-            return default
-
-        return security.get("inbound_network_mode", default)
-
     def get_registrations(self) -> List[str]:
         registrations = self.config_dict.get("registrations", [])
         for registration in registrations:
