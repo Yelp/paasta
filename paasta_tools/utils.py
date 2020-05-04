@@ -1785,6 +1785,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     deployd_big_bounce_deadline: float
     deployd_log_level: str
     deployd_maintenance_polling_frequency: int
+    deployd_max_service_instance_failures: int
     deployd_metrics_provider: str
     deployd_number_workers: int
     deployd_startup_bounce_deadline: float
@@ -2085,6 +2086,14 @@ class SystemPaastaConfig:
         :returns: A boolean
         """
         return self.config_dict.get("deployd_startup_oracle_enabled", True)
+
+    def get_deployd_max_service_instance_failures(self) -> int:
+        """Determines how many times a service instance entry in deployd's queue
+        can fail before it will be removed from the queue.
+
+        :returns: An integer
+        """
+        return self.config_dict.get("deployd_max_service_instance_failures", 20)
 
     def get_sensu_host(self) -> str:
         """Get the host that we should send sensu events to.

@@ -48,6 +48,9 @@ class PaastaDeployWorker(PaastaThread):
         self.marathon_clients = marathon_tools.get_marathon_clients(
             self.marathon_servers
         )
+        self.max_failures = (
+            system_paasta_config.get_deployd_max_service_instance_failures()
+        )
 
     def setup_timers(self, service_instance: ServiceInstance) -> BounceTimers:
         bounce_length_timer = self.metrics.create_timer(
@@ -103,19 +106,27 @@ class PaastaDeployWorker(PaastaThread):
                         max_time=6000,
                     )
                 if bounce_again_in_seconds:
-                    bounce_by = int(time.time()) + bounce_again_in_seconds
-                    service_instance = ServiceInstance(
-                        service=service_instance.service,
-                        instance=service_instance.instance,
-                        bounce_by=bounce_by,
-                        wait_until=bounce_by,
-                        watcher=self.name,
-                        failures=failures,
-                        processed_count=service_instance.processed_count + 1,
-                        bounce_start_time=service_instance.bounce_start_time,
-                        enqueue_time=time.time(),
-                    )
-                    self.instances_to_bounce.put(service_instance)
+                    if failures >= self.max_failures:
+                        self.log.info(
+                            f"{self.name} Worker removing "
+                            f"{service_instance.service}.{service_instance.instance} "
+                            f"from queue because it has failed {failures} times "
+                            f"(max is {self.max_failures})"
+                        )
+                    else:
+                        bounce_by = int(time.time()) + bounce_again_in_seconds
+                        service_instance = ServiceInstance(
+                            service=service_instance.service,
+                            instance=service_instance.instance,
+                            bounce_by=bounce_by,
+                            wait_until=bounce_by,
+                            watcher=self.name,
+                            failures=failures,
+                            processed_count=service_instance.processed_count + 1,
+                            bounce_start_time=service_instance.bounce_start_time,
+                            enqueue_time=time.time(),
+                        )
+                        self.instances_to_bounce.put(service_instance)
             self.busy = False
             time.sleep(0.1)
 
