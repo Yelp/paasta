@@ -121,12 +121,21 @@ def test_setup_all_custom_resources():
 
 def test_load_all_configs():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.service_configuration_lib.read_extra_service_information",
-        autospec=True,
-    ) as mock_read_info, mock.patch("os.listdir", autospec=True) as mock_oslist:
+        "paasta_tools.utils.read_service_configuration", autospec=True,
+    ) as mock_read_service, mock.patch(
+        "paasta_tools.utils.read_extra_service_information", autospec=True,
+    ) as mock_read_info, mock.patch(
+        "os.listdir", autospec=True
+    ) as mock_oslist:
         mock_oslist.return_value = ["kurupt", "mc"]
         ret = setup_kubernetes_cr.load_all_configs(
             cluster="westeros-prod", file_prefix="thing", soa_dir="/nail/soa"
+        )
+        mock_read_service.assert_has_calls(
+            [
+                mock.call("kurupt", soa_dir="/nail/soa"),
+                mock.call("mc", soa_dir="/nail/soa"),
+            ]
         )
         mock_read_info.assert_has_calls(
             [

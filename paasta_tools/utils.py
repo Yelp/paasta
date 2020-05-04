@@ -73,6 +73,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -3544,11 +3545,24 @@ def get_possible_launched_by_user_variable_from_env() -> str:
 def load_all_configs(
     cluster: str, file_prefix: str, soa_dir: str
 ) -> Mapping[str, Mapping[str, Any]]:
+    """Read all service configurations for a given provider (file_prefix).
+
+    :param cluster: The PaaSTA cluster
+    :param file_prefix: The provider (e.g: "kubernetes", "tron")
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: A dictionary of (service, (instance, config))
+    """
     config_dicts = {}
     for service in os.listdir(soa_dir):
-        config_dicts[
-            service
-        ] = service_configuration_lib.read_extra_service_information(
-            service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
+        general_config = read_service_configuration(service, soa_dir=soa_dir)
+        extra_service_config = read_extra_service_information(
+            service, extra_info=f"{file_prefix}-{cluster}", soa_dir=soa_dir,
         )
+        service_config = {
+            instance: deep_merge_dictionaries(
+                overrides=instance_config, defaults=general_config,
+            )
+            for instance, instance_config in extra_service_config.items()
+        }
+        config_dicts[service] = service_config
     return config_dicts
