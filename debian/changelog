@@ -1,3 +1,12 @@
+paasta-tools (0.95.32) xenial; urgency=medium
+
+  * 0.95.32 tagged with 'make release'
+    Commit: Merge pull request #2799 from
+    Yelp/remove_deploy_queue_entries_if_they_fail_a_lot  Remove
+    ServiceInstances from the deploy queue if they fail too many t…
+
+ -- Evan Krall <krall@yelp.com>  Mon, 04 May 2020 13:12:11 -0700
+
 paasta-tools (0.95.31) xenial; urgency=medium
 
   * 0.95.31 tagged with 'make release'
