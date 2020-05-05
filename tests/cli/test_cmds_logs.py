@@ -742,7 +742,6 @@ def test_scribereader_print_last_n_logs():
     ) as determine_scribereader_envs_patch:
 
         determine_scribereader_envs_patch.return_value = ["env1", "env2"]
-        mock_scribereader.get_tail_host_and_port.return_value = "fake_host", "fake_port"
         fake_iter = mock.MagicMock()
         fake_iter.__iter__.return_value = (
             [
@@ -793,7 +792,6 @@ def test_scribereader_print_logs_by_time():
     ) as determine_scribereader_envs_patch:
 
         determine_scribereader_envs_patch.return_value = ["env1", "env2"]
-        mock_scribereader.get_tail_host_and_port.return_value = "fake_host", "fake_port"
         fake_iter = mock.MagicMock()
         fake_iter.__iter__.return_value = (
             [
