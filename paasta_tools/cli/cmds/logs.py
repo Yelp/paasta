@@ -982,9 +982,9 @@ class ScribeLogReader(LogReader):
         end_time: datetime.datetime,
     ) -> ContextManager:
         # Scribe connection details
-        host_and_port = scribereader.get_env_scribe_host(scribe_env, tail=False)
-        host = host_and_port["host"]
-        port = host_and_port["port"]
+        host, port = scribereader.get_tail_host_and_port(
+            **self.scribe_env_to_locations(scribe_env),
+        )
 
         # Recent logs might not be archived yet. Log warning message.
         warning_end_time = datetime.datetime.utcnow().replace(
@@ -1016,9 +1016,9 @@ class ScribeLogReader(LogReader):
         self, scribe_env: str, stream_name: str, line_count: int
     ) -> ContextManager:
         # Scribe connection details
-        host_and_port = scribereader.get_env_scribe_host(scribe_env, tail=True)
-        host = host_and_port["host"]
-        port = host_and_port["port"]
+        host, port = scribereader.get_tail_host_and_port(
+            **self.scribe_env_to_locations(scribe_env),
+        )
 
         # The reason we need a fake context here is because scribereader is a bit inconsistent in its
         # returns. get_stream_reader returns a context that needs to be acquired for cleanup code but
@@ -1032,7 +1032,10 @@ class ScribeLogReader(LogReader):
                 f"Running the equivalent of 'scribereader -e {scribe_env} {stream_name}'"
             )
             yield scribereader.get_stream_tailer(
-                stream_name, host, port, True, line_count
+                stream_name=stream_name,
+                tailing_host=host,
+                tailing_port=port,
+                lines=line_count,
             )
 
         return fake_context()
@@ -1059,9 +1062,9 @@ class ScribeLogReader(LogReader):
         """
         try:
             log.debug(f"Going to tail {stream_name} scribe stream in {scribe_env}")
-            host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
-            host = host_and_port["host"]
-            port = host_and_port["port"]
+            host, port = scribereader.get_tail_host_and_port(
+                **self.scribe_env_to_locations(scribe_env),
+            )
             tailer = scribereader.get_stream_tailer(stream_name, host, port)
             for line in tailer:
                 if parse_fn:
@@ -1122,6 +1125,19 @@ class ScribeLogReader(LogReader):
             sys.exit(1)
         else:
             return env
+
+    def scribe_env_to_locations(self, scribe_env):
+        """Converts a scribe environment to a dictionary of locations. The
+        return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
+        """
+        locations = {"ecosystem": None, "region": None, "superregion": None}
+        if scribe_env in scribereader.PROD_REGIONS:
+            locations["region"] = scribe_env
+        elif scribe_env in scribereader.PROD_SUPERREGIONS:
+            locations["superregion"] = scribe_env
+        else:  # non-prod envs are expressed as ecosystems
+            locations["ecosystem"] = scribe_env
+        return locations
 
 
 def generate_start_end_time(
