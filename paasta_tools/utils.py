@@ -126,6 +126,7 @@ INSTANCE_TYPES = (
     "flink",
     "cassandracluster",
     "kafkacluster",
+    "nrtsearchservice",
 )
 
 
