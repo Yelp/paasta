@@ -1051,7 +1051,10 @@ class TestMarathonTools:
                 "type": "DOCKER",
                 "volumes": fake_volumes,
             },
-            "constraints": [["habitat", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
+            "constraints": [
+                ["habitat", "GROUP_BY", "1"],
+                ["pool", "EQUALS", "default"],
+            ],
             "uris": ["file:///root/.dockercfg"],
             "mem": fake_mem,
             "env": expected_env,
@@ -1352,7 +1355,7 @@ class TestMarathonTools:
         fake_system_paasta_config = SystemPaastaConfig(
             {"auto_hostname_unique_size": 3}, "/foo"
         )
-        expected_constraints = [["pool", "LIKE", "default"], ["hostname", "UNIQUE"]]
+        expected_constraints = [["pool", "EQUALS", "default"], ["hostname", "UNIQUE"]]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
             system_paasta_config=fake_system_paasta_config,
@@ -1371,7 +1374,7 @@ class TestMarathonTools:
             branch_dict=None,
         )
         fake_system_paasta_config = SystemPaastaConfig({}, "/foo")
-        expected_constraints = [["pool", "LIKE", "default"]]
+        expected_constraints = [["pool", "EQUALS", "default"]]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
             system_paasta_config=fake_system_paasta_config,
@@ -1392,7 +1395,7 @@ class TestMarathonTools:
         fake_system_paasta_config = SystemPaastaConfig(
             {"auto_hostname_unique_size": 3}, "/foo"
         )
-        expected_constraints = [["pool", "LIKE", "default"]]
+        expected_constraints = [["pool", "EQUALS", "default"]]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
             system_paasta_config=fake_system_paasta_config,
@@ -1413,7 +1416,7 @@ class TestMarathonTools:
             branch_dict=None,
         )
 
-        expected_constraints = [["pool", "LIKE", "default"]]
+        expected_constraints = [["pool", "EQUALS", "default"]]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
             system_paasta_config=system_paasta_config,
@@ -1437,7 +1440,7 @@ class TestMarathonTools:
 
         expected_constraints = [
             ["region", "GROUP_BY", "1"],
-            ["pool", "LIKE", "default"],
+            ["pool", "EQUALS", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -1457,7 +1460,7 @@ class TestMarathonTools:
             branch_dict=None,
         )
 
-        expected_constraints = [["foo", "1"], ["pool", "LIKE", "default"]]
+        expected_constraints = [["foo", "1"], ["pool", "EQUALS", "default"]]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
             system_paasta_config=system_paasta_config,
@@ -1476,7 +1479,7 @@ class TestMarathonTools:
             branch_dict=None,
         )
 
-        expected_constraints = [["extra", "constraint"], ["pool", "LIKE", "default"]]
+        expected_constraints = [["extra", "constraint"], ["pool", "EQUALS", "default"]]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
             system_paasta_config=system_paasta_config,
@@ -1500,7 +1503,7 @@ class TestMarathonTools:
         )
         expected_constraints = [
             ["habitat", "GROUP_BY", "2"],
-            ["pool", "LIKE", "default"],
+            ["pool", "EQUALS", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -1524,7 +1527,7 @@ class TestMarathonTools:
         )
         expected_constraints = [
             ["region", "UNLIKE", "fake_blacklisted_region"],
-            ["pool", "LIKE", "default"],
+            ["pool", "EQUALS", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -1548,7 +1551,7 @@ class TestMarathonTools:
         )
         expected_constraints = [
             ["region", "LIKE", "fake_whitelisted_region"],
-            ["pool", "LIKE", "default"],
+            ["pool", "EQUALS", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -1577,7 +1580,7 @@ class TestMarathonTools:
         expected_constraints = [
             ["region", "GROUP_BY", "1"],
             ["region", "LIKE", "foo"],
-            ["pool", "LIKE", "default"],
+            ["pool", "EQUALS", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -1606,7 +1609,7 @@ class TestMarathonTools:
         expected_constraints = [
             ["region", "GROUP_BY", "1"],
             ["region", "LIKE", "foo"],
-            ["pool", "LIKE", "default"],
+            ["pool", "EQUALS", "default"],
         ]
         actual = fake_conf.get_calculated_constraints(
             service_namespace_config=fake_service_namespace_config,
@@ -2355,7 +2358,7 @@ class TestMarathonServiceConfig:
         ):
             assert (
                 marathon_config.format_marathon_app_dict()["id"]
-                == "service.instance.gitabcdef.configb402f7ff"
+                == "service.instance.gitabcdef.configa925251a"
             ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -2459,7 +2462,7 @@ def test_format_marathon_app_dict_no_smartstack():
             "health_checks": [],
             "env": mock.ANY,
             "id": fake_job_id,
-            "constraints": [["region", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
+            "constraints": [["region", "GROUP_BY", "1"], ["pool", "EQUALS", "default"]],
         }
         assert actual == expected
 
@@ -2571,7 +2574,7 @@ def test_format_marathon_app_dict_with_smartstack():
             ],
             "env": mock.ANY,
             "id": fake_job_id,
-            "constraints": [["region", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
+            "constraints": [["region", "GROUP_BY", "1"], ["pool", "EQUALS", "default"]],
         }
         assert actual == expected
 
@@ -2735,7 +2738,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
             "health_checks": [],
             "env": mock.ANY,
             "id": fake_job_id,
-            "constraints": [["region", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
+            "constraints": [["region", "GROUP_BY", "1"], ["pool", "EQUALS", "default"]],
         }
         assert actual == expected
 

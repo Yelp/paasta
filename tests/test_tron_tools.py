@@ -772,7 +772,7 @@ class TestTronTools:
             ],
             "docker_parameters": mock.ANY,
             "constraints": [
-                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
+                {"attribute": "pool", "operator": "EQUALS", "value": "special_pool"}
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -832,7 +832,7 @@ class TestTronTools:
             ],
             "docker_parameters": mock.ANY,
             "constraints": [
-                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
+                {"attribute": "pool", "operator": "EQUALS", "value": "special_pool"}
             ],
         }
         assert result["env"]["SHELL"] == "/bin/bash"
@@ -963,7 +963,7 @@ class TestTronTools:
             "extra_volumes": expected_extra_volumes,
             "docker_parameters": mock.ANY,
             "constraints": [
-                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
+                {"attribute": "pool", "operator": "EQUALS", "value": "special_pool"}
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],

@@ -835,7 +835,7 @@ class InstanceConfig:
 
     def get_pool_constraints(self) -> List[Constraint]:
         pool = self.get_pool()
-        return [["pool", "LIKE", pool]]
+        return [["pool", "EQUALS", pool]]
 
     def get_constraints(self) -> Optional[List[Constraint]]:
         return stringify_constraints(self.config_dict.get("constraints", None))
