@@ -146,9 +146,9 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
             load_deployments=False,
             soa_dir=soa_dir,
         )
-        inbound_network_mode = config.get_inbound_network_mode()
+        inbound_firewall = config.get_inbound_firewall()
         outbound_firewall = config.get_outbound_firewall()
-        if not inbound_network_mode and not outbound_firewall:
+        if not inbound_firewall and not outbound_firewall:
             continue
 
         dependencies = config.get_dependencies() or ()
