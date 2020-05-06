@@ -50,6 +50,7 @@ from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
@@ -788,6 +789,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     kafkacluster=InstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
     ),
+    nrtsearchservice=InstanceTypeHandler(
+        get_service_instance_list, load_nrtsearchservice_instance_config
+    ),
 )
 
 LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
@@ -808,6 +812,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     ),
     kafkacluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
+    ),
+    nrtsearchservice=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_nrtsearchservice_instance_config
     ),
 )
 
