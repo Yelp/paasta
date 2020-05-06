@@ -425,7 +425,7 @@ def test_ensure_internet_chain():
 @mock.patch.object(firewall, "_default_rules", return_value=[])
 @mock.patch.object(firewall, "_well_known_rules", return_value=[])
 @mock.patch.object(firewall, "_cidr_rules", return_value=[])
-def test_restrict_inbound_network_traffic(
+def test_reject_inbound_network_traffic(
     mock_cidr_rules,
     mock_well_known_rules,
     mock_default_rules,

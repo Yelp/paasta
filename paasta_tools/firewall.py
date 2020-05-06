@@ -233,7 +233,7 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         yield _yocalhost_rule(port, "proxy_port " + namespace)
 
         # Allow services to opt out of network visibility beyond localhost
-        if conf.get_inbound_firewall() == "restrict":
+        if conf.get_inbound_firewall() == "reject":
             yield _reject_remaining_inbound_traffic_rule(port)
 
 
