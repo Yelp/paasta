@@ -1,6 +1,6 @@
-paasta-tools (0.95.32) xenial; urgency=medium
+paasta-tools (0.95.33) xenial; urgency=medium
 
-  * 0.95.32 tagged with 'make release'
+  * 0.95.33 tagged with 'make release'
     Commit: Added support for applying Nrtsearch k8s CRs (#2804)
 
  -- Sarthak Nandi <sarthakn@yelp.com>  Wed, 06 May 2020 13:12:38 -0700
