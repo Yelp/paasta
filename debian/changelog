@@ -1,3 +1,13 @@
+paasta-tools (0.95.35) xenial; urgency=medium
+
+  * 0.95.35 tagged with 'make release'
+    Commit: Revert "Revert "Revert "Merge pull request #2793 from
+    Yelp/u/kawaiwan/bump-scribereader-0.8.1"""  check_oom_events script
+    is broken (PAASTA-16655)  This reverts commit
+    201eb3d7bd30668e1554aeff27651f30a3e396d3.
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 07 May 2020 15:32:11 -0700
+
 paasta-tools (0.95.34) xenial; urgency=medium
 
   * 0.95.34 tagged with 'make release'
