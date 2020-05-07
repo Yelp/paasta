@@ -85,7 +85,7 @@ def get_service_instances_needing_update(
     marathon_clients: MarathonClients,
     instances: Collection[Tuple[str, str]],
     cluster: str,
-) -> List[Tuple[str, str, MarathonServiceConfig]]:
+) -> List[Tuple[str, str, MarathonServiceConfig, str]]:
     marathon_apps = {}
     for marathon_client in marathon_clients.get_all_clients():
         marathon_apps.update(
@@ -111,10 +111,11 @@ def get_service_instances_needing_update(
                 "ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e))
             )
             continue
-        if app_id not in marathon_app_ids:
-            service_instances.append((service, instance, config))
-        elif marathon_apps[app_id].instances != config_app["instances"]:
-            service_instances.append((service, instance, config))
+        if (
+            app_id not in marathon_app_ids
+            or marathon_apps[app_id].instances != config_app["instances"]
+        ):
+            service_instances.append((service, instance, config, app_id))
     return service_instances
 
 

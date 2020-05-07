@@ -178,7 +178,7 @@ def test_get_service_instances_needing_update():
             ),
         ]
         mock_load_marathon_service_config.assert_has_calls(calls)
-        assert ret == [("universe", "c138", mock.ANY)]
+        assert ret == [("universe", "c138", mock.ANY, "/universe.c138.c2.g2")]
 
         mock_configs = [
             mock.Mock(
@@ -198,7 +198,10 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(
             fake_clients, mock_service_instances, "westeros-prod"
         )
-        assert ret == [("universe", "c137", mock.ANY), ("universe", "c138", mock.ANY)]
+        assert ret == [
+            ("universe", "c137", mock.ANY, "/universe.c137.c1.g1"),
+            ("universe", "c138", mock.ANY, "/universe.c138.c2.g2"),
+        ]
 
         mock_configs = [
             mock.Mock(
@@ -216,7 +219,7 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(
             fake_clients, mock_service_instances, "westeros-prod"
         )
-        assert ret == [("universe", "c138", mock.ANY)]
+        assert ret == [("universe", "c138", mock.ANY, "/universe.c138.c2.g2")]
 
         mock_configs = [
             mock.Mock(
@@ -234,7 +237,7 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(
             fake_clients, mock_service_instances, "westeros-prod"
         )
-        assert ret == [("universe", "c138", mock.ANY)]
+        assert ret == [("universe", "c138", mock.ANY, "/universe.c138.c2.g2")]
 
         mock_configs = [
             mock.Mock(
@@ -252,7 +255,7 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(
             fake_clients, mock_service_instances, "westeros-prod"
         )
-        assert ret == [("universe", "c138", mock.ANY)]
+        assert ret == [("universe", "c138", mock.ANY, "/universe.c138.c2.g2")]
 
         mock_configs = [
             mock.Mock(
@@ -270,8 +273,7 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(
             fake_clients, mock_service_instances, "westeros-prod"
         )
-        assert ret == [("universe", "c138", mock.ANY)]
-
+        assert ret == [("universe", "c138", mock.ANY, "/universe.c138.c2.g2")]
         mock_configs = [
             mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=Exception)),
             mock.Mock(
@@ -286,7 +288,7 @@ def test_get_service_instances_needing_update():
         ret = get_service_instances_needing_update(
             fake_clients, mock_service_instances, "westeros-prod"
         )
-        assert ret == [("universe", "c138", mock.ANY)]
+        assert ret == [("universe", "c138", mock.ANY, "/universe.c138.c2.g2")]
 
 
 def test_get_marathon_clients_from_config():
