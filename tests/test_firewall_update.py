@@ -90,7 +90,7 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpd
     marathon_config = {
         "hassecurityinbound": {
             "dependencies_reference": "my_ref",
-            "security": {"inbound_network_mode": "restrict"},
+            "security": {"inbound_firewall": "reject"},
         },
         "hassecurityoutbound": {
             "dependencies_reference": "my_ref",
