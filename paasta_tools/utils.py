@@ -892,11 +892,10 @@ class InstanceConfig:
         This option exists primarily for sensitive services that wish to opt into this functionality.
 
         :returns: A string specified in the config, None if not specified"""
-        default_inbound_rule = "allow"
         security = self.config_dict.get("security")
         if not security:
             return None
-        return security.get("inbound_firewall", default_inbound_rule)
+        return security.get("inbound_firewall")
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
