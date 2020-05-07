@@ -1,3 +1,12 @@
+paasta-tools (0.95.34) xenial; urgency=medium
+
+  * 0.95.34 tagged with 'make release'
+    Commit: Merge pull request #2806 from Yelp/drmorr/PAASTA-
+    15715/add_logs_for_bounce_timings  log the marathon app-id in
+    deployd so we can better track bounce timings
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 07 May 2020 14:03:19 -0700
+
 paasta-tools (0.95.33) xenial; urgency=medium
 
   * 0.95.33 tagged with 'make release'
