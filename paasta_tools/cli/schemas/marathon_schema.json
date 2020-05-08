@@ -353,8 +353,8 @@
                     "properties": {
                         "inbound_firewall": {
                             "enum": [
-                                "full",
-                                "restrict"
+                                "accept",
+                                "reject"
                             ]
                         },
                         "outbound_firewall": {
