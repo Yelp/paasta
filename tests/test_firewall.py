@@ -433,9 +433,26 @@ def test_reject_inbound_network_traffic(
     service_group,
 ):
     mock_service_config.return_value.get_inbound_firewall.return_value = "reject"
+    mock_service_config.return_value.get_proxy_port.return_value = "20000"
     assert service_group.get_rules(
         DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR
     ) == (
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="REJECT",
+            src="0.0.0.0/0.0.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("20000",)),)),),
+            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ALLOW",
+            src="127.0.0.1/255.255.255.255",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("20000",)),)),),
+            target_parameters=(),
+        ),
         EMPTY_RULE._replace(
             protocol="tcp",
             target="ACCEPT",
@@ -462,14 +479,6 @@ def test_reject_inbound_network_traffic(
                 ("comment", (("comment", ("proxy_port example_happyhour.main",)),)),
                 ("tcp", (("dport", ("20000",)),)),
             ),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            target="REJECT",
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("20000",)),)),),
-            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
         ),
     )
 
