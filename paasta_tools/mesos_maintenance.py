@@ -32,6 +32,7 @@ from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
+from paasta_tools.utils import time_cache
 from paasta_tools.utils import to_bytes
 
 
@@ -169,6 +170,7 @@ def get_maintenance_schedule():
     return client_fn(data={"type": "GET_MAINTENANCE_SCHEDULE"})
 
 
+@time_cache(ttl=10)
 def get_maintenance_status():
     """Makes a GET_MAINTENANCE_STATUS request to the operator api
 
