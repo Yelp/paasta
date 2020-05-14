@@ -18,7 +18,11 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import timed_flock
 
 
-PRIVATE_IP_RANGES = (
+INBOUND_PRIVATE_IP_RANGES = (
+    "127.0.0.0/255.0.0.0",
+    "169.254.0.0/255.255.0.0",
+)
+OUTBOUND_PRIVATE_IP_RANGES = (
     "127.0.0.0/255.0.0.0",
     "10.0.0.0/255.0.0.0",
     "172.16.0.0/255.240.0.0",
@@ -203,14 +207,16 @@ def _inbound_traffic_rule(conf, service_name, instance_name, protocol="tcp"):
             matches=((protocol, (("dport", (str(port),)),)),),
             target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
         )
-        yield iptables.Rule(
-            protocol=protocol,
-            src="127.0.0.1/255.255.255.255",
-            dst="0.0.0.0/0.0.0.0",
-            target="ALLOW",
-            matches=((protocol, (("dport", (str(port),)),)),),
-            target_parameters=(),
-        )
+        for ip_range in INBOUND_PRIVATE_IP_RANGES:
+            yield iptables.Rule(
+                protocol=protocol,
+                src=ip_range,
+                dst="0.0.0.0/0.0.0.0",
+                target="ALLOW",
+                matches=((protocol, (("dport", (str(port),)),)),),
+                target_parameters=(),
+            )
+
 
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
@@ -446,7 +452,7 @@ def _ensure_internet_chain():
                 matches=(),
                 target_parameters=(),
             )
-            for ip_range in PRIVATE_IP_RANGES
+            for ip_range in OUTBOUND_PRIVATE_IP_RANGES
         ),
     )
 
