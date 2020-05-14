@@ -218,7 +218,6 @@ def _inbound_traffic_rule(conf, service_name, instance_name, protocol="tcp"):
             )
 
 
-
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
     for dep in conf.get_dependencies() or ():
         namespace = dep.get("smartstack")
