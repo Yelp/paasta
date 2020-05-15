@@ -74,6 +74,14 @@ def parse_args():
         dest="source_id",
     )
     parser.add_argument(
+        "--cluster-blacklist",
+        help="Space-separated list of clusters to not rightsize",
+        required=False,
+        nargs="+",
+        default=[],
+        dest="cluster_blacklist",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         help="Logging verbosity",
@@ -94,9 +102,13 @@ def get_recommendation_from_result(result):
     return rec
 
 
-def get_recommendations_by_service_file(results):
+def get_recommendations_by_service_file(results, cluster_blacklist=None):
     results_by_service_file = defaultdict(dict)
+    cluster_blacklist = set(cluster_blacklist if cluster_blacklist is not None else [])
+
     for result in results.values():
+        if result["cluster"] in cluster_blacklist:
+            continue
         key = (
             result["service"],
             result["cluster"],
@@ -121,7 +133,9 @@ def main(args):
     extra_message = get_extra_message(report["search"])
     config_source = args.source_id or args.csv_report
 
-    results = get_recommendations_by_service_file(report["results"])
+    results = get_recommendations_by_service_file(
+        report["results"], cluster_blacklist=args.cluster_blacklist,
+    )
     updater = AutoConfigUpdater(
         config_source=config_source,
         git_remote=args.git_remote,
