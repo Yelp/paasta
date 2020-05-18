@@ -28,7 +28,7 @@ except ImportError:
     clog = None
 
 
-DEFAULT_REQUEST_LOG_NAME = "tmp_paasta_requests"
+DEFAULT_REQUEST_LOG_NAME = "tmp_paasta_api_requests"
 
 
 def includeme(config):
@@ -73,6 +73,9 @@ class request_logger_tween_factory:
         request_fields = {
             "path": request.path,
             "params": request.params.mixed(),
+            "client_addr": request.client_addr,
+            "http_method": request.method,
+            "headers": dict(request.headers),  # incls user agent
         }
         response_fields = {}
         log_level = "INFO"

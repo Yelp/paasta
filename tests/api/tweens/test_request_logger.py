@@ -117,8 +117,6 @@ def test_request_logger_tween_factory_call(
     extra_expected_response,
 ):
     req = Request.blank("/path/to/something")
-    req.matched_route = mock.Mock()
-    req.matched_route.name = "some.random.endpoint"
     mock_handler.return_value = Response(body="a_body", status=status_code,)
     if exc is not None:
         mock_handler.side_effect = exc
@@ -143,7 +141,14 @@ def test_request_logger_tween_factory_call(
             timestamp=datetime.fromtimestamp(0),
             level=expected_lvl,
             additional_fields={
-                "request": {"path": "/path/to/something", "params": {},},
+                # most of these are default for a blank request
+                "request": {
+                    "path": "/path/to/something",
+                    "params": {},
+                    "client_addr": None,
+                    "http_method": "GET",
+                    "headers": {"Host": "localhost:80"},
+                },
                 "response": expected_response,
             },
         ),
