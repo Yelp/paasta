@@ -892,7 +892,7 @@ def test_read_service_instance_names_ignores_underscore():
         (fake_name, fake_instance_1),
     ]
     with mock.patch(
-        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        "paasta_tools.utils.__read_extra_service_information_cached",
         autospec=True,
         return_value=fake_job_config,
     ):
@@ -918,7 +918,7 @@ def test_read_service_instance_names_tron():
         ("fake_service", "job2.actionD"),
     ]
     with mock.patch(
-        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        "paasta_tools.utils.__read_extra_service_information_cached",
         autospec=True,
         return_value=fake_tron_job_config,
     ):
@@ -935,8 +935,7 @@ def test_read_service_instance_names_tron():
     "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
 )
 @mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
+    "paasta_tools.utils.__read_extra_service_information_cached", autospec=True,
 )
 def test_load_service_instance_configs(
     mock_read_extra_service_information, mock_load_auto_configs
@@ -961,7 +960,7 @@ def test_load_service_instance_configs(
     )
     assert result == expected
     mock_read_extra_service_information.assert_called_with(
-        service_name="fake_service", extra_info="kubernetes-fake", soa_dir="fake_dir",
+        "fake_service", "kubernetes-fake", soa_dir="fake_dir",
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -983,8 +982,7 @@ def test_load_service_instance_config_underscore():
 
 
 @mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
+    "paasta_tools.utils.__read_extra_service_information_cached", autospec=True,
 )
 def test_load_service_instance_config_not_found(mock_read_service_information):
     mock_read_service_information.return_value = {"bar": {"cpus": 10}}
@@ -1002,8 +1000,7 @@ def test_load_service_instance_config_not_found(mock_read_service_information):
     "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
 )
 @mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
+    "paasta_tools.utils.__read_extra_service_information_cached", autospec=True,
 )
 @pytest.mark.parametrize(
     "user_config,auto_config,expected_config",
@@ -1034,7 +1031,7 @@ def test_load_service_instance_config(
     )
     assert result == expected_config
     mock_read_extra_service_information.assert_called_with(
-        service_name="fake_service", extra_info="kubernetes-fake", soa_dir="fake_dir",
+        "fake_service", "kubernetes-fake", soa_dir="fake_dir",
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1045,8 +1042,7 @@ def test_load_service_instance_config(
 
 
 @mock.patch(
-    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
-    autospec=True,
+    "paasta_tools.utils.__read_extra_service_information_cached", autospec=True,
 )
 @mock.patch(
     "paasta_tools.utils.load_system_paasta_config", autospec=True,
@@ -1068,8 +1064,8 @@ def test_load_service_instance_auto_configs(
     )
     if instance_type_enabled:
         mock_read_extra_service_information.assert_called_with(
-            service_name="fake_service",
-            extra_info=f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
+            "fake_service",
+            f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
             soa_dir="fake_dir",
         )
         assert result == mock_read_extra_service_information.return_value
