@@ -15,13 +15,11 @@
 Creates a tween that logs information about requests.
 """
 import json
-import logging
-import time
 import traceback
+from datetime import datetime
 
 import pyramid
 
-from paasta_tools import utils
 from paasta_tools.api import settings
 
 try:
@@ -52,15 +50,18 @@ class request_logger_tween_factory:
         )
 
     def _log(
-        self, endpoint, level=logging.INFO, additional_fields=None,
+        self, timestamp=None, level="INFO", additional_fields=None,
     ):
         if clog is not None:
+            # `settings` values are set by paasta_tools.api.api:setup_paasta_api
+            if timestamp is None:
+                timestamp = datetime.now()
             dct = {
-                "timestamp": time.time(),
-                "hostname": utils.get_hostname(),
-                "level": logging.getLevelName(level),
+                "human_timestamp": timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+                "unix_timestamp": timestamp.timestamp(),
+                "hostname": settings.hostname,
+                "level": level,
                 "cluster": settings.cluster,
-                "endpoint": endpoint,
             }
             if additional_fields is not None:
                 dct.update(additional_fields)
@@ -68,28 +69,28 @@ class request_logger_tween_factory:
             clog.log_line(self.log_name, line)
 
     def __call__(self, request):
-        start_time = time.time()  # start clock for response time
+        start_time = datetime.now()  # start clock for response time
         request_fields = {
             "path": request.path,
             "params": request.params.mixed(),
         }
         response_fields = {}
-        log_level = logging.INFO
+        log_level = "INFO"
 
         try:
             response = self.handler(request)
 
             response_fields["status_code"] = response.status_int
             if 300 <= response.status_int < 400:
-                log_level = logging.WARNING
+                log_level = "WARNING"
             elif 400 <= response.status_int < 600:
-                log_level = logging.ERROR
+                log_level = "ERROR"
                 response_fields["body"] = response.body.decode("utf-8")
 
             return response
 
         except Exception as e:
-            log_level = logging.ERROR
+            log_level = "ERROR"
             response_fields.update(
                 {
                     "status_code": 500,
@@ -100,11 +101,11 @@ class request_logger_tween_factory:
             raise
 
         finally:
-            response_time_ms = (time.time() - start_time) * 1000
+            response_time_ms = (datetime.now() - start_time).total_seconds() * 1000
             response_fields["response_time_ms"] = response_time_ms
 
             self._log(
-                endpoint=request.matched_route.name if request.matched_route else None,
+                timestamp=start_time,
                 level=log_level,
                 additional_fields={
                     "request": request_fields,

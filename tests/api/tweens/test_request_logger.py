@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import itertools
-import logging
+from datetime import datetime
 
 import mock
 import pytest
@@ -22,10 +21,20 @@ from pyramid.response import Response
 from paasta_tools.api.tweens import request_logger
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_clog():
     with mock.patch.object(request_logger, "clog", autospec=True) as m:
         yield m
+
+
+@pytest.fixture(autouse=True)
+def mock_settings():
+    with mock.patch(
+        "paasta_tools.api.settings.cluster", "a_cluster", autospec=False,
+    ), mock.patch(
+        "paasta_tools.api.settings.hostname", "a_hostname", autospec=False,
+    ):
+        yield
 
 
 @pytest.fixture
@@ -59,11 +68,10 @@ def test_request_logger_tween_factory_init(mock_factory):
     mock.Mock(return_value="a_hostname"),
     autospec=False,
 )
-@mock.patch("paasta_tools.api.settings.cluster", "a_cluster", autospec=False)
 def test_request_logger_tween_factory_log(mock_clog, mock_factory):
     mock_factory._log(
-        endpoint="/path/to/something",
-        level=logging.ERROR,
+        timestamp=datetime.fromtimestamp(1589828049),
+        level="ERROR",
         additional_fields={"additional_key": "additional_value"},
     )
     assert mock_clog.log_line.call_args_list == [
@@ -71,36 +79,42 @@ def test_request_logger_tween_factory_log(mock_clog, mock_factory):
             "request_logs",
             (
                 '{"additional_key": "additional_value", '
-                '"cluster": "a_cluster", "endpoint": "/path/to/something", '
-                '"hostname": "a_hostname", "level": "ERROR", '
-                '"timestamp": "a_time"}'
+                '"cluster": "a_cluster", '
+                '"hostname": "a_hostname", '
+                '"human_timestamp": "2020-05-18T18:54:09", '
+                '"level": "ERROR", '
+                '"unix_timestamp": 1589828049.0}'
             ),
         ),
     ]
 
 
-@mock.patch(
-    "time.time", mock.Mock(side_effect=itertools.cycle([0, 57])), autospec=False,
-)
+@mock.patch.object(request_logger, "datetime", autospec=True)
 @mock.patch(
     "traceback.format_exc", mock.Mock(return_value="an_exc_body"), autospec=False,
 )
 @pytest.mark.parametrize(
     "status_code,exc,expected_lvl,extra_expected_response",
     [
-        (200, None, logging.INFO, {}),
-        (300, None, logging.WARNING, {}),
-        (400, None, logging.ERROR, {"body": "a_body"}),
+        (200, None, "INFO", {}),
+        (300, None, "WARNING", {}),
+        (400, None, "ERROR", {"body": "a_body"}),
         (
             500,
             Exception(),
-            logging.ERROR,
+            "ERROR",
             {"exc_type": "Exception", "exc_info": "an_exc_body"},
         ),
     ],
 )
 def test_request_logger_tween_factory_call(
-    mock_handler, mock_factory, status_code, exc, expected_lvl, extra_expected_response,
+    mock_datetime,
+    mock_handler,
+    mock_factory,
+    status_code,
+    exc,
+    expected_lvl,
+    extra_expected_response,
 ):
     req = Request.blank("/path/to/something")
     req.matched_route = mock.Mock()
@@ -109,6 +123,9 @@ def test_request_logger_tween_factory_call(
     if exc is not None:
         mock_handler.side_effect = exc
     mock_factory._log = mock.Mock()
+    mock_datetime.now = mock.Mock(
+        side_effect=[datetime.fromtimestamp(0), datetime.fromtimestamp(57)],
+    )
 
     try:
         mock_factory(req)
@@ -118,12 +135,12 @@ def test_request_logger_tween_factory_call(
 
     expected_response = {
         "status_code": status_code,
-        "response_time_ms": 57000,
+        "response_time_ms": 57000.0,
     }
     expected_response.update(extra_expected_response)
     assert mock_factory._log.call_args_list == [
         mock.call(
-            endpoint="some.random.endpoint",
+            timestamp=datetime.fromtimestamp(0),
             level=expected_lvl,
             additional_fields={
                 "request": {"path": "/path/to/something", "params": {},},
