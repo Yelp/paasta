@@ -1,3 +1,12 @@
+paasta-tools (0.95.36) xenial; urgency=medium
+
+  * 0.95.36 tagged with 'make release'
+    Commit: Merge pull request #2811 from Yelp/PAASTA-16664-maint-status-
+    timeouts  Reduce timeouts in setup_marathon_job from
+    get_draining_hosts
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 19 May 2020 08:11:39 -0700
+
 paasta-tools (0.95.35) xenial; urgency=medium
 
   * 0.95.35 tagged with 'make release'
