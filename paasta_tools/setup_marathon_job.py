@@ -673,8 +673,12 @@ def deploy_service(
     try:
         draining_hosts = get_draining_hosts()
     except ReadTimeout as e:
-        errormsg = "ReadTimeout encountered trying to get draining hosts: %s" % e
-        return (1, errormsg, 60)
+        errormsg = (
+            "ReadTimeout encountered trying to get draining hosts: %s. Continuing with bounce assuming no tasks at-risk"
+            % e
+        )
+        log_deploy_error(errormsg)
+        draining_hosts = []
 
     (
         old_app_live_happy_tasks,
