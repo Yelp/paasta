@@ -320,7 +320,9 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
             except ValueError:
                 self.log.error("Couldn't load public config, the JSON is invalid!")
                 return
-            service_instance_configs: List[Tuple[str, str, MarathonServiceConfig]] = []
+            service_instance_configs: List[
+                Tuple[str, str, MarathonServiceConfig, str]
+            ] = []
             if new_config != self.public_config:
                 self.log.info(
                     "Public config has changed, now checking if it affects any services config shas."
@@ -340,7 +342,7 @@ class PublicConfigEventHandler(pyinotify.ProcessEvent):
                 self.log.info(
                     f"{len(service_instance_configs)} service instances affected. Doing a staggered bounce."
                 )
-                for service, instance, config in service_instance_configs:
+                for service, instance, config, _ in service_instance_configs:
                     self.filewatcher.instances_to_bounce.put(
                         ServiceInstance(
                             service=service,
@@ -423,9 +425,9 @@ class YelpSoaEventHandler(pyinotify.ProcessEvent):
             [(service_name, instance) for instance in instances],
             self.filewatcher.cluster,
         )
-        for service, instance, config in service_instance_configs:
+        for service, instance, config, app_id in service_instance_configs:
             self.log.info(
-                f"{service}.{instance} has a new marathon app ID. Enqueuing it to be bounced."
+                f"{service}.{instance} has a new marathon app ID ({app_id}). Enqueuing it to be bounced."
             )
             now = time.time()
             self.filewatcher.instances_to_bounce.put(

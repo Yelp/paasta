@@ -1841,6 +1841,65 @@ class TestSetupMarathonJob:
 
             assert mock_log.call_count == 5
 
+    def test_deploy_service_get_draining_hosts_timeout(self):
+        fake_bounce = "WHEEEEEEEEEEEEEEEE"
+        fake_drain_method = "noop"
+        fake_name = "whoa"
+        fake_instance = "the_earth_is_tiny"
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
+        fake_apps = [
+            mock.Mock(id=fake_id, tasks=[]),
+            mock.Mock(id=("%s2" % fake_id), tasks=[]),
+        ]
+        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
+        fake_config: marathon_tools.FormattedMarathonAppDict = {
+            "id": fake_id,
+            "instances": 2,
+        }
+        fake_apps_with_clients = [(app, fake_client) for app in fake_apps]
+        fake_clients = marathon_tools.MarathonClients(
+            current=[fake_client], previous=[fake_client]
+        )
+        fake_job_config = mock.Mock(get_marathon_shard=mock.Mock(return_value=None))
+
+        with mock.patch(
+            "paasta_tools.setup_marathon_job._log", autospec=True
+        ) as mock_log, mock.patch(
+            "paasta_tools.setup_marathon_job.bounce_lib.get_bounce_method_func",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.setup_marathon_job.load_system_paasta_config", autospec=True
+        ) as mock_load_system_paasta_config, mock.patch(
+            "paasta_tools.setup_marathon_job.get_draining_hosts",
+            autospec=True,
+            side_effect=setup_marathon_job.ReadTimeout,
+        ), mock.patch(
+            "paasta_tools.setup_marathon_job.do_bounce", autospec=True
+        ) as mock_do_bounce:
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(
+                return_value="fake_cluster"
+            )
+            ret = setup_marathon_job.deploy_service(
+                service=fake_name,
+                instance=fake_instance,
+                marathon_jobid=fake_id,
+                config=fake_config,
+                clients=fake_clients,
+                marathon_apps_with_clients=fake_apps_with_clients,
+                bounce_method=fake_bounce,
+                drain_method_name=fake_drain_method,
+                drain_method_params={},
+                nerve_ns=fake_instance,
+                registrations=[fake_instance],
+                bounce_health_params={},
+                soa_dir="fake_soa_dir",
+                job_config=fake_job_config,
+            )
+            assert ret[0] == 0
+            logged_line = mock_log.mock_calls[0][2]["line"]
+            assert logged_line.startswith("ReadTimeout")
+            assert mock_do_bounce.call_count == 1
+
     def test_deploy_service_lock_exceptions(self):
         fake_bounce = "WHEEEEEEEEEEEEEEEE"
         fake_drain_method = "noop"

@@ -1,3 +1,38 @@
+paasta-tools (0.95.36) xenial; urgency=medium
+
+  * 0.95.36 tagged with 'make release'
+    Commit: Merge pull request #2811 from Yelp/PAASTA-16664-maint-status-
+    timeouts  Reduce timeouts in setup_marathon_job from
+    get_draining_hosts
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 19 May 2020 08:11:39 -0700
+
+paasta-tools (0.95.35) xenial; urgency=medium
+
+  * 0.95.35 tagged with 'make release'
+    Commit: Revert "Revert "Revert "Merge pull request #2793 from
+    Yelp/u/kawaiwan/bump-scribereader-0.8.1"""  check_oom_events script
+    is broken (PAASTA-16655)  This reverts commit
+    201eb3d7bd30668e1554aeff27651f30a3e396d3.
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 07 May 2020 15:32:11 -0700
+
+paasta-tools (0.95.34) xenial; urgency=medium
+
+  * 0.95.34 tagged with 'make release'
+    Commit: Merge pull request #2806 from Yelp/drmorr/PAASTA-
+    15715/add_logs_for_bounce_timings  log the marathon app-id in
+    deployd so we can better track bounce timings
+
+ -- David Morrison <drmorr@yelp.com>  Thu, 07 May 2020 14:03:19 -0700
+
+paasta-tools (0.95.33) xenial; urgency=medium
+
+  * 0.95.33 tagged with 'make release'
+    Commit: Added support for applying Nrtsearch k8s CRs (#2804)
+
+ -- Sarthak Nandi <sarthakn@yelp.com>  Wed, 06 May 2020 13:12:38 -0700
+
 paasta-tools (0.95.32) xenial; urgency=medium
 
   * 0.95.32 tagged with 'make release'

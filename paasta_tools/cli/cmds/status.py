@@ -980,10 +980,12 @@ def print_flink_status(
 
     if status.state != "running":
         output.append(
-            "    State: {state}".format(state=PaastaColors.yellow(status.state))
+            "    State: {state}".format(state=PaastaColors.yellow(status.state.title()))
         )
     else:
-        output.append(f"    State: {status.state}")
+        output.append(
+            "    State: {state}".format(state=PaastaColors.green(status.state.title()))
+        )
 
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
@@ -1078,12 +1080,14 @@ def print_flink_status(
                 PaastaColors.green
                 if job.get("state") and job.get("state") == "RUNNING"
                 else PaastaColors.red
+                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                else PaastaColors.yellow
             )
             job_info_str = fmt.format(
                 job_id=job_id,
                 job_name=get_flink_job_name(job),
                 allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state") or "unknown")),
+                state=color_fn((job.get("state").title() or "Unknown")),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
