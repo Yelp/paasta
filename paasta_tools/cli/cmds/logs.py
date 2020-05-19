@@ -983,7 +983,7 @@ class ScribeLogReader(LogReader):
     ) -> ContextManager:
         # Scribe connection details
         host, port = scribereader.get_tail_host_and_port(
-            **self.scribe_env_to_locations(scribe_env),
+            **scribe_env_to_locations(scribe_env),
         )
 
         # Recent logs might not be archived yet. Log warning message.
@@ -1017,7 +1017,7 @@ class ScribeLogReader(LogReader):
     ) -> ContextManager:
         # Scribe connection details
         host, port = scribereader.get_tail_host_and_port(
-            **self.scribe_env_to_locations(scribe_env),
+            **scribe_env_to_locations(scribe_env),
         )
 
         # The reason we need a fake context here is because scribereader is a bit inconsistent in its
@@ -1063,7 +1063,7 @@ class ScribeLogReader(LogReader):
         try:
             log.debug(f"Going to tail {stream_name} scribe stream in {scribe_env}")
             host, port = scribereader.get_tail_host_and_port(
-                **self.scribe_env_to_locations(scribe_env),
+                **scribe_env_to_locations(scribe_env),
             )
             tailer = scribereader.get_stream_tailer(stream_name, host, port)
             for line in tailer:
@@ -1126,18 +1126,19 @@ class ScribeLogReader(LogReader):
         else:
             return env
 
-    def scribe_env_to_locations(self, scribe_env):
-        """Converts a scribe environment to a dictionary of locations. The
-        return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
-        """
-        locations = {"ecosystem": None, "region": None, "superregion": None}
-        if scribe_env in scribereader.PROD_REGIONS:
-            locations["region"] = scribe_env
-        elif scribe_env in scribereader.PROD_SUPERREGIONS:
-            locations["superregion"] = scribe_env
-        else:  # non-prod envs are expressed as ecosystems
-            locations["ecosystem"] = scribe_env
-        return locations
+
+def scribe_env_to_locations(scribe_env):
+    """Converts a scribe environment to a dictionary of locations. The
+    return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
+    """
+    locations = {"ecosystem": None, "region": None, "superregion": None}
+    if scribe_env in scribereader.PROD_REGIONS:
+        locations["region"] = scribe_env
+    elif scribe_env in scribereader.PROD_SUPERREGIONS:
+        locations["superregion"] = scribe_env
+    else:  # non-prod envs are expressed as ecosystems
+        locations["ecosystem"] = scribe_env
+    return locations
 
 
 def generate_start_end_time(
