@@ -21,6 +21,7 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import json
 import logging
 import sys
 from typing import Optional
@@ -81,7 +82,7 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(level=logging.WARNING)
+        logging.basicConfig(level=logging.INFO)
 
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
@@ -135,29 +136,33 @@ def setup_kube_deployments(
         for service_instance in service_instances_with_valid_names
     ]
 
+    apps_updated = []
     for _, app in applications:
         if app:
+            apps_updated.append(str(app))
             if (
                 app.kube_deployment.service,
                 app.kube_deployment.instance,
             ) not in existing_apps:
-                log.debug(f"Creating {app} because it does not exist yet.")
+                log.info(f"Creating {app} because it does not exist yet.")
                 app.create(kube_client)
             elif app.kube_deployment not in existing_kube_deployments:
-                log.debug(f"Updating {app} because configs have changed.")
+                log.info(f"Updating {app} because configs have changed.")
                 app.update(kube_client)
             elif autoscaling_is_paused() and not is_deployment_marked_paused(
                 kube_client, app.soa_config
             ):
-                log.debug(f"Updating {app} because autoscaler needs to be paused.")
+                log.info(f"Updating {app} because autoscaler needs to be paused.")
                 app.update(kube_client)
             elif not autoscaling_is_paused() and is_deployment_marked_paused(
                 kube_client, app.soa_config
             ):
-                log.debug(f"Updating {app} because autoscaler needs to be resumed.")
+                log.info(f"Updating {app} because autoscaler needs to be resumed.")
                 app.update(kube_client)
             else:
                 log.debug(f"{app} is up to date, no action taken")
+                apps_updated.pop()
+    log.info(json.dumps({"service_instance_updated": apps_updated}))
 
     return (False, None) not in applications and len(
         service_instances_with_valid_names
