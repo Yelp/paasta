@@ -16,11 +16,11 @@ import argparse
 import json
 import sys
 import time
-from random import choice
 
 from pysensu_yelp import Status
 
 from paasta_tools import monitoring_tools
+from paasta_tools.cli.cmds.logs import scribe_env_to_locations
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -87,12 +87,20 @@ def parse_args(args):
 
 def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
     """Read the latest 'num_lines' lines from OOM_EVENTS_STREAM and iterate over them."""
-    host_port = choice(scribereader.get_default_scribe_hosts(tail=True))
+    # paasta configs incls a map for cluster -> env that is expected by scribe
+    log_reader_config = load_system_paasta_config().get_log_reader()
+    cluster_map = log_reader_config["options"]["cluster_map"]
+    scribe_env = cluster_map[cluster]
+
+    # `scribe_env_to_locations` slightly mutates the scribe env based on whether
+    # or not it is in dev or prod
+    host, port = scribereader.get_tail_host_and_port(
+        **scribe_env_to_locations(scribe_env),
+    )
     stream = scribereader.get_stream_tailer(
         stream_name=OOM_EVENTS_STREAM,
-        tailing_host=host_port["host"],
-        tailing_port=host_port["port"],
-        use_kafka=True,
+        tailing_host=host,
+        tailing_port=port,
         lines=num_lines,
         superregion=superregion,
     )
