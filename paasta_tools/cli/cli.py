@@ -17,17 +17,74 @@
 import argparse
 import logging
 import os
+import pkgutil
 import subprocess
 import sys
+import threading
 import warnings
 
 import argcomplete
 import pkg_resources
 
 from paasta_tools.cli import cmds
-from paasta_tools.cli.utils import load_method
-from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
-from paasta_tools.utils import paasta_print
+
+
+TLS = threading.local()
+
+
+def to_bytes(obj) -> bytes:
+    if isinstance(obj, bytes):
+        return obj
+    elif isinstance(obj, str):
+        return obj.encode("UTF-8")
+    else:
+        return str(obj).encode("UTF-8")
+
+
+def paasta_print(*args, **kwargs):
+    f = kwargs.pop("file", sys.stdout) or sys.stdout
+    f = getattr(TLS, "paasta_print_file", f) or f
+    buf = getattr(f, "buffer", None)
+    # Here we're assuming that the file object works with strings and its
+    # `buffer` works with bytes. So, if the file object doesn't have `buffer`,
+    # we output via the file object itself using strings.
+    if buf is not None:
+        f = buf
+        obj_to_arg = to_bytes
+    else:
+
+        def obj_to_arg(o) -> str:
+            return to_bytes(o).decode("UTF-8", errors="ignore")
+
+    end = obj_to_arg(kwargs.pop("end", "\n"))
+    sep = obj_to_arg(kwargs.pop("sep", " "))
+    assert not kwargs, kwargs
+    to_print = sep.join(obj_to_arg(x) for x in args) + end
+    f.write(to_print)
+    f.flush()
+
+
+def paasta_commands_dir(pkg):
+    """Return the list of modules in a python package (a module with a
+    __init__.py file.)
+
+    :return: a list of strings such as `['list', 'check']` that correspond to
+             the module names in the package.
+    """
+    for _, module_name, _ in pkgutil.walk_packages(pkg.__path__):
+        yield module_name
+
+
+def load_method(module_name, method_name):
+    """Return a function given a module and method name.
+
+    :param module_name: a string
+    :param method_name: a string
+    :return: a function
+    """
+    module = __import__(module_name, fromlist=[method_name])
+    method = getattr(module, method_name)
+    return method
 
 
 class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
