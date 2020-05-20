@@ -844,7 +844,7 @@ class TestTronTools:
             "_template": {"actions": {"action1": {}}},
             "job1": {"actions": {"action1": {}}},
         }
-        job_configs = tron_tools.load_tron_service_config_no_cache(
+        job_configs = tron_tools.load_tron_service_config(
             service="service",
             cluster="test-cluster",
             load_deployments=False,
@@ -980,7 +980,7 @@ class TestTronTools:
     @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
     def test_load_tron_service_config_empty(self, mock_read_extra_service_information):
         mock_read_extra_service_information.return_value = {}
-        job_configs = tron_tools.load_tron_service_config_no_cache(
+        job_configs = tron_tools.load_tron_service_config(
             service="service",
             cluster="test-cluster",
             load_deployments=False,
