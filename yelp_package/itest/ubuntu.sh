@@ -32,7 +32,6 @@ generate_services_file
 generate_services_yaml
 list_marathon_service_instances
 paasta_list_tron_namespaces
-paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
 setup_marathon_job

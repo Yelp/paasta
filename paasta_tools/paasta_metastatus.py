@@ -28,10 +28,6 @@ from marathon.exceptions import MarathonError
 from mypy_extensions import TypedDict
 
 from paasta_tools import __version__
-from paasta_tools.autoscaling.autoscaling_cluster_lib import AutoscalingInfo
-from paasta_tools.autoscaling.autoscaling_cluster_lib import (
-    get_autoscaling_info_for_all_resources,
-)
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import is_kubernetes_available
 from paasta_tools.kubernetes_tools import KubeClient
@@ -63,9 +59,6 @@ log = logging.getLogger("paasta_metastatus")
 logging.basicConfig()
 # kazoo can be really noisy - turn it down
 logging.getLogger("kazoo").setLevel(logging.CRITICAL)
-logging.getLogger("paasta_tools.autoscaling.autoscaling_cluster_lib").setLevel(
-    logging.ERROR
-)
 
 ServiceInstanceStats = TypedDict(
     "ServiceInstanceStats", {"mem": float, "cpus": float, "disk": float, "gpus": int}
@@ -91,13 +84,6 @@ def parse_args(argv):
     )
     parser.add_argument("-t", "--threshold", type=int, default=90)
     parser.add_argument("--use-mesos-cache", action="store_true", default=False)
-    parser.add_argument(
-        "-a",
-        "--autoscaling-info",
-        action="store_true",
-        default=False,
-        dest="autoscaling_info",
-    )
     parser.add_argument(
         "-v",
         "--verbose",
@@ -408,20 +394,6 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         for line in format_table(all_rows):
             print_with_indent(line, 4)
 
-        if args.autoscaling_info:
-            print_with_indent("Autoscaling resources:", 2)
-            headers = [
-                field.replace("_", " ").capitalize()
-                for field in AutoscalingInfo._fields
-            ]
-            table = [headers] + [
-                [str(x) for x in asi]
-                for asi in get_autoscaling_info_for_all_resources(mesos_state)
-            ]
-
-            for line in format_table(table):
-                print_with_indent(line, 4)
-
         if args.verbose >= 3:
             print_with_indent("Per Slave Utilization", 2)
             cluster = system_paasta_config.get_cluster()
@@ -461,9 +433,6 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         )
         for line in format_table(all_rows):
             print_with_indent(line, 4)
-
-        if args.autoscaling_info:
-            print_with_indent("No autoscaling resources for Kubernetes", 2)
 
         if args.verbose >= 3:
             print_with_indent("Per Node Utilization", 2)
