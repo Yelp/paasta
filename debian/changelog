@@ -1,3 +1,11 @@
+paasta-tools (0.95.38) xenial; urgency=medium
+
+  * 0.95.38 tagged with 'make release'
+    Commit: Merge pull request #2813 from Yelp/rm-rf-cluster-autoscaler
+    Remove the cluster autoscaler
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 21 May 2020 03:34:59 -0700
+
 paasta-tools (0.95.37) xenial; urgency=medium
 
   * 0.95.37 tagged with 'make release'
