@@ -222,7 +222,7 @@ def get_desired_state_by_branch_and_sha(
 ) -> Dict[Tuple[str, str], Tuple[str, Any]]:
     tag_pattern = r"^refs/tags/(?:paasta-){0,2}(?P<branch>[a-zA-Z0-9-_.]+)-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$"
 
-    states_by_branch_and_sha: Dict[Tuple[str, str], List[str]] = {}
+    states_by_branch_and_sha: Dict[Tuple[str, str], List[Tuple[str, Any]]] = {}
 
     for ref_name, sha in remote_refs.items():
         match = re.match(tag_pattern, ref_name)

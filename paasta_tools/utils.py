@@ -2859,9 +2859,9 @@ def load_service_instance_configs(
 
 
 # be extremely sure you do not modify the return value of this.
-__read_extra_service_information_cached = time_cache(ttl=5)(
-    service_configuration_lib.read_extra_service_information
-)
+@time_cache(ttl=5)
+def __read_extra_service_information_cached(*args: Any, **kwargs: Any) -> Dict:
+    return service_configuration_lib.read_extra_service_information(*args, **kwargs)
 
 
 def load_service_instance_config(
@@ -2870,16 +2870,25 @@ def load_service_instance_config(
     instance_type: str,
     cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
+    use_cache: bool = True,
 ) -> InstanceConfigDict:
     if instance.startswith("_"):
         raise InvalidJobNameError(
             f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"
         )
     conf_file = f"{instance_type}-{cluster}"
+
+    if use_cache:
+        read_extra_service_information = __read_extra_service_information_cached
+    else:
+        read_extra_service_information = (
+            service_configuration_lib.read_extra_service_information
+        )
+
     user_config = copy.deepcopy(
-        __read_extra_service_information_cached(
-            service, conf_file, soa_dir=soa_dir
-        ).get(instance)
+        read_extra_service_information(service, conf_file, soa_dir=soa_dir).get(
+            instance
+        )
     )
     if user_config is None:
         raise NoConfigurationForServiceError(
