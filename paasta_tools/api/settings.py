@@ -17,6 +17,7 @@ Settings of the paasta-api server.
 import os
 from typing import Optional
 
+from paasta_tools import utils
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -28,6 +29,7 @@ soa_dir: str = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
 # juro have `Optional[T]` type, but de facto are always initialized to a value
 # of the corresponding type after the application is started.
 cluster: str = None  # type: ignore
+hostname: str = utils.get_hostname()
 marathon_clients: MarathonClients = None  # type: ignore
 kubernetes_client: Optional[KubeClient] = None
 system_paasta_config: Optional[SystemPaastaConfig]
