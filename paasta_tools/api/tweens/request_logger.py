@@ -19,6 +19,7 @@ import traceback
 from datetime import datetime
 
 import pyramid
+import pytz
 
 from paasta_tools.api import settings
 
@@ -54,10 +55,10 @@ class request_logger_tween_factory:
     ):
         if clog is not None:
             # `settings` values are set by paasta_tools.api.api:setup_paasta_api
-            if timestamp is None:
-                timestamp = datetime.now()
+            if not timestamp:
+                timestamp = datetime.now(pytz.utc)
             dct = {
-                "human_timestamp": timestamp.strftime("%Y-%m-%dT%H:%M:%S"),
+                "human_timestamp": timestamp.strftime("%Y-%m-%dT%H:%M:%S%Z"),
                 "unix_timestamp": timestamp.timestamp(),
                 "hostname": settings.hostname,
                 "level": level,
@@ -69,7 +70,7 @@ class request_logger_tween_factory:
             clog.log_line(self.log_name, line)
 
     def __call__(self, request):
-        start_time = datetime.now()  # start clock for response time
+        start_time = datetime.now(pytz.utc)  # start clock for response time
         request_fields = {
             "path": request.path,
             "params": request.params.mixed(),
@@ -104,7 +105,9 @@ class request_logger_tween_factory:
             raise
 
         finally:
-            response_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+            response_time_ms = (
+                datetime.now(pytz.utc) - start_time
+            ).total_seconds() * 1000
             response_fields["response_time_ms"] = response_time_ms
 
             self._log(
