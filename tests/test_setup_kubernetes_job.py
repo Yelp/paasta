@@ -55,7 +55,9 @@ def test_setup_kube_deployment_invalid_job_name():
         "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True
     ) as mock_create_application_object, mock.patch(
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
-    ) as mock_list_all_deployments:
+    ) as mock_list_all_deployments, mock.patch(
+        "paasta_tools.setup_kubernetes_job.log", autospec=True
+    ) as mock_log_obj:
         mock_client = mock.Mock()
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -70,6 +72,7 @@ def test_setup_kube_deployment_invalid_job_name():
             soa_dir="/nail/blah",
         )
         assert mock_create_application_object.call_count == 0
+        mock_log_obj.info.assert_called_once_with('{"service_instance_updated": []}')
 
 
 def test_create_application_object():
@@ -193,6 +196,7 @@ def test_setup_kube_deployment_create_update():
         fake_app.update = fake_update
         fake_app.item = None
         fake_app.soa_config = None
+        fake_app.__str__ = lambda app: "fake_app"
         return True, fake_app
 
     with mock.patch(
@@ -205,7 +209,9 @@ def test_setup_kube_deployment_create_update():
         "paasta_tools.setup_kubernetes_job.autoscaling_is_paused", autospec=True
     ) as mock_autoscaling_is_paused, mock.patch(
         "paasta_tools.setup_kubernetes_job.is_deployment_marked_paused", autospec=True
-    ) as mock_is_deployment_marked_paused:
+    ) as mock_is_deployment_marked_paused, mock.patch(
+        "paasta_tools.setup_kubernetes_job.log", autospec=True
+    ) as mock_log_obj:
         mock_client = mock.Mock()
         # No instances created
         mock_service_instances: Sequence[str] = []
@@ -218,6 +224,8 @@ def test_setup_kube_deployment_create_update():
             soa_dir="/nail/blah",
         )
         assert mock_create_application_object.call_count == 0
+        mock_log_obj.info.assert_called_once_with('{"service_instance_updated": []}')
+        mock_log_obj.info.reset_mock()
 
         # Create a new instance
         mock_service_instances = ["kurupt.fm"]
@@ -229,6 +237,10 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_create.call_count == 1
         assert fake_update.call_count == 0
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app"]}'
+        )
+        mock_log_obj.info.reset_mock()
 
         # Update when gitsha changed
         fake_create.reset_mock()
@@ -248,6 +260,10 @@ def test_setup_kube_deployment_create_update():
 
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app"]}'
+        )
+        mock_log_obj.info.reset_mock()
 
         # Update when configsha changed
         fake_create.reset_mock()
@@ -266,6 +282,10 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app"]}'
+        )
+        mock_log_obj.info.reset_mock()
 
         # Update when replica changed
         fake_create.reset_mock()
@@ -284,6 +304,10 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app"]}'
+        )
+        mock_log_obj.info.reset_mock()
 
         # Update one and Create One
         fake_create.reset_mock()
@@ -306,6 +330,10 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 1
         assert fake_create.call_count == 1
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app", "fake_app"]}'
+        )
+        mock_log_obj.info.reset_mock()
 
         # not create existing instances
         fake_create.reset_mock()
@@ -328,6 +356,8 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 0
         assert fake_create.call_count == 0
+        mock_log_obj.info.assert_called_once_with('{"service_instance_updated": []}')
+        mock_log_obj.info.reset_mock()
 
         # update because autoscaler has been paused
         mock_autoscaling_is_paused.return_value = True
@@ -351,6 +381,10 @@ def test_setup_kube_deployment_create_update():
             soa_dir="/nail/blah",
         )
         assert fake_update.call_count == 1
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app"]}'
+        )
+        mock_log_obj.info.reset_mock()
 
         # update because autoscaler has been resumed
         mock_autoscaling_is_paused.return_value = False
@@ -374,3 +408,6 @@ def test_setup_kube_deployment_create_update():
             soa_dir="/nail/blah",
         )
         assert fake_update.call_count == 1
+        mock_log_obj.info.assert_called_with(
+            '{"service_instance_updated": ["fake_app"]}'
+        )
