@@ -20,12 +20,11 @@ import os
 import pkgutil
 import random
 import re
+import socket
 import subprocess
 import sys
 from collections import defaultdict
 from shlex import quote
-from socket import gaierror
-from socket import gethostbyname_ex
 from typing import Callable
 from typing import Iterable
 from typing import List
@@ -52,6 +51,7 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
 from paasta_tools.tron_tools import load_tron_instance_config
+from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
@@ -406,9 +406,9 @@ def calculate_remote_masters(
         cluster=cluster
     )
     try:
-        _, _, ips = gethostbyname_ex(cluster_fqdn)
+        _, _, ips = socket.gethostbyname_ex(cluster_fqdn)
         output = None
-    except gaierror as e:
+    except socket.gaierror as e:
         output = f"ERROR while doing DNS lookup of {cluster_fqdn}:\n{e.strerror}\n "
         ips = []
     return (ips, output)
@@ -1112,3 +1112,14 @@ def pick_random_port(service_name):
     hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
     preferred_port = 33000 + (hash_number % 25000)
     return ephemeral_port_reserve.reserve("0.0.0.0", preferred_port)
+
+
+def trigger_deploys(service):
+    """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
+    service that listens for a service string and then generates a service deployment"""
+    logline = f"Notifying sysgit to generate a deployment for {service}"
+    _log(service=service, line=logline, component="deploy", level="event")
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(("sysgit.yelpcorp.com", 5049))
+    client.send(f"{service}\n".encode("utf-8"))
+    client.close()
