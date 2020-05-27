@@ -143,7 +143,7 @@ class TestMarathonTools:
                 "marathon",
                 fake_cluster,
                 soa_dir=fake_dir,
-                use_cache=False,
+                use_cache=True,
             )
 
     def test_read_service_config_and_deployments(self):
@@ -219,7 +219,7 @@ class TestMarathonTools:
                 "marathon",
                 fake_cluster,
                 soa_dir=fake_dir,
-                use_cache=False,
+                use_cache=True,
             )
 
     def test_get_all_namespaces_for_service(self):
