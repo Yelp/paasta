@@ -28,6 +28,7 @@ from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -126,9 +127,10 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
         force_bounce=force_bounce,
         desired_state=desired_state,
     )
-    remote_git.create_remote_refs(
-        utils.get_git_url(service_config.get_service()), ref_mutator
-    )
+    git_url = utils.get_git_url(service_config.get_service())
+    remote_git.create_remote_refs(git_url, ref_mutator)
+    if "yelpcorp.com" in git_url:
+        trigger_deploys(service_config.get_service())
     log_event(service_config=service_config, desired_state=desired_state)
 
 

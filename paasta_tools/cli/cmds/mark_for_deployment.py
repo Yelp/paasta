@@ -51,6 +51,7 @@ from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_re
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
+from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.cli.utils import validate_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
@@ -211,17 +212,6 @@ def add_subparser(subparsers):
     )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
-
-
-def trigger_deploys(service):
-    """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
-    service that listens for a service string and then generates a service deployment"""
-    logline = f"Notifying sysgit to generate a deployment for {service}"
-    _log(service=service, line=logline, component="deploy", level="event")
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(("sysgit.yelpcorp.com", 5049))
-    client.send(f"{service}\n".encode("utf-8"))
-    client.close()
 
 
 def mark_for_deployment(git_url, deploy_group, service, commit):
