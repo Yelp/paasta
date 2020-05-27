@@ -32,12 +32,16 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.secret_tools import get_secret_name_from_ref
+from paasta_tools.secret_tools import is_secret_ref
+from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
+from paasta_tools.utils import load_system_paasta_config
 
 
 SCHEMA_VALID = success("Successfully validated schema")
@@ -412,6 +416,62 @@ def validate_autoscaling_configs(service_path):
     return returncode
 
 
+def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vault_env):
+    return_value = True
+    for env_value in instance_config_dict.get("env", {}).values():
+        if is_secret_ref(env_value):
+            secret_name = get_secret_name_from_ref(env_value)
+            if is_shared_secret(env_value):
+                secret_file_name = f"{soa_dir}/_shared/secrets/{secret_name}.json"
+            else:
+                secret_file_name = f"{service_path}/secrets/{secret_name}.json"
+            if os.path.isfile(secret_file_name):
+                secret_json = get_config_file_dict(secret_file_name)
+                if "ciphertext" not in secret_json["environments"].get(vault_env, {}):
+                    print(
+                        failure(
+                            f"Secret {secret_name} not defined for ecosystem {vault_env} on secret file {secret_file_name}",
+                            "",
+                        )
+                    )
+                    return_value = False
+            else:
+                print(failure(f"Secret file {secret_file_name} not defined", ""))
+                return_value = False
+    return return_value
+
+
+def validate_secrets(service_path):
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    system_paasta_config = load_system_paasta_config()
+    vault_cluster_map = system_paasta_config.get_vault_cluster_config()
+    return_value = True
+    for cluster in list_clusters(service, soa_dir):
+        vault_env = vault_cluster_map.get(cluster)
+        if not vault_env:
+            print(failure(f"{cluster} not found on vault_cluster_map", ""))
+            return_value = False
+            continue
+
+        for instance in list_all_instances_for_service(
+            service=service, clusters=[cluster], soa_dir=soa_dir
+        ):
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            if not check_secrets_for_instance(
+                instance_config.config_dict, soa_dir, service_path, vault_env
+            ):
+                return_value = False
+    if return_value:
+        print(success("No orphan secrets found"))
+    return return_value
+
+
 def paasta_validate_soa_configs(service, service_path):
     """Analyze the service in service_path to determine if the conf files are valid
 
@@ -438,6 +498,9 @@ def paasta_validate_soa_configs(service, service_path):
         returncode = False
 
     if not validate_autoscaling_configs(service_path):
+        returncode = False
+
+    if not validate_secrets(service_path):
         returncode = False
 
     return returncode
