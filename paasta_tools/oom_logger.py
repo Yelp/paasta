@@ -188,7 +188,9 @@ def main():
         print("CLog logger unavailable, exiting.", file=sys.stderr)
         sys.exit(1)
 
-    clog.config.configure(monk_disable=False)
+    clog.config.configure(
+        scribe_host="169.254.255.254", scribe_port=1463, monk_disable=False
+    )
 
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()
