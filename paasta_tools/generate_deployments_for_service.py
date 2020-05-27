@@ -38,12 +38,14 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import concurrent.futures
 import json
 import logging
 import os
 import re
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Tuple
 
 from mypy_extensions import TypedDict
@@ -145,6 +147,15 @@ def get_deploy_group_mappings(
     """
     mappings: Dict[str, V1_Mapping] = {}
     v2_mappings: V2_Mappings = {"deployments": {}, "controls": {}}
+    git_url = get_git_url(service=service, soa_dir=soa_dir)
+
+    # Most of the time of this function is in two parts:
+    # 1. getting remote refs from git. (Mostly IO, just waiting for git to get back to us.)
+    # 2. loading instance configs. (Mostly CPU, copy.deepcopying yaml over and over again)
+    # Let's do these two things in parallel.
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    remote_refs_future = executor.submit(remote_git.list_remote_refs, git_url)
 
     service_configs = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
 
@@ -155,20 +166,23 @@ def get_deploy_group_mappings(
         log.info("Service %s has no valid deploy groups. Skipping.", service)
         return mappings, v2_mappings
 
-    git_url = get_git_url(service=service, soa_dir=soa_dir)
-    remote_refs = remote_git.list_remote_refs(git_url)
+    remote_refs = remote_refs_future.result()
+
+    tag_by_deploy_group = {
+        dg: get_latest_deployment_tag(remote_refs, dg)
+        for dg in set(deploy_group_branch_mappings.values())
+    }
+    state_by_branch_and_sha = get_desired_state_by_branch_and_sha(remote_refs)
 
     for control_branch, deploy_group in deploy_group_branch_mappings.items():
-        (deploy_ref_name, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+        (deploy_ref_name, deploy_ref_sha) = tag_by_deploy_group[deploy_group]
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
             control_branch_alias = f"{service}:paasta-{control_branch}"
             control_branch_alias_v2 = f"{service}:{control_branch}"
             docker_image = build_docker_image_name(service, commit_sha)
-            desired_state, force_bounce = get_desired_state(
-                branch=control_branch,
-                remote_refs=remote_refs,
-                deploy_group=deploy_group,
+            desired_state, force_bounce = state_by_branch_and_sha.get(
+                (control_branch, deploy_ref_sha), ("start", None)
             )
             log.info("Mapping %s to docker image %s", control_branch, docker_image)
 
@@ -203,37 +217,25 @@ def get_service_from_docker_image(image_name: str) -> str:
     return matches.group(1)
 
 
-def get_desired_state(
-    branch: str, remote_refs: Dict[str, str], deploy_group: str
-) -> Tuple[str, Any]:
-    """Gets the desired state (start or stop) from the given repo, as well as
-    an arbitrary value (which may be None) that will change when a restart is
-    desired.
-    """
-    # (?:paasta-){1,2} supports a previous mistake where some tags would be called
-    # paasta-paasta-cluster.instance
-    tag_pattern = (
-        r"^refs/tags/(?:paasta-){0,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$"
-        % branch
-    )
+def get_desired_state_by_branch_and_sha(
+    remote_refs: Dict[str, str]
+) -> Dict[Tuple[str, str], Tuple[str, Any]]:
+    tag_pattern = r"^refs/tags/(?:paasta-){0,2}(?P<branch>[a-zA-Z0-9-_.]+)-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$"
 
-    states = []
-    (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
+    states_by_branch_and_sha: Dict[Tuple[str, str], List[str]] = {}
 
     for ref_name, sha in remote_refs.items():
-        if sha == head_sha:
-            match = re.match(tag_pattern, ref_name)
-            if match:
-                gd = match.groupdict()
-                states.append((gd["state"], gd["force_bounce"]))
+        match = re.match(tag_pattern, ref_name)
+        if match:
+            gd = match.groupdict()
+            states_by_branch_and_sha.setdefault((gd["branch"], sha), []).append(
+                (gd["state"], gd["force_bounce"])
+            )
 
-    if states:
-        # there may be more than one that matches, so take the one that sorts
-        # last by the force_bounce key.
-        sorted_states = sorted(states, key=lambda x: x[1])
-        return sorted_states[-1]
-    else:
-        return ("start", None)
+    return {
+        (branch, sha): sorted(states, key=lambda x: x[1])[-1]
+        for ((branch, sha), states) in states_by_branch_and_sha.items()
+    }
 
 
 def get_deployments_dict_from_deploy_group_mappings(

@@ -2728,7 +2728,7 @@ def read_service_instance_names(
 ) -> Collection[Tuple[str, str]]:
     instance_list = []
     conf_file = f"{instance_type}-{cluster}"
-    config = service_configuration_lib.read_extra_service_information(
+    config = __read_extra_service_information_cached(
         service, conf_file, soa_dir=soa_dir
     )
     config = filter_templates_from_config(config)
@@ -2842,7 +2842,7 @@ def load_service_instance_configs(
     service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, InstanceConfigDict]:
     conf_file = f"{instance_type}-{cluster}"
-    user_configs = service_configuration_lib.read_extra_service_information(
+    user_configs = __read_extra_service_information_cached(
         service, conf_file, soa_dir=soa_dir
     )
     user_configs = filter_templates_from_config(user_configs)
@@ -2858,6 +2858,12 @@ def load_service_instance_configs(
     return merged
 
 
+# be extremely sure you do not modify the return value of this.
+__read_extra_service_information_cached = time_cache(ttl=5)(
+    service_configuration_lib.read_extra_service_information
+)
+
+
 def load_service_instance_config(
     service: str,
     instance: str,
@@ -2870,9 +2876,11 @@ def load_service_instance_config(
             f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"
         )
     conf_file = f"{instance_type}-{cluster}"
-    user_config = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir
-    ).get(instance)
+    user_config = copy.deepcopy(
+        __read_extra_service_information_cached(
+            service, conf_file, soa_dir=soa_dir
+        ).get(instance)
+    )
     if user_config is None:
         raise NoConfigurationForServiceError(
             f"{instance} not found in config file {soa_dir}/{service}/{conf_file}.yaml."
@@ -2890,7 +2898,7 @@ def load_service_instance_auto_configs(
     enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
     conf_file = f"{instance_type}-{cluster}"
     if enabled_types.get(instance_type):
-        return service_configuration_lib.read_extra_service_information(
+        return __read_extra_service_information_cached(
             service, f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}", soa_dir=soa_dir
         )
     else:

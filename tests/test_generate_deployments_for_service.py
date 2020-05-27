@@ -216,28 +216,10 @@ def test_get_desired_state_understands_tags():
         "refs/tags/paasta-cluster2.someinstance-20160308T053933-deploy": "9085FD67ED1BB5FADAFA7F2AFAF8DEDEE7342711",
     }
     branch = "cluster2.someinstance"
-    deploy_group = branch
+    sha = "9085FD67ED1BB5FADAFA7F2AFAF8DEDEE7342711"
     expected_desired_state = ("stop", "20160205T182601")
-    actual = generate_deployments_for_service.get_desired_state(
-        branch, remote_refs, deploy_group
-    )
-
-    assert actual == expected_desired_state
-
-
-def test_get_desired_state_fails_gracefully_with_start():
-    remote_refs = {
-        "refs/heads/master": "7894E99E6805E9DC8C1D8EB26229E3E2243878C9",
-        "refs/remotes/origin/HEAD": "EE8796C4E4295B7D4087E3EB73662B99218DAD94",
-        "refs/remotes/origin/master": "5F7C10B320A4EDBC4773C5FEFB1CD7B7A84FCB69",
-        "refs/heads/paasta-cluster.instance": "4EF01B5A574B519AB546309E89F72972A33B6B75",
-        "refs/heads/paasta-cluster2.someinstance": "9085FD67ED1BB5FADAFA7F2AFAF8DEDEE7342711",
-    }
-    branch = "cluster.instance"
-    deploy_group = branch
-    expected_desired_state = ("start", None)
-    actual = generate_deployments_for_service.get_desired_state(
-        branch, remote_refs, deploy_group
-    )
+    actual = generate_deployments_for_service.get_desired_state_by_branch_and_sha(
+        remote_refs
+    )[(branch, sha)]
 
     assert actual == expected_desired_state
