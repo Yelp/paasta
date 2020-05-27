@@ -1,3 +1,12 @@
+paasta-tools (0.96.0) xenial; urgency=medium
+
+  * 0.96.0 tagged with 'make release'
+    Commit: Merge pull request #2818 from
+    Yelp/trigger_deploys_on_start_stop_restart  Notify sysgit
+    deploymentsd watcher to create a new deployments.json o…
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 27 May 2020 10:27:55 -0700
+
 paasta-tools (0.95.38) xenial; urgency=medium
 
   * 0.95.38 tagged with 'make release'
