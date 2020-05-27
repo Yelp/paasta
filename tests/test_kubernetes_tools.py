@@ -1018,6 +1018,7 @@ class TestKubernetesDeploymentConfig:
             node_selector={"yelp.com/pool": "default"},
             restart_policy="Always",
             volumes=[],
+            dns_policy="Default",
         )
         pod_spec_kwargs.update(spec_affinity)
         assert ret == V1PodTemplateSpec(
@@ -2699,7 +2700,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config3836dd19"
+            == "configc21a00a4"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 

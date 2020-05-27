@@ -1178,6 +1178,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 docker_volumes=docker_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
             ),
+            dns_policy="Default",
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
