@@ -1,3 +1,13 @@
+paasta-tools (0.96.1) xenial; urgency=medium
+
+  * 0.96.1 tagged with 'make release'
+    Commit: Revert "Merge pull request #2809 from Yelp/u/kawaiwan/log-
+    api-things"  This reverts commit
+    beeb7e93063dc22ab0aae187e3efe0b04333e073, reversing changes made to
+    3c2c3bb034805f44b4cc4972a3b0ce7fc5e5ce15.
+
+ -- Ka Wai Wan <kawaiwan@yelp.com>  Wed, 27 May 2020 14:37:21 -0700
+
 paasta-tools (0.96.0) xenial; urgency=medium
 
   * 0.96.0 tagged with 'make release'

@@ -6,7 +6,6 @@ Subpackages
 
 .. toctree::
 
-   paasta_tools.api.tweens
    paasta_tools.api.views
 
 Submodules
