@@ -1,3 +1,10 @@
+paasta-tools (0.96.2) xenial; urgency=medium
+
+  * 0.96.2 tagged with 'make release'
+    Commit: Set dns policy to Default to use node"s dns resolver (#2820)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 28 May 2020 03:08:59 -0700
+
 paasta-tools (0.96.1) xenial; urgency=medium
 
   * 0.96.1 tagged with 'make release'
