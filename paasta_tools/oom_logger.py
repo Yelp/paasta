@@ -189,7 +189,10 @@ def main():
         sys.exit(1)
 
     clog.config.configure(
-        scribe_host="169.254.255.254", scribe_port=1463, monk_disable=False
+        scribe_host="169.254.255.254",
+        scribe_port=1463,
+        monk_disable=False,
+        scribe_disable=False,
     )
 
     cluster = load_system_paasta_config().get_cluster()
