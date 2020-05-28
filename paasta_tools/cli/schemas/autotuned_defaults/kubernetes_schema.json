@@ -15,6 +15,11 @@
                     "minimum": 0,
                     "exclusiveMinimum": true
                 },
+                "disk": {
+                    "type": "number",
+                    "minimum": 128,
+                    "exclusiveMinimum": true
+                },
                 "mem": {
                     "type": "number",
                     "minimum": 32,

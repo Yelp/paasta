@@ -91,6 +91,9 @@ def get_recommendation_from_result(result):
     mem = result.get("mem")
     if mem and mem != NULL:
         rec["mem"] = max(128, round(float(mem)))
+    disk = result.get("disk")
+    if disk and disk != NULL:
+        rec["disk"] = max(128, round(float(disk)))
     return rec
 
 

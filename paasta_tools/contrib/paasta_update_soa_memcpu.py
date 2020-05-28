@@ -134,10 +134,13 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
     project (Required to create tickets)
     estimated_monthly_savings (Optional)
     search_time (Unix time)
-    current_cpus (Optional if current_mem is specified)
-    suggested_cpus (Optional if suggested_mem is specified)
-    current_mem (Optional if current_cpus is specified)
-    suggested_mem (Optional if suggested_cpus is specified)
+    one of the following pairs:
+    - current_cpus
+    suggested_cpus
+    - current_mem
+    suggested_mem
+    - current_disk
+    suggested_disk
     """
     url = f"https://splunk-api.yelpcorp.com/servicesNS/nobody/{app}/search/jobs/export"
     search = (
@@ -169,6 +172,8 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
         serv["old_cpus"] = d["result"].get("current_cpus")
         serv["mem"] = d["result"].get("suggested_mem")
         serv["old_mem"] = d["result"].get("current_mem")
+        serv["disk"] = d["result"].get("suggested_disk")
+        serv["old_disk"] = d["result"].get("current_disk")
         services_to_update[criteria] = serv
 
     return {
@@ -283,7 +288,7 @@ def review(filename, summary, description, publish_review):
     )
 
 
-def edit_soa_configs(filename, instance, cpu, mem):
+def edit_soa_configs(filename, instance, cpu, mem, disk):
     if not os.path.exists(filename):
         filename = filename.replace("marathon", "kubernetes")
     if os.path.islink(filename):
@@ -303,6 +308,8 @@ def edit_soa_configs(filename, instance, cpu, mem):
         if mem:
             mem = max(128, round(float(mem)))
             instdict["mem"] = mem
+        if disk:
+            instdict["disk"] = round(float(disk))
         out = yaml.round_trip_dump(data, width=120)
 
         with open(filename, "w") as fi:
@@ -397,7 +404,8 @@ def bulk_rightsize(report, create_code_review, publish_code_review, create_new_b
         filenames.append(filename)
         cpus = serv.get("cpus", None)
         mem = serv.get("mem", None)
-        edit_soa_configs(filename, serv["instance"], cpus, mem)
+        disk = serv.get("disk", None)
+        edit_soa_configs(filename, serv["instance"], cpus, mem, disk)
     if create_code_review:
         bulk_commit(filenames, report["search"])
         bulk_review(filenames, report["search"], publish_code_review)
@@ -418,7 +426,8 @@ def individual_rightsize(
         create_branch(branch)
         cpus = serv.get("cpus", None)
         mem = serv.get("mem", None)
-        edit_soa_configs(filename, serv["instance"], cpus, mem)
+        disk = serv.get("disk", None)
+        edit_soa_configs(filename, serv["instance"], cpus, mem, disk)
         try:
             commit(filename, serv)
             if create_review:
