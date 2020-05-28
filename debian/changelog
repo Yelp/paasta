@@ -1,3 +1,10 @@
+paasta-tools (0.96.3) xenial; urgency=medium
+
+  * 0.96.3 tagged with 'make release'
+    Commit: Merge branch "bump_sticht_1.1.8"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 28 May 2020 12:09:00 -0700
+
 paasta-tools (0.96.2) xenial; urgency=medium
 
   * 0.96.2 tagged with 'make release'
