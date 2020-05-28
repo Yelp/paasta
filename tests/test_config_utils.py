@@ -98,6 +98,9 @@ def test_validate_auto_config_file_unknown_type(mock_validate, tmpdir):
         ({"instance": {"cpus": "bad_string_value"}}, False),
         ({"instance": {"cpus": 1, "invalid_key": 2}}, False),
         ({"instance": {"cpus": 1.2, "mem": 100}}, True),
+        ({"instance": {"cpus": 1.2, "mem": 100, "disk": "very big"}}, False),
+        ({"instance": {"cpus": 1.2, "mem": 100, "disk": 0}}, False),
+        ({"instance": {"cpus": 1.2, "mem": 100, "disk": 1000}}, True),
     ],
 )
 def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
