@@ -38,7 +38,6 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
-from paasta_tools.utils import paasta_print
 
 
 SCHEMA_VALID = success("Successfully validated schema")
@@ -120,7 +119,7 @@ def validate_instance_names(config_file_object, file_path):
             errors.append(instance_name)
     if errors:
         error_string = "\n".join(errors)
-        paasta_print(
+        print(
             failure(
                 f"Length of instance name \n{error_string}\n should be no more than 63."
                 + " Note _ is replaced with -- due to Kubernetes restriction",
@@ -132,7 +131,7 @@ def validate_instance_names(config_file_object, file_path):
 
 def validate_service_name(service):
     if len(sanitise_kubernetes_name(service)) > 63:
-        paasta_print(
+        print(
             failure(
                 f"Length of service name {service} should be no more than 63."
                 + " Note _ is replaced with - due to Kubernetes restriction",
@@ -155,7 +154,7 @@ def get_config_file_dict(file_path):
         else:
             return config_file
     except Exception:
-        paasta_print(f"{FAILED_READING_FILE}: {file_path}")
+        print(f"{FAILED_READING_FILE}: {file_path}")
         raise
 
 
@@ -168,11 +167,11 @@ def validate_schema(file_path, file_type):
     try:
         schema = get_schema(file_type)
     except Exception as e:
-        paasta_print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
+        print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
         return
 
     if schema is None:
-        paasta_print(f"{SCHEMA_NOT_FOUND}: {file_path}")
+        print(f"{SCHEMA_NOT_FOUND}: {file_path}")
         return
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
@@ -184,15 +183,15 @@ def validate_schema(file_path, file_type):
         ):
             return
     except ValidationError:
-        paasta_print(f"{SCHEMA_INVALID}: {file_path}")
+        print(f"{SCHEMA_INVALID}: {file_path}")
 
         errors = validator.iter_errors(config_file_object)
-        paasta_print("  Validation Message: %s" % exceptions.best_match(errors).message)
+        print("  Validation Message: %s" % exceptions.best_match(errors).message)
     except Exception as e:
-        paasta_print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
+        print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
         return
     else:
-        paasta_print(f"{SCHEMA_VALID}: {basename}")
+        print(f"{SCHEMA_VALID}: {basename}")
         return True
 
 
@@ -246,7 +245,7 @@ def check_service_path(service_path):
     :param service_path: Path to directory that should contain yaml files
     """
     if not service_path or not os.path.isdir(service_path):
-        paasta_print(
+        print(
             failure(
                 "%s is not a directory" % service_path,
                 "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
@@ -254,7 +253,7 @@ def check_service_path(service_path):
         )
         return False
     if not glob(os.path.join(service_path, "*.yaml")):
-        paasta_print(
+        print(
             failure(
                 "%s does not contain any .yaml files" % service_path,
                 "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
@@ -276,7 +275,7 @@ def get_service_path(service, soa_dir):
         if soa_dir == os.getcwd():
             service_path = os.getcwd()
         else:
-            paasta_print(UNKNOWN_SERVICE)
+            print(UNKNOWN_SERVICE)
             return None
     return service_path
 
@@ -309,11 +308,9 @@ def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
     returncode = len(messages) == 0
 
     if messages:
-        paasta_print(
-            invalid_tron_namespace(cluster, "\n  ".join(messages), display_name)
-        )
+        print(invalid_tron_namespace(cluster, "\n  ".join(messages), display_name))
     else:
-        paasta_print(valid_tron_namespace(cluster, display_name))
+        print(valid_tron_namespace(cluster, display_name))
 
     return returncode
 
@@ -339,11 +336,9 @@ def validate_paasta_objects(service_path):
 
     if messages:
         errors = "\n".join(messages)
-        paasta_print(
-            failure((f"There were failures validating {service}: {errors}"), "")
-        )
+        print(failure((f"There were failures validating {service}: {errors}"), ""))
     else:
-        paasta_print(success(f"All PaaSTA Instances for are valid for all clusters"))
+        print(success(f"All PaaSTA Instances for are valid for all clusters"))
 
     return returncode
 
@@ -366,13 +361,13 @@ def validate_unique_instance_names(service_path):
         ]
         if duplicate_instance_names:
             check_passed = False
-            paasta_print(
+            print(
                 duplicate_instance_names_message(
                     service, cluster, duplicate_instance_names
                 )
             )
         else:
-            paasta_print(no_duplicate_instance_names_message(service, cluster))
+            print(no_duplicate_instance_names_message(service, cluster))
 
     return check_passed
 
@@ -399,18 +394,18 @@ def validate_autoscaling_configs(service_path):
             for metric, params in instance.get("new_autoscaling", {}).items():
                 if len(metric) > 63:
                     returncode = False
-                    paasta_print(f"length of metric name {metric} exceeds 63")
+                    print(f"length of metric name {metric} exceeds 63")
                     continue
                 if metric in {"http", "uwsgi"} and "dimensions" in params:
                     for k, v in params["dimensions"].items():
                         if len(k) > 128:
                             returncode = False
-                            paasta_print(
+                            print(
                                 f"length of dimension key {k} of instance {instance_name} in {cluster_name} cannot exceed 128"
                             )
                         if len(v) > 256:
                             returncode = False
-                            paasta_print(
+                            print(
                                 f"length of dimension value {v} of instance {instance_name} in {cluster_name} cannot exceed 256"
                             )
 

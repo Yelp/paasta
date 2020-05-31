@@ -17,7 +17,6 @@ import asyncio
 import itertools
 
 from . import exceptions
-from paasta_tools.utils import paasta_print
 
 
 async def get_files_for_tasks(task_list, file_list, max_workers):
@@ -29,9 +28,9 @@ async def get_files_for_tasks(task_list, file_list, max_workers):
             fobj = await task.file(fname)
         except exceptions.SlaveDoesNotExist:
             if task is None:
-                paasta_print(f"(Unknown Task):{fname} (Slave no longer exists)")
+                print(f"(Unknown Task):{fname} (Slave no longer exists)")
             else:
-                paasta_print(f"{task['id']}:{task_fname} (Slave no longer exists)")
+                print(f"{task['id']}:{task_fname} (Slave no longer exists)")
             raise exceptions.SkipResult
 
         if await fobj.exists():

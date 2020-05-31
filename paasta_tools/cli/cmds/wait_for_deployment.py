@@ -33,7 +33,6 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
 
@@ -149,7 +148,7 @@ def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
     try:
         marked_sha = get_latest_marked_sha(git_url, deploy_group)
     except LSRemoteException as e:
-        paasta_print(
+        print(
             "Error talking to the git server: {}\n"
             "It is not possible to verify that {} is marked for deployment in {}, "
             "but I assume that it is marked and will continue waiting..".format(
@@ -213,7 +212,7 @@ def paasta_wait_for_deployment(args):
             args.commit, args.git_url, args.deploy_group, service
         )
     except (GitShaError, DeployGroupError, NoSuchService) as e:
-        paasta_print(PaastaColors.red(f"{e}"))
+        print(PaastaColors.red(f"{e}"))
         return 1
 
     try:

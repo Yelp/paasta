@@ -18,7 +18,6 @@ from behave import then
 from behave import when
 
 from paasta_tools.cli.cmds import logs
-from paasta_tools.utils import paasta_print
 
 
 @when("we tail paasta logs and let threads run")
@@ -59,7 +58,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             parse_fn=None,
         ):
             # The print here is just for debugging
-            paasta_print("fake log line added for %s" % scribe_env)
+            print("fake log line added for %s" % scribe_env)
             queue.put("fake log line added for %s" % scribe_env)
             # This sleep() was the straw that broke the camel's back
             # and forced me to move this test into the integration

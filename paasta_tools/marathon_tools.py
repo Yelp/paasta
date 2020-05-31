@@ -78,7 +78,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import MarathonConfigDict
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
@@ -1282,11 +1281,9 @@ def app_has_tasks(
     try:
         tasks = client.list_tasks(app_id=app_id)
     except NotFoundError:
-        paasta_print("no app with id %s found" % app_id)
+        print("no app with id %s found" % app_id)
         raise
-    paasta_print(
-        "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
-    )
+    print("app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks))
     if exact_matches_only:
         return len(tasks) == expected_tasks
     else:

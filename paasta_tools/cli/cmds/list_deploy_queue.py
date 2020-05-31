@@ -29,7 +29,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -69,7 +68,7 @@ def list_deploy_queue(args,) -> int:
     cluster = args.cluster
     all_clusters = list_clusters(soa_dir=args.soa_dir)
     if cluster not in all_clusters:
-        paasta_print(
+        print(
             f"{cluster} does not appear to be a valid cluster. Run `paasta "
             "list-clusters` to see available options."
         )
@@ -78,30 +77,28 @@ def list_deploy_queue(args,) -> int:
     system_paasta_config = load_system_paasta_config()
     client = get_paasta_api_client(cluster, system_paasta_config, http_res=True)
     if not client:
-        paasta_print("Cannot get a paasta API client")
+        print("Cannot get a paasta API client")
         return 1
 
     try:
         deploy_queues, raw_response = client.deploy_queue.deploy_queue().result()
     except HTTPError as exc:
-        paasta_print(PaastaColors.red(exc.response.text))
+        print(PaastaColors.red(exc.response.text))
         return exc.status_code
     except (BravadoConnectionError, BravadoTimeoutError) as exc:
-        paasta_print(
-            PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
-        )
+        print(PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}"))
         return 1
     except Exception:
         tb = sys.exc_info()[2]
-        paasta_print(PaastaColors.red(f"Exception when talking to the API:"))
-        paasta_print("".join(traceback.format_tb(tb)))
+        print(PaastaColors.red(f"Exception when talking to the API:"))
+        print("".join(traceback.format_tb(tb)))
         return 1
 
     if args.json:
-        paasta_print(raw_response.text)
+        print(raw_response.text)
     else:
         formatted_deploy_queues = format_deploy_queues(deploy_queues, cluster)
-        paasta_print(formatted_deploy_queues)
+        print(formatted_deploy_queues)
 
     return 0
 

@@ -53,7 +53,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
@@ -112,7 +111,7 @@ def extract_args(args):
         "default_cluster", None
     )
     if not cluster:
-        paasta_print(
+        print(
             PaastaColors.red(
                 "PaaSTA on this machine has not been configured with a default cluster."
                 "Please pass one using '-c'."
@@ -133,14 +132,14 @@ def extract_args(args):
                 service, instance, cluster, soa_dir
             )
         except NoConfigurationForServiceError as e:
-            paasta_print(e)
+            print(e)
             emit_counter_metric(
                 "paasta.remote_run." + args.action + ".failed", service, instance
             )
             sys.exit(1)
 
         if instance_type != "adhoc":
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Please use instance declared in adhoc.yaml for use "
                     f"with remote-run, {instance} is declared as {instance_type}"
@@ -168,7 +167,7 @@ def accumulate_config_overrides(args, service, instance):
         if args.constraint:
             constraints.extend(split_constraints(args.constraint))
     except Exception as e:
-        paasta_print(f"Error while parsing constraints: {e}")
+        print(f"Error while parsing constraints: {e}")
         emit_counter_metric("paasta.remote_run.start.failed", service, instance)
         sys.exit(1)
     if constraints:
@@ -190,7 +189,7 @@ def generate_run_id(length=8):
     run_id = "".join(
         random.choice(string.ascii_uppercase + string.digits) for _ in range(length)
     )
-    paasta_print(f"Generated random run identifier: {run_id}")
+    print(f"Generated random run identifier: {run_id}")
     return run_id
 
 
@@ -300,25 +299,23 @@ def create_mesos_task_config(processor, service, instance, *args, **kwargs):
         )
     except InvariantException as e:
         if len(e.missing_fields) > 0:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Mesos task config is missing following fields: "
                     f"{', '.join(e.missing_fields)}"
                 )
             )
         elif len(e.invariant_errors) > 0:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Mesos task config is failing following checks: "
                     f"{', '.join(str(ie) for ie in e.invariant_errors)}"
                 )
             )
         else:
-            paasta_print(PaastaColors.red(f"Mesos task config error: {e}"))
+            print(PaastaColors.red(f"Mesos task config error: {e}"))
     except PTypeError as e:
-        paasta_print(
-            PaastaColors.red(f"Mesos task config is failing a type check: {e}")
-        )
+        print(PaastaColors.red(f"Mesos task config is failing a type check: {e}"))
     traceback.print_exc()
     emit_counter_metric("paasta.remote_run.start.failed", service, instance)
     sys.exit(1)
@@ -376,7 +373,7 @@ def build_executor_stack(processor, cluster_executor, taskproc_config, cluster, 
 
 def set_runner_signal_handlers(runner):
     def handle_interrupt(_signum, _frame):
-        paasta_print(PaastaColors.red("Signal received, shutting down scheduler."))
+        print(PaastaColors.red("Signal received, shutting down scheduler."))
         if runner is not None:
             runner.stop()
         sys.exit(143 if _signum == signal.SIGTERM else 1)
@@ -426,7 +423,7 @@ def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
     terminals = []
 
     while tries_left > 0:
-        paasta_print(
+        print(
             PaastaColors.yellow(f"Scheduling task on Mesos (tries left: {tries_left})")
         )
 
@@ -437,19 +434,19 @@ def run_tasks_with_retries(executor_factory, task_config_factory, retries=0):
         except (Exception, ValueError) as e:
             # implies an error with our code, and not with mesos, so just return
             # immediately
-            paasta_print(f"Except while running executor stack: {e}")
+            print(f"Except while running executor stack: {e}")
             traceback.print_exc()
             terminals.append((None, task_config))
             return terminals
 
         terminals.append((terminal_event, task_config))
         if terminal_event.success:
-            paasta_print(PaastaColors.green("Task finished successfully"))
+            print(PaastaColors.green("Task finished successfully"))
             break
         else:
             # TODO: add reconciliation and other more specific behavior
             error_msg = get_terminal_event_error_message(terminal_event)
-            paasta_print(PaastaColors.red(f"Task failed:\n{error_msg}"))
+            print(PaastaColors.red(f"Task failed:\n{error_msg}"))
 
         tries_left -= 1
 
@@ -573,7 +570,7 @@ def remote_run_start(args):
     processor.load_plugin(provider_module="task_processing.plugins.mesos")
 
     if args.detach:
-        paasta_print("Running in background")
+        print("Running in background")
         if os.fork() > 0:
             return
         os.setsid()
@@ -618,7 +615,7 @@ def remote_run_start(args):
     if args.dry_run:
         task_config_dict = task_config_to_dict(task_config_factory())
         pp = pprint.PrettyPrinter(indent=2)
-        paasta_print(
+        print(
             PaastaColors.green("Would have run task with:"),
             PaastaColors.green("Framework config:"),
             pp.pformat(framework_config),
@@ -648,9 +645,7 @@ def remote_run_start(args):
 def remote_run_stop(args):
     _, service, cluster, _, instance, _ = extract_args(args)
     if args.framework_id is None and args.run_id is None:
-        paasta_print(
-            PaastaColors.red("Must provide either run id or framework id to stop.")
-        )
+        print(PaastaColors.red("Must provide either run id or framework id to stop."))
         emit_counter_metric("paasta.remote_run.stop.failed", service, instance)
         sys.exit(1)
 
@@ -662,7 +657,7 @@ def remote_run_stop(args):
     framework_id = args.framework_id
     if framework_id is None:
         if re.match(r"\s", args.run_id):
-            paasta_print(PaastaColors.red("Run id must not contain whitespace."))
+            print(PaastaColors.red("Run id must not contain whitespace."))
             emit_counter_metric("paasta.remote_run.stop.failed", service, instance)
             sys.exit(1)
 
@@ -672,15 +667,13 @@ def remote_run_stop(args):
         if len(found) > 0:
             framework_id = found[0].id
         else:
-            paasta_print(
-                PaastaColors.red("Framework with run id %s not found." % args.run_id)
-            )
+            print(PaastaColors.red("Framework with run id %s not found." % args.run_id))
             emit_counter_metric("paasta.remote_run.stop.failed", service, instance)
             sys.exit(1)
     else:
         found = [f for f in frameworks if f.id == framework_id]
         if len(found) == 0:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Framework id %s does not match any %s.%s remote-run. Check status to find the correct id."
                     % (framework_id, service, instance)
@@ -689,13 +682,13 @@ def remote_run_stop(args):
             emit_counter_metric("paasta.remote_run.stop.failed", service, instance)
             sys.exit(1)
 
-    paasta_print("Tearing down framework %s." % framework_id)
+    print("Tearing down framework %s." % framework_id)
     mesos_master = get_mesos_master()
     teardown = mesos_master.teardown(framework_id)
     if teardown.status_code == 200:
-        paasta_print(PaastaColors.green("OK"))
+        print(PaastaColors.green("OK"))
     else:
-        paasta_print(teardown.text)
+        print(teardown.text)
 
 
 def remote_run_frameworks():
@@ -717,19 +710,19 @@ def remote_run_list_report(service, instance, cluster, frameworks=None):
         launch_time, run_id = re.match(
             r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
         ).groups()
-        paasta_print(
+        print(
             "Launch time: %s, run id: %s, framework id: %s"
             % (launch_time, run_id, f.id)
         )
     if len(filtered) > 0:
-        paasta_print(
+        print(
             (
                 "Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
                 "| -F <framework id>]` to stop."
             ).format(service, cluster, instance)
         )
     else:
-        paasta_print("Nothing found.")
+        print("Nothing found.")
 
 
 def remote_run_list(args, frameworks=None):

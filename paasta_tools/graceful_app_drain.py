@@ -10,7 +10,6 @@ from paasta_tools.setup_marathon_job import do_bounce
 from paasta_tools.setup_marathon_job import get_tasks_by_state
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -91,10 +90,10 @@ def kill_marathon_app(full_appid, cluster, client, soa_dir):
             soa_dir=soa_dir,
         )
 
-        paasta_print("Sleeping for 10 seconds to give the tasks time to drain")
+        print("Sleeping for 10 seconds to give the tasks time to drain")
         time.sleep(10)
 
-    paasta_print(f"Successfully killed {full_appid}")
+    print(f"Successfully killed {full_appid}")
 
 
 def main():
@@ -119,7 +118,7 @@ def main():
             exit_code = 0
 
     if exit_code:
-        paasta_print(f"Couldn't find an app named {full_appid}")
+        print(f"Couldn't find an app named {full_appid}")
     return exit_code
 
 

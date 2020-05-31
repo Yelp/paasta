@@ -27,7 +27,6 @@ import pkg_resources
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
-from paasta_tools.utils import paasta_print
 
 
 class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
@@ -36,7 +35,7 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
     is way too terse"""
 
     def error(self, message):
-        paasta_print("Argument parse error: %s" % message)
+        print("Argument parse error: %s" % message)
         self.print_help()
         sys.exit(1)
 

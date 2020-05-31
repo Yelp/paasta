@@ -20,7 +20,6 @@ from paasta_tools.deployd.master import DEAD_DEPLOYD_WORKER_MESSAGE
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import ZookeeperPool
 
@@ -63,7 +62,7 @@ def start_deployd(context):
                 return
             if DEAD_DEPLOYD_WORKER_MESSAGE.encode("utf-8") in line:
                 context.num_workers_crashed += 1
-            paasta_print(f"deployd stderr: {line}")
+            print(f"deployd stderr: {line}")
 
     threading.Thread(target=dont_let_stderr_buffer).start()
     time.sleep(5)

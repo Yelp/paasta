@@ -3,7 +3,6 @@ import argparse
 import itertools
 
 from paasta_tools.marathon_tools import get_list_of_marathon_clients
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -27,7 +26,7 @@ def get_deployments():
 
 def main():
     parse_args()
-    paasta_print(len(get_deployments()))
+    print(len(get_deployments()))
 
 
 if __name__ == "__main__":

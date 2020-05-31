@@ -31,7 +31,6 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import undrain
-from paasta_tools.utils import paasta_print
 
 
 def before_all(context):
@@ -47,7 +46,7 @@ def after_all(context):
 
 def _stop_deployd(context):
     if hasattr(context, "daemon"):
-        paasta_print("Stopping deployd...")
+        print("Stopping deployd...")
         try:
             context.daemon.terminate()
             context.daemon.wait()
@@ -67,13 +66,13 @@ def _clean_up_marathon_apps(context):
                     still_apps = True
                 else:
                     continue
-                paasta_print(
+                print(
                     "after_scenario: Deleting %d apps to prep for the next scenario. %s"
                     % (len(apps), ",".join(apps))
                 )
                 for app in apps:
                     if marathon_tools.is_app_id_running(app, client):
-                        paasta_print(
+                        print(
                             "after_scenario: %s does look like it is running. Scaling down and killing it..."
                             % app
                         )
@@ -81,14 +80,14 @@ def _clean_up_marathon_apps(context):
                         time.sleep(1)
                         client.delete_app(app, force=True)
                     else:
-                        paasta_print(
+                        print(
                             "after_scenario: %s showed up in the app_list, but doesn't look like it is running?"
                             % app
                         )
             time.sleep(0.5)
         for client in context.marathon_clients.get_all_clients():
             while client.list_deployments():
-                paasta_print(
+                print(
                     "after_scenario: There are still marathon deployments in progress. sleeping."
                 )
                 time.sleep(0.5)
@@ -97,7 +96,7 @@ def _clean_up_marathon_apps(context):
 def _clean_up_mesos_cli_config(context):
     """If a mesos cli config file was written, clean it up."""
     if hasattr(context, "mesos_cli_config_filename"):
-        paasta_print("Cleaning up %s" % context.mesos_cli_config_filename)
+        print("Cleaning up %s" % context.mesos_cli_config_filename)
         os.unlink(context.mesos_cli_config_filename)
         del context.mesos_cli_config_filename
 
@@ -105,14 +104,14 @@ def _clean_up_mesos_cli_config(context):
 def _clean_up_soa_dir(context):
     """If a yelpsoa-configs directory was written, clean it up."""
     if hasattr(context, "soa_dir"):
-        paasta_print("Cleaning up %s" % context.soa_dir)
+        print("Cleaning up %s" % context.soa_dir)
         shutil.rmtree(context.soa_dir)
         del context.soa_dir
 
 
 def _clean_up_etc_paasta(context):
     if hasattr(context, "etc_paasta"):
-        paasta_print("Cleaning up %s" % context.etc_paasta)
+        print("Cleaning up %s" % context.etc_paasta)
         shutil.rmtree(context.etc_paasta)
         del context.etc_paasta
 
@@ -144,11 +143,11 @@ def _clean_up_paasta_native_frameworks(context):
             if framework.name.startswith("paasta_native ") or framework.name == getattr(
                 context, "framework_name", ""
             ):
-                paasta_print("cleaning up framework %s" % framework.name)
+                print("cleaning up framework %s" % framework.name)
                 try:
                     mesos_tools.terminate_framework(framework.id)
                 except requests.exceptions.HTTPError as e:
-                    paasta_print(
+                    print(
                         f"Got exception when terminating framework {framework.id}: {e}"
                     )
 

@@ -23,7 +23,6 @@ from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.queue import ZKDelayDeadlineQueue
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
@@ -60,7 +59,7 @@ def main():
             soa_dir=DEFAULT_SOA_DIR,
         )
     except NoConfigurationForServiceError as e:
-        paasta_print(PaastaColors.red(str(e)))
+        print(PaastaColors.red(str(e)))
         sys.exit(1)
 
     service_instance = ServiceInstance(

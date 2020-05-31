@@ -77,7 +77,6 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
@@ -184,7 +183,7 @@ def missing_deployments_message(service: str,) -> str:
 def get_deploy_info(deploy_file_path: str,) -> Mapping:
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
-        paasta_print("Error encountered with %s" % deploy_file_path)
+        print("Error encountered with %s" % deploy_file_path)
 
         exit(1)
     return deploy_info
@@ -215,7 +214,7 @@ def list_deployed_clusters(
 def get_actual_deployments(service: str, soa_dir: str) -> Mapping[str, str]:
     deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
-        paasta_print(
+        print(
             "Warning: it looks like %s has not been deployed anywhere yet!" % service,
             file=sys.stderr,
         )
@@ -241,7 +240,7 @@ def paasta_status_on_api_endpoint(
     output.append("    instance: %s" % PaastaColors.blue(instance))
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
-        paasta_print("Cannot get a paasta-api client")
+        print("Cannot get a paasta-api client")
         exit(1)
     try:
         status = client.service.status_instance(
@@ -272,7 +271,7 @@ def paasta_status_on_api_endpoint(
             cluster, service, instance, output, service_status_value, verbose
         )
     else:
-        paasta_print(
+        print(
             "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
             % instance
         )
@@ -1448,12 +1447,12 @@ def verify_instances(
                 service, ", ".join(sorted(misspelled_instances))
             )
 
-        paasta_print(PaastaColors.red(message))
+        print(PaastaColors.red(message))
 
         if suggestions:
-            paasta_print("Did you mean any of these?")
+            print("Did you mean any of these?")
             for instance in sorted(suggestions):
-                paasta_print("  %s" % instance)
+                print("  %s" % instance)
 
     return unverified_instances
 
@@ -1540,7 +1539,7 @@ def apply_args_filters(
     ] = defaultdict(lambda: defaultdict(dict))
     if args.service_instance:
         if args.service or args.instances:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     f"Invalid command. Do not include optional arguments -s or -i "
                     f"when using shorthand notation."
@@ -1550,25 +1549,21 @@ def apply_args_filters(
         if "." in args.service_instance:
             args.service, args.instances = args.service_instance.split(".", 1)
         else:
-            paasta_print(
-                PaastaColors.red(f'Use a "." to separate service and instance name')
-            )
+            print(PaastaColors.red(f'Use a "." to separate service and instance name'))
             return clusters_services_instances
     if args.service:
         try:
             validate_service_name(args.service, soa_dir=args.soa_dir)
         except NoSuchService:
-            paasta_print(
-                PaastaColors.red(f'The service "{args.service}" does not exist.')
-            )
+            print(PaastaColors.red(f'The service "{args.service}" does not exist.'))
             all_services = list_services(soa_dir=args.soa_dir)
             suggestions = difflib.get_close_matches(
                 args.service, all_services, n=5, cutoff=0.5
             )
             if suggestions:
-                paasta_print(PaastaColors.red(f"Did you mean any of these?"))
+                print(PaastaColors.red(f"Did you mean any of these?"))
                 for suggestion in suggestions:
-                    paasta_print(PaastaColors.red(f"  {suggestion}"))
+                    print(PaastaColors.red(f"  {suggestion}"))
             return clusters_services_instances
 
         all_services = [args.service]
@@ -1645,14 +1640,14 @@ def paasta_status(args) -> int:
                     )
                 )
             else:
-                paasta_print(missing_deployments_message(service))
+                print(missing_deployments_message(service))
                 return_codes.append(1)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
         for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
-            paasta_print("\n".join(output))
+            print("\n".join(output))
             return_codes.append(return_code)
 
     return max(return_codes)

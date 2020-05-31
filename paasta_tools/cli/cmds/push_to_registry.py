@@ -34,7 +34,6 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_docker_registry
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -106,7 +105,7 @@ def paasta_push_to_registry(args):
     if not args.force:
         try:
             if is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
-                paasta_print(
+                print(
                     "The docker image is already in the PaaSTA docker registry. "
                     "I'm NOT overriding the existing image. "
                     "Add --force to override the image in the registry if you are sure what you are doing."
@@ -114,7 +113,7 @@ def paasta_push_to_registry(args):
                 return 0
         except RequestException as e:
             registry_uri = get_service_docker_registry(service, args.soa_dir)
-            paasta_print(
+            print(
                 "Can not connect to the PaaSTA docker registry '%s' to verify if this image exists.\n"
                 "%s" % (registry_uri, str(e))
             )

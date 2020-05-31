@@ -21,7 +21,6 @@ from bravado.exception import HTTPError
 
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def parse_capacity_check_options():
@@ -108,7 +107,7 @@ def get_check_from_overrides(overrides, default_check, groupings):
         return checks[0]
     else:
         group_string = ", ".join([f"{k}: {v}" for k, v in groupings.items()])
-        paasta_print("UNKNOWN Multiple overrides specified for %s" % group_string)
+        print("UNKNOWN Multiple overrides specified for %s" % group_string)
         sys.exit(3)
 
 
@@ -132,7 +131,7 @@ def run_capacity_check():
 
     client = get_paasta_api_client(cluster=cluster)
     if client is None:
-        paasta_print("UNKNOWN Failed to load paasta api client")
+        print("UNKNOWN Failed to load paasta api client")
         sys.exit(3)
 
     overrides = read_overrides(options.overrides)
@@ -142,7 +141,7 @@ def run_capacity_check():
     try:
         resource_use = client.resources.resources(groupings=attributes).result()
     except HTTPError as e:
-        paasta_print("UNKNOWN received exception from paasta api:\n\t%s" % e)
+        print("UNKNOWN received exception from paasta api:\n\t%s" % e)
         sys.exit(3)
 
     default_check = {
@@ -173,17 +172,15 @@ def run_capacity_check():
     return_value = [0]
     if len(failures["crit"]) > 0:
         result = error_message(failures["crit"], "CRITICAL", cluster, value_to_check)
-        paasta_print(result)
+        print(result)
         return_value.append(2)
     if len(failures["warn"]) > 0:
         result = error_message(failures["warn"], "WARNING", cluster, value_to_check)
-        paasta_print(result)
+        print(result)
         return_value.append(1)
 
     if max(return_value) == 0:
-        paasta_print(
-            f"OK cluster {cluster} is below critical capacity in {value_to_check}"
-        )
+        print(f"OK cluster {cluster} is below critical capacity in {value_to_check}")
 
     sys.exit(max(return_value))
 

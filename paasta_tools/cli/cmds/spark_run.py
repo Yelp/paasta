@@ -41,7 +41,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -73,7 +72,7 @@ log = logging.getLogger(__name__)
 
 class DeprecatedAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        paasta_print(
+        print(
             PaastaColors.red(
                 "Use of {} is deprecated. Please use {}=value in --spark-args.".format(
                     option_string, deprecated_opts[option_string.strip("-")]
@@ -390,7 +389,7 @@ def get_spark_env(args, spark_conf, spark_ui_port, access_key, secret_key):
         if not args.spark_args or not args.spark_args.startswith(
             "spark.history.fs.logDirectory"
         ):
-            paasta_print(
+            print(
                 "history-server requires spark.history.fs.logDirectory in spark-args",
                 file=sys.stderr,
             )
@@ -466,7 +465,7 @@ def get_spark_config(
         for spark_arg in spark_args:
             fields = spark_arg.split("=", 1)
             if len(fields) != 2:
-                paasta_print(
+                print(
                     PaastaColors.red(
                         "Spark option %s is not in format option=value." % spark_arg
                     ),
@@ -475,7 +474,7 @@ def get_spark_config(
                 sys.exit(1)
 
             if fields[0] in non_user_args:
-                paasta_print(
+                print(
                     PaastaColors.red(
                         "Spark option {} is set by PaaSTA with {}.".format(
                             fields[0], non_user_args[fields[0]]
@@ -490,7 +489,7 @@ def get_spark_config(
     if "spark.sql.shuffle.partitions" not in user_args:
         num_partitions = str(2 * int(user_args["spark.cores.max"]))
         user_args["spark.sql.shuffle.partitions"] = num_partitions
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 f"Warning: spark.sql.shuffle.partitions has been set to"
                 f" {num_partitions} to be equal to twice the number of "
@@ -500,7 +499,7 @@ def get_spark_config(
         )
 
     if int(user_args["spark.cores.max"]) < int(user_args["spark.executor.cores"]):
-        paasta_print(
+        print(
             PaastaColors.red(
                 "Total number of cores {} is less than per-executor cores {}.".format(
                     user_args["spark.cores.max"], user_args["spark.executor.cores"]
@@ -512,7 +511,7 @@ def get_spark_config(
 
     exec_mem = user_args["spark.executor.memory"]
     if exec_mem[-1] != "g" or not exec_mem[:-1].isdigit() or int(exec_mem[:-1]) > 32:
-        paasta_print(
+        print(
             PaastaColors.red(
                 "Executor memory {} not in format dg (d<=32).".format(
                     user_args["spark.executor.memory"]
@@ -544,7 +543,7 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
 
 
 def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
-    paasta_print("Sending resource request metrics to Clusterman")
+    print("Sending resource request metrics to Clusterman")
 
     desired_resources = get_spark_resource_requirements(spark_config_dict, webui_url)
     constraints = parse_constraints_string(spark_config_dict["spark.mesos.constraints"])
@@ -563,9 +562,9 @@ def emit_resource_requirements(spark_config_dict, paasta_cluster, webui_url):
     message = f"Resource request ({cpus} cpus and {mem} MB memory total) is estimated to cost ${est_cost} per hour"
     if clusterman_metrics.util.costs.should_warn(est_cost):
         message = "WARNING: " + message
-        paasta_print(PaastaColors.red(message))
+        print(PaastaColors.red(message))
     else:
-        paasta_print(message)
+        print(message)
 
     with metrics_client.get_writer(
         clusterman_metrics.APP_METRICS, aggregate_meteorite_dims=True
@@ -606,7 +605,7 @@ def run_docker_container(
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
 
     if dry_run:
-        paasta_print(json.dumps(docker_run_cmd))
+        print(json.dumps(docker_run_cmd))
         return 0
 
     os.execlpe("paasta_docker_wrapper", *docker_run_cmd)
@@ -659,7 +658,7 @@ def configure_and_run_docker_container(
                 )
             )
         else:
-            paasta_print(
+            print(
                 PaastaColors.yellow(
                     "Warning: Path %s does not exist on this host. Skipping this binding."
                     % volume["hostPath"]
@@ -704,9 +703,9 @@ def configure_and_run_docker_container(
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:
-        paasta_print(f"\nSpark history server URL {webui_url}\n")
+        print(f"\nSpark history server URL {webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
-        paasta_print(f"\nSpark monitoring URL {webui_url}\n")
+        print(f"\nSpark monitoring URL {webui_url}\n")
 
     if clusterman_metrics and _should_emit_resource_requirements(
         docker_cmd, args.mrjob
@@ -714,13 +713,13 @@ def configure_and_run_docker_container(
         try:
             emit_resource_requirements(spark_config_dict, args.cluster, webui_url)
         except Boto3Error as e:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     f"Encountered {e} while attempting to send resource requirements to Clusterman."
                 )
             )
             if args.suppress_clusterman_metrics_errors:
-                paasta_print(
+                print(
                     "Continuing anyway since --suppress-clusterman-metrics-errors was passed"
                 )
             else:
@@ -774,7 +773,7 @@ def build_and_push_docker_image(args):
     to pull.
     """
     if not makefile_responds_to("cook-image"):
-        paasta_print(
+        print(
             "A local Makefile with a 'cook-image' target is required for --build",
             file=sys.stderr,
         )
@@ -792,7 +791,7 @@ def build_and_push_docker_image(args):
 
     docker_url = f"{args.docker_registry}/{docker_tag}"
     command = f"docker tag {docker_tag} {docker_url}"
-    paasta_print(PaastaColors.grey(command))
+    print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
     if retcode != 0:
         return None
@@ -802,7 +801,7 @@ def build_and_push_docker_image(args):
     else:
         command = "docker push %s" % docker_url
 
-    paasta_print(PaastaColors.grey(command))
+    print(PaastaColors.grey(command))
     retcode, output = _run(command, stream=True)
     if retcode != 0:
         return None
@@ -813,7 +812,7 @@ def build_and_push_docker_image(args):
 def validate_work_dir(s):
     dirs = s.split(":")
     if len(dirs) != 2:
-        paasta_print(
+        print(
             "work-dir %s is not in format local_abs_dir:container_abs_dir" % s,
             file=sys.stderr,
         )
@@ -821,7 +820,7 @@ def validate_work_dir(s):
 
     for d in dirs:
         if not os.path.isabs(d):
-            paasta_print("%s is not an absolute path" % d, file=sys.stderr)
+            print("%s is not an absolute path" % d, file=sys.stderr)
             sys.exit(1)
 
 
@@ -833,7 +832,7 @@ def paasta_spark_run(args):
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and local-run may not behave"
@@ -853,10 +852,10 @@ def paasta_spark_run(args):
             soa_dir=args.yelpsoa_config_root,
         )
     except NoConfigurationForServiceError as e:
-        paasta_print(str(e), file=sys.stderr)
+        print(str(e), file=sys.stderr)
         return 1
     except NoDeploymentsAvailable:
-        paasta_print(
+        print(
             PaastaColors.red(
                 "Error: No deployments.json found in %(soa_dir)s/%(service)s."
                 "You can generate this by running:"
@@ -869,7 +868,7 @@ def paasta_spark_run(args):
         return 1
 
     if not args.cmd and not instance_config.get_cmd():
-        paasta_print(
+        print(
             "A command is required, pyspark, spark-shell, spark-submit or jupyter",
             file=sys.stderr,
         )
@@ -883,7 +882,7 @@ def paasta_spark_run(args):
         docker_url = args.image
     else:
         if args.cmd == "jupyter-lab":
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "The jupyter-lab command requires a prebuilt image with -I or --image."
                 ),
@@ -894,7 +893,7 @@ def paasta_spark_run(args):
         try:
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Error: No sha has been marked for deployment for the %s deploy group.\n"
                     "Please ensure this service has either run through a jenkins pipeline "
@@ -905,7 +904,7 @@ def paasta_spark_run(args):
                 file=sys.stderr,
             )
             return 1
-        paasta_print(
+        print(
             "Please wait while the image (%s) is pulled (times out after 5m)..."
             % docker_url,
             file=sys.stderr,
@@ -914,7 +913,7 @@ def paasta_spark_run(args):
             "sudo -H docker pull %s" % docker_url, stream=True, timeout=300
         )
         if retcode != 0:
-            paasta_print(
+            print(
                 "\nPull failed. Are you authorized to run docker commands?",
                 file=sys.stderr,
             )

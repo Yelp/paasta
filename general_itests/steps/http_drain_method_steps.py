@@ -22,7 +22,6 @@ from behave import then
 from behave import when
 
 from paasta_tools import drain_lib
-from paasta_tools.utils import paasta_print
 
 
 @given("a fake HTTP server")
@@ -96,10 +95,10 @@ class FakeHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     status_code = 200
 
     def do_GET(self):
-        paasta_print("Got GET for %s" % self.path)
+        print("Got GET for %s" % self.path)
         try:
             FakeHTTPServer.paths.append(self.path)
             self.send_response(self.status_code)
             self.end_headers()
         except Exception as e:
-            paasta_print(e)
+            print(e)

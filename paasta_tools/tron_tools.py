@@ -55,7 +55,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import paasta_print
+from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.spark_tools import get_spark_resource_requirements
 from paasta_tools.spark_tools import get_webui_url
@@ -836,7 +836,7 @@ def validate_complete_config(
     if proc.returncode != 0:
         process_errors = proc.stderr.strip()
         if process_errors:  # Error running tronfig
-            paasta_print(proc.stderr)
+            print(proc.stderr)
         return [proc.stdout.strip()]
 
     return []

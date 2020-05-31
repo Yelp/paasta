@@ -20,7 +20,6 @@ from itest_utils import update_context_marathon_config
 
 from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import paasta_print
 
 
 @when('we delete a marathon app called "{job_id}" from "{cluster_name}" soa configs')
@@ -44,8 +43,8 @@ def delete_apps(context, job_id, cluster_name):
 )
 def run_cleanup_marathon_job(context, flags, expected_return_code):
     cmd = f"python -m paasta_tools.cleanup_marathon_jobs --soa-dir {context.soa_dir} {flags}"
-    paasta_print("Running cmd %s" % (cmd))
+    print("Running cmd %s" % (cmd))
     exit_code, output = _run(cmd)
-    paasta_print(output)
+    print(output)
 
     assert exit_code == int(expected_return_code)

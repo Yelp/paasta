@@ -23,7 +23,6 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -62,9 +61,7 @@ def paasta_autoscale(args):
     service = figure_out_service_name(args)
     api = client.get_paasta_api_client(cluster=args.cluster, http_res=True)
     if not api:
-        paasta_print(
-            "Could not connect to paasta api. Maybe you misspelled the cluster?"
-        )
+        print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
     try:
         if args.set is None:
@@ -87,7 +84,7 @@ def paasta_autoscale(args):
                 cluster=args.cluster,
             )
     except HTTPNotFound:
-        paasta_print(
+        print(
             PaastaColors.red(
                 f"ERROR: '{args.instance}' is not configured to autoscale, "
                 f"so paasta autoscale could not scale it up on demand. "

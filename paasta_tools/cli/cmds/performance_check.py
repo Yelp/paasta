@@ -19,7 +19,6 @@ from service_configuration_lib import read_extra_service_information
 
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import timeout
 
 
@@ -57,15 +56,15 @@ def submit_performance_check_job(service, soa_dir):
     performance_check_config = load_performance_check_config(service, soa_dir)
 
     if not performance_check_config:
-        paasta_print("No performance-check.yaml. Skipping performance-check.")
+        print("No performance-check.yaml. Skipping performance-check.")
         return
 
     endpoint = performance_check_config.pop("endpoint")
     r = requests.post(url=endpoint, params=performance_check_config)
     r.raise_for_status()
-    paasta_print("Posted a submission to the PaaSTA performance-check service.")
-    paasta_print(f"Endpoint: {endpoint}")
-    paasta_print(f"Parameters: {performance_check_config}")
+    print("Posted a submission to the PaaSTA performance-check service.")
+    print(f"Endpoint: {endpoint}")
+    print(f"Parameters: {performance_check_config}")
 
 
 @timeout()
@@ -78,8 +77,8 @@ def perform_performance_check(args):
     try:
         submit_performance_check_job(service=service, soa_dir=args.soa_dir)
     except Exception as e:
-        paasta_print(
+        print(
             "Something went wrong with the performance check. Safely bailing. No need to panic."
         )
-        paasta_print("Here was the error:")
-        paasta_print(str(e))
+        print("Here was the error:")
+        print(str(e))

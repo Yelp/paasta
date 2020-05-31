@@ -55,7 +55,6 @@ from paasta_tools.mesos_tools import get_zookeeper_host_path
 from paasta_tools.mesos_tools import is_task_terminal
 from paasta_tools.mesos_tools import MesosResources
 from paasta_tools.mesos_tools import MesosTask
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
@@ -1065,7 +1064,7 @@ def status_for_results(healthcheck_results):
 
 
 def print_results_for_healthchecks(summary, ok, results, verbose, indent=2):
-    paasta_print(summary)
+    print(summary)
     if verbose >= 1:
         for health_check_result in results:
             if health_check_result.healthy:

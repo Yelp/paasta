@@ -18,7 +18,6 @@ from docker.errors import APIError
 
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_client
-from paasta_tools.utils import paasta_print
 
 
 @given("Docker is available")
@@ -51,9 +50,9 @@ def create_docker_container(context, task_id, image_name):
 )
 def run_command_in_container(context, code, task_id):
     cmd = f'../paasta_tools/paasta_execute_docker_command.py -i {task_id} -c "exit {code}"'
-    paasta_print("Running cmd %s" % cmd)
+    print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
-    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
+    print(f"Got exitcode {exit_code} with output:\n{output}")
     context.return_code = exit_code
 
 
@@ -74,5 +73,5 @@ def check_container_exec_instances(context, num):
         execs = []
     else:
         execs = container_info["ExecIDs"]
-    paasta_print("Container info:\n%s" % container_info)
+    print("Container info:\n%s" % container_info)
     assert len(execs) <= int(num)

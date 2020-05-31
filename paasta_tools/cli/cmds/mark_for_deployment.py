@@ -69,7 +69,6 @@ from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
@@ -253,16 +252,16 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
 
 
 def report_waiting_aborted(service, deploy_group):
-    paasta_print(
+    print(
         PaastaColors.red(
             "Waiting for deployment aborted."
             " PaaSTA will continue trying to deploy this code."
         )
     )
-    paasta_print("If you wish to see the status, run:")
-    paasta_print()
-    paasta_print(f"    paasta status -s {service} -l {deploy_group} -v")
-    paasta_print()
+    print("If you wish to see the status, run:")
+    print()
+    print(f"    paasta status -s {service} -l {deploy_group} -v")
+    print()
 
 
 def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
@@ -303,10 +302,10 @@ def get_deploy_info(service, soa_dir):
 
 def print_rollback_cmd(old_git_sha, commit, auto_rollback, service, deploy_group):
     if old_git_sha is not None and old_git_sha != commit and not auto_rollback:
-        paasta_print()
-        paasta_print("If you wish to roll back, you can run:")
-        paasta_print()
-        paasta_print(
+        print()
+        print("If you wish to roll back, you can run:")
+        print()
+        print(
             PaastaColors.bold(
                 "    paasta rollback --service {} --deploy-group {} --commit {} ".format(
                     service, deploy_group, old_git_sha
@@ -334,25 +333,25 @@ def paasta_mark_for_deployment(args):
     )
 
     if len(invalid_deploy_groups) == 1:
-        paasta_print(
+        print(
             PaastaColors.red(
                 "ERROR: These deploy groups are not currently used anywhere: %s.\n"
                 % (",").join(invalid_deploy_groups)
             )
         )
-        paasta_print(
+        print(
             PaastaColors.red(
                 "This isn't technically wrong because you can mark-for-deployment before deploying there"
             )
         )
-        paasta_print(
+        print(
             PaastaColors.red(
                 "but this is probably a typo. Did you mean one of these in-use deploy groups?:"
             )
         )
-        paasta_print(PaastaColors.red("   %s" % (",").join(in_use_deploy_groups)))
-        paasta_print()
-        paasta_print(PaastaColors.red("Continuing regardless..."))
+        print(PaastaColors.red("   %s" % (",").join(in_use_deploy_groups)))
+        print()
+        print(PaastaColors.red("Continuing regardless..."))
 
     if args.git_url is None:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
@@ -361,11 +360,11 @@ def paasta_mark_for_deployment(args):
 
     old_git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group)
     if old_git_sha == commit:
-        paasta_print(
+        print(
             "Warning: The sha asked to be deployed already matches what is set to be deployed:"
         )
-        paasta_print(old_git_sha)
-        paasta_print("Continuing anyway.")
+        print(old_git_sha)
+        print("Continuing anyway.")
 
     if args.verify_image:
         if not is_docker_image_already_in_registry(service, args.soa_dir, commit):
@@ -535,7 +534,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 # Nightly jenkins builds will often re-deploy master. This causes Slack noise that wasn't present before
                 # the auto-rollbacks work.
                 if self.commit == self.old_git_sha:
-                    paasta_print(
+                    print(
                         f"Rollback SHA matches rollforward SHA: {self.commit}, "
                         f"Sending slack notifications to {DEFAULT_SLACK_CHANNEL} instead of {channel}."
                     )
@@ -986,7 +985,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 f"--commit {self.old_git_sha}`"
             )
             self.update_slack_thread(message)
-            paasta_print(message)
+            print(message)
 
     def after_state_change(self):
         self.update_slack()
@@ -1218,7 +1217,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             )
         else:
             if long_running_status.app_count != 1:
-                paasta_print(
+                print(
                     "  {}.{} on {} is still bouncing, {} versions "
                     "running".format(
                         cluster_data.service,
@@ -1231,7 +1230,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 instances_out.put(instance_config)
                 continue
             if not cluster_data.git_sha.startswith(status.git_sha):
-                paasta_print(
+                print(
                     "  {}.{} on {} doesn't have the right sha yet: {}".format(
                         cluster_data.service,
                         instance,
@@ -1247,7 +1246,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 "Deploying",
                 "Waiting",
             ]:
-                paasta_print(
+                print(
                     "  {}.{} on {} isn't running yet: {}".format(
                         cluster_data.service,
                         instance,
@@ -1268,7 +1267,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 )
             )
             if required_instance_count > long_running_status.running_instance_count:
-                paasta_print(
+                print(
                     "  {}.{} on {} isn't scaled up yet, "
                     "has {} out of {} required instances (out of a total of {})".format(
                         cluster_data.service,
@@ -1282,7 +1281,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
                 continue
-            paasta_print(
+            print(
                 "Complete: {}.{} on {} looks 100% deployed at {} "
                 "instances on {}".format(
                     cluster_data.service,
@@ -1320,7 +1319,7 @@ def _query_clusters(clusters_data, green_light):
                 time.sleep(0.2)
         except (KeyboardInterrupt, SystemExit):
             green_light.clear()
-            paasta_print("KeyboardInterrupt received. Terminating..")
+            print("KeyboardInterrupt received. Terminating..")
         worker.join()
 
 
@@ -1336,7 +1335,7 @@ def _run_cluster_worker(cluster_data, green_light):
     )
     cluster_data.instances_queue = instances_out
     if cluster_data.instances_queue.empty():
-        paasta_print(f"Deploy to {cluster_data.cluster} complete!")
+        print(f"Deploy to {cluster_data.cluster} complete!")
     return cluster_data
 
 
@@ -1357,7 +1356,7 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
     api_endpoints = load_system_paasta_config().get_api_endpoints()
     for cluster in service_configs.clusters:
         if cluster not in api_endpoints:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Cluster %s is NOT in paasta-api endpoints config." % cluster
                 )
@@ -1409,7 +1408,7 @@ def wait_for_deployment(
         )
         return
 
-    paasta_print(
+    print(
         "Waiting for deployment of {} for '{}' to complete...".format(
             git_sha, deploy_group
         )

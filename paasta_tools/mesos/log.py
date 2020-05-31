@@ -18,13 +18,11 @@ import logging
 import sys
 import time
 
-from paasta_tools.utils import paasta_print
-
 debug = logging.debug
 
 
 def fatal(msg, code=1):
-    paasta_print(msg + "\n")
+    print(msg + "\n")
     logging.error(msg)
     sys.exit(code)
 

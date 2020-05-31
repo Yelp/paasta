@@ -33,7 +33,6 @@ from paasta_tools import kubernetes_tools
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -82,7 +81,7 @@ def main():
         else:
             app_name = compose_job_id(name, instance)
         service_instances.append(app_name)
-    paasta_print("\n".join(service_instances))
+    print("\n".join(service_instances))
     sys.exit(0)
 
 

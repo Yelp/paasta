@@ -18,7 +18,6 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -103,7 +102,7 @@ def paasta_boost(args):
     clusters = args.cluster.split(",")
     for cluster in clusters:
         if cluster not in all_clusters:
-            paasta_print(
+            print(
                 f"Error: {cluster} doesn't look like a valid cluster. "
                 + "Here is a list of valid paasta clusters:\n"
                 + "\n".join(all_clusters)
@@ -120,5 +119,5 @@ def paasta_boost(args):
         boost=args.boost if args.action == "set" else None,
         verbose=args.verbose,
     )
-    paasta_print(output)
+    print(output)
     return return_code

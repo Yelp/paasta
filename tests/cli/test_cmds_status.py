@@ -720,13 +720,13 @@ def test_apply_args_filters_no_instances_found(
 
 
 @patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.paasta_print", autospec=True)
-def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service):
+@patch("builtins.print", autospec=True)
+def test_verify_instances(mock_print, mock_list_all_instances_for_service):
     mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
 
     assert verify_instances("west,esst", "fake_service", []) == ["west", "esst"]
-    assert mock_paasta_print.called
-    mock_paasta_print.assert_has_calls(
+    assert mock_print.called
+    mock_print.assert_has_calls(
         [
             call(
                 "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
@@ -739,17 +739,17 @@ def test_verify_instances(mock_paasta_print, mock_list_all_instances_for_service
 
 
 @patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.status.paasta_print", autospec=True)
+@patch("builtins.print", autospec=True)
 def test_verify_instances_with_clusters(
-    mock_paasta_print, mock_list_all_instances_for_service
+    mock_print, mock_list_all_instances_for_service
 ):
     mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
 
     assert verify_instances(
         "west,esst,fake", "fake_service", ["fake_cluster1", "fake_cluster2"]
     ) == ["west", "esst", "fake"]
-    assert mock_paasta_print.called
-    mock_paasta_print.assert_has_calls(
+    assert mock_print.called
+    mock_print.assert_has_calls(
         [
             call(
                 "\x1b[31mfake_service doesn't have any instances matching esst,"

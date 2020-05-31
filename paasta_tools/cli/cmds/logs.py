@@ -42,8 +42,6 @@ import pytz
 import ujson as json
 from dateutil import tz
 
-from paasta_tools.utils import paasta_print
-
 try:
     from scribereader import scribereader
     from scribereader.scribereader import StreamTailerSetupError
@@ -384,11 +382,11 @@ def print_log(
     something.
     """
     if raw_mode:
-        paasta_print(
+        print(
             line, end=" "
         )  # suppress trailing newline since scribereader already attached one
     else:
-        paasta_print(prettify_log_line(line, requested_levels, strip_headers))
+        print(prettify_log_line(line, requested_levels, strip_headers))
 
 
 def prettify_timestamp(timestamp: datetime.datetime) -> str:
@@ -813,7 +811,7 @@ class ScribeLogReader(LogReader):
         aggregated_logs: List[Dict[str, Any]] = []
 
         if "marathon" in components:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Warning, you have chosen to get marathon logs based "
                     "on time. This command may take a dozen minutes or so to run.\n"
@@ -1121,7 +1119,7 @@ class ScribeLogReader(LogReader):
         """
         env = self.cluster_map.get(cluster, None)
         if env is None:
-            paasta_print("I don't know where scribe logs for %s live?" % cluster)
+            print("I don't know where scribe logs for %s live?" % cluster)
             sys.exit(1)
         else:
             return env
@@ -1196,7 +1194,7 @@ def validate_filtering_args(
     args: argparse.Namespace, log_reader: ScribeLogReader
 ) -> bool:
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
-        paasta_print(
+        print(
             PaastaColors.red(
                 log_reader.__class__.__name__ + " does not support line based offsets"
             ),
@@ -1204,7 +1202,7 @@ def validate_filtering_args(
         )
         return False
     if not log_reader.SUPPORTS_LINE_COUNT and args.line_count is not None:
-        paasta_print(
+        print(
             PaastaColors.red(
                 log_reader.__class__.__name__
                 + " does not support line count based log retrieval"
@@ -1213,7 +1211,7 @@ def validate_filtering_args(
         )
         return False
     if not log_reader.SUPPORTS_TAILING and args.tail:
-        paasta_print(
+        print(
             PaastaColors.red(
                 log_reader.__class__.__name__ + " does not support tailing"
             ),
@@ -1223,7 +1221,7 @@ def validate_filtering_args(
     if not log_reader.SUPPORTS_TIME and (
         args.time_from is not None or args.time_to is not None
     ):
-        paasta_print(
+        print(
             PaastaColors.red(
                 log_reader.__class__.__name__ + " does not support time based offsets"
             ),
@@ -1237,7 +1235,7 @@ def validate_filtering_args(
         or args.time_to is not None
         or args.line_offset is not None
     ):
-        paasta_print(
+        print(
             PaastaColors.red(
                 "You cannot specify line/time based filtering parameters when tailing"
             ),
@@ -1247,7 +1245,7 @@ def validate_filtering_args(
 
     # Can't have both
     if args.line_count is not None and args.time_from is not None:
-        paasta_print(
+        print(
             PaastaColors.red("You cannot filter based on both line counts and time"),
             file=sys.stderr,
         )
@@ -1266,7 +1264,7 @@ def pick_default_log_mode(
     instances: Iterable[str],
 ) -> int:
     if log_reader.SUPPORTS_LINE_COUNT:
-        paasta_print(
+        print(
             PaastaColors.cyan(
                 "Fetching 100 lines and applying filters. Try -n 1000 for more lines..."
             ),
@@ -1285,7 +1283,7 @@ def pick_default_log_mode(
         return 0
     elif log_reader.SUPPORTS_TIME:
         start_time, end_time = generate_start_end_time()
-        paasta_print(
+        print(
             PaastaColors.cyan(
                 "Fetching a specific time period and applying filters..."
             ),
@@ -1304,7 +1302,7 @@ def pick_default_log_mode(
         )
         return 0
     elif log_reader.SUPPORTS_TAILING:
-        paasta_print(
+        print(
             PaastaColors.cyan("Tailing logs and applying filters..."), file=sys.stderr
         )
         log_reader.tail_logs(
@@ -1368,7 +1366,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         )
 
     if args.tail:
-        paasta_print(
+        print(
             PaastaColors.cyan("Tailing logs and applying filters..."), file=sys.stderr
         )
         log_reader.tail_logs(
@@ -1419,7 +1417,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
     try:
         start_time, end_time = generate_start_end_time(args.time_from, args.time_to)
     except ValueError as e:
-        paasta_print(PaastaColors.red(str(e)), file=sys.stderr)
+        print(PaastaColors.red(str(e)), file=sys.stderr)
         return 1
 
     log_reader.print_logs_by_time(

@@ -14,7 +14,6 @@
 # limitations under the License.
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -40,4 +39,4 @@ def add_subparser(subparsers):
 
 def paasta_list_clusters(args, **kwargs):
     for cluster in list_clusters(soa_dir=args.soa_dir):
-        paasta_print(cluster)
+        print(cluster)
