@@ -81,9 +81,6 @@ class ServiceGroup(collections.namedtuple("ServiceGroup", ("service", "instance"
             # for several minutes after the directory disappears from soa-configs.
             return ()
 
-        if not conf.get_inbound_firewall() and not conf.get_outbound_firewall():
-            return ()
-
         rules = list()
 
         if conf.get_inbound_firewall():
