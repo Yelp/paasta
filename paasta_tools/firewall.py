@@ -18,7 +18,11 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import timed_flock
 
 
-PRIVATE_IP_RANGES = (
+INBOUND_PRIVATE_IP_RANGES = (
+    "127.0.0.0/255.0.0.0",
+    "169.254.0.0/255.255.0.0",
+)
+OUTBOUND_PRIVATE_IP_RANGES = (
     "127.0.0.0/255.0.0.0",
     "10.0.0.0/255.0.0.0",
     "172.16.0.0/255.240.0.0",
@@ -77,13 +81,16 @@ class ServiceGroup(collections.namedtuple("ServiceGroup", ("service", "instance"
             # for several minutes after the directory disappears from soa-configs.
             return ()
 
-        if not conf.get_outbound_firewall():
-            return ()
+        rules = list()
 
-        rules = list(_default_rules(conf, self.log_prefix))
-        rules.extend(_well_known_rules(conf))
-        rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
-        rules.extend(_cidr_rules(conf))
+        if conf.get_inbound_firewall():
+            rules.extend(_inbound_traffic_rule(conf, self.service, self.instance))
+
+        if conf.get_outbound_firewall():
+            rules.extend(_default_rules(conf, self.log_prefix))
+            rules.extend(_well_known_rules(conf))
+            rules.extend(_smartstack_rules(conf, soa_dir, synapse_service_dir))
+            rules.extend(_cidr_rules(conf))
 
         return tuple(rules)
 
@@ -182,19 +189,30 @@ def _yocalhost_rule(port, comment, protocol="tcp"):
     )
 
 
-def _reject_remaining_inbound_traffic_rule(port, protocol="tcp"):
-    """Return an iptables rule denying all other traffic.
+def _inbound_traffic_rule(conf, service_name, instance_name, protocol="tcp"):
+    """Return iptables rules for inbound traffic
 
-    This should eventually be turned into a deny-allow,
-    but is opt-in at the service level for now."""
-    return iptables.Rule(
-        protocol=protocol,
-        src="0.0.0.0/0.0.0.0",
-        dst="0.0.0.0/0.0.0.0",
-        target="REJECT",
-        matches=((protocol, (("dport", (str(port),)),)),),
-        target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
-    )
+    If this is set to "reject", this is limited only to traffic from localhost"""
+    policy = conf.get_inbound_firewall()
+    if policy == "reject":
+        port = conf.get_proxy_port(service_name, instance_name)
+        yield iptables.Rule(
+            protocol=protocol,
+            src="0.0.0.0/0.0.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            target="REJECT",
+            matches=((protocol, (("dport", (str(port),)),)),),
+            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
+        )
+        for ip_range in INBOUND_PRIVATE_IP_RANGES:
+            yield iptables.Rule(
+                protocol=protocol,
+                src=ip_range,
+                dst="0.0.0.0/0.0.0.0",
+                target="ALLOW",
+                matches=((protocol, (("dport", (str(port),)),)),),
+                target_parameters=(),
+            )
 
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
@@ -231,10 +249,6 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         service_namespaces = get_all_namespaces_for_service(service, soa_dir=soa_dir)
         port = dict(service_namespaces)[namespace]["proxy_port"]
         yield _yocalhost_rule(port, "proxy_port " + namespace)
-
-        # Allow services to opt out of network visibility beyond localhost
-        if conf.get_inbound_firewall() == "reject":
-            yield _reject_remaining_inbound_traffic_rule(port)
 
 
 def _ports_valid(ports):
@@ -434,7 +448,7 @@ def _ensure_internet_chain():
                 matches=(),
                 target_parameters=(),
             )
-            for ip_range in PRIVATE_IP_RANGES
+            for ip_range in OUTBOUND_PRIVATE_IP_RANGES
         ),
     )
 
