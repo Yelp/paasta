@@ -352,6 +352,7 @@ def load_marathon_service_config_no_cache(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
+    use_cache: bool = False,
 ) -> "MarathonServiceConfig":
     """Read a service instance's configuration for marathon.
 
@@ -369,7 +370,7 @@ def load_marathon_service_config_no_cache(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "marathon", cluster, soa_dir=soa_dir
+        service, instance, "marathon", cluster, soa_dir=soa_dir, use_cache=use_cache,
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
@@ -426,6 +427,7 @@ def load_marathon_service_config(
         cluster=cluster,
         load_deployments=load_deployments,
         soa_dir=soa_dir,
+        use_cache=True,
     )
 
 

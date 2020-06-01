@@ -138,7 +138,12 @@ class TestMarathonTools:
             )
             assert load_service_instance_config_patch.call_count == 1
             load_service_instance_config_patch.assert_any_call(
-                fake_name, fake_instance, "marathon", fake_cluster, soa_dir=fake_dir
+                fake_name,
+                fake_instance,
+                "marathon",
+                fake_cluster,
+                soa_dir=fake_dir,
+                use_cache=True,
             )
 
     def test_read_service_config_and_deployments(self):
@@ -209,7 +214,12 @@ class TestMarathonTools:
             )
             assert load_service_instance_config_patch.call_count == 1
             load_service_instance_config_patch.assert_any_call(
-                fake_name, fake_instance, "marathon", fake_cluster, soa_dir=fake_dir
+                fake_name,
+                fake_instance,
+                "marathon",
+                fake_cluster,
+                soa_dir=fake_dir,
+                use_cache=True,
             )
 
     def test_get_all_namespaces_for_service(self):
