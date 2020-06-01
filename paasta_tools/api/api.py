@@ -23,6 +23,7 @@ import sys
 import manhole
 import requests_cache
 import service_configuration_lib
+import yaml
 from pyramid.config import Configurator
 from wsgicors import CORS
 
@@ -32,6 +33,11 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.tweens import request_logger
 from paasta_tools.utils import load_system_paasta_config
+
+try:
+    import clog
+except ImportError:
+    clog = None
 
 
 log = logging.getLogger(__name__)
@@ -67,6 +73,7 @@ def parse_paasta_api_args():
 def make_app(global_config=None):
     paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
     setup_paasta_api()
+    setup_clog()
 
     config = Configurator(
         settings={
@@ -197,6 +204,22 @@ def setup_paasta_api():
     # are removed only when the same request is made. Expired storage is not a
     # concern here. Thus remove_expired_responses is not needed.
     requests_cache.install_cache("paasta-api", backend="memory", expire_after=5)
+
+
+def setup_clog(config_file="/nail/srv/configs/clog.yaml"):
+    if clog:
+        if os.path.exists(config_file):
+            with open(config_file) as fp:
+                clog_config = yaml.safe_load(fp)
+        else:
+            # these are barebones basic configs from /nail/srv/configs/clog.yaml
+            clog_config = {
+                "scribe_host": "169.254.255.254",
+                "scribe_port": 1463,
+                "monk_disable": False,
+                "scribe_disable": False,
+            }
+        clog.config.configure_from_dict(clog_config)
 
 
 def main(argv=None):
