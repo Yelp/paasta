@@ -382,11 +382,10 @@ def print_log(
     something.
     """
     if raw_mode:
-        print(
-            line, end=" "
-        )  # suppress trailing newline since scribereader already attached one
+        # suppress trailing newline since scribereader already attached one
+        print(line, end=" ", flush=True)
     else:
-        print(prettify_log_line(line, requested_levels, strip_headers))
+        print(prettify_log_line(line, requested_levels, strip_headers), flush=True)
 
 
 def prettify_timestamp(timestamp: datetime.datetime) -> str:
