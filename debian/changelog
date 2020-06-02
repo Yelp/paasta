@@ -1,3 +1,11 @@
+paasta-tools (0.96.7) xenial; urgency=medium
+
+  * 0.96.7 tagged with 'make release'
+    Commit: Merge pull request #2825 from Yelp/u/mathieu/PAASTA-
+    16518_add_disk_recos  Add disk recos support
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Tue, 02 Jun 2020 13:49:51 -0700
+
 paasta-tools (0.96.6) xenial; urgency=medium
 
   * 0.96.6 tagged with 'make release'
