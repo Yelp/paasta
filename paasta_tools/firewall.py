@@ -10,6 +10,7 @@ import re
 from contextlib import contextmanager
 
 from paasta_tools import iptables
+from paasta_tools.contrib.graceful_container_drain import get_proxy_port
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.utils import get_running_mesos_docker_containers
@@ -195,7 +196,7 @@ def _inbound_traffic_rule(conf, service_name, instance_name, protocol="tcp"):
     If this is set to "reject", this is limited only to traffic from localhost"""
     policy = conf.get_inbound_firewall()
     if policy == "reject":
-        port = conf.get_proxy_port(service_name, instance_name)
+        port = get_proxy_port(service_name, instance_name)
         yield iptables.Rule(
             protocol=protocol,
             src="0.0.0.0/0.0.0.0",
