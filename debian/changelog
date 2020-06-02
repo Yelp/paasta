@@ -1,3 +1,12 @@
+paasta-tools (0.96.5) xenial; urgency=medium
+
+  * 0.96.5 tagged with 'make release'
+    Commit: Merge pull request #2828 from Yelp/make_hacheck_sidecar_log
+    Make is_pod_healthy_in_smartstack report an error message when it
+    fails
+
+ -- Daniel Popescu <dpopes@yelp.com>  Tue, 02 Jun 2020 10:34:09 -0700
+
 paasta-tools (0.96.4) xenial; urgency=medium
 
   * 0.96.4 tagged with 'make release'
