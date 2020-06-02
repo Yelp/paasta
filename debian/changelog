@@ -1,3 +1,12 @@
+paasta-tools (0.96.8) xenial; urgency=medium
+
+  * 0.96.8 tagged with 'make release'
+    Commit: Merge pull request #2830 from
+    Yelp/u/trobinso/fix_get_proxy_port_call_site  Fix the call to
+    get_proxy_port for inbound firewall mode
+
+ -- Daniel Popescu <dpopes@yelp.com>  Tue, 02 Jun 2020 15:52:04 -0700
+
 paasta-tools (0.96.7) xenial; urgency=medium
 
   * 0.96.7 tagged with 'make release'
