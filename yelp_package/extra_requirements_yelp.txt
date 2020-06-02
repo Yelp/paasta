@@ -12,7 +12,7 @@ scribereader==0.8.0
 signalform-tools==0.0.16
 slo-transcoder==3.2.3
 smmap2==2.0.3
-sticht[yelp_internal]==1.1.8
+sticht[yelp_internal]==1.1.9
 vault-tools==0.7.34
 yelp-cgeom==1.3.1
 yelp-clog==4.1.1  # scribereader requires <5.0.0
