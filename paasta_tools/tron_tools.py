@@ -55,7 +55,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import paasta_print
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.spark_tools import get_spark_resource_requirements
@@ -744,20 +743,7 @@ def load_tron_instance_config(
     )
 
 
-@time_cache(ttl=5)
 def load_tron_service_config(
-    service,
-    cluster,
-    load_deployments=True,
-    soa_dir=DEFAULT_SOA_DIR,
-    for_validation=False,
-):
-    return load_tron_service_config_no_cache(
-        service, cluster, load_deployments, soa_dir, for_validation,
-    )
-
-
-def load_tron_service_config_no_cache(
     service,
     cluster,
     load_deployments=True,
