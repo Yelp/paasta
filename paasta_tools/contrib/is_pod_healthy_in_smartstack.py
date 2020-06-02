@@ -36,4 +36,8 @@ if are_services_up_on_ip_port(
 ):
     sys.exit(0)
 else:
+    print(
+        f"Could not find backend {host_ip}:{port} for service {services} "
+        f"on Synapse at {synapse_host}:{synapse_port}"
+    )
     sys.exit(1)

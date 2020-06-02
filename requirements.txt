@@ -20,7 +20,7 @@ choice==0.1
 click==6.6
 cookiecutter==1.4.0
 croniter==0.3.20
-cryptography==2.3.1
+cryptography==2.8
 decorator==4.1.2
 docker-py==1.2.3
 docutils==0.12
@@ -97,7 +97,7 @@ simplejson==3.10.0
 six==1.11.0
 slackclient==1.2.1
 sseclient-py==1.7
-sticht==1.1.8
+sticht==1.1.9
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2
