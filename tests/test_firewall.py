@@ -422,6 +422,7 @@ def test_ensure_internet_chain():
     )
 
 
+@mock.patch.object(firewall, "get_proxy_port", return_value="20000")
 @mock.patch.object(firewall, "_default_rules", return_value=[])
 @mock.patch.object(firewall, "_well_known_rules", return_value=[])
 @mock.patch.object(firewall, "_cidr_rules", return_value=[])
@@ -429,11 +430,11 @@ def test_reject_inbound_network_traffic(
     mock_cidr_rules,
     mock_well_known_rules,
     mock_default_rules,
+    mock_get_proxy_port,
     mock_service_config,
     service_group,
 ):
     mock_service_config.return_value.get_inbound_firewall.return_value = "reject"
-    mock_service_config.return_value.get_proxy_port.return_value = "20000"
     assert service_group.get_rules(
         DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR
     ) == (
