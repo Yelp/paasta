@@ -7,7 +7,10 @@ import shlex
 import socket
 import sys
 import time
+from typing import Any
+from typing import List
 from typing import Mapping
+from typing import Union
 
 from boto3.exceptions import Boto3Error
 from ruamel.yaml import YAML
@@ -610,14 +613,23 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd: str, spark_ui_port: int) -> str:
+def get_spark_app_name(
+    original_docker_cmd: Union[Any, str, List[str]], spark_ui_port: int
+) -> str:
     # Use submitted batch name as default spark_run job name
     spark_app_name = "paasta_spark_run"
+
+    docker_cmds = (
+        shlex.split(original_docker_cmd)
+        if isinstance(original_docker_cmd, str)
+        else original_docker_cmd
+    )
+
     if "spark-submit" in original_docker_cmd:
         parser = argparse.ArgumentParser()
         parser.add_argument("cmd", choices=["spark-submit"])
         parser.add_argument("others", nargs="+")
-        args, _ = parser.parse_known_args(shlex.split(original_docker_cmd))
+        args, _ = parser.parse_known_args(docker_cmds or [])
         scripts = [arg for arg in args.others if arg.endswith(".py")]
         # if we are able to find the running script from cmd, update
         # the app name to be the first batch name we found
