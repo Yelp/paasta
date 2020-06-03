@@ -210,7 +210,7 @@ def _inbound_traffic_rule(conf, service_name, instance_name, protocol="tcp"):
                 protocol=protocol,
                 src=ip_range,
                 dst="0.0.0.0/0.0.0.0",
-                target="ALLOW",
+                target="ACCEPT",
                 matches=((protocol, (("dport", (str(port),)),)),),
                 target_parameters=(),
             )

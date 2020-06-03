@@ -448,7 +448,7 @@ def test_reject_inbound_network_traffic(
         ),
         EMPTY_RULE._replace(
             protocol="tcp",
-            target="ALLOW",
+            target="ACCEPT",
             src="127.0.0.0/255.0.0.0",
             dst="0.0.0.0/0.0.0.0",
             matches=(("tcp", (("dport", ("20000",)),)),),
@@ -456,7 +456,7 @@ def test_reject_inbound_network_traffic(
         ),
         EMPTY_RULE._replace(
             protocol="tcp",
-            target="ALLOW",
+            target="ACCEPT",
             src="169.254.0.0/255.255.0.0",
             dst="0.0.0.0/0.0.0.0",
             matches=(("tcp", (("dport", ("20000",)),)),),
