@@ -422,7 +422,9 @@ def test_ensure_internet_chain():
     )
 
 
-@mock.patch.object(firewall, "get_proxy_port", return_value="20000")
+@mock.patch.object(
+    firewall, "_nerve_ports_for_service_instance", return_value=[30000, 30001]
+)
 @mock.patch.object(firewall, "_default_rules", return_value=[])
 @mock.patch.object(firewall, "_well_known_rules", return_value=[])
 @mock.patch.object(firewall, "_cidr_rules", return_value=[])
@@ -443,7 +445,7 @@ def test_reject_inbound_network_traffic(
             target="REJECT",
             src="0.0.0.0/0.0.0.0",
             dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("20000",)),)),),
+            matches=(("tcp", (("dport", ("30000",)),)),),
             target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
         ),
         EMPTY_RULE._replace(
@@ -451,7 +453,7 @@ def test_reject_inbound_network_traffic(
             target="ACCEPT",
             src="127.0.0.0/255.0.0.0",
             dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("20000",)),)),),
+            matches=(("tcp", (("dport", ("30000",)),)),),
             target_parameters=(),
         ),
         EMPTY_RULE._replace(
@@ -459,7 +461,31 @@ def test_reject_inbound_network_traffic(
             target="ACCEPT",
             src="169.254.0.0/255.255.0.0",
             dst="0.0.0.0/0.0.0.0",
-            matches=(("tcp", (("dport", ("20000",)),)),),
+            matches=(("tcp", (("dport", ("30000",)),)),),
+            target_parameters=(),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="REJECT",
+            src="0.0.0.0/0.0.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("30001",)),)),),
+            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            src="127.0.0.0/255.0.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("30001",)),)),),
+            target_parameters=(),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            src="169.254.0.0/255.255.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("30001",)),)),),
             target_parameters=(),
         ),
         EMPTY_RULE._replace(
