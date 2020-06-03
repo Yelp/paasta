@@ -2728,8 +2728,8 @@ def read_service_instance_names(
 ) -> Collection[Tuple[str, str]]:
     instance_list = []
     conf_file = f"{instance_type}-{cluster}"
-    config = __read_extra_service_information_cached(
-        service, conf_file, soa_dir=soa_dir
+    config = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir, deepcopy=False,
     )
     config = filter_templates_from_config(config)
     if instance_type == "tron":
@@ -2842,8 +2842,8 @@ def load_service_instance_configs(
     service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, InstanceConfigDict]:
     conf_file = f"{instance_type}-{cluster}"
-    user_configs = __read_extra_service_information_cached(
-        service, conf_file, soa_dir=soa_dir
+    user_configs = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir, deepcopy=False,
     )
     user_configs = filter_templates_from_config(user_configs)
     auto_configs = load_service_instance_auto_configs(
@@ -2858,19 +2858,12 @@ def load_service_instance_configs(
     return merged
 
 
-# be extremely sure you do not modify the return value of this.
-@time_cache(ttl=5)
-def __read_extra_service_information_cached(*args: Any, **kwargs: Any) -> Dict:
-    return service_configuration_lib.read_extra_service_information(*args, **kwargs)
-
-
 def load_service_instance_config(
     service: str,
     instance: str,
     instance_type: str,
     cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
-    use_cache: bool = True,
 ) -> InstanceConfigDict:
     if instance.startswith("_"):
         raise InvalidJobNameError(
@@ -2878,17 +2871,12 @@ def load_service_instance_config(
         )
     conf_file = f"{instance_type}-{cluster}"
 
-    if use_cache:
-        read_extra_service_information = __read_extra_service_information_cached
-    else:
-        read_extra_service_information = (
-            service_configuration_lib.read_extra_service_information
-        )
-
+    # We pass deepcopy=False here and then do our own deepcopy of the subset of the data we actually care about. Without
+    # this optimization, any code that calls load_service_instance_config for every instance in a yaml file is ~O(n^2).
     user_config = copy.deepcopy(
-        read_extra_service_information(service, conf_file, soa_dir=soa_dir).get(
-            instance
-        )
+        service_configuration_lib.read_extra_service_information(
+            service, conf_file, soa_dir=soa_dir, deepcopy=False
+        ).get(instance)
     )
     if user_config is None:
         raise NoConfigurationForServiceError(
@@ -2907,8 +2895,11 @@ def load_service_instance_auto_configs(
     enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
     conf_file = f"{instance_type}-{cluster}"
     if enabled_types.get(instance_type):
-        return __read_extra_service_information_cached(
-            service, f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}", soa_dir=soa_dir
+        return service_configuration_lib.read_extra_service_information(
+            service,
+            f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}",
+            soa_dir=soa_dir,
+            deepcopy=False,
         )
     else:
         return {}

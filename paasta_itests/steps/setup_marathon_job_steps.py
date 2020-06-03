@@ -177,7 +177,7 @@ def see_it_in_list(context, shard_number=None):
             )
         )
 
-        assert context.app_id in full_list, (context.app_id, full_list)
+    assert context.app_id in full_list, (context.app_id, full_list)
 
 
 @then("we should not see it in the list of apps on shard {shard_number:d}")
