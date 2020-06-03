@@ -24,7 +24,9 @@ from paasta_tools.cli.cmds.spark_run import emit_resource_requirements
 from paasta_tools.cli.cmds.spark_run import get_docker_cmd
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
+from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import get_spark_config
+from paasta_tools.cli.cmds.spark_run import sanitize_container_name
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -61,6 +63,19 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
         "pyspark",
         {},
     ]
+
+
+@pytest.mark.parametrize(
+    "container_name,expected",
+    [
+        # name should always start with [a-zA-Z0-9]
+        ("~!.abcde", "abcde"),
+        # name with none supported chars will be replace with _
+        ("to~be?or not to be!", "to_be_or_not_to_be_"),
+    ],
+)
+def test_sanitize_container_name(container_name, expected):
+    assert sanitize_container_name(container_name) == expected
 
 
 @pytest.mark.parametrize("mrjob", [True, False])
@@ -551,6 +566,30 @@ def test_emit_resource_requirements(tmpdir):
             ],
             any_order=True,
         )
+
+
+@pytest.mark.parametrize(
+    "cmd,expected_name",
+    [
+        # spark-submit use first batch name append user name and port
+        (
+            "spark-submit path/to/my-script.py --some-configs a.py",
+            "paasta_my-script_fake_user_1234",
+        ),
+        # spark-submit that is unable to find .py script, use the default name
+        # with user name and port
+        ("spark-submit path/to/my-script.jar", "paasta_spark_run_fake_user_1234"),
+        # non jupyter-lab cmd use the default name and append user name and port
+        ("pyspark", "paasta_spark_run_fake_user_1234",),
+        # jupyterlab we have a different name
+        ("jupyter-lab", "paasta_jupyter_fake_user_1234"),
+    ],
+)
+def test_get_spark_app_name(cmd, expected_name):
+    spark_ui_port = 1234
+    with mock.patch("paasta_tools.cli.cmds.spark_run.get_username", autospec=True) as m:
+        m.return_value = "fake_user"
+        assert get_spark_app_name(cmd, spark_ui_port) == expected_name
 
 
 def test_get_docker_cmd_add_spark_conf_str():

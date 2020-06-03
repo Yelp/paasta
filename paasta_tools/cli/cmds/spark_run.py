@@ -2,10 +2,15 @@ import argparse
 import json
 import logging
 import os
+import re
+import shlex
 import socket
 import sys
 import time
+from typing import Any
+from typing import List
 from typing import Mapping
+from typing import Union
 
 from boto3.exceptions import Boto3Error
 from ruamel.yaml import YAML
@@ -302,6 +307,11 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_spark_run)
 
 
+def sanitize_container_name(container_name):
+    # container_name only allows [a-zA-Z0-9][a-zA-Z0-9_.-]
+    return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
+
+
 def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvidia):
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append("--rm")
@@ -316,7 +326,7 @@ def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvi
             cmd.append("--tty=true")
 
     cmd.append("--user=%d:%d" % (os.geteuid(), os.getegid()))
-    cmd.append("--name=%s" % container_name)
+    cmd.append("--name=%s" % sanitize_container_name(container_name))
     for k, v in env.items():
         cmd.append("--env")
         if k in SENSITIVE_ENV:
@@ -584,6 +594,7 @@ def parse_constraints_string(constraints_string: str) -> Mapping[str, str]:
 def run_docker_container(
     container_name, volumes, environment, docker_img, docker_cmd, dry_run, nvidia
 ) -> int:
+
     docker_run_args = dict(
         container_name=container_name,
         volumes=volumes,
@@ -600,6 +611,37 @@ def run_docker_container(
 
     os.execlpe("paasta_docker_wrapper", *docker_run_cmd)
     return 0
+
+
+def get_spark_app_name(
+    original_docker_cmd: Union[Any, str, List[str]], spark_ui_port: int
+) -> str:
+    # Use submitted batch name as default spark_run job name
+    spark_app_name = "paasta_spark_run"
+
+    docker_cmds = (
+        shlex.split(original_docker_cmd)
+        if isinstance(original_docker_cmd, str)
+        else original_docker_cmd
+    )
+
+    if "spark-submit" in original_docker_cmd:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("cmd", choices=["spark-submit"])
+        parser.add_argument("others", nargs="+")
+        args, _ = parser.parse_known_args(docker_cmds or [])
+        scripts = [arg for arg in args.others if arg.endswith(".py")]
+        # if we are able to find the running script from cmd, update
+        # the app name to be the first batch name we found
+        if len(scripts) > 0:
+            batch_name = scripts[0].split("/")[-1].replace(".py", "")
+            spark_app_name = "paasta_" + batch_name
+
+    if "jupyter-lab" in original_docker_cmd:
+        spark_app_name = "paasta_jupyter"
+
+    spark_app_name += "_{}_{}".format(get_username(), spark_ui_port)
+    return spark_app_name
 
 
 def configure_and_run_docker_container(
@@ -625,12 +667,9 @@ def configure_and_run_docker_container(
                 file=sys.stderr,
             )
 
-    spark_ui_port = pick_random_port(args.service + str(os.getpid()))
-    spark_app_name = "paasta_spark_run_{}".format(get_username())
-    container_name = spark_app_name + "_" + str(spark_ui_port)
     original_docker_cmd = args.cmd or instance_config.get_cmd()
-    if "jupyter" not in original_docker_cmd:
-        spark_app_name = container_name
+    spark_ui_port = pick_random_port(args.service + str(os.getpid()))
+    spark_app_name = get_spark_app_name(original_docker_cmd, spark_ui_port)
 
     access_key, secret_key = get_aws_credentials(
         service=args.service,
@@ -688,7 +727,7 @@ def configure_and_run_docker_container(
                 raise
 
     return run_docker_container(
-        container_name=container_name,
+        container_name=spark_app_name,
         volumes=volumes,
         environment=environment,
         docker_img=docker_img,
