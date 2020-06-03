@@ -422,7 +422,9 @@ def test_ensure_internet_chain():
     )
 
 
-@mock.patch.object(firewall, "_nerve_ports_for_service_instance", return_value=[30000, 30001])
+@mock.patch.object(
+    firewall, "_nerve_ports_for_service_instance", return_value=[30000, 30001]
+)
 @mock.patch.object(firewall, "_default_rules", return_value=[])
 @mock.patch.object(firewall, "_well_known_rules", return_value=[])
 @mock.patch.object(firewall, "_cidr_rules", return_value=[])
