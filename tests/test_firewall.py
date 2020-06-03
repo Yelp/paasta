@@ -422,7 +422,7 @@ def test_ensure_internet_chain():
     )
 
 
-@mock.patch.object(firewall, "get_proxy_port", return_value="20000")
+@mock.patch.object(firewall, "_nerve_ports_for_service_instance", return_value=[20000, 20001])
 @mock.patch.object(firewall, "_default_rules", return_value=[])
 @mock.patch.object(firewall, "_well_known_rules", return_value=[])
 @mock.patch.object(firewall, "_cidr_rules", return_value=[])
@@ -487,6 +487,57 @@ def test_reject_inbound_network_traffic(
             matches=(
                 ("comment", (("comment", ("proxy_port example_happyhour.main",)),)),
                 ("tcp", (("dport", ("20000",)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="REJECT",
+            src="0.0.0.0/0.0.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("20001",)),)),),
+            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            src="127.0.0.0/255.0.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("20001",)),)),),
+            target_parameters=(),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            src="169.254.0.0/255.255.0.0",
+            dst="0.0.0.0/0.0.0.0",
+            matches=(("tcp", (("dport", ("20001",)),)),),
+            target_parameters=(),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            dst="1.2.3.4/255.255.255.255",
+            matches=(
+                ("comment", (("comment", ("backend example_happyhour.main",)),)),
+                ("tcp", (("dport", ("123",)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            dst="5.6.7.8/255.255.255.255",
+            matches=(
+                ("comment", (("comment", ("backend example_happyhour.main",)),)),
+                ("tcp", (("dport", ("567",)),)),
+            ),
+        ),
+        EMPTY_RULE._replace(
+            protocol="tcp",
+            target="ACCEPT",
+            dst="169.254.255.254/255.255.255.255",
+            matches=(
+                ("comment", (("comment", ("proxy_port example_happyhour.main",)),)),
+                ("tcp", (("dport", ("20001",)),)),
             ),
         ),
     )

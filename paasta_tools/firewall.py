@@ -10,9 +10,9 @@ import re
 from contextlib import contextmanager
 
 from paasta_tools import iptables
-from paasta_tools.contrib.graceful_container_drain import get_proxy_port
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
 from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -190,30 +190,37 @@ def _yocalhost_rule(port, comment, protocol="tcp"):
     )
 
 
+def _nerve_ports_for_service_instance(service_name, instance_name):
+    """Return the nerve ports for a given service instance"""
+    for name, instance, port in paasta_native_services_running_here():
+        if name == service_name and instance_name == instance:
+            yield port
+
+
 def _inbound_traffic_rule(conf, service_name, instance_name, protocol="tcp"):
     """Return iptables rules for inbound traffic
 
     If this is set to "reject", this is limited only to traffic from localhost"""
     policy = conf.get_inbound_firewall()
     if policy == "reject":
-        port = get_proxy_port(service_name, instance_name)
-        yield iptables.Rule(
-            protocol=protocol,
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            target="REJECT",
-            matches=((protocol, (("dport", (str(port),)),)),),
-            target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
-        )
-        for ip_range in INBOUND_PRIVATE_IP_RANGES:
+        for port in _nerve_ports_for_service_instance(service_name, instance_name):
             yield iptables.Rule(
                 protocol=protocol,
-                src=ip_range,
+                src="0.0.0.0/0.0.0.0",
                 dst="0.0.0.0/0.0.0.0",
-                target="ACCEPT",
+                target="REJECT",
                 matches=((protocol, (("dport", (str(port),)),)),),
-                target_parameters=(),
+                target_parameters=((("reject-with", ("icmp-port-unreachable",))),),
             )
+            for ip_range in INBOUND_PRIVATE_IP_RANGES:
+                yield iptables.Rule(
+                    protocol=protocol,
+                    src=ip_range,
+                    dst="0.0.0.0/0.0.0.0",
+                    target="ACCEPT",
+                    matches=((protocol, (("dport", (str(port),)),)),),
+                    target_parameters=(),
+                )
 
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
