@@ -236,12 +236,26 @@ class PoolManager:
         """ Signals can return arbitrary values, so make sure we don't add or remove too much capacity """
 
         requested_delta = requested_target_capacity - self.target_capacity
+
+        # first, determine whether or not the delta is actually positive or negative.
+        # for example, if the current target capacity is above the maximum, the resulting delta
+        # will be negative, even if the requested delta is positive because we take the min
+        # of the two. This is good because using this delta means moving towards the
+        # limit, in the case of the example, towards the maximum, since the target capacity
+        # is currently above the maximum.
         if requested_delta > 0:
-            delta = min(self.max_capacity - self.target_capacity, self.max_weight_to_add, requested_delta)
+            delta = min(self.max_capacity - self.target_capacity, requested_delta)
         elif requested_delta < 0:
-            delta = max(self.min_capacity - self.target_capacity, -self.max_weight_to_remove, requested_delta)
+            delta = max(self.min_capacity - self.target_capacity, requested_delta)
         else:
             delta = 0
+
+        # second, constrain the delta by the max weight to change, depending on if it
+        # it is positive or negative.
+        if delta > 0:
+            delta = min(self.max_weight_to_add, delta)
+        elif delta < 0:
+            delta = max(-self.max_weight_to_remove, delta)
 
         constrained_target_capacity = self.target_capacity + delta
         if requested_delta != delta:
