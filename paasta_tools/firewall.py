@@ -11,7 +11,6 @@ from contextlib import contextmanager
 
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.contrib.graceful_container_drain import get_proxy_port
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
 from paasta_tools.utils import get_running_mesos_docker_containers
