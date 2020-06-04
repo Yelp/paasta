@@ -85,6 +85,7 @@ setup(
         "paasta_tools/setup_marathon_job.py",
         "paasta_tools/synapse_srv_namespaces_fact.py",
     ]
+    + glob.glob("paasta_tools/contrib/*.sh")
     + glob.glob("paasta_tools/contrib/*.py"),
     entry_points={
         "console_scripts": [
