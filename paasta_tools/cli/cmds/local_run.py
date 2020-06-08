@@ -818,7 +818,7 @@ def run_docker_container(
             for line in docker_client.attach(
                 container_id, stderr=True, stream=True, logs=True
             ):
-                print(line)
+                print(line, flush=True)
         else:
             _output_exit_code()
             returncode = 3
