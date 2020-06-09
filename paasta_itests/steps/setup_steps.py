@@ -25,7 +25,6 @@ from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import paasta_print
 
 
 def _get_marathon_connection_string(service="marathon"):
@@ -171,7 +170,7 @@ def working_paasta_cluster_with_registry(context, docker_registry):
             context.system_paasta_config,
         ) = setup_marathon_clients()
     else:
-        paasta_print("Marathon connections already established")
+        print("Marathon connections already established")
 
     if not hasattr(context, "paasta_api_client"):
         context.paasta_api_client = setup_paasta_api_client()

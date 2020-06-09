@@ -17,7 +17,6 @@ from behave import when
 
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
 
 
 @given('a "{service_type}" service')
@@ -39,9 +38,9 @@ def run_paasta_validate(context):
 
 @then('it should have a return code of "{code:d}"')
 def see_expected_return_code(context, code):
-    paasta_print(context.output)
-    paasta_print(context.return_code)
-    paasta_print()
+    print(context.output)
+    print(context.return_code)
+    print()
     assert context.return_code == code
 
 
@@ -52,5 +51,5 @@ def validate_status_all_pass(context):
 
 @then("it should report an error in the output")
 def validate_status_something_fail(context):
-    paasta_print(context.output)
+    print(context.output)
     assert "Successfully validated schema" not in context.output

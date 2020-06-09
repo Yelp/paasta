@@ -22,15 +22,14 @@ Exits 0 if this is the leader, and 1 if it isn't.
 from sys import exit
 
 from paasta_tools.mesos_tools import is_mesos_leader
-from paasta_tools.utils import paasta_print
 
 
 def main():
     if is_mesos_leader():
-        paasta_print(True)
+        print(True)
         exit(0)
     else:
-        paasta_print(False)
+        print(False)
         exit(1)
 
 

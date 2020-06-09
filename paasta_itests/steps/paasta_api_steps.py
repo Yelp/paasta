@@ -17,7 +17,6 @@ from bravado import exception as bexception
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 @then(
@@ -104,8 +103,8 @@ def paasta_status_via_api(context, service, instance):
         system_paasta_config=system_paasta_config,
         verbose=0,
     )
-    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
-    paasta_print()  # sacrificial line for behave to eat instead of our output
+    print(f"Got exitcode {exit_code} with output:\n{output}")
+    print()  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
     assert len(output) > 0

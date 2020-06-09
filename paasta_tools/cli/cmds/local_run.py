@@ -52,7 +52,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -83,7 +82,7 @@ def perform_http_healthcheck(url, timeout):
         return (False, "http request timed out after %d seconds" % timeout)
 
     if "content-type" in res.headers and "," in res.headers["content-type"]:
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 "Multiple content-type headers detected in response."
                 " The Mesos healthcheck system will treat this as a failure!"
@@ -154,7 +153,7 @@ def run_healthcheck_on_container(
     elif healthcheck_mode == "tcp":
         healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
     else:
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 "Healthcheck mode '%s' is not currently supported!" % healthcheck_mode
             )
@@ -187,7 +186,7 @@ def simulate_healthcheck_on_service(
         interval = instance_config.get_healthcheck_interval_seconds()
         max_failures = instance_config.get_healthcheck_max_consecutive_failures()
 
-        paasta_print(
+        print(
             "\nStarting health check via %s (waiting %s seconds before "
             "considering failures due to grace period):"
             % (healthcheck_link, grace_period)
@@ -204,7 +203,7 @@ def simulate_healthcheck_on_service(
                     # the generator will block until another log line is available
                     log_line = next(generator).decode("utf-8").rstrip("\n")
                     if healthchecking:
-                        paasta_print(f"container [{container_id[:12]}]: {log_line}")
+                        print(f"container [{container_id[:12]}]: {log_line}")
                     else:
                         # stop streaming at first opportunity, since generator.close()
                         # cant be used until the container is dead
@@ -225,7 +224,7 @@ def simulate_healthcheck_on_service(
             # First inspect the container for early exits
             container_state = docker_client.inspect_container(container_id)
             if not container_state["State"]["Running"]:
-                paasta_print(
+                print(
                     PaastaColors.red(
                         "Container exited with code {}".format(
                             container_state["State"]["ExitCode"]
@@ -241,7 +240,7 @@ def simulate_healthcheck_on_service(
 
             # Yay, we passed the healthcheck
             if healthcheck_passed:
-                paasta_print(
+                print(
                     "{}'{}' (via {})".format(
                         PaastaColors.green("Healthcheck succeeded!: "),
                         healthcheck_output,
@@ -264,7 +263,7 @@ def simulate_healthcheck_on_service(
                 )
                 extra_msg = f" (via: {healthcheck_link}. Output: {healthcheck_output})"
 
-            paasta_print("{}{}".format(color(f"Healthcheck failed! {msg}"), extra_msg))
+            print("{}{}".format(color(f"Healthcheck failed! {msg}"), extra_msg))
 
             if after_grace_period_attempts == max_failures:
                 break
@@ -272,7 +271,7 @@ def simulate_healthcheck_on_service(
             time.sleep(interval)
         healthchecking = False  # end docker logs stream
     else:
-        paasta_print(
+        print(
             "\nPaaSTA would have healthchecked your service via\n%s" % healthcheck_link
         )
         healthcheck_passed = True
@@ -528,7 +527,7 @@ def docker_pull_image(docker_url):
     bindings due to the docker auth/registry transition. Once we are past Docker 1.6
     we can use better credential management, but for now this function assumes the
     user running the command has already been authorized for the registry"""
-    paasta_print(
+    print(
         "Please wait while the image (%s) is pulled (times out after 30m)..."
         % docker_url,
         file=sys.stderr,
@@ -540,7 +539,7 @@ def docker_pull_image(docker_url):
                 "docker pull %s" % docker_url, stream=True, stdin=DEVNULL
             )
             if ret != 0:
-                paasta_print(
+                print(
                     "\nPull failed. Are you authorized to run docker commands?",
                     file=sys.stderr,
                 )
@@ -566,21 +565,21 @@ def get_container_id(docker_client, container_name):
 
 def _cleanup_container(docker_client, container_id):
     if docker_client.inspect_container(container_id)["State"].get("OOMKilled", False):
-        paasta_print(
+        print(
             PaastaColors.red(
                 "Your service was killed by the OOM Killer!\n"
                 "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs"
             ),
             file=sys.stderr,
         )
-    paasta_print("\nStopping and removing the old container %s..." % container_id)
-    paasta_print("(Please wait or you may leave an orphaned container.)")
+    print("\nStopping and removing the old container %s..." % container_id)
+    print("(Please wait or you may leave an orphaned container.)")
     try:
         docker_client.stop(container_id)
         docker_client.remove_container(container_id)
-        paasta_print("...done")
+        print("...done")
     except errors.APIError:
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 "Could not clean up container! You should stop and remove container '%s' manually."
                 % container_id
@@ -667,7 +666,7 @@ def run_docker_container(
         if check_if_port_free(user_port):
             chosen_port = user_port
         else:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "The chosen port is already in use!\n"
                     "Try specifying another one, or omit (--port|-o) and paasta will find a free one for you"
@@ -689,8 +688,8 @@ def run_docker_container(
                 secret_provider_kwargs=secret_provider_kwargs,
             )
         except Exception as e:
-            paasta_print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
-            paasta_print(
+            print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
+            print(
                 "If you don't need the secrets for local-run, you can add --skip-secrets"
             )
             sys.exit(1)
@@ -741,14 +740,12 @@ def run_docker_container(
 
     if dry_run:
         if json_dict:
-            paasta_print(json.dumps(docker_run_args))
+            print(json.dumps(docker_run_args))
         else:
-            paasta_print(json.dumps(docker_run_cmd))
+            print(json.dumps(docker_run_cmd))
         return 0
     else:
-        paasta_print(
-            "Running docker command:\n%s" % PaastaColors.grey(joined_docker_run_cmd)
-        )
+        print("Running docker command:\n%s" % PaastaColors.grey(joined_docker_run_cmd))
 
     merged_env = {**os.environ, **environment}
 
@@ -769,7 +766,7 @@ def run_docker_container(
     try:
         (returncode, output) = _run(docker_run_cmd, env=merged_env)
         if returncode != 0:
-            paasta_print(
+            print(
                 "Failure trying to start your container!"
                 "Returncode: %d"
                 "Output:"
@@ -783,7 +780,7 @@ def run_docker_container(
             sys.exit(1)
         container_started = True
         container_id = get_container_id(docker_client, container_name)
-        paasta_print("Found our container running with CID %s" % container_id)
+        print("Found our container running with CID %s" % container_id)
 
         if simulate_healthcheck:
             healthcheck_result = simulate_healthcheck_on_service(
@@ -799,14 +796,14 @@ def run_docker_container(
             returncode = docker_client.inspect_container(container_id)["State"][
                 "ExitCode"
             ]
-            paasta_print(f"Container exited: {returncode})")
+            print(f"Container exited: {returncode})")
 
         if healthcheck_only:
             if container_started:
                 _output_exit_code()
                 _cleanup_container(docker_client, container_id)
             if healthcheck_mode is None:
-                paasta_print(
+                print(
                     "--healthcheck-only, but no healthcheck is defined for this instance!"
                 )
                 sys.exit(1)
@@ -817,11 +814,11 @@ def run_docker_container(
 
         running = docker_client.inspect_container(container_id)["State"]["Running"]
         if running:
-            paasta_print("Your service is now running! Tailing stdout and stderr:")
+            print("Your service is now running! Tailing stdout and stderr:")
             for line in docker_client.attach(
                 container_id, stderr=True, stream=True, logs=True
             ):
-                paasta_print(line)
+                print(line, flush=True)
         else:
             _output_exit_code()
             returncode = 3
@@ -866,12 +863,10 @@ def configure_and_run_docker_container(
     """
 
     if instance is None and args.healthcheck_only:
-        paasta_print(
-            "With --healthcheck-only, --instance MUST be provided!", file=sys.stderr
-        )
+        print("With --healthcheck-only, --instance MUST be provided!", file=sys.stderr)
         return 1
     if instance is None and not sys.stdin.isatty():
-        paasta_print(
+        print(
             "--instance and --cluster must be specified when using paasta local-run without a tty!",
             file=sys.stderr,
         )
@@ -905,10 +900,10 @@ def configure_and_run_docker_container(
                 soa_dir=soa_dir,
             )
     except NoConfigurationForServiceError as e:
-        paasta_print(str(e), file=sys.stderr)
+        print(str(e), file=sys.stderr)
         return 1
     except NoDeploymentsAvailable:
-        paasta_print(
+        print(
             PaastaColors.red(
                 "Error: No deployments.json found in %(soa_dir)s/%(service)s. "
                 "You can generate this by running: "
@@ -933,7 +928,7 @@ def configure_and_run_docker_container(
             docker_url = instance_config.get_docker_url()
         except NoDockerImageError:
             if instance_config.get_deploy_group() is None:
-                paasta_print(
+                print(
                     PaastaColors.red(
                         f"Error: {service}.{instance} has no 'deploy_group' set. Please set one so "
                         "the proper image can be used to run for this service."
@@ -942,7 +937,7 @@ def configure_and_run_docker_container(
                     file=sys.stderr,
                 )
             else:
-                paasta_print(
+                print(
                     PaastaColors.red(
                         "Error: No sha has been marked for deployment for the %s deploy group.\n"
                         "Please ensure this service has either run through a jenkins pipeline "
@@ -965,7 +960,7 @@ def configure_and_run_docker_container(
                 )
             )
         else:
-            paasta_print(
+            print(
                 PaastaColors.yellow(
                     "Warning: Path %s does not exist on this host. Skipping this binding."
                     % volume["hostPath"]
@@ -1025,14 +1020,14 @@ def docker_config_available():
 
 def paasta_local_run(args):
     if args.action == "pull" and os.geteuid() != 0 and not docker_config_available():
-        paasta_print("Re-executing paasta local-run --pull with sudo..")
+        print("Re-executing paasta local-run --pull with sudo..")
         os.execvp("sudo", ["sudo", "-H"] + sys.argv)
     if args.action == "build" and not makefile_responds_to("cook-image"):
-        paasta_print(
+        print(
             "A local Makefile with a 'cook-image' target is required for --build",
             file=sys.stderr,
         )
-        paasta_print(
+        print(
             "If you meant to pull the docker image from the registry, explicitly pass --pull",
             file=sys.stderr,
         )
@@ -1041,7 +1036,7 @@ def paasta_local_run(args):
     try:
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This indicates"
                 "PaaSTA is not configured locally on this host, and local-run may not behave"
@@ -1060,7 +1055,7 @@ def paasta_local_run(args):
         try:
             cluster = local_run_config["default_cluster"]
         except KeyError:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "PaaSTA on this machine has not been configured with a default cluster."
                     "Please pass one to local-run using '-c'."
@@ -1108,5 +1103,5 @@ def paasta_local_run(args):
             dry_run=args.action == "dry_run",
         )
     except errors.APIError as e:
-        paasta_print("Can't run Docker container. Error: %s" % str(e), file=sys.stderr)
+        print("Can't run Docker container. Error: %s" % str(e), file=sys.stderr)
         return 1

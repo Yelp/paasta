@@ -26,7 +26,6 @@ import argparse
 import sys
 
 from paasta_tools import tron_tools
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -61,13 +60,11 @@ def main():
     to_delete = set(namespaces) - set(expected_namespaces) - {"MASTER"}
 
     if not to_delete:
-        paasta_print("No Tron namespaces to remove")
+        print("No Tron namespaces to remove")
         sys.exit(0)
 
     if args.dry_run:
-        paasta_print(
-            "Dry run, would have removed namespaces:\n  " + "\n  ".join(to_delete)
-        )
+        print("Dry run, would have removed namespaces:\n  " + "\n  ".join(to_delete))
         sys.exit(0)
 
     successes = []
@@ -80,10 +77,10 @@ def main():
             errors.append((namespace, e))
 
     if successes:
-        paasta_print("Successfully removed namespaces:\n", "\n  ".join(successes))
+        print("Successfully removed namespaces:\n", "\n  ".join(successes))
 
     if errors:
-        paasta_print(
+        print(
             "Failed to remove namespaces:\n  "
             + "\n  ".join(
                 [
