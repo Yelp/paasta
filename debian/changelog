@@ -1,3 +1,11 @@
+paasta-tools (0.96.9) xenial; urgency=medium
+
+  * 0.96.9 tagged with 'make release'
+    Commit: Bump sticht to 1.1.10 to get fix in
+    https://github.com/Yelp/sticht/pull/16
+
+ -- Evan Krall <krall@yelp.com>  Mon, 08 Jun 2020 17:39:36 -0700
+
 paasta-tools (0.96.8) xenial; urgency=medium
 
   * 0.96.8 tagged with 'make release'
