@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
-from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
+from paasta_tools.marathon_tools import marathon_services_running_here
 from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -192,7 +192,7 @@ def _yocalhost_rule(port, comment, protocol="tcp"):
 
 def _nerve_ports_for_service_instance(service_name, instance_name):
     """Return the nerve ports for a given service instance"""
-    for name, instance, port in paasta_native_services_running_here():
+    for name, instance, port in marathon_services_running_here():
         if name == service_name and instance_name == instance:
             yield port
 
