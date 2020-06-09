@@ -1444,9 +1444,9 @@ try:
             configured the log object. We'll just write things to it.
             """
             if level == "event":
-                paasta_print(f"[service {service}] {line}", file=sys.stdout)
+                print(f"[service {service}] {line}", file=sys.stdout)
             elif level == "debug":
-                paasta_print(f"[service {service}] {line}", file=sys.stderr)
+                print(f"[service {service}] {line}", file=sys.stderr)
             else:
                 raise NoSuchLogLevel
             log_name = get_log_name_for_service(service)
@@ -1594,7 +1594,7 @@ class FileLogWriter(LogWriter):
                 with self.maybe_flock(f):
                     f.write(message.encode("UTF-8"))
         except IOError as e:
-            paasta_print(
+            print(
                 "Could not log to {}: {}: {} -- would have logged: {}".format(
                     path, type(e).__name__, str(e), message
                 ),
@@ -2440,7 +2440,7 @@ def _run(
             linebytes = linebytes.strip(b"\n")
             # additional indentation is for the paasta status command only
             if stream:
-                paasta_print(linebytes)
+                print(linebytes)
             else:
                 output.append(line)
 
@@ -2952,7 +2952,7 @@ class Timeout:
 
 def print_with_indent(line: str, indent: int = 2) -> None:
     """Print a line with a given indent level"""
-    paasta_print(" " * indent + line)
+    print(" " * indent + line)
 
 
 class NoDeploymentsAvailable(Exception):
@@ -3365,7 +3365,7 @@ def mean(iterable: Collection[float]) -> float:
 
 def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
     if not sys.stdin.isatty():
-        paasta_print(
+        print(
             "No {choosing} specified and no TTY present to ask."
             "Please specify a {choosing} using the cli.".format(choosing=choosing),
             file=sys.stderr,
@@ -3373,7 +3373,7 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
         sys.exit(1)
 
     if not sequence:
-        paasta_print(
+        print(
             f"PaaSTA needs to pick a {choosing} but none were found.", file=sys.stderr
         )
         sys.exit(1)
@@ -3391,7 +3391,7 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
     try:
         result = chooser.ask()
     except (KeyboardInterrupt, EOFError):
-        paasta_print("")
+        print("")
         sys.exit(1)
 
     if isinstance(result, tuple) and result[1] == str("quit"):
@@ -3407,40 +3407,6 @@ def to_bytes(obj: Any) -> bytes:
         return obj.encode("UTF-8")
     else:
         return str(obj).encode("UTF-8")
-
-
-TLS = threading.local()
-
-
-@contextlib.contextmanager
-def set_paasta_print_file(file: Any) -> Iterator[None]:
-    TLS.paasta_print_file = file
-    yield
-    TLS.paasta_print_file = None
-
-
-def paasta_print(*args: Any, **kwargs: Any) -> None:
-    f = kwargs.pop("file", sys.stdout) or sys.stdout
-    f = getattr(TLS, "paasta_print_file", f) or f
-    buf = getattr(f, "buffer", None)
-    # Here we're assuming that the file object works with strings and its
-    # `buffer` works with bytes. So, if the file object doesn't have `buffer`,
-    # we output via the file object itself using strings.
-    obj_to_arg: Callable[[Any], Any]
-    if buf is not None:
-        f = buf
-        obj_to_arg = to_bytes
-    else:
-
-        def obj_to_arg(o: Any) -> str:
-            return to_bytes(o).decode("UTF-8", errors="ignore")
-
-    end = obj_to_arg(kwargs.pop("end", "\n"))
-    sep = obj_to_arg(kwargs.pop("sep", " "))
-    assert not kwargs, kwargs
-    to_print = sep.join(obj_to_arg(x) for x in args) + end
-    f.write(to_print)
-    f.flush()
 
 
 _TimeoutFuncRetType = TypeVar("_TimeoutFuncRetType")

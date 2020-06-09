@@ -29,7 +29,6 @@ from mock import Mock
 from mock import patch
 
 from paasta_tools.metrics import metastatus_lib
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -449,7 +448,7 @@ def test_group_slaves_by_key_func():
     )
     assert len(actual.items()) == 2
     for k, v in actual.items():
-        paasta_print(k, v)
+        print(k, v)
         assert len(list(v)) == 1
 
 

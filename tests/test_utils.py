@@ -2296,9 +2296,7 @@ class TestFileLogWriter:
 
         with mock.patch(
             "paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True
-        ), mock.patch(
-            "paasta_tools.utils.paasta_print", autospec=True
-        ) as mock_print, mock.patch(
+        ), mock.patch("builtins.print", autospec=True) as mock_print, mock.patch(
             "paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True
         ):
             fw = utils.FileLogWriter("/dev/null", flock=False)

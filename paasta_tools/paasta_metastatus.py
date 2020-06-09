@@ -17,6 +17,7 @@ import io
 import itertools
 import logging
 import sys
+from contextlib import redirect_stdout
 from typing import Mapping
 from typing import MutableSequence
 from typing import Optional
@@ -49,10 +50,8 @@ from paasta_tools.metrics.metastatus_lib import ResourceUtilization
 from paasta_tools.metrics.metastatus_lib import ResourceUtilizationDict
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
-from paasta_tools.utils import set_paasta_print_file
 
 
 log = logging.getLogger("paasta_metastatus")
@@ -136,9 +135,7 @@ def _run_marathon_checks(
         marathon_results = metastatus_lib.get_marathon_status(marathon_clients)
         return marathon_results
     except (MarathonError, ValueError) as e:
-        paasta_print(
-            PaastaColors.red(f"CRITICAL: Unable to contact Marathon cluster: {e}")
-        )
+        print(PaastaColors.red(f"CRITICAL: Unable to contact Marathon cluster: {e}"))
         raise FatalError(2)
 
 
@@ -343,7 +340,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         except MasterNotAvailableException as e:
             # if we can't connect to master at all,
             # then bomb out early
-            paasta_print(PaastaColors.red("CRITICAL:  %s" % "\n".join(e.args)))
+            print(PaastaColors.red("CRITICAL:  %s" % "\n".join(e.args)))
             raise FatalError(2)
 
         marathon_results = _run_marathon_checks(marathon_clients)
@@ -381,8 +378,8 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
 
     healthy_exit = True if all([mesos_ok, marathon_ok]) else False
 
-    paasta_print(f"Master paasta_tools version: {__version__}")
-    paasta_print("Mesos leader: %s" % get_mesos_leader())
+    print(f"Master paasta_tools version: {__version__}")
+    print("Mesos leader: %s" % get_mesos_leader())
     metastatus_lib.print_results_for_healthchecks(
         mesos_summary, mesos_ok, all_mesos_results, args.verbose
     )
@@ -468,7 +465,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
 def get_output(argv: Optional[Sequence[str]] = None) -> Tuple[str, int]:
     output = io.StringIO()
     exit_code = 1
-    with set_paasta_print_file(output):
+    with redirect_stdout(output):
         exit_code = 0
         try:
             print_output(argv)

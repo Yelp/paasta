@@ -7,7 +7,6 @@ import a_sync
 from paasta_tools import mesos_tools
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_running_mesos_docker_containers
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -51,7 +50,7 @@ async def main():
             )
 
     if orphaned_containers:
-        paasta_print(
+        print(
             "CRIT: Docker containers are orphaned: {}{}".format(
                 ", ".join(
                     f"{container_name} ({mesos_task_id})"
@@ -65,7 +64,7 @@ async def main():
                 docker_client.kill(container_name)
         sys.exit(1)
     else:
-        paasta_print("OK: All mesos task IDs accounted for")
+        print("OK: All mesos task IDs accounted for")
         sys.exit(0)
 
 

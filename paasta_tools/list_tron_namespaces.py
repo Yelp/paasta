@@ -14,7 +14,6 @@
 import argparse
 
 from paasta_tools import tron_tools
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
@@ -44,7 +43,7 @@ def main():
     namespaces = tron_tools.get_tron_namespaces(
         cluster=args.cluster, soa_dir=args.soa_dir
     )
-    paasta_print("\n".join(namespaces))
+    print("\n".join(namespaces))
 
 
 if __name__ == "__main__":
