@@ -1,3 +1,11 @@
+paasta-tools (0.96.10) xenial; urgency=medium
+
+  * 0.96.10 tagged with 'make release'
+    Commit: fix the bug that spark-run failed to parse the environment
+    variable in command (#2842)
+
+ -- Lydian Lee <tingyenl@yelp.com>  Tue, 09 Jun 2020 12:57:08 -0700
+
 paasta-tools (0.96.9) xenial; urgency=medium
 
   * 0.96.9 tagged with 'make release'
