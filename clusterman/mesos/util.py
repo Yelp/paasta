@@ -103,7 +103,7 @@ def mesos_post(url: str, endpoint: str) -> requests.Response:
                 f'Response Text: {response.text}\n'
             )
         logger.critical(log_message)
-        raise PoolConnectionError(f'Mesos master unreachable: check the logs for details') from e
+        raise PoolConnectionError('Mesos master unreachable: check the logs for details') from e
 
     return response
 

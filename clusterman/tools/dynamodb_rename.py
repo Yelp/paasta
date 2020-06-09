@@ -59,7 +59,7 @@ def main(args):
             print(f'Updating {old} to {new}')
             for page in query.paginate(
                     TableName=table_name,
-                    KeyConditionExpression=f'#key = :val',
+                    KeyConditionExpression='#key = :val',
                     ExpressionAttributeNames={'#key': 'key'},
                     ExpressionAttributeValues={':val': {'S': old}}
             ):

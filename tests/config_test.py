@@ -151,4 +151,4 @@ def test_load_cluster_pool_config(cluster, pool, pool_other_config, mock_config_
 
     pool_namespace = POOL_NAMESPACE.format(pool=pool, scheduler='mesos')
     assert staticconf.read_int('other_config', namespace=pool_namespace) == pool_other_config
-    assert staticconf.read_string(f'resource_groups', namespace=pool_namespace) == cluster
+    assert staticconf.read_string('resource_groups', namespace=pool_namespace) == cluster

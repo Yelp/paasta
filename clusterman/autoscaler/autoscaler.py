@@ -123,7 +123,7 @@ class Autoscaler:
         timestamp = timestamp or arrow.utcnow()
         logger.info(f'Autoscaling run starting at {timestamp}')
         if self._is_paused(timestamp):
-            logger.info(f'Autoscaling is currently paused; doing nothing')
+            logger.info('Autoscaling is currently paused; doing nothing')
             return
 
         try:
