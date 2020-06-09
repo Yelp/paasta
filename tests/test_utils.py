@@ -961,7 +961,7 @@ def test_load_service_instance_configs(
     )
     assert result == expected
     mock_read_extra_service_information.assert_called_with(
-        service_name="fake_service", extra_info="kubernetes-fake", soa_dir="fake_dir",
+        "fake_service", "kubernetes-fake", soa_dir="fake_dir", deepcopy=False,
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1034,7 +1034,7 @@ def test_load_service_instance_config(
     )
     assert result == expected_config
     mock_read_extra_service_information.assert_called_with(
-        service_name="fake_service", extra_info="kubernetes-fake", soa_dir="fake_dir",
+        "fake_service", "kubernetes-fake", soa_dir="fake_dir", deepcopy=False,
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1068,9 +1068,10 @@ def test_load_service_instance_auto_configs(
     )
     if instance_type_enabled:
         mock_read_extra_service_information.assert_called_with(
-            service_name="fake_service",
-            extra_info=f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
+            "fake_service",
+            f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
             soa_dir="fake_dir",
+            deepcopy=False,
         )
         assert result == mock_read_extra_service_information.return_value
     else:

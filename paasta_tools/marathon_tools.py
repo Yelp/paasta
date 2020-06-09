@@ -369,7 +369,7 @@ def load_marathon_service_config_no_cache(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "marathon", cluster, soa_dir=soa_dir
+        service, instance, "marathon", cluster, soa_dir=soa_dir,
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config

@@ -2729,7 +2729,7 @@ def read_service_instance_names(
     instance_list = []
     conf_file = f"{instance_type}-{cluster}"
     config = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir
+        service, conf_file, soa_dir=soa_dir, deepcopy=False,
     )
     config = filter_templates_from_config(config)
     if instance_type == "tron":
@@ -2843,7 +2843,7 @@ def load_service_instance_configs(
 ) -> Dict[str, InstanceConfigDict]:
     conf_file = f"{instance_type}-{cluster}"
     user_configs = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir
+        service, conf_file, soa_dir=soa_dir, deepcopy=False,
     )
     user_configs = filter_templates_from_config(user_configs)
     auto_configs = load_service_instance_auto_configs(
@@ -2870,9 +2870,14 @@ def load_service_instance_config(
             f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"
         )
     conf_file = f"{instance_type}-{cluster}"
-    user_config = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir
-    ).get(instance)
+
+    # We pass deepcopy=False here and then do our own deepcopy of the subset of the data we actually care about. Without
+    # this optimization, any code that calls load_service_instance_config for every instance in a yaml file is ~O(n^2).
+    user_config = copy.deepcopy(
+        service_configuration_lib.read_extra_service_information(
+            service, conf_file, soa_dir=soa_dir, deepcopy=False
+        ).get(instance)
+    )
     if user_config is None:
         raise NoConfigurationForServiceError(
             f"{instance} not found in config file {soa_dir}/{service}/{conf_file}.yaml."
@@ -2891,7 +2896,10 @@ def load_service_instance_auto_configs(
     conf_file = f"{instance_type}-{cluster}"
     if enabled_types.get(instance_type):
         return service_configuration_lib.read_extra_service_information(
-            service, f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}", soa_dir=soa_dir
+            service,
+            f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}",
+            soa_dir=soa_dir,
+            deepcopy=False,
         )
     else:
         return {}
