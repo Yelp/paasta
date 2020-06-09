@@ -576,6 +576,11 @@ def test_emit_resource_requirements(tmpdir):
             "spark-submit path/to/my-script.py --some-configs a.py",
             "paasta_my-script_fake_user_1234",
         ),
+        # spark-submit with env settings
+        (
+            "USER=TEST spark-submit path/to/my-script.py --some-configs a.py",
+            "paasta_my-script_fake_user_1234",
+        ),
         # spark-submit that is unable to find .py script, use the default name
         # with user name and port
         ("spark-submit path/to/my-script.jar", "paasta_spark_run_fake_user_1234"),
