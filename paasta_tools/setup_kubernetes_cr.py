@@ -49,7 +49,6 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 
@@ -170,6 +169,7 @@ def setup_all_custom_resources(
         config_dicts = load_all_configs(
             cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
+        # by convention, entries where key begins with _ are used as templates
         for svc, config in config_dicts.items():
             for instance in config:
                 if instance[0] == "_":
@@ -307,11 +307,11 @@ def reconcile_kubernetes_resource(
     cluster: str,
     instance: str = None,
 ) -> bool:
-    results = []
+    success = True
+    config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
-        config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
         try:
             soa_config = config_handler.loader(
                 service=service,
@@ -320,37 +320,31 @@ def reconcile_kubernetes_resource(
                 load_deployments=True,
                 soa_dir=DEFAULT_SOA_DIR,
             )
-        except NoDeploymentsAvailable as e:
-            log.error(e)
-            results.append(False)
-            continue
-        git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
-        formatted_resource = format_custom_resource(
-            instance_config=config,
-            service=service,
-            instance=inst,
-            cluster=cluster,
-            kind=kind.singular,
-            version=version,
-            group=group,
-            namespace=f"paasta-{kind.plural}",
-            git_sha=git_sha,
-        )
-        desired_resource = KubeCustomResource(
-            service=service,
-            instance=inst,
-            config_sha=formatted_resource["metadata"]["labels"][
-                paasta_prefixed("config_sha")
-            ],
-            git_sha=formatted_resource["metadata"]["labels"].get(
-                paasta_prefixed("git_sha")
-            ),
-            kind=kind.singular,
-            name=formatted_resource["metadata"]["name"],
-            namespace=f"paasta-{kind.plural}",
-        )
-
-        try:
+            git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
+            formatted_resource = format_custom_resource(
+                instance_config=config,
+                service=service,
+                instance=inst,
+                cluster=cluster,
+                kind=kind.singular,
+                version=version,
+                group=group,
+                namespace=f"paasta-{kind.plural}",
+                git_sha=git_sha,
+            )
+            desired_resource = KubeCustomResource(
+                service=service,
+                instance=inst,
+                config_sha=formatted_resource["metadata"]["labels"][
+                    paasta_prefixed("config_sha")
+                ],
+                git_sha=formatted_resource["metadata"]["labels"].get(
+                    paasta_prefixed("git_sha")
+                ),
+                kind=kind.singular,
+                name=formatted_resource["metadata"]["name"],
+                namespace=f"paasta-{kind.plural}",
+            )
             if not (service, inst, kind.singular) in [
                 (c.service, c.instance, c.kind) for c in custom_resources
             ]:
@@ -378,9 +372,8 @@ def reconcile_kubernetes_resource(
                 log.info(f"{desired_resource} is up to date, no action taken")
         except Exception as e:
             log.error(str(e))
-            results.append(False)
-        results.append(True)
-    return all(results) if results else True
+            success = False
+    return success
 
 
 if __name__ == "__main__":
