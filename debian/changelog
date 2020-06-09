@@ -1,3 +1,11 @@
+paasta-tools (0.96.11) xenial; urgency=medium
+
+  * 0.96.11 tagged with 'make release'
+    Commit: Merge branch
+    "speed_up_generate_deployments_for_service_fix_fix"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 09 Jun 2020 13:56:54 -0700
+
 paasta-tools (0.96.10) xenial; urgency=medium
 
   * 0.96.10 tagged with 'make release'
