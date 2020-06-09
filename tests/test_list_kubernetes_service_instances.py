@@ -19,9 +19,7 @@ def test_parse_args():
     autospec=True,
     return_value=[("service_1", "instance1"), ("service_2", "instance1")],
 )
-@mock.patch(
-    "paasta_tools.list_kubernetes_service_instances.paasta_print", autospec=True
-)
+@mock.patch("builtins.print", autospec=True)
 @pytest.mark.parametrize(
     "sanitise,expected",
     [

@@ -12,8 +12,6 @@ from subprocess import STDOUT
 
 import yaml
 
-from paasta_tools.utils import paasta_print
-
 
 def _timeout(process):
     """Helper function for _run. It terminates the process.
@@ -44,7 +42,7 @@ def cmd(command):
             proctimer.start()
         for line in iter(process.stdout.readline, ""):
             if stream:
-                paasta_print(line.rstrip("\n"))
+                print(line.rstrip("\n"))
             output.append(line.rstrip("\n"))
         # when finished, get the exit code
         returncode = process.wait()
@@ -66,13 +64,13 @@ def cmd(command):
 
 
 def abort(message):
-    paasta_print(message)
+    print(message)
     sys.exit(1)
 
 
 def condquit(rc, message):
     if rc != 0:
-        paasta_print(message)
+        print(message)
         sys.exit(rc)
 
 
@@ -145,27 +143,23 @@ def main():
         docker_inspect_data = json.loads(output)
         environment = docker_env_to_dict(docker_inspect_data[0]["Config"]["Env"])
         if not has_all_paasta_env(environment):
-            paasta_print(
-                "# WARNING: %s is not a paasta container, skipping)" % (container_id)
-            )
+            print("# WARNING: %s is not a paasta container, skipping)" % (container_id))
             continue
         service = environment["PAASTA_SERVICE"]
         instance = environment["PAASTA_INSTANCE"]
-        paasta_print(f"# {service}.{instance}")
+        print(f"# {service}.{instance}")
         marathon_port = int(environment["MARATHON_PORT"])
         proxy_port = get_proxy_port(service, instance)
-        paasta_print(
-            f"# {container_id},{service},{instance},{proxy_port},{marathon_port}"
-        )
-        paasta_print(
+        print(f"# {container_id},{service},{instance},{proxy_port},{marathon_port}")
+        print(
             "sudo hadown -P {} -e $((`date +'%s'`+{})) {}.{}".format(
                 marathon_port, hadown_expire_in_seconds, service, instance
             )
         )
-        paasta_print("sleep %s" % smartstack_grace_sleep)
+        print("sleep %s" % smartstack_grace_sleep)
         t += smartstack_grace_sleep
-        paasta_print("sudo docker kill %s" % container_id)
-        paasta_print(f"sudo haup -P {marathon_port} {service}.{instance}")
+        print("sudo docker kill %s" % container_id)
+        print(f"sudo haup -P {marathon_port} {service}.{instance}")
         last_killed_t = get_last_killed(drained_apps, service, instance)
         drained_apps.append((t, service, instance))
         # print "t:%s last_killed_t:%s" % (t, last_killed_t)
@@ -174,9 +168,9 @@ def main():
             sleep_amount = (
                 min_kill_interval - (t - last_killed_t) + between_containers_grace_sleep
             )
-        paasta_print("sleep %s" % sleep_amount)
+        print("sleep %s" % sleep_amount)
         t += sleep_amount
-        paasta_print()
+        print()
 
 
 if __name__ == "__main__":

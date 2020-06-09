@@ -30,7 +30,6 @@ from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_f
 from paasta_tools.marathon_tools import get_marathon_services_running_here_for_nerve
 from paasta_tools.marathon_tools import get_puppet_services_running_here_for_nerve
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import paasta_print
 
 
 def parse_args(argv):
@@ -58,7 +57,7 @@ def main(argv=None):
         + get_kubernetes_services_running_here_for_nerve(cluster=None, soa_dir=soa_dir)
     )
 
-    paasta_print(json.dumps(service_dump))
+    print(json.dumps(service_dump))
     sys.exit(0)
 
 

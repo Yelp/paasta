@@ -18,11 +18,10 @@ Usage: ./get_mesos_leader.py
 Displays the hostname of the current mesos-master leader.
 """
 from paasta_tools.mesos_tools import get_mesos_leader
-from paasta_tools.utils import paasta_print
 
 
 def main():
-    paasta_print(get_mesos_leader())
+    print(get_mesos_leader())
 
 
 if __name__ == "__main__":

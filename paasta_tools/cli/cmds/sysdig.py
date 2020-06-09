@@ -28,7 +28,6 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import _run
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -52,11 +51,11 @@ def add_subparser(subparsers):
 def get_any_mesos_master(cluster, system_paasta_config):
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if not masters:
-        paasta_print("ERROR: %s" % output)
+        print("ERROR: %s" % output)
         sys.exit(1)
     mesos_master, output = find_connectable_master(masters)
     if not mesos_master:
-        paasta_print(
+        print(
             f"ERROR: could not find connectable master in cluster {cluster}\nOutput: {output}"
         )
         sys.exit(1)
@@ -76,7 +75,7 @@ def paasta_sysdig(args):
         ).format(mesos_master, " ".join(sys.argv[1:]))
         return_code, output = _run(ssh_cmd)
         if return_code != 0:
-            paasta_print(output)
+            print(output)
             sys.exit(return_code)
         slave, command = output.split(":", 1)
         subprocess.call(shlex.split("ssh -tA {} '{}'".format(slave, command.strip())))
@@ -106,7 +105,7 @@ def paasta_sysdig(args):
             marathon_user, marathon_pass, marathon_parsed_url.netloc
         )
     )
-    paasta_print(
+    print(
         format_mesos_command(
             slave, status.marathon.app_id, mesos_url, marathon_creds_url.geturl()
         )

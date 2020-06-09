@@ -23,7 +23,6 @@ from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
 from paasta_tools.frameworks.native_service_config import TaskInfo
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
-from paasta_tools.utils import paasta_print
 
 
 class AdhocScheduler(NativeScheduler):
@@ -58,7 +57,7 @@ class AdhocScheduler(NativeScheduler):
         if self.dry_run or self.need_to_stop():
             if self.dry_run:
                 tasks, _ = super().tasks_and_state_for_offer(driver, offer, state)
-                paasta_print("Would have launched: ", tasks)
+                print("Would have launched: ", tasks)
             driver.stop()
             return [], state
 

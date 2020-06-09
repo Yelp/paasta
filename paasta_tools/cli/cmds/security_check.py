@@ -14,7 +14,6 @@
 # limitations under the License.
 from paasta_tools.utils import _run
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -45,14 +44,14 @@ def perform_security_check(args):
     """
     security_check_command = load_system_paasta_config().get_security_check_command()
     if not security_check_command:
-        paasta_print("Nothing to be executed during the security-check step")
+        print("Nothing to be executed during the security-check step")
         return 0
 
     command = f"{security_check_command} {args.service} {args.commit}"
 
     ret_code, output = _run(command, timeout=3600, stream=True)
     if ret_code != 0:
-        paasta_print(
+        print(
             "The security-check failed. Please visit y/security-check-runbook to learn how to fix it ("
             "including whitelisting safe versions of packages and docker images)."
         )
