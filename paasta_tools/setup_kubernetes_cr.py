@@ -170,11 +170,11 @@ def setup_all_custom_resources(
             cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
         # by convention, entries where key begins with _ are used as templates
-        for svc, config in config_dicts.items():
-            for instance in config:
-                if instance[0] == "_":
-                    del config[instance]
-            if not config:
+        for svc in list(config_dicts.keys()):
+            for inst in list(config_dicts[svc].keys()):
+                if inst[0] == "_":
+                    del config_dicts[svc][inst]
+            if not config_dicts[svc]:
                 del config_dicts[svc]
         if not config_dicts:
             continue
