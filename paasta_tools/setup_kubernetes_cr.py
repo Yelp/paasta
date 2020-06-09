@@ -170,6 +170,12 @@ def setup_all_custom_resources(
         config_dicts = load_all_configs(
             cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
+        for svc, config in config_dicts.items():
+            for instance in config:
+                if instance[0] == "_":
+                    del config[instance]
+            if not config:
+                del config_dicts[svc]
         if not config_dicts:
             continue
         ensure_namespace(
