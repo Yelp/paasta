@@ -13,18 +13,16 @@
 # limitations under the License.
 from behave import then
 
-from paasta_tools.utils import paasta_print
-
 
 @then('it should have a return code of "{code:d}"')
 def see_expected_return_code(context, code):
-    paasta_print(context.output)
-    paasta_print(context.return_code)
-    paasta_print()
+    print(context.output)
+    print(context.return_code)
+    print()
     assert context.return_code == code
 
 
 @then('the output should contain "{output_string}"')
 def output_contains(context, output_string):
-    paasta_print(output_string)
+    print(output_string)
     assert output_string in context.output

@@ -26,7 +26,6 @@ from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 from paasta_tools.native_mesos_scheduler import main
 from paasta_tools.native_mesos_scheduler import paasta_native_services_running_here
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 @given("a new adhoc config to be deployed")
@@ -236,7 +235,7 @@ def should_not_be_framework_with_name(context, name):
 @when("we terminate that framework")
 def terminate_that_framework(context):
     try:
-        paasta_print("terminating framework %s" % context.scheduler.framework_id)
+        print("terminating framework %s" % context.scheduler.framework_id)
         mesos_tools.terminate_framework(context.scheduler.framework_id)
     except HTTPError as e:
         raise Exception(e.response.text)
@@ -300,10 +299,8 @@ def it_should_undrain_and_drain(context, num_undrain_expected, num_drain_expecte
     num_drain_expected = int(num_drain_expected)
 
     for _ in range(10):
-        paasta_print(
-            "currently drained: %r" % drain_lib.TestDrainMethod.downed_task_ids
-        )
-        paasta_print("drained previously: %r" % context.drained_tasks)
+        print("currently drained: %r" % drain_lib.TestDrainMethod.downed_task_ids)
+        print("drained previously: %r" % context.drained_tasks)
         num_drained = len(
             drain_lib.TestDrainMethod.downed_task_ids - context.drained_tasks
         )

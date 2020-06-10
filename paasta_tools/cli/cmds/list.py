@@ -17,7 +17,6 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 from paasta_tools.cli.utils import list_paasta_services
 from paasta_tools.cli.utils import list_service_instances
 from paasta_tools.utils import list_services
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import SPACER
 
 
@@ -64,4 +63,4 @@ def paasta_list(args):
         services = list_paasta_services(args.soa_dir)
 
     for service in services:
-        paasta_print(service)
+        print(service)

@@ -17,7 +17,6 @@ from behave import when
 from marathon import MarathonApp
 
 from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import remove_ansi_escape_sequences
 
 CONTAINER = {"type": "DOCKER", "docker": {"network": "BRIDGE", "image": "busybox"}}
@@ -83,13 +82,13 @@ def check_metastatus_return_code_with_flags(
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
     cmd = "python -m paasta_tools.paasta_metastatus%s" % flags
-    paasta_print("Running cmd %s" % (cmd))
+    print("Running cmd %s" % (cmd))
     exit_code, output = _run(cmd)
 
     # we don't care about the colouring here, so remove any ansi escape sequences
     escaped_output = remove_ansi_escape_sequences(output)
-    paasta_print(f"Got exitcode {exit_code} with output:\n{output}")
-    paasta_print()
+    print(f"Got exitcode {exit_code} with output:\n{output}")
+    print()
 
     assert exit_code == int(expected_return_code)
     assert expected_output in escaped_output

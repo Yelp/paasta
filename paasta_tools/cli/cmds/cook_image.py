@@ -23,7 +23,6 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
@@ -74,7 +73,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
     run_env["DOCKER_TAG"] = tag
 
     if not makefile_responds_to("cook-image"):
-        paasta_print(
+        print(
             "ERROR: local-run now requires a cook-image target to be present in the Makefile. See"
             "http://paasta.readthedocs.io/en/latest/about/contract.html",
             file=sys.stderr,
@@ -106,5 +105,5 @@ def paasta_cook_image(args, service=None, soa_dir=None):
         return returncode
 
     except KeyboardInterrupt:
-        paasta_print("\nProcess interrupted by the user. Cancelling.", file=sys.stderr)
+        print("\nProcess interrupted by the user. Cancelling.", file=sys.stderr)
         return 2

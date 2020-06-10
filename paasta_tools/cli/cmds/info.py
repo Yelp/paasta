@@ -28,7 +28,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 NO_DESCRIPTION_MESSAGE = "No 'description' entry in service.yaml. Please a one line sentence that describes this service"
@@ -154,4 +153,4 @@ def paasta_info(args):
     """Prints general information about a service"""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir=soa_dir)
-    paasta_print(get_service_info(service, soa_dir))
+    print(get_service_info(service, soa_dir))

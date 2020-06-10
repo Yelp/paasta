@@ -25,7 +25,6 @@ from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 APP_ID = "test--marathon--app.instance.git01234567.configabcdef01"
@@ -119,11 +118,11 @@ def write_overrides_file(context, contents):
     'capacity_check "{check_type}" --crit "{crit:d}" --warn "{warn:d}" should return "{status}" with code "{code:d}"'
 )
 def capacity_check_status_crit_warn(context, check_type, crit, warn, status, code):
-    paasta_print(check_type, crit, warn)
+    print(check_type, crit, warn)
     cmd = f"../paasta_tools/monitoring/check_capacity.py {check_type} --crit {crit} --warn {warn}"
-    paasta_print("Running cmd %s" % cmd)
+    print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
-    paasta_print(output)
+    print(output)
     assert exit_code == code
     assert status in output
 
@@ -131,9 +130,9 @@ def capacity_check_status_crit_warn(context, check_type, crit, warn, status, cod
 @then('capacity_check "{check_type}" should return "{status}" with code "{code:d}"')
 def capacity_check_type_status(context, check_type, status, code):
     cmd = "../paasta_tools/monitoring/check_capacity.py %s" % check_type
-    paasta_print("Running cmd %s" % cmd)
+    print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
-    paasta_print(output)
+    print(output)
     assert exit_code == code
     assert status in output
 
@@ -146,9 +145,9 @@ def capacity_check_type_status_overrides(context, check_type, attrs, status, cod
     cmd = "../paasta_tools/monitoring/check_capacity.py {} --overrides {} --attributes {}".format(
         check_type, context.overridefile, attrs
     )
-    paasta_print("Running cmd %s" % cmd)
+    print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
-    paasta_print(output)
+    print(output)
     assert exit_code == code
     assert status in output
 

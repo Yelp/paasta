@@ -31,9 +31,7 @@ def test_get_service_autoscale_pause_time_error(mock_client):
     assert return_code == 2
 
 
-@mock.patch(
-    "paasta_tools.autoscaling.pause_service_autoscaler.paasta_print", autospec=True
-)
+@mock.patch("builtins.print", autospec=True)
 @mock.patch("paasta_tools.autoscaling.pause_service_autoscaler.time", autospec=True)
 @mock.patch("paasta_tools.autoscaling.pause_service_autoscaler.client", autospec=True)
 def test_get_service_autoscale_pause_time_not(mock_client, mock_time, mock_print):
@@ -51,9 +49,7 @@ def test_get_service_autoscale_pause_time_not(mock_client, mock_time, mock_print
     assert return_code == 0
 
 
-@mock.patch(
-    "paasta_tools.autoscaling.pause_service_autoscaler.paasta_print", autospec=True
-)
+@mock.patch("builtins.print", autospec=True)
 @mock.patch("paasta_tools.autoscaling.pause_service_autoscaler.time", autospec=True)
 @mock.patch("paasta_tools.autoscaling.pause_service_autoscaler.client", autospec=True)
 def test_get_service_autoscale_pause_time_paused(mock_client, mock_time, mock_print):

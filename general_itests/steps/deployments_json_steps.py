@@ -35,14 +35,13 @@ from paasta_tools.utils import format_tag
 from paasta_tools.utils import format_timestamp
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import load_deployments_json
-from paasta_tools.utils import paasta_print
 
 
 @given("a test git repo is setup with commits")
 def step_impl_given(context):
     context.test_git_repo_dir = tempfile.mkdtemp("paasta_tools_deployments_json_itest")
     context.test_git_repo = Repo.init(context.test_git_repo_dir)
-    paasta_print("Temp repo in %s" % context.test_git_repo_dir)
+    print("Temp repo in %s" % context.test_git_repo_dir)
 
     blob = Blob.from_string(b"My file content\n")
     tree = Tree()
