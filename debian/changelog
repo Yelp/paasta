@@ -1,3 +1,13 @@
+paasta-tools (0.96.12) xenial; urgency=medium
+
+  * 0.96.12 tagged with 'make release'
+    Commit: Fix setup_kubernetes_cr for template entries (#2841)  * skip
+    template entries after loading * simplify reconcile resources
+    function a bit, add a clarifying comment * fix dict modification
+    during iteration * fix mypy
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 10 Jun 2020 02:01:17 -0700
+
 paasta-tools (0.96.11) xenial; urgency=medium
 
   * 0.96.11 tagged with 'make release'
