@@ -242,19 +242,63 @@ class TestReloadResourceGroups:
 @mock.patch('clusterman.autoscaler.pool_manager.logger')
 @pytest.mark.parametrize('force', [True, False])
 class TestConstrainTargetCapacity:
-    def test_positive_delta(self, mock_logger, force, mock_pool_manager):
+    """
+    - target_capacity: 49
+    - max_capacity: 345
+    - min_capacity: 3
+    - max_weight_to_add: 200
+    - max_weight_to_remove: 10
+    """
+
+    def set_target_capacity(self, pool_manager, target_capacity):
+        if target_capacity < len(pool_manager.resource_groups):
+            targets = [0] * len(pool_manager.resource_groups)
+            for i in range(target_capacity):
+                targets[i] = 1
+        else:
+            target_per_group = int(target_capacity / len(pool_manager.resource_groups))
+            targets = [target_per_group] * len(pool_manager.resource_groups)
+
+        groups = list(pool_manager.resource_groups.values())
+        for i in range(len(groups)):
+            groups[i].target_capacity = targets[i]
+
+    def test_positive_delta_target_in_limit(self, mock_logger, force, mock_pool_manager):
         assert mock_pool_manager._constrain_target_capacity(100, force) == 100
         assert mock_pool_manager._constrain_target_capacity(1000, force) == (1000 if force else 249)
         mock_pool_manager.max_capacity = 97
         assert mock_pool_manager._constrain_target_capacity(1000, force) == (1000 if force else 97)
         assert mock_logger.warning.call_count == 2
 
-    def test_negative_delta(self, mock_logger, force, mock_pool_manager):
+    def test_positive_delta_target_above_max(self, mock_logger, force, mock_pool_manager):
+        self.set_target_capacity(mock_pool_manager, 490)
+        assert mock_pool_manager._constrain_target_capacity(1000, force) == (1000 if force else 480)
+        assert mock_logger.warning.call_count == 1
+
+    def test_positive_delta_target_below_min(self, mock_logger, force, mock_pool_manager):
+        self.set_target_capacity(mock_pool_manager, 1)
+        mock_pool_manager.min_capacity = 300
+        assert mock_pool_manager._constrain_target_capacity(100, force) == 100
+        assert mock_pool_manager._constrain_target_capacity(1000, force) == (1000 if force else 201)
+        assert mock_logger.warning.call_count == 1
+
+    def test_negative_delta_target_in_limit(self, mock_logger, force, mock_pool_manager):
         assert mock_pool_manager._constrain_target_capacity(40, force) == 40
         assert mock_pool_manager._constrain_target_capacity(20, force) == (20 if force else 39)
         mock_pool_manager.min_capacity = 45
         assert mock_pool_manager._constrain_target_capacity(20, force) == (20 if force else 45)
         assert mock_logger.warning.call_count == 2
+
+    def test_negative_delta_target_above_max(self, mock_logger, force, mock_pool_manager):
+        self.set_target_capacity(mock_pool_manager, 490)
+        assert mock_pool_manager._constrain_target_capacity(485, force) == 485
+        assert mock_pool_manager._constrain_target_capacity(100, force) == (100 if force else 480)
+        assert mock_logger.warning.call_count == 1
+
+    def test_negative_delta_target_below_min(self, mock_logger, force, mock_pool_manager):
+        mock_pool_manager.min_capacity = 300
+        assert mock_pool_manager._constrain_target_capacity(30, force) == (30 if force else 249)
+        assert mock_logger.warning.call_count == 1
 
     def test_zero_delta(self, mock_logger, force, mock_pool_manager):
         assert mock_pool_manager._constrain_target_capacity(49, force) == 49

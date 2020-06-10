@@ -89,7 +89,7 @@ def _populate_autoscaling_events(simulator, start_time, end_time):
 
 def _populate_cluster_size_events(simulator, start_time, end_time):
     capacity_metrics = simulator.metrics_client.get_metric_values(
-        f'fulfilled_capacity',
+        'fulfilled_capacity',
         METADATA,
         start_time.timestamp,
         end_time.timestamp,
@@ -113,7 +113,7 @@ def _populate_cluster_size_events(simulator, start_time, end_time):
 
 def _populate_allocated_resources(simulator, start_time, end_time):
     allocated_metrics = simulator.metrics_client.get_metric_values(
-        f'cpus_allocated',
+        'cpus_allocated',
         SYSTEM_METRICS,
         start_time.timestamp,
         end_time.timestamp,
@@ -136,7 +136,7 @@ def _populate_allocated_resources(simulator, start_time, end_time):
 def _populate_price_changes(simulator, start_time, end_time, discount):
     for market in simulator.markets:
         market_prices = simulator.metrics_client.get_metric_values(
-            f'spot_prices',
+            'spot_prices',
             METADATA,
             start_time.timestamp,
             end_time.timestamp,

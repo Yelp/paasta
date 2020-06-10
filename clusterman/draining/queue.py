@@ -367,11 +367,11 @@ def process_queues(cluster_name: str) -> None:
     try:
         kube_operator_client = KubernetesClusterConnector(cluster_name, None)
     except Exception:
-        logger.error(f'Cluster specified is mesos specific. Skipping kubernetes operator')
+        logger.error('Cluster specified is mesos specific. Skipping kubernetes operator')
     if cluster_manager_name == 'mesos':
         try:
             mesos_master_url = staticconf.read_string(f'clusters.{cluster_name}.mesos_master_fqdn')
-            mesos_secret_path = staticconf.read_string(f'mesos.mesos_agent_secret_path', default=None)
+            mesos_secret_path = staticconf.read_string('mesos.mesos_agent_secret_path', default=None)
             mesos_operator_client = operator_api(mesos_master_url, mesos_secret_path)
         except Exception:
             logger.error('Cluster specified is kubernetes specific. Skipping mesos operator')
