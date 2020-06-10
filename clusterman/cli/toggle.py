@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import time
 
 import staticconf
 
@@ -20,9 +21,10 @@ from clusterman.args import add_cluster_config_directory_arg
 from clusterman.args import add_pool_arg
 from clusterman.args import add_scheduler_arg
 from clusterman.args import subparser
-from clusterman.autoscaler.autoscaler import AUTOSCALER_PAUSED
-from clusterman.autoscaler.autoscaler import CLUSTERMAN_STATE_TABLE
 from clusterman.aws.client import dynamodb
+from clusterman.util import AUTOSCALER_PAUSED
+from clusterman.util import autoscaling_is_paused
+from clusterman.util import CLUSTERMAN_STATE_TABLE
 from clusterman.util import parse_time_string
 
 
@@ -39,6 +41,17 @@ def disable(args: argparse.Namespace) -> None:
         Item=state,
     )
 
+    time.sleep(1)  # Give DynamoDB some time to settle
+    now = parse_time_string('now').to('local')
+    if not autoscaling_is_paused(args.cluster, args.pool, args.scheduler, now):
+        print('Something went wrong!  The autoscaler is NOT paused')
+    else:
+        s = f'The autoscaler for {args.cluster}.{args.pool}.{args.scheduler} was paused at {now}'
+        if args.until:
+            until_str = str(parse_time_string(args.until).to('local'))
+            s += f' until {until_str}'
+        print(s)
+
 
 def enable(args: argparse.Namespace) -> None:
     dynamodb.delete_item(
@@ -48,6 +61,12 @@ def enable(args: argparse.Namespace) -> None:
             'entity': {'S': f'{args.cluster}.{args.pool}.{args.scheduler}'},
         }
     )
+    time.sleep(1)  # Give DynamoDB some time to settle
+    now = parse_time_string('now').to('local')
+    if autoscaling_is_paused(args.cluster, args.pool, args.scheduler, now):
+        print('Something went wrong!  The autoscaler is paused')
+    else:
+        print(f'The autoscaler for {args.cluster}.{args.pool}.{args.scheduler} was enabled at {now}')
 
 
 @subparser('disable', 'temporarily turn the autoscaler for a cluster off', disable)

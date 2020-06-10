@@ -33,12 +33,15 @@ from colorama import Fore
 from colorama import Style
 from staticconf.config import DEFAULT as DEFAULT_NAMESPACE
 
+from clusterman.aws.client import dynamodb
 from clusterman.config import get_cluster_config_directory
 from clusterman.config import LOG_STREAM_NAME
 from clusterman.config import POOL_NAMESPACE
 
 
 logger = colorlog.getLogger(__name__)
+CLUSTERMAN_STATE_TABLE = 'clusterman_cluster_state'
+AUTOSCALER_PAUSED = 'autoscaler_paused'
 
 
 # These should stay in sync with
@@ -309,3 +312,24 @@ def get_cluster_dimensions(cluster: str, pool: str, scheduler: Optional[str]) ->
         'cluster': cluster,
         'pool': (f'{pool}.{scheduler}' if scheduler else pool),
     }
+
+
+def autoscaling_is_paused(cluster: str, pool: str, scheduler: str, timestamp: arrow.Arrow) -> bool:
+    response = dynamodb.get_item(
+        TableName=CLUSTERMAN_STATE_TABLE,
+        Key={
+            'state': {'S': AUTOSCALER_PAUSED},
+            'entity': {'S': f'{cluster}.{pool}.{scheduler}'},
+        },
+        ConsistentRead=True,
+    )
+    if 'Item' not in response:
+        return False
+
+    if (
+        'expiration_timestamp' in response['Item'] and
+        timestamp.timestamp > int(response['Item']['expiration_timestamp']['N'])
+    ):
+        return False
+
+    return True

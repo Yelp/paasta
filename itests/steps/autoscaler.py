@@ -23,12 +23,12 @@ from hamcrest import equal_to
 from moto import mock_dynamodb2
 
 from clusterman.autoscaler.autoscaler import Autoscaler
-from clusterman.autoscaler.autoscaler import AUTOSCALER_PAUSED
-from clusterman.autoscaler.autoscaler import CLUSTERMAN_STATE_TABLE
 from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.autoscaler.signals import ACK
 from clusterman.aws.client import dynamodb
 from clusterman.aws.spot_fleet_resource_group import SpotFleetResourceGroup
+from clusterman.util import AUTOSCALER_PAUSED
+from clusterman.util import CLUSTERMAN_STATE_TABLE
 from itests.environment import boto_patches
 
 

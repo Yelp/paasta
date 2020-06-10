@@ -14,6 +14,9 @@
 import argparse
 import sys
 
+import arrow
+from colorama import Fore
+from colorama import Style
 from humanfriendly import format_size
 from humanfriendly import format_timespan
 
@@ -26,6 +29,7 @@ from clusterman.autoscaler.pool_manager import ClusterNodeMetadata
 from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.interfaces.cluster_connector import AgentState
 from clusterman.util import any_of
+from clusterman.util import autoscaling_is_paused
 from clusterman.util import color_conditions
 
 
@@ -107,6 +111,9 @@ def _write_summary(manager: PoolManager) -> None:
 def print_status(manager: PoolManager, args) -> None:
     sys.stdout.write('\n')
     print(f'Current status for the {manager.pool} pool in the {manager.cluster} cluster:\n')
+    if autoscaling_is_paused(manager.cluster, manager.pool, manager.scheduler, arrow.now()):
+        print(Fore.RED + 'Autoscaling is currently PAUSED!!!\n' + Style.RESET_ALL)
+
     print(
         f'Resource groups (target capacity: {manager.target_capacity}, fulfilled: {manager.fulfilled_capacity}, '
         f'non-orphan: {manager.non_orphan_fulfilled_capacity}):'
