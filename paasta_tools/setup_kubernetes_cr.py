@@ -166,18 +166,19 @@ def setup_all_custom_resources(
             # and not `crd.names.singular`
             log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
             continue
-        config_dicts = load_all_configs(
+
+        # by convention, entries where key begins with _ are used as templates
+        raw_config_dicts = load_all_configs(
             cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
-        # by convention, entries where key begins with _ are used as templates
-        for svc in list(config_dicts.keys()):
-            for inst in list(config_dicts[svc].keys()):
-                if inst[0] == "_":
-                    del config_dicts[svc][inst]
-            if not config_dicts[svc]:
-                del config_dicts[svc]
+        config_dicts = {}
+        for svc, raw_sdict in raw_config_dicts.items():
+            sdict = {inst: idict for inst, idict in raw_sdict.items() if inst[0] != "_"}
+            if sdict:
+                config_dicts[svc] = sdict
         if not config_dicts:
             continue
+
         ensure_namespace(
             kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
         )
@@ -307,7 +308,7 @@ def reconcile_kubernetes_resource(
     cluster: str,
     instance: str = None,
 ) -> bool:
-    success = True
+    succeeded = True
     config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
@@ -372,8 +373,8 @@ def reconcile_kubernetes_resource(
                 log.info(f"{desired_resource} is up to date, no action taken")
         except Exception as e:
             log.error(str(e))
-            success = False
-    return success
+            succeeded = False
+    return succeeded
 
 
 if __name__ == "__main__":
