@@ -142,7 +142,7 @@ def all_chains():
     return {chain.name for chain in iptc.Table(iptc.Table.FILTER).chains}
 
 
-def ensure_chain(chain, rules):
+def ensure_chain(chain, rules, table_name=iptc.Table.FILTER):
     """Idempotently ensure a chain exists and has an exact set of rules.
 
     This function creates or updates an existing chain to match the rules
@@ -154,16 +154,16 @@ def ensure_chain(chain, rules):
     try:
         current_rules = set(list_chain(chain))
     except ChainDoesNotExist:
-        create_chain(chain)
+        create_chain(chain, table_name=table_name)
         current_rules = set()
 
     for rule in rules:
         if rule not in current_rules:
-            insert_rule(chain, rule)
+            insert_rule(chain, rule, table_name=table_name)
 
     extra_rules = current_rules - set(rules)
     if extra_rules:
-        delete_rules(chain, extra_rules)
+        delete_rules(chain, extra_rules, table_name=table_name)
 
 
 def _rule_sort_key(rule_tuple):
@@ -191,21 +191,21 @@ def reorder_chain(chain_name):
             chain.replace_rule(rule.to_iptc(), new_index)
 
 
-def ensure_rule(chain, rule):
-    rules = list_chain(chain)
+def ensure_rule(chain, rule, table_name=iptc.Table.FILTER, position=0):
+    rules = list_chain(chain, table_name=table_name)
     if rule not in rules:
-        insert_rule(chain, rule)
+        insert_rule(chain, rule, table_name=table_name, position=position)
 
 
-def insert_rule(chain_name, rule):
-    log.debug(f"adding rule to {chain_name}: {rule}")
-    chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
-    chain.insert_rule(rule.to_iptc())
+def insert_rule(chain_name, rule, table_name=iptc.Table.FILTER, position=0):
+    log.debug(f"adding rule to {chain_name} on {table_name}: {rule}")
+    chain = iptc.Chain(iptc.Table(table_name), chain_name)
+    chain.insert_rule(rule.to_iptc(), position=position)
 
 
-def delete_rules(chain_name, rules):
-    log.debug(f"deleting rules from {chain_name}: {rules}")
-    table = iptc.Table(iptc.Table.FILTER)
+def delete_rules(chain_name, rules, table_name=iptc.Table.FILTER):
+    log.debug(f"deleting rules from {chain_name} on {table_name}: {rules}")
+    table = iptc.Table(table_name)
     with iptables_txn(table):
         chain = iptc.Chain(table, chain_name)
         for potential_rule in chain.rules:
@@ -213,24 +213,24 @@ def delete_rules(chain_name, rules):
                 chain.delete_rule(potential_rule)
 
 
-def create_chain(chain_name):
-    log.debug(f"creating chain: {chain_name}")
-    iptc.Table(iptc.Table.FILTER).create_chain(chain_name)
+def create_chain(chain_name, table_name=iptc.Table.FILTER):
+    log.debug(f"creating chain: {chain_name} on {table_name}")
+    iptc.Table(table_name).create_chain(chain_name)
 
 
-def delete_chain(chain_name):
-    log.debug(f"deleting chain: {chain_name}")
-    chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), chain_name)
+def delete_chain(chain_name, table_name=iptc.Table.FILTER):
+    log.debug(f"deleting chain: {chain_name} on {table_name}")
+    chain = iptc.Chain(table_name, chain_name)
     chain.flush()
     chain.delete()
 
 
-def list_chain(chain_name):
+def list_chain(chain_name, table_name=iptc.Table.FILTER):
     """List rules in a chain.
 
     Returns a list of iptables rules, or raises ChainDoesNotExist.
     """
-    table = iptc.Table(iptc.Table.FILTER)
+    table = iptc.Table(table_name)
     chain = iptc.Chain(table, chain_name)
     # TODO: is there any way to do this without listing all chains? (probably slow)
     # If the chain doesn't exist, chain.rules will be an empty list, so we need

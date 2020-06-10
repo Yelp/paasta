@@ -710,6 +710,7 @@ class InstanceConfig:
 
         if inbound_firewall is not None and inbound_firewall not in (
             "allow",
+            "monitor",
             "reject",
         ):
             return (

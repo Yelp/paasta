@@ -354,6 +354,7 @@
                         "inbound_firewall": {
                             "enum": [
                                 "accept",
+                                "monitor",
                                 "reject"
                             ]
                         },
