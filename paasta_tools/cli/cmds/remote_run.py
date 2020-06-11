@@ -23,7 +23,6 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import run_on_master
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -56,7 +55,7 @@ def get_system_paasta_config():
     try:
         return load_system_paasta_config()
     except PaastaNotConfiguredError:
-        paasta_print(
+        print(
             PaastaColors.yellow(
                 "Warning: Couldn't load config files from '/etc/paasta'. This "
                 "indicates PaaSTA is not configured locally on this host, and "
@@ -293,7 +292,7 @@ def paasta_remote_run(args):
             "default_cluster"
         )
         if not default_cluster:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Error: no cluster specified and no default cluster available"
                 )
@@ -313,6 +312,6 @@ def paasta_remote_run(args):
     # Status results are streamed. This print is for possible error messages.
     if status is not None:
         for line in status.rstrip().split("\n"):
-            paasta_print("    %s" % line)
+            print("    %s" % line)
 
     return return_code

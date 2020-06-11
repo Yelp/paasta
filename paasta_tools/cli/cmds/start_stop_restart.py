@@ -34,7 +34,6 @@ from paasta_tools.generate_deployments_for_service import get_latest_deployment_
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -136,12 +135,12 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 
 def print_marathon_message(desired_state):
     if desired_state == "start":
-        paasta_print(
+        print(
             "This service will soon be gracefully started/restarted, replacing old instances according "
             "to the bounce method chosen in soa-configs. "
         )
     elif desired_state == "stop":
-        paasta_print(
+        print(
             "This service will be gracefully stopped soon. It will be started back up again on the next deploy.\n"
             "To stop this service permanently. Set this in the soa-configs definition:\n"
             "\n"
@@ -151,24 +150,22 @@ def print_marathon_message(desired_state):
 
 def print_flink_message(desired_state):
     if desired_state == "start":
-        paasta_print("'Start' will tell Flink operator to start the cluster.")
+        print("'Start' will tell Flink operator to start the cluster.")
     elif desired_state == "stop":
-        paasta_print(
+        print(
             "'Stop' will put Flink cluster in stopping mode, it may"
             "take some time before shutdown is completed."
         )
 
 
 def confirm_to_continue(cluster_service_instances, desired_state):
-    paasta_print(f"You are about to {desired_state} the following instances:")
-    paasta_print(
-        "Either --instances or --clusters not specified. Asking for confirmation."
-    )
+    print(f"You are about to {desired_state} the following instances:")
+    print("Either --instances or --clusters not specified. Asking for confirmation.")
     i_count = 0
     for cluster, services_instances in cluster_service_instances:
         for service, instances in services_instances.items():
             for instance in instances.keys():
-                paasta_print(f"cluster = {cluster}, instance = {instance}")
+                print(f"cluster = {cluster}, instance = {instance}")
                 i_count += 1
     if sys.stdin.isatty():
         return choice.Binary(
@@ -201,23 +198,23 @@ def paasta_start_or_stop(args, desired_state):
         s for service_list in pargs.values() for s in service_list.keys()
     }
     if len(affected_services) > 1:
-        paasta_print(
+        print(
             PaastaColors.red("Warning: trying to start/stop/restart multiple services:")
         )
 
         for cluster, services_instances in pargs.items():
-            paasta_print("Cluster %s:" % cluster)
+            print("Cluster %s:" % cluster)
             for service, instances in services_instances.items():
-                paasta_print("    Service %s:" % service)
-                paasta_print("        Instances %s" % ",".join(instances.keys()))
+                print("    Service %s:" % service)
+                print("        Instances %s" % ",".join(instances.keys()))
 
         if sys.stdin.isatty():
             confirm = choice.Binary("Are you sure you want to continue?", False).ask()
         else:
             confirm = False
         if not confirm:
-            paasta_print()
-            paasta_print("exiting")
+            print()
+            print("exiting")
             return 1
 
     invalid_deploy_groups = []
@@ -226,8 +223,8 @@ def paasta_start_or_stop(args, desired_state):
 
     if args.clusters is None or args.instances is None:
         if confirm_to_continue(pargs.items(), desired_state) is False:
-            paasta_print()
-            paasta_print("exiting")
+            print()
+            print("exiting")
             return 1
 
     for cluster, services_instances in pargs.items():
@@ -254,7 +251,7 @@ def paasta_start_or_stop(args, desired_state):
                         "Try again from somewhere where the git server can be reached, "
                         "like your developer environment."
                     ) % str(e)
-                    paasta_print(msg)
+                    print(msg)
                     return 1
 
                 deploy_group = service_config.get_deploy_group()
@@ -293,7 +290,7 @@ def paasta_start_or_stop(args, desired_state):
         for cluster, services_instances in csi.items():
             client = get_paasta_api_client(cluster, system_paasta_config)
             if not client:
-                paasta_print("Cannot get a paasta-api client")
+                print("Cannot get a paasta-api client")
                 exit(1)
 
             for service, instances in services_instances.items():
@@ -305,14 +302,14 @@ def paasta_start_or_stop(args, desired_state):
                             desired_state=desired_state,
                         ).result()
                     except HTTPError as exc:
-                        paasta_print(exc.response.text)
+                        print(exc.response.text)
                         return exc.status_code
 
                 return_val = 0
 
     if invalid_deploy_groups:
-        paasta_print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")
-        paasta_print(f"Has {service} been deployed there yet?")
+        print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")
+        print(f"Has {service} been deployed there yet?")
         return_val = 1
 
     return return_val

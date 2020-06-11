@@ -61,7 +61,6 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
@@ -704,7 +703,7 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
-        paasta_print(service_not_found)
+        print(service_not_found)
         exit(1)
     return service
 

@@ -24,7 +24,6 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 SECRET_NAME_REGEX = r"([A-Za-z0-9_-]*)"
@@ -168,7 +167,7 @@ def is_service_folder(soa_dir, service_name):
 
 def _get_secret_provider_for_service(service_name, cluster_names=None):
     if not is_service_folder(os.getcwd(), service_name):
-        paasta_print(
+        print(
             "{} not found.\n"
             "You must run this tool from the root of your local yelpsoa checkout\n"
             "The tool modifies files in yelpsoa-configs that you must then commit\n"
@@ -236,7 +235,7 @@ def paasta_secret(args):
 
 def decrypt_secret(secret_provider, secret_name):
     if len(secret_provider.cluster_names) > 1:
-        paasta_print(
+        print(
             "Can only decrypt for one cluster at a time!\nFor example, try '-c norcal-devc'"
             " to decrypt the secret for this service in norcal-devc."
         )

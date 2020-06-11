@@ -4,8 +4,6 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 
-from paasta_tools.utils import paasta_print
-
 
 ConstraintState = Dict[str, Dict[str, Any]]
 ConstraintOp = Callable[[str, str, str, ConstraintState], bool]
@@ -60,17 +58,17 @@ def check_offer_constraints(offer, constraints, state):
         try:
             offer_attr = next((x for x in offer.attributes if x.name == attr), None)
             if offer_attr is None:
-                paasta_print("Attribute not found for a constraint: %s" % attr)
+                print("Attribute not found for a constraint: %s" % attr)
                 return False
             elif not (CONS_OPS[op](val, offer_attr.text.value, offer_attr.name, state)):
-                paasta_print(
+                print(
                     "Constraint not satisfied: [{} {} {}] for {} with {}".format(
                         attr, op, val, offer_attr.text.value, state
                     )
                 )
                 return False
         except Exception as err:
-            paasta_print(
+            print(
                 "Error while matching constraint: [{} {} {}] {}".format(
                     attr, op, val, str(err)
                 )

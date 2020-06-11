@@ -24,7 +24,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -124,7 +123,7 @@ def paasta_metastatus_on_api_endpoint(
 ) -> Tuple[int, str]:
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
-        paasta_print("Cannot get a paasta-api client")
+        print("Cannot get a paasta-api client")
         exit(1)
 
     try:
@@ -163,10 +162,10 @@ def print_cluster_status(
         use_mesos_cache=use_mesos_cache,
     )
 
-    paasta_print("Cluster: %s" % cluster)
-    paasta_print(get_cluster_dashboards(cluster))
-    paasta_print(output)
-    paasta_print()
+    print("Cluster: %s" % cluster)
+    print(get_cluster_dashboards(cluster))
+    print(output)
+    print()
 
     return return_code
 
@@ -224,8 +223,6 @@ def paasta_metastatus(args,) -> int:
                 )
             )
         else:
-            paasta_print(
-                "Cluster %s doesn't look like a valid cluster?" % args.clusters
-            )
-            paasta_print("Try using tab completion to help complete the cluster name")
+            print("Cluster %s doesn't look like a valid cluster?" % args.clusters)
+            print("Try using tab completion to help complete the cluster name")
     return 0 if all([return_code == 0 for return_code in return_codes]) else 1

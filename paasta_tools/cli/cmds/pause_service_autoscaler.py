@@ -22,7 +22,6 @@ from paasta_tools.autoscaling.pause_service_autoscaler import (
     update_service_autoscale_pause_time,
 )
 from paasta_tools.utils import _log_audit
-from paasta_tools.utils import paasta_print
 
 MAX_PAUSE_DURATION = 320
 
@@ -83,12 +82,12 @@ def paasta_pause_service_autoscaler(args):
        in that cluster for duration minutes"""
     if args.duration > MAX_PAUSE_DURATION:
         if not args.force:
-            paasta_print(
+            print(
                 "Specified duration: {d} longer than max: {m}".format(
                     d=args.duration, m=MAX_PAUSE_DURATION
                 )
             )
-            paasta_print("If you are really sure, run again with --force")
+            print("If you are really sure, run again with --force")
             return 3
 
     if args.info:

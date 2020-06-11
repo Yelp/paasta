@@ -20,7 +20,6 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 
 MAIN_CONTAINER_TYPE = "main"
@@ -220,7 +219,7 @@ def main(args: argparse.Namespace) -> None:
         info_dict = info._asdict()
         info_dict["cluster"] = cluster
         info_dict["timestamp"] = timestamp
-        paasta_print(json.dumps(info_dict))
+        print(json.dumps(info_dict))
 
 
 if __name__ == "__main__":

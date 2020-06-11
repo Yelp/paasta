@@ -19,7 +19,6 @@ from paasta_tools.metrics.metastatus_lib import get_all_tasks_from_state
 from paasta_tools.metrics.metastatus_lib import (
     resource_utillizations_from_resource_info,
 )
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
@@ -28,7 +27,7 @@ def main(hostnames: Sequence[str]) -> None:
     try:
         mesos_state = block(master.state)
     except MasterNotAvailableException as e:
-        paasta_print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
     slaves = [
         slave
