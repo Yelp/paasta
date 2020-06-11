@@ -545,7 +545,9 @@ class InstanceConfig:
     def get_instance_type(self) -> Optional[str]:
         return getattr(self, "config_filename_prefix", None)
 
-    def get_env_dictionary(self) -> Dict[str, str]:
+    def get_env_dictionary(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> Dict[str, str]:
         """A dictionary of key/value pairs that represent environment variables
         to be injected to the container environment"""
         env = {
@@ -561,7 +563,9 @@ class InstanceConfig:
         if self.get_gpus() is not None:
             env["PAASTA_RESOURCE_GPUS"] = str(self.get_gpus())
         try:
-            env["PAASTA_GIT_SHA"] = get_git_sha_from_dockerurl(self.get_docker_url())
+            env["PAASTA_GIT_SHA"] = get_git_sha_from_dockerurl(
+                self.get_docker_url(system_paasta_config=system_paasta_config)
+            )
         except Exception:
             pass
         team = self.get_team()
@@ -574,11 +578,13 @@ class InstanceConfig:
         env.update(user_env)
         return {str(k): str(v) for (k, v) in env.items()}
 
-    def get_env(self) -> Dict[str, str]:
+    def get_env(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
         might need to override this getter for more implementation-specific
         env getting"""
-        return self.get_env_dictionary()
+        return self.get_env_dictionary(system_paasta_config=system_paasta_config)
 
     def get_args(self) -> Optional[List[str]]:
         """Get the docker args specified in the service's configuration.

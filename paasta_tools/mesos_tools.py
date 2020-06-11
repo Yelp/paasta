@@ -97,14 +97,16 @@ def get_mesos_config_path(
     )
 
 
-def get_mesos_config(system_paasta_config: Optional[SystemPaastaConfig] = None) -> Dict:
-    return load_mesos_config(get_mesos_config_path(system_paasta_config))
+def get_mesos_config(mesos_config_path: Optional[str] = None) -> Dict:
+    if mesos_config_path is None:
+        mesos_config_path = get_mesos_config_path()
+    return load_mesos_config(mesos_config_path)
 
 
 def get_mesos_master(
-    system_paasta_config: Optional[SystemPaastaConfig] = None, **overrides: Any
+    mesos_config_path: Optional[str] = None, **overrides: Any
 ) -> MesosMaster:
-    config = get_mesos_config(system_paasta_config)
+    config = get_mesos_config(mesos_config_path)
     for k, v in overrides.items():
         config[k] = v
     return MesosMaster(config)
@@ -125,13 +127,13 @@ class MesosTailLines(NamedTuple):
     error_message: str
 
 
-def get_mesos_leader(system_paasta_config: Optional[SystemPaastaConfig] = None) -> str:
+def get_mesos_leader(mesos_config_path: Optional[str] = None) -> str:
     """Get the current mesos-master leader's hostname.
     Attempts to determine this by using mesos.cli to query ZooKeeper.
 
     :returns: The current mesos-master hostname"""
     try:
-        url = get_mesos_master(system_paasta_config).host
+        url = get_mesos_master(mesos_config_path).host
     except mesos_exceptions.MasterNotAvailableException:
         log.debug("mesos.cli failed to provide the master host")
         raise

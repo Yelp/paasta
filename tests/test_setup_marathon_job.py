@@ -277,6 +277,7 @@ class TestSetupMarathonJob:
                 fake_status,
                 fake_output,
                 fake_soa_dir,
+                system_paasta_config=fake_system_paasta_config,
             )
             assert load_marathon_service_config_patch.call_count == 0
             assert load_system_paasta_config_patch.call_count == 0

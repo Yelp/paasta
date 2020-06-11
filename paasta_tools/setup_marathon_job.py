@@ -168,7 +168,13 @@ def send_event(
     monitoring_overrides["alert_after"] = "10m"
     check_name = "setup_marathon_job.%s" % compose_job_id(name, instance)
     monitoring_tools.send_event(
-        name, check_name, monitoring_overrides, status, output, soa_dir
+        name,
+        check_name,
+        monitoring_overrides,
+        status,
+        output,
+        soa_dir,
+        system_paasta_config=system_paasta_config,
     )
 
 

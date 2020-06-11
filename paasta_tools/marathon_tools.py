@@ -663,7 +663,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
 
         if system_paasta_config is None:
             system_paasta_config = load_system_paasta_config()
-        docker_url = self.get_docker_url()
+        docker_url = self.get_docker_url(system_paasta_config=system_paasta_config)
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
         )
@@ -703,7 +703,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             "health_checks": self.get_healthchecks(
                 service_namespace_config=service_namespace_config
             ),
-            "env": self.get_env(),
+            "env": self.get_env(system_paasta_config=system_paasta_config),
             "mem": float(self.get_mem()),
             "cpus": float(self.get_cpus()),
             "disk": float(self.get_disk()),
@@ -772,7 +772,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         }
         ahash["container"]["docker"][  # type: ignore
             "parameters"
-        ] = self.format_docker_parameters(with_labels=False)
+        ] = self.format_docker_parameters(
+            with_labels=False, system_paasta_config=system_paasta_config
+        )
         secret_hashes = get_secret_hashes(
             environment_variables=config["env"],
             secret_environment=system_paasta_config.get_vault_environment(),
