@@ -139,6 +139,9 @@ class PoolManager:
 
         res_group_targets = self._compute_new_resource_group_targets(new_target_capacity)
         for group_id, target in res_group_targets.items():
+            if self.resource_groups[group_id].target_capacity == target:
+                continue
+
             try:
                 self.resource_groups[group_id].modify_target_capacity(
                     target,

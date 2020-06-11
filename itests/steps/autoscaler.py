@@ -200,13 +200,16 @@ def signal_resource_request(context, value):
 @behave.then('the autoscaler should scale rg(?P<rg>[12]) to (?P<target>\d+) capacity')
 def rg_capacity_change(context, rg, target):
     groups = list(context.autoscaler.pool_manager.resource_groups.values())
-    assert_that(
-        groups[int(rg) - 1].modify_target_capacity.call_args_list,
-        contains(
-            mock.call(int(target), dry_run=False),
-            mock.call(int(target), dry_run=False),
-        ),
-    )
+    if int(target) != groups[int(rg) - 1].target_capacity:
+        assert_that(
+            groups[int(rg) - 1].modify_target_capacity.call_args_list,
+            contains(
+                mock.call(int(target), dry_run=False),
+                mock.call(int(target), dry_run=False),
+            ),
+        )
+    else:
+        assert_that(groups[int(rg) - 1].modify_target_capacity.call_count, equal_to(0))
 
 
 @behave.then('the autoscaler should do nothing')
