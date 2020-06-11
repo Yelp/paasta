@@ -1000,6 +1000,8 @@ def deploy_marathon_service(
                     clients=clients.get_all_clients_for_service(
                         job_config=service_instance_config
                     ),
+                    service_name=service,
+                    instance_name=instance,
                     embed_tasks=True,
                 )
 
