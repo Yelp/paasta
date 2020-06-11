@@ -20,6 +20,7 @@ from socket import gaierror
 from socket import getfqdn
 from socket import gethostbyname
 from typing import NamedTuple
+from typing import Optional
 
 import a_sync
 from dateutil import parser
@@ -32,6 +33,7 @@ from paasta_tools.mesos_tools import get_count_running_tasks_on_slave
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import to_bytes
 
@@ -58,12 +60,12 @@ class Resource(NamedTuple):
 MAINTENANCE_ROLE = "maintenance"
 
 
-def base_api():
+def base_api(system_paasta_config: Optional[SystemPaastaConfig] = None):
     """Helper function for making all API requests
 
     :returns: a function that can be called to make a request
     """
-    leader = get_mesos_leader()
+    leader = get_mesos_leader(system_paasta_config=system_paasta_config)
 
     def execute_request(method, endpoint, timeout=(3, 2), **kwargs):
         url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
@@ -81,22 +83,22 @@ def base_api():
     return execute_request
 
 
-def master_api():
+def master_api(system_paasta_config: Optional[SystemPaastaConfig] = None):
     """Helper function for making API requests to the /master API endpoints
 
     :returns: a function that can be called to make a request to /master
     """
 
     def execute_master_api_request(method, endpoint, **kwargs):
-        base_api_client = base_api()
+        base_api_client = base_api(system_paasta_config=system_paasta_config)
         return base_api_client(method, "/master%s" % endpoint, **kwargs)
 
     return execute_master_api_request
 
 
-def operator_api():
+def operator_api(system_paasta_config: Optional[SystemPaastaConfig] = None):
     def execute_operator_api_request(**kwargs):
-        base_api_client = base_api()
+        base_api_client = base_api(system_paasta_config=system_paasta_config)
         if "headers" in kwargs:
             kwargs["headers"]["Content-Type"] = "application/json"
         else:
@@ -171,12 +173,12 @@ def get_maintenance_schedule():
 
 
 @time_cache(ttl=10)
-def get_maintenance_status():
+def get_maintenance_status(system_paasta_config: Optional[SystemPaastaConfig] = None):
     """Makes a GET_MAINTENANCE_STATUS request to the operator api
 
     :returns: a GET_MAINTENANCE_STATUS response
     """
-    client_fn = operator_api()
+    client_fn = operator_api(system_paasta_config=system_paasta_config)
     return client_fn(data={"type": "GET_MAINTENANCE_STATUS"})
 
 
@@ -191,7 +193,9 @@ def schedule():
     return schedule.text
 
 
-def get_hosts_with_state(state):
+def get_hosts_with_state(
+    state, system_paasta_config: Optional[SystemPaastaConfig] = None
+):
     """Helper function to check the maintenance status and return all hosts
     listed as being in a current state
 
@@ -211,12 +215,14 @@ def get_hosts_with_state(state):
         return [machine["hostname"] for machine in status[state]]
 
 
-def get_draining_hosts():
+def get_draining_hosts(system_paasta_config: Optional[SystemPaastaConfig] = None):
     """Returns a list of hostnames that are marked as draining
 
     :returns: a list of strings representing hostnames
     """
-    return get_hosts_with_state(state="draining_machines")
+    return get_hosts_with_state(
+        state="draining_machines", system_paasta_config=system_paasta_config
+    )
 
 
 def get_down_hosts():

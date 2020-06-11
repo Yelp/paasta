@@ -681,7 +681,7 @@ def test_get_hosts_with_state_down(mock_get_maintenance_status,):
 def test_get_draining_hosts(mock_get_hosts_with_state,):
     get_draining_hosts()
     assert mock_get_hosts_with_state.call_count == 1
-    expected_args = mock.call(state="draining_machines")
+    expected_args = mock.call(state="draining_machines", system_paasta_config=None)
     assert mock_get_hosts_with_state.call_args == expected_args
 
 

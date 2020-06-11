@@ -1119,12 +1119,13 @@ class TestMarathonTools:
                 },
                 "/foo",
             ),
-        ):
+        ) as load_system_paasta_config_patch:
             actual = config.format_marathon_app_dict()
             assert actual == expected_conf
 
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
+            assert load_system_paasta_config_patch.call_count == 1
 
     def test_get_desired_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(

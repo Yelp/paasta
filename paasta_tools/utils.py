@@ -349,8 +349,12 @@ class InstanceConfig:
     def job_id(self) -> str:
         return self._job_id
 
-    def get_docker_registry(self) -> str:
-        return get_service_docker_registry(self.service, self.soa_dir)
+    def get_docker_registry(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> str:
+        return get_service_docker_registry(
+            self.service, self.soa_dir, system_config=system_paasta_config
+        )
 
     def get_branch(self) -> str:
         return get_paasta_branch(
@@ -452,7 +456,9 @@ class InstanceConfig:
             yield {"key": "cap-drop", "value": cap}
 
     def format_docker_parameters(
-        self, with_labels: bool = True
+        self,
+        with_labels: bool = True,
+        system_paasta_config: Optional["SystemPaastaConfig"] = None,
     ) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
@@ -465,7 +471,7 @@ class InstanceConfig:
             {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
             {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
         ]
-        if self.use_docker_disk_quota():
+        if self.use_docker_disk_quota(system_paasta_config=system_paasta_config):
             parameters.append(
                 {
                     "key": "storage-opt",
@@ -488,8 +494,12 @@ class InstanceConfig:
         parameters.extend(self.get_cap_drop())
         return parameters
 
-    def use_docker_disk_quota(self) -> bool:
-        return load_system_paasta_config().get_enforce_disk_quota()
+    def use_docker_disk_quota(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> bool:
+        if system_paasta_config is None:
+            system_paasta_config = load_system_paasta_config()
+        return system_paasta_config.get_enforce_disk_quota()
 
     def get_docker_init(self) -> Iterable[DockerParameter]:
         return [{"key": "init", "value": "true"}]
@@ -634,11 +644,15 @@ class InstanceConfig:
         else:
             return ""
 
-    def get_docker_url(self) -> str:
+    def get_docker_url(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> str:
         """Compose the docker url.
         :returns: '<registry_uri>/<docker_image>'
         """
-        registry_uri = self.get_docker_registry()
+        registry_uri = self.get_docker_registry(
+            system_paasta_config=system_paasta_config
+        )
         docker_image = self.get_docker_image()
         if not docker_image:
             raise NoDockerImageError(

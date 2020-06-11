@@ -52,6 +52,7 @@ from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -264,14 +265,20 @@ class TronActionConfig(InstanceConfig):
     def get_deploy_group(self) -> Optional[str]:
         return self.config_dict.get("deploy_group", None)
 
-    def get_docker_url(self) -> str:
+    def get_docker_url(
+        self, system_paasta_config: Optional[SystemPaastaConfig] = None
+    ) -> str:
         # It's okay for tronfig to contain things that aren't deployed yet - it's normal for developers to
         # push tronfig well before the job is scheduled to run, and either they'll deploy the service before
         # or get notified when the job fails.
         #
         # This logic ensures that we can still pass validation and run setup_tron_namespace even if
         # there's nothing in deployments.json yet.
-        return "" if not self.get_docker_image() else super().get_docker_url()
+        return (
+            ""
+            if not self.get_docker_image()
+            else super().get_docker_url(system_paasta_config=system_paasta_config)
+        )
 
     def get_cmd(self):
         command = self.config_dict.get("command")
@@ -426,12 +433,16 @@ class TronActionConfig(InstanceConfig):
         return error_msgs
 
     def format_docker_parameters(
-        self, with_labels: bool = True
+        self,
+        with_labels: bool = True,
+        system_paasta_config: Optional[SystemPaastaConfig] = None,
     ) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings"""
-        parameters = super().format_docker_parameters(with_labels=with_labels)
+        parameters = super().format_docker_parameters(
+            with_labels=with_labels, system_paasta_config=system_paasta_config
+        )
         if self.get_executor() == "spark":
             parameters.append({"key": "net", "value": "host"})
             if self.get_spark_cluster_manager() == "kubernetes":

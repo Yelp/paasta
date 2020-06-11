@@ -406,6 +406,7 @@ def load_marathon_service_config(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
+    # system_paasta_config: Optional[SystemPaastaConfig] = None
 ) -> "MarathonServiceConfig":
     """Read a service instance's configuration for marathon.
 
@@ -631,7 +632,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         ]
         return routing_constraints
 
-    def format_marathon_app_dict(self) -> FormattedMarathonAppDict:
+    def format_marathon_app_dict(
+        self, system_paasta_config: Optional[SystemPaastaConfig] = None
+    ) -> FormattedMarathonAppDict:
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -658,7 +661,8 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
 
-        system_paasta_config = load_system_paasta_config()
+        if system_paasta_config is None:
+            system_paasta_config = load_system_paasta_config()
         docker_url = self.get_docker_url()
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
@@ -674,7 +678,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 "docker": {
                     "image": docker_url,
                     "network": net,
-                    "parameters": self.format_docker_parameters(),
+                    "parameters": self.format_docker_parameters(
+                        system_paasta_config=system_paasta_config
+                    ),
                 },
                 "type": "DOCKER",
                 "volumes": docker_volumes,

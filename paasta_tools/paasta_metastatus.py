@@ -327,7 +327,9 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         if args.use_mesos_cache:
             master_kwargs["use_mesos_cache"] = True
 
-        master = get_mesos_master(**master_kwargs)
+        master = get_mesos_master(
+            system_paasta_config=system_paasta_config, **master_kwargs
+        )
 
         marathon_servers = get_marathon_servers(system_paasta_config)
         marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))

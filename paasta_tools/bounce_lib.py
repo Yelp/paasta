@@ -27,6 +27,7 @@ from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -129,14 +130,17 @@ def bounce_lock(name):
 
 
 @contextmanager
-def bounce_lock_zookeeper(name):
+def bounce_lock_zookeeper(
+    name: str, system_paasta_config: Optional[SystemPaastaConfig] = None
+) -> Iterator:
     """Acquire a bounce lock in zookeeper for the name given. The name should
     generally be the service namespace being bounced.
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
     :param name: The lock name to acquire"""
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
     zk = KazooClient(
-        hosts=load_system_paasta_config().get_zk_hosts(),
-        timeout=ZK_LOCK_CONNECT_TIMEOUT_S,
+        hosts=system_paasta_config.get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S,
     )
     zk.start()
     lock = zk.Lock(f"{ZK_LOCK_PATH}/{name}")
