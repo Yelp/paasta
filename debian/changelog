@@ -1,6 +1,13 @@
 paasta-tools (0.96.12) xenial; urgency=medium
 
   * 0.96.12 tagged with 'make release'
+    Commit: remove paasta_print, part 2 (#2838)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Thu, 11 Jun 2020 00:58:19 -0700
+
+paasta-tools (0.96.12) xenial; urgency=medium
+
+  * 0.96.12 tagged with 'make release'
     Commit: Fix setup_kubernetes_cr for template entries (#2841)  * skip
     template entries after loading * simplify reconcile resources
     function a bit, add a clarifying comment * fix dict modification
