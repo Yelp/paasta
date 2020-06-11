@@ -140,6 +140,7 @@ def test_ensure_chain():
         mock.call(
             "PAASTA.service",
             EMPTY_RULE._replace(target="ACCEPT", src="2.0.0.0/255.255.255.0"),
+            table_name="filter",
         )
     ]
 
@@ -148,6 +149,7 @@ def test_ensure_chain():
         mock.call(
             "PAASTA.service",
             {EMPTY_RULE._replace(target="ACCEPT", src="1.0.0.0/255.255.255.0")},
+            table_name="filter",
         )
     ]
 
@@ -158,7 +160,9 @@ def test_ensure_chain_creates_chain_if_doesnt_exist():
     ), mock.patch.object(iptables, "create_chain", autospec=True) as mock_create_chain:
         iptables.ensure_chain("PAASTA.service", ())
 
-    assert mock_create_chain.mock_calls == [mock.call("PAASTA.service")]
+    assert mock_create_chain.mock_calls == [
+        mock.call("PAASTA.service", table_name="filter")
+    ]
 
 
 def test_ensure_rule_does_not_exist():
@@ -173,7 +177,12 @@ def test_ensure_rule_does_not_exist():
         iptables.ensure_rule("PAASTA.service", EMPTY_RULE._replace(target="DROP"))
 
     assert mock_insert_rule.mock_calls == [
-        mock.call("PAASTA.service", EMPTY_RULE._replace(target="DROP"))
+        mock.call(
+            "PAASTA.service",
+            EMPTY_RULE._replace(target="DROP"),
+            position=0,
+            table_name="filter",
+        )
     ]
 
 

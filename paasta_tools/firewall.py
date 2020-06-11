@@ -9,6 +9,8 @@ import os.path
 import re
 from contextlib import contextmanager
 
+import iptc
+
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
@@ -86,7 +88,9 @@ class ServiceGroup(collections.namedtuple("ServiceGroup", ("service", "instance"
         rules = list()
 
         if conf.get_inbound_firewall():
-            _apply_inbound_traffic_rules(conf, self.service, self.instance, self.chain_name)
+            _apply_inbound_traffic_rules(
+                conf, self.service, self.instance, self.chain_name
+            )
 
         if conf.get_outbound_firewall():
             rules.extend(_default_rules(conf, self.log_prefix))
@@ -198,7 +202,9 @@ def _nerve_ports_for_service_instance(service_name, instance_name):
             yield port
 
 
-def _apply_inbound_traffic_rules(conf, service_name, instance_name, chain_name, protocol="tcp"):
+def _apply_inbound_traffic_rules(
+    conf, service_name, instance_name, chain_name, protocol="tcp"
+):
     """Apply inbound traffic rules.
 
     This applies two policy fragments to iptables:
@@ -215,14 +221,16 @@ def _apply_inbound_traffic_rules(conf, service_name, instance_name, chain_name, 
     """
     policy = conf.get_inbound_firewall()
     if policy == "monitor" or policy == "reject":
-        prefilter_rules = []
         nerve_ports = _nerve_ports_for_service_instance(service_name, instance_name)
 
         if not nerve_ports:
-            raise ValueError("Expected nerve ports for {} {} but found 0".format(service_name, instance_name))
+            raise ValueError(
+                f"Expected nerve ports for {service_name} {instance_name} but found 0"
+            )
 
         for port in nerve_ports:
             # Ignore traffic not on the service dport
+            prefilter_rules = []
             prefilter_rules.append(
                 iptables.Rule(
                     protocol=protocol,
@@ -230,11 +238,12 @@ def _apply_inbound_traffic_rules(conf, service_name, instance_name, chain_name, 
                     dst="0.0.0.0/0.0.0.0",
                     target="RETURN",
                     matches=((protocol, (("dport", ("! " + str(port),)),)),),
+                    target_parameters=(),
                 )
             )
 
             # Ignore traffic from whitelisted IP ranges
-            for ip_range in INBOUND_IP_RANGES:
+            for ip_range in INBOUND_PRIVATE_IP_RANGES:
                 prefilter_rules.append(
                     iptables.Rule(
                         protocol=protocol,
@@ -242,48 +251,77 @@ def _apply_inbound_traffic_rules(conf, service_name, instance_name, chain_name, 
                         dst="0.0.0.0/0.0.0.0",
                         target="RETURN",
                         matches=((protocol, (("dport", ("! " + str(port),)),)),),
+                        target_parameters=(),
                     )
                 )
 
-        # Otherwise, mark this traffic for later operations
-        prefilter_rules.append(
-            iptables.Rule(
-                protocol=protocol,
-                src="0.0.0.0/0.0.0.0",
-                dst="0.0.0.0/0.0.0.0",
-                target="MARK",
-                matches=(("mark", (("mark", (str(port),)),)),),
+            # Otherwise, mark this traffic for later operations
+            prefilter_rules.append(
+                iptables.Rule(
+                    protocol=protocol,
+                    src="0.0.0.0/0.0.0.0",
+                    dst="0.0.0.0/0.0.0.0",
+                    target="MARK",
+                    matches=(("mark", (("mark", (str(port),)),)),),
+                    target_parameters=(),
+                )
             )
+
+            iptables.ensure_chain(
+                "{}.{}".format(chain_name, str(port)),
+                prefilter_rules,
+                table_name=iptc.Table.NAT,
+            )
+
+        iptables.ensure_chain(
+            chain_name,
+            [
+                iptables.Rule(
+                    protocol=protocol,
+                    src="0.0.0.0/0.0.0.0",
+                    dst="0.0.0.0/0.0.0.0",
+                    target="{}.{}".format(chain_name, str(port)),
+                    matches=(),
+                    target_parameters=(),
+                )
+                for port in nerve_ports
+            ],
+            table_name=iptc.Table.NAT,
         )
-        iptables.ensure_chain(chain_name, prefilter_rules, table_name=iptc.Table.NAT)
 
         if policy == "monitor":
-            iptables.ensure_chain(chain_name + INBOUND_FILTER_SUFFIX, 
-                                  tuple(
-                                      iptables.Rule(
-                                          protocol=protocol,
-                                          src="0.0.0.0/0.0.0.0",
-                                          dst="0.0.0.0/0.0.0.0",
-                                          target="LOG",
-                                          matches=(("mark", (("mark", (str(port),)),)),),
-                                      ),
-                                  )
-            )
+            for port in nerve_ports:
+                iptables.ensure_chain(
+                    chain_name + INBOUND_FILTER_SUFFIX,
+                    [
+                        iptables.Rule(
+                            protocol=protocol,
+                            src="0.0.0.0/0.0.0.0",
+                            dst="0.0.0.0/0.0.0.0",
+                            target="LOG",
+                            matches=(("mark", (("mark", (str(port),)),)),),
+                            target_parameters=(),
+                        ),
+                    ],
+                )
         elif policy == "reject":
-            iptables.ensure_chain(chain_name + INBOUND_FILTER_SUFFIX,
-                                  tuple(
-                                      iptables.Rule(
-                                          protocol=protocol,
-                                          src="0.0.0.0/0.0.0.0",
-                                          dst="0.0.0.0/0.0.0.0",
-                                          target="REJECT",
-                                          matches=(
-                                              ("mark", (("mark", (str(port),)),)),
-                                              ("reject-with", ("icmp-port-unreachable",))
-                                          )
-                                      ),
-                                  )
-            )
+            for port in nerve_ports:
+                iptables.ensure_chain(
+                    chain_name + INBOUND_FILTER_SUFFIX,
+                    [
+                        iptables.Rule(
+                            protocol=protocol,
+                            src="0.0.0.0/0.0.0.0",
+                            dst="0.0.0.0/0.0.0.0",
+                            target="REJECT",
+                            matches=(("mark", (("mark", (str(port),)),)),),
+                            target_parameters=(
+                                (("reject-with", ("icmp-port-unreachable",))),
+                            ),
+                        ),
+                    ],
+                )
+
 
 def _smartstack_rules(conf, soa_dir, synapse_service_dir):
     for dep in conf.get_dependencies() or ():
@@ -570,8 +608,9 @@ def ensure_prerouting_chains(service_chains):
     paasta_prerouting_rules = itertools.chain.from_iterable(
         prerouting_rule(chain) for chain in service_chains.keys()
     )
-    iptables.ensure_chain("PAASTA-PREROUTING", paasta_prerouting_rules,
-                          table_name=iptc.Table.NAT)
+    iptables.ensure_chain(
+        "PAASTA-PREROUTING", paasta_prerouting_rules, table_name=iptc.Table.NAT
+    )
 
     jump_to_paasta_prerouting = iptables.Rule(
         protocol="ip",
@@ -583,7 +622,9 @@ def ensure_prerouting_chains(service_chains):
     )
 
     # Note that the jump to paasta prerouting needs to be the very first rule in the chain to function
-    iptables.ensure_rule("PREROUTING", jump_to_paasta_prerouting, table_name=iptc.Table.NAT, position=1)
+    iptables.ensure_rule(
+        "PREROUTING", jump_to_paasta_prerouting, table_name=iptc.Table.NAT, position=1
+    )
 
 
 def mark_rule(chain):
