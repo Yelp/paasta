@@ -406,7 +406,6 @@ def load_marathon_service_config(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
-    # system_paasta_config: Optional[SystemPaastaConfig] = None
 ) -> "MarathonServiceConfig":
     """Read a service instance's configuration for marathon.
 

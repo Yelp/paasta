@@ -373,10 +373,10 @@ def load_service_namespace_config(
     :returns: A dict of the above keys, if they were defined
     """
 
-    service_config = service_configuration_lib.read_service_configuration(
-        service_name=service, soa_dir=soa_dir
+    smartstack_config = service_configuration_lib.read_extra_service_information(
+        service_name=service, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False,
     )
-    smartstack_config = service_config.get("smartstack", {})
+
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
     service_namespace_config = ServiceNamespaceConfig()

@@ -2034,6 +2034,7 @@ class TestSetupMarathonJob:
             side_effect=bounce_lib.LockHeldException,
         ):
             mock_clients: marathon_tools.MarathonClients = mock.Mock()
+            mock_system_paasta_config = mock.Mock()
             mock_marathon_apps_with_clients: List[
                 Tuple[MarathonApp, MarathonClient]
             ] = []
@@ -2043,6 +2044,7 @@ class TestSetupMarathonJob:
                 mock_clients,
                 "fake_soa",
                 mock_marathon_apps_with_clients,
+                mock_system_paasta_config,
             )
             assert not mock_setup_service.called
             assert ret == (0, None)

@@ -627,16 +627,23 @@ def test_schedule(mock_get_maintenance_schedule,):
     assert mock_get_maintenance_schedule.call_count == 1
 
 
+@mock.patch("paasta_tools.mesos_maintenance.get_mesos_config_path", autospec=True)
 @mock.patch("paasta_tools.mesos_maintenance.get_maintenance_status", autospec=True)
-def test_get_hosts_with_state_none(mock_get_maintenance_status,):
+def test_get_hosts_with_state_none(
+    mock_get_maintenance_status, mock_get_mesos_config_path
+):
+    mock_get_mesos_config_path.return_value = "/dev/null"
     fake_status = {"get_maintenance_status": {"status": {}}}
     mock_get_maintenance_status.return_value = mock.Mock()
     mock_get_maintenance_status.return_value.json.return_value = fake_status
     assert get_hosts_with_state(state="fake_state") == []
 
 
+@mock.patch("paasta_tools.mesos_maintenance.get_mesos_config_path", autospec=True)
 @mock.patch("paasta_tools.mesos_maintenance.get_maintenance_status", autospec=True)
-def test_get_hosts_with_state_draining(mock_get_maintenance_status,):
+def test_get_hosts_with_state_draining(
+    mock_get_maintenance_status, mock_get_mesos_config_path
+):
     fake_status = {
         "type": "GET_MAINTENANCE_STATUS",
         "get_maintenance_status": {
@@ -656,8 +663,11 @@ def test_get_hosts_with_state_draining(mock_get_maintenance_status,):
     assert sorted(get_hosts_with_state(state="draining_machines")) == expected
 
 
+@mock.patch("paasta_tools.mesos_maintenance.get_mesos_config_path", autospec=True)
 @mock.patch("paasta_tools.mesos_maintenance.get_maintenance_status", autospec=True)
-def test_get_hosts_with_state_down(mock_get_maintenance_status,):
+def test_get_hosts_with_state_down(
+    mock_get_maintenance_status, mock_get_mesos_config_path
+):
     fake_status = {
         "type": "GET_MAINTENANCE_STATUS",
         "get_maintenance_status": {
