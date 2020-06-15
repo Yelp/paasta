@@ -1,3 +1,9 @@
+clusterman (4.3.12) xenial bionic; urgency=low
+
+  * CLUSTERMAN-518 better display with status and enable/disable commands
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 15 Jun 2020 11:07:38 -0700
+
 clusterman (4.3.11) xenial bionic; urgency=low
 
   * CLUSTERMAN-511 Add support for pod.affinity
