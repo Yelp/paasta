@@ -23,6 +23,7 @@ from colorama import Style
 from clusterman.util import any_of
 from clusterman.util import ask_for_choice
 from clusterman.util import ask_for_confirmation
+from clusterman.util import autoscaling_is_paused
 from clusterman.util import color_conditions
 from clusterman.util import get_cluster_name_list
 from clusterman.util import get_pool_name_list
@@ -198,3 +199,27 @@ def test_get_pool_name_list(mock_listdir, mock_get_cluster_config_directory):
     assert set(get_pool_name_list('cluster-A', 'kubernetes')) == {'pool-F'}
     assert mock_get_cluster_config_directory.call_args == mock.call('cluster-A')
     assert mock_listdir.call_args == mock.call('/tmp/somedir/cluster-A')
+
+
+def test_is_paused_no_data_for_cluster():
+    with mock.patch('clusterman.util.dynamodb') as mock_dynamo:
+        mock_dynamo.get_item.return_value = {'ResponseMetadata': {'foo': 'asdf'}}
+        assert not autoscaling_is_paused('mesos-test', 'bar', 'mesos', arrow.get(300))
+
+
+@pytest.mark.parametrize('exp_timestamp', [None, '100', '400'])
+def test_is_paused_with_expiration_timestamp(exp_timestamp):
+    with mock.patch('clusterman.util.dynamodb') as mock_dynamo:
+        mock_dynamo.get_item.return_value = {
+            'ResponseMetadata': {'foo': 'asdf'},
+            'Item': {
+                'state': {'S': 'autoscaler_paused'},
+                'entity': {'S': 'mesos-test.bar.mesos'},
+            }
+        }
+        if exp_timestamp:
+            mock_dynamo.get_item.return_value['Item']['expiration_timestamp'] = {'N': exp_timestamp}
+        assert autoscaling_is_paused('mesos-test', 'bar', 'mesos', arrow.get(300)) == (
+            not exp_timestamp or
+            int(exp_timestamp) > 300
+        )
