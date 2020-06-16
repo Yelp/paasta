@@ -18,7 +18,6 @@ import sys
 
 from paasta_tools.autoscaling import load_boost
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 
 log = logging.getLogger(__name__)
 
@@ -79,12 +78,12 @@ def paasta_cluster_boost(
     system_config = load_system_paasta_config()
 
     if not system_config.get_cluster_boost_enabled():
-        paasta_print("ERROR: cluster_boost feature is not enabled.")
+        print("ERROR: cluster_boost feature is not enabled.")
         return False
 
     regions = system_config.get_boost_regions()
     if len(regions) == 0:
-        paasta_print(f"ERROR: no boost_regions configured in {system_config.directory}")
+        print(f"ERROR: no boost_regions configured in {system_config.directory}")
         return False
 
     for region in regions:
@@ -98,7 +97,7 @@ def paasta_cluster_boost(
                 duration_minutes=duration,
                 override=override,
             ):
-                paasta_print(
+                print(
                     f"ERROR: Failed to set the boost for pool {pool}, region {region}."
                 )
                 return False
@@ -108,14 +107,14 @@ def paasta_cluster_boost(
 
         elif action == "clear":
             if not load_boost.clear_boost(zk_boost_path, region=region, pool=pool):
-                paasta_print("ERROR: Failed to clear the boost for pool {}, region {}.")
+                print("ERROR: Failed to clear the boost for pool {}, region {}.")
                 return False
 
         else:
             raise NotImplementedError("Action: '%s' is not implemented." % action)
             return False
 
-        paasta_print(
+        print(
             "Current boost value for path: {}: {}".format(
                 zk_boost_path, load_boost.get_boost_factor(zk_boost_path=zk_boost_path)
             )

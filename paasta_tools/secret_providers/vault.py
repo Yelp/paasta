@@ -31,7 +31,6 @@ except ImportError:
 
 
 from paasta_tools.secret_providers import BaseSecretProvider
-from paasta_tools.utils import paasta_print
 from paasta_tools.secret_tools import get_secret_name_from_ref
 
 
@@ -100,7 +99,7 @@ class SecretProvider(BaseSecretProvider):
                 }
             )
         except KeyError as e:
-            paasta_print(
+            print(
                 "Cannot find a vault cluster for the %s paasta cluster. A mapping must exist "
                 "in /etc/paasta so we contact the correct vault cluster to get/set secrets"
                 % e

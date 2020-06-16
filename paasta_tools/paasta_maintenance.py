@@ -30,7 +30,6 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import load_smartstack_info_for_service
-from paasta_tools.utils import paasta_print
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +110,7 @@ def is_safe_to_drain(hostname):
     :returns: True or False
     """
     if not is_hostname_local(hostname):
-        paasta_print(
+        print(
             "Due to the way is_safe_to_drain is implemented, it can only work on localhost."
         )
         return False
@@ -220,7 +219,7 @@ def paasta_maintenance():
     hostnames = args.hostname
 
     if action != "status" and not hostnames:
-        paasta_print("You must specify one or more hostnames")
+        print("You must specify one or more hostnames")
         return
 
     start = args.start
@@ -257,7 +256,7 @@ def paasta_maintenance():
         ret = mesos_maintenance.is_host_past_maintenance_end(hostnames[0])
     else:
         raise NotImplementedError("Action: '%s' is not implemented." % action)
-    paasta_print(ret)
+    print(ret)
     return ret
 
 

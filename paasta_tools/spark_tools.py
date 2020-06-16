@@ -12,7 +12,6 @@ from ruamel.yaml import YAML
 from typing_extensions import TypedDict
 
 from paasta_tools.clusterman import get_clusterman_metrics
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 AWS_CREDENTIALS_DIR = "/etc/boto_cfg/"
@@ -34,7 +33,7 @@ def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str]:
         try:
             credentials_yaml = YAML().load(yaml_file.read())
         except Exception as e:
-            paasta_print(
+            print(
                 PaastaColors.red(
                     "Encountered %s when trying to parse AWS credentials yaml %s. "
                     "Suppressing further output to avoid leaking credentials."
@@ -64,7 +63,7 @@ def get_aws_credentials(
         if os.path.exists(service_credentials_path):
             return _load_aws_credentials_from_yaml(service_credentials_path)
         else:
-            paasta_print(
+            print(
                 PaastaColors.yellow(
                     "Did not find service AWS credentials at %s.  Falling back to "
                     "user credentials." % (service_credentials_path)
@@ -110,7 +109,7 @@ def get_default_event_log_dir(**kwargs) -> str:
     for conf in spark_run_conf.get("environments", {}).values():
         if account_id == conf["account_id"]:
             default_event_log_dir = conf["default_event_log_dir"]
-            paasta_print(f"default event logging at: {default_event_log_dir}")
+            print(f"default event logging at: {default_event_log_dir}")
             return default_event_log_dir
     return None
 
@@ -120,7 +119,7 @@ def load_mesos_secret_for_spark():
         with open(DEFAULT_SPARK_MESOS_SECRET_FILE, "r") as f:
             return f.read()
     except IOError as e:
-        paasta_print(
+        print(
             "Cannot load mesos secret from %s" % DEFAULT_SPARK_MESOS_SECRET_FILE,
             file=sys.stderr,
         )
