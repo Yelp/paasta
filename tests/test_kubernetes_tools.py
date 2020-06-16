@@ -1002,9 +1002,11 @@ class TestKubernetesDeploymentConfig:
         mock_load_service_namespace_config.return_value = mock_service_namespace_config
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
         mock_get_node_affinity.return_value = node_affinity
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
 
         ret = self.deployment.get_pod_template_spec(
-            git_sha="aaaa123", system_paasta_config=mock.Mock()
+            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
         )
 
         assert mock_load_service_namespace_config.called
@@ -1018,6 +1020,7 @@ class TestKubernetesDeploymentConfig:
             node_selector={"yelp.com/pool": "default"},
             restart_policy="Always",
             volumes=[],
+            dns_policy="foo",
         )
         pod_spec_kwargs.update(spec_affinity)
         assert ret == V1PodTemplateSpec(
