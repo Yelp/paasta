@@ -1,3 +1,10 @@
+paasta-tools (0.96.14) xenial; urgency=medium
+
+  * 0.96.14 tagged with 'make release'
+    Commit: remove paasta_print, part 3 (#2839)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 16 Jun 2020 01:19:24 -0700
+
 paasta-tools (0.96.13) xenial; urgency=medium
 
   * 0.96.13 tagged with 'make release'
