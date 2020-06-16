@@ -2380,6 +2380,9 @@ class SystemPaastaConfig:
     def get_boost_regions(self) -> List[str]:
         return self.config_dict.get("boost_regions", [])
 
+    def get_pod_defaults(self) -> Dict[str, Any]:
+        return self.config_dict.get("pod_defaults", {})
+
 
 def _run(
     command: Union[str, List[str]],
