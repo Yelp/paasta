@@ -1,3 +1,10 @@
+paasta-tools (0.96.16) xenial; urgency=medium
+
+  * 0.96.16 tagged with 'make release'
+    Commit: Merge branch "optimize_deployd_workers"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Jun 2020 11:20:11 -0700
+
 paasta-tools (0.96.15) xenial; urgency=medium
 
   * 0.96.15 tagged with 'make release'
