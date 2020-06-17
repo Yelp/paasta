@@ -149,6 +149,7 @@ class TestTronActionConfig:
                 paasta_cluster="fake-spark-cluster",
                 paasta_instance="cool_job.print",
                 paasta_service="my_service",
+                paasta_pool="fake-spark-pool",
                 spark_app_name="tron_spark_my_service_cool_job.print",
                 spark_ui_port=12345,
                 volumes=[

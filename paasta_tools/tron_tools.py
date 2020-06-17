@@ -245,6 +245,7 @@ class TronActionConfig(InstanceConfig):
                 paasta_cluster=self.get_spark_paasta_cluster(),
                 paasta_service=self.get_service(),
                 paasta_instance=self.get_instance(),
+                paasta_pool=self.get_spark_paasta_pool(),
                 docker_img=self.get_docker_url(),
                 volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
                 user_spark_opts=self.config_dict.get("spark_args", {}),
