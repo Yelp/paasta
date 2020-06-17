@@ -1,3 +1,12 @@
+paasta-tools (0.96.17) xenial; urgency=medium
+
+  * 0.96.17 tagged with 'make release'
+    Commit: Merge pull request #2848 from Yelp/d/manpreet/BATCHPROC-
+    122_support_paasta_pool_spark_on_k8s  Provide paasta pool support
+    for spark on k8s tron jobs similar to spark on mesos
+
+ -- Manpreet Singh <manpreet@yelp.com>  Wed, 17 Jun 2020 13:13:52 -0700
+
 paasta-tools (0.96.16) xenial; urgency=medium
 
   * 0.96.16 tagged with 'make release'
