@@ -237,7 +237,6 @@ class TronActionConfig(InstanceConfig):
                     service=self.get_service(),
                     aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
                 ),
-                needs_docker_cfg=True,
             )
         else:
             spark_env = get_k8s_spark_env(
@@ -306,8 +305,6 @@ class TronActionConfig(InstanceConfig):
         if self.get_executor() == "spark":
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            # Run spark (and mesos framework) as root.
-            env["SPARK_USER"] = "root"
             env["SPARK_OPTS"] = stringify_spark_env(self.get_spark_config_dict())
             env.update(get_mesos_spark_auth_env())
             env["CLUSTERMAN_RESOURCES"] = json.dumps(
@@ -445,11 +442,6 @@ class TronActionConfig(InstanceConfig):
         )
         if self.get_executor() == "spark":
             parameters.append({"key": "net", "value": "host"})
-            if self.get_spark_cluster_manager() == "kubernetes":
-                # TODO: this is a temprary solution to circumvent permission issue of reading
-                # SSL ceritficates of k8s clusters. We should remove this clause once a stable
-                # solution is available.
-                parameters.append({"key": "user", "value": "root"})
         return parameters
 
 
