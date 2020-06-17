@@ -1825,6 +1825,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     previous_marathon_servers: List[MarathonConfigDict]
+    pod_defaults: Dict[str, Any]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
@@ -2379,6 +2380,9 @@ class SystemPaastaConfig:
 
     def get_boost_regions(self) -> List[str]:
         return self.config_dict.get("boost_regions", [])
+
+    def get_pod_defaults(self) -> Dict[str, Any]:
+        return self.config_dict.get("pod_defaults", {})
 
 
 def _run(

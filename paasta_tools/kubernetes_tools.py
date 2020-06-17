@@ -1163,7 +1163,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if "hpa" in annotations:
                 annotations["hpa"] = json.dumps(annotations["hpa"])
 
-        pod_spec_kwargs = dict(
+        pod_spec_kwargs = {}
+        pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())
+        pod_spec_kwargs.update(
             service_account_name=self.get_kubernetes_service_account_name(),
             containers=self.get_kubernetes_containers(
                 docker_volumes=docker_volumes,
