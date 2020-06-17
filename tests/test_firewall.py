@@ -429,247 +429,252 @@ def test_ensure_internet_chain():
 def test_reject_inbound_network_traffic(
     mock_ensure_chain, mock_get_nerve_ports, mock_service_config, service_group,
 ):
-    mock_service_config.return_value.get_inbound_firewall.return_value = "reject"
-    assert service_group.get_rules(
-        DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR
-    ) == (
-        EMPTY_RULE._replace(
-            protocol="ip",
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            target="LOG",
-            matches=(("limit", (("limit", ("1/sec",)), ("limit-burst", ("1",)))),),
-            target_parameters=(("log-prefix", ("paasta.my_cool_service ",)),),
-        ),
-        EMPTY_RULE._replace(
-            protocol="ip",
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            target="PAASTA-COMMON",
-            matches=(),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="ip",
-            src="0.0.0.0/0.0.0.0",
-            dst="0.0.0.0/0.0.0.0",
-            target="PAASTA-INTERNET",
-            matches=(),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            src="0.0.0.0/0.0.0.0",
-            dst="1.2.3.4/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("backend example_happyhour.main",)),)),
-                ("tcp", (("dport", ("123",)),)),
+    for inbound_firewall_rule, inbound_firewall_target, inbound_firewall_target_parameters in [
+            ("reject", "REJECT", ((("reject-with", ("icmp-port-unreachable",))),)),
+            ("monitor", "LOG", ()),
+    ]:
+        mock_ensure_chain.reset_mock()
+        mock_service_config.return_value.get_inbound_firewall.return_value = inbound_firewall_rule
+        assert service_group.get_rules(
+            DEFAULT_SOA_DIR, firewall.DEFAULT_SYNAPSE_SERVICE_DIR
+        ) == (
+            EMPTY_RULE._replace(
+                protocol="ip",
+                src="0.0.0.0/0.0.0.0",
+                dst="0.0.0.0/0.0.0.0",
+                target="LOG",
+                matches=(("limit", (("limit", ("1/sec",)), ("limit-burst", ("1",)))),),
+                target_parameters=(("log-prefix", ("paasta.my_cool_service ",)),),
             ),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            src="0.0.0.0/0.0.0.0",
-            dst="5.6.7.8/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("backend example_happyhour.main",)),)),
-                ("tcp", (("dport", ("567",)),)),
+            EMPTY_RULE._replace(
+                protocol="ip",
+                src="0.0.0.0/0.0.0.0",
+                dst="0.0.0.0/0.0.0.0",
+                target="PAASTA-COMMON",
+                matches=(),
+                target_parameters=(),
             ),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            src="0.0.0.0/0.0.0.0",
-            dst="169.254.255.254/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("proxy_port example_happyhour.main",)),)),
-                ("tcp", (("dport", ("20000",)),)),
+            EMPTY_RULE._replace(
+                protocol="ip",
+                src="0.0.0.0/0.0.0.0",
+                dst="0.0.0.0/0.0.0.0",
+                target="PAASTA-INTERNET",
+                matches=(),
+                target_parameters=(),
             ),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="ip",
-            src="0.0.0.0/0.0.0.0",
-            dst="169.229.226.0/255.255.255.0",
-            target="ACCEPT",
-            matches=(("comment", (("comment", ("allow 169.229.226.0/24:*",)),)),),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            src="0.0.0.0/0.0.0.0",
-            dst="8.8.8.8/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("allow 8.8.8.8/32:53",)),)),
-                ("tcp", (("dport", ("53",)),)),
+            EMPTY_RULE._replace(
+                protocol="tcp",
+                src="0.0.0.0/0.0.0.0",
+                dst="1.2.3.4/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("backend example_happyhour.main",)),)),
+                    ("tcp", (("dport", ("123",)),)),
+                ),
+                target_parameters=(),
             ),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="udp",
-            src="0.0.0.0/0.0.0.0",
-            dst="8.8.8.8/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("allow 8.8.8.8/32:53",)),)),
-                ("udp", (("dport", ("53",)),)),
+            EMPTY_RULE._replace(
+                protocol="tcp",
+                src="0.0.0.0/0.0.0.0",
+                dst="5.6.7.8/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("backend example_happyhour.main",)),)),
+                    ("tcp", (("dport", ("567",)),)),
+                ),
+                target_parameters=(),
             ),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="tcp",
-            src="0.0.0.0/0.0.0.0",
-            dst="8.8.4.4/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("allow 8.8.4.4/32:1024:65535",)),)),
-                ("tcp", (("dport", ("1024:65535",)),)),
+            EMPTY_RULE._replace(
+                protocol="tcp",
+                src="0.0.0.0/0.0.0.0",
+                dst="169.254.255.254/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("proxy_port example_happyhour.main",)),)),
+                    ("tcp", (("dport", ("20000",)),)),
+                ),
+                target_parameters=(),
             ),
-            target_parameters=(),
-        ),
-        EMPTY_RULE._replace(
-            protocol="udp",
-            src="0.0.0.0/0.0.0.0",
-            dst="8.8.4.4/255.255.255.255",
-            target="ACCEPT",
-            matches=(
-                ("comment", (("comment", ("allow 8.8.4.4/32:1024:65535",)),)),
-                ("udp", (("dport", ("1024:65535",)),)),
+            EMPTY_RULE._replace(
+                protocol="ip",
+                src="0.0.0.0/0.0.0.0",
+                dst="169.229.226.0/255.255.255.0",
+                target="ACCEPT",
+                matches=(("comment", (("comment", ("allow 169.229.226.0/24:*",)),)),),
+                target_parameters=(),
             ),
-            target_parameters=(),
-        ),
-    )
-
-    assert mock_ensure_chain.mock_calls == [
-        mock.call(
-            "PAASTA.my_cool_se.f031797563.30000",
-            [
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="RETURN",
-                    matches=(("tcp", (("dport", ("! 30000",)),)),),
-                    target_parameters=(),
+            EMPTY_RULE._replace(
+                protocol="tcp",
+                src="0.0.0.0/0.0.0.0",
+                dst="8.8.8.8/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("allow 8.8.8.8/32:53",)),)),
+                    ("tcp", (("dport", ("53",)),)),
                 ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="127.0.0.0/255.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="RETURN",
-                    matches=(("tcp", (("dport", ("! 30000",)),)),),
-                    target_parameters=(),
+                target_parameters=(),
+            ),
+            EMPTY_RULE._replace(
+                protocol="udp",
+                src="0.0.0.0/0.0.0.0",
+                dst="8.8.8.8/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("allow 8.8.8.8/32:53",)),)),
+                    ("udp", (("dport", ("53",)),)),
                 ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="169.254.0.0/255.255.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="RETURN",
-                    matches=(("tcp", (("dport", ("! 30000",)),)),),
-                    target_parameters=(),
+                target_parameters=(),
+            ),
+            EMPTY_RULE._replace(
+                protocol="tcp",
+                src="0.0.0.0/0.0.0.0",
+                dst="8.8.4.4/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("allow 8.8.4.4/32:1024:65535",)),)),
+                    ("tcp", (("dport", ("1024:65535",)),)),
                 ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="MARK",
-                    matches=(("mark", (("mark", ("30000",)),)),),
-                    target_parameters=(),
+                target_parameters=(),
+            ),
+            EMPTY_RULE._replace(
+                protocol="udp",
+                src="0.0.0.0/0.0.0.0",
+                dst="8.8.4.4/255.255.255.255",
+                target="ACCEPT",
+                matches=(
+                    ("comment", (("comment", ("allow 8.8.4.4/32:1024:65535",)),)),
+                    ("udp", (("dport", ("1024:65535",)),)),
                 ),
-            ],
-            table_name="nat",
-        ),
-        mock.call(
-            "PAASTA.my_cool_se.f031797563.30001",
-            [
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="RETURN",
-                    matches=(("tcp", (("dport", ("! 30001",)),)),),
-                    target_parameters=(),
-                ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="127.0.0.0/255.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="RETURN",
-                    matches=(("tcp", (("dport", ("! 30001",)),)),),
-                    target_parameters=(),
-                ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="169.254.0.0/255.255.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="RETURN",
-                    matches=(("tcp", (("dport", ("! 30001",)),)),),
-                    target_parameters=(),
-                ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="MARK",
-                    matches=(("mark", (("mark", ("30001",)),)),),
-                    target_parameters=(),
-                ),
-            ],
-            table_name="nat",
-        ),
-        mock.call(
-            "PAASTA.my_cool_se.f031797563",
-            [
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="PAASTA.my_cool_se.f031797563.30000",
-                    matches=(),
-                    target_parameters=(),
-                ),
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="PAASTA.my_cool_se.f031797563.30001",
-                    matches=(),
-                    target_parameters=(),
-                ),
-            ],
-            table_name="nat",
-        ),
-        mock.call(
-            "PAASTA.my_cool_se.f031797563-INBOUND-FILTER",
-            [
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="REJECT",
-                    matches=(("mark", (("mark", ("30000",)),)),),
-                    target_parameters=(("reject-with", ("icmp-port-unreachable",)),),
-                ),
-            ],
-        ),
-        mock.call(
-            "PAASTA.my_cool_se.f031797563-INBOUND-FILTER",
-            [
-                EMPTY_RULE._replace(
-                    protocol="tcp",
-                    src="0.0.0.0/0.0.0.0",
-                    dst="0.0.0.0/0.0.0.0",
-                    target="REJECT",
-                    matches=(("mark", (("mark", ("30001",)),)),),
-                    target_parameters=(("reject-with", ("icmp-port-unreachable",)),),
-                ),
-            ],
-        ),
-    ]
+                target_parameters=(),
+            ),
+        )
+    
+        assert mock_ensure_chain.mock_calls == [
+            mock.call(
+                "PAASTA.my_cool_se.f031797563.30000",
+                [
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="RETURN",
+                        matches=(("tcp", (("dport", ("! 30000",)),)),),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="127.0.0.0/255.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="RETURN",
+                        matches=(("tcp", (("dport", ("! 30000",)),)),),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="169.254.0.0/255.255.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="RETURN",
+                        matches=(("tcp", (("dport", ("! 30000",)),)),),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="MARK",
+                        matches=(("mark", (("mark", ("30000",)),)),),
+                        target_parameters=(),
+                    ),
+                ],
+                table_name="nat",
+            ),
+            mock.call(
+                "PAASTA.my_cool_se.f031797563.30001",
+                [
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="RETURN",
+                        matches=(("tcp", (("dport", ("! 30001",)),)),),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="127.0.0.0/255.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="RETURN",
+                        matches=(("tcp", (("dport", ("! 30001",)),)),),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="169.254.0.0/255.255.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="RETURN",
+                        matches=(("tcp", (("dport", ("! 30001",)),)),),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="MARK",
+                        matches=(("mark", (("mark", ("30001",)),)),),
+                        target_parameters=(),
+                    ),
+                ],
+                table_name="nat",
+            ),
+            mock.call(
+                "PAASTA.my_cool_se.f031797563",
+                [
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="PAASTA.my_cool_se.f031797563.30000",
+                        matches=(),
+                        target_parameters=(),
+                    ),
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target="PAASTA.my_cool_se.f031797563.30001",
+                        matches=(),
+                        target_parameters=(),
+                    ),
+                ],
+                table_name="nat",
+            ),
+            mock.call(
+                "PAASTA.my_cool_se.f031797563-INBOUND-FILTER",
+                [
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target=inbound_firewall_target,
+                        matches=(("mark", (("mark", ("30000",)),)),),
+                        target_parameters=inbound_firewall_target_parameters,
+                    ),
+                ],
+            ),
+            mock.call(
+                "PAASTA.my_cool_se.f031797563-INBOUND-FILTER",
+                [
+                    EMPTY_RULE._replace(
+                        protocol="tcp",
+                        src="0.0.0.0/0.0.0.0",
+                        dst="0.0.0.0/0.0.0.0",
+                        target=inbound_firewall_target,
+                        matches=(("mark", (("mark", ("30001",)),)),),
+                        target_parameters=inbound_firewall_target_parameters,
+                    ),
+                ],
+            ),
+        ]
 
 
 @pytest.fixture
