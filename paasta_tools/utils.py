@@ -2405,7 +2405,7 @@ def _run(
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
     magic.
     """
-    output = []
+    output: List[str] = []
     if log:
         service = kwargs["service"]
         component = kwargs["component"]
@@ -2436,7 +2436,7 @@ def _run(
             proctimer = threading.Timer(timeout, _timeout, [process])
             proctimer.start()
 
-        outfn = print if stream else output.append
+        outfn: Any = print if stream else output.append
         for linebytes in iter(process.stdout.readline, b""):
             line = linebytes.decode("utf-8", errors="replace").rstrip("\n")
             outfn(line)
