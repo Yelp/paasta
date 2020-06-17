@@ -1,3 +1,11 @@
+paasta-tools (0.96.15) xenial; urgency=medium
+
+  * 0.96.15 tagged with 'make release'
+    Commit: Fix: print decoded string instead of bytes in utils._run
+    (#2847)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 17 Jun 2020 05:07:27 -0700
+
 paasta-tools (0.96.14) xenial; urgency=medium
 
   * 0.96.14 tagged with 'make release'
