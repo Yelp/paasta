@@ -133,7 +133,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def send_event(
-    name: str, instance: str, soa_dir: str, status: int, output: str
+    name: str,
+    instance: str,
+    soa_dir: str,
+    status: int,
+    output: str,
+    system_paasta_config: SystemPaastaConfig,
+    marathon_service_config: marathon_tools.MarathonServiceConfig,
 ) -> None:
     """Send an event to sensu via pysensu_yelp with the given information.
 
@@ -143,10 +149,15 @@ def send_event(
     :param status: The status to emit for this event
     :param output: The output to emit for this event
     """
-    cluster = load_system_paasta_config().get_cluster()
-    monitoring_overrides = marathon_tools.load_marathon_service_config(
-        name, instance, cluster, soa_dir=soa_dir, load_deployments=False
-    ).get_monitoring()
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
+
+    if marathon_service_config is None:
+        marathon_service_config = marathon_tools.load_marathon_service_config(
+            name, instance, cluster, soa_dir=soa_dir, load_deployments=False
+        )
+    monitoring_overrides = marathon_service_config.get_monitoring()
     # In order to let sensu know how often to expect this check to fire,
     # we need to set the ``check_every`` to the frequency of our cron job, which
     # is 10s.
@@ -157,7 +168,13 @@ def send_event(
     monitoring_overrides["alert_after"] = "10m"
     check_name = "setup_marathon_job.%s" % compose_job_id(name, instance)
     monitoring_tools.send_event(
-        name, check_name, monitoring_overrides, status, output, soa_dir
+        name,
+        check_name,
+        monitoring_overrides,
+        status,
+        output,
+        soa_dir,
+        system_paasta_config=system_paasta_config,
     )
 
 
@@ -592,6 +609,7 @@ def deploy_service(
     bounce_health_params: Dict[str, Any],
     soa_dir: str,
     job_config: marathon_tools.MarathonServiceConfig,
+    system_paasta_config: Optional[SystemPaastaConfig] = None,
     bounce_margin_factor: float = 1.0,
 ) -> Tuple[int, str, Optional[float]]:
     """Deploy the service to marathon, either directly or via a bounce if needed.
@@ -619,7 +637,9 @@ def deploy_service(
             instance=instance,
         )
 
-    system_paasta_config = load_system_paasta_config()
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
+
     cluster = system_paasta_config.get_cluster()
     existing_apps_with_clients = marathon_tools.get_matching_apps_with_clients(
         service=service,
@@ -671,7 +691,7 @@ def deploy_service(
         return (1, errormsg, None)
 
     try:
-        draining_hosts = get_draining_hosts()
+        draining_hosts = get_draining_hosts(system_paasta_config=system_paasta_config)
     except ReadTimeout as e:
         errormsg = (
             "ReadTimeout encountered trying to get draining hosts: %s. Continuing with bounce assuming no tasks at-risk"
@@ -845,6 +865,7 @@ def setup_service(
     job_config: marathon_tools.MarathonServiceConfig,
     marathon_apps_with_clients: Sequence[Tuple[MarathonApp, MarathonClient]],
     soa_dir: str,
+    system_paasta_config: Optional[SystemPaastaConfig] = None,
 ) -> Tuple[int, str, Optional[float]]:
     """Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Marathon and hasn't changed.
@@ -858,7 +879,9 @@ def setup_service(
 
     log.info("Setting up instance %s for service %s", instance, service)
     try:
-        marathon_app_dict = job_config.format_marathon_app_dict()
+        marathon_app_dict = job_config.format_marathon_app_dict(
+            system_paasta_config=system_paasta_config
+        )
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
@@ -891,6 +914,7 @@ def setup_service(
         ),
         soa_dir=soa_dir,
         job_config=job_config,
+        system_paasta_config=system_paasta_config,
         bounce_margin_factor=job_config.get_bounce_margin_factor(),
     )
 
@@ -958,6 +982,7 @@ def deploy_marathon_service(
     clients: marathon_tools.MarathonClients,
     soa_dir: str,
     marathon_apps_with_clients: Optional[Sequence[Tuple[MarathonApp, MarathonClient]]],
+    system_paasta_config: Optional[SystemPaastaConfig] = None,
 ) -> Tuple[int, float]:
     """deploy the service instance given and process return code
     if there was an error we send a sensu alert.
@@ -971,26 +996,31 @@ def deploy_marathon_service(
         bounce_in_seconds instructs how long until the deployd should try another bounce
         None means that it is in a steady state and doesn't need to bounce again
     """
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
+
     short_id = marathon_tools.format_job_id(service, instance)
     try:
-        with bounce_lib.bounce_lock_zookeeper(short_id):
+        with bounce_lib.bounce_lock_zookeeper(
+            short_id, system_paasta_config=system_paasta_config
+        ):
             try:
                 service_instance_config = marathon_tools.load_marathon_service_config_no_cache(
                     service,
                     instance,
-                    load_system_paasta_config().get_cluster(),
+                    system_paasta_config.get_cluster(),
                     soa_dir=soa_dir,
                 )
             except NoDeploymentsAvailable:
                 log.debug(
                     "No deployments found for %s.%s in cluster %s. Skipping."
-                    % (service, instance, load_system_paasta_config().get_cluster())
+                    % (service, instance, system_paasta_config.get_cluster())
                 )
                 return 0, None
             except NoConfigurationForServiceError:
                 error_msg = (
                     "Could not read marathon configuration file for %s.%s in cluster %s"
-                    % (service, instance, load_system_paasta_config().get_cluster())
+                    % (service, instance, system_paasta_config.get_cluster())
                 )
                 log.error(error_msg)
                 return 1, None
@@ -1000,6 +1030,8 @@ def deploy_marathon_service(
                     clients=clients.get_all_clients_for_service(
                         job_config=service_instance_config
                     ),
+                    service_name=service,
+                    instance_name=instance,
                     embed_tasks=True,
                 )
 
@@ -1012,11 +1044,20 @@ def deploy_marathon_service(
                         job_config=service_instance_config,
                         marathon_apps_with_clients=marathon_apps_with_clients,
                         soa_dir=soa_dir,
+                        system_paasta_config=system_paasta_config,
                     )
                 sensu_status = (
                     pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
                 )
-                send_event(service, instance, soa_dir, sensu_status, output)
+                send_event(
+                    service,
+                    instance,
+                    soa_dir,
+                    sensu_status,
+                    output,
+                    system_paasta_config,
+                    service_instance_config,
+                )
                 return 0, bounce_again_in_seconds
             except (
                 KeyError,
@@ -1028,7 +1069,13 @@ def deploy_marathon_service(
                 error_str = traceback.format_exc()
                 log.error(error_str)
                 send_event(
-                    service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str
+                    service,
+                    instance,
+                    soa_dir,
+                    pysensu_yelp.Status.CRITICAL,
+                    error_str,
+                    system_paasta_config,
+                    service_instance_config,
                 )
                 return 1, None
     except bounce_lib.LockHeldException:

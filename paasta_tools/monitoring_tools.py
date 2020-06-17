@@ -36,6 +36,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import time_cache
+
 
 try:
     import yelp_meteorite
@@ -138,6 +140,13 @@ def get_description(overrides, service, soa_dir=DEFAULT_SOA_DIR):
     return __get_monitoring_config_value("description", overrides, service, soa_dir)
 
 
+# Our typical usage pattern is that we call all the different get_* functions back to back. Applying a small amount of
+# cache here helps cut down on the number of times we re-parse service.yaml.
+_cached_read_service_configuration = time_cache(ttl=5)(
+    service_configuration_lib.read_service_configuration
+)
+
+
 def __get_monitoring_config_value(
     key,
     overrides,
@@ -145,9 +154,7 @@ def __get_monitoring_config_value(
     soa_dir=DEFAULT_SOA_DIR,
     monitoring_defaults=monitoring_defaults,
 ):
-    general_config = service_configuration_lib.read_service_configuration(
-        service, soa_dir=soa_dir
-    )
+    general_config = _cached_read_service_configuration(service, soa_dir=soa_dir)
     monitor_config = read_monitoring_config(service, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get("monitoring", {key: service_default}).get(
@@ -184,7 +191,15 @@ def _load_sensu_team_data():
 
 
 def send_event(
-    service, check_name, overrides, status, output, soa_dir, ttl=None, cluster=None
+    service,
+    check_name,
+    overrides,
+    status,
+    output,
+    soa_dir,
+    ttl=None,
+    cluster=None,
+    system_paasta_config=None,
 ):
     """Send an event to sensu via pysensu_yelp with the given information.
 
@@ -202,7 +217,8 @@ def send_event(
     if not team:
         return
 
-    system_paasta_config = load_system_paasta_config()
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
     if cluster is None:
         try:
             cluster = system_paasta_config.get_cluster()
@@ -244,6 +260,7 @@ def send_event(
         pysensu_yelp.send_event(**result_dict)
 
 
+@time_cache(ttl=5)
 def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR):
     """Read a service's monitoring.yaml file.
 

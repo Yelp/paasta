@@ -227,7 +227,11 @@ def when_setup_service_initiated(context):
         "paasta_tools.mesos_maintenance.get_principal", autospec=True
     ) as mock_get_principal, mock.patch(
         "paasta_tools.mesos_maintenance.get_secret", autospec=True
-    ) as mock_get_secret:
+    ) as mock_get_secret, mock.patch(
+        "paasta_tools.mesos_maintenance.get_mesos_leader",
+        autospec=True,
+        return_value="mesosmaster",
+    ):
         credentials = mesos_maintenance.load_credentials(
             mesos_secrets="/etc/mesos-slave-secret"
         )

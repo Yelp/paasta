@@ -131,6 +131,7 @@ class TestSetupMarathonJob:
                 job_config=self.fake_marathon_service_config,
                 marathon_apps_with_clients=[],
                 soa_dir="no_more",
+                system_paasta_config=load_system_paasta_config_patch(),
             )
             sys_exit_patch.assert_called_once_with(0)
 
@@ -190,6 +191,7 @@ class TestSetupMarathonJob:
                 job_config=self.fake_marathon_service_config,
                 marathon_apps_with_clients=[],
                 soa_dir="no_more",
+                system_paasta_config=load_system_paasta_config_patch(),
             )
             sys_exit_patch.assert_called_once_with(0)
 
@@ -246,6 +248,10 @@ class TestSetupMarathonJob:
         expected_check_name = "setup_marathon_job.%s" % compose_job_id(
             fake_service, fake_instance
         )
+        fake_job_config = mock.Mock()
+        fake_job_config.get_monitoring.return_value = {}
+        fake_system_paasta_config = mock.Mock()
+
         with mock.patch(
             "paasta_tools.monitoring_tools.send_event", autospec=True
         ) as send_event_patch, mock.patch(
@@ -253,15 +259,15 @@ class TestSetupMarathonJob:
         ) as load_marathon_service_config_patch, mock.patch(
             "paasta_tools.setup_marathon_job.load_system_paasta_config", autospec=True
         ) as load_system_paasta_config_patch:
-            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(
-                return_value="fake_cluster"
-            )
-            load_marathon_service_config_patch.return_value.get_monitoring.return_value = (
-                {}
-            )
 
             setup_marathon_job.send_event(
-                fake_service, fake_instance, fake_soa_dir, fake_status, fake_output
+                fake_service,
+                fake_instance,
+                fake_soa_dir,
+                fake_status,
+                fake_output,
+                fake_system_paasta_config,
+                fake_job_config,
             )
 
             send_event_patch.assert_called_once_with(
@@ -271,14 +277,10 @@ class TestSetupMarathonJob:
                 fake_status,
                 fake_output,
                 fake_soa_dir,
+                system_paasta_config=fake_system_paasta_config,
             )
-            load_marathon_service_config_patch.assert_called_once_with(
-                fake_service,
-                fake_instance,
-                load_system_paasta_config_patch.return_value.get_cluster.return_value,
-                load_deployments=False,
-                soa_dir=fake_soa_dir,
-            )
+            assert load_marathon_service_config_patch.call_count == 0
+            assert load_system_paasta_config_patch.call_count == 0
 
     def test_do_bounce_when_create_app_and_new_app_not_running_but_already_created(
         self,
@@ -1402,7 +1404,9 @@ class TestSetupMarathonJob:
                 marathon_apps_with_clients=None,
                 soa_dir=None,
             )
-            format_marathon_app_dict_patch.assert_called_once_with()
+            format_marathon_app_dict_patch.assert_called_once_with(
+                system_paasta_config=None
+            )
             assert deploy_service_patch.call_count == 1
 
     def test_setup_service_srv_does_not_exist(self):
@@ -1488,7 +1492,9 @@ class TestSetupMarathonJob:
 
             get_bounce_patch.assert_called_once_with()
             get_bounce_margin_factor_patch.assert_called_once_with()
-            format_marathon_app_dict_patch.assert_called_once_with()
+            format_marathon_app_dict_patch.assert_called_once_with(
+                system_paasta_config=None
+            )
             get_drain_method_patch.assert_called_once_with(
                 read_namespace_conf_patch.return_value
             )
@@ -1510,6 +1516,7 @@ class TestSetupMarathonJob:
                 soa_dir=None,
                 bounce_margin_factor=fake_bounce_margin_factor,
                 job_config=self.fake_marathon_service_config,
+                system_paasta_config=None,
             )
 
     def test_setup_service_srv_complete_config_raises(self):
@@ -2027,6 +2034,7 @@ class TestSetupMarathonJob:
             side_effect=bounce_lib.LockHeldException,
         ):
             mock_clients: marathon_tools.MarathonClients = mock.Mock()
+            mock_system_paasta_config = mock.Mock()
             mock_marathon_apps_with_clients: List[
                 Tuple[MarathonApp, MarathonClient]
             ] = []
@@ -2036,6 +2044,7 @@ class TestSetupMarathonJob:
                 mock_clients,
                 "fake_soa",
                 mock_marathon_apps_with_clients,
+                mock_system_paasta_config,
             )
             assert not mock_setup_service.called
             assert ret == (0, None)

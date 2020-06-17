@@ -59,6 +59,7 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 MARATHON_FRAMEWORK_NAME_PREFIX = "marathon"
@@ -82,23 +83,30 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-def get_mesos_config_path():
+def get_mesos_config_path(
+    system_paasta_config: Optional[SystemPaastaConfig] = None,
+) -> str:
     """
     Determine where to find the configuration for mesos-cli.
     """
-    return (
-        load_system_paasta_config()
-        .get_mesos_cli_config()
-        .get("path", DEFAULT_MESOS_CLI_CONFIG_LOCATION)
+    if system_paasta_config is None:
+        system_paasta_config = load_system_paasta_config()
+
+    return system_paasta_config.get_mesos_cli_config().get(
+        "path", DEFAULT_MESOS_CLI_CONFIG_LOCATION
     )
 
 
-def get_mesos_config():
-    return load_mesos_config(get_mesos_config_path())
+def get_mesos_config(mesos_config_path: Optional[str] = None) -> Dict:
+    if mesos_config_path is None:
+        mesos_config_path = get_mesos_config_path()
+    return load_mesos_config(mesos_config_path)
 
 
-def get_mesos_master(**overrides: Any) -> MesosMaster:
-    config = get_mesos_config()
+def get_mesos_master(
+    mesos_config_path: Optional[str] = None, **overrides: Any
+) -> MesosMaster:
+    config = get_mesos_config(mesos_config_path)
     for k, v in overrides.items():
         config[k] = v
     return MesosMaster(config)
@@ -119,13 +127,13 @@ class MesosTailLines(NamedTuple):
     error_message: str
 
 
-def get_mesos_leader() -> str:
+def get_mesos_leader(mesos_config_path: Optional[str] = None) -> str:
     """Get the current mesos-master leader's hostname.
     Attempts to determine this by using mesos.cli to query ZooKeeper.
 
     :returns: The current mesos-master hostname"""
     try:
-        url = get_mesos_master().host
+        url = get_mesos_master(mesos_config_path).host
     except mesos_exceptions.MasterNotAvailableException:
         log.debug("mesos.cli failed to provide the master host")
         raise

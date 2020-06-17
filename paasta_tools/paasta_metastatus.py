@@ -39,6 +39,7 @@ from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState
+from paasta_tools.mesos_tools import get_mesos_config_path
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import is_mesos_available
@@ -327,7 +328,10 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         if args.use_mesos_cache:
             master_kwargs["use_mesos_cache"] = True
 
-        master = get_mesos_master(**master_kwargs)
+        master = get_mesos_master(
+            mesos_config_path=get_mesos_config_path(system_paasta_config),
+            **master_kwargs,
+        )
 
         marathon_servers = get_marathon_servers(system_paasta_config)
         marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))

@@ -203,7 +203,7 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_monitor_config(self):
         expected = "monitor_test_team"
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "paasta_tools.monitoring_tools._cached_read_service_configuration",
             autospec=True,
             return_value=self.fake_general_service_config,
         ) as service_configuration_lib_patch, mock.patch(
@@ -230,7 +230,7 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_service_config(self):
         expected = "general_test_team"
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "paasta_tools.monitoring_tools._cached_read_service_configuration",
             autospec=True,
             return_value=self.fake_general_service_config,
         ) as service_configuration_lib_patch, mock.patch(
@@ -257,7 +257,7 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_defaults(self):
         expected = None
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "paasta_tools.monitoring_tools._cached_read_service_configuration",
             autospec=True,
             return_value=self.empty_job_config,
         ) as service_configuration_lib_patch, mock.patch(

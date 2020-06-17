@@ -19,6 +19,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
 logging.getLogger("marathon").setLevel(logging.WARNING)
@@ -139,8 +140,10 @@ class LongRunningServiceConfig(InstanceConfig):
         """
         return self.get_service()
 
-    def get_env(self) -> Dict[str, str]:
-        env = super().get_env()
+    def get_env(
+        self, system_paasta_config: Optional[SystemPaastaConfig] = None
+    ) -> Dict[str, str]:
+        env = super().get_env(system_paasta_config=system_paasta_config)
         env["PAASTA_PORT"] = str(self.get_container_port())
         return env
 
@@ -370,10 +373,10 @@ def load_service_namespace_config(
     :returns: A dict of the above keys, if they were defined
     """
 
-    service_config = service_configuration_lib.read_service_configuration(
-        service_name=service, soa_dir=soa_dir
+    smartstack_config = service_configuration_lib.read_extra_service_information(
+        service_name=service, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False,
     )
-    smartstack_config = service_config.get("smartstack", {})
+
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
     service_namespace_config = ServiceNamespaceConfig()

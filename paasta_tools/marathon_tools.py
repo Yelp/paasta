@@ -631,7 +631,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         ]
         return routing_constraints
 
-    def format_marathon_app_dict(self) -> FormattedMarathonAppDict:
+    def format_marathon_app_dict(
+        self, system_paasta_config: Optional[SystemPaastaConfig] = None
+    ) -> FormattedMarathonAppDict:
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -658,8 +660,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
 
-        system_paasta_config = load_system_paasta_config()
-        docker_url = self.get_docker_url()
+        if system_paasta_config is None:
+            system_paasta_config = load_system_paasta_config()
+        docker_url = self.get_docker_url(system_paasta_config=system_paasta_config)
         service_namespace_config = load_service_namespace_config(
             service=self.service, namespace=self.get_nerve_namespace()
         )
@@ -674,7 +677,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
                 "docker": {
                     "image": docker_url,
                     "network": net,
-                    "parameters": self.format_docker_parameters(),
+                    "parameters": self.format_docker_parameters(
+                        system_paasta_config=system_paasta_config
+                    ),
                 },
                 "type": "DOCKER",
                 "volumes": docker_volumes,
@@ -697,7 +702,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             "health_checks": self.get_healthchecks(
                 service_namespace_config=service_namespace_config
             ),
-            "env": self.get_env(),
+            "env": self.get_env(system_paasta_config=system_paasta_config),
             "mem": float(self.get_mem()),
             "cpus": float(self.get_cpus()),
             "disk": float(self.get_disk()),
@@ -766,7 +771,9 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         }
         ahash["container"]["docker"][  # type: ignore
             "parameters"
-        ] = self.format_docker_parameters(with_labels=False)
+        ] = self.format_docker_parameters(
+            with_labels=False, system_paasta_config=system_paasta_config
+        )
         secret_hashes = get_secret_hashes(
             environment_variables=config["env"],
             secret_environment=system_paasta_config.get_vault_environment(),
@@ -1405,7 +1412,7 @@ def get_matching_appids(
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
     marathon_apps = get_all_marathon_apps(
-        client, service_name=service, embed_tasks=embed_tasks
+        client, service_name=service, instance_name=instance, embed_tasks=embed_tasks
     )
     return [
         app.id for app in marathon_apps if does_app_id_match(service, instance, app.id)
@@ -1444,12 +1451,14 @@ def does_app_id_match(service: str, instance: str, app_id: str) -> bool:
 def get_all_marathon_apps(
     client: MarathonClient,
     service_name: Optional[str] = None,
+    instance_name: Optional[str] = None,
     embed_tasks: bool = False,
 ) -> List[MarathonApp]:
     if service_name:
         return client.list_apps(
             embed_tasks=embed_tasks,
-            app_id="/" + format_job_id(service=service_name, instance=""),
+            app_id="/"
+            + format_job_id(service=service_name, instance=(instance_name or "")),
         )
     else:
         # Ignore apps inside a folder
@@ -1463,11 +1472,14 @@ def get_all_marathon_apps(
 def get_marathon_apps_with_clients(
     clients: Sequence[MarathonClient],
     service_name: Optional[str] = None,
+    instance_name: Optional[str] = None,
     embed_tasks: bool = False,
 ) -> Sequence[Tuple[MarathonApp, MarathonClient]]:
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]] = []
     for client in clients:
-        for app in get_all_marathon_apps(client, service_name, embed_tasks=embed_tasks):
+        for app in get_all_marathon_apps(
+            client, service_name, instance_name=instance_name, embed_tasks=embed_tasks
+        ):
             marathon_apps_with_clients.append((app, client))
     return marathon_apps_with_clients
 

@@ -298,7 +298,6 @@ class TestMarathonTools:
             "extra_advertise": {"alpha": ["beta"], "gamma": ["delta", "epsilon"]},
             "extra_healthcheck_headers": {"Host": "example.com"},
         }
-        fake_config = {"smartstack": {namespace: fake_info}}
         expected = {
             "healthcheck_mode": fake_healthcheck_mode,
             "healthcheck_uri": fake_uri,
@@ -326,14 +325,16 @@ class TestMarathonTools:
             "extra_healthcheck_headers": {"Host": "example.com"},
         }
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "service_configuration_lib.read_extra_service_information",
             autospec=True,
-            return_value=fake_config,
-        ) as read_service_configuration_patch:
+            return_value={namespace: fake_info},
+        ) as read_extra_service_information_patch:
             actual = marathon_tools.load_service_namespace_config(
                 name, namespace, soa_dir
             )
-            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            read_extra_service_information_patch.assert_called_once_with(
+                name, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False
+            )
             assert sorted(actual) == sorted(expected)
 
     def test_read_service_namespace_config_no_mode_with_no_smartstack(self):
@@ -342,30 +343,34 @@ class TestMarathonTools:
         soa_dir = "rid_aos"
         fake_config: Dict = {}
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "service_configuration_lib.read_extra_service_information",
             autospec=True,
             return_value=fake_config,
-        ) as read_service_configuration_patch:
+        ) as read_extra_service_information_patch:
             actual = marathon_tools.load_service_namespace_config(
                 name, namespace, soa_dir
             )
-            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            read_extra_service_information_patch.assert_called_once_with(
+                name, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False
+            )
             assert actual.get("mode") is None
 
     def test_read_service_namespace_config_no_mode_with_smartstack(self):
         name = "eman"
         namespace = "ecapseman"
         soa_dir = "rid_aos"
-        fake_config = {"smartstack": {namespace: {"proxy_port": 9001}}}
+        fake_smartstack_config = {namespace: {"proxy_port": 9001}}
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "service_configuration_lib.read_extra_service_information",
             autospec=True,
-            return_value=fake_config,
-        ) as read_service_configuration_patch:
+            return_value=fake_smartstack_config,
+        ) as read_extra_service_information_patch:
             actual = marathon_tools.load_service_namespace_config(
                 name, namespace, soa_dir
             )
-            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            read_extra_service_information_patch.assert_called_once_with(
+                name, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False
+            )
             assert actual.get("mode") == "http"
 
     def test_read_service_namespace_config_no_file(self):
@@ -374,13 +379,15 @@ class TestMarathonTools:
         soa_dir = "an_adventure"
 
         with mock.patch(
-            "service_configuration_lib.read_service_configuration",
+            "service_configuration_lib.read_extra_service_information",
             side_effect=Exception,
             autospec=True,
-        ) as read_service_configuration_patch:
+        ) as read_extra_service_information_patch:
             with raises(Exception):
                 marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
-            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            read_extra_service_information_patch.assert_called_once_with(
+                name, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False
+            )
 
     @mock.patch("paasta_tools.mesos_tools.get_local_slave_state", autospec=True)
     def test_marathon_services_running_here(self, mock_get_local_slave_state):
@@ -1119,12 +1126,13 @@ class TestMarathonTools:
                 },
                 "/foo",
             ),
-        ):
+        ) as load_system_paasta_config_patch:
             actual = config.format_marathon_app_dict()
             assert actual == expected_conf
 
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
+            assert load_system_paasta_config_patch.call_count == 1
 
     def test_get_desired_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
