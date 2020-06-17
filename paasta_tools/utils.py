@@ -2409,7 +2409,7 @@ def _run(
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
     magic.
     """
-    output = []
+    output: List[str] = []
     if log:
         service = kwargs["service"]
         component = kwargs["component"]
@@ -2439,14 +2439,11 @@ def _run(
         if timeout:
             proctimer = threading.Timer(timeout, _timeout, [process])
             proctimer.start()
+
+        outfn: Any = print if stream else output.append
         for linebytes in iter(process.stdout.readline, b""):
             line = linebytes.decode("utf-8", errors="replace").rstrip("\n")
-            linebytes = linebytes.strip(b"\n")
-            # additional indentation is for the paasta status command only
-            if stream:
-                print(linebytes)
-            else:
-                output.append(line)
+            outfn(line)
 
             if log:
                 _log(
