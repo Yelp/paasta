@@ -237,6 +237,7 @@ class TronActionConfig(InstanceConfig):
                     service=self.get_service(),
                     aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
                 ),
+                needs_docker_cfg=True,
             )
         else:
             spark_env = get_k8s_spark_env(

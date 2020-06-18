@@ -126,6 +126,7 @@ class TestTronActionConfig:
                 spark_ui_port=12345,
                 user_spark_opts={"spark.eventLog.enabled": "false"},
                 volumes=["/nail/tmp:/nail/tmp:rw"],
+                needs_docker_cfg=True,
             )
 
     def test_get_spark_config_dict_k8s(self, spark_action_config):
