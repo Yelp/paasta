@@ -32,6 +32,7 @@ def disable(args: argparse.Namespace) -> None:
     state = {
         'state': {'S': AUTOSCALER_PAUSED},
         'entity': {'S': f'{args.cluster}.{args.pool}.{args.scheduler}'},
+        'timestamp': {'N':  str(int(time.time()))},
     }
     if args.until:
         state['expiration_timestamp'] = {'N': str(parse_time_string(args.until).timestamp)}
