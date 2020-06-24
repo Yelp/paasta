@@ -1591,7 +1591,7 @@ def format_tail_lines_for_kubernetes_pod(
             )
             rows.append(PaastaColors.red(f"  {container.tail_lines.error_message}"))
 
-        for stream_name in ("Stdout", "stderr"):
+        for stream_name in ("stdout", "stderr"):
             stream_lines = getattr(container.tail_lines, stream_name, [])
             if len(stream_lines) > 0:
                 rows.append(
