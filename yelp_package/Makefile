@@ -47,9 +47,9 @@ itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 package_%: build_$$*_docker
-	rm -rf ../bin && \
-	mkdir -p ../bin && \
-	GO111MODULE=on GOBIN=`pwd`/../bin go get -v github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.3 && \
+	rm -rf ../bin
+	mkdir -p ../bin
+	GO111MODULE=on GOBIN=`pwd`/../bin go get -v github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.3
 	test -x ../bin/paasta
 
 	# Copy these files to .old before maybe clobbering them
