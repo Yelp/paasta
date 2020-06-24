@@ -47,6 +47,11 @@ itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 package_%: build_$$*_docker
+	rm -rf ../bin && \
+	mkdir -p ../bin && \
+	GO111MODULE=on GOBIN=`pwd`/../bin go get -v github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.3 && \
+	test -x ../bin/paasta
+
 	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old
@@ -56,11 +61,10 @@ package_%: build_$$*_docker
 
 	# noddebs to work around https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=897569
 	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"
+	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
-	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
-
 
 DATE := $(shell date +'%Y-%m-%d' -d "`dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`")
 PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
