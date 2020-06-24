@@ -424,6 +424,7 @@ def get_spark_config(
         # instance_type:m4.10xlarge\;pool:default
         "spark.mesos.constraints": "pool:%s" % args.pool,
         "spark.mesos.executor.docker.forcePullImage": "true",
+        "spark.mesos.role": "spark",
     }
 
     default_event_log_dir = get_default_event_log_dir(
