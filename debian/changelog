@@ -1,3 +1,10 @@
+paasta-tools (0.96.18) xenial; urgency=medium
+
+  * 0.96.18 tagged with 'make release'
+    Commit: Specify mesos role on spark-run jobs. PAASTA-16736
+
+ -- Evan Krall <krall@yelp.com>  Thu, 25 Jun 2020 11:07:47 -0700
+
 paasta-tools (0.96.17) xenial; urgency=medium
 
   * 0.96.17 tagged with 'make release'
