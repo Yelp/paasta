@@ -1287,7 +1287,11 @@ class TestKubernetesDeploymentConfig:
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
+            "autoscaling": {
+                "metrics_provider": "mesos_cpu",
+                "setpoint": 0.5,
+                "offset": 0.1,
+            },
         }
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
@@ -1312,7 +1316,7 @@ class TestKubernetesDeploymentConfig:
                     V2beta1MetricSpec(
                         type="Resource",
                         resource=V2beta1ResourceMetricSource(
-                            name="cpu", target_average_utilization=50.0
+                            name="cpu", target_average_utilization=60.0
                         ),
                     )
                 ],
@@ -1328,7 +1332,11 @@ class TestKubernetesDeploymentConfig:
         config_dict = {
             "min_instances": 1,
             "max_instances": 3,
-            "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
+            "autoscaling": {
+                "metrics_provider": "http",
+                "setpoint": 0.5,
+                "offset": 0.25,
+            },
         }
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
@@ -1354,7 +1362,7 @@ class TestKubernetesDeploymentConfig:
                         type="Pods",
                         pods=V2beta1PodsMetricSource(
                             metric_name="http",
-                            target_average_value=0.5,
+                            target_average_value=0.75,
                             selector=V1LabelSelector(
                                 match_labels={"paasta_cluster": "cluster"}
                             ),

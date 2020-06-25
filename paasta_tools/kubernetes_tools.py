@@ -517,7 +517,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         autoscaling_params = self.get_autoscaling_params()
         metrics_provider = autoscaling_params["metrics_provider"]
         metrics = []
-        target = autoscaling_params["setpoint"]
+        target = autoscaling_params["setpoint"] + autoscaling_params.get("offset", 0)
         annotations: Dict[str, str] = {}
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         if metrics_provider == "mesos_cpu":
