@@ -40,8 +40,6 @@ before_install:
   - sudo apt-get update
   - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-ce=18.03.1~ce-0~ubuntu devscripts --force-yes
   - eval "$(gimme 1.13.1)"
-  - which go
-  - go version
   - 'if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" -a "$DOCKER_USERNAME" != "" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi'
 install:
   - pip install coveralls tox==3.2 tox-pip-extensions==1.3.0 ephemeral-port-reserve
@@ -50,7 +48,7 @@ install:
   # It seems as though we're hitting https://github.com/pypa/pip/issues/6275
   # I also don't understand why but running setup.py egg_info is a workaround that appears to fix things
   - python setup.py egg_info
-script: which go; go version; if [[ -n "$MAKE_TARGET" ]]; then make "$MAKE_TARGET"; else tox -i https://pypi.python.org/simple; fi
+script: if [[ -n "$MAKE_TARGET" ]]; then make "$MAKE_TARGET"; else tox -i https://pypi.python.org/simple; fi
 after_success:
   - coveralls
 before_deploy:
