@@ -500,6 +500,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
         )
 
+    # TODO: maybe move should_have_hpa in here?
     def get_autoscaling_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
@@ -1710,6 +1711,7 @@ def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
         )
 
 
+# TODO: move this onto the Config class
 def pod_disruption_budget_for_service_instance(
     service: str, instance: str, max_unavailable: Union[str, int],
 ) -> V1beta1PodDisruptionBudget:

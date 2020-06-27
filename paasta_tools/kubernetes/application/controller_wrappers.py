@@ -51,6 +51,8 @@ class Application(ABC):
         }
         self.kube_deployment = KubeDeployment(replicas=item.spec.replicas, **attrs)
         self.item = item
+        self.pdr = None  # TODO: type
+        self.hpa = None  # TODO: type
         self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging
 
@@ -120,9 +122,11 @@ class Application(ABC):
                 )
             )
 
-    def ensure_pod_disruption_budget(
-        self, kube_client: KubeClient
-    ) -> V1beta1PodDisruptionBudget:
+    # TODO: name is weird since
+    def build_pod_disruption_budget(self):
+        if self.pdr:
+            return self.pdr
+
         max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
             max_unavailable = (
@@ -132,14 +136,33 @@ class Application(ABC):
             system_paasta_config = load_system_paasta_config()
             max_unavailable = system_paasta_config.get_pdb_max_unavailable()
 
-        pdr = pod_disruption_budget_for_service_instance(
+        self.pdr = pod_disruption_budget_for_service_instance(
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
             max_unavailable=max_unavailable,
         )
+        return self.pdr
+
+    # TODO: this needs to consider whether autoscaling is paused to get the
+    # final form
+    def build_horizontal_pod_autoscaler(self):
+        if self.hpa:
+            return self.hpa
+
+        self.load_local_config()
+        self.hpa = self.soa_config.get_autoscaling_metric_spec(
+            name=self.item.metadata.name,
+            cluster=self.soa_config.cluster,
+            namespace=self.item.metadata.namespace,
+        )
+        return self.hpa
+
+    def ensure_pod_disruption_budget(
+        self, kube_client: KubeClient
+    ) -> V1beta1PodDisruptionBudget:
         try:
             existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
-                name=pdr.metadata.name, namespace=pdr.metadata.namespace
+                name=pdr.metadata.name, namespace=self.pdr.metadata.namespace
             )
         except ApiException as e:
             if e.status == 404:
@@ -153,17 +176,17 @@ class Application(ABC):
                     "Not updating poddisruptionbudget: can't have both "
                     "min_available and max_unavailable"
                 )
-            elif existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable:
-                logging.debug(f"Updating poddisruptionbudget {pdr.metadata.name}")
+            elif existing_pdr.spec.max_unavailable != self.pdr.spec.max_unavailable:
+                logging.debug(f"Updating poddisruptionbudget {self.pdr.metadata.name}")
                 return kube_client.policy.patch_namespaced_pod_disruption_budget(
-                    name=pdr.metadata.name, namespace=pdr.metadata.namespace, body=pdr
+                    name=self.pdr.metadata.name, namespace=self.pdr.metadata.namespace, body=self.pdr
                 )
             else:
-                logging.debug(f"poddisruptionbudget {pdr.metadata.name} up to date")
+                logging.debug(f"poddisruptionbudget {self.pdr.metadata.name} up to date")
         else:
-            logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
+            logging.debug(f"creating poddisruptionbudget {self.pdr.metadata.name}")
             return create_pod_disruption_budget(
-                kube_client=kube_client, pod_disruption_budget=pdr
+                kube_client=kube_client, pod_disruption_budget=self.pdr
             )
 
 
@@ -293,17 +316,13 @@ class DeploymentWrapper(Application):
                     f"HPA will not scale down service."
                 )
                 self.soa_config.set_min_instances(self.item.spec.replicas)
-                mark_deployment_as_paused(kube_client, self.soa_config, self.item, True)
+                mark_deployment_as_paused(kube_client, self.soa_config, self.item, paused=True)
             elif is_deployment_marked_paused(kube_client, self.soa_config):
                 mark_deployment_as_paused(
-                    kube_client, self.soa_config, self.item, False
+                    kube_client, self.soa_config, self.item, paused=False
                 )
 
-        body = self.soa_config.get_autoscaling_metric_spec(
-            name=self.item.metadata.name,
-            cluster=self.soa_config.cluster,
-            namespace=self.item.metadata.namespace,
-        )
+        body = self.build_horizontal_pod_autoscaler()
         if not body:
             self.logging.info(
                 f"CRIT: autoscaling misconfigured for {self.kube_deployment.service}."

@@ -120,6 +120,10 @@ def setup_kube_deployments(
             (deployment.service, deployment.instance)
             for deployment in existing_kube_deployments
         }
+        # NOTE: will probably need some sort of comparison function
+        # NOTE: e.g. `hpa_should_be_updated()`
+        existing_pdrs = None  # TODO
+        existing_hpas = None  # TODO
     service_instances_with_valid_names = [
         decompose_job_id(service_instance)
         for service_instance in service_instances
@@ -136,6 +140,8 @@ def setup_kube_deployments(
         for service_instance in service_instances_with_valid_names
     ]
 
+    import pdb; pdb.set_trace()
+
     apps_updated = []
     for _, app in applications:
         if app:
@@ -145,20 +151,20 @@ def setup_kube_deployments(
                 app.kube_deployment.instance,
             ) not in existing_apps:
                 log.info(f"Creating {app} because it does not exist yet.")
-                app.create(kube_client)
+                # app.create(kube_client)
             elif app.kube_deployment not in existing_kube_deployments:
                 log.info(f"Updating {app} because configs have changed.")
-                app.update(kube_client)
+                # app.update(kube_client)
             elif autoscaling_is_paused() and not is_deployment_marked_paused(
                 kube_client, app.soa_config
             ):
                 log.info(f"Updating {app} because autoscaler needs to be paused.")
-                app.update(kube_client)
+                # app.update(kube_client)
             elif not autoscaling_is_paused() and is_deployment_marked_paused(
                 kube_client, app.soa_config
             ):
                 log.info(f"Updating {app} because autoscaler needs to be resumed.")
-                app.update(kube_client)
+                # app.update(kube_client)
             else:
                 log.debug(f"{app} is up to date, no action taken")
                 apps_updated.pop()
