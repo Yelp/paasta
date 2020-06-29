@@ -1,3 +1,19 @@
+paasta-tools (0.96.19) xenial; urgency=medium
+
+  * 0.96.19 tagged with 'make release'
+    Commit: Merge pull request #2854 from chrislan815/u/clan/service-
+    configuration-lib==2.4.6  service-configuration-lib==2.4.6
+
+ -- Chris Lan <clan@yelp.com>  Mon, 29 Jun 2020 15:23:06 -0700
+
+paasta-tools (0.96.18) xenial; urgency=medium
+
+  * 0.96.18 tagged with 'make release'
+    Commit: Merge pull request #2854 from chrislan815/u/clan/service-
+    configuration-lib==2.4.6  service-configuration-lib==2.4.6
+
+ -- Chris Lan <clan@yelp.com>  Mon, 29 Jun 2020 15:22:47 -0700
+
 paasta-tools (0.96.18) xenial; urgency=medium
 
   * 0.96.18 tagged with 'make release'
