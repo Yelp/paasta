@@ -13,8 +13,6 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
-from paasta_tools.autoscaling.autoscaling_service_lib import is_deployment_marked_paused
-from paasta_tools.autoscaling.autoscaling_service_lib import mark_deployment_as_paused
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
@@ -95,6 +93,13 @@ class Application(ABC):
         """
         pass
 
+    def update_related_api_objects(self, kube_client: KubeClient) -> None:
+        """
+        Update related Kubernetes API objects such as HPAs and Pod Disruption Budgets
+        :param kube_client:
+        """
+        self.ensure_pod_disruption_budget(kube_client)
+
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
             kube_client.policy.delete_namespaced_pod_disruption_budget(
@@ -149,19 +154,19 @@ class Application(ABC):
 
         if existing_pdr:
             if existing_pdr.spec.min_available is not None:
-                logging.debug(
+                logging.info(
                     "Not updating poddisruptionbudget: can't have both "
                     "min_available and max_unavailable"
                 )
             elif existing_pdr.spec.max_unavailable != pdr.spec.max_unavailable:
-                logging.debug(f"Updating poddisruptionbudget {pdr.metadata.name}")
+                logging.info(f"Updating poddisruptionbudget {pdr.metadata.name}")
                 return kube_client.policy.patch_namespaced_pod_disruption_budget(
                     name=pdr.metadata.name, namespace=pdr.metadata.namespace, body=pdr
                 )
             else:
-                logging.debug(f"poddisruptionbudget {pdr.metadata.name} up to date")
+                logging.info(f"poddisruptionbudget {pdr.metadata.name} up to date")
         else:
-            logging.debug(f"creating poddisruptionbudget {pdr.metadata.name}")
+            logging.info(f"creating poddisruptionbudget {pdr.metadata.name}")
             return create_pod_disruption_budget(
                 kube_client=kube_client, pod_disruption_budget=pdr
             )
@@ -259,7 +264,10 @@ class DeploymentWrapper(Application):
             ).start()
             return
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
-        self.ensure_pod_disruption_budget(kube_client)
+        self.update_related_api_objects(kube_client)
+
+    def update_related_api_objects(self, kube_client: KubeClient) -> None:
+        super().update_related_api_objects(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
     def should_have_hpa(self):
@@ -293,11 +301,6 @@ class DeploymentWrapper(Application):
                     f"HPA will not scale down service."
                 )
                 self.soa_config.set_min_instances(self.item.spec.replicas)
-                mark_deployment_as_paused(kube_client, self.soa_config, self.item, True)
-            elif is_deployment_marked_paused(kube_client, self.soa_config):
-                mark_deployment_as_paused(
-                    kube_client, self.soa_config, self.item, False
-                )
 
         body = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name,
@@ -402,7 +405,7 @@ class StatefulSetWrapper(Application):
 
     def update(self, kube_client: KubeClient):
         update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
-        self.ensure_pod_disruption_budget(kube_client)
+        self.update_related_api_objects(kube_client)
 
 
 def get_application_wrapper(

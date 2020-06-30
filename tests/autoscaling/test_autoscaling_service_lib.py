@@ -24,7 +24,6 @@ from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.autoscaling.autoscaling_service_lib import filter_autoscaling_tasks
-from paasta_tools.autoscaling.autoscaling_service_lib import is_deployment_marked_paused
 from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -1890,15 +1889,3 @@ def test_autoscale_service_configs():
             mock_marathon_tasks,
             mock_mesos_tasks,
         )
-
-
-@pytest.mark.parametrize(
-    "given_annotations, is_marked_paused", [({"is_paused": "True"}, True), ({}, False),]
-)
-def test_is_deployment_marked_paused(given_annotations, is_marked_paused):
-    with mock.patch(
-        "paasta_tools.autoscaling.autoscaling_service_lib.get_annotations_for_kubernetes_service",
-        autospec=True,
-        return_value=given_annotations,
-    ):
-        assert is_deployment_marked_paused(mock.Mock(), mock.Mock()) is is_marked_paused
