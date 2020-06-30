@@ -209,9 +209,9 @@ def parse_args() -> argparse.Namespace:
         choices=["mesos", "kubernetes"],
     )
     parser.add_argument(
-        "--namespace",
-        help="namespace of the kubernetes",
-        dest="namespace",
+        "--namespace-prefix",
+        help="prefix of the namespace to fetch the logs for",
+        dest="namespace_prefix",
         default="paasta",
     )
     return parser.parse_args()
@@ -219,7 +219,15 @@ def parse_args() -> argparse.Namespace:
 
 def main(args: argparse.Namespace) -> None:
     cluster = load_system_paasta_config().get_cluster()
-    info_list = get_task_allocation_info(args.scheduler, args.namespace)
+    client = KubeClient()
+    all_namespaces = kubernetes_tools.get_all_namespaces(client)
+    matching_namespaces = [n for n in all_namespaces if args.namespace_prefix in n]
+    for matching_namespace in matching_namespaces:
+        display_task_allocation_info(cluster, args.scheduler, matching_namespace)
+
+
+def display_task_allocation_info(cluster, scheduler, namespace):
+    info_list = get_task_allocation_info(scheduler, namespace)
     timestamp = time.time()
     for info in info_list:
         info_dict = info._asdict()
