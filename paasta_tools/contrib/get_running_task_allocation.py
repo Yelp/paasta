@@ -142,7 +142,9 @@ def get_container_type(container_name: str, instance_name: str) -> str:
     """
     To differentiate between main service containers and sidecars
     """
-    if instance_name and container_name == kubernetes_tools.sanitise_kubernetes_name(instance_name):
+    if instance_name and container_name == kubernetes_tools.sanitise_kubernetes_name(
+        instance_name
+    ):
         return MAIN_CONTAINER_TYPE
     else:
         return container_name
@@ -214,8 +216,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--namespace-prefix",
-        help="prefix of the namespace to fetch the logs for" \
-	    "Used only when scheduler is kubernetes",
+        help="prefix of the namespace to fetch the logs for"
+        "Used only when scheduler is kubernetes",
         dest="namespace_prefix",
         default="paasta",
     )
@@ -229,7 +231,7 @@ def main(args: argparse.Namespace) -> None:
     else:
         client = KubeClient()
         all_namespaces = kubernetes_tools.get_all_namespaces(client)
-        matching_namespaces = [n for n in all_namespaces if args.namespace_prefix in n]
+        matching_namespaces = [n for n in all_namespaces if n.startswith(args.namespace_prefix)]
         for matching_namespace in matching_namespaces:
             display_task_allocation_info(cluster, args.scheduler, matching_namespace)
 
