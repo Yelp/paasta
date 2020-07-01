@@ -142,7 +142,7 @@ def get_container_type(container_name: str, instance_name: str) -> str:
     """
     To differentiate between main service containers and sidecars
     """
-    if container_name == kubernetes_tools.sanitise_kubernetes_name(instance_name):
+    if instance_name and container_name == kubernetes_tools.sanitise_kubernetes_name(instance_name):
         return MAIN_CONTAINER_TYPE
     else:
         return container_name
@@ -214,7 +214,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--namespace-prefix",
-        help="prefix of the namespace to fetch the logs for",
+        help="prefix of the namespace to fetch the logs for" \
+	    "Used only when scheduler is kubernetes",
         dest="namespace_prefix",
         default="paasta",
     )
@@ -223,11 +224,14 @@ def parse_args() -> argparse.Namespace:
 
 def main(args: argparse.Namespace) -> None:
     cluster = load_system_paasta_config().get_cluster()
-    client = KubeClient()
-    all_namespaces = kubernetes_tools.get_all_namespaces(client)
-    matching_namespaces = [n for n in all_namespaces if args.namespace_prefix in n]
-    for matching_namespace in matching_namespaces:
-        display_task_allocation_info(cluster, args.scheduler, matching_namespace)
+    if args.scheduler == "mesos":
+        display_task_allocation_info(cluster, args.scheduler, args.namespace_prefix)
+    else:
+        client = KubeClient()
+        all_namespaces = kubernetes_tools.get_all_namespaces(client)
+        matching_namespaces = [n for n in all_namespaces if args.namespace_prefix in n]
+        for matching_namespace in matching_namespaces:
+            display_task_allocation_info(cluster, args.scheduler, matching_namespace)
 
 
 def display_task_allocation_info(cluster, scheduler, namespace):
