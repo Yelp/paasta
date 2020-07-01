@@ -101,7 +101,9 @@ async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
     return info_list
 
 
-def get_all_running_kubernetes_pods(kube_client: KubeClient, namespace: str) -> Iterable[V1Pod]:
+def get_all_running_kubernetes_pods(
+    kube_client: KubeClient, namespace: str
+) -> Iterable[V1Pod]:
     running = []
     for pod in kubernetes_tools.get_all_pods(kube_client, namespace):
         if kubernetes_tools.get_pod_status(pod) == kubernetes_tools.PodStatus.RUNNING:
@@ -190,7 +192,9 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
     return info_list
 
 
-def get_task_allocation_info(scheduler: str, namespace: str) -> Iterable[TaskAllocationInfo]:
+def get_task_allocation_info(
+    scheduler: str, namespace: str
+) -> Iterable[TaskAllocationInfo]:
     if scheduler == "mesos":
         return get_mesos_task_allocation_info()
     elif scheduler == "kubernetes":
