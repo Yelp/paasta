@@ -1469,7 +1469,7 @@ def force_delete_pods(
         )
 
 
-def get_all_namespaces(kube_client: KubeClient) -> [str]:
+def get_all_namespaces(kube_client: KubeClient) -> List[str]:
     namespaces = kube_client.core.list_namespace()
     return [item.metadata.name for item in namespaces.items]
 
