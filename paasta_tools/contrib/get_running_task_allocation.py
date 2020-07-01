@@ -231,7 +231,9 @@ def main(args: argparse.Namespace) -> None:
     else:
         client = KubeClient()
         all_namespaces = kubernetes_tools.get_all_namespaces(client)
-        matching_namespaces = [n for n in all_namespaces if n.startswith(args.namespace_prefix)]
+        matching_namespaces = [
+            n for n in all_namespaces if n.startswith(args.namespace_prefix)
+        ]
         for matching_namespace in matching_namespaces:
             display_task_allocation_info(cluster, args.scheduler, matching_namespace)
 
