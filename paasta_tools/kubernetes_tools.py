@@ -1469,6 +1469,11 @@ def force_delete_pods(
         )
 
 
+def get_all_namespaces(kube_client: KubeClient) -> List[str]:
+    namespaces = kube_client.core.list_namespace()
+    return [item.metadata.name for item in namespaces.items]
+
+
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(name=namespace, labels={"name": namespace})
@@ -2283,6 +2288,8 @@ def create_kubernetes_secret_signature(
 
 
 def sanitise_kubernetes_name(service: str,) -> str:
+    if not service:
+        return service
     name = service.replace("_", "--")
     if name.startswith("--"):
         name = name.replace("--", "underscore-", 1)

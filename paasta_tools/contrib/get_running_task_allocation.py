@@ -101,9 +101,11 @@ async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
     return info_list
 
 
-def get_all_running_kubernetes_pods(kube_client: KubeClient,) -> Iterable[V1Pod]:
+def get_all_running_kubernetes_pods(
+    kube_client: KubeClient, namespace: str
+) -> Iterable[V1Pod]:
     running = []
-    for pod in kubernetes_tools.get_all_pods(kube_client):
+    for pod in kubernetes_tools.get_all_pods(kube_client, namespace):
         if kubernetes_tools.get_pod_status(pod) == kubernetes_tools.PodStatus.RUNNING:
             running.append(pod)
     return running
@@ -146,9 +148,9 @@ def get_container_type(container_name: str, instance_name: str) -> str:
         return container_name
 
 
-def get_kubernetes_task_allocation_info() -> Iterable[TaskAllocationInfo]:
+def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocationInfo]:
     client = KubeClient()
-    pods = get_all_running_kubernetes_pods(client)
+    pods = get_all_running_kubernetes_pods(client, namespace)
     info_list = []
     for pod in pods:
         service, instance, pool = get_kubernetes_metadata(pod)
@@ -190,11 +192,13 @@ def get_kubernetes_task_allocation_info() -> Iterable[TaskAllocationInfo]:
     return info_list
 
 
-def get_task_allocation_info(scheduler: str) -> Iterable[TaskAllocationInfo]:
+def get_task_allocation_info(
+    scheduler: str, namespace: str
+) -> Iterable[TaskAllocationInfo]:
     if scheduler == "mesos":
         return get_mesos_task_allocation_info()
     elif scheduler == "kubernetes":
-        return get_kubernetes_task_allocation_info()
+        return get_kubernetes_task_allocation_info(namespace)
     else:
         return []
 
@@ -208,12 +212,26 @@ def parse_args() -> argparse.Namespace:
         default="mesos",
         choices=["mesos", "kubernetes"],
     )
+    parser.add_argument(
+        "--namespace-prefix",
+        help="prefix of the namespace to fetch the logs for",
+        dest="namespace_prefix",
+        default="paasta",
+    )
     return parser.parse_args()
 
 
 def main(args: argparse.Namespace) -> None:
     cluster = load_system_paasta_config().get_cluster()
-    info_list = get_task_allocation_info(args.scheduler)
+    client = KubeClient()
+    all_namespaces = kubernetes_tools.get_all_namespaces(client)
+    matching_namespaces = [n for n in all_namespaces if args.namespace_prefix in n]
+    for matching_namespace in matching_namespaces:
+        display_task_allocation_info(cluster, args.scheduler, matching_namespace)
+
+
+def display_task_allocation_info(cluster, scheduler, namespace):
+    info_list = get_task_allocation_info(scheduler, namespace)
     timestamp = time.time()
     for info in info_list:
         info_dict = info._asdict()
