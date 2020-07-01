@@ -529,30 +529,46 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
-        elif metrics_provider == "http":
+        elif metrics_provider in ("http", "uwsgi"):
             annotations = {"signalfx.com.custom.metrics": ""}
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Pods",
-                    pods=V2beta1PodsMetricSource(
-                        metric_name="http",
-                        target_average_value=target,
-                        selector=selector,
-                    ),
+            if (
+                autoscaling_params.get("forecast_policy") == "moving_average"
+                or "offset" in autoscaling_params
+            ):
+                hpa_metric_name = (
+                    f"{self.get_sanitised_deployment_name()}-{metrics_provider}"
                 )
-            )
-        elif metrics_provider == "uwsgi":
-            annotations = {"signalfx.com.custom.metrics": ""}
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Pods",
-                    pods=V2beta1PodsMetricSource(
-                        metric_name="uwsgi",
-                        target_average_value=target,
-                        selector=selector,
-                    ),
+                metrics.append(
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name=hpa_metric_name,
+                            target_value=target - autoscaling_params.get("offset", 0),
+                        ),
+                    )
                 )
-            )
+                signalflow = self.build_signalflow_for_autoscaling(
+                    signalfx_metric_name=metrics_provider,
+                    moving_average_window_seconds=autoscaling_params.get(
+                        "moving_average_window_seconds"
+                    ),
+                    offset=autoscaling_params.get("offset"),
+                )
+                annotations[
+                    f"signalfx.com.external.metric/{hpa_metric_name}"
+                ] = signalflow
+            else:
+                metrics.append(
+                    V2beta1MetricSpec(
+                        type="Pods",
+                        pods=V2beta1PodsMetricSource(
+                            metric_name=metrics_provider,
+                            target_average_value=target,
+                            selector=selector,
+                        ),
+                    )
+                )
+
         else:
             log.error(
                 f"Wrong metrics specified: {metrics_provider} for\
@@ -574,6 +590,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ),
         )
+
+    def build_signalflow_for_autoscaling(
+        self,
+        signalfx_metric_name: str,
+        moving_average_window_seconds: Optional[int],
+        offset: Optional[float],
+    ) -> str:
+        filters = (
+            f"filter('paasta_cluster', '{self.get_cluster()}') and "
+            f"filter('paasta_service', '{self.get_service()}') and "
+            f"filter('paasta_instance', '{self.get_instance()}')"
+        )
+        signalflow = f"data('{signalfx_metric_name}', filter={filters}).mean()"
+
+        if moving_average_window_seconds is not None:
+            signalflow += f".mean(over={moving_average_window_seconds}s)"
+        if offset is not None:
+            signalflow = f"({signalflow} - {offset})"
+
+        return signalflow + ".publish()"
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method

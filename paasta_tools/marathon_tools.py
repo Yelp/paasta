@@ -218,6 +218,9 @@ class AutoscalingParamsDict(TypedDict, total=False):
     metrics_provider: str
     decision_policy: str
     setpoint: float
+    forecast_policy: Optional[str]
+    offset: Optional[float]
+    moving_average_window_seconds: Optional[int]
 
 
 class MarathonServiceConfigDict(LongRunningServiceConfigDict, total=False):
