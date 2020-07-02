@@ -26,10 +26,12 @@ ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
 	ACTUAL_PACKAGE_VERSION=$(RELEASE)-yelp1
 	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
+	GO_BUILD_FLAGS=-tags yelp -modfile int.mod
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
 	ACTUAL_PACKAGE_VERSION=$(RELEASE)~$*1
 	ADD_VERSION_SUFFIX=dch -b -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
+	GO_BUILD_FLAGS=
 endif
 
 build_%_docker:
@@ -46,12 +48,15 @@ build_%_docker:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-package_%: build_$$*_docker
-	rm -rf ../bin
-	mkdir -p ../bin
-	GO111MODULE=on GOBIN=`pwd`/../bin go get -v github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.3
-	test -x ../bin/paasta
+GOPATH=$(CURDIR)/gopath
+go_entrypoint:
+	mkdir -p $(GOPATH)
+	GOPATH=$(GOPATH) GO111MODULE=on go get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.4-rc1
+	cd $(GOPATH)/pkg/mod/github.com/\!yelp/paasta-tools-go@v0.0.4-rc1 && \
+		GOPATH=$(GOPATH) go build $(GO_BUILD_FLAGS) -v -o $(GOPATH)/paasta_go ./cmd/paasta
+	test -x paasta
 
+package_%: build_$$*_docker go_entrypoint
 	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old

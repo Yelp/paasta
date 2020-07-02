@@ -26,4 +26,4 @@ override_dh_virtualenv:
 		--preinstall no-manylinux1 \
 		--preinstall=-rrequirements-bootstrap.txt \
 		--pip-tool pip-custom-platform
-	cp bin/paasta $(DH_VENV_DIR)/bin/paasta_go
+	cp yelp_package/gopath/paasta_go $(DH_VENV_DIR)/bin/paasta_go
