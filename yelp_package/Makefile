@@ -49,12 +49,14 @@ itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 GOPATH=$(CURDIR)/gopath
+GOCMD=GOPATH=$(GOPATH) GO111MODULE=on go
 go_entrypoint:
 	mkdir -p $(GOPATH)
-	GOPATH=$(GOPATH) GO111MODULE=on go get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.4-rc1
+	$(GOCMD) get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.4-rc1
+	chmod -R +rw $(GOPATH)
 	cd $(GOPATH)/pkg/mod/github.com/\!yelp/paasta-tools-go@v0.0.4-rc1 && \
-		GOPATH=$(GOPATH) go build $(GO_BUILD_FLAGS) -v -o $(GOPATH)/paasta_go ./cmd/paasta
-	test -x paasta
+		$(GOCMD) build $(GO_BUILD_FLAGS) -v -o $(GOPATH)/paasta_go ./cmd/paasta
+	test -x $(GOPATH)/paasta_go
 
 package_%: build_$$*_docker go_entrypoint
 	# Copy these files to .old before maybe clobbering them
