@@ -1,3 +1,12 @@
+paasta-tools (0.96.20) xenial; urgency=medium
+
+  * 0.96.20 tagged with 'make release'
+    Commit: Merge pull request #2856 from Yelp/PAASTA-
+    16675_update_hpa_on_deploy  Always sync HPAs and Pod Disruption
+    Budgets in setup_kubernetes_job
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 06 Jul 2020 11:18:11 -0700
+
 paasta-tools (0.96.19) xenial; urgency=medium
 
   * 0.96.19 tagged with 'make release'
