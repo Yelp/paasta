@@ -35,7 +35,7 @@ PyYAML==5.1.2
 requests==2.22.0
 requests-oauthlib==1.2.0
 retry==0.9.2
-rsa==4.0
+rsa==4.6
 s3transfer==0.3.2
 setuptools==41.4.0
 signalfx==1.1.1
