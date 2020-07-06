@@ -24,9 +24,9 @@ from moto import mock_dynamodb2
 
 from clusterman.autoscaler.autoscaler import Autoscaler
 from clusterman.autoscaler.pool_manager import PoolManager
-from clusterman.autoscaler.signals import ACK
 from clusterman.aws.client import dynamodb
 from clusterman.aws.spot_fleet_resource_group import SpotFleetResourceGroup
+from clusterman.signals.external_signal import ACK
 from clusterman.util import AUTOSCALER_PAUSED
 from clusterman.util import CLUSTERMAN_STATE_TABLE
 from itests.environment import boto_patches
@@ -60,9 +60,9 @@ def autoscaler_patches(context):
         'clusterman.autoscaler.autoscaler.PoolManager._calculate_non_orphan_fulfilled_capacity',
         return_value=20,
     ), mock.patch(
-        'clusterman.autoscaler.signals.Signal._connect_to_signal_process',
+        'clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process',
     ), mock.patch(
-        'clusterman.autoscaler.autoscaler.Signal._get_metrics',
+        'clusterman.signals.external_signal.ExternalSignal._get_metrics',
     ) as mock_metrics, mock_dynamodb2():
         dynamodb.create_table(
             TableName=CLUSTERMAN_STATE_TABLE,

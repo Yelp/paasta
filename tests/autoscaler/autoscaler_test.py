@@ -73,7 +73,7 @@ def mock_autoscaler():
     ), mock.patch(
         'clusterman.autoscaler.autoscaler.get_monitoring_client',
     ), mock.patch(
-        'clusterman.autoscaler.autoscaler.Signal',
+        'clusterman.autoscaler.autoscaler.ExternalSignal',
     ), staticconf.testing.PatchConfiguration(
         {'autoscaling': autoscaling_config_dict},
     ):
@@ -104,7 +104,7 @@ def test_autoscaler_init_too_many_apps():
         Autoscaler('mesos-test', 'bar', 'mesos', ['app1', 'app2'], monitoring_enabled=False)
 
 
-@mock.patch('clusterman.autoscaler.autoscaler.Signal')
+@mock.patch('clusterman.autoscaler.autoscaler.ExternalSignal')
 @pytest.mark.parametrize('monitoring_enabled', [True, False])
 def test_monitoring_enabled(mock_signal, mock_autoscaler, monitoring_enabled):
     mock_autoscaler.monitoring_enabled = monitoring_enabled
@@ -121,7 +121,7 @@ def test_monitoring_enabled(mock_signal, mock_autoscaler, monitoring_enabled):
     mock.Mock()  # Custom app signal successful
 ])
 def test_get_signal_for_app(mock_autoscaler, signal_response):
-    with mock.patch('clusterman.autoscaler.autoscaler.Signal') as mock_signal, \
+    with mock.patch('clusterman.autoscaler.autoscaler.ExternalSignal') as mock_signal, \
             mock.patch('clusterman.autoscaler.autoscaler.sensu_checkin') as mock_sensu:
         mock_signal.side_effect = signal_response
         signal = mock_autoscaler._get_signal_for_app('bar')

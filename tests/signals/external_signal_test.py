@@ -23,19 +23,19 @@ from clusterman_metrics import APP_METRICS
 from clusterman_metrics import METADATA
 from clusterman_metrics import SYSTEM_METRICS
 
-from clusterman.autoscaler.signals import ACK
-from clusterman.autoscaler.signals import setup_signals_environment
-from clusterman.autoscaler.signals import Signal
 from clusterman.exceptions import ClustermanSignalError
 from clusterman.exceptions import MetricsError
 from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.exceptions import SignalConnectionError
+from clusterman.signals.external_signal import ACK
+from clusterman.signals.external_signal import ExternalSignal
+from clusterman.signals.external_signal import setup_signals_environment
 
 
 @pytest.fixture
 def mock_signal():
-    with mock.patch('clusterman.autoscaler.signals.Signal._connect_to_signal_process'):
-        return Signal('foo', 'bar', 'mesos', 'app1', 'bar.mesos_config', mock.Mock(), 'the_signal')
+    with mock.patch('clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process'):
+        return ExternalSignal('foo', 'bar', 'mesos', 'app1', 'bar.mesos_config', mock.Mock(), 'the_signal')
 
 
 def test_init(mock_signal):
@@ -50,9 +50,9 @@ def test_no_signal_configured():
         {},
         namespace='bar.mesos_config',
     ), mock.patch(
-        'clusterman.autoscaler.signals.Signal._connect_to_signal_process',
+        'clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process',
     ), pytest.raises(NoSignalConfiguredException):
-        return Signal('foo', 'bar', 'mesos', 'app1', 'bar.mesos_config', mock.Mock(), 'the_signal')
+        return ExternalSignal('foo', 'bar', 'mesos', 'app1', 'bar.mesos_config', mock.Mock(), 'the_signal')
 
 
 @pytest.mark.parametrize('conn_response', [['foo'], [ACK, 'foo']])
@@ -75,7 +75,7 @@ def test_evaluate_broken_signal(mock_signal):
 def test_evaluate_restart_dead_signal(mock_signal):
     mock_signal._get_metrics = mock.Mock(return_value={})
     mock_signal._signal_conn.recv.side_effect = [BrokenPipeError, ACK, ACK, '{"Resources": {"cpus": 1}}']
-    with mock.patch('clusterman.autoscaler.signals.Signal._connect_to_signal_process') as mock_connect:
+    with mock.patch('clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process') as mock_connect:
         mock_connect.return_value = mock_signal._signal_conn
         assert mock_signal.evaluate(arrow.get(12345678)) == {'cpus': 1}
         assert mock_connect.call_count == 1
@@ -85,14 +85,14 @@ def test_evaluate_restart_dead_signal(mock_signal):
 def test_evaluate_restart_dead_signal_fails(mock_signal, error):
     mock_signal._get_metrics = mock.Mock(return_value={})
     mock_signal._signal_conn.recv.side_effect = [BrokenPipeError, ACK, ACK, error]
-    with mock.patch('clusterman.autoscaler.signals.Signal._connect_to_signal_process') as mock_connect, \
+    with mock.patch('clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process') as mock_connect, \
             pytest.raises(ClustermanSignalError):
         mock_connect.return_value = mock_signal._signal_conn
         mock_signal.evaluate(arrow.get(12345678))
         assert mock_connect.call_count == 1
 
 
-@mock.patch('clusterman.autoscaler.signals.SOCKET_MESG_SIZE', 2)
+@mock.patch('clusterman.signals.external_signal.SOCKET_MESG_SIZE', 2)
 @pytest.mark.parametrize('signal_recv', [
     [ACK, ACK, b'{"Resources": {"cpus": 5.2}}'],
     [ACK, b'\x01{"Resources": {"cpus": 5.2}}'],

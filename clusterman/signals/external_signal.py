@@ -17,10 +17,10 @@ import struct
 import time
 from collections import defaultdict
 from typing import Callable
-from typing import Dict
+from typing import List
 from typing import Mapping
-from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import arrow
 import colorlog
@@ -33,14 +33,13 @@ from clusterman_metrics import SYSTEM_METRICS
 from mypy_extensions import TypedDict
 from retry import retry
 from simplejson.errors import JSONDecodeError
-from staticconf.errors import ConfigurationError
 
 from clusterman.config import POOL_NAMESPACE
 from clusterman.exceptions import ClustermanSignalError
 from clusterman.exceptions import MetricsError
-from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.exceptions import SignalConnectionError
-from clusterman.exceptions import SignalValidationError
+from clusterman.interfaces.signal import Signal
+from clusterman.interfaces.signal import SignalResponseDict
 from clusterman.util import get_cluster_dimensions
 
 logger = colorlog.getLogger(__name__)
@@ -56,7 +55,6 @@ SIGNAL_LOGGERS: Mapping[
         Callable[[str], None],
     ]
 ] = {}
-SignalResponseDict = Dict[str, Optional[float]]
 
 
 class MetricsConfigDict(TypedDict):
@@ -66,7 +64,7 @@ class MetricsConfigDict(TypedDict):
     regex: bool
 
 
-class Signal:
+class ExternalSignal(Signal):
     def __init__(
         self,
         cluster: str,
@@ -87,41 +85,19 @@ class Signal:
         :param signal_namespace: the namespace in the signals repo to find the signal class
             (if this is None, we default to the app name)
         """
+        super().__init__(cluster, pool, scheduler, app, config_namespace)
         reader = staticconf.NamespaceReaders(config_namespace)
-
-        try:
-            self.name: str = reader.read_string('autoscale_signal.name')
-        except ConfigurationError:
-            raise NoSignalConfiguredException(f'No signal was configured in {config_namespace}')
-
-        self.cluster: str = cluster
-        self.pool: str = pool
-        self.scheduler: str = scheduler
-        self.app: str = app
-
-        self.period_minutes: int = reader.read_int('autoscale_signal.period_minutes')
-        if self.period_minutes <= 0:
-            raise SignalValidationError(f'Length of signal period must be positive, got {self.period_minutes}')
-
-        self.parameters: Dict = {
-            key: value
-            for param_dict in reader.read_list('autoscale_signal.parameters', default=[])
-            for (key, value) in param_dict.items()
-        }
-        # Even if cluster and pool were set in parameters, we override them here
-        # as we want to preserve a single source of truth
-        self.parameters.update(dict(
-            cluster=self.cluster,
-            pool=self.pool,
-        ))
-
         self.required_metrics: list = reader.read_list('autoscale_signal.required_metrics', default=[])
 
         self.metrics_client: ClustermanMetricsBotoClient = metrics_client
         self.signal_namespace = signal_namespace
         self._signal_conn: socket.socket = self._connect_to_signal_process()
 
-    def evaluate(self, timestamp: arrow.Arrow, retry_on_broken_pipe: bool = True) -> SignalResponseDict:
+    def evaluate(
+        self,
+        timestamp: arrow.Arrow,
+        retry_on_broken_pipe: bool = True,
+    ) -> Union[SignalResponseDict, List[SignalResponseDict]]:
         """ Communicate over a Unix socket with the signal to evaluate its result
 
         :param timestamp: a Unix timestamp to pass to the signal as the "current time"

@@ -32,7 +32,6 @@ from clusterman_metrics import METADATA
 from sortedcontainers import SortedDict  # noqa
 
 from clusterman.autoscaler.autoscaler import Autoscaler
-from clusterman.autoscaler.signals import setup_signals_environment
 from clusterman.aws.client import ec2
 from clusterman.aws.markets import get_instance_market
 from clusterman.aws.markets import InstanceMarket
@@ -40,6 +39,7 @@ from clusterman.math.piecewise import hour_transform
 from clusterman.math.piecewise import piecewise_breakpoint_generator
 from clusterman.math.piecewise import piecewise_max
 from clusterman.math.piecewise import PiecewiseConstantFunction
+from clusterman.signals.external_signal import setup_signals_environment
 from clusterman.simulator.event import Event
 from clusterman.simulator.simulated_aws_cluster import SimulatedAWSCluster
 from clusterman.simulator.simulated_pool_manager import SimulatedPoolManager
