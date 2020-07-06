@@ -209,15 +209,11 @@ def test_sync_horizontal_pod_autoscaler_delete_hpa_when_no_autoscaling(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.is_deployment_marked_paused",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
-    mock_autoscaling_is_paused, mock_is_deployment_marked_paused,
+    mock_autoscaling_is_paused,
 ):
     mock_client = mock.MagicMock()
     config_dict = {"max_instances": 3, "min_instances": 1}
@@ -225,7 +221,6 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
     app.item.spec.replicas = 2
 
     mock_autoscaling_is_paused.return_value = True
-    mock_is_deployment_marked_paused.return_value = False
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert app.soa_config.get_min_instances() == 2
     assert (
@@ -239,21 +234,11 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.mark_deployment_as_paused",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.is_deployment_marked_paused",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_resumed(
     mock_autoscaling_is_paused,
-    mock_is_deployment_marked_paused,
-    mock_mark_deployment_as_paused,
 ):
     mock_client = mock.MagicMock()
     config_dict = {"max_instances": 3, "min_instances": 1}
@@ -261,9 +246,7 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_resumed(
     app.item.spec.replicas = 2
 
     mock_autoscaling_is_paused.return_value = False
-    mock_is_deployment_marked_paused.return_value = True
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
-    assert mock_mark_deployment_as_paused.call_count == 1
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -275,23 +258,16 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_resumed(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.is_deployment_marked_paused",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
-def test_sync_horizontal_pod_autoscaler_create_hpa(
-    mock_autoscaling_is_paused, mock_is_deployment_marked_paused
-):
+def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
     mock_client = mock.MagicMock()
     # Create
     config_dict = {"max_instances": 3}
     app = setup_app(config_dict, False)
 
     mock_autoscaling_is_paused.return_value = False
-    mock_is_deployment_marked_paused.return_value = False
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
 
     assert (
@@ -309,23 +285,16 @@ def test_sync_horizontal_pod_autoscaler_create_hpa(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.is_deployment_marked_paused",
-    autospec=True,
-)
-@mock.patch(
     "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
-def test_sync_horizontal_pod_autoscaler_update_hpa(
-    mock_autoscaling_is_paused, mock_is_deployment_marked_paused
-):
+def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):
     mock_client = mock.MagicMock()
     # Update
     config_dict = {"max_instances": 3}
     app = setup_app(config_dict, True)
 
     mock_autoscaling_is_paused.return_value = False
-    mock_is_deployment_marked_paused.return_value = False
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
