@@ -1,3 +1,10 @@
+paasta-tools (0.96.21) xenial; urgency=medium
+
+  * 0.96.21 tagged with 'make release'
+    Commit: use GOPROXY for internal builds
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 07 Jul 2020 04:12:46 -0700
+
 paasta-tools (0.96.20) xenial; urgency=medium
 
   * 0.96.20 tagged with 'make release'
