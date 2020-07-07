@@ -35,6 +35,7 @@ from clusterman.interfaces.signal import Signal
 from clusterman.monitoring_lib import get_monitoring_client
 from clusterman.signals.external_signal import ExternalSignal
 from clusterman.signals.external_signal import SignalResponseDict
+from clusterman.signals.pending_pods_signal import PendingPodsSignal
 from clusterman.util import autoscaling_is_paused
 from clusterman.util import ClustermanResources
 from clusterman.util import get_cluster_dimensions
@@ -96,15 +97,26 @@ class Autoscaler:
 
         self.mesos_region = staticconf.read_string('aws.region')
         self.metrics_client = metrics_client or ClustermanMetricsBotoClient(self.mesos_region)
-        self.default_signal = ExternalSignal(
-            self.cluster,
-            self.pool,
-            self.scheduler,
-            '__default__',
-            DEFAULT_NAMESPACE,
-            self.metrics_client,
-            signal_namespace=staticconf.read_string('autoscaling.default_signal_role'),
-        )
+        self.default_signal: Signal
+        if staticconf.read_bool('autoscale_signal.internal', default=False):
+            self.default_signal = PendingPodsSignal(
+                self.cluster,
+                self.pool,
+                self.scheduler,
+                '__default__',
+                DEFAULT_NAMESPACE,
+                self.metrics_client,
+            )
+        else:
+            self.default_signal = ExternalSignal(
+                self.cluster,
+                self.pool,
+                self.scheduler,
+                '__default__',
+                DEFAULT_NAMESPACE,
+                self.metrics_client,
+                signal_namespace=staticconf.read_string('autoscaling.default_signal_role'),
+            )
         self.signal = self._get_signal_for_app(self.apps[0])
         logger.info('Initialization complete')
 

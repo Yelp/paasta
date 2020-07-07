@@ -35,12 +35,19 @@ from itests.environment import boto_patches
 @behave.fixture
 def autoscaler_patches(context):
     behave.use_fixture(boto_patches, context)
-    rg1 = mock.Mock(spec=SpotFleetResourceGroup, id='rg1', target_capacity=10,
-                    fulfilled_capacity=10, is_stale=False, min_capacity=0, max_capacity=float('inf'))
-    rg2 = mock.Mock(spec=SpotFleetResourceGroup, id='rg2', target_capacity=10,
-                    fulfilled_capacity=10, is_stale=False, min_capacity=0, max_capacity=float('inf'))
+    resource_groups = {}
+    for i in range(context.rgnum):
+        resource_groups[f'rg{i}'] = mock.Mock(
+            spec=SpotFleetResourceGroup,
+            id=f'rg{i}',
+            target_capacity=context.target_capacity / context.rgnum,
+            fulfilled_capacity=context.target_capacity / context.rgnum,
+            is_stale=False,
+            min_capacity=0,
+            max_capacity=float('inf'),
+        )
 
-    resource_totals = {'cpus': 80, 'mem': 1000, 'disk': 1000, 'gpus': 0}
+    resource_totals = {'cpus': context.cpus, 'mem': context.mem, 'disk': context.disk, 'gpus': context.gpus}
 
     with staticconf.testing.PatchConfiguration(
         {'autoscaling': {'default_signal_role': 'bar'}},
@@ -48,7 +55,7 @@ def autoscaler_patches(context):
         'clusterman.autoscaler.autoscaler.get_monitoring_client',
     ), mock.patch(
         'clusterman.aws.util.SpotFleetResourceGroup.load',
-        return_value={rg1.id: rg1, rg2.id: rg2},
+        return_value=resource_groups,
     ), mock.patch(
         'clusterman.autoscaler.pool_manager.PoolManager',
         wraps=PoolManager,
@@ -58,11 +65,11 @@ def autoscaler_patches(context):
         'clusterman.autoscaler.pool_manager.ClusterConnector.load',
     ) as mock_cluster_connector, mock.patch(
         'clusterman.autoscaler.autoscaler.PoolManager._calculate_non_orphan_fulfilled_capacity',
-        return_value=20,
+        return_value=context.target_capacity,
     ), mock.patch(
         'clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process',
     ), mock.patch(
-        'clusterman.signals.external_signal.ExternalSignal._get_metrics',
+        'clusterman.signals.external_signal.get_metrics_for_signal',
     ) as mock_metrics, mock_dynamodb2():
         dynamodb.create_table(
             TableName=CLUSTERMAN_STATE_TABLE,
@@ -128,14 +135,98 @@ def mock_historical_metrics(metric_name, metric_type, time_start, time_end, extr
         ]}
 
 
-@behave.given('an autoscaler object')
-def autoscaler(context):
+def make_mock_scaling_metrics(allocated_cpus, pending_cpus, boost_factor):
+    def mock_scaling_metrics(
+        metric_name,
+        metric_type,
+        time_start,
+        time_end,
+        extra_dimensions,
+        is_regex,
+        app_identifier,
+    ):
+        if metric_name == 'cpus_allocated':
+            return {'cpus_allocated': [
+                (Decimal('100'), 10),
+                (Decimal('110'), 12),
+                (Decimal('130'), allocated_cpus),
+            ]}
+        elif metric_name == 'mem_allocated':
+            return {'mem_allocated': [
+                (Decimal('100'), 15),
+                (Decimal('110'), 17),
+                (Decimal('130'), 16),
+            ]}
+        elif metric_name == 'disk_allocated':
+            return {'disk_allocated': [
+                (Decimal('100'), 10),
+                (Decimal('110'), 10),
+                (Decimal('130'), 10),
+            ]}
+        elif metric_name == 'cpus_pending':
+            return {'cpus_pending': [
+                (Decimal('100'), 0),
+                (Decimal('110'), 0),
+                (Decimal('130'), pending_cpus),
+            ]}
+        elif metric_name == 'boost_factor|cluster=kube-test,pool=bar.kubernetes' and boost_factor:
+            return {'boost_factor|cluster=kube-test,pool=bar.kubernetes': [
+                (Decimal('135'), boost_factor)
+            ]}
+        else:
+            return {metric_name: []}
+
+    return mock_scaling_metrics
+
+
+@behave.given('a cluster with (?P<rgnum>\d+) resource groups')
+def rgnum(context, rgnum):
+    context.rgnum = int(rgnum)
+
+
+@behave.given('(?P<target_capacity>\d+) target capacity')
+def fulfilled_capacity(context, target_capacity):
+    context.target_capacity = int(target_capacity)
+
+
+@behave.given('(?P<cpus>\d+) CPUs, (?P<mem>\d+) MB mem, (?P<disk>\d+) MB disk, and (?P<gpus>\d+) GPUs')
+def resources(context, cpus, mem, disk, gpus):
+    context.cpus = int(cpus)
+    context.mem = int(mem)
+    context.disk = int(disk)
+    context.gpus = int(gpus)
+
+
+@behave.given(
+    '(?P<allocated_cpus>\d+) CPUs allocated, (?P<pending_cpus>\d+) CPUs pending, and (?P<boost>\d*) boost factor'
+)
+def resources_requested(context, allocated_cpus, pending_cpus, boost):
+    context.allocated_cpus = int(allocated_cpus)
+    context.pending_cpus = int(pending_cpus)
+    context.boost = int(boost) if boost else None
+
+
+@behave.given('a mesos autoscaler object')
+def mesos_autoscaler(context):
     behave.use_fixture(autoscaler_patches, context)
     context.autoscaler = Autoscaler(
         cluster='mesos-test',
         pool='bar',
         apps=['bar'],
         scheduler='mesos',
+        metrics_client=mock.Mock(),
+        monitoring_enabled=False,
+    )
+
+
+@behave.given('a kubernetes autoscaler object')
+def k8s_autoscaler(context):
+    behave.use_fixture(autoscaler_patches, context)
+    context.autoscaler = Autoscaler(
+        cluster='kube-test',
+        pool='bar',
+        apps=['bar'],
+        scheduler='kubernetes',
         metrics_client=mock.Mock(),
         monitoring_enabled=False,
     )
@@ -182,6 +273,16 @@ def signal_resource_request(context, value):
         n, t = value.split(' ')
         resources = '{"' + t + '":' + n + '}'
     context.autoscaler.signal._signal_conn.recv.side_effect = [ACK, ACK, '{"Resources": ' + resources + '}'] * 2
+
+
+@behave.when('the autoscaler runs')
+def autoscaler_runs(context):
+    if hasattr(context, 'allocated_cpus'):
+        context.autoscaler.metrics_client.get_metric_values.side_effect = make_mock_scaling_metrics(
+            context.allocated_cpus,
+            context.pending_cpus,
+            context.boost,
+        )
     try:
         context.autoscaler.run()
     except Exception as e:

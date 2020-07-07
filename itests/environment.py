@@ -73,6 +73,10 @@ def setup_configurations(context):
                 'mesos_master_fqdn': 'the.mesos.leader',
                 'aws_region': 'us-west-2',
             },
+            'kube-test': {
+                'aws_region': 'us-west-2',
+                'kubeconfig_path': '/foo/bar/admin.conf',
+            }
         },
         'sensu_config': [
             {
@@ -81,13 +85,12 @@ def setup_configurations(context):
             }
         ],
         'autoscale_signal': {
-            'name': 'DefaultSignal',
-            'branch_or_tag': 'master',
+            'internal': True,
             'period_minutes': 10,
         }
     }
 
-    pool_config = {
+    mesos_pool_config = {
         'resource_groups': [
             {
                 'sfr': {
@@ -121,9 +124,35 @@ def setup_configurations(context):
             ],
         },
     }
+    kube_pool_config = {
+        'resource_groups': [
+            {
+                'sfr': {
+                    's3': {
+                        'bucket': 'fake-bucket-k8s',
+                        'prefix': 'none',
+                    }
+                },
+            },
+            {'asg': {'tag': 'puppet:role::paasta'}},
+        ],
+        'scaling_limits': {
+            'min_capacity': 3,
+            'max_capacity': 100,
+            'max_weight_to_add': 200,
+            'max_weight_to_remove': 10,
+        },
+        'sensu_config': [
+            {
+                'team': 'other-team',
+                'runbook': 'y/their-runbook',
+            }
+        ],
+    }
     with staticconf.testing.MockConfiguration(boto_config, namespace=CREDENTIALS_NAMESPACE), \
             staticconf.testing.MockConfiguration(main_clusterman_config), \
-            staticconf.testing.MockConfiguration(pool_config, namespace='bar.mesos_config'):
+            staticconf.testing.MockConfiguration(mesos_pool_config, namespace='bar.mesos_config'), \
+            staticconf.testing.MockConfiguration(kube_pool_config, namespace='bar.kubernetes_config'):
         yield
 
 

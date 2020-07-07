@@ -15,7 +15,6 @@ import os
 import socket
 import struct
 import time
-from collections import defaultdict
 from typing import Callable
 from typing import List
 from typing import Mapping
@@ -26,21 +25,18 @@ import arrow
 import colorlog
 import simplejson as json
 import staticconf
-from clusterman_metrics import APP_METRICS
 from clusterman_metrics import ClustermanMetricsBotoClient
-from clusterman_metrics import MetricsValuesDict
-from clusterman_metrics import SYSTEM_METRICS
-from mypy_extensions import TypedDict
 from retry import retry
 from simplejson.errors import JSONDecodeError
+from staticconf.errors import ConfigurationError
 
 from clusterman.config import POOL_NAMESPACE
 from clusterman.exceptions import ClustermanSignalError
-from clusterman.exceptions import MetricsError
+from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.exceptions import SignalConnectionError
+from clusterman.interfaces.signal import get_metrics_for_signal
 from clusterman.interfaces.signal import Signal
 from clusterman.interfaces.signal import SignalResponseDict
-from clusterman.util import get_cluster_dimensions
 
 logger = colorlog.getLogger(__name__)
 
@@ -55,13 +51,6 @@ SIGNAL_LOGGERS: Mapping[
         Callable[[str], None],
     ]
 ] = {}
-
-
-class MetricsConfigDict(TypedDict):
-    name: str
-    type: str
-    minute_range: int
-    regex: bool
 
 
 class ExternalSignal(Signal):
@@ -85,8 +74,12 @@ class ExternalSignal(Signal):
         :param signal_namespace: the namespace in the signals repo to find the signal class
             (if this is None, we default to the app name)
         """
-        super().__init__(cluster, pool, scheduler, app, config_namespace)
         reader = staticconf.NamespaceReaders(config_namespace)
+        try:
+            signal_name = reader.read_string('autoscale_signal.name')
+        except ConfigurationError as e:
+            raise NoSignalConfiguredException from e
+        super().__init__(signal_name, cluster, pool, scheduler, app, config_namespace)
         self.required_metrics: list = reader.read_list('autoscale_signal.required_metrics', default=[])
 
         self.metrics_client: ClustermanMetricsBotoClient = metrics_client
@@ -106,7 +99,15 @@ class ExternalSignal(Signal):
         :raises SignalConnectionError: if the signal connection fails for some reason
         """
         # Get the required metrics for the signal
-        metrics = self._get_metrics(timestamp)
+        metrics = get_metrics_for_signal(
+            self.cluster,
+            self.pool,
+            self.scheduler,
+            self.app,
+            self.metrics_client,
+            self.required_metrics,
+            timestamp,
+        )
 
         try:
             # First send the length of the metrics data
@@ -160,56 +161,15 @@ class ExternalSignal(Signal):
 
         return signal_conn
 
-    def _get_metrics(self, end_time: arrow.Arrow) -> MetricsValuesDict:
-        """ Get the metrics required for a signal """
-
-        metrics: MetricsValuesDict = defaultdict(list)
-        metric_dict: MetricsConfigDict
-        for metric_dict in self.required_metrics:
-            if metric_dict['type'] not in (SYSTEM_METRICS, APP_METRICS):
-                raise MetricsError(f"Metrics of type {metric_dict['type']} cannot be queried by signals.")
-
-            # Need to add the cluster/pool to get the right system metrics
-            # TODO (CLUSTERMAN-126) this should probably be cluster/pool/app eventually
-            # TODO (CLUSTERMAN-446) if a mesos pool and a k8s pool share the same app_name,
-            #      APP_METRICS will be used for both
-            if metric_dict['type'] == SYSTEM_METRICS:
-                dims_list = [get_cluster_dimensions(self.cluster, self.pool, self.scheduler)]
-                if self.scheduler == 'mesos':  # handle old (non-scheduler-aware) metrics
-                    dims_list.insert(0, get_cluster_dimensions(self.cluster, self.pool, None))
-            else:
-                dims_list = [{}]
-
-            # We only support regex expressions for APP_METRICS
-            if 'regex' not in metric_dict:
-                metric_dict['regex'] = False
-
-            start_time = end_time.shift(minutes=-metric_dict['minute_range'])
-            for dims in dims_list:
-                query_results = self.metrics_client.get_metric_values(
-                    metric_dict['name'],
-                    metric_dict['type'],
-                    start_time.timestamp,
-                    end_time.timestamp,
-                    is_regex=metric_dict['regex'],
-                    extra_dimensions=dims,
-                    app_identifier=self.app,
-                )
-                for metric_name, ts in query_results.items():
-                    metrics[metric_name].extend(ts)
-                    # safeguard; the metrics _should_ already be sorted since we inserted the old
-                    # (non-scheduler-aware) metrics before the new metrics above, so this should be fast
-                    metrics[metric_name].sort()
-        return metrics
-
 
 def setup_signals_environment(pool: str, scheduler: str) -> Tuple[int, int]:
     app_namespace = POOL_NAMESPACE.format(pool=pool, scheduler=scheduler)
-    default_signal_version = staticconf.read_string('autoscale_signal.branch_or_tag')
-    signal_versions = [default_signal_version]
-    signal_namespaces = [staticconf.read_string('autoscaling.default_signal_role')]
-    signal_names = [staticconf.read_string('autoscale_signal.name')]
-    app_names = ['__default__']
+    signal_versions, signal_namespaces, signal_names, app_names = [], [], [], []
+    if not staticconf.read_bool('autoscale_signal.internal', default=False):
+        signal_names.append(staticconf.read_string('autoscale_signal.name'))
+        signal_versions.append(staticconf.read_string('autoscale_signal.branch_or_tag'))
+        signal_namespaces.append(staticconf.read_string('autoscaling.default_signal_role'))
+        app_names.append('__default__')
 
     app_signal_name = staticconf.read_string(
         'autoscale_signal.name',

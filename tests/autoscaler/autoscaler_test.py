@@ -74,6 +74,8 @@ def mock_autoscaler():
         'clusterman.autoscaler.autoscaler.get_monitoring_client',
     ), mock.patch(
         'clusterman.autoscaler.autoscaler.ExternalSignal',
+    ), mock.patch(
+        'clusterman.autoscaler.autoscaler.PendingPodsSignal',
     ), staticconf.testing.PatchConfiguration(
         {'autoscaling': autoscaling_config_dict},
     ):

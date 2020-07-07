@@ -13,6 +13,7 @@
 # limitations under the License.
 from abc import ABCMeta
 from abc import abstractmethod
+from collections import defaultdict
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -20,17 +21,30 @@ from typing import Union
 
 import arrow
 import staticconf
-from staticconf.errors import ConfigurationError
+from clusterman_metrics import APP_METRICS
+from clusterman_metrics import ClustermanMetricsBotoClient
+from clusterman_metrics import MetricsValuesDict
+from clusterman_metrics import SYSTEM_METRICS
+from mypy_extensions import TypedDict
 
-from clusterman.exceptions import NoSignalConfiguredException
+from clusterman.exceptions import MetricsError
 from clusterman.exceptions import SignalValidationError
+from clusterman.util import get_cluster_dimensions
 
 SignalResponseDict = Dict[str, Optional[float]]
+
+
+class MetricsConfigDict(TypedDict):
+    name: str
+    type: str
+    minute_range: int
+    regex: bool
 
 
 class Signal(metaclass=ABCMeta):
     def __init__(
         self,
+        name: str,
         cluster: str,
         pool: str,
         scheduler: str,
@@ -49,11 +63,7 @@ class Signal(metaclass=ABCMeta):
         """
         reader = staticconf.NamespaceReaders(config_namespace)
 
-        try:
-            self.name: str = reader.read_string('autoscale_signal.name')
-        except ConfigurationError:
-            raise NoSignalConfiguredException(f'No signal was configured in {config_namespace}')
-
+        self.name = name
         self.cluster: str = cluster
         self.pool: str = pool
         self.scheduler: str = scheduler
@@ -90,3 +100,53 @@ class Signal(metaclass=ABCMeta):
         :raises SignalConnectionError: if the signal connection fails for some reason
         """
         pass
+
+
+def get_metrics_for_signal(
+    cluster: str,
+    pool: str,
+    scheduler: str,
+    app: str,
+    metrics_client: ClustermanMetricsBotoClient,
+    required_metrics: List[MetricsConfigDict],
+    end_time: arrow.Arrow,
+) -> MetricsValuesDict:
+    """ Get the metrics required for a signal """
+
+    metrics: MetricsValuesDict = defaultdict(list)
+    for metric_dict in required_metrics:
+        if metric_dict['type'] not in (SYSTEM_METRICS, APP_METRICS):
+            raise MetricsError(f"Metrics of type {metric_dict['type']} cannot be queried by signals.")
+
+        # Need to add the cluster/pool to get the right system metrics
+        # TODO (CLUSTERMAN-126) this should probably be cluster/pool/app eventually
+        # TODO (CLUSTERMAN-446) if a mesos pool and a k8s pool share the same app_name,
+        #      APP_METRICS will be used for both
+        if metric_dict['type'] == SYSTEM_METRICS:
+            dims_list = [get_cluster_dimensions(cluster, pool, scheduler)]
+            if scheduler == 'mesos':  # handle old (non-scheduler-aware) metrics
+                dims_list.insert(0, get_cluster_dimensions(cluster, pool, None))
+        else:
+            dims_list = [{}]
+
+        # We only support regex expressions for APP_METRICS
+        if 'regex' not in metric_dict:
+            metric_dict['regex'] = False
+
+        start_time = end_time.shift(minutes=-metric_dict['minute_range'])
+        for dims in dims_list:
+            query_results = metrics_client.get_metric_values(
+                metric_dict['name'],
+                metric_dict['type'],
+                start_time.timestamp,
+                end_time.timestamp,
+                is_regex=metric_dict['regex'],
+                extra_dimensions=dims,
+                app_identifier=app,
+            )
+            for metric_name, timeseries in query_results.items():
+                metrics[metric_name].extend(timeseries)
+                # safeguard; the metrics _should_ already be sorted since we inserted the old
+                # (non-scheduler-aware) metrics before the new metrics above, so this should be fast
+                metrics[metric_name].sort()
+    return metrics
