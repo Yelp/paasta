@@ -47,7 +47,7 @@ opt/venvs/paasta-tools/bin/paasta_remote_run.py usr/bin/paasta_remote_run
 opt/venvs/paasta-tools/bin/paasta_secrets_sync.py usr/bin/paasta_secrets_sync
 opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron_namespace
 opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh usr/share/bash-completion/completions/paasta
-opt/venvs/paasta-tools/bin/paasta usr/bin/paasta
+opt/venvs/paasta-tools/bin/paasta_go usr/bin/paasta
 opt/venvs/paasta-tools/bin/setup_marathon_job.py usr/bin/setup_marathon_job
 opt/venvs/paasta-tools/bin/setup_kubernetes_job.py usr/bin/setup_kubernetes_job
 opt/venvs/paasta-tools/bin/setup_kubernetes_crd.py usr/bin/setup_kubernetes_crd
