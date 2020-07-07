@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.96.21
+RELEASE=0.96.22
 
 SHELL=/bin/bash
 
@@ -54,9 +54,9 @@ GOPATH=$(CURDIR)/gopath
 GOCMD=GOPATH=$(GOPATH) GOPROXY=$(GOPROXY) GO111MODULE=on go
 go_entrypoint:
 	mkdir -p $(GOPATH)
-	$(GOCMD) get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.4
+	$(GOCMD) get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.5
 	chmod -R +rw $(GOPATH)
-	cd $(GOPATH)/pkg/mod/github.com/\!yelp/paasta-tools-go@v0.0.4 && \
+	cd $(GOPATH)/pkg/mod/github.com/\!yelp/paasta-tools-go@v0.0.5 && \
 		$(GOCMD) build $(GO_BUILD_FLAGS) -v -o $(GOPATH)/paasta_go ./cmd/paasta
 	test -x $(GOPATH)/paasta_go
 
