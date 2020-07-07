@@ -27,11 +27,13 @@ ifeq ($(PAASTA_ENV),YELP)
 	ACTUAL_PACKAGE_VERSION=$(RELEASE)-yelp1
 	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
 	GO_BUILD_FLAGS=-tags yelp -modfile int.mod
+	GOPROXY=http://athens.paasta-norcal-devc.yelp
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
 	ACTUAL_PACKAGE_VERSION=$(RELEASE)~$*1
 	ADD_VERSION_SUFFIX=dch -b -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
 	GO_BUILD_FLAGS=
+	GOPROXY=
 endif
 
 build_%_docker:
@@ -49,7 +51,7 @@ itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 GOPATH=$(CURDIR)/gopath
-GOCMD=GOPATH=$(GOPATH) GO111MODULE=on go
+GOCMD=GOPATH=$(GOPATH) GOPROXY=$(GOPROXY) GO111MODULE=on go
 go_entrypoint:
 	mkdir -p $(GOPATH)
 	$(GOCMD) get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.4
