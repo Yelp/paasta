@@ -2,6 +2,7 @@ from typing import Any
 from typing import Dict
 from typing import Sequence
 
+import asynctest
 import mock
 import pytest
 from hypothesis import given
@@ -1914,8 +1915,7 @@ def test_get_tail_lines_for_kubernetes_container(
 
 
 @pytest.mark.parametrize("messages_num", [3, 0])
-@mock.patch("paasta_tools.kubernetes_tools.get_pod_events", autospec=True)
-def test_get_pod_event_messages(mock_get_pod_events, messages_num, event_loop):
+def test_get_pod_event_messages(messages_num, event_loop):
     pod = mock.MagicMock()
     pod.metadata.name = "my--pod"
     pod.metadata.namespace = "my_namespace"
@@ -1928,10 +1928,14 @@ def test_get_pod_event_messages(mock_get_pod_events, messages_num, event_loop):
         events.append(event)
 
     kube_client = mock.MagicMock()
-    mock_get_pod_events.return_value = events
-    pod_event_messages = event_loop.run_until_complete(
-        kubernetes_tools.get_pod_event_messages(kube_client=kube_client, pod=pod)
-    )
+
+    with asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_pod_events", autospec=True
+    ) as mock_get_pod_events:
+        mock_get_pod_events.return_value = events
+        pod_event_messages = event_loop.run_until_complete(
+            kubernetes_tools.get_pod_event_messages(kube_client=kube_client, pod=pod)
+        )
 
     assert len(pod_event_messages) == messages_num
     if messages_num == 3:
@@ -2180,43 +2184,47 @@ def test_update_stateful_set():
     )
 
 
-@mock.patch("paasta_tools.kubernetes_tools.get_all_events_for_service", autospec=True)
-def test_get_kubernetes_app_deploy_status(mock_get_events):
-    mock_get_events.return_value = [{"message": "some kubernetes message"}]
-    mock_client = mock.Mock()
-    mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Running, "some kubernetes message")
+@pytest.mark.asyncio
+async def test_get_kubernetes_app_deploy_status():
+    with asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_all_events_for_service", autospec=True
+    ) as mock_get_events:
+        mock_get_events.return_value = [{"message": "some kubernetes message"}]
 
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
+        mock_client = mock.Mock()
+        mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=1
+        ) == (KubernetesDeployStatus.Running, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Deploying, "some kubernetes message")
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=2
+        ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=0, ready_replicas=None, updated_replicas=0)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
+        mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=2
+        ) == (KubernetesDeployStatus.Deploying, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
+        mock_status = mock.Mock(replicas=0, ready_replicas=None, updated_replicas=0)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=0
+        ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
+        mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=0
+        ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
+
+        mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=1
+        ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
 
 
 def test_parse_container_resources():

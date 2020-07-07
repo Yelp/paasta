@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import base64
 import copy
 import hashlib
@@ -33,6 +34,7 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -1548,6 +1550,7 @@ async def get_tail_lines_for_kubernetes_container(
     return tail_lines
 
 
+@a_sync.to_async
 def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
     try:
         pod_events = kube_client.core.list_namespaced_event(
@@ -1561,7 +1564,7 @@ def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
 
 @async_timeout()
 async def get_pod_event_messages(kube_client: KubeClient, pod: V1Pod) -> List[Dict]:
-    pod_events = get_pod_events(kube_client, pod)
+    pod_events = await get_pod_events(kube_client, pod)
     pod_event_messages = []
     if pod_events:
         for event in pod_events:
@@ -2044,6 +2047,7 @@ def update_stateful_set(
     )
 
 
+@a_sync.to_async
 def get_events_for_object(
     kube_client: KubeClient,
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
@@ -2069,7 +2073,7 @@ def get_events_for_object(
     return parsed_events["items"]
 
 
-def get_all_events_for_service(
+async def get_all_events_for_service(
     app: Union[V1Deployment, V1StatefulSet], kube_client: KubeClient
 ) -> List[V1Event]:
     """ There is no universal API for getting all the events pertaining to
@@ -2081,25 +2085,35 @@ def get_all_events_for_service(
         f'paasta.yelp.com/service={app.metadata.labels["paasta.yelp.com/service"]},'
         f'paasta.yelp.com/instance={app.metadata.labels["paasta.yelp.com/instance"]}'
     )
+
+    pod_coros = []
     for pod in kube_client.core.list_namespaced_pod(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, pod, "Pod")
+        pod_coros.append(get_events_for_object(kube_client, pod, "Pod"))
 
+    depl_coros = []
     for depl in kube_client.deployments.list_namespaced_deployment(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, depl, "Deployment")
+        depl_coros.append(get_events_for_object(kube_client, depl, "Deployment"))
 
+    rs_coros = []
     for rs in kube_client.deployments.list_namespaced_replica_set(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, rs, "ReplicaSet")
+        rs_coros.append(get_events_for_object(kube_client, rs, "ReplicaSet"))
 
+    ss_coros = []
     for ss in kube_client.deployments.list_namespaced_stateful_set(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, ss, "StatefulSet")
+        ss_coros.append(get_events_for_object(kube_client, ss, "StatefulSet"))
+
+    for event_list in await asyncio.gather(
+        *pod_coros, *depl_coros, *rs_coros, *ss_coros
+    ):
+        events.extend(event_list)
 
     return sorted(
         events,
@@ -2112,14 +2126,14 @@ def get_all_events_for_service(
     )
 
 
-def get_kubernetes_app_deploy_status(
+async def get_kubernetes_app_deploy_status(
     app: Union[V1Deployment, V1StatefulSet],
     kube_client: KubeClient,
     desired_instances: int,
 ) -> Tuple[int, str]:
     # Try to get a real status message but we don't ever want to crash if this fails
     try:
-        event_stream = get_all_events_for_service(app, kube_client)
+        event_stream = await get_all_events_for_service(app, kube_client)
         if not event_stream:
             # events only stick around for so long
             deploy_message = "Unknown; no recent events"
