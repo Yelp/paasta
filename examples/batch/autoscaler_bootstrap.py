@@ -25,8 +25,8 @@ from clusterman.args import add_cluster_config_directory_arg
 from clusterman.args import add_env_config_path_arg
 from clusterman.args import add_pool_arg
 from clusterman.args import add_scheduler_arg
-from clusterman.autoscaler.signals import setup_signals_environment
 from clusterman.config import setup_config
+from clusterman.signals.external_signal import setup_signals_environment
 from clusterman.util import setup_logging
 
 

@@ -1,5 +1,5 @@
 Signal
 ======
 
-.. autoclass:: clusterman.autoscaler.signals.Signal
+.. autoclass:: clusterman.interfaces.signal.Signal
    :members:

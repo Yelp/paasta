@@ -28,12 +28,13 @@ from staticconf.config import DEFAULT as DEFAULT_NAMESPACE
 
 from clusterman.autoscaler.config import get_autoscaling_config
 from clusterman.autoscaler.pool_manager import PoolManager
-from clusterman.autoscaler.signals import Signal
-from clusterman.autoscaler.signals import SignalResponseDict
 from clusterman.config import POOL_NAMESPACE
 from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.exceptions import ResourceRequestError
+from clusterman.interfaces.signal import Signal
 from clusterman.monitoring_lib import get_monitoring_client
+from clusterman.signals.external_signal import ExternalSignal
+from clusterman.signals.external_signal import SignalResponseDict
 from clusterman.util import autoscaling_is_paused
 from clusterman.util import ClustermanResources
 from clusterman.util import get_cluster_dimensions
@@ -95,7 +96,7 @@ class Autoscaler:
 
         self.mesos_region = staticconf.read_string('aws.region')
         self.metrics_client = metrics_client or ClustermanMetricsBotoClient(self.mesos_region)
-        self.default_signal = Signal(
+        self.default_signal = ExternalSignal(
             self.cluster,
             self.pool,
             self.scheduler,
@@ -136,10 +137,12 @@ class Autoscaler:
 
         logger.info(f'Signal {signal_name} requested {resource_request}')
         self.pool_manager.reload_state()
-        new_target_capacity = self._compute_target_capacity(resource_request)
-
-        self.target_capacity_gauge.set(new_target_capacity, {'dry_run': dry_run})
-        self._emit_requested_resource_metrics(resource_request, dry_run=dry_run)
+        if isinstance(resource_request, list):
+            pass
+        else:
+            new_target_capacity = self._compute_target_capacity(resource_request)
+            self.target_capacity_gauge.set(new_target_capacity, {'dry_run': dry_run})
+            self._emit_requested_resource_metrics(resource_request, dry_run=dry_run)
 
         self.pool_manager.modify_target_capacity(new_target_capacity, dry_run=dry_run)
 
@@ -166,7 +169,7 @@ class Autoscaler:
 
         try:
             # see if the pool has set up a custom signal correctly; if not, fall back to the default signal
-            return Signal(
+            return ExternalSignal(
                 self.cluster,
                 self.pool,
                 self.scheduler,
