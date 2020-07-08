@@ -1,3 +1,11 @@
+paasta-tools (0.96.23) xenial; urgency=medium
+
+  * 0.96.23 tagged with 'make release'
+    Commit: Parallelize fetching events from kubernetes in API status
+    endpoint, PAASTA-16813
+
+ -- Evan Krall <krall@yelp.com>  Wed, 08 Jul 2020 10:27:54 -0700
+
 paasta-tools (0.96.22) xenial; urgency=medium
 
   * 0.96.22 tagged with 'make release'
