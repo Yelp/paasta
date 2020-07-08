@@ -1446,7 +1446,7 @@ class TestKubernetesDeploymentConfig:
                     "signalfx.com.external.metric/service-instance-uwsgi": (
                         "(data('uwsgi', filter=filter('paasta_cluster', 'cluster') "
                         "and filter('paasta_service', 'service') and "
-                        "filter('paasta_instance', 'instance')).mean().mean(over=300s) - 0.1).publish()"
+                        "filter('paasta_instance', 'instance')).mean().mean(over='300s') - 0.1).publish()"
                     ),
                 },
             ),

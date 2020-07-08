@@ -607,7 +607,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         signalflow = f"data('{signalfx_metric_name}', filter={filters}).mean()"
 
         if moving_average_window_seconds is not None:
-            signalflow += f".mean(over={moving_average_window_seconds}s)"
+            signalflow += f".mean(over='{moving_average_window_seconds}s')"
         if offset is not None:
             signalflow = f"({signalflow} - {offset})"
 
