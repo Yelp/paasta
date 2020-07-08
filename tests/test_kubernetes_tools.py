@@ -1414,6 +1414,62 @@ class TestKubernetesDeploymentConfig:
         )
         assert expected_res == return_value
 
+    def test_get_autoscaling_metric_spec_offset_and_averaging(self):
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {
+                "metrics_provider": "uwsgi",
+                "setpoint": 0.5,
+                "offset": 0.1,
+                "forecast_policy": "moving_average",
+                "moving_average_window_seconds": 300,
+            },
+        }
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name", "cluster"
+        )
+        expected_res = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name",
+                namespace="paasta",
+                annotations={
+                    "signalfx.com.custom.metrics": "",
+                    "signalfx.com.external.metric/service-instance-uwsgi": (
+                        "(data('uwsgi', filter=filter('paasta_cluster', 'cluster') "
+                        "and filter('paasta_service', 'service') and "
+                        "filter('paasta_instance', 'instance')).mean().mean(over=300s) - 0.1).publish()"
+                    ),
+                },
+            ),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name="service-instance-uwsgi",
+                            target_value=0.5 - 0.1,
+                        ),
+                    )
+                ],
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                ),
+            ),
+        )
+
+        assert expected_res == return_value
+
     def test_get_autoscaling_metric_spec_bespoke(self):
         config_dict = {
             "min_instances": 1,
