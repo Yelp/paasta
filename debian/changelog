@@ -1,3 +1,12 @@
+paasta-tools (0.96.25) xenial; urgency=medium
+
+  * 0.96.25 tagged with 'make release'
+    Commit: Merge pull request #2860 from Yelp/fix_hpa_signalflow
+    Correctly quote duration passed to mean() in signalfow generated for
+    …
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 08 Jul 2020 17:25:46 -0700
+
 paasta-tools (0.96.24) xenial; urgency=medium
 
   * 0.96.24 tagged with 'make release'
