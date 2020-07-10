@@ -460,6 +460,77 @@ class TestKubernetesDeploymentConfig:
             ]
             assert ret == expected
 
+    def test_get_sidecar_resource_requirements(self):
+        self.deployment.config_dict["sidecar_resource_requirements"] = {
+            "hacheck": {
+                "requests": {
+                    "cpu": 0.2,
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "256Mi",
+                },
+                "limits": {
+                    "cpu": 0.3,
+                    "memory": "1025Mi",
+                    "ephemeral-storage": "257Mi",
+                },
+            }
+        }
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 0.3, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
+            requests={"cpu": 0.2, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+        )
+
+    def test_get_sidecar_resource_requirements_default_limits(self):
+        """When limits is unspecified, it should default to the request"""
+        self.deployment.config_dict["sidecar_resource_requirements"] = {
+            "hacheck": {
+                "requests": {
+                    "cpu": 0.2,
+                    "memory": "1025Mi",
+                    "ephemeral-storage": "257Mi",
+                },
+            }
+        }
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 0.2, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
+            requests={"cpu": 0.2, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
+        )
+
+    def test_get_sidecar_resource_requirements_default_requirements(self):
+        """When request is unspecified, it should default to the 0.1, 1024Mi, 256Mi."""
+        try:
+            del self.deployment.config_dict["sidecar_resource_requirements"]
+        except KeyError:
+            pass
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+        )
+
+    def test_get_sidecar_resource_requirements_limits_override_default_requirements(
+        self,
+    ):
+        """When limit is partially specified, it should use the default requests, and limits should be the same except for the overridden value."""
+        self.deployment.config_dict["sidecar_resource_requirements"] = {
+            "hacheck": {"limits": {"cpu": 1.0},}
+        }
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 1.0, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+        )
+
     def test_get_container_env(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_env",

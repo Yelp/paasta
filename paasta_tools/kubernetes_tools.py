@@ -99,6 +99,7 @@ from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
+from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import host_passes_blacklist
@@ -228,6 +229,20 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
     self._disrupted_pods = disrupted_pods
 
 
+KubeContainerResourceRequest = TypedDict(
+    "KubeContainerResourceRequest",
+    {"cpu": float, "memory": str, "ephemeral-storage": str,},
+    total=False,
+)
+
+
+SidecarResourceRequirements = TypedDict(
+    "SidecarResourceRequirements",
+    {"requests": KubeContainerResourceRequest, "limits": KubeContainerResourceRequest,},
+    total=False,
+)
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
@@ -236,6 +251,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     horizontal_autoscaling: Dict[str, Any]
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
+    sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -719,7 +735,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             )
                         )
                     ),
-                    resources=self.get_sidecar_resource_requirements(),
+                    resources=self.get_sidecar_resource_requirements("hacheck"),
                     name=HACHECK_POD_NAME,
                     env=self.get_kubernetes_environment(),
                     ports=[V1ContainerPort(container_port=6666)],
@@ -829,11 +845,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             },
         )
 
-    def get_sidecar_resource_requirements(self) -> V1ResourceRequirements:
-        return V1ResourceRequirements(
-            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
-            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+    def get_sidecar_resource_requirements(
+        self, sidecar_name: str
+    ) -> V1ResourceRequirements:
+        config = self.config_dict.get("sidecar_resource_requirements", {}).get(
+            sidecar_name, {}
         )
+        requests: KubeContainerResourceRequest = {
+            "cpu": 0.1,
+            "memory": "1024Mi",
+            "ephemeral-storage": "256Mi",
+        }
+        requests.update(config.get("requests", {}))
+
+        limits: KubeContainerResourceRequest = {
+            "cpu": requests["cpu"],
+            "memory": requests["memory"],
+            "ephemeral-storage": requests["ephemeral-storage"],
+        }
+        limits.update(config.get("limits", {}))
+
+        return V1ResourceRequirements(limits=limits, requests=requests,)
 
     def get_liveness_probe(
         self, service_namespace_config: ServiceNamespaceConfig

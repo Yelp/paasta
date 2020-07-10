@@ -24,3 +24,13 @@ main2:
       fake-external:
           target_value: 55
           signalflow_metrics_query: "data(\"fake-external\").publish"
+  sidecar_resource_requirements:
+    hacheck:
+      limits:
+        cpu: 1.0
+        memory: 1025m
+        ephemeral-storage: 257m
+      requests:
+        cpu: 0.1
+        memory: 1024m
+        ephemeral-storage: 256m
