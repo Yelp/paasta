@@ -1514,11 +1514,7 @@ class TestKubernetesDeploymentConfig:
                 namespace="paasta",
                 annotations={
                     "signalfx.com.custom.metrics": "",
-                    "signalfx.com.external.metric/service-instance-uwsgi": (
-                        "(data('uwsgi', filter=filter('paasta_cluster', 'cluster') "
-                        "and filter('paasta_service', 'service') and "
-                        "filter('paasta_instance', 'instance')).mean().mean(over='300s') - 0.1).publish()"
-                    ),
+                    "signalfx.com.external.metric/service-instance-uwsgi": mock.ANY,
                 },
             ),
             spec=V2beta1HorizontalPodAutoscalerSpec(
@@ -1528,8 +1524,7 @@ class TestKubernetesDeploymentConfig:
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="service-instance-uwsgi",
-                            target_value=0.5 - 0.1,
+                            metric_name="service-instance-uwsgi", target_value=1,
                         ),
                     )
                 ],

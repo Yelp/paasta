@@ -159,6 +159,26 @@ DISCOVERY_ATTRIBUTES = {
     "hostname",
 }
 
+# This Signaflow attempts to recreate the behavior of the legacy autoscaler,
+# which averages the number of instances needed to handle the current (or
+# averaged) load instead of the load itself. This leads to more stable behavior.
+# Note that it returns the percentage by which we want to scale , so its target
+# in the HPA should always be 1.
+# See PAASTA-16756 for details.
+LEGACY_AUTOSCALING_SIGNALFLOW = """offset = {offset}
+setpoint = {setpoint}
+moving_average_window = '{moving_average_window_seconds}s'
+filters = filter('paasta_service', '{paasta_service}') and filter('paasta_instance', '{paasta_instance}') and filter('paasta_cluster', '{paasta_cluster}')
+
+current_replicas = data('kube_hpa_status_current_replicas', filter=filters).sum(by=['paasta_cluster'])
+load_per_instance = data('{signalfx_metric_name}', filter=filters)
+
+desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
+desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
+
+max(desired_instances / current_replicas, 0).publish()
+"""
+
 
 # For detail, https://github.com/kubernetes-client/python/issues/553
 # This hack should be removed when the issue got fixed.
@@ -556,25 +576,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 hpa_metric_name = (
                     f"{self.get_sanitised_deployment_name()}-{metrics_provider}"
                 )
+                signalflow = LEGACY_AUTOSCALING_SIGNALFLOW.format(
+                    setpoint=target,
+                    offset=autoscaling_params.get("offset", 0),
+                    moving_average_window_seconds=autoscaling_params.get(
+                        "moving_average_window_seconds", 1800
+                    ),
+                    paasta_service=self.get_service(),
+                    paasta_instance=self.get_instance(),
+                    paasta_cluster=self.get_cluster(),
+                    signalfx_metric_name=metrics_provider,
+                )
+                annotations[
+                    f"signalfx.com.external.metric/{hpa_metric_name}"
+                ] = signalflow
+
                 metrics.append(
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
                             metric_name=hpa_metric_name,
-                            target_value=target - autoscaling_params.get("offset", 0),
+                            target_value=1,  # see comments on signalflow template above
                         ),
                     )
                 )
-                signalflow = self.build_signalflow_for_autoscaling(
-                    signalfx_metric_name=metrics_provider,
-                    moving_average_window_seconds=autoscaling_params.get(
-                        "moving_average_window_seconds"
-                    ),
-                    offset=autoscaling_params.get("offset"),
-                )
-                annotations[
-                    f"signalfx.com.external.metric/{hpa_metric_name}"
-                ] = signalflow
             else:
                 metrics.append(
                     V2beta1MetricSpec(
@@ -608,26 +633,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ),
         )
-
-    def build_signalflow_for_autoscaling(
-        self,
-        signalfx_metric_name: str,
-        moving_average_window_seconds: Optional[int],
-        offset: Optional[float],
-    ) -> str:
-        filters = (
-            f"filter('paasta_cluster', '{self.get_cluster()}') and "
-            f"filter('paasta_service', '{self.get_service()}') and "
-            f"filter('paasta_instance', '{self.get_instance()}')"
-        )
-        signalflow = f"data('{signalfx_metric_name}', filter={filters}).mean()"
-
-        if moving_average_window_seconds is not None:
-            signalflow += f".mean(over='{moving_average_window_seconds}s')"
-        if offset is not None:
-            signalflow = f"({signalflow} - {offset})"
-
-        return signalflow + ".publish()"
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method
@@ -1218,6 +1223,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             else "false",
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
+
+        # The HPAMetrics collector needs these annotations to tell it to pull
+        # metrics from these pods
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
         # If legacy autoscaling is not configured
