@@ -47,8 +47,8 @@ build_%_docker:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-PTG_VERSION=0.0.6
-PTG_SUM=5fdd3251799d468d4534c2033c06ea642c254cc6e8e47bfa74a8e983612d59ca
+PTG_VERSION=0.0.7
+PTG_SUM=cc95361e409939376032980ff1029d24a40b9f227abba47d629252a1f13e10bf
 
 .ONESHELL:
 go_entrypoint:
@@ -58,7 +58,7 @@ go_entrypoint:
 		{ echo checksum mismatch; exit 1; }
 	unzip v$(PTG_VERSION).zip
 	cd paasta-tools-go-$(PTG_VERSION)
-	GONOSUMDB=*.yelpcorp.com make paasta_go
+	make paasta_go
 	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)"
 ifeq ($(PAASTA_ENV),YELP)
 	./paasta_go -version | grep "initializers.*monk"
