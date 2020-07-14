@@ -27,14 +27,10 @@ ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
 	ACTUAL_PACKAGE_VERSION=$(RELEASE)-yelp1
 	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
-	GO_BUILD_FLAGS=-tags yelp -modfile int.mod
-	GOPROXY=http://athens.paasta-norcal-devc.yelp
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
 	ACTUAL_PACKAGE_VERSION=$(RELEASE)~$*1
 	ADD_VERSION_SUFFIX=dch -b -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for $*'
-	GO_BUILD_FLAGS=
-	GOPROXY=
 endif
 
 build_%_docker:
@@ -63,6 +59,10 @@ go_entrypoint:
 	unzip v$(PTG_VERSION).zip
 	cd paasta-tools-go-$(PTG_VERSION)
 	make paasta_go
+	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)"
+ifeq ($(PAASTA_ENV),YELP)
+	./paasta_go -version | grep "initializers.*monk"
+endif
 	mv ./paasta_go ../
 
 package_%: build_$$*_docker go_entrypoint
