@@ -16,7 +16,7 @@
 RELEASE=0.96.27
 
 SHELL=/bin/bash
-.SHELLFLAGS=-euo pipefail -c
+.SHELLFLAGS=-eo pipefail -c
 
 UID:=`id -u`
 GID:=`id -g`
