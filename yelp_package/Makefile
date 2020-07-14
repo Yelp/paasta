@@ -16,6 +16,7 @@
 RELEASE=0.96.26
 
 SHELL=/bin/bash
+.SHELLFLAGS=-euo pipefail -c
 
 UID:=`id -u`
 GID:=`id -g`
@@ -50,15 +51,19 @@ build_%_docker:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-GOPATH=$(CURDIR)/gopath
-GOCMD=GOPATH=$(GOPATH) GOPROXY=$(GOPROXY) GO111MODULE=on go
+PTG_VERSION=0.0.6
+PTG_SUM=5fdd3251799d468d4534c2033c06ea642c254cc6e8e47bfa74a8e983612d59ca
+
+.ONESHELL:
 go_entrypoint:
-	mkdir -p $(GOPATH)
-	$(GOCMD) get -d github.com/Yelp/paasta-tools-go/cmd/paasta@v0.0.5
-	chmod -R +rw $(GOPATH)
-	cd $(GOPATH)/pkg/mod/github.com/\!yelp/paasta-tools-go@v0.0.5 && \
-		$(GOCMD) build $(GO_BUILD_FLAGS) -v -o $(GOPATH)/paasta_go ./cmd/paasta
-	test -x $(GOPATH)/paasta_go
+	rm -rf gopath && mkdir -p gopath && cd gopath
+	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip
+	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) || \
+		{ echo checksum mismatch; exit 1; }
+	unzip v$(PTG_VERSION).zip
+	cd paasta-tools-go-$(PTG_VERSION)
+	make paasta_go
+	mv ./paasta_go ../
 
 package_%: build_$$*_docker go_entrypoint
 	# Copy these files to .old before maybe clobbering them
