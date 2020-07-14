@@ -1300,8 +1300,8 @@ class TestKubernetesDeploymentConfig:
         )
         annotations = {
             "signalfx.com.custom.metrics": "",
-            "signalfx.com.external.metric/external": "fake_query",
-            "signalfx.com.external.metric/http": 'data("http", filter=filter("any", "random")).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()',
+            "signalfx.com.external.metric/service-instance-external": "fake_query",
+            "signalfx.com.external.metric/service-instance-http": 'data("http", filter=filter("any", "random")).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()',
         }
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -1337,13 +1337,13 @@ class TestKubernetesDeploymentConfig:
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="http", target_value=0.7,
+                            metric_name="service-instance-http", target_value=0.7,
                         ),
                     ),
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="external", target_value=0.7,
+                            metric_name="service-instance-external", target_value=0.7,
                         ),
                     ),
                 ],
