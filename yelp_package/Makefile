@@ -16,7 +16,6 @@
 RELEASE=0.96.27
 
 SHELL=/bin/bash
-.SHELLFLAGS=-eo pipefail -c
 
 UID:=`id -u`
 GID:=`id -g`
@@ -49,20 +48,23 @@ itest_%: package_$$* bintray_$$*
 
 PTG_VERSION=0.0.7
 PTG_SUM=cc95361e409939376032980ff1029d24a40b9f227abba47d629252a1f13e10bf
-
-.ONESHELL:
-go_entrypoint:
-	rm -rf gopath && mkdir -p gopath && cd gopath
-	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip
-	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) || \
-		{ echo checksum mismatch; exit 1; }
-	unzip v$(PTG_VERSION).zip
-	cd paasta-tools-go-$(PTG_VERSION)
-	make paasta_go
-	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)"
 ifeq ($(PAASTA_ENV),YELP)
-	./paasta_go -version | grep "initializers.*monk"
+	PTG_SANITY=monk
+else
+	PTG_SANITY=http
 endif
+
+go_entrypoint:
+	rm -rf gopath && \
+	mkdir -p gopath && \
+	cd gopath && \
+	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip && \
+	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) && \
+	unzip v$(PTG_VERSION).zip && \
+	cd paasta-tools-go-$(PTG_VERSION) && \
+	make paasta_go && \
+	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)" && \
+	./paasta_go -version | grep "initializers.*$(PTG_SANITY)" && \
 	mv ./paasta_go ../
 
 package_%: build_$$*_docker go_entrypoint
