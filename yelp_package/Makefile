@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.96.26
+RELEASE=0.96.27
 
 SHELL=/bin/bash
 .SHELLFLAGS=-euo pipefail -c
