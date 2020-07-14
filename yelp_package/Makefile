@@ -58,7 +58,7 @@ go_entrypoint:
 		{ echo checksum mismatch; exit 1; }
 	unzip v$(PTG_VERSION).zip
 	cd paasta-tools-go-$(PTG_VERSION)
-	make paasta_go
+	GONOSUMDB=*.yelpcorp.com make paasta_go
 	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)"
 ifeq ($(PAASTA_ENV),YELP)
 	./paasta_go -version | grep "initializers.*monk"
