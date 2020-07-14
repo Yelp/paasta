@@ -147,7 +147,7 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
                         output='OK: clusterman cluster_metrics was successful',
                         check_every='1m',
                         source=self.options.cluster,
-                        ttl='10m',
+                        ttl='20m',
                         noop=self.options.disable_sensu,
                     )
                     sensu_checkin(**sensu_args)
