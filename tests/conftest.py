@@ -92,6 +92,10 @@ def main_clusterman_config():
             'name': 'DefaultSignal',
             'branch_or_tag': 'master',
             'period_minutes': 10,
+            'required_metrics': [
+                {'name': 'cpus_allocated', 'type': SYSTEM_METRICS, 'minute_range': 10},
+                {'name': 'cost', 'type': APP_METRICS, 'minute_range': 30},
+            ],
         }
     }
 
@@ -139,6 +143,49 @@ def clusterman_pool_config():
         }
     }
     with staticconf.testing.MockConfiguration(config, namespace='bar.mesos_config'):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def clusterman_k8s_pool_config():
+    config = {
+        'resource_groups': [
+            {
+                'sfr': {
+                    's3': {
+                        'bucket': 'fake-bucket',
+                        'prefix': 'none',
+                    }
+                },
+            }, {
+                'asg': {
+                    'tag': 'puppet:role::paasta',
+                },
+            },
+        ],
+        'scaling_limits': {
+            'min_capacity': 3,
+            'max_capacity': 345,
+            'max_weight_to_add': 200,
+            'max_weight_to_remove': 10,
+        },
+        'sensu_config': [
+            {
+                'team': 'other-team',
+                'runbook': 'y/their-runbook',
+            }
+        ],
+        'autoscale_signal': {
+            'name': 'BarSignal3',
+            'branch_or_tag': 'v42',
+            'period_minutes': 7,
+            'required_metrics': [
+                {'name': 'cpus_allocated', 'type': SYSTEM_METRICS, 'minute_range': 10},
+                {'name': 'cost', 'type': APP_METRICS, 'minute_range': 30},
+            ],
+        }
+    }
+    with staticconf.testing.MockConfiguration(config, namespace='bar.kube_config'):
         yield
 
 

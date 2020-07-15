@@ -18,13 +18,9 @@ import arrow
 import mock
 import pytest
 import simplejson as json
-import staticconf.testing
-from clusterman_metrics import APP_METRICS
-from clusterman_metrics import METADATA
-from clusterman_metrics import SYSTEM_METRICS
+import staticconf
 
 from clusterman.exceptions import ClustermanSignalError
-from clusterman.exceptions import MetricsError
 from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.exceptions import SignalConnectionError
 from clusterman.signals.external_signal import ACK
@@ -57,25 +53,30 @@ def test_no_signal_configured():
 
 @pytest.mark.parametrize('conn_response', [['foo'], [ACK, 'foo']])
 def test_evaluate_signal_connection_errors(mock_signal, conn_response):
-    mock_signal._get_metrics = mock.Mock(return_value={})
     mock_signal._signal_conn.recv.side_effect = conn_response
-    with pytest.raises(SignalConnectionError):
+    with mock.patch(
+        'clusterman.signals.external_signal.get_metrics_for_signal', return_value={}
+    ), pytest.raises(SignalConnectionError):
         mock_signal.evaluate(arrow.get(12345678))
     assert mock_signal._signal_conn.send.call_count == len(conn_response)
     assert mock_signal._signal_conn.recv.call_count == len(conn_response)
 
 
 def test_evaluate_broken_signal(mock_signal):
-    mock_signal._get_metrics = mock.Mock(return_value={})
     mock_signal._signal_conn.recv.side_effect = [ACK, ACK, 'error']
-    with pytest.raises(ClustermanSignalError):
+    with mock.patch(
+        'clusterman.signals.external_signal.get_metrics_for_signal', return_value={}
+    ), pytest.raises(ClustermanSignalError):
         mock_signal.evaluate(arrow.get(12345678))
 
 
 def test_evaluate_restart_dead_signal(mock_signal):
-    mock_signal._get_metrics = mock.Mock(return_value={})
     mock_signal._signal_conn.recv.side_effect = [BrokenPipeError, ACK, ACK, '{"Resources": {"cpus": 1}}']
-    with mock.patch('clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process') as mock_connect:
+    with mock.patch(
+        'clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process'
+    ) as mock_connect, mock.patch(
+        'clusterman.signals.external_signal.get_metrics_for_signal', return_value={}
+    ):
         mock_connect.return_value = mock_signal._signal_conn
         assert mock_signal.evaluate(arrow.get(12345678)) == {'cpus': 1}
         assert mock_connect.call_count == 1
@@ -85,8 +86,11 @@ def test_evaluate_restart_dead_signal(mock_signal):
 def test_evaluate_restart_dead_signal_fails(mock_signal, error):
     mock_signal._get_metrics = mock.Mock(return_value={})
     mock_signal._signal_conn.recv.side_effect = [BrokenPipeError, ACK, ACK, error]
-    with mock.patch('clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process') as mock_connect, \
-            pytest.raises(ClustermanSignalError):
+    with mock.patch(
+        'clusterman.signals.external_signal.ExternalSignal._connect_to_signal_process'
+    ) as mock_connect, mock.patch(
+        'clusterman.signals.external_signal.get_metrics_for_signal', return_value={}
+    ), pytest.raises(ClustermanSignalError):
         mock_connect.return_value = mock_signal._signal_conn
         mock_signal.evaluate(arrow.get(12345678))
         assert mock_connect.call_count == 1
@@ -99,61 +103,17 @@ def test_evaluate_restart_dead_signal_fails(mock_signal, error):
 ])
 def test_evaluate_signal_sending_message(mock_signal, signal_recv):
     metrics = {'cpus_allocated': [(1234, 3.5), (1235, 6)]}
-    mock_signal._get_metrics = mock.Mock(return_value=metrics)
     num_messages = math.ceil(len(json.dumps({'metrics': metrics, 'timestamp': 12345678})) / 2) + 1
     mock_signal._signal_conn = mock.Mock()
     mock_signal._signal_conn.recv.side_effect = signal_recv
-    resp = mock_signal.evaluate(arrow.get(12345678))
+    with mock.patch(
+        'clusterman.signals.external_signal.get_metrics_for_signal',
+        return_value=metrics,
+    ):
+        resp = mock_signal.evaluate(arrow.get(12345678))
     assert mock_signal._signal_conn.send.call_count == num_messages
     assert mock_signal._signal_conn.recv.call_count == len(signal_recv)
     assert resp == {'cpus': 5.2}
-
-
-@pytest.mark.parametrize('end_time', [arrow.get(3600), arrow.get(10000), arrow.get(35000)])
-def test_get_metrics(mock_signal, end_time):
-    mock_signal.metrics_client.get_metric_values.side_effect = [
-        {'cpus_allocated': [(1, 2), (3, 4)]},
-        {'cpus_allocated': [(5, 6), (7, 8)]},
-        {'app1,cost': [(1, 2.5), (3, 4.5)]},
-    ]
-    metrics = mock_signal._get_metrics(end_time)
-    assert mock_signal.metrics_client.get_metric_values.call_args_list == [
-        mock.call(
-            'cpus_allocated',
-            SYSTEM_METRICS,
-            end_time.shift(minutes=-10).timestamp,
-            end_time.timestamp,
-            app_identifier='app1',
-            extra_dimensions={'cluster': 'foo', 'pool': 'bar'},
-            is_regex=False,
-        ),
-        mock.call(
-            'cpus_allocated',
-            SYSTEM_METRICS,
-            end_time.shift(minutes=-10).timestamp,
-            end_time.timestamp,
-            app_identifier='app1',
-            extra_dimensions={'cluster': 'foo', 'pool': 'bar.mesos'},
-            is_regex=False,
-        ),
-        mock.call(
-            'cost',
-            APP_METRICS,
-            end_time.shift(minutes=-30).timestamp,
-            end_time.timestamp,
-            app_identifier='app1',
-            extra_dimensions={},
-            is_regex=False,
-        ),
-    ]
-    assert 'cpus_allocated' in metrics
-    assert 'app1,cost' in metrics
-
-
-def test_get_metadata_metrics(mock_signal):
-    with pytest.raises(MetricsError):
-        mock_signal.required_metrics = [{'name': 'total_cpus', 'type': METADATA, 'minute_range': 10}]
-        mock_signal._get_metrics(arrow.get(0))
 
 
 def test_setup_signals_namespace():
