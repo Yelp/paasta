@@ -61,18 +61,20 @@ def _get_resource_request(metrics: Optional[Dict]) -> SignalResponseDict:
     if not metrics:
         return {r: None for r in RESOURCES}
 
-    resource_request = {}
+    resource_request: SignalResponseDict = {}
     for resource in RESOURCES:
         allocated = metrics.get(resource + '_allocated', [])
         pending = metrics.get(resource + '_pending', [])
         latest_allocated = max(allocated, default=(None, None))
         latest_pending = max(pending, default=(None, None))
 
+        # Stuff comes in from the metrics collector as Decimals so we have to convert to floats first
         if latest_allocated[1] is not None and latest_pending[1] is not None:
-            resource_request[resource] = latest_allocated[1] + latest_pending[1]
+            resource_request[resource] = float(latest_allocated[1]) + float(latest_pending[1])
+        elif latest_allocated[1] is not None:
+            resource_request[resource] = float(latest_allocated[1])
         else:
-            # This could be None but that's OK
-            resource_request[resource] = latest_allocated[1]
+            resource_request[resource] = None
     return resource_request
 
 
