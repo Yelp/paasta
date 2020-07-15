@@ -177,10 +177,18 @@ class Autoscaler:
 
         # TODO (CLUSTERMAN-126, CLUSTERMAN-195) apps will eventually have separate namespaces from pools
         pool_namespace = POOL_NAMESPACE.format(pool=app, scheduler=self.scheduler)
-        signal_namespace = staticconf.read_string('autoscale_signal.namespace', default=app, namespace=pool_namespace)
 
         try:
             # see if the pool has set up a custom signal correctly; if not, fall back to the default signal
+            if staticconf.read_bool('autoscale_signal.internal', default=False, namespace=pool_namespace):
+                return PendingPodsSignal(
+                    self.cluster,
+                    self.pool,
+                    self.scheduler,
+                    app,
+                    pool_namespace,
+                    self.metrics_client,
+                )
             return ExternalSignal(
                 self.cluster,
                 self.pool,
@@ -188,7 +196,11 @@ class Autoscaler:
                 app,
                 pool_namespace,
                 self.metrics_client,
-                signal_namespace,
+                signal_namespace=staticconf.read_string(
+                    'autoscale_signal.namespace',
+                    default=app,
+                    namespace=pool_namespace,
+                ),
             )
         except NoSignalConfiguredException:
             logger.info(f'No signal configured for {app}, falling back to default')
