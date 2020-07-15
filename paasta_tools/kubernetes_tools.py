@@ -495,11 +495,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         )
                     )
                 else:
+                    namespaced_metric_name = self.namespace_external_metric_name(
+                        metric_name
+                    )
                     metrics.append(
                         V2beta1MetricSpec(
                             type="External",
                             external=V2beta1ExternalMetricSource(
-                                metric_name=metric_name,
+                                metric_name=namespaced_metric_name,
                                 target_value=value["target_average_value"],
                             ),
                         )
@@ -508,20 +511,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
                     )
                     annotations[
-                        f"signalfx.com.external.metric/{metric_name}"
+                        f"signalfx.com.external.metric/{namespaced_metric_name}"
                     ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
             else:
+                namespaced_metric_name = self.namespace_external_metric_name(
+                    metric_name
+                )
                 metrics.append(
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name=metric_name, target_value=value["target_value"]
+                            metric_name=namespaced_metric_name,
+                            target_value=value["target_value"],
                         ),
                     )
                 )
-                annotations[f"signalfx.com.external.metric/{metric_name}"] = value[
-                    "signalflow_metrics_query"
-                ]
+                annotations[
+                    f"signalfx.com.external.metric/{namespaced_metric_name}"
+                ] = value["signalflow_metrics_query"]
 
         return V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -537,6 +544,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ),
         )
+
+    def namespace_external_metric_name(self, metric_name: str) -> str:
+        return f"{self.get_sanitised_deployment_name()}-{metric_name}"
 
     def get_autoscaling_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
@@ -573,9 +583,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 autoscaling_params.get("forecast_policy") == "moving_average"
                 or "offset" in autoscaling_params
             ):
-                hpa_metric_name = (
-                    f"{self.get_sanitised_deployment_name()}-{metrics_provider}"
-                )
+                hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
                 signalflow = LEGACY_AUTOSCALING_SIGNALFLOW.format(
                     setpoint=target,
                     offset=autoscaling_params.get("offset", 0),
