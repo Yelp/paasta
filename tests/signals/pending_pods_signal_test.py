@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import arrow
 import mock
 import pytest
@@ -12,11 +14,11 @@ def pending_pods_signal():
 
 def test_most_recent_values(pending_pods_signal):
     metrics = {
-        'cpus_allocated': [(900, 250), (1000, 150)],
-        'mem_allocated': [(900, 1250), (1000, 1000)],
-        'disk_allocated': [(900, 600), (1000, 500)],
-        'gpus_allocated': [(900, 0), (1000, None)],
-        'cpus_pending': [(1000, 543)],
+        'cpus_allocated': [(Decimal('900'), Decimal('250')), (Decimal('1000'), Decimal('150'))],
+        'mem_allocated': [(Decimal('900'), Decimal('1250')), (Decimal('1000'), Decimal('1000'))],
+        'disk_allocated': [(Decimal('900'), Decimal('600')), (Decimal('1000'), Decimal('500'))],
+        'gpus_allocated': [(Decimal('900'), Decimal('0')), (Decimal('1000'), None)],
+        'cpus_pending': [(Decimal('1000'), Decimal('543'))],
     }
     with mock.patch(
         'clusterman.signals.pending_pods_signal.get_metrics_for_signal', return_value=metrics,
@@ -27,8 +29,10 @@ def test_most_recent_values(pending_pods_signal):
 @pytest.mark.parametrize('timestamp', [1234, 2234])
 def test_boost_factor(timestamp, pending_pods_signal):
     metrics = {
-        'cpus_allocated': [(900, 250), (1000, 150)],
-        'boost_factor|cluster=foo,pool=bar.kube': [(950, 3)] + ([(1500, 1)] if timestamp > 1500 else [])
+        'cpus_allocated': [(Decimal('900'), Decimal('250')), (Decimal('1000'), Decimal('150'))],
+        'boost_factor|cluster=foo,pool=bar.kube': [(Decimal('950'), Decimal('3'))] + (
+            [(Decimal('1500'), Decimal('1'))] if timestamp > 1500 else []
+        )
     }
     with mock.patch(
         'clusterman.signals.pending_pods_signal.get_metrics_for_signal', return_value=metrics,

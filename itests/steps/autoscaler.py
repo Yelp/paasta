@@ -147,31 +147,31 @@ def make_mock_scaling_metrics(allocated_cpus, pending_cpus, boost_factor):
     ):
         if metric_name == 'cpus_allocated':
             return {'cpus_allocated': [
-                (Decimal('100'), 10),
-                (Decimal('110'), 12),
-                (Decimal('130'), allocated_cpus),
+                (Decimal('100'), Decimal('10')),
+                (Decimal('110'), Decimal('12')),
+                (Decimal('130'), Decimal(allocated_cpus)),
             ]}
         elif metric_name == 'mem_allocated':
             return {'mem_allocated': [
-                (Decimal('100'), 15),
-                (Decimal('110'), 17),
-                (Decimal('130'), 16),
+                (Decimal('100'), Decimal('15')),
+                (Decimal('110'), Decimal('17')),
+                (Decimal('130'), Decimal('16')),
             ]}
         elif metric_name == 'disk_allocated':
             return {'disk_allocated': [
-                (Decimal('100'), 10),
-                (Decimal('110'), 10),
-                (Decimal('130'), 10),
+                (Decimal('100'), Decimal('10')),
+                (Decimal('110'), Decimal('10')),
+                (Decimal('130'), Decimal('10')),
             ]}
         elif metric_name == 'cpus_pending':
             return {'cpus_pending': [
-                (Decimal('100'), 0),
-                (Decimal('110'), 0),
-                (Decimal('130'), pending_cpus),
+                (Decimal('100'), Decimal('0')),
+                (Decimal('110'), Decimal('0')),
+                (Decimal('130'), Decimal(pending_cpus)),
             ]}
         elif metric_name == 'boost_factor|cluster=kube-test,pool=bar.kubernetes' and boost_factor:
             return {'boost_factor|cluster=kube-test,pool=bar.kubernetes': [
-                (Decimal('135'), boost_factor)
+                (Decimal('135'), Decimal(boost_factor))
             ]}
         else:
             return {metric_name: []}
@@ -201,9 +201,10 @@ def resources(context, cpus, mem, disk, gpus):
     '(?P<allocated_cpus>\d+) CPUs allocated, (?P<pending_cpus>\d+) CPUs pending, and (?P<boost>\d*) boost factor'
 )
 def resources_requested(context, allocated_cpus, pending_cpus, boost):
-    context.allocated_cpus = int(allocated_cpus)
-    context.pending_cpus = int(pending_cpus)
-    context.boost = int(boost) if boost else None
+    # These don't need to be parsed because they get passed to Decimal
+    context.allocated_cpus = allocated_cpus
+    context.pending_cpus = pending_cpus
+    context.boost = boost if boost else None
 
 
 @behave.given('a mesos autoscaler object')
