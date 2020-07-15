@@ -1,3 +1,12 @@
+paasta-tools (0.96.28) xenial; urgency=medium
+
+  * 0.96.28 tagged with 'make release'
+    Commit: Merge pull request #2865 from Yelp/selston/PAASTA-
+    16812_namespace_custom_signalflow  Add service and instance name to
+    names of external metrics provided t…
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 15 Jul 2020 10:54:30 -0700
+
 paasta-tools (0.96.27) xenial; urgency=medium
 
   * 0.96.27 tagged with 'make release'
