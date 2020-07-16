@@ -219,7 +219,9 @@ def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=N
     """Mark a docker image for deployment"""
     username = get_username()
     if allowed_groups is not None and username not in ldap_user_search(allowed_groups):
-        raise UnauthorizedException("user is not authorized to perform this action")
+        logline = f"current user is not authorized to perform this action (must be in one of {allowed_groups})"
+        _log(service=service, line=logline, component="deploy", level="event")
+        return 1
 
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
