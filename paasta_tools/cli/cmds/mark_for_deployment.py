@@ -67,6 +67,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
+from paasta_tools.utils import get_username
+from paasta_tools.utils import ldap_user_search
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -213,8 +215,12 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit):
+def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=None):
     """Mark a docker image for deployment"""
+    username = get_username()
+    if allowed_groups is not None and username not in ldap_user_search(allowed_groups):
+        raise UnauthorizedException("user is not authorized to perform this action")
+
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
     )

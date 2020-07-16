@@ -22,6 +22,7 @@ import glob
 import hashlib
 import io
 import json
+import ldap3
 import logging
 import math
 import os
@@ -113,6 +114,12 @@ DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = (
 
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_ADD = 1
+LDAP_SEARCH_BASE = os.environ.get("PAASTA_SECRET_LDAP_SEARCH_BASE")
+LDAP_SEARCH_OU = os.environ.get("PAASTA_SECRET_LDAP_SEARCH_OU")
+LDAP_HOST = os.environ.get("PAASTA_SECRET_LDAP_HOST")
+LDAP_USERNAME = os.environ.get("PAASTA_SECRET_LDAP_USERNAME")
+LDAP_PASSWORD = os.environ.get("PAASTA_SECRET_LDAP_PASSWORD")
+
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -3548,3 +3555,22 @@ def load_all_configs(
             service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
         )
     return config_dicts
+
+
+def ldap_user_search(search_base: str = LDAP_SEARCH_BASE, ou: str = LDAP_SEARCH_OU) -> Set[str]:
+    """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
+    tls_config = ldap3.Tls(validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt")
+    server = ldap3.Server(LDAP_HOST, use_ssl=True, tls=tls_config)
+    conn = ldap3.Connection(server, user=LDAP_USERNAME, password=LDAP_PASSWORD, raise_exceptions=True)
+    conn.bind()
+
+    search_filter = f"(memberOf=CN={team},{ou})"
+    entries = conn.extend.standard.paged_search(
+        search_base=search_base,
+        search_scope=ldap3.SUBTREE,
+        search_filter=search_filter,
+        attributes=["sAMAccountName"],
+        paged_size=1000,
+        time_limit=10,
+    )
+    return {entry["attributes"]["sAMAccountName"] for entry in entries}
