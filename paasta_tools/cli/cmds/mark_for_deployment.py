@@ -79,6 +79,7 @@ from paasta_tools.utils import TimeoutError
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
+DEFAULT_ALLOWED_PUSH_GROUPS = os.environ.get("PAASTA_SECRET_ALLOWED_PUSH_GROUPS", None)
 
 log = logging.getLogger(__name__)
 
@@ -215,7 +216,7 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=None):
+def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=DEFAULT_ALLOWED_PUSH_GROUPS):
     """Mark a docker image for deployment"""
     username = get_username()
     if allowed_groups is not None:
