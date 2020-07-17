@@ -216,7 +216,9 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=DEFAULT_ALLOWED_PUSH_GROUPS):
+def mark_for_deployment(
+    git_url, deploy_group, service, commit, allowed_groups=DEFAULT_ALLOWED_PUSH_GROUPS
+):
     """Mark a docker image for deployment"""
     username = get_username()
     if allowed_groups is not None:
