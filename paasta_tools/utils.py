@@ -31,6 +31,7 @@ import queue
 import re
 import shlex
 import signal
+import ssl
 import socket
 import sys
 import tempfile
@@ -3557,14 +3558,14 @@ def load_all_configs(
     return config_dicts
 
 
-def ldap_user_search(search_base: str = LDAP_SEARCH_BASE, ou: str = LDAP_SEARCH_OU) -> Set[str]:
+def ldap_user_search(cn: str, search_base: str = LDAP_SEARCH_BASE, ou: str = LDAP_SEARCH_OU) -> Set[str]:
     """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
     tls_config = ldap3.Tls(validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt")
     server = ldap3.Server(LDAP_HOST, use_ssl=True, tls=tls_config)
     conn = ldap3.Connection(server, user=LDAP_USERNAME, password=LDAP_PASSWORD, raise_exceptions=True)
     conn.bind()
 
-    search_filter = f"(memberOf=CN={team},{ou})"
+    search_filter = f"(memberOf=CN={cn},{ou})"
     entries = conn.extend.standard.paged_search(
         search_base=search_base,
         search_scope=ldap3.SUBTREE,

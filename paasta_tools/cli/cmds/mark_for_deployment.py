@@ -218,10 +218,11 @@ def add_subparser(subparsers):
 def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=None):
     """Mark a docker image for deployment"""
     username = get_username()
-    if allowed_groups is not None and username not in ldap_user_search(allowed_groups):
-        logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
-        _log(service=service, line=logline, component="deploy", level="event")
-        return 1
+    if allowed_groups is not None:
+        if not any([username in ldap_user_search(group) for group in allowed_groups]):
+            logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
+            _log(service=service, line=logline, component="deploy", level="event")
+            return 1
 
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
