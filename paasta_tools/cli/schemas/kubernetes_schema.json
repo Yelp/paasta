@@ -596,6 +596,49 @@
                             ]
                         }
                     }
+                },
+                "sidecar_resource_requirements": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "hacheck": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        },
+                                        "ephemeral-storage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        },
+                                        "ephemeral-storage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

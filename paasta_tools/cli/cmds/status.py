@@ -1185,7 +1185,7 @@ def print_kubernetes_status(
     if autoscaling_status and verbose > 0:
         output.append("    Autoscaling status:")
         output.append(f"       min_instances: {autoscaling_status['min_instances']}")
-        output.append(f"       max_instances: {autoscaling_status['min_instances']}")
+        output.append(f"       max_instances: {autoscaling_status['max_instances']}")
         output.append(
             f"       Desired instances: {autoscaling_status['desired_replicas']}"
         )

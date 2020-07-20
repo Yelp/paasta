@@ -1,3 +1,76 @@
+paasta-tools (0.96.28) xenial; urgency=medium
+
+  * 0.96.28 tagged with 'make release'
+    Commit: Merge pull request #2865 from Yelp/selston/PAASTA-
+    16812_namespace_custom_signalflow  Add service and instance name to
+    names of external metrics provided t…
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 15 Jul 2020 10:54:30 -0700
+
+paasta-tools (0.96.27) xenial; urgency=medium
+
+  * 0.96.27 tagged with 'make release'
+    Commit: yelp_package/Makefile: remove unused variables, add sanity
+    checks for paasta_go
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 14 Jul 2020 05:23:48 -0700
+
+paasta-tools (0.96.26) xenial; urgency=medium
+
+  * 0.96.26 tagged with 'make release'
+    Commit: Merge branch "PAASTA-16682"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 10 Jul 2020 12:56:49 -0700
+
+paasta-tools (0.96.25) xenial; urgency=medium
+
+  * 0.96.25 tagged with 'make release'
+    Commit: Merge pull request #2860 from Yelp/fix_hpa_signalflow
+    Correctly quote duration passed to mean() in signalfow generated for
+    …
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 08 Jul 2020 17:25:46 -0700
+
+paasta-tools (0.96.24) xenial; urgency=medium
+
+  * 0.96.24 tagged with 'make release'
+    Commit: Merge pull request #2858 from Yelp/PAASTA-
+    16756_moving_average_hpa  Support moving_average forecast_policy and
+    offset fields in autoscali…
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 08 Jul 2020 13:50:13 -0700
+
+paasta-tools (0.96.23) xenial; urgency=medium
+
+  * 0.96.23 tagged with 'make release'
+    Commit: Parallelize fetching events from kubernetes in API status
+    endpoint, PAASTA-16813
+
+ -- Evan Krall <krall@yelp.com>  Wed, 08 Jul 2020 10:27:54 -0700
+
+paasta-tools (0.96.22) xenial; urgency=medium
+
+  * 0.96.22 tagged with 'make release'
+    Commit: Released 0.96.21 via make release
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 07 Jul 2020 05:33:59 -0700
+
+paasta-tools (0.96.21) xenial; urgency=medium
+
+  * 0.96.21 tagged with 'make release'
+    Commit: use GOPROXY for internal builds
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 07 Jul 2020 04:12:46 -0700
+
+paasta-tools (0.96.20) xenial; urgency=medium
+
+  * 0.96.20 tagged with 'make release'
+    Commit: Merge pull request #2856 from Yelp/PAASTA-
+    16675_update_hpa_on_deploy  Always sync HPAs and Pod Disruption
+    Budgets in setup_kubernetes_job
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 06 Jul 2020 11:18:11 -0700
+
 paasta-tools (0.96.19) xenial; urgency=medium
 
   * 0.96.19 tagged with 'make release'

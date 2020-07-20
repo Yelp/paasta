@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 from typing import Any
 from typing import DefaultDict
@@ -148,6 +149,33 @@ def autoscaling_status(
     )
 
 
+async def pod_info(
+    pod: V1Pod, client: kubernetes_tools.KubeClient, num_tail_lines: int,
+):
+    container_statuses = pod.status.container_statuses or []
+    pod_event_messages = await get_pod_event_messages(client, pod)
+    containers = [
+        dict(
+            name=container.name,
+            tail_lines=await get_tail_lines_for_kubernetes_container(
+                client, pod, container, num_tail_lines,
+            ),
+        )
+        for container in container_statuses
+    ]
+    return {
+        "name": pod.metadata.name,
+        "host": kubernetes_tools.get_pod_hostname(client, pod),
+        "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
+        "phase": pod.status.phase,
+        "ready": kubernetes_tools.is_pod_ready(pod),
+        "containers": containers,
+        "reason": pod.status.reason,
+        "message": pod.status.message,
+        "events": pod_event_messages,
+    }
+
+
 @a_sync.to_blocking
 async def job_status(
     kstatus: MutableMapping[str, Any],
@@ -165,31 +193,10 @@ async def job_status(
     if verbose > 0:
         num_tail_lines = calculate_tail_lines(verbose)
 
-        for pod in pod_list:
-            container_statuses = pod.status.container_statuses or []
-            pod_event_messages = await get_pod_event_messages(client, pod)
-            containers = [
-                dict(
-                    name=container.name,
-                    tail_lines=await get_tail_lines_for_kubernetes_container(
-                        client, pod, container, num_tail_lines,
-                    ),
-                )
-                for container in container_statuses
-            ]
-            kstatus["pods"].append(
-                {
-                    "name": pod.metadata.name,
-                    "host": kubernetes_tools.get_pod_hostname(client, pod),
-                    "deployed_timestamp": pod.metadata.creation_timestamp.timestamp(),
-                    "phase": pod.status.phase,
-                    "ready": kubernetes_tools.is_pod_ready(pod),
-                    "containers": containers,
-                    "reason": pod.status.reason,
-                    "message": pod.status.message,
-                    "events": pod_event_messages,
-                }
-            )
+        kstatus["pods"] = await asyncio.gather(
+            *[pod_info(pod, client, num_tail_lines) for pod in pod_list]
+        )
+
         for replicaset in replicaset_list:
             try:
                 ready_replicas = replicaset.status.ready_replicas
@@ -215,7 +222,7 @@ async def job_status(
     desired_instances = (
         job_config.get_instances() if job_config.get_desired_state() != "stop" else 0
     )
-    deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
+    deploy_status, message = await kubernetes_tools.get_kubernetes_app_deploy_status(
         app=app, kube_client=client, desired_instances=desired_instances,
     )
     kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
@@ -355,6 +362,7 @@ def kubernetes_status(
     )
     kstatus["desired_state"] = job_config.get_desired_state()
     kstatus["bounce_method"] = job_config.get_bounce_method()
+
     job_status(
         kstatus=kstatus,
         client=kube_client,

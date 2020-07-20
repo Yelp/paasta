@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import base64
 import copy
 import hashlib
@@ -33,6 +34,7 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -97,6 +99,7 @@ from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
+from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import host_passes_blacklist
@@ -155,6 +158,26 @@ DISCOVERY_ATTRIBUTES = {
     "pool",
     "hostname",
 }
+
+# This Signaflow attempts to recreate the behavior of the legacy autoscaler,
+# which averages the number of instances needed to handle the current (or
+# averaged) load instead of the load itself. This leads to more stable behavior.
+# Note that it returns the percentage by which we want to scale , so its target
+# in the HPA should always be 1.
+# See PAASTA-16756 for details.
+LEGACY_AUTOSCALING_SIGNALFLOW = """offset = {offset}
+setpoint = {setpoint}
+moving_average_window = '{moving_average_window_seconds}s'
+filters = filter('paasta_service', '{paasta_service}') and filter('paasta_instance', '{paasta_instance}') and filter('paasta_cluster', '{paasta_cluster}')
+
+current_replicas = data('kube_hpa_status_current_replicas', filter=filters).sum(by=['paasta_cluster'])
+load_per_instance = data('{signalfx_metric_name}', filter=filters)
+
+desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
+desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
+
+max(desired_instances / current_replicas, 0).publish()
+"""
 
 
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -226,6 +249,20 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
     self._disrupted_pods = disrupted_pods
 
 
+KubeContainerResourceRequest = TypedDict(
+    "KubeContainerResourceRequest",
+    {"cpu": float, "memory": str, "ephemeral-storage": str,},
+    total=False,
+)
+
+
+SidecarResourceRequirements = TypedDict(
+    "SidecarResourceRequirements",
+    {"requests": KubeContainerResourceRequest, "limits": KubeContainerResourceRequest,},
+    total=False,
+)
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
@@ -234,6 +271,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     horizontal_autoscaling: Dict[str, Any]
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
+    sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -457,11 +495,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         )
                     )
                 else:
+                    namespaced_metric_name = self.namespace_external_metric_name(
+                        metric_name
+                    )
                     metrics.append(
                         V2beta1MetricSpec(
                             type="External",
                             external=V2beta1ExternalMetricSource(
-                                metric_name=metric_name,
+                                metric_name=namespaced_metric_name,
                                 target_value=value["target_average_value"],
                             ),
                         )
@@ -470,20 +511,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
                     )
                     annotations[
-                        f"signalfx.com.external.metric/{metric_name}"
+                        f"signalfx.com.external.metric/{namespaced_metric_name}"
                     ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
             else:
+                namespaced_metric_name = self.namespace_external_metric_name(
+                    metric_name
+                )
                 metrics.append(
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name=metric_name, target_value=value["target_value"]
+                            metric_name=namespaced_metric_name,
+                            target_value=value["target_value"],
                         ),
                     )
                 )
-                annotations[f"signalfx.com.external.metric/{metric_name}"] = value[
-                    "signalflow_metrics_query"
-                ]
+                annotations[
+                    f"signalfx.com.external.metric/{namespaced_metric_name}"
+                ] = value["signalflow_metrics_query"]
 
         return V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -499,6 +544,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ),
         )
+
+    def namespace_external_metric_name(self, metric_name: str) -> str:
+        return f"{self.get_sanitised_deployment_name()}-{metric_name}"
 
     def get_autoscaling_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
@@ -529,30 +577,49 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
-        elif metrics_provider == "http":
+        elif metrics_provider in ("http", "uwsgi"):
             annotations = {"signalfx.com.custom.metrics": ""}
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Pods",
-                    pods=V2beta1PodsMetricSource(
-                        metric_name="http",
-                        target_average_value=target,
-                        selector=selector,
+            if (
+                autoscaling_params.get("forecast_policy") == "moving_average"
+                or "offset" in autoscaling_params
+            ):
+                hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
+                signalflow = LEGACY_AUTOSCALING_SIGNALFLOW.format(
+                    setpoint=target,
+                    offset=autoscaling_params.get("offset", 0),
+                    moving_average_window_seconds=autoscaling_params.get(
+                        "moving_average_window_seconds", 1800
                     ),
+                    paasta_service=self.get_service(),
+                    paasta_instance=self.get_instance(),
+                    paasta_cluster=self.get_cluster(),
+                    signalfx_metric_name=metrics_provider,
                 )
-            )
-        elif metrics_provider == "uwsgi":
-            annotations = {"signalfx.com.custom.metrics": ""}
-            metrics.append(
-                V2beta1MetricSpec(
-                    type="Pods",
-                    pods=V2beta1PodsMetricSource(
-                        metric_name="uwsgi",
-                        target_average_value=target,
-                        selector=selector,
-                    ),
+                annotations[
+                    f"signalfx.com.external.metric/{hpa_metric_name}"
+                ] = signalflow
+
+                metrics.append(
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name=hpa_metric_name,
+                            target_value=1,  # see comments on signalflow template above
+                        ),
+                    )
                 )
-            )
+            else:
+                metrics.append(
+                    V2beta1MetricSpec(
+                        type="Pods",
+                        pods=V2beta1PodsMetricSource(
+                            metric_name=metrics_provider,
+                            target_average_value=target,
+                            selector=selector,
+                        ),
+                    )
+                )
+
         else:
             log.error(
                 f"Wrong metrics specified: {metrics_provider} for\
@@ -681,7 +748,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             )
                         )
                     ),
-                    resources=self.get_sidecar_resource_requirements(),
+                    resources=self.get_sidecar_resource_requirements("hacheck"),
                     name=HACHECK_POD_NAME,
                     env=self.get_kubernetes_environment(),
                     ports=[V1ContainerPort(container_port=6666)],
@@ -791,11 +858,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             },
         )
 
-    def get_sidecar_resource_requirements(self) -> V1ResourceRequirements:
-        return V1ResourceRequirements(
-            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
-            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+    def get_sidecar_resource_requirements(
+        self, sidecar_name: str
+    ) -> V1ResourceRequirements:
+        config = self.config_dict.get("sidecar_resource_requirements", {}).get(
+            sidecar_name, {}
         )
+        requests: KubeContainerResourceRequest = {
+            "cpu": 0.1,
+            "memory": "1024Mi",
+            "ephemeral-storage": "256Mi",
+        }
+        requests.update(config.get("requests", {}))
+
+        limits: KubeContainerResourceRequest = {
+            "cpu": requests["cpu"],
+            "memory": requests["memory"],
+            "ephemeral-storage": requests["ephemeral-storage"],
+        }
+        limits.update(config.get("limits", {}))
+
+        return V1ResourceRequirements(limits=limits, requests=requests,)
 
     def get_liveness_probe(
         self, service_namespace_config: ServiceNamespaceConfig
@@ -1148,6 +1231,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             else "false",
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
+
+        # The HPAMetrics collector needs these annotations to tell it to pull
+        # metrics from these pods
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
         # If legacy autoscaling is not configured
@@ -1548,6 +1634,7 @@ async def get_tail_lines_for_kubernetes_container(
     return tail_lines
 
 
+@a_sync.to_async
 def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
     try:
         pod_events = kube_client.core.list_namespaced_event(
@@ -1561,7 +1648,7 @@ def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
 
 @async_timeout()
 async def get_pod_event_messages(kube_client: KubeClient, pod: V1Pod) -> List[Dict]:
-    pod_events = get_pod_events(kube_client, pod)
+    pod_events = await get_pod_events(kube_client, pod)
     pod_event_messages = []
     if pod_events:
         for event in pod_events:
@@ -2044,6 +2131,7 @@ def update_stateful_set(
     )
 
 
+@a_sync.to_async
 def get_events_for_object(
     kube_client: KubeClient,
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
@@ -2069,7 +2157,7 @@ def get_events_for_object(
     return parsed_events["items"]
 
 
-def get_all_events_for_service(
+async def get_all_events_for_service(
     app: Union[V1Deployment, V1StatefulSet], kube_client: KubeClient
 ) -> List[V1Event]:
     """ There is no universal API for getting all the events pertaining to
@@ -2081,25 +2169,35 @@ def get_all_events_for_service(
         f'paasta.yelp.com/service={app.metadata.labels["paasta.yelp.com/service"]},'
         f'paasta.yelp.com/instance={app.metadata.labels["paasta.yelp.com/instance"]}'
     )
+
+    pod_coros = []
     for pod in kube_client.core.list_namespaced_pod(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, pod, "Pod")
+        pod_coros.append(get_events_for_object(kube_client, pod, "Pod"))
 
+    depl_coros = []
     for depl in kube_client.deployments.list_namespaced_deployment(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, depl, "Deployment")
+        depl_coros.append(get_events_for_object(kube_client, depl, "Deployment"))
 
+    rs_coros = []
     for rs in kube_client.deployments.list_namespaced_replica_set(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, rs, "ReplicaSet")
+        rs_coros.append(get_events_for_object(kube_client, rs, "ReplicaSet"))
 
+    ss_coros = []
     for ss in kube_client.deployments.list_namespaced_stateful_set(
         app.metadata.namespace, label_selector=ls,
     ).items:
-        events += get_events_for_object(kube_client, ss, "StatefulSet")
+        ss_coros.append(get_events_for_object(kube_client, ss, "StatefulSet"))
+
+    for event_list in await asyncio.gather(
+        *pod_coros, *depl_coros, *rs_coros, *ss_coros
+    ):
+        events.extend(event_list)
 
     return sorted(
         events,
@@ -2112,14 +2210,14 @@ def get_all_events_for_service(
     )
 
 
-def get_kubernetes_app_deploy_status(
+async def get_kubernetes_app_deploy_status(
     app: Union[V1Deployment, V1StatefulSet],
     kube_client: KubeClient,
     desired_instances: int,
 ) -> Tuple[int, str]:
     # Try to get a real status message but we don't ever want to crash if this fails
     try:
-        event_stream = get_all_events_for_service(app, kube_client)
+        event_stream = await get_all_events_for_service(app, kube_client)
         if not event_stream:
             # events only stick around for so long
             deploy_message = "Unknown; no recent events"

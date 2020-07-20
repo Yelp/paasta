@@ -28,8 +28,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
-from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
-from paasta_tools.autoscaling.autoscaling_service_lib import is_deployment_marked_paused
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
@@ -149,19 +147,10 @@ def setup_kube_deployments(
             elif app.kube_deployment not in existing_kube_deployments:
                 log.info(f"Updating {app} because configs have changed.")
                 app.update(kube_client)
-            elif autoscaling_is_paused() and not is_deployment_marked_paused(
-                kube_client, app.soa_config
-            ):
-                log.info(f"Updating {app} because autoscaler needs to be paused.")
-                app.update(kube_client)
-            elif not autoscaling_is_paused() and is_deployment_marked_paused(
-                kube_client, app.soa_config
-            ):
-                log.info(f"Updating {app} because autoscaler needs to be resumed.")
-                app.update(kube_client)
             else:
-                log.debug(f"{app} is up to date, no action taken")
-                apps_updated.pop()
+                log.info(f"Ensuring related API objects for {app} are in sync")
+                app.update_related_api_objects(kube_client)
+
     log.info(json.dumps({"service_instance_updated": apps_updated}))
 
     return (False, None) not in applications and len(

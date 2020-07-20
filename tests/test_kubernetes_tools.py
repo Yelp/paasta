@@ -2,6 +2,7 @@ from typing import Any
 from typing import Dict
 from typing import Sequence
 
+import asynctest
 import mock
 import pytest
 from hypothesis import given
@@ -458,6 +459,77 @@ class TestKubernetesDeploymentConfig:
                 )
             ]
             assert ret == expected
+
+    def test_get_sidecar_resource_requirements(self):
+        self.deployment.config_dict["sidecar_resource_requirements"] = {
+            "hacheck": {
+                "requests": {
+                    "cpu": 0.2,
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "256Mi",
+                },
+                "limits": {
+                    "cpu": 0.3,
+                    "memory": "1025Mi",
+                    "ephemeral-storage": "257Mi",
+                },
+            }
+        }
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 0.3, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
+            requests={"cpu": 0.2, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+        )
+
+    def test_get_sidecar_resource_requirements_default_limits(self):
+        """When limits is unspecified, it should default to the request"""
+        self.deployment.config_dict["sidecar_resource_requirements"] = {
+            "hacheck": {
+                "requests": {
+                    "cpu": 0.2,
+                    "memory": "1025Mi",
+                    "ephemeral-storage": "257Mi",
+                },
+            }
+        }
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 0.2, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
+            requests={"cpu": 0.2, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
+        )
+
+    def test_get_sidecar_resource_requirements_default_requirements(self):
+        """When request is unspecified, it should default to the 0.1, 1024Mi, 256Mi."""
+        try:
+            del self.deployment.config_dict["sidecar_resource_requirements"]
+        except KeyError:
+            pass
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+        )
+
+    def test_get_sidecar_resource_requirements_limits_override_default_requirements(
+        self,
+    ):
+        """When limit is partially specified, it should use the default requests, and limits should be the same except for the overridden value."""
+        self.deployment.config_dict["sidecar_resource_requirements"] = {
+            "hacheck": {"limits": {"cpu": 1.0},}
+        }
+
+        assert self.deployment.get_sidecar_resource_requirements(
+            "hacheck"
+        ) == V1ResourceRequirements(
+            limits={"cpu": 1.0, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+        )
 
     def test_get_container_env(self):
         with mock.patch(
@@ -1228,8 +1300,8 @@ class TestKubernetesDeploymentConfig:
         )
         annotations = {
             "signalfx.com.custom.metrics": "",
-            "signalfx.com.external.metric/external": "fake_query",
-            "signalfx.com.external.metric/http": 'data("http", filter=filter("any", "random")).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()',
+            "signalfx.com.external.metric/service-instance-external": "fake_query",
+            "signalfx.com.external.metric/service-instance-http": 'data("http", filter=filter("any", "random")).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()',
         }
         expected_res = V2beta1HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -1265,13 +1337,13 @@ class TestKubernetesDeploymentConfig:
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="http", target_value=0.7,
+                            metric_name="service-instance-http", target_value=0.7,
                         ),
                     ),
                     V2beta1MetricSpec(
                         type="External",
                         external=V2beta1ExternalMetricSource(
-                            metric_name="external", target_value=0.7,
+                            metric_name="service-instance-external", target_value=0.7,
                         ),
                     ),
                 ],
@@ -1411,6 +1483,57 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
         )
+        assert expected_res == return_value
+
+    def test_get_autoscaling_metric_spec_offset_and_averaging(self):
+        config_dict = {
+            "min_instances": 1,
+            "max_instances": 3,
+            "autoscaling": {
+                "metrics_provider": "uwsgi",
+                "setpoint": 0.5,
+                "offset": 0.1,
+                "forecast_policy": "moving_average",
+                "moving_average_window_seconds": 300,
+            },
+        }
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name", "cluster"
+        )
+        expected_res = V2beta1HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name",
+                namespace="paasta",
+                annotations={
+                    "signalfx.com.custom.metrics": "",
+                    "signalfx.com.external.metric/service-instance-uwsgi": mock.ANY,
+                },
+            ),
+            spec=V2beta1HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta1MetricSpec(
+                        type="External",
+                        external=V2beta1ExternalMetricSource(
+                            metric_name="service-instance-uwsgi", target_value=1,
+                        ),
+                    )
+                ],
+                scale_target_ref=V2beta1CrossVersionObjectReference(
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                ),
+            ),
+        )
+
         assert expected_res == return_value
 
     def test_get_autoscaling_metric_spec_bespoke(self):
@@ -1914,8 +2037,7 @@ def test_get_tail_lines_for_kubernetes_container(
 
 
 @pytest.mark.parametrize("messages_num", [3, 0])
-@mock.patch("paasta_tools.kubernetes_tools.get_pod_events", autospec=True)
-def test_get_pod_event_messages(mock_get_pod_events, messages_num, event_loop):
+def test_get_pod_event_messages(messages_num, event_loop):
     pod = mock.MagicMock()
     pod.metadata.name = "my--pod"
     pod.metadata.namespace = "my_namespace"
@@ -1928,10 +2050,14 @@ def test_get_pod_event_messages(mock_get_pod_events, messages_num, event_loop):
         events.append(event)
 
     kube_client = mock.MagicMock()
-    mock_get_pod_events.return_value = events
-    pod_event_messages = event_loop.run_until_complete(
-        kubernetes_tools.get_pod_event_messages(kube_client=kube_client, pod=pod)
-    )
+
+    with asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_pod_events", autospec=True
+    ) as mock_get_pod_events:
+        mock_get_pod_events.return_value = events
+        pod_event_messages = event_loop.run_until_complete(
+            kubernetes_tools.get_pod_event_messages(kube_client=kube_client, pod=pod)
+        )
 
     assert len(pod_event_messages) == messages_num
     if messages_num == 3:
@@ -2180,43 +2306,47 @@ def test_update_stateful_set():
     )
 
 
-@mock.patch("paasta_tools.kubernetes_tools.get_all_events_for_service", autospec=True)
-def test_get_kubernetes_app_deploy_status(mock_get_events):
-    mock_get_events.return_value = [{"message": "some kubernetes message"}]
-    mock_client = mock.Mock()
-    mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Running, "some kubernetes message")
+@pytest.mark.asyncio
+async def test_get_kubernetes_app_deploy_status():
+    with asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_all_events_for_service", autospec=True
+    ) as mock_get_events:
+        mock_get_events.return_value = [{"message": "some kubernetes message"}]
 
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
+        mock_client = mock.Mock()
+        mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=1
+        ) == (KubernetesDeployStatus.Running, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Deploying, "some kubernetes message")
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=2
+        ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=0, ready_replicas=None, updated_replicas=0)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
+        mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=2
+        ) == (KubernetesDeployStatus.Deploying, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
+        mock_status = mock.Mock(replicas=0, ready_replicas=None, updated_replicas=0)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=0
+        ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
 
-    mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
-    mock_app = mock.Mock(status=mock_status)
-    assert get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
+        mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=0
+        ) == (KubernetesDeployStatus.Stopped, "some kubernetes message")
+
+        mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
+        mock_app = mock.Mock(status=mock_status)
+        assert await get_kubernetes_app_deploy_status(
+            mock_app, mock_client, desired_instances=1
+        ) == (KubernetesDeployStatus.Waiting, "some kubernetes message")
 
 
 def test_parse_container_resources():
