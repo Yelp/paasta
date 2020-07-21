@@ -16,6 +16,7 @@ import os
 import mock
 from mock import patch
 
+from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
@@ -27,6 +28,7 @@ from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_schema
+from paasta_tools.cli.cmds.validate import validate_secrets
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 
@@ -37,7 +39,9 @@ from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 @patch("paasta_tools.cli.cmds.validate.validate_tron", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.get_service_path", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_service_path", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
 def test_paasta_validate_calls_everything(
+    mock_validate_secrets,
     mock_check_service_path,
     mock_get_service_path,
     mock_validate_tron,
@@ -47,6 +51,7 @@ def test_paasta_validate_calls_everything(
 ):
     # Ensure each check in 'paasta_validate' is called
 
+    mock_validate_secrets.return_value = True
     mock_check_service_path.return_value = True
     mock_get_service_path.return_value = "unused_path"
     mock_validate_all_schemas.return_value = True
@@ -64,6 +69,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_tron.called
     assert mock_validate_unique_instance_names.called
     assert mock_validate_paasta_objects.called
+    assert mock_validate_secrets.called
 
 
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
@@ -619,3 +625,104 @@ def test_validate_unique_service_name_failure(
 
     output, _ = capsys.readouterr()
     assert "instance_1" in output
+
+
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.check_secrets_for_instance", autospec=True)
+def test_validate_secrets(
+    mock_check_secrets_for_instance,
+    mock_load_system_paasta_config,
+    mock_path_to_soa_dir_service,
+    mock_list_all_instances_for_service,
+    mock_list_clusters,
+    mock_get_instance_config,
+    capsys,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_load_system_paasta_config.return_value = mock.Mock(
+        get_vault_cluster_config=mock.Mock(
+            return_value={"fake_cluster": "fake_vault_env"}
+        )
+    )
+    mock_list_all_instances_for_service.return_value = [
+        "fake_instance",
+        "fake_instance2",
+    ]
+    mock_paasta_instance = mock.Mock(
+        config_dict={"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+    )
+    mock_paasta_instance2 = mock.Mock(
+        config_dict={"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
+    )
+    mock_get_instance_config.side_effect = [mock_paasta_instance, mock_paasta_instance2]
+    mock_check_secrets_for_instance.return_value = True
+    assert validate_secrets("fake-service-path"), capsys
+    captured = capsys.readouterr()
+    assert "No orphan secrets found" in captured.out
+    assert mock_check_secrets_for_instance.call_count == 2
+
+
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True)
+def test_check_secrets_for_instance(mock_isfile, mock_get_file_contents):
+    instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+    soa_dir = "fake_soa_dir"
+    service_path = "fake-service-path"
+    vault_env = "fake_vault_env"
+    secret_content = """
+{
+    "environments": {
+        "fake_vault_env": {
+            "ciphertext": "bla"
+        }
+    }
+}
+"""
+    mock_get_file_contents.return_value = secret_content
+    mock_isfile.return_value = True
+    assert check_secrets_for_instance(
+        instance_config_dict, soa_dir, service_path, vault_env
+    )
+    mock_get_file_contents.assert_called_with("fake-service-path/secrets/secret1.json")
+    instance_config_dict = {"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
+    assert check_secrets_for_instance(
+        instance_config_dict, soa_dir, service_path, vault_env
+    )
+    mock_get_file_contents.assert_called_with(
+        "fake_soa_dir/_shared/secrets/secret1.json"
+    )
+
+
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True)
+def test_check_secrets_for_instance_missing_secret(
+    mock_isfile, mock_get_file_contents, capsys
+):
+    instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+    soa_dir = "fake_soa_dir"
+    service_path = "fake-service-path"
+    vault_env = "even_more_fake_vault_env"
+    secret_content = """
+{
+    "environments": {
+        "fake_vault_env": {
+            "ciphertext": "bla"
+        }
+    }
+}
+"""
+    mock_get_file_contents.return_value = secret_content
+    mock_isfile.return_value = True
+    assert not check_secrets_for_instance(
+        instance_config_dict, soa_dir, service_path, vault_env
+    ), capsys
+    captured = capsys.readouterr()
+    assert (
+        "Secret secret1 not defined for ecosystem even_more_fake_vault_env on secret file fake-service-path/secrets/secret1.json"
+        in captured.out
+    )
