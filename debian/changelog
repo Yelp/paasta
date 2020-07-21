@@ -1,3 +1,12 @@
+paasta-tools (0.96.29) xenial; urgency=medium
+
+  * 0.96.29 tagged with 'make release'
+    Commit: Merge pull request #2822 from Yelp/u/gabrielv/PAASTA-16499-
+    validate-secrets-defined  PAASTA-16499 `paasta validate` now checks
+    if vault secrets are defined
+
+ -- gabrielv <gabrielv@yelp.com>  Tue, 21 Jul 2020 02:37:58 -0700
+
 paasta-tools (0.96.28) xenial; urgency=medium
 
   * 0.96.28 tagged with 'make release'
