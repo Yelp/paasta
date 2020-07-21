@@ -222,7 +222,21 @@ def mark_for_deployment(
     """Mark a docker image for deployment"""
     username = get_username()
     if allowed_groups is not None:
-        if not any([username in ldap_user_search(group) for group in allowed_groups]):
+        system_paasta_config = load_system_paasta_config()
+        search_base = system_paasta_config.get_ldap_search_base()
+        search_ou = system_paasta_config.get_ldap_search_ou()
+        host = system_paasta_config.get_ldap_host()
+        username = system_paasta_config.get_ldap_reader_username()
+        password = system_paasta_config.get_ldap_reader_password()
+        if not any(
+            [
+                username
+                in ldap_user_search(
+                    group, search_base, search_ou, host, username, password
+                )
+                for group in allowed_groups
+            ]
+        ):
             logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
             _log(service=service, line=logline, component="deploy", level="event")
             return 1

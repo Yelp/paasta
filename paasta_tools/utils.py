@@ -115,12 +115,6 @@ DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = (
 
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_ADD = 1
-LDAP_SEARCH_BASE = os.environ.get("PAASTA_SECRET_LDAP_SEARCH_BASE")
-LDAP_SEARCH_OU = os.environ.get("PAASTA_SECRET_LDAP_SEARCH_OU")
-LDAP_HOST = os.environ.get("PAASTA_SECRET_LDAP_HOST")
-LDAP_USERNAME = os.environ.get("PAASTA_SECRET_LDAP_USERNAME")
-LDAP_PASSWORD = os.environ.get("PAASTA_SECRET_LDAP_PASSWORD")
-
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -1840,6 +1834,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     hacheck_sidecar_image_url: str
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
+    ldap_search_base: str
+    ldap_search_ou: str
+    ldap_host: str
+    ldap_reader_username: str
+    ldap_reader_password: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -2411,6 +2410,21 @@ class SystemPaastaConfig:
 
     def get_pod_defaults(self) -> Dict[str, Any]:
         return self.config_dict.get("pod_defaults", {})
+
+    def get_ldap_search_base(self) -> str:
+        return self.config_dict.get("ldap_search_base", None)
+
+    def get_ldap_search_ou(self) -> str:
+        return self.config_dict.get("ldap_search_ou", None)
+
+    def get_ldap_host(self) -> str:
+        return self.config_dict.get("ldap_host", None)
+
+    def get_ldap_reader_username(self) -> str:
+        return self.config_dict.get("ldap_reader_username", None)
+
+    def get_ldap_reader_password(self) -> str:
+        return self.config_dict.get("ldap_reader_password", None)
 
 
 def _run(
@@ -3559,19 +3573,24 @@ def load_all_configs(
 
 
 def ldap_user_search(
-    cn: str, search_base: str = LDAP_SEARCH_BASE, ou: str = LDAP_SEARCH_OU
+    cn: str,
+    search_base: str,
+    search_ou: str,
+    ldap_host: str,
+    username: str,
+    password: str,
 ) -> Set[str]:
     """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
     tls_config = ldap3.Tls(
         validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt"
     )
-    server = ldap3.Server(LDAP_HOST, use_ssl=True, tls=tls_config)
+    server = ldap3.Server(ldap_host, use_ssl=True, tls=tls_config)
     conn = ldap3.Connection(
-        server, user=LDAP_USERNAME, password=LDAP_PASSWORD, raise_exceptions=True
+        server, user=username, password=password, raise_exceptions=True
     )
     conn.bind()
 
-    search_filter = f"(memberOf=CN={cn},{ou})"
+    search_filter = f"(memberOf=CN={cn},{search_ou})"
     entries = conn.extend.standard.paged_search(
         search_base=search_base,
         search_scope=ldap3.SUBTREE,
