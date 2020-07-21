@@ -1,0 +1,5 @@
+{
+    "vault_cluster_map": {
+        "test-cluster": "test-vault-env"
+    }
+}
