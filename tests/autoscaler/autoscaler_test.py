@@ -24,6 +24,7 @@ from clusterman.config import POOL_NAMESPACE
 from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.monitoring_lib import GaugeProtocol
 from clusterman.util import ClustermanResources
+from clusterman.util import SignalResourceRequest
 
 
 @pytest.fixture
@@ -97,6 +98,7 @@ def mock_autoscaler():
         'mem': mock.Mock(spec=GaugeProtocol),
         'cpus': mock.Mock(spec=GaugeProtocol),
         'disk': mock.Mock(spec=GaugeProtocol),
+        'gpus': mock.Mock(spec=GaugeProtocol),
     }
     return mock_autoscaler
 
@@ -136,7 +138,8 @@ def test_get_signal_for_app(mock_autoscaler, signal_response):
 def test_autoscaler_run(dry_run, mock_autoscaler, run_timestamp):
     mock_autoscaler._compute_target_capacity = mock.Mock(return_value=100)
     mock_autoscaler.signal.evaluate.side_effect = ValueError
-    mock_autoscaler.default_signal.evaluate.return_value = {'cpus': 100000}
+    resource_request = SignalResourceRequest(cpus=100000)
+    mock_autoscaler.default_signal.evaluate.return_value = resource_request
     with mock.patch(
         'clusterman.autoscaler.autoscaler.autoscaling_is_paused',
         return_value=False,
@@ -144,10 +147,13 @@ def test_autoscaler_run(dry_run, mock_autoscaler, run_timestamp):
         mock_autoscaler.run(dry_run=dry_run, timestamp=run_timestamp)
 
     assert mock_autoscaler.target_capacity_gauge.set.call_args == mock.call(100, {'dry_run': dry_run})
-    assert mock_autoscaler._compute_target_capacity.call_args == mock.call({'cpus': 100000})
+    assert mock_autoscaler._compute_target_capacity.call_args == mock.call(resource_request)
     assert mock_autoscaler.pool_manager.modify_target_capacity.call_count == 1
 
-    assert mock_autoscaler.resource_request_gauges['cpus'].set.call_args == mock.call(100000, {'dry_run': dry_run})
+    assert mock_autoscaler.resource_request_gauges['cpus'].set.call_args == mock.call(
+        resource_request.cpus,
+        {'dry_run': dry_run},
+    )
     assert mock_autoscaler.resource_request_gauges['mem'].set.call_count == 0
     assert mock_autoscaler.resource_request_gauges['disk'].set.call_count == 0
 
@@ -187,7 +193,9 @@ class TestComputeTargetCapacity:
         mock_autoscaler.pool_manager.target_capacity = 125
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 125
         mock_autoscaler.pool_manager.cluster_connector.get_resource_total.return_value = total_resource
-        new_target_capacity = mock_autoscaler._compute_target_capacity({resource: signal_resource})
+        new_target_capacity = mock_autoscaler._compute_target_capacity(SignalResourceRequest(
+            **{resource: signal_resource},
+        ))
         assert new_target_capacity == pytest.approx(expected_capacity)
 
     def test_empty_request(self, mock_autoscaler):
@@ -201,7 +209,7 @@ class TestComputeTargetCapacity:
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = target_capacity
 
         new_target_capacity = mock_autoscaler._compute_target_capacity(
-            {'cpus': None, 'mem': None, 'disk': 0, 'gpus': 0}
+            SignalResourceRequest(cpus=None, mem=None, disk=0, gpus=0)
         )
         assert new_target_capacity == 0
 
@@ -214,7 +222,7 @@ class TestComputeTargetCapacity:
         ))
 
         new_target_capacity = mock_autoscaler._compute_target_capacity(
-            {'cpus': 7, 'mem': 400, 'disk': 70, 'gpus': 0}
+            SignalResourceRequest(cpus=7, mem=400, disk=70, gpus=0),
         )
         assert new_target_capacity == pytest.approx(400 / 26 / 0.7)
 
@@ -225,7 +233,7 @@ class TestComputeTargetCapacity:
         mock_autoscaler._get_historical_weighted_resource_value = mock.Mock(return_value=ClustermanResources())
 
         new_target_capacity = mock_autoscaler._compute_target_capacity(
-            {'cpus': 7, 'mem': 400, 'disk': 70, 'gpus': 0}
+            SignalResourceRequest(cpus=7, mem=400, disk=70, gpus=0),
         )
         assert new_target_capacity == 1
 
@@ -235,12 +243,12 @@ class TestComputeTargetCapacity:
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 0
 
         new_target_capacity = mock_autoscaler._compute_target_capacity(
-            {'cpus': 10, 'mem': 500, 'disk': 1000, 'gpus': 0}
+            SignalResourceRequest(cpus=10, mem=500, disk=1000, gpus=0),
         )
         assert new_target_capacity == mock_autoscaler.pool_manager.target_capacity
 
     def test_scale_most_constrained_resource(self, mock_autoscaler):
-        resource_request = {'cpus': 500, 'mem': 30000, 'disk': 19000, 'gpus': 0}
+        resource_request = SignalResourceRequest(cpus=500, mem=30000, disk=19000, gpus=0)
         resource_totals = {'cpus': 1000, 'mem': 50000, 'disk': 20000, 'gpus': 0}
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 100
         mock_autoscaler.pool_manager.cluster_connector.get_resource_total.side_effect = resource_totals.__getitem__
@@ -252,7 +260,7 @@ class TestComputeTargetCapacity:
         assert new_target_capacity == pytest.approx(expected_new_target_capacity)
 
     def test_excluded_resources(self, mock_autoscaler):
-        resource_request = {'cpus': 500, 'mem': 30000, 'disk': 19000, 'gpus': 0}
+        resource_request = SignalResourceRequest(cpus=500, mem=30000, disk=19000, gpus=0)
         resource_totals = {'cpus': 1000, 'mem': 50000, 'disk': 20000, 'gpus': 0}
         mock_autoscaler.autoscaling_config = AutoscalingConfig(['disk'], 0.7, 0.1)
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 100
@@ -264,7 +272,7 @@ class TestComputeTargetCapacity:
         assert new_target_capacity == pytest.approx(expected_new_target_capacity)
 
     def test_request_mix_of_zeroes_and_nones(self, mock_autoscaler):
-        resource_request = {'cpus': 0, 'mem': None, 'disk': None, 'gpus': None}
+        resource_request = SignalResourceRequest(cpus=0, mem=None, disk=None, gpus=None)
         resource_totals = {'cpus': 1000, 'mem': 50000, 'disk': 20000, 'gpus': 0}
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 100
         mock_autoscaler.pool_manager.cluster_connector.get_resource_total.side_effect = resource_totals.__getitem__

@@ -36,7 +36,7 @@ from clusterman.exceptions import NoSignalConfiguredException
 from clusterman.exceptions import SignalConnectionError
 from clusterman.interfaces.signal import get_metrics_for_signal
 from clusterman.interfaces.signal import Signal
-from clusterman.interfaces.signal import SignalResponseDict
+from clusterman.util import SignalResourceRequest
 
 logger = colorlog.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class ExternalSignal(Signal):
         self,
         timestamp: arrow.Arrow,
         retry_on_broken_pipe: bool = True,
-    ) -> Union[SignalResponseDict, List[SignalResponseDict]]:
+    ) -> Union[SignalResourceRequest, List[SignalResourceRequest]]:
         """ Communicate over a Unix socket with the signal to evaluate its result
 
         :param timestamp: a Unix timestamp to pass to the signal as the "current time"
@@ -132,7 +132,7 @@ class ExternalSignal(Signal):
             response = response[1:] or self._signal_conn.recv(SOCKET_MESG_SIZE)
             logger.info(response)
 
-            return json.loads(response)['Resources']
+            return SignalResourceRequest(**json.loads(response)['Resources'])
 
         except JSONDecodeError as e:
             raise ClustermanSignalError('Signal evaluation failed') from e

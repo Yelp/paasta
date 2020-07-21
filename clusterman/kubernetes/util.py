@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import auto
+from enum import Enum
 from typing import List
 
 from humanfriendly import parse_size
@@ -24,7 +26,7 @@ from clusterman.util import ClustermanResources
 # numbers for the purposes of scheduling.  I think it makes the most sense
 # to use the same made-up numbers here.
 #
-# https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/algorithm/priorities/util/non_zero.go
+# https://github.com/kubernetes/kubernetes/blob/1c11ff7a26c498dc623f060aa30c7c970f3d3eee/pkg/scheduler/util/non_zero.go#L34
 DEFAULT_KUBERNETES_CPU_REQUEST = '100m'
 DEFAULT_KUBERNETES_MEMORY_REQUEST = '200MB'
 DEFAULT_KUBERNETES_DISK_REQUEST = '0'  # Kubernetes doesn't schedule based on disk allocation right now
@@ -56,6 +58,11 @@ class ResourceParser:
         return 0  # TODO
 
 
+class PodUnschedulableReason(Enum):
+    InsufficientResources = auto()
+    Unknown = auto()
+
+
 def allocated_node_resources(pods: List[KubernetesPod]) -> ClustermanResources:
     cpus = mem = disk = gpus = 0
     for pod in pods:
@@ -85,4 +92,13 @@ def total_node_resources(node: KubernetesNode) -> ClustermanResources:
         mem=ResourceParser.mem(node.status.allocatable),
         disk=ResourceParser.disk(node.status.allocatable),
         gpus=ResourceParser.gpus(node.status.allocatable),
+    )
+
+
+def total_pod_resources(pod: KubernetesPod) -> ClustermanResources:
+    return ClustermanResources(
+        cpus=sum(ResourceParser.cpus(c.resources.requests) for c in pod.spec.containers),
+        mem=sum(ResourceParser.mem(c.resources.requests) for c in pod.spec.containers),
+        disk=sum(ResourceParser.disk(c.resources.requests) for c in pod.spec.containers),
+        gpus=sum(ResourceParser.gpus(c.resources.requests) for c in pod.spec.containers),
     )
