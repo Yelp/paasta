@@ -242,6 +242,11 @@ class CustomResourceDefinition(NamedTuple):
     group: str
 
 
+class KubeLifecycleDict(TypedDict, total=False):
+    termination_grace_period_s: int
+    pre_stop_command: Union[str, List[str]]
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -272,6 +277,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     horizontal_autoscaling: Dict[str, Any]
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
+    lifecycle: KubeLifecycleDict
 
 
 def load_kubernetes_service_config_no_cache(
@@ -937,9 +943,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             env=self.get_container_env(),
             resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
-                pre_stop=V1Handler(
-                    _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
-                )
+                pre_stop=self.get_kubernetes_container_termination_action()
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
@@ -956,6 +960,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config=service_namespace_config,
         )
         return containers
+
+    def get_kubernetes_container_termination_action(self) -> V1Handler:
+        command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
+            "pre_stop_command", []
+        )
+        # default pre stop hook for the container
+        if not command:
+            return V1Handler(_exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"]))
+        if isinstance(command, str):
+            command = [command]
+        return V1Handler(_exec=V1ExecAction(command=command))
 
     def get_pod_volumes(
         self,
@@ -1273,6 +1288,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
+        termination_grace_period = self.get_termination_grace_period()
+        if termination_grace_period is not None:
+            pod_spec_kwargs[
+                "termination_grace_period_seconds"
+            ] = termination_grace_period
+
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
@@ -1409,6 +1430,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_bounce_margin_factor(self) -> float:
         return self.config_dict.get("bounce_margin_factor", 1.0)
+
+    def get_termination_grace_period(self) -> Optional[int]:
+        return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
+            "termination_grace_period_s"
+        )
 
 
 def get_kubernetes_secret_hashes(

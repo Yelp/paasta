@@ -1042,22 +1042,28 @@ class TestKubernetesDeploymentConfig:
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
+        autospec=True,
+    )
     @pytest.mark.parametrize(
-        "in_smtstk,routable_ip,node_affinity,spec_affinity",
+        "in_smtstk,routable_ip,node_affinity,spec_affinity,termination_grace_period",
         [
-            (True, "true", None, {}),
-            (False, "false", None, {}),
+            (True, "true", None, {}, None),
+            (False, "false", None, {}, 10),
             # an affinity obj is only added if there is a node affinity
             (
                 False,
                 "false",
                 "a_node_affinity",
                 {"affinity": V1Affinity(node_affinity="a_node_affinity")},
+                None,
             ),
         ],
     )
     def test_get_pod_template_spec(
         self,
+        mock_get_termination_grace_period,
         mock_load_service_namespace_config,
         mock_get_node_affinity,
         mock_get_pod_volumes,
@@ -1069,6 +1075,7 @@ class TestKubernetesDeploymentConfig:
         routable_ip,
         node_affinity,
         spec_affinity,
+        termination_grace_period,
     ):
         mock_service_namespace_config = mock.Mock()
         mock_load_service_namespace_config.return_value = mock_service_namespace_config
@@ -1076,6 +1083,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_node_affinity.return_value = node_affinity
         mock_system_paasta_config = mock.Mock()
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
+        mock_get_termination_grace_period.return_value = termination_grace_period
 
         ret = self.deployment.get_pod_template_spec(
             git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
@@ -1093,6 +1101,7 @@ class TestKubernetesDeploymentConfig:
             restart_policy="Always",
             volumes=[],
             dns_policy="foo",
+            termination_grace_period_seconds=termination_grace_period,
         )
         pod_spec_kwargs.update(spec_affinity)
         assert ret == V1PodTemplateSpec(
@@ -1175,6 +1184,26 @@ class TestKubernetesDeploymentConfig:
     )
     def test_get_node_affinity_no_reqs(self):
         assert self.deployment.get_node_affinity() is None
+
+    @pytest.mark.parametrize(
+        "termination_action,expected",
+        [
+            (None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
+            ("", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            ([], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            ("/bin/no-args", ["/bin/no-args"]),  # no args command
+            (["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
+        ],
+    )
+    def test_kubernetes_container_termination_action(
+        self, termination_action, expected
+    ):
+        if termination_action:
+            self.deployment.config_dict["lifecycle"] = {
+                "pre_stop_command": termination_action
+            }
+        handler = V1Handler(_exec=V1ExecAction(command=expected))
+        assert self.deployment.get_kubernetes_container_termination_action() == handler
 
     @pytest.mark.parametrize(
         "whitelist,blacklist,expected",
