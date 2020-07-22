@@ -56,7 +56,9 @@ def mock_periodically_update_slack():
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-def test_mark_for_deployment_happy(mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log):
+def test_mark_for_deployment_happy(
+    mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log
+):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
     mock_load_system_paasta_config.return_value = config_mock
@@ -83,7 +85,9 @@ def test_mark_for_deployment_happy(mock_load_system_paasta_config, mock_create_r
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-def test_mark_for_deployment_sad(mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log):
+def test_mark_for_deployment_sad(
+    mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log
+):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
     mock_load_system_paasta_config.return_value = config_mock
@@ -241,7 +245,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-def test_mark_for_deployment_yelpy_repo(mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs):
+def test_mark_for_deployment_yelpy_repo(
+    mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
+):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
     mock_load_system_paasta_config.return_value = config_mock
@@ -260,7 +266,7 @@ def test_mark_for_deployment_yelpy_repo(mock_load_system_paasta_config, mock_tri
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
 def test_mark_for_deployment_nonyelpy_repo(
-        mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
+    mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
 ):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
