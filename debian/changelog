@@ -1,3 +1,12 @@
+paasta-tools (0.96.30) xenial; urgency=medium
+
+  * 0.96.30 tagged with 'make release'
+    Commit: Merge pull request #2867 from rohangulati/u/rgulati/MONK-
+    1127  MONK-1127 Adding support for prestop hook and termination
+    grace period in paasta
+
+ -- Rohan Gulati <rgulati@yelp.com>  Wed, 22 Jul 2020 06:20:04 -0700
+
 paasta-tools (0.96.29) xenial; urgency=medium
 
   * 0.96.29 tagged with 'make release'
