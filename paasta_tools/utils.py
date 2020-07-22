@@ -1808,6 +1808,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_fqdn_format: str
     clusters: Sequence[str]
     dashboard_links: Dict[str, Dict[str, str]]
+    default_push_groups: List
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
     deployd_big_bounce_deadline: float
@@ -2425,6 +2426,9 @@ class SystemPaastaConfig:
 
     def get_ldap_reader_password(self) -> str:
         return self.config_dict.get("ldap_reader_password", None)
+
+    def get_default_push_groups(self) -> List:
+        return self.config_dict.get("default_push_groups", None)
 
 
 def _run(
