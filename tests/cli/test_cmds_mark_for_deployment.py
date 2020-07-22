@@ -53,7 +53,13 @@ def mock_periodically_update_slack():
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
-def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log_audit, mock__log):
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+def test_mark_for_deployment_happy(mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log):
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
     actual = mark_for_deployment.mark_for_deployment(
         git_url="fake_git_url",
         deploy_group="fake_deploy_group",
@@ -74,7 +80,13 @@ def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log_audit, moc
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
-def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log_audit, mock__log):
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+def test_mark_for_deployment_sad(mock_load_system_paasta_config, mock_create_remote_refs, mock__log_audit, mock__log):
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
     mock_create_remote_refs.side_effect = Exception("something bad")
     with patch("time.sleep", autospec=True):
         actual = mark_for_deployment.mark_for_deployment(
@@ -226,7 +238,13 @@ def test_paasta_mark_for_deployment_with_good_rollback(
 
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
-def test_mark_for_deployment_yelpy_repo(mock_trigger_deploys, mock_create_remote_refs):
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
+def test_mark_for_deployment_yelpy_repo(mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs):
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
     mark_for_deployment.mark_for_deployment(
         git_url="git://false.repo.yelpcorp.com/services/test_services",
         deploy_group="fake_deploy_group",
@@ -238,9 +256,15 @@ def test_mark_for_deployment_yelpy_repo(mock_trigger_deploys, mock_create_remote
 
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
+)
 def test_mark_for_deployment_nonyelpy_repo(
-    mock_trigger_deploys, mock_create_remote_refs
+        mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
 ):
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
     mark_for_deployment.mark_for_deployment(
         git_url="git://false.repo/services/test_services",
         deploy_group="fake_deploy_group",
