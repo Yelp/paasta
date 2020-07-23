@@ -46,6 +46,7 @@ jsonref==0.1
 jsonschema==2.5.1
 kazoo==2.4.0
 kubernetes==10.0.1
+ldap3==2.6.0
 manhole==1.5.0
 marathon==0.12.0
 MarkupSafe==1.0

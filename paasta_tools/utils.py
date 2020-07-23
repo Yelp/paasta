@@ -31,6 +31,7 @@ import re
 import shlex
 import signal
 import socket
+import ssl
 import sys
 import tempfile
 import threading
@@ -67,6 +68,7 @@ from typing import Union
 
 import choice
 import dateutil.tz
+import ldap3
 import requests_cache
 import service_configuration_lib
 from docker import Client
@@ -1806,6 +1808,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_fqdn_format: str
     clusters: Sequence[str]
     dashboard_links: Dict[str, Dict[str, str]]
+    default_push_groups: List
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
     deployd_big_bounce_deadline: float
@@ -1832,6 +1835,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     hacheck_sidecar_image_url: str
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
+    ldap_search_base: str
+    ldap_search_ou: str
+    ldap_host: str
+    ldap_reader_username: str
+    ldap_reader_password: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -2403,6 +2411,24 @@ class SystemPaastaConfig:
 
     def get_pod_defaults(self) -> Dict[str, Any]:
         return self.config_dict.get("pod_defaults", {})
+
+    def get_ldap_search_base(self) -> str:
+        return self.config_dict.get("ldap_search_base", None)
+
+    def get_ldap_search_ou(self) -> str:
+        return self.config_dict.get("ldap_search_ou", None)
+
+    def get_ldap_host(self) -> str:
+        return self.config_dict.get("ldap_host", None)
+
+    def get_ldap_reader_username(self) -> str:
+        return self.config_dict.get("ldap_reader_username", None)
+
+    def get_ldap_reader_password(self) -> str:
+        return self.config_dict.get("ldap_reader_password", None)
+
+    def get_default_push_groups(self) -> List:
+        return self.config_dict.get("default_push_groups", None)
 
 
 def _run(
@@ -3548,3 +3574,33 @@ def load_all_configs(
             service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
         )
     return config_dicts
+
+
+def ldap_user_search(
+    cn: str,
+    search_base: str,
+    search_ou: str,
+    ldap_host: str,
+    username: str,
+    password: str,
+) -> Set[str]:
+    """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
+    tls_config = ldap3.Tls(
+        validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt"
+    )
+    server = ldap3.Server(ldap_host, use_ssl=True, tls=tls_config)
+    conn = ldap3.Connection(
+        server, user=username, password=password, raise_exceptions=True
+    )
+    conn.bind()
+
+    search_filter = f"(memberOf=CN={cn},{search_ou})"
+    entries = conn.extend.standard.paged_search(
+        search_base=search_base,
+        search_scope=ldap3.SUBTREE,
+        search_filter=search_filter,
+        attributes=["sAMAccountName"],
+        paged_size=1000,
+        time_limit=10,
+    )
+    return {entry["attributes"]["sAMAccountName"] for entry in entries}
