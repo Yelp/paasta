@@ -158,6 +158,7 @@ DISCOVERY_ATTRIBUTES = {
     "pool",
     "hostname",
 }
+SUPPORTED_STORAGE_CLASSES = {"ebs", "ebs-slow", "ebs-retain"}
 
 # This Signaflow attempts to recreate the behavior of the legacy autoscaler,
 # which averages the number of instances needed to handle the current (or
@@ -1125,7 +1126,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_storage_class_name(self, volume: PersistentVolume) -> str:
         storage_class_name = volume.get("storage_class_name", "ebs")
-        if storage_class_name not in ["ebs", "ebs-slow"]:
+        if storage_class_name not in SUPPORTED_STORAGE_CLASSES:
             log.warning(f"storage class {storage_class_name} is not supported")
             storage_class_name = "ebs"
         return storage_class_name

@@ -1683,12 +1683,15 @@ class TestKubernetesDeploymentConfig:
         )
         assert self.deployment.get_storage_class_name(pv) == "ebs"
 
-    def test_get_storage_class_name_correct(self):
-        for sc in ["ebs", "ebs-slow"]:
-            pv = PersistentVolume(
-                storage_class_name=sc, size=1000, container_path="/dev/null", mode="rw",
-            )
-            assert self.deployment.get_storage_class_name(pv) == sc
+    @pytest.mark.parametrize("storage_class_name", ["ebs", "ebs-slow", "ebs-retain"])
+    def test_get_storage_class_name_correct(self, storage_class_name):
+        pv = PersistentVolume(
+            storage_class_name=storage_class_name,
+            size=1000,
+            container_path="/dev/null",
+            mode="rw",
+        )
+        assert self.deployment.get_storage_class_name(pv) == storage_class_name
 
     def test_get_persistent_volume_name(self):
         pv_name = self.deployment.get_persistent_volume_name(
