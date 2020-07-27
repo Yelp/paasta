@@ -10,6 +10,16 @@ env:
     - TARGET: itest_bionic-external
 
 before_install:
-    - sudo apt-get install python3.7 python3.7-dev libfreetype6-dev
+    - eval $(gimme stable)  # install go
+    - sudo apt-get install python3.7 python3.7-dev
+    - curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+    - echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
+    - sudo apt-get update && sudo apt-get install kubectl
     - pip install tox
+    - GO111MODULE="on" go get sigs.k8s.io/kind@v0.8.1
+
+
+before_script:
+    - eval $(make -sC acceptance local-env)
+
 script: make $TARGET

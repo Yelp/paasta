@@ -12,6 +12,13 @@ docker inspect --type=image "${IMAGE_NAME}" > /dev/null || \
     IMAGE_NAME="docker-paasta.yelpcorp.com:443/services-clusterman:paasta-$(git rev-parse HEAD)"
 DISTRIB_CODENAME=$(docker run -t "${IMAGE_NAME}" lsb_release -cs | tr -d '\n\r')
 
+# Sometimes our acceptance tests run in parallel on the same box, so we need to use different CIDR ranges
+if [ "${DISTRIB_CODENAME}" = "xenial" ]; then
+    CIDR_BLOCK="10.0.0.0/24"
+else
+    CIDR_BLOCK="11.0.0.0/24"
+fi
+
 if [ "${EXTRA_VOLUME_MOUNTS}" ]; then
     EXTRA_FLAGS="-v ${EXTRA_VOLUME_MOUNTS}"
 fi
@@ -27,7 +34,12 @@ docker run -t -v "$(pwd)/acceptance/srv-configs:/nail/srv/configs:ro" \
 while [ -z "${CONTAINER}" ]; do CONTAINER=$(docker ps | egrep "${IMAGE_NAME}" | cut -d' ' -f1); done
 docker network connect "clusterman_${DISTRIB_CODENAME}_default" "${CONTAINER}"
 docker network connect "clusterman_${DISTRIB_CODENAME}_acceptance" "${CONTAINER}"
-docker exec -e "DISTRIB_CODENAME=${DISTRIB_CODENAME}" -e ACCEPTANCE_ROOT=/code/acceptance --user=0 "${CONTAINER}" python acceptance/run_instance.py
+docker exec -e "DISTRIB_CODENAME=${DISTRIB_CODENAME}" -e ACCEPTANCE_ROOT=/code/acceptance --user=0 "${CONTAINER}" python acceptance/run_instance.py \
+    http://moto-ec2:5000/ \
+    http://moto-s3:5000/ \
+    http://moto-dynamodb:5000/ \
+    "${CIDR_BLOCK}"
+
 docker exec -t --user=0 \
     -e CMAN_CLUSTER=local-dev \
     -e CMAN_POOL=default \

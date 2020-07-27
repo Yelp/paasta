@@ -24,6 +24,7 @@ clusters:
     local-dev:
         aws_region: us-west-2
         mesos_master_fqdn: mesosmaster
+        kubeconfig_path: /var/lib/clusterman/clusterman.conf
 
 aws:
     endpoint_url: http://moto-{svc}:5000

@@ -1,0 +1,17 @@
+---
+resource_groups:
+  - sfr:
+      s3:
+        bucket: clusterman-resource-groups
+        prefix: acceptance
+
+scaling_limits:
+  min_capacity: 10
+  max_capacity: 60
+  max_tasks_to_kill: 100
+  max_weight_to_add: 10
+  max_weight_to_remove: 10
+
+autoscale_signal:
+  internal: true
+  period_minutes: 1

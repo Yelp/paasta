@@ -48,6 +48,7 @@ itest: cook-image
 	./service-itest-runner clusterman.batch.spot_price_collector "--aws-region=us-west-1 "
 	./service-itest-runner clusterman.batch.cluster_metrics_collector "--cluster=local-dev"
 	./service-itest-runner clusterman.batch.autoscaler_bootstrap "" clusterman.batch.autoscaler
+	make -C acceptance local-cluster-clean && make -C acceptance acceptance-internal
 
 .PHONY: itest-external
 itest-external: cook-image-external
@@ -55,6 +56,7 @@ itest-external: cook-image-external
 	./service-itest-runner examples.batch.spot_price_collector "--aws-region=us-west-1 --env-config-path=acceptance/srv-configs/clusterman-external.yaml"
 	./service-itest-runner examples.batch.cluster_metrics_collector "--cluster=local-dev --env-config-path=acceptance/srv-configs/clusterman-external.yaml"
 	./service-itest-runner examples.batch.autoscaler_bootstrap "--env-config-path=acceptance/srv-configs/clusterman-external.yaml" examples.batch.autoscaler
+	make -C acceptance local-cluster-clean && make -C acceptance acceptance-external
 
 .PHONY: cook-image
 cook-image:
