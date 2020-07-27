@@ -1,3 +1,11 @@
+paasta-tools (0.96.31) xenial; urgency=medium
+
+  * 0.96.31 tagged with 'make release'
+    Commit: Merge pull request #2868 from rohangulati/u/rgulati/MONK-
+    1128  MONK-1128  Adding support for ebs-retain storage class
+
+ -- Rohan Gulati <rgulati@yelp.com>  Mon, 27 Jul 2020 03:36:18 -0700
+
 paasta-tools (0.96.30) xenial; urgency=medium
 
   * 0.96.30 tagged with 'make release'
