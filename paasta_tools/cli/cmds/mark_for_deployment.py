@@ -380,8 +380,8 @@ def paasta_mark_for_deployment(args):
     username = get_username()
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
-        deploy_info['allowed_push_groups']
-        if deploy_info.get('allowed_push_groups') is not None
+        deploy_info["allowed_push_groups"]
+        if deploy_info.get("allowed_push_groups") is not None
         else system_paasta_config.get_default_push_groups()
     )
     if allowed_groups is not None:
