@@ -215,34 +215,8 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit, allowed_groups=None):
+def mark_for_deployment(git_url, deploy_group, service, commit):
     """Mark a docker image for deployment"""
-    username = get_username()
-    system_paasta_config = load_system_paasta_config()
-    allowed_groups = (
-        allowed_groups
-        if allowed_groups is not None
-        else system_paasta_config.get_default_push_groups()
-    )
-    if allowed_groups is not None:
-        search_base = system_paasta_config.get_ldap_search_base()
-        search_ou = system_paasta_config.get_ldap_search_ou()
-        host = system_paasta_config.get_ldap_host()
-        username = system_paasta_config.get_ldap_reader_username()
-        password = system_paasta_config.get_ldap_reader_password()
-        if not any(
-            [
-                username
-                in ldap_user_search(
-                    group, search_base, search_ou, host, username, password
-                )
-                for group in allowed_groups
-            ]
-        ):
-            logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
-            _log(service=service, line=logline, component="deploy", level="event")
-            return 1
-
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
     )
@@ -401,6 +375,34 @@ def paasta_mark_for_deployment(args):
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
+
+    # Authz check based on deploy.yaml settings
+    username = get_username()
+    system_paasta_config = load_system_paasta_config()
+    allowed_groups = (
+        deploy_info['allowed_push_groups']
+        if deploy_info.get('allowed_push_groups') is not None
+        else system_paasta_config.get_default_push_groups()
+    )
+    if allowed_groups is not None:
+        search_base = system_paasta_config.get_ldap_search_base()
+        search_ou = system_paasta_config.get_ldap_search_ou()
+        host = system_paasta_config.get_ldap_host()
+        username = system_paasta_config.get_ldap_reader_username()
+        password = system_paasta_config.get_ldap_reader_password()
+        if not any(
+            [
+                username
+                in ldap_user_search(
+                    group, search_base, search_ou, host, username, password
+                )
+                for group in allowed_groups
+            ]
+        ):
+            raise ValueError(
+                f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
+            )
+
     deploy_process = MarkForDeploymentProcess(
         service=service,
         deploy_info=deploy_info,

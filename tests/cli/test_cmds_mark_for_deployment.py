@@ -195,6 +195,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         timeout = 600
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
+    config_mock = mock.Mock()
+    config_mock.get_default_push_groups.return_value = None
+    mock_load_system_paasta_config.return_value = config_mock
     mock_mark_for_deployment.return_value = 0
 
     def do_wait_for_deployment_side_effect(self, target_commit):
