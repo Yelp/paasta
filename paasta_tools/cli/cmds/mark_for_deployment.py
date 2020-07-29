@@ -399,9 +399,9 @@ def paasta_mark_for_deployment(args):
                 for group in allowed_groups
             ]
         ):
-            raise ValueError(
-                f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
-            )
+            logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
+            _log(service=service, line=logline, component="deploy", level="event")
+            raise ValueError(logline)
 
     deploy_process = MarkForDeploymentProcess(
         service=service,
