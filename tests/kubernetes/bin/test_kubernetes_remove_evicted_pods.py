@@ -45,6 +45,13 @@ def test_get_pod_service():
     assert pod_service == "my-service"
 
 
+def test_get_pod_service_no_labels():
+    pod1 = mock.MagicMock(metadata=mock.MagicMock(labels=None))
+
+    pod_service = get_pod_service(pod1)
+    assert pod_service is None
+
+
 def test_notify_service_owners():
     service_map = {
         "service1": [

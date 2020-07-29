@@ -70,7 +70,10 @@ def get_evicted_pods(pods: Sequence[V1Pod]) -> Sequence[V1Pod]:
 
 
 def get_pod_service(pod: V1Pod) -> str:
-    return pod.metadata.labels.get("paasta.yelp.com/service")
+    if pod.metadata.labels is not None:
+        return pod.metadata.labels.get("paasta.yelp.com/service")
+    else:
+        return None
 
 
 def notify_service_owners(
