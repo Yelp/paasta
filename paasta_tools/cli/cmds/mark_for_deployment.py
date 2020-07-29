@@ -253,7 +253,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     return 1
 
 
-def deploy_authz_check(deploy_info):
+def deploy_authz_check(deploy_info, service):
     username = get_username()
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
@@ -403,7 +403,7 @@ def paasta_mark_for_deployment(args):
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    deploy_authz_check(deploy_info)
+    deploy_authz_check(deploy_info, service)
 
     deploy_process = MarkForDeploymentProcess(
         service=service,
