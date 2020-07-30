@@ -18,13 +18,16 @@ python:
   - "3.6"
 sudo: required
 env:
-  - TOXENV=py36-linux,docs,mypy,tests
-  - TOXENV=general_itests
-  - TOXENV=paasta_itests
-  - TOXENV=example_cluster
-  - MAKE_TARGET=itest_trusty
-  - MAKE_TARGET=itest_xenial
-  - MAKE_TARGET=itest_bionic
+  global:
+    - PIP_INDEX_URL=https://pypi.python.org/simple
+  jobs:
+    - TOXENV=py36-linux,docs,mypy,tests
+    - TOXENV=general_itests
+    - TOXENV=paasta_itests
+    - TOXENV=example_cluster
+    - MAKE_TARGET=itest_trusty
+    - MAKE_TARGET=itest_xenial
+    - MAKE_TARGET=itest_bionic
 services:
   - docker
 before_install:

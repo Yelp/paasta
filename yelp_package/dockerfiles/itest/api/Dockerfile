@@ -13,6 +13,10 @@
 # limitations under the License.
 
 FROM ubuntu:xenial
+
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ENV PIP_INDEX_URL=$PIP_INDEX_URL
+
 RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 
 # Need Python 3.6
