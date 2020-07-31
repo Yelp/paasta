@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-PIP_INDEX_URL ?= https://pypi.python.org/simple
+PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
 
 %:
 	dh $@ --with python-virtualenv

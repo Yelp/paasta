@@ -1,4 +1,7 @@
-FROM examplecluster_mesosbase
+FROM example_cluster_mesosbase
+
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
