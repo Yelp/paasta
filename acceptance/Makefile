@@ -6,26 +6,13 @@ DOCKER_IMAGE ?= $(PROJECT_NAME)-dev-$(WHOAMI)
 DOCKER_PORT ?= 31234
 DOCKER_REGISTRY ?= $(KIND_CLUSTER)-reg
 DOCKER_COMPOSE := COMPOSE_PROJECT_NAME=$(PROJECT_NAME)_k8s ../.tox/acceptance/bin/docker-compose -f docker-compose-k8s.yaml
-LOCAL_ENV ?= LOCAL_ENV_$(subst -,_,$(PROJECT_NAME))
-
-.PHONY: local-env-check
-local-env-check:
-	@which kind >/dev/null || (echo 'kind must be installed in PATH' && exit 1)
-	@which kubectl >/dev/null || (echo 'kubectl must be installed in PATH' && exit 1)
-	@test "$$$(LOCAL_ENV)" = "done" || (echo 'Please run `source <(make local-env)`.' && exit 1)
-
-.PHONY: local-env
-local-env:  ## Set env vars in current shell to do local cluster development: source <(make local-env)
-	@echo "export KIND_CLUSTER=$(KIND_CLUSTER)"
-	@echo "export KUBECONFIG=$(KUBECONFIG)"
-	@echo "export $(LOCAL_ENV)=done"
 
 .PHONY: local-cluster-internal
-local-cluster-internal: local-env-check .local-cluster.yaml .local-clusterman-internal.yaml .local-cluster-up
+local-cluster-internal: .local-cluster.yaml .local-clusterman-internal.yaml .local-cluster-up
 	@echo Done.
 
 .PHONY: local-cluster-external
-local-cluster-external: local-env-check .local-cluster.yaml .local-clusterman-external.yaml .local-cluster-up
+local-cluster-external: .local-cluster.yaml .local-clusterman-external.yaml .local-cluster-up
 	@echo Done.
 
 .local-cluster-up:
@@ -50,6 +37,8 @@ local-cluster-external: local-env-check .local-cluster.yaml .local-clusterman-ex
 	touch .local-cluster-up
 
 .PHONY: acceptance-%
+export KIND_CLUSTER
+export KUBECONFIG
 acceptance-%: local-cluster-%
 	kubectl apply -f .local-clusterman-$*.yaml
 	echo "Checking to see if Clusterman is running..."
