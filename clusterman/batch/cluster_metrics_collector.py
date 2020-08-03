@@ -117,8 +117,12 @@ class ClusterMetricsCollector(BatchDaemon, BatchLoggingMixin, BatchRunningSentin
         self.pool_managers: Mapping[str, PoolManager] = {}
         for scheduler, pools in self.pools.items():
             for pool in pools:
-                logger.info(f'Loading resource groups for {pool}.{scheduler} on {self.options.cluster}')
-                self.pool_managers[f'{pool}.{scheduler}'] = PoolManager(self.options.cluster, pool, scheduler)
+                try:
+                    logger.info(f'Loading resource groups for {pool}.{scheduler} on {self.options.cluster}')
+                    self.pool_managers[f'{pool}.{scheduler}'] = PoolManager(self.options.cluster, pool, scheduler)
+                except Exception as e:
+                    logger.exception(e)
+                    continue
 
     @suppress_request_limit_exceeded()
     def run(self) -> None:

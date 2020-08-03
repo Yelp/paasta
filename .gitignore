@@ -25,6 +25,7 @@ docker-venv
 .cache
 .pytest_cache/
 .mypy_cache/
+acceptance/autoscaler_config.yaml
 package/itest/autoscaler_config.yaml
 package/itest/autoscaler_config.tmpl
 package/itest/run_instance.py
@@ -32,3 +33,4 @@ package/itest/trusty/*
 package/itest/xenial/*
 package/itest/bionic/*
 /completions/[a-zA-Z]*
+acceptance/.local*

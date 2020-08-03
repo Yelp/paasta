@@ -13,18 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import sys
 
 import boto3
 import simplejson as json
 import yaml
 
+ec2_url = sys.argv[1]
+s3_url = sys.argv[2]
+ddb_url = sys.argv[3]
+cidr_block = sys.argv[4]
+
 root = os.environ['ACCEPTANCE_ROOT']
 session = boto3.session.Session('foo', 'bar', region_name='us-west-2')
-ec2 = session.client('ec2', endpoint_url='http://moto-ec2:5000')
-s3 = session.client('s3', endpoint_url='http://moto-s3:5000')
-dynamodb = session.client('dynamodb', endpoint_url='http://moto-dynamodb:5000')
+ec2 = session.client('ec2', endpoint_url=ec2_url)
+s3 = session.client('s3', endpoint_url=s3_url)
+dynamodb = session.client('dynamodb', endpoint_url=ddb_url)
 
-cidr_block = '10.0.0.0/24' if os.environ['DISTRIB_CODENAME'] == 'xenial' else '11.0.0.0/24'
 vpc_response = ec2.create_vpc(CidrBlock=cidr_block)
 subnet_response = ec2.create_subnet(
     CidrBlock=cidr_block,
