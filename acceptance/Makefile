@@ -2,7 +2,7 @@ PROJECT_NAME ?= clusterman
 WHOAMI := $(shell whoami)
 KIND_CLUSTER ?= $(WHOAMI)-$(PROJECT_NAME)
 KUBECONFIG ?= .local-$(KIND_CLUSTER).conf
-DOCKER_IMAGE ?= $(PROJECT_NAME)-dev-$(WHOAMI)
+DOCKER_TAG ?= $(PROJECT_NAME)-dev-$(WHOAMI)
 DOCKER_PORT ?= 31234
 DOCKER_REGISTRY ?= $(KIND_CLUSTER)-reg
 DOCKER_COMPOSE := COMPOSE_PROJECT_NAME=$(PROJECT_NAME)_k8s ../.tox/acceptance/bin/docker-compose -f docker-compose-k8s.yaml
@@ -21,8 +21,8 @@ local-cluster-external: .local-cluster.yaml .local-clusterman-external.yaml .loc
 		sed "s|/etc/resolv.conf|$$(awk '/nameserver/ { print $$2; exit }' /etc/resolv.conf)|" | \
 		kubectl replace -f -
 	./k8s-local-docker-registry.sh $(DOCKER_REGISTRY) $(DOCKER_PORT) $(KIND_CLUSTER)
-	docker tag $(DOCKER_IMAGE) localhost:$(DOCKER_PORT)/$(DOCKER_IMAGE)
-	docker push localhost:$(DOCKER_PORT)/$(DOCKER_IMAGE)
+	docker tag $(DOCKER_TAG) localhost:$(DOCKER_PORT)/$(DOCKER_TAG)
+	docker push localhost:$(DOCKER_PORT)/$(DOCKER_TAG)
 	docker exec $(KIND_CLUSTER)-control-plane mkdir -p /var/lib/clusterman
 	docker cp $(KUBECONFIG) $(KIND_CLUSTER)-control-plane:/var/lib/clusterman/clusterman.conf
 	docker exec $(KIND_CLUSTER)-control-plane chmod 644 /var/lib/clusterman/clusterman.conf
@@ -108,7 +108,7 @@ spec:
         - operator: Exists
       containers:
         - name: clusterman
-          image: localhost:$(DOCKER_PORT)/$(DOCKER_IMAGE)
+          image: localhost:$(DOCKER_PORT)/$(DOCKER_TAG)
           command: ['python']
           args: ['-m', $(CMD), $(EXTRA_ARGS)]
           env:
