@@ -35,7 +35,7 @@ dpkg -i /dist/${DISTRIB_CODENAME}/clusterman_${PACKAGE_VERSION}_amd64.deb || tru
 apt-get install -y --force-yes --fix-broken
 
 export ACCEPTANCE_ROOT=/itest
-pip3 install boto3 simplejson
+pip3 --index-url https://pypi.yelpcorp.com/simple install boto3 simplejson
 python3 /itest/run_instance.py
 
 # Run the critical clusterman CLI commands
