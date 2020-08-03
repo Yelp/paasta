@@ -1,3 +1,10 @@
+paasta-tools (0.96.32) xenial; urgency=medium
+
+  * 0.96.32 tagged with 'make release'
+    Commit: Merge pull request #2872 from Yelp/SECIR-403  SECIR-403
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Mon, 03 Aug 2020 03:40:52 -0700
+
 paasta-tools (0.96.31) xenial; urgency=medium
 
   * 0.96.31 tagged with 'make release'
