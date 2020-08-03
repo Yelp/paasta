@@ -30,7 +30,7 @@ local-cluster-external: .local-cluster.yaml .local-clusterman-external.yaml .loc
 	docker exec $(KIND_CLUSTER)-control-plane sed -i "s/\(.*server: \).*/\1https:\\/\\/127.0.0.1:6443/g" /var/lib/clusterman/clusterman.conf
 	$(DOCKER_COMPOSE) up -d moto-ec2 moto-s3 moto-dynamodb
 	sleep 10  # Give some time for the moto containers to come up
-	ACCEPTANCE_ROOT=. DISTRIB_CODENAME=bionic python run_instance.py \
+	ACCEPTANCE_ROOT=. DISTRIB_CODENAME=bionic ../.tox/acceptance/bin/python run_instance.py \
 		$$($(DOCKER_COMPOSE) ps moto-ec2 | tail -n 1 | sed -e 's|^.*:\(.*\)->5000.*$$|http://127.0.0.1:\1|') \
 		$$($(DOCKER_COMPOSE) ps moto-s3 | tail -n 1 | sed -e 's|^.*:\(.*\)->5000.*$$|http://127.0.0.1:\1|') \
 		$$($(DOCKER_COMPOSE) ps moto-dynamodb | tail -n 1 | sed -e 's|^.*:\(.*\)->5000.*$$|http://127.0.0.1:\1|') \
