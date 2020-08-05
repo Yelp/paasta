@@ -1,3 +1,10 @@
+paasta-tools (0.96.34) xenial; urgency=medium
+
+  * 0.96.34 tagged with 'make release'
+    Commit: Merge branch "u/flavr/kafka-status-update"
+
+ -- Flavien Raynaud <flavr@yelp.com>  Wed, 05 Aug 2020 07:21:12 -0700
+
 paasta-tools (0.96.33) xenial; urgency=medium
 
   * 0.96.33 tagged with 'make release'
