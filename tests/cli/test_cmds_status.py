@@ -1002,20 +1002,29 @@ def mock_kafka_status() -> Mapping[str, Any]:
             brokers=[
                 {
                     "host": "10.93.122.47",
+                    "ip": "0.0.0.0",
                     "id": 0,
-                    "phase": "running",
+                    "name": "kafka-0",
+                    "phase": "Running",
                     "deployed_timestamp": "2020-03-25T16:24:21Z",
+                    "container_state": "Running",
+                    "container_state_reason": "",
                 },
                 {
                     "host": "10.93.115.200",
+                    "ip": "0.0.0.1",
                     "id": 1,
-                    "phase": "pending",
+                    "name": "kafka-1",
+                    "phase": "Pending",
                     "deployed_timestamp": "2020-03-25T16:24:21Z",
+                    "container_state": "Waiting",
+                    "container_state_reason": "",
                 },
             ],
             cluster_ready=True,
             health={
                 "healthy": False,
+                "restarting": False,
                 "message": "message",
                 "offline_partitions": 1,
                 "under_replicated_partitions": 1,
@@ -1332,9 +1341,11 @@ class TestPrintKafkaStatus:
         )
         assert return_value == 0
 
-    @patch("paasta_tools.cli.cmds.status.get_pod_uptime", autospec=True)
-    def test_output(self, mock_get_pod_uptime, mock_kafka_status):
-        mock_get_pod_uptime.return_value = "0d0h20m18s"
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output(
+        self, mock_naturaltime, mock_kafka_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
         output = []
         print_kafka_status(
             cluster="fake_cluster",
@@ -1355,9 +1366,9 @@ class TestPrintKafkaStatus:
             f"     Offline Partitions: {status.health['offline_partitions']}",
             f"     Under Replicated Partitions: {status.health['under_replicated_partitions']}",
             f"    Brokers:",
-            f"     Broker Id  Host           Phase    Uptime",
-            f"     0          10.93.122.47   running  0d0h20m18s",
-            f"     1          10.93.115.200  pending  0d0h20m18s",
+            f"     Id  Phase    Started",
+            f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
+            f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 

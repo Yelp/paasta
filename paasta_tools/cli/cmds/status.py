@@ -932,7 +932,7 @@ def append_pod_status(pod_status, output: List[str]):
                 get_pod_uptime(pod["deployed_timestamp"]),
             )
         )
-        if pod["reason"] != "":
+        if "reason" in pod and pod["reason"] != "":
             rows.append(PaastaColors.grey(f"  {pod['reason']}: {pod['message']}"))
         if "container_state" in pod and pod["container_state"] != "Running":
             rows.append(
@@ -1276,7 +1276,10 @@ def print_kafka_status(
     output.append(f"    State: {desired_state}")
 
     cluster_ready = "true" if status.cluster_ready else PaastaColors.red("false")
-    output.append(f"    Ready: {cluster_ready}")
+    cluster_restarting = (
+        " (rolling-restart in progress)" if status.health["restarting"] else ""
+    )
+    output.append(f"    Ready: {cluster_ready}{cluster_restarting}")
 
     if status.cluster_ready:
         health: Mapping[str, Any] = status.health
@@ -1295,25 +1298,47 @@ def print_kafka_status(
 
     brokers = status.brokers
     output.append(f"    Brokers:")
-    headers = ["Broker Id", "Host", "Phase", "Uptime"]
+
     if verbose:
-        headers.append("Message")
+        headers = ["Id", "Phase", "IP", "Pod Name", "Started"]
+    else:
+        headers = ["Id", "Phase", "Started"]
+
     rows = [headers]
     for broker in brokers:
-        row = [
-            str(broker["id"]),
-            str(broker["host"]),
-            str(broker["phase"]),
-            str(get_pod_uptime(broker["deployed_timestamp"])),
-        ]
+        color_fn = (
+            PaastaColors.green if broker["phase"] == "Running" else PaastaColors.red
+        )
+
+        start_time = datetime.strptime(
+            broker["deployed_timestamp"], "%Y-%m-%dT%H:%M:%SZ"
+        )
+        delta = datetime.utcnow() - start_time
+        formatted_start_time = f"{str(start_time)} ({humanize.naturaltime(delta)})"
+
         if verbose:
-            msg = ""
-            if broker.get("reason", "") != "":
-                msg = PaastaColors.grey(f"{broker['reason']}: {broker['message']}")
-            row.append(msg)
+            row = [
+                str(broker["id"]),
+                color_fn(broker["phase"]),
+                str(broker["ip"]),
+                str(broker["name"]),
+                formatted_start_time,
+            ]
+        else:
+            row = [
+                str(broker["id"]),
+                color_fn(broker["phase"]),
+                formatted_start_time,
+            ]
+
         rows.append(row)
+
     brokers_table = format_table(rows)
     output.extend([f"     {line}" for line in brokers_table])
+
+    if verbose and len(brokers) > 0:
+        append_pod_status(brokers, output)
+
     return 0
 
 
