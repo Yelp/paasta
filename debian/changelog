@@ -1,3 +1,11 @@
+paasta-tools (0.96.33) xenial; urgency=medium
+
+  * 0.96.33 tagged with 'make release'
+    Commit: Merge pull request #2874 from Yelp/fix-itest-trusty-bionic
+    Fix itest_(trusty|bionic)
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 05 Aug 2020 03:48:22 -0700
+
 paasta-tools (0.96.32) xenial; urgency=medium
 
   * 0.96.32 tagged with 'make release'
