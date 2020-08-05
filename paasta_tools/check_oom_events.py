@@ -28,6 +28,7 @@ from paasta_tools.utils import load_system_paasta_config
 
 try:
     from scribereader import scribereader
+    from clog.readers import StreamTailerSetupError
 except ImportError:
     scribereader = None
 
@@ -104,13 +105,19 @@ def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
         lines=num_lines,
         superregion=superregion,
     )
-    for line in stream:
-        try:
-            j = json.loads(line)
-            if j.get("cluster", "") == cluster:
-                yield j
-        except json.decoder.JSONDecodeError:
+    try:
+        for line in stream:
+            try:
+                j = json.loads(line)
+                if j.get("cluster", "") == cluster:
+                    yield j
+            except json.decoder.JSONDecodeError:
+                pass
+    except StreamTailerSetupError as e:
+        if "No data in stream" in str(e):
             pass
+        else:
+            raise e
 
 
 def latest_oom_events(cluster, superregion, interval=60):
