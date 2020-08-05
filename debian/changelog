@@ -1,3 +1,16 @@
+paasta-tools (0.96.35) xenial; urgency=medium
+
+  * 0.96.35 tagged with 'make release'
+    Commit: Fix the check OOM event script if there aren"t any OOMs  If
+    there haven"t been any OOM events recorded in the last day, the
+    scribe stream to track the OOM events will be empty.  This will make
+    the OOM checker script crash.  This fix prevents a crash in this
+    case. (Unfortunately if you get the scribe stream name wrong it will
+    _also_ return the same exception, I don"t know any good way to get
+    around that).
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 05 Aug 2020 15:56:23 -0700
+
 paasta-tools (0.96.34) xenial; urgency=medium
 
   * 0.96.34 tagged with 'make release'
