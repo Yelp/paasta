@@ -50,7 +50,7 @@ RUN apt-get update && cd /tmp && \
     gdebi -n dh-virtualenv*.deb && \
     rm dh-virtualenv_*.deb
 
-RUN pip install virtualenv==15.1.0 tox-pip-extensions==1.2.1 tox==3.1.3 more-itertools==8.0.2
+RUN pip install virtualenv==15.1.0 tox-pip-extensions==1.2.1 tox==3.1.3
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
