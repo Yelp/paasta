@@ -52,7 +52,7 @@ slackclient >= 1.2.1
 sticht >= 1.1.0
 syslogmp
 task-processing
-thriftpy
+thriftpy2
 transitions
 typing-extensions
 tzlocal

@@ -28,6 +28,7 @@ env:
     - MAKE_TARGET=itest_trusty
     - MAKE_TARGET=itest_xenial
     - MAKE_TARGET=itest_bionic
+    - MAKE_TARGET=itest_focal
 services:
   - docker
 before_install:
