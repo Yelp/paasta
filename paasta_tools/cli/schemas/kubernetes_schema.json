@@ -673,6 +673,28 @@
                 "prometheus_port": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "lifecycle": {
+                    "type": "object",
+                    "properties": {
+                        "termination_grace_period_seconds": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "pre_stop_command": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            ]
+                        }
+                    }
                 }
             }
         }
