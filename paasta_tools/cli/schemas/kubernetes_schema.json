@@ -639,6 +639,36 @@
                             }
                         }
                     }
+                },
+                "anti_affinity": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "service": {
+                                    "type": "string"
+                                },
+                                "instance": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string"
+                                    },
+                                    "instance": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "uniqueItems": true
+                        }
+                    ]
                 }
             }
         }

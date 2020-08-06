@@ -201,6 +201,37 @@ These options are only applicable to tasks scheduled on Kubernetes.
       PaaSTA will automatically convert it to a canonical version set by
       Kubernetes on all AWS nodes.
 
+  * ``anti_affinity``: A set of rules define when a node *should not* be
+    selected for spawning a task in terms of task running on the node.
+    This can be used to schedule a single task per node and provide better
+    resource isolation for resource intensive tasks. For example::
+
+      anti_affinity:
+        service: acron
+
+    for a service ``acron`` indicates to not schedule any 2 instances
+    ``acron`` service on the same host. This can be extended to
+    service ``instances`` also. For example::
+
+      anti_affinity:
+        service: acron
+        instance: test
+
+    would indicate to not schedule any 2 instances with name ``test``
+    of service ``acron`` on the same host.
+    Multiple anti_affinities rules can also be used which will result
+    ``AND-ing`` of all the rules. For example::
+
+      anti_affinity:
+        - service: acron
+        - service: kafka-k8s
+
+    would indicate the scheduler to not select a node when both
+    ``acron`` and ``kafka-k8s`` is running on the node
+    **Note:** ``anti_affinity`` rules should be used with judiciously
+    and with caution as they require substantial processing and
+    may slow down scheduling significantly in large clusters
+
 For more information on selector operators, see the official Kubernetes
 documentation on `node affinities
 <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.

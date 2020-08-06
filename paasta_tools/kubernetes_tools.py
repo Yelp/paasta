@@ -74,6 +74,8 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1Pod
+from kubernetes.client import V1PodAffinityTerm
+from kubernetes.client import V1PodAntiAffinity
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
@@ -248,6 +250,11 @@ class KubeLifecycleDict(TypedDict, total=False):
     pre_stop_command: Union[str, List[str]]
 
 
+class KubeAffinityCondition(TypedDict, total=False):
+    service: str
+    instance: str
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -279,6 +286,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
+    anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1289,6 +1297,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
+        pod_anti_affinity = self.get_pod_anti_affinity()
+        if pod_anti_affinity is not None:
+            affinity = pod_spec_kwargs.get("affinity", V1Affinity())
+            affinity.pod_anti_affinity = pod_anti_affinity
+            pod_spec_kwargs["affinity"] = affinity
+
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
             pod_spec_kwargs[
@@ -1348,6 +1362,48 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # changes, we will bounce anyway.
             required_during_scheduling_ignored_during_execution=selector,
         )
+
+    def get_pod_anti_affinity(self) -> Optional[V1PodAntiAffinity]:
+        """
+        Converts the given anti-affinity on service and instance to pod
+        affinities with the "paasta.yelp.com" prefixed label selector
+        :return:
+        """
+        conditions = self.config_dict.get("anti_affinity", [])
+        if not conditions:
+            return None
+
+        if not isinstance(conditions, list):
+            conditions = [conditions]
+
+        affinity_terms = []
+        for condition in conditions:
+            label_selector = self._kube_affinity_condition_to_label_selector(condition)
+            if label_selector:
+                affinity_terms.append(
+                    V1PodAffinityTerm(
+                        # Topology of a hostname means the pod of this service
+                        # cannot be scheduled on host containing another pod
+                        # matching the label_selector
+                        topology_key="kubernetes.io/hostname",
+                        label_selector=label_selector,
+                    )
+                )
+
+        return V1PodAntiAffinity(
+            required_during_scheduling_ignored_during_execution=affinity_terms
+        )
+
+    def _kube_affinity_condition_to_label_selector(
+        self, condition: KubeAffinityCondition
+    ) -> Optional[V1LabelSelector]:
+        """Converts the given condition to label selectors with paasta prefix"""
+        labels = {}
+        if "service" in condition:
+            labels[PAASTA_ATTRIBUTE_PREFIX + "service"] = condition.get("service")
+        if "instance" in condition:
+            labels[PAASTA_ATTRIBUTE_PREFIX + "instance"] = condition.get("instance")
+        return V1LabelSelector(match_labels=labels) if labels else None
 
     def _whitelist_blacklist_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
         """Converts deploy_whitelist and deploy_blacklist to a list of
