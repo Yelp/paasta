@@ -1,3 +1,11 @@
+paasta-tools (0.96.35) xenial; urgency=medium
+
+  * 0.96.35 tagged with 'make release'
+    Commit: Merge pull request #2876 from rohangulati/u/rgulati/MONK-
+    1126  Adding support for anti-affinity in PaaSTA
+
+ -- Rohan Gulati <rgulati@yelp.com>  Mon, 10 Aug 2020 03:41:25 -0700
+
 paasta-tools (0.96.34) xenial; urgency=medium
 
   * 0.96.34 tagged with 'make release'
