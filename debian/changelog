@@ -1,3 +1,10 @@
+paasta-tools (0.96.36) xenial; urgency=medium
+
+  * 0.96.36 tagged with 'make release'
+    Commit: Released 0.96.35 via make release
+
+ -- Rohan Gulati <rgulati@yelp.com>  Mon, 10 Aug 2020 03:57:33 -0700
+
 paasta-tools (0.96.35) xenial; urgency=medium
 
   * 0.96.35 tagged with 'make release'
