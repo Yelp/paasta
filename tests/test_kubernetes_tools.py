@@ -33,6 +33,8 @@ from kubernetes.client import V1NodeSelectorTerm
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
+from kubernetes.client import V1PodAffinityTerm
+from kubernetes.client import V1PodAntiAffinity
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
@@ -79,6 +81,7 @@ from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
+from paasta_tools.kubernetes_tools import KubeAffinityCondition
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeContainerResources
 from paasta_tools.kubernetes_tools import KubeCustomResource
@@ -1046,23 +1049,43 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
         autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
+        autospec=True,
+    )
     @pytest.mark.parametrize(
-        "in_smtstk,routable_ip,node_affinity,spec_affinity,termination_grace_period",
+        "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period",
         [
-            (True, "true", None, {}, None),
-            (False, "false", None, {}, 10),
+            (True, "true", None, None, {}, None),
+            (False, "false", None, None, {}, 10),
+            # an node affinity absent but pod anti affinity present
+            (
+                False,
+                "false",
+                None,
+                "pod_anti_affinity",
+                {"affinity": V1Affinity(pod_anti_affinity="pod_anti_affinity")},
+                None,
+            ),
             # an affinity obj is only added if there is a node affinity
             (
                 False,
                 "false",
                 "a_node_affinity",
-                {"affinity": V1Affinity(node_affinity="a_node_affinity")},
+                "pod_anti_affinity",
+                {
+                    "affinity": V1Affinity(
+                        node_affinity="a_node_affinity",
+                        pod_anti_affinity="pod_anti_affinity",
+                    )
+                },
                 None,
             ),
         ],
     )
     def test_get_pod_template_spec(
         self,
+        mock_get_pod_anti_affinity,
         mock_get_termination_grace_period,
         mock_load_service_namespace_config,
         mock_get_node_affinity,
@@ -1074,6 +1097,7 @@ class TestKubernetesDeploymentConfig:
         in_smtstk,
         routable_ip,
         node_affinity,
+        anti_affinity,
         spec_affinity,
         termination_grace_period,
     ):
@@ -1081,6 +1105,7 @@ class TestKubernetesDeploymentConfig:
         mock_load_service_namespace_config.return_value = mock_service_namespace_config
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
         mock_get_node_affinity.return_value = node_affinity
+        mock_get_pod_anti_affinity.return_value = anti_affinity
         mock_system_paasta_config = mock.Mock()
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
@@ -1184,6 +1209,45 @@ class TestKubernetesDeploymentConfig:
     )
     def test_get_node_affinity_no_reqs(self):
         assert self.deployment.get_node_affinity() is None
+
+    @pytest.mark.parametrize(
+        "anti_affinity,expected",
+        [
+            (None, None),  # no anti-affinity case
+            ([], None),  # empty anti-affinity
+            (  # single anti-affinity
+                KubeAffinityCondition(service="s1", instance="i1"),
+                [{"paasta.yelp.com/service": "s1", "paasta.yelp.com/instance": "i1"}],
+            ),
+            (  # multiple anti-affinity case
+                [
+                    KubeAffinityCondition(service="s1", instance="i1"),
+                    KubeAffinityCondition(instance="i2"),
+                    KubeAffinityCondition(service="s3"),
+                ],
+                [
+                    {"paasta.yelp.com/service": "s1", "paasta.yelp.com/instance": "i1"},
+                    {"paasta.yelp.com/instance": "i2"},
+                    {"paasta.yelp.com/service": "s3"},
+                ],
+            ),
+        ],
+    )
+    def test_get_pod_anti_affinity(self, anti_affinity, expected):
+        self.deployment.config_dict["anti_affinity"] = anti_affinity
+        expected_affinity = None
+        if expected:
+            terms = [
+                V1PodAffinityTerm(
+                    topology_key="kubernetes.io/hostname",
+                    label_selector=V1LabelSelector(match_labels=selector),
+                )
+                for selector in expected
+            ]
+            expected_affinity = V1PodAntiAffinity(
+                required_during_scheduling_ignored_during_execution=terms
+            )
+        assert self.deployment.get_pod_anti_affinity() == expected_affinity
 
     @pytest.mark.parametrize(
         "termination_action,expected",
