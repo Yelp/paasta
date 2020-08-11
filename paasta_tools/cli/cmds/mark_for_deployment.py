@@ -278,7 +278,7 @@ def deploy_authz_check(deploy_info, service):
         ):
             logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
             _log(service=service, line=logline, component="deploy", level="event")
-            print(logline)
+            print(logline, file=sys.stderr)
             sys.exit(1)
 
 
