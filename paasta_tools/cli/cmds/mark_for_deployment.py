@@ -254,7 +254,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
 
 
 def deploy_authz_check(deploy_info, service):
-    username = get_username()
+    deploy_username = get_username()
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
         deploy_info["allowed_push_groups"]
@@ -265,20 +265,21 @@ def deploy_authz_check(deploy_info, service):
         search_base = system_paasta_config.get_ldap_search_base()
         search_ou = system_paasta_config.get_ldap_search_ou()
         host = system_paasta_config.get_ldap_host()
-        username = system_paasta_config.get_ldap_reader_username()
-        password = system_paasta_config.get_ldap_reader_password()
+        ldap_username = system_paasta_config.get_ldap_reader_username()
+        ldap_password = system_paasta_config.get_ldap_reader_password()
         if not any(
             [
-                username
+                deploy_username
                 in ldap_user_search(
-                    group, search_base, search_ou, host, username, password
+                    group, search_base, search_ou, host, ldap_username, ldap_password
                 )
                 for group in allowed_groups
             ]
         ):
             logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
             _log(service=service, line=logline, component="deploy", level="event")
-            raise ValueError(logline)
+            print(logline, file=sys.stderr)
+            sys.exit(1)
 
 
 def report_waiting_aborted(service, deploy_group):
