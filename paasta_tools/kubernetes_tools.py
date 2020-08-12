@@ -246,7 +246,7 @@ class CustomResourceDefinition(NamedTuple):
 
 
 class KubeLifecycleDict(TypedDict, total=False):
-    termination_grace_period_s: int
+    termination_grace_period_seconds: int
     pre_stop_command: Union[str, List[str]]
 
 
@@ -1503,7 +1503,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_termination_grace_period(self) -> Optional[int]:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
-            "termination_grace_period_s"
+            "termination_grace_period_seconds"
         )
 
     def get_prometheus_port(self) -> Optional[int]:
