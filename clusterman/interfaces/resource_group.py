@@ -17,6 +17,7 @@ from abc import abstractmethod
 from abc import abstractproperty
 from typing import Any
 from typing import Collection
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import NamedTuple
@@ -26,6 +27,7 @@ from typing import Sequence
 import arrow
 
 from clusterman.aws.markets import InstanceMarket
+from clusterman.util import ClustermanResources
 
 
 class InstanceMetadata(NamedTuple):
@@ -164,5 +166,20 @@ class ResourceGroup(metaclass=ABCMeta):
         :param pool: a pool name
         :param config: a config specific to a resource group type
         :returns: a dictionary of resource groups, indexed by id
+        """
+        pass
+
+    @abstractmethod
+    def scale_up_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
+        ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
+        represents the instance type the ASG is configured to run.
+        """
+        pass
+
+    @abstractmethod
+    def scale_down_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
+        running in this resource group.
         """
         pass

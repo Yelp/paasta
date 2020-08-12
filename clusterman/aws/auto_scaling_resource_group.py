@@ -14,6 +14,7 @@
 import pprint
 from typing import Any
 from typing import Dict
+from typing import Iterator
 from typing import Mapping
 from typing import Sequence
 
@@ -27,6 +28,7 @@ from clusterman.aws.aws_resource_group import AWSResourceGroup
 from clusterman.aws.client import autoscaling
 from clusterman.aws.client import ec2
 from clusterman.aws.markets import InstanceMarket
+from clusterman.util import ClustermanResources
 
 _BATCH_MODIFY_SIZE = 200
 CLUSTERMAN_STALE_TAG = 'clusterman:is_stale'
@@ -263,3 +265,16 @@ class AutoScalingResourceGroup(AWSResourceGroup):
              for instance in self._group_config.get('Instances', [])
              if instance['InstanceId'] in self.stale_instance_ids]
         )
+
+    def scale_up_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
+        ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
+        represents the instance type the ASG is configured to run.
+        """
+        raise NotImplementedError()
+
+    def scale_down_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
+        running in this resource group.
+        """
+        raise NotImplementedError()
