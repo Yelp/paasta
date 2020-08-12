@@ -66,7 +66,7 @@ nodes:
         hostPath: ./clusterman.json
         readOnly: true
       - containerPath: /etc/boto_cfg/clusterman.sh
-        hostPath: ./clusterman.json
+        hostPath: ./clusterman.sh
         readOnly: true
       - containerPath: /etc/boto_cfg/clusterman_metrics.json
         hostPath: ./clusterman.json
