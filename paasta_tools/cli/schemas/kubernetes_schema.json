@@ -669,6 +669,10 @@
                             "uniqueItems": true
                         }
                     ]
+                },
+                "prometheus_port": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         }

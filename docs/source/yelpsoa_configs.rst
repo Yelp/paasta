@@ -409,6 +409,9 @@ instance MAY have:
     Defaults to the same uri specified in ``smartstack.yaml``, but can be
     set to something different here.
 
+ * ``prometheus_port``: Optional port, not equal to ``container_port``, to
+    expose for prometheus scraping
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier

@@ -287,6 +287,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
+    prometheus_port: int
 
 
 def load_kubernetes_service_config_no_cache(
@@ -945,6 +946,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         service_namespace_config: ServiceNamespaceConfig,
     ) -> Sequence[V1Container]:
+        ports = [self.get_container_port()]
+        # MONK-1130
+        # The prometheus_port is used for scraping metrics from the main
+        # container in the pod. Prometheus discovers ports using the kubernetes
+        # API and creates scrape targets for all the exported container ports.
+        # A better way of doing this would to export the prometheus port as pod
+        # annotations but this is not currently supported.
+        # https://github.com/prometheus/prometheus/issues/3756
+        prometheus_port = self.get_prometheus_port()
+        if prometheus_port and prometheus_port not in ports:
+            ports.append(prometheus_port)
+
         service_container = V1Container(
             image=self.get_docker_url(),
             command=self.get_cmd(),
@@ -956,7 +969,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
-            ports=[V1ContainerPort(container_port=self.get_container_port())],
+            ports=[V1ContainerPort(container_port=port) for port in ports],
             security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
                 docker_volumes=docker_volumes,
@@ -1492,6 +1505,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "termination_grace_period_s"
         )
+
+    def get_prometheus_port(self) -> Optional[int]:
+        return self.config_dict.get("prometheus_port")
 
 
 def get_kubernetes_secret_hashes(

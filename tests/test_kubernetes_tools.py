@@ -605,7 +605,12 @@ class TestKubernetesDeploymentConfig:
                 },
             )
 
-    def test_get_kubernetes_containers(self):
+    @pytest.mark.parametrize(
+        "prometheus_port,expected_ports",
+        [(None, [8888]), (8888, [8888]), (29143, [8888, 29143]),],
+    )
+    def test_get_kubernetes_containers(self, prometheus_port, expected_ports):
+
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
             autospec=True,
@@ -637,9 +642,12 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
             return_value=["mock_sidecar"],
         ):
+            if prometheus_port:
+                self.deployment.config_dict["prometheus_port"] = prometheus_port
             mock_system_config = mock.Mock()
             mock_docker_volumes: Sequence[DockerVolume] = []
             mock_aws_ebs_volumes: Sequence[AwsEbsVolume] = []
+            ports = [V1ContainerPort(container_port=port) for port in expected_ports]
             expected = [
                 V1Container(
                     args=mock_get_args.return_value,
@@ -662,7 +670,7 @@ class TestKubernetesDeploymentConfig:
                         timeout_seconds=10,
                     ),
                     name="fm",
-                    ports=[V1ContainerPort(container_port=8888)],
+                    ports=ports,
                     volume_mounts=mock_get_volume_mounts.return_value,
                 ),
                 "mock_sidecar",
