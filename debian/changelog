@@ -1,3 +1,11 @@
+paasta-tools (0.96.39) xenial; urgency=medium
+
+  * 0.96.39 tagged with 'make release'
+    Commit: Merge pull request #2880 from Yelp/add-iam_role_via_aws-into-
+    schema  Add iam_role_provider into the schema
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 12 Aug 2020 08:23:48 -0700
+
 paasta-tools (0.96.38) xenial; urgency=medium
 
   * 0.96.38 tagged with 'make release'
