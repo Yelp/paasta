@@ -1,3 +1,11 @@
+paasta-tools (0.96.38) xenial; urgency=medium
+
+  * 0.96.38 tagged with 'make release'
+    Commit: Merge pull request #2879 from rohangulati/u/rgulati/MONK-
+    1127-schema  Adding schema for prestop hook in PaaSTA
+
+ -- Rohan Gulati <rgulati@yelp.com>  Wed, 12 Aug 2020 06:20:46 -0700
+
 paasta-tools (0.96.37) xenial; urgency=medium
 
   * 0.96.37 tagged with 'make release'
