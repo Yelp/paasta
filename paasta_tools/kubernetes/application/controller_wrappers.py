@@ -264,7 +264,6 @@ class DeploymentWrapper(Application):
             ).start()
             return
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
-        self.update_related_api_objects(kube_client)
 
     def update_related_api_objects(self, kube_client: KubeClient) -> None:
         super().update_related_api_objects(kube_client)
@@ -405,7 +404,6 @@ class StatefulSetWrapper(Application):
 
     def update(self, kube_client: KubeClient):
         update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
-        self.update_related_api_objects(kube_client)
 
 
 def get_application_wrapper(

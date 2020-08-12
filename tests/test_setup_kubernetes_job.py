@@ -57,7 +57,7 @@ def test_setup_kube_deployment_invalid_job_name():
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ) as mock_list_all_deployments, mock.patch(
         "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj:
+    ):
         mock_client = mock.Mock()
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -72,7 +72,6 @@ def test_setup_kube_deployment_invalid_job_name():
             soa_dir="/nail/blah",
         )
         assert mock_create_application_object.call_count == 0
-        mock_log_obj.info.assert_called_once_with('{"service_instance_updated": []}')
 
 
 def test_create_application_object():
@@ -220,7 +219,9 @@ def test_setup_kube_deployment_create_update():
             soa_dir="/nail/blah",
         )
         assert mock_create_application_object.call_count == 0
-        mock_log_obj.info.assert_called_once_with('{"service_instance_updated": []}')
+        assert fake_update.call_count == 0
+        assert fake_update_related_api_objects.call_count == 0
+        assert mock_log_obj.info.call_count == 0
         mock_log_obj.info.reset_mock()
 
         # Create a new instance
@@ -233,14 +234,13 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_create.call_count == 1
         assert fake_update.call_count == 0
-        mock_log_obj.info.assert_called_with(
-            '{"service_instance_updated": ["fake_app"]}'
-        )
+        assert fake_update_related_api_objects.call_count == 1
         mock_log_obj.info.reset_mock()
 
         # Update when gitsha changed
         fake_create.reset_mock()
         fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -256,14 +256,13 @@ def test_setup_kube_deployment_create_update():
 
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
-        mock_log_obj.info.assert_called_with(
-            '{"service_instance_updated": ["fake_app"]}'
-        )
+        assert fake_update_related_api_objects.call_count == 1
         mock_log_obj.info.reset_mock()
 
         # Update when configsha changed
         fake_create.reset_mock()
         fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -278,14 +277,13 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
-        mock_log_obj.info.assert_called_with(
-            '{"service_instance_updated": ["fake_app"]}'
-        )
+        assert fake_update_related_api_objects.call_count == 1
         mock_log_obj.info.reset_mock()
 
         # Update when replica changed
         fake_create.reset_mock()
         fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -300,14 +298,13 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
-        mock_log_obj.info.assert_called_with(
-            '{"service_instance_updated": ["fake_app"]}'
-        )
+        assert fake_update_related_api_objects.call_count == 1
         mock_log_obj.info.reset_mock()
 
         # Update one and Create One
         fake_create.reset_mock()
         fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
         mock_service_instances = ["kurupt.fm", "kurupt.garage"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -326,14 +323,13 @@ def test_setup_kube_deployment_create_update():
         )
         assert fake_update.call_count == 1
         assert fake_create.call_count == 1
-        mock_log_obj.info.assert_called_with(
-            '{"service_instance_updated": ["fake_app", "fake_app"]}'
-        )
+        assert fake_update_related_api_objects.call_count == 2
         mock_log_obj.info.reset_mock()
 
         # Always attempt to update related API objects
         fake_create.reset_mock()
         fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
         mock_service_instances = ["kurupt.garage"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
@@ -353,6 +349,6 @@ def test_setup_kube_deployment_create_update():
         assert fake_update.call_count == 0
         assert fake_create.call_count == 0
         assert fake_update_related_api_objects.call_count == 1
-        mock_log_obj.info.assert_called_with(
-            '{"service_instance_updated": ["fake_app"]}'
+        assert mock_log_obj.info.call_args_list[0] == mock.call(
+            "fake_app is up-to-date!"
         )
