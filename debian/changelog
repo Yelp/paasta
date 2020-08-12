@@ -1,3 +1,11 @@
+paasta-tools (0.96.37) xenial; urgency=medium
+
+  * 0.96.37 tagged with 'make release'
+    Commit: Merge pull request #2882 from rohangulati/u/rgulati/MONK-
+    1130  Adding prometheus port support in PaaSTA
+
+ -- Rohan Gulati <rgulati@yelp.com>  Wed, 12 Aug 2020 04:37:01 -0700
+
 paasta-tools (0.96.36) xenial; urgency=medium
 
   * 0.96.36 tagged with 'make release'
