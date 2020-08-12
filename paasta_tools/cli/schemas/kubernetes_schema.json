@@ -533,6 +533,12 @@
                 "iam_role": {
                     "type": "string"
                 },
+                "iam_role_provider": {
+                    "enum": [
+                        "kiam",
+                        "aws"
+                    ]
+                },
                 "healthcheck_mode": {
                     "enum": [
                         "cmd",
