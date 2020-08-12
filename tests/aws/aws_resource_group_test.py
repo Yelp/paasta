@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Iterator
+
 import mock
 import pytest
 import simplejson as json
@@ -18,6 +20,7 @@ import simplejson as json
 from clusterman.aws.aws_resource_group import AWSResourceGroup
 from clusterman.aws.client import ec2
 from clusterman.aws.markets import InstanceMarket
+from clusterman.util import ClustermanResources
 
 
 class MockResourceGroup(AWSResourceGroup):
@@ -92,6 +95,19 @@ class MockResourceGroup(AWSResourceGroup):
                 }),
             }
         }
+
+    def scale_up_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
+        ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
+        represents the instance type the ASG is configured to run.
+        """
+        raise NotImplementedError()
+
+    def scale_down_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
+        running in this resource group.
+        """
+        raise NotImplementedError()
 
 
 @pytest.fixture

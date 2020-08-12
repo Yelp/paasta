@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Iterator
 from typing import Mapping
 from typing import MutableMapping
 from typing import Sequence
@@ -27,6 +28,7 @@ from clusterman.aws.client import ec2_describe_fleet_instances
 from clusterman.aws.markets import get_market
 from clusterman.aws.markets import InstanceMarket
 from clusterman.exceptions import ResourceGroupError
+from clusterman.util import ClustermanResources
 
 
 logger = colorlog.getLogger(__name__)
@@ -136,3 +138,16 @@ class EC2FleetResourceGroup(AWSResourceGroup):
                     tags_dict = {tag['Key']: tag['Value'] for tag in fleet['Tags']}
                     fleet_id_to_tags[fleet['FleetId']] = tags_dict
         return fleet_id_to_tags
+
+    def scale_up_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
+        ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
+        represents the instance type the ASG is configured to run.
+        """
+        raise NotImplementedError()
+
+    def scale_down_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
+        running in this resource group.
+        """
+        raise NotImplementedError()
