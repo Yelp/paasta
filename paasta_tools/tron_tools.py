@@ -43,7 +43,6 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
 
 from paasta_tools.spark_tools import get_aws_credentials
 from paasta_tools.spark_tools import get_default_event_log_dir
-from paasta_tools.mesos_tools import find_mesos_leader
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -224,7 +223,7 @@ class TronActionConfig(InstanceConfig):
                 spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
                 spark_ui_port=self.spark_ui_port,
                 mesos_leader=(
-                    find_mesos_leader(self.get_spark_paasta_cluster())
+                    f"zk://{load_system_paasta_config().get_zk_hosts()}"
                     if not self.for_validation
                     else "N/A"
                 ),

@@ -89,12 +89,9 @@ class TestTronActionConfig:
         assert action_config.get_cluster() == "fake-cluster"
 
     @pytest.mark.parametrize(
-        "for_validation, mesos_leader_arg",
-        [(True, "N/A"), (False, "mesos.leader.com"),],
+        "for_validation", [(True, "N/A")],
     )
-    def test_get_spark_config_dict(
-        self, spark_action_config, for_validation, mesos_leader_arg
-    ):
+    def test_get_spark_config_dict(self, spark_action_config, for_validation):
         spark_action_config.config_dict["spark_cluster_manager"] = "mesos"
         spark_action_config.spark_ui_port = 12345
         spark_action_config.for_validation = for_validation
@@ -103,21 +100,25 @@ class TestTronActionConfig:
             autospec=True,
             return_value={"spark.master": "mesos://host:port"},
         ) as mock_get_mesos_spark_env, mock.patch(
-            "paasta_tools.tron_tools.find_mesos_leader",
-            autospec=True,
-            return_value="mesos.leader.com",
-        ), mock.patch(
             "paasta_tools.tron_tools.get_default_event_log_dir",
             autospec=True,
             return_value="/nail/etc",
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
-        ):
+        ) as system_paasta_config:
+            if for_validation:
+                expected_mesos_leader = "N/A"
+            else:
+                expected_mesos_leader = "zk://1.2.3.4/mesos"
+                system_paasta_config.return_value.get_zk_hosts.return_value = (
+                    "1.2.3.4/mesos"
+                )
+
             spark_action_config.get_spark_config_dict()
             mock_get_mesos_spark_env.assert_called_once_with(
                 docker_img="",
                 event_log_dir="/nail/etc",
-                mesos_leader=mesos_leader_arg,
+                mesos_leader=expected_mesos_leader,
                 paasta_cluster="fake-spark-cluster",
                 paasta_instance="cool_job.print",
                 paasta_pool="fake-spark-pool",
@@ -177,8 +178,6 @@ class TestTronActionConfig:
         ), mock.patch(
             "paasta_tools.tron_tools.pick_spark_ui_port", autospec=True,
         ), mock.patch(
-            "paasta_tools.tron_tools.find_mesos_leader", autospec=True,
-        ), mock.patch(
             "paasta_tools.utils.get_service_docker_registry", autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.get_default_event_log_dir", autospec=True,
@@ -220,8 +219,6 @@ class TestTronActionConfig:
             return_value={"spark.master": "mesos://host:port"},
         ), mock.patch(
             "paasta_tools.tron_tools.pick_spark_ui_port", autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools.find_mesos_leader", autospec=True,
         ), mock.patch(
             "paasta_tools.utils.get_service_docker_registry", autospec=True,
         ), mock.patch(
@@ -939,10 +936,6 @@ class TestTronTools:
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools.find_mesos_leader",
-            autospec=True,
-            return_value="mesos.leader.com",
         ), mock.patch.object(
             action_config, "get_spark_config_dict", return_value={},
         ):
