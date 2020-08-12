@@ -63,6 +63,40 @@ class ClustermanResources(NamedTuple):
     disk: float = 0
     gpus: float = 0
 
+    def __mul__(self, scalar: float) -> 'ClustermanResources':
+        return ClustermanResources(
+            cpus=self.cpus * scalar,
+            mem=self.mem * scalar,
+            disk=self.disk * scalar,
+            gpus=self.gpus * scalar,
+        )
+
+
+class SignalResourceRequest(NamedTuple):
+    cpus: Optional[float] = None
+    mem: Optional[float] = None
+    disk: Optional[float] = None
+    gpus: Optional[float] = None
+
+    def __add__(self, other) -> 'SignalResourceRequest':
+        return SignalResourceRequest(
+            cpus=add_maybe_none(self.cpus, other.cpus),
+            mem=add_maybe_none(self.mem, other.mem),
+            disk=add_maybe_none(self.disk, other.disk),
+            gpus=add_maybe_none(self.gpus, other.gpus),
+        )
+
+
+def add_maybe_none(f1: Optional[float], f2: Optional[float]) -> Optional[float]:
+    if f1 is None and f2 is None:
+        return None
+    elif f1 is None:
+        return f2
+    elif f2 is None:
+        return f1
+    else:
+        return f1 + f2
+
 
 def setup_logging(log_level_str: str = 'info') -> None:
     EVENT_LOG_LEVEL = 25

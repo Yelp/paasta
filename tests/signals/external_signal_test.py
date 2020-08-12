@@ -26,6 +26,7 @@ from clusterman.exceptions import SignalConnectionError
 from clusterman.signals.external_signal import ACK
 from clusterman.signals.external_signal import ExternalSignal
 from clusterman.signals.external_signal import setup_signals_environment
+from clusterman.util import SignalResourceRequest
 
 
 @pytest.fixture
@@ -78,7 +79,7 @@ def test_evaluate_restart_dead_signal(mock_signal):
         'clusterman.signals.external_signal.get_metrics_for_signal', return_value={}
     ):
         mock_connect.return_value = mock_signal._signal_conn
-        assert mock_signal.evaluate(arrow.get(12345678)) == {'cpus': 1}
+        assert mock_signal.evaluate(arrow.get(12345678)) == SignalResourceRequest(cpus=1)
         assert mock_connect.call_count == 1
 
 
@@ -113,7 +114,7 @@ def test_evaluate_signal_sending_message(mock_signal, signal_recv):
         resp = mock_signal.evaluate(arrow.get(12345678))
     assert mock_signal._signal_conn.send.call_count == num_messages
     assert mock_signal._signal_conn.recv.call_count == len(signal_recv)
-    assert resp == {'cpus': 5.2}
+    assert resp == SignalResourceRequest(cpus=5.2)
 
 
 def test_setup_signals_namespace():

@@ -2,6 +2,7 @@ PROJECT_NAME ?= clusterman
 WHOAMI := $(shell whoami)
 KIND_CLUSTER ?= $(WHOAMI)-$(PROJECT_NAME)
 KUBECONFIG ?= .local-$(KIND_CLUSTER).conf
+KUBECTL = KUBECONFIG=$(KUBECONFIG) kubectl
 DOCKER_TAG ?= $(PROJECT_NAME)-dev-$(WHOAMI)
 DOCKER_IMAGE := $(shell echo -n $(DOCKER_TAG) | sed 's|docker-paasta.yelpcorp.com:443/\(.*\):.*|\1|')
 DOCKER_PORT ?= 31234
@@ -17,11 +18,11 @@ local-cluster-external: .local-cluster.yaml .local-clusterman-external.yaml .loc
 	@echo Done.
 
 .local-cluster-up:
-	kind create cluster --name $(KIND_CLUSTER) --config .local-cluster.yaml --verbosity 2
-	kubectl -n kube-system get configmap/coredns -o yaml | \
+	KUBECONFIG=$(KUBECONFIG) kind create cluster --name $(KIND_CLUSTER) --config .local-cluster.yaml --verbosity 2
+	$(KUBECTL) -n kube-system get configmap/coredns -o yaml | \
 		sed "s|/etc/resolv.conf|$$(awk '/nameserver/ { print $$2; exit }' /etc/resolv.conf)|" | \
-		kubectl replace -f -
-	./k8s-local-docker-registry.sh $(DOCKER_REGISTRY) $(DOCKER_PORT) $(KIND_CLUSTER)
+		$(KUBECTL) replace -f -
+	KUBECONFIG=$(KUBECONFIG) ./k8s-local-docker-registry.sh $(DOCKER_REGISTRY) $(DOCKER_PORT) $(KIND_CLUSTER)
 	docker tag $(DOCKER_TAG) localhost:$(DOCKER_PORT)/$(DOCKER_IMAGE)
 	docker push localhost:$(DOCKER_PORT)/$(DOCKER_IMAGE)
 	docker exec $(KIND_CLUSTER)-control-plane mkdir -p /var/lib/clusterman
@@ -38,18 +39,16 @@ local-cluster-external: .local-cluster.yaml .local-clusterman-external.yaml .loc
 	touch .local-cluster-up
 
 .PHONY: acceptance-%
-export KIND_CLUSTER
-export KUBECONFIG
 acceptance-%: local-cluster-%
-	kubectl apply -f .local-clusterman-$*.yaml
+	$(KUBECTL) apply -f .local-clusterman-$*.yaml
 	echo "Checking to see if Clusterman is running..."
 	running=1; \
 	for count in 1 2 3 4 5 6 7 8 9 10; do \
 		echo "Not running yet, waiting 10 seconds and trying again (check $$count of 10)..."; \
 		sleep 10; \
-		kubectl describe pods; \
-		kubectl logs $$(kubectl get pods | grep clusterman | cut -f1 -d' '); \
-		if kubectl get pods | grep -q clusterman.*Running; then echo "Clusterman running successfully!"; running=0; break; fi; \
+		$(KUBECTL) describe pods; \
+		$(KUBECTL) logs $$($(KUBECTL) get pods | grep clusterman | cut -f1 -d' '); \
+		if $(KUBECTL) get pods | grep -q clusterman.*Running; then echo "Clusterman running successfully!"; running=0; break; fi; \
 	done; \
 	exit $$running
 
@@ -83,6 +82,7 @@ containerdConfigPatches:
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:$(DOCKER_PORT)"]
     endpoint = ["http://$(DOCKER_REGISTRY):$(DOCKER_PORT)"]
 endef
+export LOCAL_CLUSTER_YAML
 
 define LOCAL_CMAN_DEPLOYMENT
 ---
@@ -111,7 +111,7 @@ spec:
         - name: clusterman
           image: localhost:$(DOCKER_PORT)/$(DOCKER_IMAGE)
           command: ['python']
-          args: ['-m', $(CMD), $(EXTRA_ARGS)]
+          args: ['-m', $(CMD)$(EXTRA_ARGS)]
           env:
             - name: AWS_ENDPOINT_URL_ARGS
               value: --endpoint-url http://moto-s3:5000
@@ -147,20 +147,18 @@ spec:
             path: /var/lib/clusterman/clusterman.conf
             type: File
 endef
+export LOCAL_CMAN_DEPLOYMENT
 
-export LOCAL_CLUSTER_YAML
 .local-cluster.yaml:  ## Create config file for `kind` cluster manager
 	$(MAKE) local-cluster-clean || true
 	@echo "$$LOCAL_CLUSTER_YAML" > .local-cluster.yaml
 
-export LOCAL_CMAN_DEPLOYMENT
-export CMD="clusterman.batch.autoscaler_bootstrap"
+.local-clusterman-internal.yaml: export CMD="clusterman.batch.autoscaler_bootstrap"
 .local-clusterman-internal.yaml:  ## Create config file for `kind` cluster manager
 	@echo "$$LOCAL_CMAN_DEPLOYMENT" > .local-clusterman-internal.yaml
 
-export LOCAL_CMAN_DEPLOYMENT
-export EXTRA_ARGS="--env-config-path=/nail/srv/configs/clusterman-external.yaml"
-export CMD="examples.batch.autoscaler_bootstrap"
+.local-clusterman-external.yaml: export EXTRA_ARGS=, "--env-config-path=/nail/srv/configs/clusterman-external.yaml"
+.local-clusterman-external.yaml: export CMD="examples.batch.autoscaler_bootstrap"
 .local-clusterman-external.yaml:  ## Create config file for `kind` cluster manager
 	@echo "$$LOCAL_CMAN_DEPLOYMENT" > .local-clusterman-external.yaml
 

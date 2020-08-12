@@ -20,12 +20,21 @@ import staticconf.testing
 from hamcrest import assert_that
 from hamcrest import contains
 from hamcrest import equal_to
+from kubernetes.client import V1Container
+from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1Pod
+from kubernetes.client import V1PodCondition
+from kubernetes.client import V1PodSpec
+from kubernetes.client import V1PodStatus
+from kubernetes.client import V1ResourceRequirements
 from moto import mock_dynamodb2
 
 from clusterman.autoscaler.autoscaler import Autoscaler
 from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.aws.client import dynamodb
 from clusterman.aws.spot_fleet_resource_group import SpotFleetResourceGroup
+from clusterman.kubernetes.kubernetes_cluster_connector import KubernetesClusterConnector
+from clusterman.kubernetes.util import PodUnschedulableReason
 from clusterman.signals.external_signal import ACK
 from clusterman.util import AUTOSCALER_PAUSED
 from clusterman.util import CLUSTERMAN_STATE_TABLE
@@ -84,6 +93,7 @@ def autoscaler_patches(context):
         )
         mock_metrics.return_value = {}  # don't know why this is necessary but we get flaky tests if it's not set
         mock_cluster_connector.return_value.get_resource_total.side_effect = resource_totals.__getitem__
+        context.mock_cluster_connector = mock_cluster_connector
         yield
 
 
@@ -135,7 +145,7 @@ def mock_historical_metrics(metric_name, metric_type, time_start, time_end, extr
         ]}
 
 
-def make_mock_scaling_metrics(allocated_cpus, pending_cpus, boost_factor):
+def make_mock_scaling_metrics(allocated_cpus, boost_factor):
     def mock_scaling_metrics(
         metric_name,
         metric_type,
@@ -162,12 +172,6 @@ def make_mock_scaling_metrics(allocated_cpus, pending_cpus, boost_factor):
                 (Decimal('100'), Decimal('10')),
                 (Decimal('110'), Decimal('10')),
                 (Decimal('130'), Decimal('10')),
-            ]}
-        elif metric_name == 'cpus_pending':
-            return {'cpus_pending': [
-                (Decimal('100'), Decimal('0')),
-                (Decimal('110'), Decimal('0')),
-                (Decimal('130'), Decimal(pending_cpus)),
             ]}
         elif metric_name == 'boost_factor|cluster=kube-test,pool=bar.kubernetes' and boost_factor:
             return {'boost_factor|cluster=kube-test,pool=bar.kubernetes': [
@@ -223,6 +227,48 @@ def mesos_autoscaler(context):
 @behave.given('a kubernetes autoscaler object')
 def k8s_autoscaler(context):
     behave.use_fixture(autoscaler_patches, context)
+    context.mock_cluster_connector.return_value.__class__ = KubernetesClusterConnector
+    context.mock_cluster_connector.return_value.get_unschedulable_pods.return_value = (
+        [] if context.pending_cpus == 0
+        else [(
+                V1Pod(
+                    metadata=V1ObjectMeta(name='pod1'),
+                    status=V1PodStatus(
+                        phase='Pending',
+                        conditions=[
+                            V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
+                        ],
+                    ),
+                    spec=V1PodSpec(containers=[
+                        V1Container(
+                            name='container1',
+                            resources=V1ResourceRequirements(requests={'cpu': context.pending_cpus})
+                        ),
+                    ]),
+                ),
+                PodUnschedulableReason.InsufficientResources,
+            ),
+            (
+                V1Pod(
+                    metadata=V1ObjectMeta(name='pod2'),
+                    status=V1PodStatus(
+                        phase='Pending',
+                        conditions=[
+                            V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
+                        ],
+                    ),
+                    spec=V1PodSpec(containers=[
+                        V1Container(
+                            name='container1',
+                            resources=V1ResourceRequirements(requests={'cpu': context.pending_cpus})
+                        ),
+                    ]),
+                ),
+                PodUnschedulableReason.Unknown,
+            ),
+        ]
+    )
+
     context.autoscaler = Autoscaler(
         cluster='kube-test',
         pool='bar',
@@ -281,7 +327,6 @@ def autoscaler_runs(context):
     if hasattr(context, 'allocated_cpus'):
         context.autoscaler.metrics_client.get_metric_values.side_effect = make_mock_scaling_metrics(
             context.allocated_cpus,
-            context.pending_cpus,
             context.boost,
         )
     try:

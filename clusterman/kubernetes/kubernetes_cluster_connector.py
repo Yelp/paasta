@@ -16,6 +16,7 @@ from distutils.util import strtobool
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Tuple
 
 import colorlog
 import kubernetes
@@ -30,7 +31,9 @@ from clusterman.interfaces.cluster_connector import AgentState
 from clusterman.interfaces.cluster_connector import ClusterConnector
 from clusterman.kubernetes.util import allocated_node_resources
 from clusterman.kubernetes.util import get_node_ip
+from clusterman.kubernetes.util import PodUnschedulableReason
 from clusterman.kubernetes.util import total_node_resources
+from clusterman.kubernetes.util import total_pod_resources
 
 logger = colorlog.getLogger(__name__)
 
@@ -59,7 +62,7 @@ class KubernetesClusterConnector(ClusterConnector):
         self._pods_by_ip = self._get_pods_by_ip()
 
     def get_resource_pending(self, resource_name: str) -> float:
-        return getattr(allocated_node_resources(self.get_unschedulable_pods()), resource_name)
+        return getattr(allocated_node_resources([p for p, __ in self.get_unschedulable_pods()]), resource_name)
 
     def get_resource_allocation(self, resource_name: str) -> float:
         return sum(
@@ -73,7 +76,7 @@ class KubernetesClusterConnector(ClusterConnector):
             for node in self._nodes_by_ip.values()
         )
 
-    def get_unschedulable_pods(self) -> List[KubernetesPod]:
+    def get_unschedulable_pods(self) -> List[Tuple[KubernetesPod, PodUnschedulableReason]]:
         unschedulable_pods = []
         for pod in self._get_pending_pods():
             is_unschedulable = False
@@ -85,7 +88,7 @@ class KubernetesClusterConnector(ClusterConnector):
                 if condition.reason == 'Unschedulable':
                     is_unschedulable = True
             if is_unschedulable:
-                unschedulable_pods.append(pod)
+                unschedulable_pods.append((pod, self._get_pod_unschedulable_reason(pod)))
         return unschedulable_pods
 
     def _selector_term_matches_requirement(
@@ -131,6 +134,14 @@ class KubernetesClusterConnector(ClusterConnector):
             if pod.status.phase == 'Pending'
             and self._pod_matches_node_selector_or_affinity(pod)
         ]
+
+    def _get_pod_unschedulable_reason(self, pod: KubernetesPod) -> PodUnschedulableReason:
+        pod_resource_request = total_pod_resources(pod)
+        for node in self._nodes_by_ip.values():
+            if pod_resource_request < total_node_resources(node):
+                return PodUnschedulableReason.Unknown
+
+        return PodUnschedulableReason.InsufficientResources
 
     def set_node_unschedulable(self, node_ip: str):
         try:

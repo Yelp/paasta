@@ -85,7 +85,7 @@ def setup_configurations(context):
             }
         ],
         'autoscale_signal': {
-            'internal': True,
+            'name': 'FooSignal',
             'period_minutes': 10,
         }
     }
@@ -148,6 +148,10 @@ def setup_configurations(context):
                 'runbook': 'y/their-runbook',
             }
         ],
+        'autoscale_signal': {
+            'internal': True,
+            'period_minutes': 7,
+        }
     }
     with staticconf.testing.MockConfiguration(boto_config, namespace=CREDENTIALS_NAMESPACE), \
             staticconf.testing.MockConfiguration(main_clusterman_config), \

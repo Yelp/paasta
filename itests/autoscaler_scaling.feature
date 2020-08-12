@@ -81,7 +81,7 @@ Feature: make sure the autoscaler scales to the proper amount
       Examples:
         | pending   | boost | rg1_target | rg2_target |
         | 0         |       | 10         | 10         |
-        | 14        |       | 13         | 12         |
+        | 14        |       | 16         | 15         |
         | 1000      |       | 50         | 50         |
         | 0         | 2     | 20         | 20         |
-        | 50        | 2     | 38         | 38         |
+        | 50        | 2     | 28         | 28         |

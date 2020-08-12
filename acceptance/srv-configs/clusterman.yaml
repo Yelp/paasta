@@ -44,7 +44,8 @@ autoscaling:
     target_capacity_margin: 0.05
 
 autoscale_signal:
-    internal: True
+    name: ConstantSignal
+    branch_or_tag: acceptance
     period_minutes: 1
 
 sensu_config:

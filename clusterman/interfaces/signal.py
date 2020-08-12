@@ -16,7 +16,6 @@ from abc import abstractmethod
 from collections import defaultdict
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Union
 
 import arrow
@@ -30,8 +29,7 @@ from mypy_extensions import TypedDict
 from clusterman.exceptions import MetricsError
 from clusterman.exceptions import SignalValidationError
 from clusterman.util import get_cluster_dimensions
-
-SignalResponseDict = Dict[str, Optional[float]]
+from clusterman.util import SignalResourceRequest
 
 
 class MetricsConfigDict(TypedDict):
@@ -90,7 +88,7 @@ class Signal(metaclass=ABCMeta):
             self,
             timestamp: arrow.Arrow,
             retry_on_broken_pipe: bool = True,
-     ) -> Union[SignalResponseDict, List[SignalResponseDict]]:
+     ) -> Union[SignalResourceRequest, List[SignalResourceRequest]]:
         """ Compute a signal and return either a single response (representing an aggregate resource request), or a
         list of responses (representing per-pod resource requests)
 
