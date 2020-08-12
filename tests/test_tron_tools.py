@@ -175,7 +175,7 @@ class TestTronActionConfig:
             autospec=True,
             return_value={"foo": "bar"},
         ), mock.patch(
-            "paasta_tools.tron_tools.pick_random_port", autospec=True,
+            "paasta_tools.tron_tools.pick_spark_ui_port", autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.find_mesos_leader", autospec=True,
         ), mock.patch(
@@ -219,7 +219,7 @@ class TestTronActionConfig:
             autospec=True,
             return_value={"spark.master": "mesos://host:port"},
         ), mock.patch(
-            "paasta_tools.tron_tools.pick_random_port", autospec=True,
+            "paasta_tools.tron_tools.pick_spark_ui_port", autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.find_mesos_leader", autospec=True,
         ), mock.patch(

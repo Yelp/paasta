@@ -13,6 +13,7 @@
 import datetime
 import difflib
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -25,7 +26,6 @@ from typing import List
 from typing import Tuple
 
 import yaml
-from service_configuration_lib import pick_random_port
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import get_k8s_spark_env
@@ -183,6 +183,15 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
     return StringFormatter(job_context).format(command)
 
 
+def pick_spark_ui_port(service, instance):
+    # We don't know what ports will be available on the agent that the driver
+    # will be scheduled on, so we just try to make them unique per service / instance.
+    hash_key = f"{service} {instance}".encode()
+    hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
+    preferred_port = 33000 + (hash_number % 25000)
+    return preferred_port
+
+
 class TronActionConfig(InstanceConfig):
     config_filename_prefix = "tron"
 
@@ -205,11 +214,7 @@ class TronActionConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
         self.job, self.action = decompose_instance(instance)
-        self.spark_ui_port = (
-            pick_random_port(f"{self.get_service()}{self.get_instance()}".encode())
-            if not for_validation
-            else "2333"
-        )
+        self.spark_ui_port = pick_spark_ui_port(service, instance)
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
