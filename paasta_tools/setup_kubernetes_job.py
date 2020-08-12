@@ -21,7 +21,6 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
-import json
 import logging
 import sys
 from typing import Optional
@@ -80,6 +79,8 @@ def main() -> None:
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
+        # filter out unwanted zookeeper messages in the log
+        logging.getLogger("kazoo").setLevel(logging.WARN)
         logging.basicConfig(level=logging.INFO)
 
     # system_paasta_config = load_system_paasta_config()
@@ -134,10 +135,8 @@ def setup_kube_deployments(
         for service_instance in service_instances_with_valid_names
     ]
 
-    apps_updated = []
     for _, app in applications:
         if app:
-            apps_updated.append(str(app))
             if (
                 app.kube_deployment.service,
                 app.kube_deployment.instance,
@@ -148,10 +147,10 @@ def setup_kube_deployments(
                 log.info(f"Updating {app} because configs have changed.")
                 app.update(kube_client)
             else:
-                log.info(f"Ensuring related API objects for {app} are in sync")
-                app.update_related_api_objects(kube_client)
+                log.info(f"{app} is up-to-date!")
 
-    log.info(json.dumps({"service_instance_updated": apps_updated}))
+            log.info(f"Ensuring related API objects for {app} are in sync")
+            app.update_related_api_objects(kube_client)
 
     return (False, None) not in applications and len(
         service_instances_with_valid_names
