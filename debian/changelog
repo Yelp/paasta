@@ -1,3 +1,11 @@
+paasta-tools (0.96.40) xenial; urgency=medium
+
+  * 0.96.40 tagged with 'make release'
+    Commit: Merge pull request #2883 from Yelp/TRON-1553-reduce-spark-
+    reconfiguration  Tron 1553: reduce spark reconfiguration
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 12 Aug 2020 13:32:41 -0700
+
 paasta-tools (0.96.39) xenial; urgency=medium
 
   * 0.96.39 tagged with 'make release'
