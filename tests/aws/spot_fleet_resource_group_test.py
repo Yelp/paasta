@@ -78,7 +78,7 @@ def mock_spot_fleet_resource_group(mock_sfr_response):
 
 @mock_s3
 def test_load_spot_fleets_from_s3():
-    s3.create_bucket(Bucket='fake-clusterman-sfrs')
+    s3.create_bucket(Bucket='fake-clusterman-sfrs', CreateBucketConfiguration={'LocationConstraint': 'us-west-2'})
     s3.put_object(Bucket='fake-clusterman-sfrs', Key='fake-region/sfr-1.json', Body=json.dumps({
         'cluster_autoscaling_resources': {
             'aws_spot_fleet_request': {
@@ -138,69 +138,10 @@ def test_load_spot_fleets():
         assert {sf for sf in spot_fleets} == {'sfr-1', 'sfr-2', 'sfr-4'}
 
 
-def test_get_spot_fleet_request_tags(mock_spot_fleet_resource_group):
-    # doing this the old fashioned way until
-    # https://github.com/spulec/moto/issues/1644 is fixed
-    with mock.patch(
-        'clusterman.aws.spot_fleet_resource_group.ec2.describe_spot_fleet_requests',
-    ) as mock_describe_spot_fleet_requests:
-        mock_describe_spot_fleet_requests.return_value = {
-            'SpotFleetRequestConfigs': [{
-                'SpotFleetRequestId': 'sfr-12',
-                'SpotFleetRequestConfig': {
-                    'LaunchSpecifications': [{
-                        'TagSpecifications': [{
-                            'Tags': [{
-                                'Key': 'foo',
-                                'Value': 'bar',
-                            }],
-                        }],
-                    }],
-                },
-            },
-                {
-                'SpotFleetRequestId': 'sfr-34',
-                'SpotFleetRequestConfig': {
-                    'LaunchSpecifications': [{}],
-                },
-            },
-                {
-                'SpotFleetRequestId': 'sfr-56',
-                'SpotFleetRequestConfig': {
-                    'LaunchSpecifications': [],
-                },
-            },
-                {
-                'SpotFleetRequestId': 'sfr-78',
-                'SpotFleetRequestConfig': {
-                    'LaunchSpecifications': [{
-                        'TagSpecifications': [{
-                            'Tags': [{
-                                'Key': 'foo',
-                                'Value': 'bar',
-                            },
-                                {
-                                'Key': 'spam',
-                                'Value': 'baz',
-                            }],
-                        }],
-                    }],
-                },
-            }],
-        }
-        sfrs = SpotFleetResourceGroup._get_resource_group_tags()
-        expected = {
-            'sfr-12': {
-                'foo': 'bar'
-            },
-            'sfr-34': {},
-            'sfr-56': {},
-            'sfr-78': {
-                'foo': 'bar',
-                'spam': 'baz'
-            }
-        }
-        assert sfrs == expected
+def test_get_spot_fleet_request_tags(mock_sfr_response):
+    assert SpotFleetResourceGroup._get_resource_group_tags() == {
+        mock_sfr_response['SpotFleetRequestId']: {'foo': 'bar'}
+    }
 
 
 # NOTE: These tests are fairly brittle, as it depends on the implementation of modify_spot_fleet_request
