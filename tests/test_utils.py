@@ -2532,7 +2532,7 @@ def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
     my_file = tmpdir.join("my-file")
     with open(str(my_file), "w") as f:
         with utils.timed_flock(f, seconds=1):
-            time.true_slow_sleep(0.1)
+            time.true_slow_sleep(0.1)  # type: ignore
         assert mock_flock.mock_calls == [
             mock.call(f.fileno(), utils.fcntl.LOCK_EX),
             mock.call(f.fileno(), utils.fcntl.LOCK_UN),

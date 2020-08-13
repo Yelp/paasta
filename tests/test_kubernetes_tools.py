@@ -777,15 +777,17 @@ class TestKubernetesDeploymentConfig:
 
     def test_get_pod_volumes(self):
         mock_docker_volumes = [
-            {"hostPath": "/nail/blah", "containerPath": "/nail/foo"},
-            {"hostPath": "/nail/thing", "containerPath": "/nail/bar"},
+            DockerVolume(hostPath="/nail/blah", containerPath="/nail/foo", mode="RO"),
+            DockerVolume(hostPath="/nail/thing", containerPath="/nail/bar", mode="RO"),
         ]
         mock_aws_ebs_volumes = [
-            {
-                "volume_id": "vol-zzzzzzzzzzzzzzzzz",
-                "fs_type": "ext4",
-                "container_path": "/nail/qux",
-            }
+            AwsEbsVolume(
+                volume_id="vol-zzzzzzzzzzzzzzzzz",
+                fs_type="ext4",
+                container_path="/nail/qux",
+                mode="RW",
+                partition=123,
+            )
         ]
         expected_volumes = [
             V1Volume(
@@ -798,9 +800,12 @@ class TestKubernetesDeploymentConfig:
             ),
             V1Volume(
                 aws_elastic_block_store=V1AWSElasticBlockStoreVolumeSource(
-                    volume_id="vol-zzzzzzzzzzzzzzzzz", fs_type="ext4", read_only=False
+                    volume_id="vol-zzzzzzzzzzzzzzzzz",
+                    fs_type="ext4",
+                    read_only=False,
+                    partition=123,
                 ),
-                name="aws-ebs--vol-zzzzzzzzzzzzzzzzz",
+                name="aws-ebs--vol-zzzzzzzzzzzzzzzzz123",
             ),
         ]
         assert (
@@ -817,17 +822,27 @@ class TestKubernetesDeploymentConfig:
             return_value="some-volume",
         ):
             mock_docker_volumes = [
-                {"hostPath": "/nail/blah", "containerPath": "/nail/foo"},
-                {"hostPath": "/nail/thing", "containerPath": "/nail/bar", "mode": "RW"},
+                DockerVolume(
+                    hostPath="/nail/blah", containerPath="/nail/foo", mode="RO"
+                ),
+                DockerVolume(
+                    hostPath="/nail/thing", containerPath="/nail/bar", mode="RW"
+                ),
             ]
             mock_aws_ebs_volumes = [
-                {
-                    "volume_id": "vol-ZZZZZZZZZZZZZZZZZ",
-                    "fs_type": "ext4",
-                    "container_path": "/nail/qux",
-                }
+                AwsEbsVolume(
+                    volume_id="vol-ZZZZZZZZZZZZZZZZZ",
+                    fs_type="ext4",
+                    container_path="/nail/qux",
+                    mode="RO",
+                    partition=123,
+                )
             ]
-            mock_persistent_volumes = [{"container_path": "/blah", "mode": "RW"}]
+            mock_persistent_volumes = [
+                PersistentVolume(
+                    container_path="/blah", mode="RW", size=1, storage_class_name="foo"
+                )
+            ]
             expected_volumes = [
                 V1VolumeMount(
                     mount_path="/nail/foo", name="some-volume", read_only=True
@@ -1345,7 +1360,7 @@ class TestKubernetesDeploymentConfig:
 
     def test_raw_selectors_to_requirements_error(self):
         self.deployment.config_dict["node_selectors"] = {
-            "error_key": [{"operator": "BadOperator"}],
+            "error_key": [{"operator": "BadOperator"}],  # type: ignore
         }
         with pytest.raises(ValueError):
             self.deployment._raw_selectors_to_requirements()
@@ -1375,20 +1390,25 @@ class TestKubernetesDeploymentConfig:
             )
 
     def test_get_hpa_metric_spec(self):
-        config_dict = {
-            "horizontal_autoscaling": {
-                "min_replicas": 1,
-                "max_replicas": 3,
-                "cpu": {"target_average_value": 0.7},
-                "memory": {"target_average_value": 0.7},
-                "uwsgi": {"target_average_value": 0.7},
-                "http": {"target_average_value": 0.7, "dimensions": {"any": "random"}},
-                "external": {
-                    "target_value": 0.7,
-                    "signalflow_metrics_query": "fake_query",
-                },
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "horizontal_autoscaling": {
+                    "min_replicas": 1,
+                    "max_replicas": 3,
+                    "cpu": {"target_average_value": 0.7},
+                    "memory": {"target_average_value": 0.7},
+                    "uwsgi": {"target_average_value": 0.7},
+                    "http": {
+                        "target_average_value": 0.7,
+                        "dimensions": {"any": "random"},
+                    },
+                    "external": {
+                        "target_value": 0.7,
+                        "signalflow_metrics_query": "fake_query",
+                    },
+                }
             }
-        }
+        )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
@@ -1457,11 +1477,13 @@ class TestKubernetesDeploymentConfig:
 
     def test_get_autoscaling_metric_spec_mesos_cpu(self):
         # with cpu
-        config_dict = {
-            "min_instances": 1,
-            "max_instances": 3,
-            "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
-        }
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
+            }
+        )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
@@ -1498,11 +1520,13 @@ class TestKubernetesDeploymentConfig:
 
     def test_get_autoscaling_metric_spec_http(self):
         # with http
-        config_dict = {
-            "min_instances": 1,
-            "max_instances": 3,
-            "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
-        }
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
+            }
+        )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
@@ -1542,11 +1566,13 @@ class TestKubernetesDeploymentConfig:
         assert expected_res == return_value
 
     def test_get_autoscaling_metric_spec_uwsgi(self):
-        config_dict = {
-            "min_instances": 1,
-            "max_instances": 3,
-            "autoscaling": {"metrics_provider": "uwsgi", "setpoint": 0.5},
-        }
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {"metrics_provider": "uwsgi", "setpoint": 0.5},
+            }
+        )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
@@ -1587,17 +1613,19 @@ class TestKubernetesDeploymentConfig:
         assert expected_res == return_value
 
     def test_get_autoscaling_metric_spec_offset_and_averaging(self):
-        config_dict = {
-            "min_instances": 1,
-            "max_instances": 3,
-            "autoscaling": {
-                "metrics_provider": "uwsgi",
-                "setpoint": 0.5,
-                "offset": 0.1,
-                "forecast_policy": "moving_average",
-                "moving_average_window_seconds": 300,
-            },
-        }
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_provider": "uwsgi",
+                    "setpoint": 0.5,
+                    "offset": 0.1,
+                    "forecast_policy": "moving_average",
+                    "moving_average_window_seconds": 300,
+                },
+            }
+        )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
@@ -1638,11 +1666,13 @@ class TestKubernetesDeploymentConfig:
         assert expected_res == return_value
 
     def test_get_autoscaling_metric_spec_bespoke(self):
-        config_dict = {
-            "min_instances": 1,
-            "max_instances": 3,
-            "autoscaling": {"metrics_provider": "bespoke", "setpoint": 0.5},
-        }
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {"metrics_provider": "bespoke", "setpoint": 0.5},
+            }
+        )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
             service="service",
             cluster="cluster",
@@ -1767,7 +1797,9 @@ class TestKubernetesDeploymentConfig:
 
     def test_get_persistent_volume_name(self):
         pv_name = self.deployment.get_persistent_volume_name(
-            {"container_path": "/blah/what"}
+            PersistentVolume(
+                container_path="/blah/what", mode="ro", size=1, storage_class_name="foo"
+            )
         )
         assert pv_name == "pv--slash-blahslash-what"
 

@@ -30,7 +30,7 @@ from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.monitoring_tools import check_under_replication
 from paasta_tools.monitoring_tools import send_replication_event
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
+from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import is_under_replicated
 
 
@@ -108,7 +108,7 @@ Things you can do:
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
     all_tasks_or_pods: Sequence[V1Pod],
-    smartstack_replication_checker: KubeSmartstackReplicationChecker,
+    replication_checker: KubeSmartstackEnvoyReplicationChecker,
 ) -> None:
     si_pods = filter_pods_by_service_instance(
         pod_list=all_tasks_or_pods,

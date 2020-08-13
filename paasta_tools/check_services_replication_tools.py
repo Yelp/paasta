@@ -36,10 +36,10 @@ from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos_tools import get_slaves
+from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
-from paasta_tools.smartstack_tools import MesosSmartstackReplicationChecker
-from paasta_tools.smartstack_tools import SmartstackReplicationChecker
+from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
+from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
@@ -58,7 +58,7 @@ CheckServiceReplication = Callable[
     [
         Arg(InstanceConfig_T, "instance_config"),
         Arg(Sequence[Union[MarathonTask, V1Pod]], "all_tasks_or_pods"),
-        Arg(Any, "smartstack_replication_checker"),
+        Arg(Any, "replication_checker"),
     ],
     Optional[bool],
 ]
@@ -110,7 +110,7 @@ def check_services_replication(
     service_instances: Sequence[str],
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
-    replication_checker: SmartstackReplicationChecker,
+    replication_checker: ReplicationChecker,
     all_tasks_or_pods: Sequence[Union[MarathonTask, V1Pod]],
 ) -> float:
     service_instances_set = set(service_instances)
@@ -131,7 +131,7 @@ def check_services_replication(
                 is_well_replicated = check_service_replication(
                     instance_config=instance_config,
                     all_tasks_or_pods=all_tasks_or_pods,
-                    smartstack_replication_checker=replication_checker,
+                    replication_checker=replication_checker,
                 )
                 if is_well_replicated is not None:
                     replication_statuses.append(is_well_replicated)
@@ -179,16 +179,16 @@ def main(
 
     system_paasta_config = load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
-    replication_checker: SmartstackReplicationChecker
+    replication_checker: ReplicationChecker
 
     if mesos:
         tasks_or_pods, slaves = get_mesos_tasks_and_slaves(system_paasta_config)
-        replication_checker = MesosSmartstackReplicationChecker(
+        replication_checker = MesosSmartstackEnvoyReplicationChecker(
             mesos_slaves=slaves, system_paasta_config=system_paasta_config,
         )
     else:
         tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace)
-        replication_checker = KubeSmartstackReplicationChecker(
+        replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes, system_paasta_config=system_paasta_config,
         )
 

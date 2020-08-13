@@ -2523,7 +2523,7 @@ def load_custom_resource_definitions(
         kube_kind = KubeKind(**custom_resource_dict.pop("kube_kind"))  # type: ignore
         custom_resources.append(
             CustomResourceDefinition(  # type: ignore
-                kube_kind=kube_kind, **custom_resource_dict
+                kube_kind=kube_kind, **custom_resource_dict  # type: ignore
             )
         )
     return custom_resources

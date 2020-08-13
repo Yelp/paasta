@@ -35,11 +35,13 @@ from kubernetes.client import V1Node
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
+from paasta_tools import envoy_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
+from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
@@ -47,19 +49,14 @@ from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import SystemPaastaConfig
 
 
-HaproxyBackend = TypedDict(
-    "HaproxyBackend",
-    {
-        "check_code": str,
-        "check_duration": str,
-        "check_status": str,
-        "lastchg": str,
-        "pxname": str,
-        "svname": str,
-        "status": str,
-    },
-    total=False,
-)
+class HaproxyBackend(TypedDict, total=False):
+    check_code: str
+    check_duration: str
+    check_status: str
+    lastchg: str
+    pxname: str
+    svname: str
+    status: str
 
 
 def retrieve_haproxy_csv(
@@ -67,8 +64,10 @@ def retrieve_haproxy_csv(
 ) -> Iterable[Dict[str, str]]:
     """Retrieves the haproxy csv from the haproxy web interface
 
-    :param synapse_host_port: A string in host:port format that this check
-                              should contact for replication information.
+    :param synapse_host: A host that this check should contact for replication information.
+    :param synapse_port: A integer that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
+    :param scope: scope
     :returns reader: a csv.DictReader object
     """
     synapse_uri = synapse_haproxy_url_format.format(
@@ -94,8 +93,9 @@ def get_backends(
 
     :param service: If None, return backends for all services, otherwise only return backends for this particular
                     service.
-    :param synapse_host_port: A string in host:port format that this check
-                              should contact for replication information.
+    :param synapse_host: A host that this check should contact for replication information.
+    :param synapse_port: A integer that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :returns backends: A list of dicts representing the backends of all
                        services or the requested service
     """
@@ -122,8 +122,9 @@ def get_multiple_backends(
 
     :param services: If None, return backends for all services, otherwise only return backends for these particular
                      services.
-    :param synapse_host_port: A string in host:port format that this check
-                              should contact for replication information.
+    :param synapse_host: A host that this check should contact for replication information.
+    :param synapse_port: A integer that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :returns backends: A list of dicts representing the backends of all
                        services or the requested service
     """
@@ -170,12 +171,13 @@ def load_smartstack_info_for_service(
     system_paasta_config: SystemPaastaConfig,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, Dict[str, int]]:
-    """Retrieves number of available backends for given services
+    """Retrieves number of available backends for given service
 
-    :param service_instances: A list of tuples of (service, instance)
-    :param namespaces: list of Smartstack namespaces
+    :param service: A service name
+    :param namespace: A Smartstack namespace
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
+    :param soa_dir: SOA dir
     :returns: a dictionary of the form
 
     ::
@@ -215,7 +217,6 @@ def get_smartstack_replication_for_attribute(
     :param attribute: a Mesos attribute
     :param service: A service name, like 'example_service'
     :param namespace: A particular smartstack namespace to inspect, like 'main'
-    :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
     :param blacklist: A list of blacklisted location tuples in the form of (location, value)
     :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
@@ -254,7 +255,7 @@ def get_replication_for_all_services(
     """Returns the replication level for all services known to this synapse haproxy
 
     :param synapse_host: The host that this check should contact for replication information.
-    :param synapse_port: The port number that this check should contact for replication information.
+    :param synapse_port: The port that this check should contact for replication information.
     :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :returns available_instance_counts: A dictionary mapping the service names
                                         to an integer number of available replicas.
@@ -280,7 +281,7 @@ def get_replication_for_services(
     relies on the implementation details of that choice.
 
     :param synapse_host: The host that this check should contact for replication information.
-    :param synapse_port: The port number that this check should contact for replication information.
+    :param synapse_port: The port that this check should contact for replication information.
     :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :param services: A list of strings that are the service names
                           that should be checked for replication.
@@ -476,61 +477,119 @@ _MesosSlaveDict = TypeVar(
 )  # no type has been defined in mesos_tools for these yet.
 
 
-class SmartstackHost(NamedTuple):
+class DiscoveredHost(NamedTuple):
     hostname: str
     pool: str
 
 
-class SmartstackReplicationChecker(abc.ABC):
-    """Base class for checking smartstack replication. Extendable for different frameworks.
+class ServiceDiscoveryProvider(abc.ABC):
 
-    Optimized for multiple queries. Gets the list of backends from synapse-`roxy
-    only once per location and reuse it in all subsequent calls of
-    SmartstackReplicationChecker.get_replication_for_instance().
+    NAME = "..."
 
-    get_allowed_locations_and_hosts must be implemented in sub class
-    """
+    @abc.abstractmethod
+    def get_replication_for_all_services(self, hostname: str) -> Dict[str, int]:
+        ...
+
+
+class SmartstackServiceDiscovery(ServiceDiscoveryProvider):
+
+    NAME = "Smartstack"
 
     def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
         self._synapse_port = system_paasta_config.get_synapse_port()
         self._synapse_haproxy_url_format = (
             system_paasta_config.get_synapse_haproxy_url_format()
         )
+
+    def get_replication_for_all_services(self, hostname: str) -> Dict[str, int]:
+        return get_replication_for_all_services(
+            synapse_host=hostname,
+            synapse_port=self._synapse_port,
+            synapse_haproxy_url_format=self._synapse_haproxy_url_format,
+        )
+
+
+class EnvoyServiceDiscovery(ServiceDiscoveryProvider):
+
+    NAME = "Envoy"
+
+    def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
+        self._envoy_admin_port = system_paasta_config.get_envoy_admin_port()
+        self._envoy_admin_endpoint_format = (
+            system_paasta_config.get_envoy_admin_endpoint_format()
+        )
+
+    def get_replication_for_all_services(self, hostname: str) -> Dict[str, int]:
+        return envoy_tools.get_replication_for_all_services(
+            envoy_host=hostname,
+            envoy_admin_port=self._envoy_admin_port,
+            envoy_admin_endpoint_format=self._envoy_admin_endpoint_format,
+        )
+
+
+class BaseReplicationChecker(ReplicationChecker):
+    """Base class for checking replication. Extendable for different frameworks.
+
+    Optimized for multiple queries. Gets the list of backends from service
+    discovery provider only once per location and reuse it in all subsequent
+    calls of BaseReplicationChecker.get_replication_for_instance().
+
+    get_allowed_locations_and_hosts must be implemented in sub class
+
+    A list of service discovery providers to collect information about
+    instances and their status must be provided as
+    `service_discovery_providers`.
+    """
+
+    def __init__(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        service_discovery_providers: Iterable[ServiceDiscoveryProvider],
+    ) -> None:
         self._system_paasta_config = system_paasta_config
-        self._cache: Dict[str, Dict[str, int]] = {}
+        self._cache: Dict[Tuple[str, str], Dict[str, int]] = {}
+        self._service_discovery_providers = service_discovery_providers
 
     @abc.abstractmethod
     def get_allowed_locations_and_hosts(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Sequence[SmartstackHost]]:
-        pass
+    ) -> Dict[str, Sequence[DiscoveredHost]]:
+        ...
 
     def get_replication_for_instance(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Dict[str, int]]:
-        """Returns the number of registered instances in each discoverable location.
+    ) -> Dict[str, Dict[str, Dict[str, int]]]:
+        """Returns the number of registered instances in each discoverable
+        location for each service dicrovery provider.
 
         :param instance_config: An instance of MarathonServiceConfig.
-        :returns: a dict {'location_type': {'service.instance': int}}
+        :returns: a dict {'service_discovery_provider': {'location_type': {'service.instance': int}}}
         """
-        replication_info = {}
-        attribute_host_dict = self.get_allowed_locations_and_hosts(instance_config)
-        instance_pool = instance_config.get_pool()
-        for location, hosts in attribute_host_dict.items():
-            hostname = self.get_first_host_in_pool(hosts, instance_pool)
-            replication_info[location] = self._get_replication_info(
-                location, hostname, instance_config
-            )
-        return replication_info
+        replication_infos = {}
+        for provider in self._service_discovery_providers:
+            replication_info = {}
+            attribute_host_dict = self.get_allowed_locations_and_hosts(instance_config)
+            instance_pool = instance_config.get_pool()
+            for location, hosts in attribute_host_dict.items():
+                hostname = self.get_first_host_in_pool(hosts, instance_pool)
+                replication_info[location] = self._get_replication_info(
+                    location, hostname, instance_config, provider
+                )
+            replication_infos[provider.NAME] = replication_info
+        return replication_infos
 
-    def get_first_host_in_pool(self, hosts: Sequence[SmartstackHost], pool: str) -> str:
+    def get_first_host_in_pool(self, hosts: Sequence[DiscoveredHost], pool: str) -> str:
         for host in hosts:
             if host.pool == pool:
                 return host.hostname
         return hosts[0].hostname
 
     def _get_replication_info(
-        self, location: str, hostname: str, instance_config: LongRunningServiceConfig
+        self,
+        location: str,
+        hostname: str,
+        instance_config: LongRunningServiceConfig,
+        provider: ServiceDiscoveryProvider,
     ) -> Dict[str, int]:
         """Returns service.instance and the number of instances registered in smartstack
         at the location as a dict.
@@ -541,16 +600,15 @@ class SmartstackReplicationChecker(abc.ABC):
         :returns: A dict {"service.instance": number_of_instances}.
         """
         full_name = compose_job_id(instance_config.service, instance_config.instance)
-        if location not in self._cache:
-            self._cache[location] = get_replication_for_all_services(
-                synapse_host=hostname,
-                synapse_port=self._synapse_port,
-                synapse_haproxy_url_format=self._synapse_haproxy_url_format,
-            )
-        return {full_name: self._cache[location][full_name]}
+        key = (location, provider.NAME)
+        replication_info = self._cache.get(key)
+        if replication_info is None:
+            replication_info = provider.get_replication_for_all_services(hostname)
+            self._cache[key] = replication_info
+        return {full_name: replication_info[full_name]}
 
 
-class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
+class MesosSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
     """Retrieves the number of registered instances in each discoverable location.
 
     Based on SmartstackReplicationChecker takes mesos slaves as an argument to filter
@@ -560,16 +618,17 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
     >>> from paasta_tools.mesos_tools import get_slaves
     >>> from paasta_tools.utils import load_system_paasta_config
     >>> from paasta_tools.marathon_tools import load_marathon_service_config
-    >>> from paasta_tools.smartstack_tools import SmartstackReplicationChecker
+    >>> from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
     >>>
     >>> mesos_slaves = get_slaves()
     >>> system_paasta_config = load_system_paasta_config()
     >>> instance_config = load_marathon_service_config(service='fake_service',
     ...                       instance='fake_instance', cluster='norcal-stagef')
     >>>
-    >>> c = SmartstackReplicationChecker(mesos_slaves, system_paasta_config)
+    >>> c = MesosSmartstackEnvoyReplicationChecker(mesos_slaves, system_paasta_config)
     >>> c.get_replication_for_instance(instance_config)
-    {'uswest1-stagef': {'fake_service.fake_instance': 2}}
+    {'Smartstack': {'uswest1-stagef': {'fake_service.fake_instance': 2}}
+    'Envoy': {'uswest1-stagef': {'fake_service.fake_instance': 2}}}
     >>>
     """
 
@@ -579,16 +638,22 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         system_paasta_config: SystemPaastaConfig,
     ) -> None:
         self._mesos_slaves = mesos_slaves
-        super().__init__(system_paasta_config=system_paasta_config)
+        super().__init__(
+            system_paasta_config=system_paasta_config,
+            service_discovery_providers=[
+                SmartstackServiceDiscovery(system_paasta_config=system_paasta_config),
+                EnvoyServiceDiscovery(system_paasta_config=system_paasta_config),
+            ],
+        )
 
     def get_allowed_locations_and_hosts(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Sequence[SmartstackHost]]:
+    ) -> Dict[str, Sequence[DiscoveredHost]]:
         """Returns a dict of locations and lists of corresponding mesos slaves
         where deployment of the instance is allowed.
 
         :param instance_config: An instance of MarathonServiceConfig
-        :returns: A dict {"uswest1-prod": [SmartstackHost(), SmartstackHost(), ...]}
+        :returns: A dict {"uswest1-prod": [DiscoveredHost(), DiscoveredHost(), ...]}
         """
         discover_location_type = marathon_tools.load_service_namespace_config(
             service=instance_config.service,
@@ -598,10 +663,10 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         attribute_to_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
             slaves=self._mesos_slaves, attribute=discover_location_type
         )
-        ret: Dict[str, Sequence[SmartstackHost]] = {}
+        ret: Dict[str, Sequence[DiscoveredHost]] = {}
         for attr, slaves in attribute_to_slaves.items():
             ret[attr] = [
-                SmartstackHost(
+                DiscoveredHost(
                     hostname=slave["hostname"], pool=slave["attributes"]["pool"]
                 )
                 for slave in slaves
@@ -609,16 +674,22 @@ class MesosSmartstackReplicationChecker(SmartstackReplicationChecker):
         return ret
 
 
-class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
+class KubeSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
     def __init__(
         self, nodes: Sequence[V1Node], system_paasta_config: SystemPaastaConfig
     ) -> None:
         self.nodes = nodes
-        super().__init__(system_paasta_config=system_paasta_config)
+        super().__init__(
+            system_paasta_config=system_paasta_config,
+            service_discovery_providers=[
+                SmartstackServiceDiscovery(system_paasta_config=system_paasta_config),
+                EnvoyServiceDiscovery(system_paasta_config=system_paasta_config),
+            ],
+        )
 
     def get_allowed_locations_and_hosts(
         self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Sequence[SmartstackHost]]:
+    ) -> Dict[str, Sequence[DiscoveredHost]]:
         discover_location_type = kubernetes_tools.load_service_namespace_config(
             service=instance_config.service,
             namespace=instance_config.get_nerve_namespace(),
@@ -628,10 +699,10 @@ class KubeSmartstackReplicationChecker(SmartstackReplicationChecker):
         attribute_to_nodes = kubernetes_tools.get_nodes_grouped_by_attribute(
             nodes=self.nodes, attribute=discover_location_type
         )
-        ret: Dict[str, Sequence[SmartstackHost]] = {}
+        ret: Dict[str, Sequence[DiscoveredHost]] = {}
         for attr, nodes in attribute_to_nodes.items():
             ret[attr] = [
-                SmartstackHost(
+                DiscoveredHost(
                     hostname=node.metadata.labels["yelp.com/hostname"],
                     pool=node.metadata.labels["yelp.com/pool"],
                 )
