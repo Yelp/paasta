@@ -539,6 +539,9 @@
                         "aws"
                     ]
                 },
+                "fs_group": {
+                    "type": "int"
+                },
                 "healthcheck_mode": {
                     "enum": [
                         "cmd",
