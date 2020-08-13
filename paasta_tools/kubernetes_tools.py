@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os
+import re
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -76,6 +77,7 @@ from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
+from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
@@ -85,6 +87,7 @@ from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecurityContext
+from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
@@ -1262,7 +1265,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
-            "iam.amazonaws.com/role": self.get_iam_role(),
             "paasta.yelp.com/routable_ip": "true"
             if service_namespace_config.is_in_smartstack()
             else "false",
@@ -1321,6 +1323,28 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             pod_spec_kwargs[
                 "termination_grace_period_seconds"
             ] = termination_grace_period
+
+        if self.get_iam_role_provider() == "aws":
+            annotations["iam.amazonaws.com/role"] = ""
+            iam_role = self.get_iam_role()
+            if iam_role:
+                pod_spec_kwargs[
+                    "service_account_name"
+                ] = create_or_find_service_account_name(iam_role)
+                # PAASTA-16919: remove everything related to fs_group when
+                # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
+                # will be fixed.
+                fs_group = self.get_fs_group()
+                if fs_group is None:
+                    # We need some reasoable default for group id of a process
+                    # running inside the container.  Seems like most of such
+                    # programs run as `nobody`, let's use that as a default.
+                    fs_group = 65534
+                pod_spec_kwargs["security_context"] = V1PodSecurityContext(
+                    fs_group=fs_group
+                )
+        else:
+            annotations["iam.amazonaws.com/role"] = self.get_iam_role()
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
@@ -2568,3 +2592,33 @@ def to_node_label(label: str) -> str:
     }:
         return f"yelp.com/{label}"
     return label
+
+
+def get_all_service_accounts(
+    kube_client: KubeClient, namespace: str,
+) -> Sequence[V1ServiceAccount]:
+    return kube_client.core.list_namespaced_service_account(namespace=namespace).items
+
+
+_RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
+
+
+def create_or_find_service_account_name(
+    iam_role: str, namespace: str = "paasta"
+) -> str:
+    kube_client = KubeClient()
+    sa_name = "paasta--" + _RE_NORMALIZE_IAM_ROLE.sub("-", iam_role)
+    if not any(
+        sa.metadata.name == sa_name
+        for sa in get_all_service_accounts(kube_client, namespace)
+    ):
+        sa = V1ServiceAccount(
+            kind="ServiceAccount",
+            metadata=V1ObjectMeta(
+                name=sa_name,
+                namespace=namespace,
+                annotations={"eks.amazonaws.com/role-arn": iam_role},
+            ),
+        )
+        kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
+    return sa_name
