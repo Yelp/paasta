@@ -1,3 +1,11 @@
+paasta-tools (0.96.41) xenial; urgency=medium
+
+  * 0.96.41 tagged with 'make release'
+    Commit: Merge pull request #2885 from Yelp/iam_role-via-aws-pod-
+    identity  Support iam_role using AWS pod identity solution
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 13 Aug 2020 12:09:50 -0700
+
 paasta-tools (0.96.40) xenial; urgency=medium
 
   * 0.96.40 tagged with 'make release'
