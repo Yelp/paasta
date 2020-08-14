@@ -169,6 +169,40 @@ def test_modify_target_capacity_min_max(
         assert new_config['DesiredCapacity'] == mock_asg_config['MaxSize']
 
 
+def test_get_launch_template_and_overrides_no_overrides(mock_asrg):
+    lt, overrides = mock_asrg._get_launch_template_and_overrides()
+    assert lt['LaunchTemplateName'] == 'fake_launch_template'
+    assert overrides == []
+
+
+def test_get_launch_template_and_overrides_with_overrides(mock_asrg):
+    expected_overrides = [
+        {
+            'InstanceType': 't2.2xlarge',
+            'WeightedCapacity': 400,
+        },
+        {
+            'InstanceType': 'm5.12xlarge',
+            'WeightedCapacity': 12345,
+        },
+    ]
+    mock_asrg._group_config['MixedInstancesPolicy'] = {
+        'LaunchTemplate': {
+            'LaunchTemplateSpecification': mock_asrg._group_config['LaunchTemplate'],
+            'Overrides': expected_overrides,
+        },
+    }
+    del mock_asrg._group_config['LaunchTemplate']
+    lt, overrides = mock_asrg._get_launch_template_and_overrides()
+    assert lt['LaunchTemplateName'] == 'fake_launch_template'
+    assert overrides == expected_overrides
+
+
+def test_get_launch_template_and_overrides_with_launch_config(mock_asrg):
+    mock_asrg._group_config = {'LaunchConfigurationName': 'fake-launch-config'}
+    assert mock_asrg._get_launch_template_and_overrides() == (None, [])
+
+
 @pytest.mark.parametrize('stale_instances', [0, 1, 10])
 def test_status(mock_asrg, stale_instances):
     is_stale = stale_instances == 10

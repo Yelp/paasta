@@ -15,6 +15,7 @@ import pprint
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
@@ -157,14 +158,17 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         )
         return response['AutoScalingGroups'][0]
 
-    def _get_launch_template_and_overrides(self) -> Tuple[LaunchTemplateConfig, List[InstanceOverrideConfig]]:
-        try:
+    def _get_launch_template_and_overrides(self) -> Tuple[Optional[LaunchTemplateConfig], List[InstanceOverrideConfig]]:
+        if 'LaunchTemplate' in self._group_config:
             template = self._group_config['LaunchTemplate']
             overrides: List[InstanceOverrideConfig] = []
-        except KeyError:
+        elif 'MixedInstancesPolicy' in self._group_config:
             policy = self._group_config['MixedInstancesPolicy']
             template = policy['LaunchTemplate']['LaunchTemplateSpecification']
             overrides = policy['LaunchTemplate']['Overrides']
+        else:
+            logger.warn('This ASG is not using LaunchTemplates, it will be unable to do smart scheduling')
+            return None, []
 
         launch_template_name = template['LaunchTemplateName']
         launch_template_version = template['Version']
