@@ -237,7 +237,7 @@ def paasta_status_on_api_endpoint(
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
 ) -> int:
-    output.append("    instance: %s" % PaastaColors.cyan(instance))
+    output.append("    instance: %s" % PaastaColors.blue(instance))
     client = get_paasta_api_client(cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
