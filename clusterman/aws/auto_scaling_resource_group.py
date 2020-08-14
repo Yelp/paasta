@@ -164,7 +164,7 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         except KeyError:
             policy = self._group_config['MixedInstancesPolicy']
             template = policy['LaunchTemplate']['LaunchTemplateSpecification']
-            overrides = policy['LaunchTemplate']['Overrides']
+            overrides = policy['Overrides']
 
         launch_template_name = template['LaunchTemplateName']
         launch_template_version = template['Version']

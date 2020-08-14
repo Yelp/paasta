@@ -14,18 +14,18 @@ class LaunchTemplateConfig(TypedDict):
     Version: str
 
 
+class MixedInstancesPolicyLaunchTemplateConfig(TypedDict):
+    LaunchTemplateSpecification: LaunchTemplateConfig
+
+
 class InstanceOverrideConfig(TypedDict):
     InstanceType: str
     WeightedCapacity: str
 
 
-class MixedInstancesPolicyLaunchTemplateConfig(TypedDict):
-    LaunchTemplateSpecification: LaunchTemplateConfig
-    Overrides: List[InstanceOverrideConfig]
-
-
 class MixedInstancesPolicyConfig(TypedDict):
     LaunchTemplate: MixedInstancesPolicyLaunchTemplateConfig
+    Overrides: List[InstanceOverrideConfig]
 
 
 class AutoScalingGroupConfig(TypedDict):
