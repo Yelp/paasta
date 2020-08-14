@@ -1030,6 +1030,7 @@ def mock_kafka_status() -> Mapping[str, Any]:
                 "under_replicated_partitions": 1,
             },
             kafka_view_url="https://kafkaview.com",
+            zookeeper="0.0.0.0:2181/kafka",
         ),
     )
 
@@ -1359,6 +1360,7 @@ class TestPrintKafkaStatus:
         status = mock_kafka_status["status"]
         expected_output = [
             f"    Kafka View Url: {status.kafka_view_url}",
+            f"    Zookeeper: {status.zookeeper}",
             f"    State: testing",
             f"    Ready: {str(status.cluster_ready).lower()}",
             f"    Health: {PaastaColors.red('unhealthy')}",
