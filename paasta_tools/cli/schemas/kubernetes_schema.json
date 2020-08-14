@@ -540,7 +540,7 @@
                     ]
                 },
                 "fs_group": {
-                    "type": "int"
+                    "type": "integer"
                 },
                 "healthcheck_mode": {
                     "enum": [
