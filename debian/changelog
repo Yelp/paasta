@@ -1,3 +1,12 @@
+paasta-tools (0.96.42) xenial; urgency=medium
+
+  * 0.96.42 tagged with 'make release'
+    Commit: Merge pull request #2886 from Yelp/u/flavr/KAFKA-29492-
+    zookeeper-kafka-status  Show Kafka Zookeeper connection string in
+    paasta status
+
+ -- Flavien Raynaud <flavr@yelp.com>  Fri, 14 Aug 2020 05:49:09 -0700
+
 paasta-tools (0.96.41) xenial; urgency=medium
 
   * 0.96.41 tagged with 'make release'
