@@ -189,11 +189,15 @@ class AWSResourceGroup(ResourceGroup, metaclass=ABCMeta):
 
         for rg_id, tags in resource_group_tags.items():
             try:
-                identifier_tags = json.loads(tags[identifier_tag_label])
-                if identifier_tags['pool'] == pool and identifier_tags['paasta_cluster'] == cluster:
-                    rg = cls(rg_id, **kwargs)
-                    matching_resource_groups[rg_id] = rg
+                tag_json = tags.get(identifier_tag_label)
+                # Not every ASG/SFR/etc will have the right tags, because they belong to someone else
+                if tag_json:
+                    identifier_tags = json.loads(tag_json)
+                    if identifier_tags['pool'] == pool and identifier_tags['paasta_cluster'] == cluster:
+                        rg = cls(rg_id, **kwargs)
+                        matching_resource_groups[rg_id] = rg
             except KeyError:
+                logger.exception(f'Could not load resource group {rg_id}; skipping...')
                 continue
         return matching_resource_groups
 
