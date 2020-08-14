@@ -1,3 +1,10 @@
+paasta-tools (0.96.43) xenial; urgency=medium
+
+  * 0.96.43 tagged with 'make release'
+    Commit: fix fs_group type
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 14 Aug 2020 10:46:33 -0700
+
 paasta-tools (0.96.42) xenial; urgency=medium
 
   * 0.96.42 tagged with 'make release'
