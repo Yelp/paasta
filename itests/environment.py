@@ -126,7 +126,14 @@ def setup_configurations(context):
     }
     kube_pool_config = {
         'resource_groups': [
-            {'sfr': {'tag': 'puppet:role::paasta'}},
+            {
+                'sfr': {
+                    's3': {
+                        'bucket': 'fake-bucket-k8s',
+                        'prefix': 'none',
+                    }
+                },
+            },
             {'asg': {'tag': 'puppet:role::paasta'}},
         ],
         'scaling_limits': {
@@ -154,20 +161,14 @@ def setup_configurations(context):
 
 
 def make_asg(asg_name, subnet_id):
-    if len(ec2.describe_launch_templates()['LaunchTemplates']) == 0:
-        ec2.create_launch_template(
-            LaunchTemplateName='fake_launch_template',
-            LaunchTemplateData={
-                'ImageId': 'ami-785db401',  # this AMI is hard-coded into moto, represents ubuntu xenial
-                'InstanceType': 't2.2xlarge',
-            },
-        )
+    autoscaling.create_launch_configuration(
+        LaunchConfigurationName='mock_launch_configuration',
+        ImageId='ami-foo',
+        InstanceType='t2.micro',
+    )
     return autoscaling.create_auto_scaling_group(
         AutoScalingGroupName=asg_name,
-        LaunchTemplate={
-            'LaunchTemplateName': 'fake_launch_template',
-            'Version': '1',
-        },
+        LaunchConfigurationName='mock_launch_configuration',
         MinSize=1,
         MaxSize=30,
         DesiredCapacity=1,
@@ -232,14 +233,13 @@ def make_sfr(subnet_id):
                     'WeightedCapacity': 1,
                     'InstanceType': 'c3.8xlarge',
                     'EbsOptimized': False,
+                    # note that this is not useful until we solve
+                    # https://github.com/spulec/moto/issues/1644
                     'TagSpecifications': [{
                         'ResourceType': 'instance',
                         'Tags': [{
-                            'Key': 'puppet:role::paasta',
-                            'Value': json.dumps({
-                                'paasta_cluster': 'mesos-test',
-                                'pool': 'bar',
-                            }),
+                            'Key': 'foo',
+                            'Value': 'bar',
                         }],
                     }],
                 },

@@ -24,16 +24,14 @@ from clusterman.aws.markets import InstanceMarket
 
 
 @pytest.fixture
-def mock_launch_template():
-    launch_template = {
-        'LaunchTemplateName': 'fake_launch_template',
-        'LaunchTemplateData': {
-            'ImageId': 'ami-785db401',  # this AMI is hard-coded into moto, represents ubuntu xenial
-            'InstanceType': 't2.2xlarge',
-        },
+def mock_launch_config():
+    launch_config = {
+        'LaunchConfigurationName': 'fake_launch_config',
+        'ImageId': 'ami-785db401',  # this AMI is hard-coded into moto, represents ubuntu xenial
+        'InstanceType': 't2.2xlarge',
     }
-    ec2.create_launch_template(**launch_template)
-    return launch_template
+    autoscaling.create_launch_configuration(**launch_config)
+    return launch_config
 
 
 @pytest.fixture
@@ -52,13 +50,10 @@ def mock_pool():
 
 
 @pytest.fixture
-def mock_asg_config(mock_subnet, mock_launch_template, mock_asg_name, mock_cluster, mock_pool):
+def mock_asg_config(mock_subnet, mock_launch_config, mock_asg_name, mock_cluster, mock_pool):
     asg = {
         'AutoScalingGroupName': mock_asg_name,
-        'LaunchTemplate': {
-            'LaunchTemplateName': 'fake_launch_template',
-            'Version': '1',
-        },
+        'LaunchConfigurationName': mock_launch_config['LaunchConfigurationName'],
         'MinSize': 1,
         'MaxSize': 30,
         'DesiredCapacity': 10,
@@ -83,9 +78,43 @@ def mock_asg_config(mock_subnet, mock_launch_template, mock_asg_name, mock_clust
     return asg
 
 
+def test_group_config(mock_asg_config):
+    mock_asrg = AutoScalingResourceGroup.__new__(AutoScalingResourceGroup)  # skip init
+    mock_asrg.group_id = mock_asg_config['AutoScalingGroupName']
+
+    group_config = mock_asrg._group_config
+
+    assert group_config['AutoScalingGroupName'] == \
+        mock_asg_config['AutoScalingGroupName']
+
+
 @pytest.fixture
 def mock_asrg(mock_asg_config):
     return AutoScalingResourceGroup(mock_asg_config['AutoScalingGroupName'])
+
+
+def test_launch_config(mock_asrg, mock_launch_config):
+    launch_config = mock_asrg._launch_config
+
+    assert launch_config['LaunchConfigurationName'] == \
+        mock_launch_config['LaunchConfigurationName']
+
+
+def test_launch_config_retry(mock_asrg, mock_launch_config):
+    no_configs = dict(LaunchConfigurations=[])
+    good_configs = dict(LaunchConfigurations=[mock_launch_config])
+    mock_describe_launch_configs = mock.Mock(side_effect=[
+        no_configs, good_configs,
+    ])
+
+    with mock.patch(
+        'clusterman.aws.client.autoscaling.describe_launch_configurations',
+        mock_describe_launch_configs,
+    ):
+        launch_config = mock_asrg._launch_config
+
+    assert launch_config == mock_launch_config
+    assert mock_describe_launch_configs.call_count == 2
 
 
 @pytest.mark.parametrize('instance_type', ['t2.2xlarge', 'm5.large'])
@@ -125,8 +154,8 @@ def test_modify_target_capacity_up(mock_asrg, stale_instances):
             honor_cooldown=False,
         )
 
-        new_config = mock_asrg._get_auto_scaling_group_config()
-        assert new_config['DesiredCapacity'] == new_desired_capacity + stale_instances
+        assert mock_asrg.target_capacity == new_desired_capacity
+        assert mock_asrg.fulfilled_capacity == new_desired_capacity + stale_instances
 
 
 @pytest.mark.parametrize('stale_instances', [0, 7])
@@ -144,10 +173,10 @@ def test_modify_target_capacity_down(mock_asrg, stale_instances):
             honor_cooldown=False,
         )
 
-        new_config = mock_asrg._get_auto_scaling_group_config()
+        assert mock_asrg.target_capacity == new_target_capacity
         # because some instances are stale, we might have to _increase_ our "real" target capacity
         # even if we're decreasing our _requested_ target capacity
-        assert new_config['DesiredCapacity'] == new_target_capacity + stale_instances
+        assert mock_asrg.fulfilled_capacity == max(old_target_capacity, new_target_capacity + stale_instances)
 
 
 @pytest.mark.parametrize('new_desired_capacity', [0, 100])
@@ -162,11 +191,10 @@ def test_modify_target_capacity_min_max(
         honor_cooldown=False,
     )
 
-    new_config = mock_asrg._get_auto_scaling_group_config()
     if new_desired_capacity < mock_asg_config['MinSize']:
-        assert new_config['DesiredCapacity'] == mock_asg_config['MinSize']
+        assert mock_asrg.target_capacity == mock_asg_config['MinSize']
     elif new_desired_capacity > mock_asg_config['MaxSize']:
-        assert new_config['DesiredCapacity'] == mock_asg_config['MaxSize']
+        assert mock_asrg.target_capacity == mock_asg_config['MaxSize']
 
 
 @pytest.mark.parametrize('stale_instances', [0, 1, 10])
