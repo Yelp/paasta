@@ -1267,6 +1267,8 @@ def print_kafka_status(
     if "kafka_view_url" in status and status.kafka_view_url is not None:
         output.append(f"    Kafka View Url: {status.kafka_view_url}")
 
+    output.append(f"    Zookeeper: {status.zookeeper}")
+
     annotations = kafka_status.get("metadata").annotations
     desired_state = annotations.get(paasta_prefixed("desired_state"))
     if desired_state is None:
