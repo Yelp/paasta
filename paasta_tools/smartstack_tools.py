@@ -495,6 +495,12 @@ class SmartstackServiceDiscovery(ServiceDiscoveryProvider):
 
     NAME = "Smartstack"
 
+    @staticmethod
+    def create(
+        system_paasta_config: SystemPaastaConfig, _: Any
+    ) -> "SmartstackServiceDiscovery":
+        return SmartstackServiceDiscovery(system_paasta_config)
+
     def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
         self._synapse_port = system_paasta_config.get_synapse_port()
         self._synapse_haproxy_url_format = (
@@ -513,6 +519,12 @@ class EnvoyServiceDiscovery(ServiceDiscoveryProvider):
 
     NAME = "Envoy"
 
+    @staticmethod
+    def create(
+        system_paasta_config: SystemPaastaConfig, _: Any
+    ) -> "EnvoyServiceDiscovery":
+        return EnvoyServiceDiscovery(system_paasta_config)
+
     def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
         self._envoy_admin_port = system_paasta_config.get_envoy_admin_port()
         self._envoy_admin_endpoint_format = (
@@ -525,6 +537,23 @@ class EnvoyServiceDiscovery(ServiceDiscoveryProvider):
             envoy_admin_port=self._envoy_admin_port,
             envoy_admin_endpoint_format=self._envoy_admin_endpoint_format,
         )
+
+
+_SERVICE_DISCOVERY_PROVIDERS_FACTORIES = {
+    "smartstack": SmartstackServiceDiscovery.create,
+    "envoy": EnvoyServiceDiscovery.create,
+}
+
+
+def get_service_discovery_providers(
+    system_paasta_config: SystemPaastaConfig,
+) -> List[ServiceDiscoveryProvider]:
+    service_discovery_providers = []
+    for name, cfg in system_paasta_config.get_service_discovery_providers().items():
+        service_discovery_providers.append(
+            _SERVICE_DISCOVERY_PROVIDERS_FACTORIES[name](system_paasta_config, cfg)
+        )
+    return service_discovery_providers
 
 
 class BaseReplicationChecker(ReplicationChecker):
@@ -640,10 +669,9 @@ class MesosSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
         self._mesos_slaves = mesos_slaves
         super().__init__(
             system_paasta_config=system_paasta_config,
-            service_discovery_providers=[
-                SmartstackServiceDiscovery(system_paasta_config=system_paasta_config),
-                EnvoyServiceDiscovery(system_paasta_config=system_paasta_config),
-            ],
+            service_discovery_providers=get_service_discovery_providers(
+                system_paasta_config
+            ),
         )
 
     def get_allowed_locations_and_hosts(
@@ -681,10 +709,9 @@ class KubeSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
         self.nodes = nodes
         super().__init__(
             system_paasta_config=system_paasta_config,
-            service_discovery_providers=[
-                SmartstackServiceDiscovery(system_paasta_config=system_paasta_config),
-                EnvoyServiceDiscovery(system_paasta_config=system_paasta_config),
-            ],
+            service_discovery_providers=get_service_discovery_providers(
+                system_paasta_config
+            ),
         )
 
     def get_allowed_locations_and_hosts(

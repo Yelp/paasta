@@ -504,8 +504,13 @@ def mock_replication_checker():
 @pytest.fixture
 def mock_kube_replication_checker():
     mock_nodes = [mock.Mock()]
+    mock_system_paasta_config = mock.Mock()
+    mock_system_paasta_config.get_service_discovery_providers.return_value = {
+        "smartstack": {},
+        "envoy": {},
+    }
     return smartstack_tools.KubeSmartstackEnvoyReplicationChecker(
-        nodes=mock_nodes, system_paasta_config=mock.Mock()
+        nodes=mock_nodes, system_paasta_config=mock_system_paasta_config,
     )
 
 
