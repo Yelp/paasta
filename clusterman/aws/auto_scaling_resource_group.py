@@ -12,36 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pprint
-from typing import Any
-from typing import Dict
 from typing import Iterator
+from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Sequence
+from typing import Tuple
 
 import colorlog
-from cached_property import timed_cached_property
-from mypy_extensions import TypedDict
-from retry import retry
 
-from clusterman.aws import CACHE_TTL_SECONDS
 from clusterman.aws.aws_resource_group import AWSResourceGroup
 from clusterman.aws.client import autoscaling
 from clusterman.aws.client import ec2
 from clusterman.aws.markets import InstanceMarket
+from clusterman.aws.response_types import AutoScalingGroupConfig
+from clusterman.aws.response_types import InstanceOverrideConfig
+from clusterman.aws.response_types import LaunchTemplateConfig
 from clusterman.util import ClustermanResources
 
 _BATCH_MODIFY_SIZE = 200
 CLUSTERMAN_STALE_TAG = 'clusterman:is_stale'
 
 logger = colorlog.getLogger(__name__)
-
-
-AutoScalingResourceGroupConfig = TypedDict(
-    'AutoScalingResourceGroupConfig',
-    {
-        'tag': str,
-    }
-)
 
 
 class AutoScalingResourceGroup(AWSResourceGroup):
@@ -57,37 +49,14 @@ class AutoScalingResourceGroup(AWSResourceGroup):
     AutoScalingResourceGroup will assume that instances are indeed protected.
     """
 
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
-    def _group_config(self) -> Dict[str, Any]:
-        """ Retrieve our ASG's configuration from AWS.
+    def __init__(self, group_id: str) -> None:
+        super().__init__(group_id)
 
-        .. note:: Response from this API call are cached to prevent hitting any AWS
-        request limits.
-        """
-        response = autoscaling.describe_auto_scaling_groups(
-            AutoScalingGroupNames=[self.group_id],
-        )
-        return response['AutoScalingGroups'][0]
-
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
-    @retry(exceptions=IndexError, tries=3, delay=1)
-    def _launch_config(self) -> Dict[str, Any]:
-        """ Retrieve our ASG's launch configuration from AWS
-
-        .. note:: Response from this API call are cached to prevent hitting any AWS
-        request limits.
-        """
-        group_config = self._group_config
-        launch_config_name = group_config['LaunchConfigurationName']
-        response = autoscaling.describe_launch_configurations(
-            LaunchConfigurationNames=[launch_config_name],
-        )
-        try:
-            return response['LaunchConfigurations'][0]
-        except IndexError as e:
-            logger.warning(f'Could not get launch config for ASG {self.group_id}: {launch_config_name}')
-            del self.__dict__['_group_config']  # invalidate cache
-            raise e
+        # Resource Groups are reloaded on every autoscaling run, so we just query
+        # AWS data once and store them so we don't run into AWS request limits
+        self._group_config = self._get_auto_scaling_group_config()
+        self._launch_template_config, self._launch_template_overrides = self._get_launch_template_and_overrides()
+        self._stale_instance_ids = self._get_stale_instance_ids()
 
     def market_weight(self, market: InstanceMarket) -> float:
         """ Returns the weight of a given market
@@ -174,16 +143,43 @@ class AutoScalingResourceGroup(AWSResourceGroup):
 
         autoscaling.set_desired_capacity(**kwargs)
 
-    @property
-    def min_capacity(self) -> int:
-        return self._group_config['MinSize']
+    def scale_up_options(self) -> Iterator[ClustermanResources]:
+        raise NotImplementedError()
 
-    @property
-    def max_capacity(self) -> int:
-        return self._group_config['MaxSize']
+    def scale_down_options(self) -> Iterator[ClustermanResources]:
+        """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
+        running in this resource group.
+        """
+        raise NotImplementedError()
 
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
-    def stale_instance_ids(self):
+    def _get_auto_scaling_group_config(self) -> AutoScalingGroupConfig:
+        response = autoscaling.describe_auto_scaling_groups(
+            AutoScalingGroupNames=[self.group_id],
+        )
+        return response['AutoScalingGroups'][0]
+
+    def _get_launch_template_and_overrides(self) -> Tuple[Optional[LaunchTemplateConfig], List[InstanceOverrideConfig]]:
+        if 'LaunchTemplate' in self._group_config:
+            template = self._group_config['LaunchTemplate']
+            overrides: List[InstanceOverrideConfig] = []
+        elif 'MixedInstancesPolicy' in self._group_config:
+            policy = self._group_config['MixedInstancesPolicy']
+            template = policy['LaunchTemplate']['LaunchTemplateSpecification']
+            overrides = policy['LaunchTemplate']['Overrides']
+        else:
+            logger.warn('This ASG is not using LaunchTemplates, it will be unable to do smart scheduling')
+            return None, []
+
+        launch_template_name = template['LaunchTemplateName']
+        launch_template_version = template['Version']
+
+        response = ec2.describe_launch_template_versions(
+            LaunchTemplateName=launch_template_name,
+            Versions=[launch_template_version],
+        )
+        return response['LaunchTemplateVersions'][0], overrides
+
+    def _get_stale_instance_ids(self) -> List[str]:
         response = ec2.describe_tags(
             Filters=[
                 {
@@ -198,18 +194,25 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         )
         return [item['ResourceId'] for item in response.get('Tags', []) if item['ResourceId'] in self.instance_ids]
 
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
-    def instance_ids(self) -> Sequence[str]:
-        """ Returns a list of instance IDs belonging to this ASG.
+    @property
+    def min_capacity(self) -> int:
+        return self._group_config['MinSize']
 
-        Note: Response from this API call are cached to prevent hitting any AWS
-        request limits.
-        """
+    @property
+    def max_capacity(self) -> int:
+        return self._group_config['MaxSize']
+
+    @property
+    def instance_ids(self) -> Sequence[str]:
         return [
             inst['InstanceId']
             for inst in self._group_config.get('Instances', [])
             if inst is not None
         ]
+
+    @property
+    def stale_instance_ids(self) -> Sequence[str]:
+        return self._stale_instance_ids
 
     @property
     def fulfilled_capacity(self) -> float:
@@ -265,16 +268,3 @@ class AutoScalingResourceGroup(AWSResourceGroup):
              for instance in self._group_config.get('Instances', [])
              if instance['InstanceId'] in self.stale_instance_ids]
         )
-
-    def scale_up_options(self) -> Iterator[ClustermanResources]:
-        """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
-        ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
-        represents the instance type the ASG is configured to run.
-        """
-        raise NotImplementedError()
-
-    def scale_down_options(self) -> Iterator[ClustermanResources]:
-        """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
-        running in this resource group.
-        """
-        raise NotImplementedError()

@@ -95,6 +95,7 @@ Feature: make sure the MesosPoolManager is requesting the right capacities
           And the remaining resource groups should have evenly-balanced capacity
           And the log should contain "resource group is broken"
 
+    @skip
     Scenario Outline: An ASG is marked stale
         Given a pool manager with 1 asg resource group
          When we request 10 capacity
