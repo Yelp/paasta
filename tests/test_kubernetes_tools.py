@@ -335,6 +335,92 @@ class TestKubernetesDeploymentConfig:
             == "slash-varslash--1953"
         )
 
+    @pytest.mark.parametrize(
+        "config_dict, system_cfg_get_enable_nerve, expected_get_nerve",
+        [
+            ({"bounce_health_params": {"check_haproxy": True}}, True, True),
+            ({"bounce_health_params": {"check_haproxy": True}}, False, True),
+            ({"bounce_health_params": {"check_haproxy": False}}, True, False),
+            ({"bounce_health_params": {"check_envoy": False}}, True, True),
+            ({}, True, True),
+        ],
+    )
+    def test_get_enable_nerve_readiness_check(
+        self, config_dict, system_cfg_get_enable_nerve, expected_get_nerve
+    ):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_enable_nerve_readiness_check.return_value = (
+            system_cfg_get_enable_nerve
+        )
+        assert (
+            deployment.get_enable_nerve_readiness_check(mock_system_paasta_config)
+            == expected_get_nerve
+        )
+
+    @pytest.mark.parametrize(
+        "config_dict, system_cfg_get_enable_envoy, expected_get_envoy",
+        [
+            ({"bounce_health_params": {"check_envoy": True}}, True, True),
+            ({"bounce_health_params": {"check_envoy": True}}, False, True),
+            ({"bounce_health_params": {"check_envoy": False}}, True, False),
+            ({"bounce_health_params": {"check_haproxy": False}}, True, True),
+            ({}, True, True),
+        ],
+    )
+    def test_get_enable_envoy_readiness_check(
+        self, config_dict, system_cfg_get_enable_envoy, expected_get_envoy
+    ):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_enable_envoy_readiness_check.return_value = (
+            system_cfg_get_enable_envoy
+        )
+        assert (
+            deployment.get_enable_envoy_readiness_check(mock_system_paasta_config)
+            == expected_get_envoy
+        )
+
+    @pytest.mark.parametrize(
+        "enable_envoy_check, enable_nerve_check, expected_cmd",
+        [
+            (True, True, "/check_proxy_up.sh --enable-smartstack --enable-envoy"),
+            (True, False, "/check_proxy_up.sh --enable-envoy"),
+            (False, True, "/check_smartstack_up.sh"),
+        ],
+    )
+    def test_get_readiness_check_script(
+        self, enable_envoy_check, enable_nerve_check, expected_cmd
+    ):
+        fake_system_paasta_config = SystemPaastaConfig({}, "/some/fake/dir")
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_envoy_readiness_check",
+            autospec=True,
+            return_value=enable_envoy_check,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
+            autospec=True,
+            return_value=enable_nerve_check,
+        ):
+            assert (
+                self.deployment.get_readiness_check_script(fake_system_paasta_config)
+                == expected_cmd
+            )
+
     def test_get_sidecar_containers(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_registrations",
@@ -352,11 +438,16 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_nerve_readiness_check",
             autospec=True,
             return_value=False,
-        ) as mock_get_enable_nerve_readiness_check:
+        ) as mock_get_enable_nerve_readiness_check, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_enable_envoy_readiness_check",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_readiness_check_script",
+            autospec=True,
+            return_value="/nail/blah.sh",
+        ):
             mock_system_config = mock.Mock(
-                get_nerve_readiness_check_script=mock.Mock(
-                    return_value="/nail/blah.sh"
-                ),
                 get_hacheck_sidecar_image_url=mock.Mock(
                     return_value="some-docker-image"
                 ),
@@ -413,9 +504,6 @@ class TestKubernetesDeploymentConfig:
             assert ret == expected
             mock_get_enable_nerve_readiness_check.return_value = True
             mock_system_config = mock.Mock(
-                get_nerve_readiness_check_script=mock.Mock(
-                    return_value="/nail/blah.sh"
-                ),
                 get_hacheck_sidecar_image_url=mock.Mock(
                     return_value="some-docker-image"
                 ),

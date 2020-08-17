@@ -1826,9 +1826,12 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     docker_registry: str
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
+    enable_envoy_readiness_check: bool
     enforce_disk_quota: bool
     envoy_admin_domain_name: str
     envoy_admin_endpoint_format: str
+    envoy_nerve_readiness_check_script: str
+    envoy_readiness_check_script: str
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
@@ -2031,6 +2034,34 @@ class SystemPaastaConfig:
         If enabled present a client certificate from ~/.paasta/pki/<cluster>.crt and ~/.paasta/pki/<cluster>.key
         """
         return self.config_dict.get("enable_client_cert_auth", True)
+
+    def get_enable_nerve_readiness_check(self) -> bool:
+        """
+        If enabled perform readiness checks on nerve
+        """
+        return self.config_dict.get("enable_nerve_readiness_check", True)
+
+    def get_enable_envoy_readiness_check(self) -> bool:
+        """
+        If enabled perform readiness checks on envoy
+        """
+        return self.config_dict.get("enable_envoy_readiness_check", False)
+
+    def get_nerve_readiness_check_script(self) -> str:
+        return self.config_dict.get(
+            "nerve_readiness_check_script", "/check_smartstack_up.sh"
+        )
+
+    def get_envoy_readiness_check_script(self) -> str:
+        return self.config_dict.get(
+            "envoy_readiness_check_script", "/check_proxy_up.sh --enable-envoy"
+        )
+
+    def get_envoy_nerve_readiness_check_script(self) -> str:
+        return self.config_dict.get(
+            "envoy_nerve_readiness_check_script",
+            "/check_proxy_up.sh --enable-smartstack --enable-envoy",
+        )
 
     def get_enforce_disk_quota(self) -> bool:
         """
@@ -2354,12 +2385,6 @@ class SystemPaastaConfig:
     def get_register_native_services(self) -> bool:
         """Enable registration of native paasta services in nerve"""
         return self.config_dict.get("register_native_services", False)
-
-    def get_nerve_readiness_check_script(self) -> str:
-        """Script to check service is up in smartstack"""
-        return self.config_dict.get(
-            "nerve_readiness_check_script", "/check_smartstack_up.sh"
-        )
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get("taskproc", {})

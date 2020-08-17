@@ -15,6 +15,7 @@ import collections
 import socket
 from typing import AbstractSet
 from typing import Any
+from typing import Collection
 from typing import DefaultDict
 from typing import Dict
 from typing import FrozenSet
@@ -41,6 +42,44 @@ class EnvoyBackend(TypedDict, total=False):
     eds_health_status: str
     weight: int
     has_associated_task: bool
+
+
+def are_services_up_in_pod(
+    envoy_host: str,
+    envoy_admin_port: int,
+    envoy_admin_endpoint_format: str,
+    registrations: Collection[str],
+    pod_ip: str,
+    pod_port: int,
+) -> bool:
+    """Returns whether a service in a k8s pod is reachable via envoy
+    :param envoy_host: The host that this check should contact for replication information.
+    :param envoy_admin_port: The port that Envoy's admin interface is listening on
+    :param registrations: The service_name.instance_name of the services
+    :param pod_ip: IP of the pod itself
+    :param pod_port: The port to reach the service in the pod
+    """
+
+    for registration in registrations:
+        backends_per_registration = get_backends(
+            registration,
+            envoy_host=envoy_host,
+            envoy_admin_port=envoy_admin_port,
+            envoy_admin_endpoint_format=envoy_admin_endpoint_format,
+        )
+
+        healthy_backends = [
+            backend
+            for backend in backends_per_registration.get(registration, [])
+            if backend[0]["address"] == pod_ip
+            and backend[0]["port_value"] == pod_port
+            and backend[0]["eds_health_status"] == "HEALTHY"
+        ]
+
+        if not healthy_backends:
+            return False
+
+    return True
 
 
 def retrieve_envoy_clusters(

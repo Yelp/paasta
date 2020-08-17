@@ -724,6 +724,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def read_only_mode(self, d: VolumeWithMode) -> bool:
         return d.get("mode", "RO") == "RO"
 
+    def get_readiness_check_script(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> str:
+        """Script to check if a service is up in smartstack / envoy"""
+        enable_envoy_check = self.get_enable_envoy_readiness_check(system_paasta_config)
+        enable_nerve_check = self.get_enable_nerve_readiness_check(system_paasta_config)
+        if enable_nerve_check and enable_envoy_check:
+            return system_paasta_config.get_envoy_nerve_readiness_check_script()
+        elif enable_envoy_check:
+            return system_paasta_config.get_envoy_readiness_check_script()
+        else:
+            return system_paasta_config.get_nerve_readiness_check_script()
+
     def get_sidecar_containers(
         self,
         system_paasta_config: SystemPaastaConfig,
@@ -733,14 +746,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
         readiness_probe: Optional[V1Probe]
-        if (
-            self.get_enable_nerve_readiness_check()
-            and service_namespace_config.is_in_smartstack()
+        if service_namespace_config.is_in_smartstack() and (
+            self.get_enable_nerve_readiness_check(system_paasta_config)
+            or self.get_enable_envoy_readiness_check(system_paasta_config)
         ):
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
                     command=[
-                        system_paasta_config.get_nerve_readiness_check_script(),
+                        self.get_readiness_check_script(system_paasta_config),
                         str(self.get_container_port()),
                     ]
                     + self.get_registrations()
@@ -1176,11 +1189,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "min_task_uptime", 0
         )
 
-    def get_enable_nerve_readiness_check(self) -> bool:
+    def get_enable_nerve_readiness_check(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> bool:
         """Enables a k8s readiness check on the Pod to ensure that all registrations
         are UP on the local synapse haproxy"""
         return self.config_dict.get("bounce_health_params", {}).get(
-            "check_haproxy", True
+            "check_haproxy", system_paasta_config.get_enable_nerve_readiness_check()
+        )
+
+    def get_enable_envoy_readiness_check(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> bool:
+        """Enables a k8s readiness check on the Pod to ensure that all registrations
+        are UP on the local Envoy"""
+        return self.config_dict.get("bounce_health_params", {}).get(
+            "check_envoy", system_paasta_config.get_enable_envoy_readiness_check()
         )
 
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
