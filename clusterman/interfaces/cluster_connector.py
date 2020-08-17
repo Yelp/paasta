@@ -11,33 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import enum
 from abc import ABCMeta
 from abc import abstractmethod
-from typing import NamedTuple
 from typing import Optional
 
 import staticconf
 
 from clusterman.config import POOL_NAMESPACE
-from clusterman.util import ClustermanResources
-
-
-class AgentState(enum.Enum):
-    IDLE = 'idle'
-    ORPHANED = 'orphaned'
-    RUNNING = 'running'
-    UNKNOWN = 'unknown'
-
-
-class AgentMetadata(NamedTuple):
-    agent_id: str = ''
-    allocated_resources: ClustermanResources = ClustermanResources()
-    batch_task_count: int = 0
-    is_safe_to_kill: bool = True
-    state: AgentState = AgentState.UNKNOWN
-    task_count: int = 0
-    total_resources: ClustermanResources = ClustermanResources()
+from clusterman.interfaces.types import AgentMetadata
 
 
 class ClusterConnector(metaclass=ABCMeta):

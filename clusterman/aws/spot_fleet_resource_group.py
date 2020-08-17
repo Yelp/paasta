@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Any
-from typing import Iterator
+from typing import Iterable
 from typing import Mapping
 from typing import Sequence
 
@@ -29,7 +29,7 @@ from clusterman.aws.client import s3
 from clusterman.aws.markets import get_instance_market
 from clusterman.aws.markets import InstanceMarket
 from clusterman.exceptions import ResourceGroupError
-from clusterman.util import ClustermanResources
+from clusterman.interfaces.types import ClusterNodeMetadata
 
 logger = colorlog.getLogger(__name__)
 _CANCELLED_STATES = ('cancelled', 'cancelled_terminating')
@@ -184,14 +184,14 @@ class SpotFleetResourceGroup(AWSResourceGroup):
             sfr_id_to_tags[sfr_config['SpotFleetRequestId']] = tags_dict
         return sfr_id_to_tags
 
-    def scale_up_options(self) -> Iterator[ClustermanResources]:
+    def scale_up_options(self) -> Iterable[ClusterNodeMetadata]:
         """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
         ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
         represents the instance type the ASG is configured to run.
         """
         raise NotImplementedError()
 
-    def scale_down_options(self) -> Iterator[ClustermanResources]:
+    def scale_down_options(self) -> Iterable[ClusterNodeMetadata]:
         """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
         running in this resource group.
         """

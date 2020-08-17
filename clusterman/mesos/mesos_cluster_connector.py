@@ -23,9 +23,9 @@ import colorlog
 import staticconf
 from mypy_extensions import TypedDict
 
-from clusterman.interfaces.cluster_connector import AgentMetadata
-from clusterman.interfaces.cluster_connector import AgentState
 from clusterman.interfaces.cluster_connector import ClusterConnector
+from clusterman.interfaces.types import AgentMetadata
+from clusterman.interfaces.types import AgentState
 from clusterman.mesos.util import agent_pid_to_ip
 from clusterman.mesos.util import allocated_agent_resources
 from clusterman.mesos.util import mesos_post

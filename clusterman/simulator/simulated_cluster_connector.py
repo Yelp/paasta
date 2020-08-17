@@ -15,9 +15,9 @@ import uuid
 
 import staticconf
 
-from clusterman.interfaces.cluster_connector import AgentMetadata
-from clusterman.interfaces.cluster_connector import AgentState
 from clusterman.interfaces.cluster_connector import ClusterConnector
+from clusterman.interfaces.types import AgentMetadata
+from clusterman.interfaces.types import AgentState
 from clusterman.simulator import simulator
 from clusterman.util import ClustermanResources
 

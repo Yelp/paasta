@@ -17,29 +17,15 @@ from abc import abstractmethod
 from abc import abstractproperty
 from typing import Any
 from typing import Collection
-from typing import Iterator
+from typing import Iterable
 from typing import List
 from typing import Mapping
-from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 
-import arrow
-
 from clusterman.aws.markets import InstanceMarket
-from clusterman.util import ClustermanResources
-
-
-class InstanceMetadata(NamedTuple):
-    group_id: str
-    hostname: Optional[str]
-    instance_id: str
-    ip_address: Optional[str]
-    is_stale: bool
-    market: InstanceMarket
-    state: str
-    uptime: arrow.Arrow
-    weight: float
+from clusterman.interfaces.types import ClusterNodeMetadata
+from clusterman.interfaces.types import InstanceMetadata
 
 
 class ResourceGroup(metaclass=ABCMeta):
@@ -170,7 +156,7 @@ class ResourceGroup(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def scale_up_options(self) -> Iterator[ClustermanResources]:
+    def scale_up_options(self) -> Iterable[ClusterNodeMetadata]:
         """ Generate each of the options for scaling up this resource group. For a spot fleet, this would be one
         ClustermanResources for each instance type. For a non-spot ASG, this would be a single ClustermanResources that
         represents the instance type the ASG is configured to run.
@@ -178,7 +164,7 @@ class ResourceGroup(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def scale_down_options(self) -> Iterator[ClustermanResources]:
+    def scale_down_options(self) -> Iterable[ClusterNodeMetadata]:
         """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
         running in this resource group.
         """

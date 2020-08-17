@@ -25,9 +25,9 @@ from clusterman.args import add_cluster_config_directory_arg
 from clusterman.args import add_pool_arg
 from clusterman.args import add_scheduler_arg
 from clusterman.args import subparser
-from clusterman.autoscaler.pool_manager import ClusterNodeMetadata
 from clusterman.autoscaler.pool_manager import PoolManager
-from clusterman.interfaces.cluster_connector import AgentState
+from clusterman.interfaces.types import AgentState
+from clusterman.interfaces.types import ClusterNodeMetadata
 from clusterman.util import any_of
 from clusterman.util import autoscaling_is_paused
 from clusterman.util import color_conditions

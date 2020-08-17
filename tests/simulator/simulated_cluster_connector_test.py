@@ -18,8 +18,8 @@ import pytest
 from clusterman.aws.markets import get_market_resources
 from clusterman.aws.markets import InstanceMarket
 from clusterman.interfaces.cluster_connector import AgentMetadata
-from clusterman.interfaces.cluster_connector import AgentState
-from clusterman.interfaces.cluster_connector import ClustermanResources
+from clusterman.interfaces.types import AgentState
+from clusterman.interfaces.types import ClustermanResources
 from clusterman.simulator.simulated_aws_cluster import Instance
 from clusterman.simulator.simulated_cluster_connector import SimulatedClusterConnector
 from clusterman.simulator.simulated_spot_fleet_resource_group import SimulatedSpotFleetResourceGroup

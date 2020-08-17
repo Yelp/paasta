@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pprint
-from typing import Iterator
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -28,6 +28,10 @@ from clusterman.aws.markets import InstanceMarket
 from clusterman.aws.response_types import AutoScalingGroupConfig
 from clusterman.aws.response_types import InstanceOverrideConfig
 from clusterman.aws.response_types import LaunchTemplateConfig
+from clusterman.exceptions import NoLaunchTemplateConfiguredError
+from clusterman.interfaces.types import AgentMetadata
+from clusterman.interfaces.types import ClusterNodeMetadata
+from clusterman.interfaces.types import InstanceMetadata
 from clusterman.util import ClustermanResources
 
 _BATCH_MODIFY_SIZE = 200
@@ -143,10 +147,29 @@ class AutoScalingResourceGroup(AWSResourceGroup):
 
         autoscaling.set_desired_capacity(**kwargs)
 
-    def scale_up_options(self) -> Iterator[ClustermanResources]:
-        raise NotImplementedError()
+    def scale_up_options(self) -> Iterable[ClusterNodeMetadata]:
+        if not self._launch_template_config:
+            raise NoLaunchTemplateConfiguredError(
+                f'ASG {self.id} has no launch template associated with it; unable to generate scaling options',
+            )
 
-    def scale_down_options(self) -> Iterator[ClustermanResources]:
+        # Either there is a list of LaunchTemplate overrides, or this ASG uses a single instance type
+        options: List[ClusterNodeMetadata] = []
+        for override in self._launch_template_overrides:
+            options.extend(self._get_options_for_instance_type(
+                override['InstanceType'],
+                float(override['WeightedCapacity']),
+            ))
+
+        # If no overrides were specified, we just use the "default" instance type here
+        if not options:
+            options.extend(self._get_options_for_instance_type(
+                self._launch_template_config['LaunchTemplateData']['InstanceType'],
+            ))
+
+        return options
+
+    def scale_down_options(self) -> Iterable[ClusterNodeMetadata]:
         """ Generate each of the options for scaling down this resource group, i.e. the list of instance types currently
         running in this resource group.
         """
@@ -167,7 +190,7 @@ class AutoScalingResourceGroup(AWSResourceGroup):
             template = policy['LaunchTemplate']['LaunchTemplateSpecification']
             overrides = policy['LaunchTemplate']['Overrides']
         else:
-            logger.warn('This ASG is not using LaunchTemplates, it will be unable to do smart scheduling')
+            logger.warn(f'ASG {self.id} is not using LaunchTemplates, it will be unable to do smart scheduling')
             return None, []
 
         launch_template_name = template['LaunchTemplateName']
@@ -193,6 +216,25 @@ class AutoScalingResourceGroup(AWSResourceGroup):
             ]
         )
         return [item['ResourceId'] for item in response.get('Tags', []) if item['ResourceId'] in self.instance_ids]
+
+    def _get_options_for_instance_type(
+        self,
+        instance_type: str,
+        weight: Optional[float] = None,
+    ) -> List[ClusterNodeMetadata]:
+        """ Generate a list of possible ClusterNode types that could be added to this ASG,
+        given a particular instance type """
+
+        options = []
+        az_options = self._group_config['AvailabilityZones']
+        for az in az_options:
+            instance_market = InstanceMarket(instance_type, az)
+            weight = weight or self.market_weight(instance_market)
+            options.append(ClusterNodeMetadata(
+                agent=AgentMetadata(total_resources=ClustermanResources.from_instance_type(instance_type)),
+                instance=InstanceMetadata(market=instance_market, weight=weight),
+            ))
+        return options
 
     @property
     def min_capacity(self) -> int:

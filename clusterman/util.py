@@ -34,6 +34,7 @@ from colorama import Style
 from staticconf.config import DEFAULT as DEFAULT_NAMESPACE
 
 from clusterman.aws.client import dynamodb
+from clusterman.aws.markets import EC2_INSTANCE_TYPES
 from clusterman.config import get_cluster_config_directory
 from clusterman.config import LOG_STREAM_NAME
 from clusterman.config import POOL_NAMESPACE
@@ -42,6 +43,7 @@ from clusterman.config import POOL_NAMESPACE
 logger = colorlog.getLogger(__name__)
 CLUSTERMAN_STATE_TABLE = 'clusterman_cluster_state'
 AUTOSCALER_PAUSED = 'autoscaler_paused'
+DEFAULT_VOLUME_SIZE_GB = 300
 
 
 # These should stay in sync with
@@ -62,6 +64,16 @@ class ClustermanResources(NamedTuple):
     mem: float = 0
     disk: float = 0
     gpus: float = 0
+
+    @staticmethod
+    def from_instance_type(instance_type: str) -> 'ClustermanResources':
+        resources = EC2_INSTANCE_TYPES[instance_type]
+        return ClustermanResources(
+            cpus=resources.cpus,
+            mem=resources.mem * 1024,  # AWS metadata for RAM is in GB
+            disk=(resources.disk or DEFAULT_VOLUME_SIZE_GB) * 1024,  # AWS metadata for disk is in GB
+            gpus=resources.gpus,
+        )
 
     def __mul__(self, scalar: float) -> 'ClustermanResources':
         return ClustermanResources(

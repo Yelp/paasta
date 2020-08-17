@@ -15,7 +15,7 @@ import mock
 import pytest
 
 from clusterman.exceptions import PoolManagerError
-from clusterman.interfaces.cluster_connector import AgentState
+from clusterman.interfaces.types import AgentState
 from clusterman.mesos.mesos_cluster_connector import MesosClusterConnector
 from clusterman.mesos.mesos_cluster_connector import TaskCount
 
