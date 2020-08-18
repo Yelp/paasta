@@ -9,8 +9,13 @@ class AutoScalingInstanceConfig(TypedDict):
     WeightedCapacity: str
 
 
+class LaunchTemplateDataConfig(TypedDict):
+    InstanceType: str
+
+
 class LaunchTemplateConfig(TypedDict):
     LaunchTemplateName: str
+    LaunchTemplateData: LaunchTemplateDataConfig
     Version: str
 
 

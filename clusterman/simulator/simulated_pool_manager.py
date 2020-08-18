@@ -18,10 +18,10 @@ from typing import Sequence
 
 import staticconf
 
-from clusterman.autoscaler.pool_manager import ClusterNodeMetadata
 from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.config import POOL_NAMESPACE
-from clusterman.interfaces.resource_group import InstanceMetadata
+from clusterman.interfaces.types import ClusterNodeMetadata
+from clusterman.interfaces.types import InstanceMetadata
 from clusterman.simulator import simulator
 from clusterman.simulator.simulated_aws_cluster import SimulatedAWSCluster
 from clusterman.simulator.simulated_cluster_connector import SimulatedClusterConnector

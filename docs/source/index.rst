@@ -44,7 +44,6 @@ and simulate how changes to autoscaling logic will impact the cost and performan
    api/Autoscaler
    api/AWSResourceGroup
    api/aws_markets
-   api/EC2FleetResourceGroup
    api/clusterman_metrics
    api/MesosPoolManager
    api/Signal

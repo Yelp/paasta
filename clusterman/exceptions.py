@@ -17,6 +17,10 @@ class ClustermanException(Exception):
     pass
 
 
+class AllResourceGroupsAreStaleError(Exception):
+    pass
+
+
 class AutoscalerError(ClustermanException):
     pass
 
@@ -29,12 +33,7 @@ class MetricsError(ClustermanException):
     pass
 
 
-class PoolManagerError(ClustermanException):
-    pass
-
-
-class PoolConnectionError(PoolManagerError):
-    """Raised when the pool master cannot be reached"""
+class NoLaunchTemplateConfiguredError(ClustermanException):
     pass
 
 
@@ -43,6 +42,15 @@ class NoSignalConfiguredException(ClustermanException):
 
 
 class ResourceGroupError(ClustermanException):
+    pass
+
+
+class PoolManagerError(ClustermanException):
+    pass
+
+
+class PoolConnectionError(PoolManagerError):
+    """Raised when the pool master cannot be reached"""
     pass
 
 
@@ -59,8 +67,4 @@ class SignalConnectionError(ClustermanSignalError):
 
 
 class SimulationError(ClustermanException):
-    pass
-
-
-class AllResourceGroupsAreStaleError(Exception):
     pass

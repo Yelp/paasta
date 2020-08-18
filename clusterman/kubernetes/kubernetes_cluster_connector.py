@@ -26,9 +26,9 @@ from kubernetes.client.models.v1_node_selector_requirement import V1NodeSelector
 from kubernetes.client.models.v1_node_selector_term import V1NodeSelectorTerm
 from kubernetes.client.models.v1_pod import V1Pod as KubernetesPod
 
-from clusterman.interfaces.cluster_connector import AgentMetadata
-from clusterman.interfaces.cluster_connector import AgentState
 from clusterman.interfaces.cluster_connector import ClusterConnector
+from clusterman.interfaces.types import AgentMetadata
+from clusterman.interfaces.types import AgentState
 from clusterman.kubernetes.util import allocated_node_resources
 from clusterman.kubernetes.util import get_node_ip
 from clusterman.kubernetes.util import PodUnschedulableReason

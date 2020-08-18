@@ -20,7 +20,6 @@ from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
-from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -37,11 +36,10 @@ from clusterman.draining.queue import DrainingClient
 from clusterman.exceptions import AllResourceGroupsAreStaleError
 from clusterman.exceptions import PoolManagerError
 from clusterman.exceptions import ResourceGroupError
-from clusterman.interfaces.cluster_connector import AgentMetadata
-from clusterman.interfaces.cluster_connector import AgentState
 from clusterman.interfaces.cluster_connector import ClusterConnector
-from clusterman.interfaces.resource_group import InstanceMetadata
 from clusterman.interfaces.resource_group import ResourceGroup
+from clusterman.interfaces.types import AgentState
+from clusterman.interfaces.types import ClusterNodeMetadata
 from clusterman.monitoring_lib import get_monitoring_client
 from clusterman.util import read_int_or_inf
 
@@ -49,11 +47,6 @@ AWS_RUNNING_STATES = ('running',)
 MIN_CAPACITY_PER_GROUP = 1
 SFX_RESOURCE_GROUP_MODIFICATION_FAILED_NAME = 'clusterman.resource_group_modification_failed'
 logger = colorlog.getLogger(__name__)
-
-
-class ClusterNodeMetadata(NamedTuple):
-    agent: AgentMetadata
-    instance: InstanceMetadata
 
 
 class PoolManager:

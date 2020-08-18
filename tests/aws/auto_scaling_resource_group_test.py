@@ -21,6 +21,9 @@ from clusterman.aws.auto_scaling_resource_group import CLUSTERMAN_STALE_TAG
 from clusterman.aws.client import autoscaling
 from clusterman.aws.client import ec2
 from clusterman.aws.markets import InstanceMarket
+from clusterman.exceptions import NoLaunchTemplateConfiguredError
+from clusterman.util import ClustermanResources
+from clusterman.util import DEFAULT_VOLUME_SIZE_GB
 
 
 @pytest.fixture
@@ -169,6 +172,24 @@ def test_modify_target_capacity_min_max(
         assert new_config['DesiredCapacity'] == mock_asg_config['MaxSize']
 
 
+def test_get_scale_up_options_no_launch_template(mock_asrg):
+    mock_asrg._launch_template_config = None
+    with pytest.raises(NoLaunchTemplateConfiguredError):
+        mock_asrg.scale_up_options()
+
+
+@pytest.mark.parametrize('overrides', [[], [{'InstanceType': 'm4.5xlarge', 'WeightedCapacity': '4'}]])
+def test_get_scale_up_options_no_override(mock_asrg, overrides):
+    mock_asrg._launch_template_overrides = overrides
+    mock_asrg._get_options_for_instance_type = mock.MagicMock(return_value=[mock.Mock()])
+    mock_asrg.scale_up_options()
+    assert mock_asrg._get_options_for_instance_type.call_args == (
+        mock.call('t2.2xlarge')
+        if not overrides
+        else mock.call('m4.5xlarge', 4.0)
+    )
+
+
 def test_get_launch_template_and_overrides_no_overrides(mock_asrg):
     lt, overrides = mock_asrg._get_launch_template_and_overrides()
     assert lt['LaunchTemplateName'] == 'fake_launch_template'
@@ -201,6 +222,20 @@ def test_get_launch_template_and_overrides_with_overrides(mock_asrg):
 def test_get_launch_template_and_overrides_with_launch_config(mock_asrg):
     mock_asrg._group_config = {'LaunchConfigurationName': 'fake-launch-config'}
     assert mock_asrg._get_launch_template_and_overrides() == (None, [])
+
+
+def test_get_options_for_instance_type(mock_asrg):
+    mock_asrg._group_config['AvailabilityZones'] = ['us-west-1a', 'us-west-2a']
+    result = mock_asrg._get_options_for_instance_type('m5.4xlarge')
+    assert len(result) == 2
+    assert all([r.agent.total_resources == ClustermanResources(
+        cpus=16,
+        mem=64 * 1024,
+        disk=DEFAULT_VOLUME_SIZE_GB * 1024,
+        gpus=0,
+    ) for r in result])
+    assert result[0].instance.market == InstanceMarket('m5.4xlarge', 'us-west-1a')
+    assert result[1].instance.market == InstanceMarket('m5.4xlarge', 'us-west-2a')
 
 
 @pytest.mark.parametrize('stale_instances', [0, 1, 10])

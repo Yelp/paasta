@@ -31,7 +31,7 @@ from kubernetes.client.models.v1_node_selector_requirement import V1NodeSelector
 from kubernetes.client.models.v1_node_selector_term import V1NodeSelectorTerm
 from kubernetes.client.models.v1_preferred_scheduling_term import V1PreferredSchedulingTerm
 
-from clusterman.interfaces.cluster_connector import AgentState
+from clusterman.interfaces.types import AgentState
 from clusterman.kubernetes.kubernetes_cluster_connector import KubernetesClusterConnector
 
 

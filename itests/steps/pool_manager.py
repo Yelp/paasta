@@ -23,12 +23,10 @@ from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.aws.auto_scaling_resource_group import AutoScalingResourceGroup
 from clusterman.aws.client import autoscaling
 from clusterman.aws.client import ec2
-from clusterman.aws.ec2_fleet_resource_group import EC2FleetResourceGroup
 from clusterman.aws.spot_fleet_resource_group import SpotFleetResourceGroup
 from clusterman.exceptions import ResourceGroupError
 from itests.environment import boto_patches
 from itests.environment import make_asg
-from itests.environment import make_fleet
 from itests.environment import make_sfr
 
 
@@ -48,15 +46,6 @@ def mock_sfrs(num, subnet_id):
         sfrid = sfr['SpotFleetRequestId']
         sfrgs[sfrid] = SpotFleetResourceGroup(sfrid)
     return sfrgs
-
-
-def mock_fleets(num, subnet_id):
-    fleets = {}
-    for _ in range(num):
-        fleet = make_fleet(subnet_id)
-        fleet_id = fleet['FleetId']
-        fleets[fleet_id] = EC2FleetResourceGroup(fleet_id)
-    return fleets
 
 
 @behave.fixture
@@ -89,7 +78,7 @@ def mock_agents_by_ip_and_tasks(context):
         yield
 
 
-@behave.given('a pool manager with (?P<num>\d+) (?P<rg_type>asg|sfr|fleet) resource groups?')
+@behave.given('a pool manager with (?P<num>\d+) (?P<rg_type>asg|sfr) resource groups?')
 def make_pool_manager(context, num, rg_type):
     behave.use_fixture(boto_patches, context)
     behave.use_fixture(mock_agents_by_ip_and_tasks, context)
@@ -100,16 +89,11 @@ def make_pool_manager(context, num, rg_type):
     ) as mock_asg_load, mock.patch(
         'clusterman.aws.spot_fleet_resource_group.SpotFleetResourceGroup.load',
         return_value={},
-    ) as mock_sfr_load, mock.patch(
-        'clusterman.aws.ec2_fleet_resource_group.EC2FleetResourceGroup.load',
-        return_value={},
-    ) as mock_fleet_load:
+    ) as mock_sfr_load:
         if context.rg_type == 'asg':
             mock_asg_load.return_value = mock_asgs(int(num), context.subnet_id)
         elif context.rg_type == 'sfr':
             mock_sfr_load.return_value = mock_sfrs(int(num), context.subnet_id)
-        elif context.rg_type == 'fleet':
-            mock_fleet_load.return_value = mock_fleets(int(num), context.subnet_id)
         context.pool_manager = PoolManager('mesos-test', 'bar', 'mesos')
     context.rg_ids = [i for i in context.pool_manager.resource_groups]
     context.pool_manager.max_capacity = 101

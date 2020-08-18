@@ -22,9 +22,9 @@ from clusterman.aws.aws_resource_group import AWSResourceGroup
 from clusterman.exceptions import AllResourceGroupsAreStaleError
 from clusterman.exceptions import PoolManagerError
 from clusterman.exceptions import ResourceGroupError
-from clusterman.interfaces.cluster_connector import AgentMetadata
-from clusterman.interfaces.cluster_connector import AgentState
-from clusterman.interfaces.resource_group import InstanceMetadata
+from clusterman.interfaces.types import AgentMetadata
+from clusterman.interfaces.types import AgentState
+from clusterman.interfaces.types import InstanceMetadata
 
 
 def _make_metadata(

@@ -189,36 +189,6 @@ def make_asg(asg_name, subnet_id):
     )
 
 
-def make_fleet(subnet_id):
-    ec2.create_launch_template(
-        LaunchTemplateName='mock_launch_template',
-        LaunchTemplateData={
-            'InstanceType': 'c3.4xlarge',
-            'NetworkInterfaces': [{'SubnetId': subnet_id}],
-        },
-    )
-    return ec2.create_fleet(
-        ExcessCapacityTerminationPolicy='no-termination',
-        LaunchTemplateConfigs={'LaunchTemplateSpecification': {'LaunchTemplateName': 'mock_launch_template'}},
-        TargetCapacitySpecification={'TotalTargetCapacity': 1},
-        TagSpecifications=[
-            {
-                'ResourceType': 'instance',
-                'Tags': [{
-                    'Key': 'puppet:role::paasta',
-                    'Value': json.dumps({
-                        'paasta_cluster': 'mesos-test',
-                        'pool': 'bar',
-                    }),
-                }, {
-                    'Key': 'fake_fleet_key',
-                    'Value': 'fake_fleet_value',
-                }],
-            },
-        ],
-    )
-
-
 def make_sfr(subnet_id):
     return ec2.request_spot_fleet(
         SpotFleetRequestConfig={

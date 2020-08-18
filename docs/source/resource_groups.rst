@@ -7,7 +7,5 @@ Clusterman to interact with the resource group.  Currently, Clusterman supports 
 
 * :py:class:`.AutoScalingResourceGroup`: `AWS autoscaling groups
   <https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html>`_
-* :py:class:`.EC2FleetResourceGroup`: `AWS ec2fleet requests
-  <https://aws.amazon.com/about-aws/whats-new/2018/04/introducing-amazon-ec2-fleet/>`_
 * :py:class:`.SpotFleetResourceGroup`: `AWS spot fleet requests
   <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-fleet-requests.html>`_

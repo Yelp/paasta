@@ -196,7 +196,7 @@ class AWSResourceGroup(ResourceGroup, metaclass=ABCMeta):
                     if identifier_tags['pool'] == pool and identifier_tags['paasta_cluster'] == cluster:
                         rg = cls(rg_id, **kwargs)
                         matching_resource_groups[rg_id] = rg
-            except KeyError:
+            except Exception:
                 logger.exception(f'Could not load resource group {rg_id}; skipping...')
                 continue
         return matching_resource_groups

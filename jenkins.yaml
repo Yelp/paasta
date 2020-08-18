@@ -4,5 +4,7 @@
 
 types: [paasta, debian]
 overrides:
+  paasta:
+    chatChannels: ['#clusterman']
   debian:
     platforms: [xenial, bionic]
