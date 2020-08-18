@@ -6,6 +6,7 @@ boto3
 boto3-type-annotations
 botocore
 bravado >= 10.2.0
+certifi
 choice >= 0.1
 cookiecutter >= 1.4.0
 croniter
@@ -57,5 +58,6 @@ transitions
 typing-extensions
 tzlocal
 ujson >= 1.35
+urllib3
 utaw >= 0.2.0
 wsgicors

@@ -3,10 +3,11 @@ info:
   title: Paasta API
   version: 1.0.0
 servers:
-- url: http://{host}/{basePath}
+- url: "{scheme}://{host}/{basePath}"
   variables:
     basePath: {default: v1}
     host: {default: localhost}
+    scheme: {default: http, enum: [http, https]}
 tags:
 - description: information about a paasta service
   name: service
