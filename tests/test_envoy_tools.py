@@ -15,7 +15,6 @@ import json
 import os
 
 import mock
-import pytest
 import requests
 
 from paasta_tools.envoy_tools import get_backends
@@ -23,16 +22,7 @@ from paasta_tools.envoy_tools import get_casper_endpoints
 from paasta_tools.envoy_tools import match_backends_and_tasks
 
 
-@pytest.fixture
-def mock_paasta_tools_settings(system_paasta_config):
-    with mock.patch(
-        "paasta_tools.envoy_tools.settings", autospec=True
-    ) as mock_settings:
-        mock_settings.system_paasta_config = system_paasta_config
-        yield
-
-
-def test_get_backends(mock_paasta_tools_settings):
+def test_get_backends():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, "envoy_admin_clusters_snapshot.txt")
     with open(testdata, "r") as fd:
@@ -52,29 +42,31 @@ def test_get_backends(mock_paasta_tools_settings):
         with mock.patch(
             "socket.gethostbyaddr", side_effect=lambda x: hosts[x], autospec=True,
         ):
-            expected = [
-                (
-                    {
-                        "address": "10.46.6.88",
-                        "port_value": 13833,
-                        "hostname": "host3",
-                        "eds_health_status": "HEALTHY",
-                        "weight": 1,
-                    },
-                    False,
-                ),
-                (
-                    {
-                        "address": "10.46.6.90",
-                        "port_value": 13833,
-                        "hostname": "host2",
-                        "eds_health_status": "HEALTHY",
-                        "weight": 1,
-                    },
-                    False,
-                ),
-            ]
-            assert expected == get_backends("service1.main", "host", 123)
+            expected = {
+                "service1.main": [
+                    (
+                        {
+                            "address": "10.46.6.88",
+                            "port_value": 13833,
+                            "hostname": "host3",
+                            "eds_health_status": "HEALTHY",
+                            "weight": 1,
+                        },
+                        False,
+                    ),
+                    (
+                        {
+                            "address": "10.46.6.90",
+                            "port_value": 13833,
+                            "hostname": "host2",
+                            "eds_health_status": "HEALTHY",
+                            "weight": 1,
+                        },
+                        False,
+                    ),
+                ]
+            }
+            assert expected == get_backends("service1.main", "host", 123, "something")
 
 
 def test_get_casper_endpoints():

@@ -49,18 +49,17 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
         autospec=True,
         return_value=666,
     ), mock.patch(
-        "paasta_tools.monitoring_tools.check_smartstack_replication_for_instance",
-        autospec=True,
-    ) as mock_check_smartstack_replication_for_service:
+        "paasta_tools.monitoring_tools.check_replication_for_instance", autospec=True,
+    ) as mock_check_replication_for_service:
         check_marathon_services_replication.check_service_replication(
             instance_config=instance_config,
             all_tasks_or_pods=all_tasks,
-            smartstack_replication_checker=None,
+            replication_checker=None,
         )
-        mock_check_smartstack_replication_for_service.assert_called_once_with(
+        mock_check_replication_for_service.assert_called_once_with(
             instance_config=instance_config,
             expected_count=100,
-            smartstack_replication_checker=None,
+            replication_checker=None,
         )
 
 
@@ -74,9 +73,8 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         autospec=True,
         return_value=666,
     ), mock.patch(
-        "paasta_tools.monitoring_tools.check_smartstack_replication_for_instance",
-        autospec=True,
-    ) as mock_check_smartstack_replication_for_service, mock.patch(
+        "paasta_tools.monitoring_tools.check_replication_for_instance", autospec=True,
+    ) as mock_check_replication_for_service, mock.patch(
         "paasta_tools.check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance",
         autospec=True,
     ) as mock_check_healthy_marathon_tasks:
@@ -84,9 +82,9 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         check_marathon_services_replication.check_service_replication(
             instance_config=instance_config,
             all_tasks_or_pods=all_tasks,
-            smartstack_replication_checker=None,
+            replication_checker=None,
         )
-        assert not mock_check_smartstack_replication_for_service.called
+        assert not mock_check_replication_for_service.called
         mock_check_healthy_marathon_tasks.assert_called_once_with(
             instance_config=instance_config, expected_count=100, all_tasks=[]
         )
@@ -106,7 +104,7 @@ def test_check_service_replication_for_non_smartstack(instance_config):
         check_marathon_services_replication.check_service_replication(
             instance_config=instance_config,
             all_tasks_or_pods=[],
-            smartstack_replication_checker=None,
+            replication_checker=None,
         )
         mock_check_healthy_marathon_tasks.assert_called_once_with(
             instance_config=instance_config, expected_count=100, all_tasks=[]

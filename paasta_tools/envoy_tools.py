@@ -15,14 +15,15 @@ import collections
 import socket
 from typing import AbstractSet
 from typing import Any
-from typing import Collection
 from typing import DefaultDict
 from typing import Dict
 from typing import FrozenSet
 from typing import Iterable
 from typing import List
+from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
+from typing import Sequence
 from typing import Set
 from typing import Tuple
 
@@ -30,29 +31,22 @@ import requests
 from mypy_extensions import TypedDict
 
 from paasta_tools import marathon_tools
-from paasta_tools.api import settings
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import SystemPaastaConfig
 
 
-EnvoyBackend = TypedDict(
-    "EnvoyBackend",
-    {
-        "address": str,
-        "port_value": int,
-        "hostname": str,
-        "eds_health_status": str,
-        "weight": int,
-        "has_associated_task": bool,
-    },
-    total=False,
-)
+class EnvoyBackend(TypedDict, total=False):
+    address: str
+    port_value: int
+    hostname: str
+    eds_health_status: str
+    weight: int
+    has_associated_task: bool
 
 
 def retrieve_envoy_clusters(
-    envoy_host: str, envoy_admin_port: int, system_paasta_config: SystemPaastaConfig
+    envoy_host: str, envoy_admin_port: int, envoy_admin_endpoint_format: str
 ) -> Dict[str, Any]:
-    envoy_uri = system_paasta_config.get_envoy_admin_endpoint_format().format(
+    envoy_uri = envoy_admin_endpoint_format.format(
         host=envoy_host, port=envoy_admin_port, endpoint="clusters?format=json"
     )
 
@@ -65,7 +59,9 @@ def retrieve_envoy_clusters(
     return envoy_admin_response.json()
 
 
-def get_casper_endpoints(clusters_info: Dict[str, Any]) -> FrozenSet[Tuple[str, int]]:
+def get_casper_endpoints(
+    clusters_info: Mapping[str, Any]
+) -> FrozenSet[Tuple[str, int]]:
     """Filters out and returns casper endpoints from Envoy clusters."""
     casper_endpoints: Set[Tuple[str, int]] = set()
     for cluster_status in clusters_info["cluster_statuses"]:
@@ -84,14 +80,18 @@ def get_casper_endpoints(clusters_info: Dict[str, Any]) -> FrozenSet[Tuple[str, 
 
 
 def get_backends(
-    service: str, envoy_host: str, envoy_admin_port: int,
-) -> List[Tuple[EnvoyBackend, bool]]:
+    service: str,
+    envoy_host: str,
+    envoy_admin_port: int,
+    envoy_admin_endpoint_format: str,
+) -> Dict[str, List[Tuple[EnvoyBackend, bool]]]:
     """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of backends.
 
     :param service: If None, return backends for all services, otherwise only return backends for this particular
                     service.
     :param envoy_host: The host that this check should contact for replication information.
     :param envoy_admin_port: The port that Envoy's admin interface is listening on
+    :param envoy_admin_endpoint_format: The format of Envoy's admin endpoint
     :returns backends: A list of dicts representing the backends of all
                        services or the requested service
     """
@@ -100,31 +100,40 @@ def get_backends(
     else:
         services = None
     return get_multiple_backends(
-        services, envoy_host=envoy_host, envoy_admin_port=envoy_admin_port,
+        services,
+        envoy_host=envoy_host,
+        envoy_admin_port=envoy_admin_port,
+        envoy_admin_endpoint_format=envoy_admin_endpoint_format,
     )
 
 
 def get_multiple_backends(
-    services: Optional[Collection[str]], envoy_host: str, envoy_admin_port: int,
-):
+    services: Optional[Sequence[str]],
+    envoy_host: str,
+    envoy_admin_port: int,
+    envoy_admin_endpoint_format: str,
+) -> Dict[str, List[Tuple[EnvoyBackend, bool]]]:
     """Fetches JSON from Envoy admin's /clusters endpoint and returns a list of backends.
 
     :param services: If None, return backends for all services, otherwise only return backends for these particular
                      services.
     :param envoy_host: The host that this check should contact for replication information.
     :param envoy_admin_port: The port that Envoy's admin interface is listening on
+    :param envoy_admin_endpoint_format: The format of Envoy's admin endpoint
     :returns backends: A list of dicts representing the backends of all
                        services or the requested service
     """
     clusters_info = retrieve_envoy_clusters(
         envoy_host=envoy_host,
         envoy_admin_port=envoy_admin_port,
-        system_paasta_config=settings.system_paasta_config,
+        envoy_admin_endpoint_format=envoy_admin_endpoint_format,
     )
 
     casper_endpoints = get_casper_endpoints(clusters_info)
 
-    backends: List[Tuple[EnvoyBackend, bool]] = []
+    backends: DefaultDict[
+        str, List[Tuple[EnvoyBackend, bool]]
+    ] = collections.defaultdict(list)
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):
@@ -166,7 +175,7 @@ def get_multiple_backends(
                                 casper_endpoint_found,
                             )
                         )
-                    backends += cluster_backends
+                    backends[service_name] += cluster_backends
     return backends
 
 
@@ -209,7 +218,7 @@ def match_backends_and_tasks(
 
 def build_envoy_location_dict(
     location: str,
-    matched_envoy_backends_and_tasks: List[
+    matched_envoy_backends_and_tasks: Sequence[
         Tuple[Optional[EnvoyBackend], Optional[marathon_tools.MarathonTask]]
     ],
     should_return_individual_backends: bool,
@@ -234,3 +243,34 @@ def build_envoy_location_dict(
         "backends": envoy_backends,
         "is_proxied_through_casper": is_proxied_through_casper,
     }
+
+
+def get_replication_for_all_services(
+    envoy_host: str, envoy_admin_port: int, envoy_admin_endpoint_format: str,
+) -> Dict[str, int]:
+    """Returns the replication level for all services known to this Envoy
+
+    :param envoy_host: The host that this check should contact for replication information.
+    :param envoy_admin_port: The port number that this check should contact for replication information.
+    :param envoy_admin_endpoint_format: The format of Envoy's admin endpoint
+    :returns available_instance_counts: A dictionary mapping the service names
+                                        to an integer number of available replicas.
+    """
+    backends = get_multiple_backends(
+        services=None,
+        envoy_host=envoy_host,
+        envoy_admin_port=envoy_admin_port,
+        envoy_admin_endpoint_format=envoy_admin_endpoint_format,
+    )
+    return collections.Counter(
+        [
+            service_name
+            for service_name, service_backends in backends.items()
+            for b in service_backends
+            if backend_is_up(b[0])
+        ]
+    )
+
+
+def backend_is_up(backend: EnvoyBackend) -> bool:
+    return backend["eds_health_status"] == "HEALTHY"

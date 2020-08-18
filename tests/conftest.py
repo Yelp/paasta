@@ -29,6 +29,7 @@ def system_paasta_config():
                     "mode": "RO",
                 }
             ],
+            "service_discovery_providers": {"smartstack": {}, "envoy": {}},
         },
         "/fake_dir/",
     )

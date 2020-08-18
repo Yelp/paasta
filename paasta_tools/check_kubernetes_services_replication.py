@@ -42,7 +42,7 @@ from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
+from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 
 
 log = logging.getLogger(__name__)
@@ -73,15 +73,15 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 def check_kubernetes_pod_replication(
     instance_config: KubernetesDeploymentConfig,
     all_tasks_or_pods: Sequence[V1Pod],
-    smartstack_replication_checker: KubeSmartstackReplicationChecker,
-    default_alert_after: Optional[str] = DEFAULT_ALERT_AFTER,
+    replication_checker: KubeSmartstackEnvoyReplicationChecker,
 ) -> Optional[bool]:
     """Checks a service's replication levels based on how the service's replication
-    should be monitored. (smartstack or k8s)
+    should be monitored. (smartstack/envoy or k8s)
 
     :param instance_config: an instance of KubernetesDeploymentConfig
-    :param smartstack_replication_checker: an instance of KubeSmartstackReplicationChecker
+    :param replication_checker: an instance of KubeSmartstackEnvoyReplicationChecker
     """
+    default_alert_after = DEFAULT_ALERT_AFTER
     expected_count = instance_config.get_instances()
     log.info(
         "Expecting %d total tasks for %s" % (expected_count, instance_config.job_id)
@@ -108,10 +108,10 @@ def check_kubernetes_pod_replication(
     # if the primary registration does not match the service_instance name then
     # the best we can do is check k8s for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
-        is_well_replicated = monitoring_tools.check_smartstack_replication_for_instance(
+        is_well_replicated = monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            smartstack_replication_checker=smartstack_replication_checker,
+            replication_checker=replication_checker,
         )
         return is_well_replicated
     else:

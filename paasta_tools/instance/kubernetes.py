@@ -30,7 +30,7 @@ from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_containe
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
+from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
@@ -249,11 +249,11 @@ def smartstack_status(
     registration = job_config.get_registrations()[0]
     instance_pool = job_config.get_pool()
 
-    smartstack_replication_checker = KubeSmartstackReplicationChecker(
+    replication_checker = KubeSmartstackEnvoyReplicationChecker(
         nodes=kubernetes_tools.get_all_nodes(settings.kubernetes_client),
         system_paasta_config=settings.system_paasta_config,
     )
-    node_hostname_by_location = smartstack_replication_checker.get_allowed_locations_and_hosts(
+    node_hostname_by_location = replication_checker.get_allowed_locations_and_hosts(
         job_config
     )
 
@@ -273,9 +273,7 @@ def smartstack_status(
     }
 
     for location, hosts in node_hostname_by_location.items():
-        synapse_host = smartstack_replication_checker.get_first_host_in_pool(
-            hosts, instance_pool
-        )
+        synapse_host = replication_checker.get_first_host_in_pool(hosts, instance_pool)
         sorted_backends = sorted(
             smartstack_tools.get_backends(
                 registration,

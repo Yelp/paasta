@@ -20,10 +20,12 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
+import abc
 import json
 import logging
 import os
 from typing import Dict
+from typing import Mapping
 from typing import Optional
 from typing import Tuple
 
@@ -37,6 +39,14 @@ from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import time_cache
+
+
+class ReplicationChecker(abc.ABC):
+    @abc.abstractmethod
+    def get_replication_for_instance(
+        self, instance_config: LongRunningServiceConfig
+    ) -> Dict[str, Dict[str, Dict[str, int]]]:
+        ...
 
 
 try:
@@ -210,7 +220,9 @@ def send_event(
     :param status: The status to emit for this event
     :param output: The output to emit for this event
     :param soa_dir: The service directory to read monitoring information from
+    :param ttl: TTL (optional)
     :param cluster: The cluster name (optional)
+    :param system_paasta_config: A SystemPaastaConfig object representing the system
     """
     # This function assumes the input is a string like "mumble.main"
     team = get_team(overrides, service, soa_dir)
@@ -273,7 +285,7 @@ def read_monitoring_config(service, soa_dir=DEFAULT_SOA_DIR):
     return monitor_conf
 
 
-def list_teams(**kwargs):
+def list_teams():
     """Loads team data from the system. Returns a set of team names (or empty
     set).
     """
@@ -318,167 +330,179 @@ def send_replication_event(instance_config, status, output):
 
 
 def emit_replication_metrics(
-    smartstack_replication_info: Dict[str, Dict[str, int]],
+    replication_infos: Mapping[str, Mapping[str, Mapping[str, int]]],
     instance_config: LongRunningServiceConfig,
     expected_count: int,
 ) -> None:
-    meteorite_dims = {
-        "paasta_service": instance_config.service,
-        "paasta_cluster": instance_config.cluster,
-        "paasta_instance": instance_config.instance,
-        "paasta_pool": instance_config.get_pool(),
-    }
+    for provider, replication_info in replication_infos.items():
+        meteorite_dims = {
+            "paasta_service": instance_config.service,
+            "paasta_cluster": instance_config.cluster,
+            "paasta_instance": instance_config.instance,
+            "paasta_pool": instance_config.get_pool(),
+            "service_discovery_provider": provider,
+        }
 
-    num_available_backends = 0
-    for available_backends in smartstack_replication_info.values():
-        num_available_backends += available_backends.get(instance_config.job_id, 0)
-    available_backends_gauge = yelp_meteorite.create_gauge(
-        "paasta.service.available_backends", meteorite_dims
-    )
-    available_backends_gauge.set(num_available_backends)
+        num_available_backends = 0
+        for available_backends in replication_info.values():
+            num_available_backends += available_backends.get(instance_config.job_id, 0)
+        available_backends_gauge = yelp_meteorite.create_gauge(
+            "paasta.service.available_backends", meteorite_dims
+        )
+        available_backends_gauge.set(num_available_backends)
 
-    critical_percentage = instance_config.get_replication_crit_percentage()
-    num_critical_backends = critical_percentage * expected_count / 100.0
-    critical_backends_gauge = yelp_meteorite.create_gauge(
-        "paasta.service.critical_backends", meteorite_dims
-    )
-    critical_backends_gauge.set(num_critical_backends)
+        critical_percentage = instance_config.get_replication_crit_percentage()
+        num_critical_backends = critical_percentage * expected_count / 100.0
+        critical_backends_gauge = yelp_meteorite.create_gauge(
+            "paasta.service.critical_backends", meteorite_dims
+        )
+        critical_backends_gauge.set(num_critical_backends)
 
-    expected_backends_gauge = yelp_meteorite.create_gauge(
-        "paasta.service.expected_backends", meteorite_dims
-    )
-    expected_backends_gauge.set(expected_count)
+        expected_backends_gauge = yelp_meteorite.create_gauge(
+            "paasta.service.expected_backends", meteorite_dims
+        )
+        expected_backends_gauge.set(expected_count)
 
 
-def check_smartstack_replication_for_instance(
-    instance_config, expected_count, smartstack_replication_checker
+def check_replication_for_instance(
+    instance_config: LongRunningServiceConfig,
+    expected_count: int,
+    replication_checker: ReplicationChecker,
 ) -> bool:
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
     the corresponding yelpsoa config.
 
     :param instance_config: an instance of MarathonServiceConfig
-    :param smartstack_replication_checker: an instance of SmartstackReplicationChecker
+    :param replication_checker: an instance of ReplicationChecker
     """
 
     crit_threshold = instance_config.get_replication_crit_percentage()
 
-    log.info("Checking instance %s in smartstack", instance_config.job_id)
-    smartstack_replication_info = smartstack_replication_checker.get_replication_for_instance(
+    log.info(
+        "Checking instance %s in service discovery providers", instance_config.job_id
+    )
+    replication_infos = replication_checker.get_replication_for_instance(
         instance_config
     )
 
-    log.debug(
-        "Got smartstack replication info for %s: %s"
-        % (instance_config.job_id, smartstack_replication_info)
-    )
+    log.debug(f"Got replication info for {instance_config.job_id}: {replication_infos}")
     if yelp_meteorite is not None:
         emit_replication_metrics(
-            smartstack_replication_info, instance_config, expected_count,
+            replication_infos, instance_config, expected_count,
         )
 
-    if len(smartstack_replication_info) == 0:
-        status = pysensu_yelp.Status.CRITICAL
-        output = (
-            "Service %s has no Smartstack replication info. Make sure the discover key in your smartstack.yaml "
-            "is valid!\n"
-        ) % instance_config.job_id
-        log.error(output)
-        service_is_under_replicated = True
-    else:
-        expected_count_per_location = int(
-            expected_count / len(smartstack_replication_info)
-        )
-        output = ""
-        output_critical = ""
-        output_ok = ""
-        under_replication_per_location = []
-
-        for location, available_backends in sorted(smartstack_replication_info.items()):
-            num_available_in_location = available_backends.get(
-                instance_config.job_id, 0
-            )
-            under_replicated, ratio = is_under_replicated(
-                num_available_in_location, expected_count_per_location, crit_threshold
-            )
-            if under_replicated:
-                output_critical += (
-                    "- Service %s has %d out of %d expected instances in %s (CRITICAL: %d%%)\n"
-                    % (
-                        instance_config.job_id,
-                        num_available_in_location,
-                        expected_count_per_location,
-                        location,
-                        ratio,
-                    )
-                )
-            else:
-                output_ok += (
-                    "- Service %s has %d out of %d expected instances in %s (OK: %d%%)\n"
-                    % (
-                        instance_config.job_id,
-                        num_available_in_location,
-                        expected_count_per_location,
-                        location,
-                        ratio,
-                    )
-                )
-            under_replication_per_location.append(under_replicated)
-
-        output += output_critical
-        if output_critical and output_ok:
-            output += "\n\n"
-            output += "The following locations are OK:\n"
-        output += output_ok
-
-        service_is_under_replicated = any(under_replication_per_location)
-        if service_is_under_replicated:
-            status = pysensu_yelp.Status.CRITICAL
-            output += (
-                "\n\n"
-                "What this alert means:\n"
-                "\n"
-                "  This replication alert means that a SmartStack powered loadbalancer (haproxy)\n"
-                "  doesn't have enough healthy backends. Not having enough healthy backends\n"
-                "  means that clients of that service will get 503s (http) or connection refused\n"
-                "  (tcp) when trying to connect to it.\n"
-                "\n"
-                "Reasons this might be happening:\n"
-                "\n"
-                "  The service may simply not have enough copies or it could simply be\n"
-                "  unhealthy in that location. There also may not be enough resources\n"
-                "  in the cluster to support the requested instance count.\n"
-                "\n"
-                "Things you can do:\n"
-                "\n"
-                "  * You can view the logs for the job with:\n"
-                "      paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
-                "\n"
-                "  * Fix the cause of the unhealthy service. Try running:\n"
-                "\n"
-                "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
-                "\n"
-                "  * Widen SmartStack discovery settings\n"
-                "  * Increase the instance count\n"
-                "\n"
-            ) % {
-                "service": instance_config.service,
-                "instance": instance_config.instance,
-                "cluster": instance_config.cluster,
-            }
+    combined_output = ""
+    service_is_under_replicated = False
+    for service_discovery_provider, replication_info in replication_infos.items():
+        if len(replication_info) == 0:
+            output = (
+                "Service %s has no %s replication info. Make sure the discover key in the corresponding config (e.g. smartstack.yaml for Smartstack) is valid!\n"
+            ) % (instance_config.job_id, service_discovery_provider)
             log.error(output)
+            service_is_under_replicated = True
         else:
-            status = pysensu_yelp.Status.OK
-            log.info(output)
+            expected_count_per_location = int(expected_count / len(replication_info))
+            output = ""
+            output_critical = ""
+            output_ok = ""
+            under_replication_per_location = []
+
+            for location, available_backends in sorted(replication_info.items()):
+                num_available_in_location = available_backends.get(
+                    instance_config.job_id, 0
+                )
+                under_replicated, ratio = is_under_replicated(
+                    num_available_in_location,
+                    expected_count_per_location,
+                    crit_threshold,
+                )
+                if under_replicated:
+                    output_critical += (
+                        "- Service %s has %d out of %d expected instances in %s according to %s (CRITICAL: %d%%)\n"
+                        % (
+                            instance_config.job_id,
+                            num_available_in_location,
+                            expected_count_per_location,
+                            location,
+                            service_discovery_provider,
+                            ratio,
+                        )
+                    )
+                else:
+                    output_ok += (
+                        "- Service %s has %d out of %d expected instances in %s according to %s (OK: %d%%)\n"
+                        % (
+                            instance_config.job_id,
+                            num_available_in_location,
+                            expected_count_per_location,
+                            location,
+                            service_discovery_provider,
+                            ratio,
+                        )
+                    )
+                under_replication_per_location.append(under_replicated)
+
+            output += output_critical
+            if output_critical and output_ok:
+                output += "\n\n"
+                output += "The following locations are OK:\n"
+            output += output_ok
+
+            service_is_under_replicated_anywhere = any(under_replication_per_location)
+            service_is_under_replicated |= service_is_under_replicated_anywhere
+            if service_is_under_replicated_anywhere:
+                output += (
+                    "\n\n"
+                    "What this alert means:\n"
+                    "\n"
+                    "  This replication alert means that a %(service_discovery_provider)s powered loadbalancer\n"
+                    "  doesn't have enough healthy backends. Not having enough healthy backends\n"
+                    "  means that clients of that service will get 503s (http) or connection refused\n"
+                    "  (tcp) when trying to connect to it.\n"
+                    "\n"
+                    "Reasons this might be happening:\n"
+                    "\n"
+                    "  The service may simply not have enough copies or it could simply be\n"
+                    "  unhealthy in that location. There also may not be enough resources\n"
+                    "  in the cluster to support the requested instance count.\n"
+                    "\n"
+                    "Things you can do:\n"
+                    "\n"
+                    "  * You can view the logs for the job with:\n"
+                    "      paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
+                    "\n"
+                    "  * Fix the cause of the unhealthy service. Try running:\n"
+                    "\n"
+                    "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+                    "\n"
+                    "  * Widen %(service_discovery_provider)s discovery settings\n"
+                    "  * Increase the instance count\n"
+                    "\n"
+                ) % {
+                    "service": instance_config.service,
+                    "instance": instance_config.instance,
+                    "cluster": instance_config.cluster,
+                    "service_discovery_provider": service_discovery_provider,
+                }
+                log.error(output)
+            else:
+                log.info(output)
+        combined_output += output
+    status = (
+        pysensu_yelp.Status.CRITICAL
+        if service_is_under_replicated
+        else pysensu_yelp.Status.OK
+    )
     send_replication_event(
-        instance_config=instance_config, status=status, output=output
+        instance_config=instance_config, status=status, output=combined_output
     )
 
     return not service_is_under_replicated
 
 
 def check_under_replication(
-    instance_config,
+    instance_config: LongRunningServiceConfig,
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
@@ -530,11 +554,11 @@ def check_under_replication(
             "instance": instance_config.instance,
             "cluster": instance_config.cluster,
         }
-    return (under_replicated, output)
+    return under_replicated, output
 
 
 def send_replication_event_if_under_replication(
-    instance_config,
+    instance_config: LongRunningServiceConfig,
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,

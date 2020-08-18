@@ -48,7 +48,7 @@ kubernetes==10.0.1
 ldap3==2.6.0
 manhole==1.5.0
 marathon==0.12.0
-MarkupSafe==1.0
+MarkupSafe==1.1.1
 monotonic==1.4
 msgpack-python==0.5.6
 multidict==4.1.0

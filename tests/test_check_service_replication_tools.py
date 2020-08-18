@@ -133,6 +133,6 @@ def test_check_services_replication():
         mock_check_service_replication.assert_called_once_with(
             instance_config=instance_config,
             all_tasks_or_pods=mock_pods,
-            smartstack_replication_checker=mock_replication_checker,
+            replication_checker=mock_replication_checker,
         )
         assert pct_under_replicated == 0

@@ -34,13 +34,18 @@ import logging
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from typing import Optional
+from typing import Sequence
+
+from marathon.models.task import MarathonTask
 
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
 from paasta_tools.marathon_tools import format_job_id
-
+from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
 
 log = logging.getLogger(__name__)
 
@@ -78,13 +83,15 @@ def check_healthy_marathon_tasks_for_service_instance(
 
 
 def check_service_replication(
-    instance_config, all_tasks_or_pods, smartstack_replication_checker
-):
+    instance_config: MarathonServiceConfig,
+    all_tasks_or_pods: Sequence[MarathonTask],
+    replication_checker: MesosSmartstackEnvoyReplicationChecker,
+) -> Optional[bool]:
     """Checks a service's replication levels based on how the service's replication
-    should be monitored. (smartstack or mesos)
+    should be monitored. (smartstack/envoy or mesos)
 
     :param instance_config: an instance of MarathonServiceConfig
-    :param smartstack_replication_checker: an instance of MesosSmartstackReplicationChecker
+    :param replication_checker: an instance of MesosSmartstackEnvoyReplicationChecker
     """
     expected_count = instance_config.get_instances()
     log.info(
@@ -96,10 +103,10 @@ def check_service_replication(
     # if the primary registration does not match the service_instance name then
     # the best we can do is check marathon for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
-        is_well_replicated = monitoring_tools.check_smartstack_replication_for_instance(
+        is_well_replicated = monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            smartstack_replication_checker=smartstack_replication_checker,
+            replication_checker=replication_checker,
         )
         return is_well_replicated
     else:

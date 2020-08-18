@@ -19,12 +19,12 @@ import requests
 
 from paasta_tools import smartstack_tools
 from paasta_tools.smartstack_tools import backend_is_up
+from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
-from paasta_tools.smartstack_tools import SmartstackHost
 from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
@@ -340,15 +340,24 @@ def test_get_replication_for_all_services(mock_get_multiple_backends):
 
 
 @mock.patch(
+    "paasta_tools.utils.socket.getservbyname", autospec=True,
+)
+@mock.patch(
     "paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config",
     autospec=True,
 )
 @mock.patch(
     "paasta_tools.smartstack_tools.get_replication_for_all_services", autospec=True
 )
+@mock.patch(
+    "paasta_tools.smartstack_tools.envoy_tools.get_replication_for_all_services",
+    autospec=True,
+)
 def test_get_replication_for_instance_mesos(
-    mock_get_replication_for_all_services,
+    mock_envoy_tools_get_replication_for_all_services,
+    mock_smartstack_tools_get_replication_for_all_services,
     mock_load_service_namespace_config,
+    mock_socket_getservbyname,
     system_paasta_config,
 ):
     mock_mesos_slaves = [
@@ -363,20 +372,30 @@ def test_get_replication_for_instance_mesos(
     ]
     instance_config = mock.Mock(service="fake_service", instance="fake_instance")
     instance_config.get_pool.return_value = "cool_pool"
-    mock_get_replication_for_all_services.return_value = {
+    mock_smartstack_tools_get_replication_for_all_services.return_value = {
+        "fake_service.fake_instance": 20
+    }
+    mock_envoy_tools_get_replication_for_all_services.return_value = {
         "fake_service.fake_instance": 20
     }
     mock_load_service_namespace_config.return_value.get_discover.return_value = "region"
-    checker = smartstack_tools.MesosSmartstackReplicationChecker(
+    mock_socket_getservbyname.return_value = mock.Mock()
+    checker = smartstack_tools.MesosSmartstackEnvoyReplicationChecker(
         mesos_slaves=mock_mesos_slaves, system_paasta_config=system_paasta_config
     )
     assert checker.get_replication_for_instance(instance_config) == {
-        "fake_region1": {"fake_service.fake_instance": 20}
+        "Smartstack": {"fake_region1": {"fake_service.fake_instance": 20}},
+        "Envoy": {"fake_region1": {"fake_service.fake_instance": 20}},
     }
-    mock_get_replication_for_all_services.assert_called_once_with(
+    mock_smartstack_tools_get_replication_for_all_services.assert_called_once_with(
         synapse_host="host2",
         synapse_port=system_paasta_config.get_synapse_port(),
         synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
+    )
+    mock_envoy_tools_get_replication_for_all_services.assert_called_once_with(
+        envoy_host="host2",
+        envoy_admin_port=system_paasta_config.get_envoy_admin_port(),
+        envoy_admin_endpoint_format=system_paasta_config.get_envoy_admin_endpoint_format(),
     )
 
 
@@ -470,17 +489,28 @@ def test_are_services_up_on_port():
 
 @pytest.fixture
 def mock_replication_checker():
-    smartstack_tools.SmartstackReplicationChecker.__abstractmethods__ = frozenset()
-    return smartstack_tools.SmartstackReplicationChecker(
-        system_paasta_config=mock.Mock()
+    smartstack_tools.BaseReplicationChecker.__abstractmethods__ = frozenset()
+    system_paasta_config = mock.Mock()
+    return smartstack_tools.BaseReplicationChecker(
+        system_paasta_config=system_paasta_config,
+        service_discovery_providers=[
+            smartstack_tools.SmartstackServiceDiscovery(
+                system_paasta_config=system_paasta_config
+            )
+        ],
     )
 
 
 @pytest.fixture
 def mock_kube_replication_checker():
     mock_nodes = [mock.Mock()]
-    return smartstack_tools.KubeSmartstackReplicationChecker(
-        nodes=mock_nodes, system_paasta_config=mock.Mock()
+    mock_system_paasta_config = mock.Mock()
+    mock_system_paasta_config.get_service_discovery_providers.return_value = {
+        "smartstack": {},
+        "envoy": {},
+    }
+    return smartstack_tools.KubeSmartstackEnvoyReplicationChecker(
+        nodes=mock_nodes, system_paasta_config=mock_system_paasta_config,
     )
 
 
@@ -514,8 +544,8 @@ def test_kube_get_allowed_locations_and_hosts(mock_kube_replication_checker):
         )
         assert ret == {
             "us-west-1": [
-                SmartstackHost(hostname="foo1", pool="default"),
-                SmartstackHost(hostname="foo2", pool="default"),
+                DiscoveredHost(hostname="foo1", pool="default"),
+                DiscoveredHost(hostname="foo2", pool="default"),
             ]
         }
 
@@ -528,13 +558,13 @@ def test_get_allowed_locations_and_hosts(mock_replication_checker):
 
 def test_get_replication_for_instance(mock_replication_checker):
     with mock.patch(
-        "paasta_tools.smartstack_tools.SmartstackReplicationChecker.get_allowed_locations_and_hosts",
+        "paasta_tools.smartstack_tools.BaseReplicationChecker.get_allowed_locations_and_hosts",
         autospec=True,
     ) as mock_get_allowed_locations_and_hosts, mock.patch(
-        "paasta_tools.smartstack_tools.SmartstackReplicationChecker.get_first_host_in_pool",
+        "paasta_tools.smartstack_tools.BaseReplicationChecker.get_first_host_in_pool",
         autospec=True,
     ) as mock_get_first_host_in_pool, mock.patch(
-        "paasta_tools.smartstack_tools.SmartstackReplicationChecker._get_replication_info",
+        "paasta_tools.smartstack_tools.BaseReplicationChecker._get_replication_info",
         autospec=True,
     ) as mock_get_replication_info:
         mock_get_allowed_locations_and_hosts.return_value = {
@@ -542,8 +572,10 @@ def test_get_replication_for_instance(mock_replication_checker):
             "middleearth-prod": [mock.Mock(), mock.Mock()],
         }
         expected = {
-            "westeros-prod": mock_get_replication_info.return_value,
-            "middleearth-prod": mock_get_replication_info.return_value,
+            "Smartstack": {
+                "westeros-prod": mock_get_replication_info.return_value,
+                "middleearth-prod": mock_get_replication_info.return_value,
+            }
         }
         assert (
             mock_replication_checker.get_replication_for_instance(mock.Mock())
@@ -567,19 +599,20 @@ def test_get_first_host_in_pool(mock_replication_checker):
 
 
 def test_get_replication_info(mock_replication_checker):
-    with mock.patch(
-        "paasta_tools.smartstack_tools.get_replication_for_all_services", autospec=True
-    ) as mock_get_replication_for_all_services:
-        mock_replication_checker._cache = {}
-        mock_instance_config = mock.Mock(service="thing", instance="main")
-        ret = mock_replication_checker._get_replication_info(
-            "westeros-prod", "host1", mock_instance_config
-        )
-        assert ret == {
-            "thing.main": mock_get_replication_for_all_services.return_value[
-                "thing.main"
-            ]
-        }
-        assert mock_replication_checker._cache == {
-            "westeros-prod": mock_get_replication_for_all_services.return_value
-        }
+    mock_replication_checker._cache = {}
+    mock_instance_config = mock.Mock(service="thing", instance="main")
+    mock_service_discovery_provider = mock.MagicMock()
+    ret = mock_replication_checker._get_replication_info(
+        "westeros-prod", "host1", mock_instance_config, mock_service_discovery_provider
+    )
+    assert ret == {
+        "thing.main": mock_service_discovery_provider.get_replication_for_all_services.return_value[
+            "thing.main"
+        ]
+    }
+    assert mock_replication_checker._cache == {
+        (
+            "westeros-prod",
+            mock_service_discovery_provider.NAME,
+        ): mock_service_discovery_provider.get_replication_for_all_services.return_value
+    }

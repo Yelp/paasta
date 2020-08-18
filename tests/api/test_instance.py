@@ -33,8 +33,8 @@ from paasta_tools.marathon_tools import get_short_task_id
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
+from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
-from paasta_tools.smartstack_tools import SmartstackHost
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
@@ -521,7 +521,7 @@ def test_marathon_service_mesh_status(
     "paasta_tools.api.views.instance.pik.smartstack_tools.get_backends", autospec=True
 )
 @mock.patch(
-    "paasta_tools.api.views.instance.pik.KubeSmartstackReplicationChecker",
+    "paasta_tools.api.views.instance.pik.KubeSmartstackEnvoyReplicationChecker",
     autospec=True,
 )
 @mock.patch(
@@ -543,7 +543,7 @@ def test_kubernetes_smartstack_status(
     ]
 
     mock_kube_smartstack_replication_checker.return_value.get_allowed_locations_and_hosts.return_value = {
-        "us-north-3": [SmartstackHost(hostname="host1.paasta.party", pool="default")]
+        "us-north-3": [DiscoveredHost(hostname="host1.paasta.party", pool="default")]
     }
 
     mock_get_expected_instance_count_for_namespace.return_value = 2

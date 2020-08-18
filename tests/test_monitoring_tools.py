@@ -636,22 +636,22 @@ def instance_config():
     return mock_instance_config
 
 
-def test_check_smartstack_replication_for_instance_ok_when_expecting_zero(
-    instance_config,
-):
+def test_check_replication_for_instance_ok_when_expecting_zero(instance_config,):
     expected_replication_count = 0
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {"test.main": 1, "test.three": 4, "test.four": 8}
+        "fake_provider": {
+            "fake_region": {"test.main": 1, "test.three": 4, "test.four": 8}
+        }
     }
 
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -660,19 +660,21 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero(
         )
 
 
-def test_check_smartstack_replication_for_instance_crit_when_absent(instance_config):
+def test_check_replication_for_instance_crit_when_absent(instance_config):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {"test.two": 1, "test.three": 4, "test.four": 8}
+        "fake_provider": {
+            "fake_region": {"test.two": 1, "test.three": 4, "test.four": 8}
+        }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -681,25 +683,25 @@ def test_check_smartstack_replication_for_instance_crit_when_absent(instance_con
         )
 
 
-def test_check_smartstack_replication_for_instance_crit_when_zero_replication(
-    instance_config,
-):
+def test_check_replication_for_instance_crit_when_zero_replication(instance_config,):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {
-            "fake_service.fake_instance": 0,
-            "test.main": 8,
-            "test.fully_replicated": 8,
+        "fake_provider": {
+            "fake_region": {
+                "fake_service.fake_instance": 0,
+                "test.main": 8,
+                "test.fully_replicated": 8,
+            }
         }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -722,25 +724,25 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication(
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_crit_when_low_replication(
-    instance_config,
-):
+def test_check_replication_for_instance_crit_when_low_replication(instance_config,):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {
-            "test.canary": 1,
-            "fake_service.fake_instance": 4,
-            "test.fully_replicated": 8,
+        "fake_provider": {
+            "fake_region": {
+                "test.canary": 1,
+                "fake_service.fake_instance": 4,
+                "test.fully_replicated": 8,
+            }
         }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -763,25 +765,25 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication(
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_ok_with_enough_replication(
-    instance_config,
-):
+def test_check_replication_for_instance_ok_with_enough_replication(instance_config,):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {
-            "test.canary": 1,
-            "test.low_replication": 4,
-            "fake_service.fake_instance": 8,
+        "fake_provider": {
+            "fake_region": {
+                "test.canary": 1,
+                "test.low_replication": 4,
+                "fake_service.fake_instance": 8,
+            }
         }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -791,28 +793,30 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication(
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 8 out of 8 expected instances in fake_region (OK: 100%)".format(
+            "{} has 8 out of 8 expected instances in fake_region according to fake_provider (OK: 100%)".format(
                 instance_config.job_id
             )
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_ok_with_enough_replication_multilocation(
+def test_check_replication_for_instance_ok_with_enough_replication_multilocation(
     instance_config,
 ):
     expected_replication_count = 2
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {"fake_service.fake_instance": 1},
-        "fake_other_region": {"fake_service.fake_instance": 1},
+        "fake_provider": {
+            "fake_region": {"fake_service.fake_instance": 1},
+            "fake_other_region": {"fake_service.fake_instance": 1},
+        }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -833,22 +837,24 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_crit_when_low_replication_multilocation(
+def test_check_replication_for_instance_crit_when_low_replication_multilocation(
     instance_config,
 ):
     expected_replication_count = 2
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {"fake_service.fake_instance": 1},
-        "fake_other_region": {"fake_service.fake_instance": 0},
+        "fake_provider": {
+            "fake_region": {"fake_service.fake_instance": 1},
+            "fake_other_region": {"fake_service.fake_instance": 0},
+        }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -876,22 +882,24 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_crit_when_zero_replication_multilocation(
+def test_check_replication_for_instance_crit_when_zero_replication_multilocation(
     instance_config,
 ):
     expected_replication_count = 2
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {"fake_service.fake_instance": 0},
-        "fake_other_region": {"fake_service.fake_instance": 0},
+        "fake_provider": {
+            "fake_region": {"fake_service.fake_instance": 0},
+            "fake_other_region": {"fake_service.fake_instance": 0},
+        }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -919,22 +927,24 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_crit_when_missing_replication_multilocation(
+def test_check_replication_for_instance_crit_when_missing_replication_multilocation(
     instance_config,
 ):
     expected_replication_count = 2
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-        "fake_region": {"test.main": 0},
-        "fake_other_region": {"test.main": 0},
+        "fake_provider": {
+            "fake_region": {"test.main": 0},
+            "fake_other_region": {"test.main": 0},
+        }
     }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -955,19 +965,19 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
         ) in alert_output
 
 
-def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
-    instance_config,
-):
+def test_check_replication_for_instance_crit_when_no_smartstack_info(instance_config,):
     expected_replication_count = 2
     mock_smartstack_replication_checker = mock.Mock()
-    mock_smartstack_replication_checker.get_replication_for_instance.return_value = {}
+    mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
+        "fake_provider": {}
+    }
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_replication_event:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_replication_count,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -977,7 +987,7 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            f"{instance_config.job_id} has no Smartstack replication info."
+            f"{instance_config.job_id} has no fake_provider replication info."
         ) in alert_output
 
 
@@ -986,11 +996,13 @@ def test_emit_replication_metrics(instance_config):
         "paasta_tools.monitoring_tools.yelp_meteorite", autospec=True
     ) as mock_yelp_meteorite:
         mock_smartstack_replication_info = {
-            "fake_region_1": {
-                "fake_service.fake_instance": 2,
-                "other_service.other_instance": 5,
-            },
-            "fake_region_2": {"fake_service.fake_instance": 4},
+            "fake_provider": {
+                "fake_region_1": {
+                    "fake_service.fake_instance": 2,
+                    "other_service.other_instance": 5,
+                },
+                "fake_region_2": {"fake_service.fake_instance": 4},
+            }
         }
         mock_gauges = {
             "paasta.service.available_backends": mock.Mock(),
@@ -1002,6 +1014,7 @@ def test_emit_replication_metrics(instance_config):
             "paasta_cluster": "fake_cluster",
             "paasta_instance": "fake_instance",
             "paasta_pool": "fake_pool",
+            "service_discovery_provider": "fake_provider",
         }
 
         mock_yelp_meteorite.create_gauge.side_effect = lambda name, dims: mock_gauges[
@@ -1023,7 +1036,7 @@ def test_emit_replication_metrics(instance_config):
         mock_gauges["paasta.service.expected_backends"].set.assert_called_once_with(10)
 
 
-def test_check_smartstack_replication_for_instance_emits_metrics(instance_config):
+def test_check_replication_for_instance_emits_metrics(instance_config):
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ), mock.patch(
@@ -1033,13 +1046,13 @@ def test_check_smartstack_replication_for_instance_emits_metrics(instance_config
     ) as mock_emit_replication_metrics:
         mock_smartstack_replication_checker = mock.Mock()
         mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
-            "fake_region": {"fake_service.fake_instance": 10}
+            "fake_provider": {"fake_region": {"fake_service.fake_instance": 10}}
         }
 
-        monitoring_tools.check_smartstack_replication_for_instance(
+        monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=10,
-            smartstack_replication_checker=mock_smartstack_replication_checker,
+            replication_checker=mock_smartstack_replication_checker,
         )
         mock_emit_replication_metrics.assert_called_once_with(
             mock_smartstack_replication_checker.get_replication_for_instance.return_value,

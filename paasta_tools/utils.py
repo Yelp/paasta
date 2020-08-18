@@ -1796,10 +1796,9 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
     auth_certificate_ttl: str
-    auto_hostname_unique_size: int
     auto_config_instance_types_enabled: Dict[str, bool]
+    auto_hostname_unique_size: int
     boost_regions: List[str]
-    cluster: str
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
     cluster_autoscaling_draining_enabled: bool
@@ -1807,10 +1806,10 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_boost_enabled: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
+    cluster: str
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
     deploy_blacklist: UnsafeDeployBlacklist
-    deploy_whitelist: UnsafeDeployWhitelist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
     deployd_maintenance_polling_frequency: int
@@ -1819,11 +1818,12 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     deployd_number_workers: int
     deployd_startup_bounce_deadline: float
     deployd_startup_oracle_enabled: bool
-    deployd_worker_failure_backoff_factor: int
     deployd_use_zk_queue: bool
+    deployd_worker_failure_backoff_factor: int
+    deploy_whitelist: UnsafeDeployWhitelist
     disabled_watchers: List
-    docker_registry: str
     dockercfg_location: str
+    docker_registry: str
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
     enforce_disk_quota: bool
@@ -1835,11 +1835,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     hacheck_sidecar_image_url: str
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
+    ldap_host: str
+    ldap_reader_password: str
+    ldap_reader_username: str
     ldap_search_base: str
     ldap_search_ou: str
-    ldap_host: str
-    ldap_reader_username: str
-    ldap_reader_password: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -1852,8 +1852,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     paasta_native: PaastaNativeConfig
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
-    previous_marathon_servers: List[MarathonConfigDict]
     pod_defaults: Dict[str, Any]
+    previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
@@ -1863,6 +1863,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     security_check_command: str
     sensu_host: str
     sensu_port: int
+    service_discovery_providers: Dict[str, Any]
     slack: Dict[str, str]
     spark_run_config: SparkRunConfig
     synapse_haproxy_url_format: str
@@ -2171,6 +2172,9 @@ class SystemPaastaConfig:
         return self.config_dict.get(
             "synapse_haproxy_url_format", DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
         )
+
+    def get_service_discovery_providers(self) -> Dict[str, Any]:
+        return self.config_dict.get("service_discovery_providers", {})
 
     def get_cluster_autoscaling_resources(self) -> IdToClusterAutoscalingResourcesDict:
         return self.config_dict.get("cluster_autoscaling_resources", {})

@@ -19,8 +19,8 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Set
-from typing import Tuple
 from typing import Type
 from typing import TypeVar
 
@@ -201,7 +201,7 @@ class HacheckDrainMethod(DrainMethod):
 
     async def for_each_registration(
         self, task: DrainTask, func: Callable[..., Awaitable[T]]
-    ) -> Tuple[T, ...]:
+    ) -> Sequence[T]:
         if task.ports == []:
             return None
         futures = [func(url) for url in self.spool_urls(task)]

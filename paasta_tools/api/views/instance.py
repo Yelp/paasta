@@ -370,14 +370,20 @@ def _build_envoy_location_dict_for_backends(
         registration,
         envoy_host=envoy_host,
         envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
+        envoy_admin_endpoint_format=settings.system_paasta_config.get_envoy_admin_endpoint_format(),
     )
     sorted_envoy_backends = sorted(
-        [backend[0] for backend in backends],
+        [
+            backend[0]
+            for _, service_backends in backends.items()
+            for backend in service_backends
+        ],
         key=lambda backend: backend["eds_health_status"],
     )
     casper_proxied_backends = {
         (backend["address"], backend["port_value"])
-        for backend, is_casper_proxied_backend in backends
+        for _, service_backends in backends.items()
+        for backend, is_casper_proxied_backend in service_backends
         if is_casper_proxied_backend
     }
 

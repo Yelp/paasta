@@ -51,6 +51,7 @@ from typing import Callable
 from typing import Collection
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -264,7 +265,7 @@ def drain_tasks_and_find_tasks_to_kill(
 
 
 def old_app_tasks_to_task_client_pairs(
-    old_app_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
+    old_app_tasks: Mapping[Tuple[str, MarathonClient], Set[MarathonTask]],
 ) -> Set[Tuple[MarathonTask, MarathonClient]]:
     ret: Set[Tuple[MarathonTask, MarathonClient]] = set()
     for (app, client), tasks in old_app_tasks.items():
@@ -278,11 +279,11 @@ def do_bounce(
     drain_method: drain_lib.DrainMethod,
     config: marathon_tools.FormattedMarathonAppDict,
     new_app_running: bool,
-    happy_new_tasks: List[MarathonTask],
-    old_app_live_happy_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
-    old_app_live_unhappy_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
-    old_app_draining_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
-    old_app_at_risk_tasks: Dict[Tuple[str, MarathonClient], Set[MarathonTask]],
+    happy_new_tasks: Sequence[MarathonTask],
+    old_app_live_happy_tasks: Mapping[Tuple[str, MarathonClient], Set[MarathonTask]],
+    old_app_live_unhappy_tasks: Mapping[Tuple[str, MarathonClient], Set[MarathonTask]],
+    old_app_draining_tasks: Mapping[Tuple[str, MarathonClient], Set[MarathonTask]],
+    old_app_at_risk_tasks: Mapping[Tuple[str, MarathonClient], Set[MarathonTask]],
     service: str,
     bounce_method: str,
     serviceinstance: str,
