@@ -12,6 +12,10 @@ from http.client import HTTPConnection
 import requests
 import ruamel.yaml as yaml
 
+from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
+from paasta_tools.utils import format_git_url
+from paasta_tools.utils import load_system_paasta_config
+
 requests_log = logging.getLogger("requests.packages.urllib3")
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger()
@@ -182,8 +186,16 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
     }
 
 
-def clone_in(target_dir):
-    remote = "git@sysgit.yelpcorp.com:yelpsoa-configs"
+def clone_in(target_dir, system_paasta_config=None):
+    if not system_paasta_config:
+        system_paasta_config = load_system_paasta_config()
+    repo_config = system_paasta_config.get_git_repo_config("yelpsoa-configs")
+
+    remote = format_git_url(
+        system_paasta_config.get_git_config()["git_user"],
+        repo_config.get("git_server", DEFAULT_SOA_CONFIGS_GIT_URL),
+        repo_config["repo_name"],
+    )
     subprocess.check_call(("git", "clone", remote, target_dir))
 
 
@@ -474,10 +486,11 @@ def main():
     tmpdir = tempdir()  # Create a tmp dir even if we are not using it
 
     working_dir = args.YELPSOA_DIR
+    system_paasta_config = load_system_paasta_config()
     if working_dir is None:
         # Working in a temporary directory
         working_dir = os.path.join("rightsizer", tmpdir.name)
-        clone_in(working_dir)
+        clone_in(working_dir, system_paasta_config=system_paasta_config)
 
     with cwd(working_dir):
         if args.bulk or args.no_branch:

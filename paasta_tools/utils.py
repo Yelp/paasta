@@ -1211,8 +1211,14 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
         service, soa_dir=soa_dir
     )
     # TODO: PAASTA-16927: get this from system config `.git_config`
-    default_location = "git@github.yelpcorp.com:services/%s" % service
+    default_location = format_git_url(
+        "git", "github.yelpcorp.com", f"services/{service}"
+    )
     return general_config.get("git_url", default_location)
+
+
+def format_git_url(git_user, git_server, repo_name):
+    return f"{git_user}@{git_server}:{repo_name}"
 
 
 def get_service_docker_registry(
