@@ -1,3 +1,4 @@
+# Please run `make openapi-codegen` after modifying this file
 openapi: 3.0.0
 info:
   title: Paasta API

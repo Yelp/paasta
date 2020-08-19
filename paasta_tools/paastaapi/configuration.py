@@ -1,4 +1,3 @@
-# coding: utf-8
 
 """
     Paasta API
@@ -384,7 +383,7 @@ class Configuration(object):
         """
         return [
             {
-                'url': "http://{host}/{basePath}",
+                'url': "{scheme}://{host}/{basePath}",
                 'description': "No description provided",
                 'variables': {
                     'basePath': {
@@ -394,6 +393,14 @@ class Configuration(object):
                     'host': {
                         'description': "No description provided",
                         'default_value': "localhost",
+                        },
+                    'scheme': {
+                        'description': "No description provided",
+                        'default_value': "http",
+                        'enum_values': [
+                            "http",
+                            "https"
+                        ]
                         }
                     }
             }
