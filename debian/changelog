@@ -1,3 +1,11 @@
+paasta-tools (0.96.44) xenial; urgency=medium
+
+  * 0.96.44 tagged with 'make release'
+    Commit: Merge pull request #2887 from Yelp/paasta-instance-envoy-
+    replication-checks  PaaSTA instance Envoy replication checks
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Wed, 19 Aug 2020 03:06:28 -0700
+
 paasta-tools (0.96.43) xenial; urgency=medium
 
   * 0.96.43 tagged with 'make release'
