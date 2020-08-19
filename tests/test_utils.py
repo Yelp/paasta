@@ -570,6 +570,26 @@ def test_SystemPaastaConfig_get_deployd_log_level():
     assert actual == expected
 
 
+@pytest.mark.parametrize(
+    "config,expected_server",
+    [
+        ({}, "sysgit.yelpcorp.com"),
+        (
+            {"git_config": {"repos": {"yelpsoa-configs": {"git_server": "a_server"}}}},
+            "a_server",
+        ),
+    ],
+)
+def test_SystemPaastaConfig_get_git_config(config, expected_server):
+    fake_config = utils.SystemPaastaConfig(config, "/some/fake/dir")
+
+    actual_git = fake_config.get_git_config()
+    actual_repo = fake_config.get_git_repo_config("yelpsoa-configs")
+
+    assert actual_git["repos"]["yelpsoa-configs"]["git_server"] == expected_server
+    assert actual_repo["git_server"] == expected_server
+
+
 @pytest.yield_fixture
 def umask_022():
     old_umask = os.umask(0o022)
