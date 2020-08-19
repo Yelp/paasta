@@ -27,6 +27,7 @@ from typing import Type
 
 import colorlog
 import staticconf
+from kubernetes.client.models.v1_pod import V1Pod as KubernetesPod
 
 from clusterman.aws.aws_resource_group import AWSResourceGroup
 from clusterman.aws.markets import InstanceMarket
@@ -40,6 +41,7 @@ from clusterman.interfaces.cluster_connector import ClusterConnector
 from clusterman.interfaces.resource_group import ResourceGroup
 from clusterman.interfaces.types import AgentState
 from clusterman.interfaces.types import ClusterNodeMetadata
+from clusterman.kubernetes.util import total_pod_resources
 from clusterman.monitoring_lib import get_monitoring_client
 from clusterman.util import read_int_or_inf
 
@@ -203,6 +205,27 @@ class PoolManager:
             for group in self.resource_groups.values()
             for instance_metadata in group.get_instance_metadatas(state_filter)
         ]
+
+    def _filter_scale_up_options_for_pod(
+        self,
+        pod: KubernetesPod,
+        scale_up_options: Mapping[str, List[ClusterNodeMetadata]],
+    ) -> Mapping[str, List[ClusterNodeMetadata]]:
+        filtered_options: Mapping[str, List[ClusterNodeMetadata]] = defaultdict(list)
+        for group_id, options in scale_up_options.items():
+            for option in options:
+                reason = ''
+                if total_pod_resources(pod) > option.agent.allocated_resources:
+                    reason = 'insufficient resources'
+
+                if reason:
+                    logger.debug(
+                        'Skipping option {option.instance.market} for {pod.metadata.name}: {reason}'
+                    )
+                    continue
+                filtered_options[group_id].append(option)
+
+        return filtered_options
 
     def _reload_resource_groups(self) -> None:
         resource_groups: MutableMapping[str, ResourceGroup] = {}

@@ -105,7 +105,7 @@ class PendingPodsSignal(Signal):
             self,
             timestamp: arrow.Arrow,
             retry_on_broken_pipe: bool = True,
-     ) -> Union[SignalResourceRequest, List[SignalResourceRequest]]:
+     ) -> Union[SignalResourceRequest, List[KubernetesPod]]:
         metrics = get_metrics_for_signal(
             self.cluster,
             self.pool,
@@ -119,11 +119,14 @@ class PendingPodsSignal(Signal):
         pending_pods = self.cluster_connector.get_unschedulable_pods()
 
         # Get the most recent metrics _now_ and when the boost was set (if any) and merge them
-        current_resource_request = _get_resource_request(metrics, pending_pods)
-        boosted_metrics = self._get_boosted_metrics(metrics)
-        boosted_resource_request = _get_resource_request(boosted_metrics)
+        if self.parameters.get('per_pod_resource_requests'):
+            return pending_pods
+        else:
+            current_resource_request = _get_resource_request(metrics, pending_pods)
+            boosted_metrics = self._get_boosted_metrics(metrics)
+            boosted_resource_request = _get_resource_request(boosted_metrics)
 
-        return _get_max_resources(current_resource_request, boosted_resource_request)
+            return _get_max_resources(current_resource_request, boosted_resource_request)
 
     def _get_boosted_metrics(self, metrics: Dict) -> Optional[MetricsValuesDict]:
         """ Given a list of metrics, check to see if a boost_factor has been set,
