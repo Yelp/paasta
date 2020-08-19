@@ -1210,7 +1210,7 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    # TODO: get this from system config `.git_config`
+    # TODO: PAASTA-16927: get this from system config `.git_config`
     default_location = "git@github.yelpcorp.com:services/%s" % service
     return general_config.get("git_url", default_location)
 
@@ -2460,7 +2460,6 @@ class SystemPaastaConfig:
 
         :returns: the git config dict for a specific repo.
         """
-        # if there repo doesn't exist, we want to raise a KeyError
         return self.get_git_config().get("repos", {}).get(repo_name, {})
 
 

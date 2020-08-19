@@ -55,12 +55,14 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
@@ -1113,12 +1115,22 @@ def pick_random_port(service_name):
     return ephemeral_port_reserve.reserve("0.0.0.0", preferred_port)
 
 
-def trigger_deploys(service):
+def trigger_deploys(
+    service: str, system_config: Optional["SystemPaastaConfig"] = None,
+) -> None:
     """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
     service that listens for a service string and then generates a service deployment"""
-    logline = f"Notifying sysgit to generate a deployment for {service}"
+    logline = f"Notifying soa-configs primary to generate a deployment for {service}"
     _log(service=service, line=logline, component="deploy", level="event")
+    if not system_config:
+        system_config = load_system_paasta_config()
+    server = system_config.get_git_repo_config("yelpsoa-configs").get(
+        "git_server", DEFAULT_SOA_CONFIGS_GIT_URL,
+    )
+
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(("sysgit.yelpcorp.com", 5049))
-    client.send(f"{service}\n".encode("utf-8"))
-    client.close()
+    try:
+        client.connect((server, 5049))
+        client.send(f"{service}\n".encode("utf-8"))
+    finally:
+        client.close()

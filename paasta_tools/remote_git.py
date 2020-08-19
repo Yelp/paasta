@@ -123,5 +123,5 @@ def get_authors(git_url, from_sha, to_sha):
         )
         return _run(command=ssh_command, timeout=5.0)
     else:
-        # TODO: support getting authors for services on GHE
+        # TODO: PAASTA-16927: support getting authors for services on GHE
         return 1, f"Fetching authors not supported for {git_server}"
