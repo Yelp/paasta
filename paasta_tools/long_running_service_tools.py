@@ -228,7 +228,12 @@ class LongRunningServiceConfig(InstanceConfig):
             return cmd
 
     def get_healthcheck_grace_period_seconds(self) -> float:
-        """How long Marathon should give a service to come up before counting failed healthchecks."""
+        """
+        Grace periods indicate different things on kubernetes/marathon: on
+        marathon, it indicates how long marathon will tolerate failing
+        healthchecks; on kubernetes, how long before kubernetes will start
+        sending healthcheck and liveness probes.
+        """
         return self.config_dict.get("healthcheck_grace_period_seconds", 60)
 
     def get_healthcheck_interval_seconds(self) -> float:
