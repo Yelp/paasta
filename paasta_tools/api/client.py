@@ -25,6 +25,7 @@ from bravado.client import SwaggerClient
 from bravado.requests_client import RequestsClient
 
 import paasta_tools.api.auth_decorator
+from paasta_tools import paastaapi
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
@@ -102,11 +103,9 @@ def get_paasta_oapi_client(
     parsed = urlparse(api_endpoints[cluster])
     server_variables = dict(scheme=parsed.scheme, host=parsed.netloc)
 
-    import paasta_tools.paastaapi as oapi
-
-    config = oapi.Configuration(server_variables=server_variables)
-    client = oapi.ApiClient(configuration=config)
-    return oapi.DefaultApi(api_client=client)
+    config = paastaapi.Configuration(server_variables=server_variables)
+    client = paastaapi.ApiClient(configuration=config)
+    return paastaapi.DefaultApi(api_client=client)
 
 
 class PaastaRequestsClient(RequestsClient):
