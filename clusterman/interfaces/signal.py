@@ -24,6 +24,7 @@ from clusterman_metrics import APP_METRICS
 from clusterman_metrics import ClustermanMetricsBotoClient
 from clusterman_metrics import MetricsValuesDict
 from clusterman_metrics import SYSTEM_METRICS
+from kubernetes.client.models.v1_pod import V1Pod as KubernetesPod
 from mypy_extensions import TypedDict
 
 from clusterman.exceptions import MetricsError
@@ -88,7 +89,7 @@ class Signal(metaclass=ABCMeta):
             self,
             timestamp: arrow.Arrow,
             retry_on_broken_pipe: bool = True,
-     ) -> Union[SignalResourceRequest, List[SignalResourceRequest]]:
+     ) -> Union[SignalResourceRequest, List[KubernetesPod]]:
         """ Compute a signal and return either a single response (representing an aggregate resource request), or a
         list of responses (representing per-pod resource requests)
 
