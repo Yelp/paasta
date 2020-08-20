@@ -137,7 +137,7 @@ def paasta_metastatus_on_api_endpoint(
         res = client.metastatus(cmd_args=[str(arg) for arg in cmd_args])
         output, exit_code = res.output, res.exit_code
     except paastaapi.ApiException as exc:
-        output, exit_code = exc.response.text, exc.status_code
+        output, exit_code = exc.body, exc.status
 
     return exit_code, output
 
