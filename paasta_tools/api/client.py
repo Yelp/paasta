@@ -110,7 +110,7 @@ def get_paasta_oapi_client(
     cluster: str = None,
     system_paasta_config: SystemPaastaConfig = None,
     http_res: bool = False,
-) -> Any:
+) -> paastaapi.ApiClient:
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 
@@ -133,8 +133,7 @@ def get_paasta_oapi_client(
             config.key_file = opts["key"]
             config.ssl_ca_cert = opts["ca"]
 
-    client = paastaapi.ApiClient(configuration=config)
-    return paastaapi.DefaultApi(api_client=client)
+    return paastaapi.ApiClient(configuration=config)
 
 
 class PaastaRequestsClient(RequestsClient):
