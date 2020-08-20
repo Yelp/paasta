@@ -15,8 +15,10 @@ import json
 import os
 
 import mock
+import pytest
 import requests
 
+from paasta_tools.envoy_tools import are_services_up_in_pod
 from paasta_tools.envoy_tools import get_backends
 from paasta_tools.envoy_tools import get_casper_endpoints
 from paasta_tools.envoy_tools import match_backends_and_tasks
@@ -150,3 +152,168 @@ def test_match_backends_and_tasks():
             return tuple(sorted((t[0] or {}).items())), t[1]
 
         assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
+
+
+class TestServicesUpInPod:
+    pod_ip = "10.40.1.1"
+    pod_port = 8888
+
+    @pytest.fixture
+    def cluster(self):
+        def _make_cluster(health, ip=self.pod_ip):
+            return (
+                {
+                    "eds_health_status": health,
+                    "address": ip,
+                    "port_value": self.pod_port,
+                },
+                False,
+            )
+
+        return _make_cluster
+
+    @pytest.fixture
+    def mock_get_multiple_backends(self):
+        with mock.patch(
+            "paasta_tools.envoy_tools.get_multiple_backends", autospec=True
+        ) as mock_get_multiple_backends:
+            yield mock_get_multiple_backends
+
+    def test_are_services_up_on_port_no_clusters(self, mock_get_multiple_backends):
+        mock_get_multiple_backends.return_value = {}
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            envoy_admin_endpoint_format="http://{bla}:{more_bla}",
+            registrations=["service1.instance1", "service1.instance2"],
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_all_backends_healthy(
+        self, mock_get_multiple_backends, cluster
+    ):
+        mock_get_multiple_backends.side_effect = [
+            {
+                "service1.instance1": [
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                ]
+            },
+            {
+                "service1.instance2": [
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                ]
+            },
+        ]
+        assert are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            envoy_admin_endpoint_format="http://{bla}:{more_bla}",
+            registrations=["service1.instance1", "service1.instance2"],
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_unhealthy_service(
+        self, mock_get_multiple_backends, cluster
+    ):
+        mock_get_multiple_backends.side_effect = [
+            {
+                "service1.instance1": [
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                ]
+            },
+            {
+                "service1.instance2": [
+                    cluster("UNHEALTHY"),
+                    cluster("UNHEALTHY"),
+                    cluster("UNHEALTHY"),
+                ]
+            },
+        ]
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            envoy_admin_endpoint_format="http://{bla}:{more_bla}",
+            registrations=["service1.instance1", "service1.instance2"],
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_partial_health_backend(
+        self, mock_get_multiple_backends, cluster
+    ):
+        mock_get_multiple_backends.return_value = [
+            cluster("HEALTHY"),
+            cluster("HEALTHY"),
+            cluster("UNHEALTHY"),
+        ]
+        mock_get_multiple_backends.side_effect = [
+            {
+                "service1.instance1": [
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                    cluster("UNHEALTHY"),
+                ]
+            },
+            {
+                "service1.instance2": [
+                    cluster("HEALTHY"),
+                    cluster("UNHEALTHY"),
+                    cluster("HEALTHY"),
+                ]
+            },
+        ]
+        assert are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            envoy_admin_endpoint_format="http://{bla}:{more_bla}",
+            registrations=["service1.instance1", "service1.instance2"],
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
+
+    def test_are_services_up_on_port_missing_backend(
+        self, mock_get_multiple_backends, cluster
+    ):
+        mock_get_multiple_backends.side_effect = [
+            [cluster("HEALTHY"), cluster("HEALTHY"), cluster("HEALTHY")],
+            [cluster("HEALTHY"), cluster("HEALTHY"), cluster("HEALTHY")],
+            [],
+        ]
+        mock_get_multiple_backends.side_effect = [
+            {
+                "service1.instance1": [
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                    cluster("HEALTHY"),
+                ]
+            },
+            {
+                "service1.instance2": [
+                    cluster("HEALTHY"),
+                    cluster("UNHEALTHY"),
+                    cluster("HEALTHY"),
+                ]
+            },
+            {},
+        ]
+        # all up and present but service1.instance3 not present
+        assert not are_services_up_in_pod(
+            envoy_host="1.2.3.4",
+            envoy_admin_port=3212,
+            envoy_admin_endpoint_format="http://{bla}:{more_bla}",
+            registrations=[
+                "service1.instance1",
+                "service1.instance2",
+                "service1.instance3",
+            ],
+            pod_ip=self.pod_ip,
+            pod_port=self.pod_port,
+        )
