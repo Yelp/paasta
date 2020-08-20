@@ -394,6 +394,7 @@ def check_replication_for_instance(
 
     combined_output = ""
     service_is_under_replicated = False
+    failed_service_discovery_providers = set()
     for service_discovery_provider, replication_info in replication_infos.items():
         if len(replication_info) == 0:
             output = (
@@ -401,6 +402,7 @@ def check_replication_for_instance(
             ) % (instance_config.job_id, service_discovery_provider)
             log.error(output)
             service_is_under_replicated = True
+            failed_service_discovery_providers.add(service_discovery_provider)
         else:
             expected_count_per_location = int(expected_count / len(replication_info))
             output = ""
@@ -429,6 +431,7 @@ def check_replication_for_instance(
                             ratio,
                         )
                     )
+                    failed_service_discovery_providers.add(service_discovery_provider)
                 else:
                     output_ok += (
                         "- Service %s has %d out of %d expected instances in %s according to %s (OK: %d%%)\n"
@@ -452,48 +455,52 @@ def check_replication_for_instance(
             service_is_under_replicated_anywhere = any(under_replication_per_location)
             service_is_under_replicated |= service_is_under_replicated_anywhere
             if service_is_under_replicated_anywhere:
-                output += (
-                    "\n\n"
-                    "What this alert means:\n"
-                    "\n"
-                    "  This replication alert means that a %(service_discovery_provider)s powered loadbalancer\n"
-                    "  doesn't have enough healthy backends. Not having enough healthy backends\n"
-                    "  means that clients of that service will get 503s (http) or connection refused\n"
-                    "  (tcp) when trying to connect to it.\n"
-                    "\n"
-                    "Reasons this might be happening:\n"
-                    "\n"
-                    "  The service may simply not have enough copies or it could simply be\n"
-                    "  unhealthy in that location. There also may not be enough resources\n"
-                    "  in the cluster to support the requested instance count.\n"
-                    "\n"
-                    "Things you can do:\n"
-                    "\n"
-                    "  * You can view the logs for the job with:\n"
-                    "      paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
-                    "\n"
-                    "  * Fix the cause of the unhealthy service. Try running:\n"
-                    "\n"
-                    "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
-                    "\n"
-                    "  * Widen %(service_discovery_provider)s discovery settings\n"
-                    "  * Increase the instance count\n"
-                    "\n"
-                ) % {
-                    "service": instance_config.service,
-                    "instance": instance_config.instance,
-                    "cluster": instance_config.cluster,
-                    "service_discovery_provider": service_discovery_provider,
-                }
                 log.error(output)
             else:
                 log.info(output)
         combined_output += output
-    status = (
-        pysensu_yelp.Status.CRITICAL
-        if service_is_under_replicated
-        else pysensu_yelp.Status.OK
-    )
+
+    if service_is_under_replicated:
+        failed_service_discovery_providers_list = ",".join(
+            failed_service_discovery_providers
+        )
+        combined_output += (
+            "\n\n"
+            "What this alert means:\n"
+            "\n"
+            "  This replication alert means that a %(service_discovery_provider)s powered loadbalancer\n"
+            "  doesn't have enough healthy backends. Not having enough healthy backends\n"
+            "  means that clients of that service will get 503s (http) or connection refused\n"
+            "  (tcp) when trying to connect to it.\n"
+            "\n"
+            "Reasons this might be happening:\n"
+            "\n"
+            "  The service may simply not have enough copies or it could simply be\n"
+            "  unhealthy in that location. There also may not be enough resources\n"
+            "  in the cluster to support the requested instance count.\n"
+            "\n"
+            "Things you can do:\n"
+            "\n"
+            "  * You can view the logs for the job with:\n"
+            "      paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
+            "\n"
+            "  * Fix the cause of the unhealthy service. Try running:\n"
+            "\n"
+            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+            "\n"
+            "  * Widen %(service_discovery_provider)s discovery settings\n"
+            "  * Increase the instance count\n"
+            "\n"
+        ) % {
+            "service": instance_config.service,
+            "instance": instance_config.instance,
+            "cluster": instance_config.cluster,
+            "service_discovery_provider": failed_service_discovery_providers_list,
+        }
+        status = pysensu_yelp.Status.CRITICAL
+    else:
+        status = pysensu_yelp.Status.OK
+
     send_replication_event(
         instance_config=instance_config, status=status, output=combined_output
     )
