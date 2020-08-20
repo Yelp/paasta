@@ -67,4 +67,4 @@ repos:
         description: we're migrating to oapi, please keep it in sync with swagger
         entry: paasta_tools/contrib/check_swagger_oapi_sync.sh
         language: script
-        files: ^paasta_tools/api/api_docs/(swagger.json|oapi.yaml)
+        files: (^paasta_tools/api/api_docs/(swagger.json|oapi.yaml))|^paasta_tools/paastaapi
