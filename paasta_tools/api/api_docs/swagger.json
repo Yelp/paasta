@@ -17,7 +17,7 @@
     "tags": [
         {
             "name": "service",
-            "description": "Information about a paasta service"
+            "description": "information about a paasta service"
         }
     ],
     "paths": {

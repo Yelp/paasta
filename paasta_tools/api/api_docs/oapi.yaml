@@ -10,7 +10,7 @@ servers:
     host: {default: localhost}
     scheme: {default: http, enum: [http, https]}
 tags:
-- description: information about a paasta service
+- description: Information about a paasta service
   name: service
 components:
   schemas:
