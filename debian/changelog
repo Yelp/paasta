@@ -1,3 +1,12 @@
+paasta-tools (0.96.45) xenial; urgency=medium
+
+  * 0.96.45 tagged with 'make release'
+    Commit: Merge pull request #2889 from Yelp/u/gabrielv/MESH-857-envoy-
+    readiness-checks  MESH-857 Pod readiness checks supporting Envoy /
+    Smartstack
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 20 Aug 2020 03:31:26 -0700
+
 paasta-tools (0.96.44) xenial; urgency=medium
 
   * 0.96.44 tagged with 'make release'
