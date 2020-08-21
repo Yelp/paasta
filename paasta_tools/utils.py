@@ -3623,7 +3623,7 @@ def ldap_user_search(
     )
     conn.bind()
 
-    search_filter = f"(memberOf=CN={cn},{search_ou})"
+    search_filter = f"(&(memberOf=CN={cn},{search_ou})(!(userAccountControl=514)))"
     entries = conn.extend.standard.paged_search(
         search_base=search_base,
         search_scope=ldap3.SUBTREE,
