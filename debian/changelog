@@ -1,3 +1,12 @@
+paasta-tools (0.96.46) xenial; urgency=medium
+
+  * 0.96.46 tagged with 'make release'
+    Commit: Merge pull request #2895 from Yelp/u/kawaiwan/COMPINFRA-366-
+    use-service-configuration-lib-2.4.7  Use service-configuration-lib
+    2.4.7
+
+ -- Charles Wan <kawaiwan@yelp.com>  Fri, 21 Aug 2020 15:47:57 -0700
+
 paasta-tools (0.96.45) xenial; urgency=medium
 
   * 0.96.45 tagged with 'make release'
