@@ -19,6 +19,7 @@ from paasta_tools import paastaapi
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.utils import get_paasta_metastatus_cmd_args
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.paastaapi.api.default_api import DefaultApi
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -120,7 +121,7 @@ def paasta_metastatus_on_api_endpoint(
     autoscaling_info: bool = False,
     use_mesos_cache: bool = False,
 ) -> Tuple[int, str]:
-    client = paastaapi.DefaultApi(
+    client = DefaultApi(
         api_client=get_paasta_oapi_client(cluster, system_paasta_config)
     )
     if not client:

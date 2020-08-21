@@ -92,7 +92,7 @@ openapi-codegen:
 	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src \
 	        openapitools/openapi-generator-cli generate \
 	                -i /src/paasta_tools/api/api_docs/oapi.yaml \
-	                -g python \
+	                -g python-experimental \
 	                --package-name paasta_tools.paastaapi \
 	                -o /src/temp-openapi-client
 	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
