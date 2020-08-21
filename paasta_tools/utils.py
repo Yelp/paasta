@@ -1217,7 +1217,7 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     return general_config.get("git_url", default_location)
 
 
-def format_git_url(git_user, git_server, repo_name):
+def format_git_url(git_user: str, git_server: str, repo_name: str) -> str:
     return f"{git_user}@{git_server}:{repo_name}"
 
 
@@ -1841,6 +1841,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
+    git_config: Dict
     hacheck_sidecar_image_url: str
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
@@ -2461,7 +2462,7 @@ class SystemPaastaConfig:
             },
         )
 
-    def get_git_repo_config(self, repo_name) -> Dict:
+    def get_git_repo_config(self, repo_name: str) -> Dict:
         """Gets the git configuration for a specific repo.
 
         :returns: the git config dict for a specific repo.
