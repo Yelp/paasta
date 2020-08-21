@@ -14,6 +14,7 @@
 import abc
 import collections
 import csv
+import logging
 import socket
 from typing import Any
 from typing import cast
@@ -57,6 +58,9 @@ class HaproxyBackend(TypedDict, total=False):
     pxname: str
     svname: str
     status: str
+
+
+log = logging.getLogger(__name__)
 
 
 def retrieve_haproxy_csv(
@@ -495,12 +499,6 @@ class SmartstackServiceDiscovery(ServiceDiscoveryProvider):
 
     NAME = "Smartstack"
 
-    @staticmethod
-    def create(
-        system_paasta_config: SystemPaastaConfig, _: Any
-    ) -> "SmartstackServiceDiscovery":
-        return SmartstackServiceDiscovery(system_paasta_config)
-
     def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
         self._synapse_port = system_paasta_config.get_synapse_port()
         self._synapse_haproxy_url_format = (
@@ -519,12 +517,6 @@ class EnvoyServiceDiscovery(ServiceDiscoveryProvider):
 
     NAME = "Envoy"
 
-    @staticmethod
-    def create(
-        system_paasta_config: SystemPaastaConfig, _: Any
-    ) -> "EnvoyServiceDiscovery":
-        return EnvoyServiceDiscovery(system_paasta_config)
-
     def __init__(self, system_paasta_config: SystemPaastaConfig) -> None:
         self._envoy_admin_port = system_paasta_config.get_envoy_admin_port()
         self._envoy_admin_endpoint_format = (
@@ -539,21 +531,18 @@ class EnvoyServiceDiscovery(ServiceDiscoveryProvider):
         )
 
 
-_SERVICE_DISCOVERY_PROVIDERS_FACTORIES = {
-    "smartstack": SmartstackServiceDiscovery.create,
-    "envoy": EnvoyServiceDiscovery.create,
-}
-
-
 def get_service_discovery_providers(
     system_paasta_config: SystemPaastaConfig,
 ) -> List[ServiceDiscoveryProvider]:
-    service_discovery_providers = []
-    for name, cfg in system_paasta_config.get_service_discovery_providers().items():
-        service_discovery_providers.append(
-            _SERVICE_DISCOVERY_PROVIDERS_FACTORIES[name](system_paasta_config, cfg)
-        )
-    return service_discovery_providers
+    providers: List[ServiceDiscoveryProvider] = []
+    for name, _ in system_paasta_config.get_service_discovery_providers().items():
+        if name == "smartstack":
+            providers.append(SmartstackServiceDiscovery(system_paasta_config))
+        elif name == "envoy":
+            providers.append(EnvoyServiceDiscovery(system_paasta_config))
+        else:
+            log.warn("unknown provider")
+    return providers
 
 
 class BaseReplicationChecker(ReplicationChecker):
