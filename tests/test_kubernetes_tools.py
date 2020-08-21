@@ -455,10 +455,22 @@ class TestKubernetesDeploymentConfig:
             mock_service_namespace = mock.Mock(
                 is_in_smartstack=mock.Mock(return_value=False)
             )
+            hacheck_sidecar_volumes = [
+                DockerVolume(
+                    hostPath="/nail/blah", containerPath="/nail/foo", mode="RO"
+                ),
+                DockerVolume(
+                    hostPath="/nail/thing", containerPath="/nail/bar", mode="RO"
+                ),
+            ]
+            expected_volumes = [
+                V1VolumeMount(mount_path="/nail/foo", name="sane-name", read_only=True),
+                V1VolumeMount(mount_path="/nail/bar", name="sane-name", read_only=True),
+            ]
 
             assert (
                 self.deployment.get_sidecar_containers(
-                    mock_system_config, mock_service_namespace
+                    mock_system_config, mock_service_namespace, hacheck_sidecar_volumes
                 )
                 == []
             )
@@ -468,7 +480,7 @@ class TestKubernetesDeploymentConfig:
             )
 
             ret = self.deployment.get_sidecar_containers(
-                mock_system_config, mock_service_namespace
+                mock_system_config, mock_service_namespace, hacheck_sidecar_volumes
             )
             expected = [
                 V1Container(
@@ -499,6 +511,7 @@ class TestKubernetesDeploymentConfig:
                     ),
                     name="hacheck",
                     ports=[V1ContainerPort(container_port=6666)],
+                    volume_mounts=expected_volumes,
                 )
             ]
             assert ret == expected
@@ -509,7 +522,7 @@ class TestKubernetesDeploymentConfig:
                 ),
             )
             ret = self.deployment.get_sidecar_containers(
-                mock_system_config, mock_service_namespace
+                mock_system_config, mock_service_namespace, hacheck_sidecar_volumes
             )
             expected = [
                 V1Container(
@@ -540,6 +553,7 @@ class TestKubernetesDeploymentConfig:
                         },
                     ),
                     ports=[V1ContainerPort(container_port=6666)],
+                    volume_mounts=expected_volumes,
                     readiness_probe=V1Probe(
                         _exec=V1ExecAction(
                             command=["/nail/blah.sh", "8888", "universal.credit"]
@@ -734,6 +748,7 @@ class TestKubernetesDeploymentConfig:
                 self.deployment.config_dict["prometheus_port"] = prometheus_port
             mock_system_config = mock.Mock()
             mock_docker_volumes: Sequence[DockerVolume] = []
+            mock_hacheck_sidecar_volumes: Sequence[DockerVolume] = []
             mock_aws_ebs_volumes: Sequence[AwsEbsVolume] = []
             ports = [V1ContainerPort(container_port=port) for port in expected_ports]
             expected = [
@@ -769,6 +784,7 @@ class TestKubernetesDeploymentConfig:
             assert (
                 self.deployment.get_kubernetes_containers(
                     docker_volumes=mock_docker_volumes,
+                    hacheck_sidecar_volumes=mock_hacheck_sidecar_volumes,
                     system_paasta_config=mock_system_config,
                     aws_ebs_volumes=mock_aws_ebs_volumes,
                     service_namespace_config=service_namespace_config,
@@ -868,6 +884,14 @@ class TestKubernetesDeploymentConfig:
             DockerVolume(hostPath="/nail/blah", containerPath="/nail/foo", mode="RO"),
             DockerVolume(hostPath="/nail/thing", containerPath="/nail/bar", mode="RO"),
         ]
+        mock_hacheck_volumes = [
+            DockerVolume(hostPath="/nail/blah", containerPath="/nail/foo", mode="RO"),
+            DockerVolume(
+                hostPath="/nail/anotherblah",
+                containerPath="/nail/another-foo",
+                mode="RO",
+            ),
+        ]
         mock_aws_ebs_volumes = [
             AwsEbsVolume(
                 volume_id="vol-zzzzzzzzzzzzzzzzz",
@@ -887,6 +911,10 @@ class TestKubernetesDeploymentConfig:
                 name="host--slash-nailslash-thing",
             ),
             V1Volume(
+                host_path=V1HostPathVolumeSource(path="/nail/anotherblah"),
+                name="host--slash-nailslash-anotherblah",
+            ),
+            V1Volume(
                 aws_elastic_block_store=V1AWSElasticBlockStoreVolumeSource(
                     volume_id="vol-zzzzzzzzzzzzzzzzz",
                     fs_type="ext4",
@@ -898,7 +926,8 @@ class TestKubernetesDeploymentConfig:
         ]
         assert (
             self.deployment.get_pod_volumes(
-                docker_volumes=mock_docker_volumes, aws_ebs_volumes=mock_aws_ebs_volumes
+                docker_volumes=mock_docker_volumes + mock_hacheck_volumes,
+                aws_ebs_volumes=mock_aws_ebs_volumes,
             )
             == expected_volumes
         )
@@ -3041,6 +3070,7 @@ def test_warning_big_bounce():
         return_value=SystemPaastaConfig(
             {
                 "volumes": [],
+                "hacheck_sidecar_volumes": [],
                 "expected_slave_attributes": [{"region": "blah"}],
                 "docker_registry": "docker-registry.local",
             },

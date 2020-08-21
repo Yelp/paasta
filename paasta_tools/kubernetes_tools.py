@@ -741,6 +741,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         system_paasta_config: SystemPaastaConfig,
         service_namespace_config: ServiceNamespaceConfig,
+        hacheck_sidecar_volumes: Sequence[DockerVolume],
     ) -> Sequence[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
@@ -785,6 +786,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     env=self.get_kubernetes_environment(),
                     ports=[V1ContainerPort(container_port=6666)],
                     readiness_probe=readiness_probe,
+                    volume_mounts=self.get_volume_mounts(
+                        docker_volumes=hacheck_sidecar_volumes,
+                        aws_ebs_volumes=[],
+                        persistent_volumes=[],
+                    ),
                 )
             )
         return sidecars
@@ -958,6 +964,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_containers(
         self,
         docker_volumes: Sequence[DockerVolume],
+        hacheck_sidecar_volumes: Sequence[DockerVolume],
         system_paasta_config: SystemPaastaConfig,
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         service_namespace_config: ServiceNamespaceConfig,
@@ -996,6 +1003,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         containers = [service_container] + self.get_sidecar_containers(  # type: ignore
             system_paasta_config=system_paasta_config,
             service_namespace_config=service_namespace_config,
+            hacheck_sidecar_volumes=hacheck_sidecar_volumes,
         )
         return containers
 
@@ -1287,6 +1295,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
+        hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
         annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": "true"
@@ -1318,6 +1327,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_account_name=self.get_kubernetes_service_account_name(),
             containers=self.get_kubernetes_containers(
                 docker_volumes=docker_volumes,
+                hacheck_sidecar_volumes=hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
                 system_paasta_config=system_paasta_config,
                 service_namespace_config=service_namespace_config,
@@ -1326,7 +1336,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             node_selector=self.get_node_selector(),
             restart_policy="Always",
             volumes=self.get_pod_volumes(
-                docker_volumes=docker_volumes,
+                docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
             ),
         )
