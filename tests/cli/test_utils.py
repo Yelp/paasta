@@ -25,6 +25,7 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import SystemPaastaConfig
 
 
 @patch("socket.gethostbyname_ex", autospec=True)
@@ -495,3 +496,20 @@ def test_execute_paasta_cluster_boost_on_remote_master(
         expected_calls.append(mock.call(master=master_result, **shared_kwargs))
     assert mock_boost.call_args_list == expected_calls
     assert code == expected_result
+
+
+@mock.patch("paasta_tools.cli.utils._log", mock.Mock(), autospec=None)
+@mock.patch("paasta_tools.cli.utils.load_system_paasta_config", autospec=True)
+@mock.patch("socket.socket", autospec=True)
+def test_trigger_deploys(mock_socket, mock_load_config):
+    mock_load_config.return_value = SystemPaastaConfig({}, "/some/fake/dir")
+    mock_client = mock_socket.return_value
+
+    utils.trigger_deploys("a_service")
+
+    assert mock_load_config.call_count == 1
+    assert mock_client.connect.call_args_list == [
+        mock.call(("sysgit.yelpcorp.com", 5049))
+    ]
+    assert mock_client.send.call_args_list == [mock.call("a_service\n".encode("utf-8"))]
+    assert mock_client.close.call_count == 1

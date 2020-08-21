@@ -116,6 +116,8 @@ DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = (
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_ADD = 1
 
+DEFAULT_SOA_CONFIGS_GIT_URL = "sysgit.yelpcorp.com"
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
@@ -1208,8 +1210,15 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    default_location = "git@github.yelpcorp.com:services/%s" % service
+    # TODO: PAASTA-16927: get this from system config `.git_config`
+    default_location = format_git_url(
+        "git", "github.yelpcorp.com", f"services/{service}"
+    )
     return general_config.get("git_url", default_location)
+
+
+def format_git_url(git_user: str, git_server: str, repo_name: str) -> str:
+    return f"{git_user}@{git_server}:{repo_name}"
 
 
 def get_service_docker_registry(
@@ -1835,6 +1844,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
+    git_config: Dict
     hacheck_sidecar_image_url: str
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
@@ -2458,6 +2468,31 @@ class SystemPaastaConfig:
 
     def get_default_push_groups(self) -> List:
         return self.config_dict.get("default_push_groups", None)
+
+    def get_git_config(self) -> Dict:
+        """Gets git configuration. Includes repo names and their git servers.
+
+        :returns: the git config dict
+        """
+        return self.config_dict.get(
+            "git_config",
+            {
+                "git_user": "git",
+                "repos": {
+                    "yelpsoa-configs": {
+                        "repo_name": "yelpsoa-configs",
+                        "git_server": DEFAULT_SOA_CONFIGS_GIT_URL,
+                    },
+                },
+            },
+        )
+
+    def get_git_repo_config(self, repo_name: str) -> Dict:
+        """Gets the git configuration for a specific repo.
+
+        :returns: the git config dict for a specific repo.
+        """
+        return self.get_git_config().get("repos", {}).get(repo_name, {})
 
 
 def _run(
