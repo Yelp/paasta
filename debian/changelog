@@ -1,3 +1,12 @@
+paasta-tools (0.96.47) xenial; urgency=medium
+
+  * 0.96.47 tagged with 'make release'
+    Commit: Merge pull request #2894 from Yelp/u/gabrielv/MESH-857-
+    hacheck-volumes  MESH-857 Adds volume_mounts to the hacheck sidecar
+    container
+
+ -- gabrielv <gabrielv@yelp.com>  Mon, 24 Aug 2020 08:17:00 -0700
+
 paasta-tools (0.96.46) xenial; urgency=medium
 
   * 0.96.46 tagged with 'make release'
