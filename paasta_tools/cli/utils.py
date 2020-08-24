@@ -1125,7 +1125,7 @@ def trigger_deploys(
     if not system_config:
         system_config = load_system_paasta_config()
     server = system_config.get_git_repo_config("yelpsoa-configs").get(
-        "git_server", DEFAULT_SOA_CONFIGS_GIT_URL,
+        "deploy_server", DEFAULT_SOA_CONFIGS_GIT_URL,
     )
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

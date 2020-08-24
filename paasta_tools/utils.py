@@ -2493,6 +2493,7 @@ class SystemPaastaConfig:
                     "yelpsoa-configs": {
                         "repo_name": "yelpsoa-configs",
                         "git_server": DEFAULT_SOA_CONFIGS_GIT_URL,
+                        "deploy_server": DEFAULT_SOA_CONFIGS_GIT_URL,
                     },
                 },
             },
