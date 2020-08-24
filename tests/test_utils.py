@@ -587,23 +587,35 @@ def test_SystemPaastaConfig_get_deployd_log_level():
 
 
 @pytest.mark.parametrize(
-    "config,expected_server",
+    "config,expected_git,expected_primary",
     [
-        ({}, "sysgit.yelpcorp.com"),
+        ({}, "sysgit.yelpcorp.com", "sysgit.yelpcorp.com"),
         (
-            {"git_config": {"repos": {"yelpsoa-configs": {"git_server": "a_server"}}}},
+            {
+                "git_config": {
+                    "repos": {
+                        "yelpsoa-configs": {
+                            "git_server": "a_server",
+                            "deploy_server": "b_server",
+                        },
+                    },
+                },
+            },
             "a_server",
+            "b_server",
         ),
     ],
 )
-def test_SystemPaastaConfig_get_git_config(config, expected_server):
+def test_SystemPaastaConfig_get_git_config(config, expected_git, expected_primary):
     fake_config = utils.SystemPaastaConfig(config, "/some/fake/dir")
 
     actual_git = fake_config.get_git_config()
     actual_repo = fake_config.get_git_repo_config("yelpsoa-configs")
 
-    assert actual_git["repos"]["yelpsoa-configs"]["git_server"] == expected_server
-    assert actual_repo["git_server"] == expected_server
+    assert actual_git["repos"]["yelpsoa-configs"]["git_server"] == expected_git
+    assert actual_repo["git_server"] == expected_git
+    assert actual_git["repos"]["yelpsoa-configs"]["deploy_server"] == expected_primary
+    assert actual_repo["deploy_server"] == expected_primary
 
 
 @pytest.yield_fixture
