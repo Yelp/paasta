@@ -876,11 +876,7 @@ class InstanceConfig:
 
     def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
-        deduped = {
-            v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v
-            for v in volumes
-        }.values()
-        return sort_dicts(deduped)
+        return _reorder_docker_volumes(volumes)
 
     def get_persistent_volumes(self) -> Sequence[PersistentVolume]:
         return self.config_dict.get("persistent_volumes", [])
@@ -1846,6 +1842,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     fsm_template: str
     git_config: Dict
     hacheck_sidecar_image_url: str
+    hacheck_sidecar_volumes: List[DockerVolume]
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -1995,6 +1992,20 @@ class SystemPaastaConfig:
                 "Could not find docker registry in configuration directory: %s"
                 % self.directory
             )
+
+    def get_hacheck_sidecar_volumes(self) -> List[DockerVolume]:
+        """Get the hacheck sidecar volumes defined in this host's hacheck_sidecar_volumes config file.
+
+        :returns: The list of volumes specified in the paasta configuration
+        """
+        try:
+            volumes = self.config_dict["hacheck_sidecar_volumes"]
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                "Could not find hacheck_sidecar_volumes in configuration directory: %s"
+                % self.directory
+            )
+        return _reorder_docker_volumes(list(volumes))
 
     def get_volumes(self) -> Sequence[DockerVolume]:
         """Get the volumes defined in this host's volumes config file.
@@ -3668,3 +3679,10 @@ def ldap_user_search(
         time_limit=10,
     )
     return {entry["attributes"]["sAMAccountName"] for entry in entries}
+
+
+def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
+    deduped = {
+        v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
+    }.values()
+    return sort_dicts(deduped)

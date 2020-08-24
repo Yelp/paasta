@@ -420,6 +420,22 @@ def test_SystemPaastaConfig_get_volumes():
     assert actual == expected
 
 
+def test_SystemPaastaConfig_get_hacheck_sidecar_volumes():
+    fake_config = utils.SystemPaastaConfig(
+        {
+            "hacheck_sidecar_volumes": [
+                {"hostPath": "fake_other_path", "containerPath": "/blurp", "mode": "ro"}
+            ]
+        },
+        "/some/fake/dir",
+    )
+    expected = [
+        {"hostPath": "fake_other_path", "containerPath": "/blurp", "mode": "ro"}
+    ]
+    actual = fake_config.get_hacheck_sidecar_volumes()
+    assert actual == expected
+
+
 def test_SystemPaastaConfig_get_volumes_dne():
     fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
     with raises(utils.PaastaNotConfiguredError):
