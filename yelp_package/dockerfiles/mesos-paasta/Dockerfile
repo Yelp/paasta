@@ -20,6 +20,7 @@ RUN ln -s /etc/mesos-slave-secret /nail/etc/mesos-slave-secret
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 
 ADD requirements.txt requirements-dev.txt requirements-bootstrap.txt /paasta/
+RUN python -m pip install --upgrade pip==20.0.2
 RUN pip install virtualenv==15.1.0
 RUN virtualenv /venv -ppython3.6
 ENV PATH=/venv/bin:$PATH
