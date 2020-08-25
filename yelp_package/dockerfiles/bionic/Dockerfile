@@ -46,6 +46,7 @@ RUN apt-get update > /dev/null && \
         zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
 
+RUN python -m pip install --upgrade pip==20.0.2
 RUN pip install virtualenv==16.0.0
 RUN cd /tmp && \
     wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
