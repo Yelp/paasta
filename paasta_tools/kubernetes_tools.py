@@ -726,7 +726,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_readiness_check_script(
         self, system_paasta_config: SystemPaastaConfig
-    ) -> str:
+    ) -> List[str]:
         """Script to check if a service is up in smartstack / envoy"""
         enable_envoy_check = self.get_enable_envoy_readiness_check(system_paasta_config)
         enable_nerve_check = self.get_enable_nerve_readiness_check(system_paasta_config)
@@ -753,10 +753,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ):
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
-                    command=[
-                        self.get_readiness_check_script(system_paasta_config),
-                        str(self.get_container_port()),
-                    ]
+                    command=self.get_readiness_check_script(system_paasta_config)
+                    + [str(self.get_container_port())]
                     + self.get_registrations()
                 ),
                 initial_delay_seconds=10,
