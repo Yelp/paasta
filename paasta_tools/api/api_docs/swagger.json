@@ -1240,6 +1240,10 @@
                     "$ref": "#/definitions/SmartstackStatus",
                     "description": "Status of the service in smartstack"
                 },
+                "envoy": {
+                    "$ref": "#/definitions/EnvoyStatus",
+                    "description": "Status of the service in Envoy"
+                },
                 "namespace": {
                     "type": "string",
                     "description": "The namespace this app is running"

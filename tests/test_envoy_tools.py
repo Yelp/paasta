@@ -21,6 +21,7 @@ import requests
 from paasta_tools.envoy_tools import are_services_up_in_pod
 from paasta_tools.envoy_tools import get_backends
 from paasta_tools.envoy_tools import get_casper_endpoints
+from paasta_tools.envoy_tools import match_backends_and_pods
 from paasta_tools.envoy_tools import match_backends_and_tasks
 
 
@@ -82,8 +83,9 @@ def test_get_casper_endpoints():
     assert expected == get_casper_endpoints(mock_envoy_admin_clusters_data)
 
 
-def test_match_backends_and_tasks():
-    backends = [
+@pytest.fixture
+def mock_backends():
+    return [
         {
             "address": "10.50.2.4",
             "port_value": 31000,
@@ -120,6 +122,11 @@ def test_match_backends_and_tasks():
             "has_associated_task": False,
         },
     ]
+
+
+def test_match_backends_and_tasks(mock_backends):
+    backends = mock_backends
+
     good_task1 = mock.Mock(host="box4", ports=[31000])
     good_task2 = mock.Mock(host="box5", ports=[31001])
     bad_task = mock.Mock(host="box7", ports=[31000])
@@ -152,6 +159,32 @@ def test_match_backends_and_tasks():
             return tuple(sorted((t[0] or {}).items())), t[1]
 
         assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
+
+
+def test_match_backends_and_pods(mock_backends):
+    backends = mock_backends
+
+    good_pod_1 = mock.Mock(status=mock.Mock(pod_ip="10.50.2.4"))
+    good_pod_2 = mock.Mock(status=mock.Mock(pod_ip="10.50.2.5"))
+    bad_pod_1 = mock.Mock(status=mock.Mock(pod_ip="10.50.2.10"))
+    pods = [good_pod_1, good_pod_2, bad_pod_1]
+
+    expected = [
+        (backends[0], good_pod_1),
+        (backends[1], good_pod_2),
+        (None, bad_pod_1),
+        (backends[2], None),
+        (backends[3], None),
+        (backends[4], None),
+    ]
+    actual = match_backends_and_pods(backends, pods)
+
+    def keyfunc(t):
+        sorted_backend = tuple(sorted((t[0] or {}).items()))
+        pod_ip = t[1].status.pod_ip if t[1] else ""
+        return sorted_backend, pod_ip
+
+    assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
 
 
 class TestServicesUpInPod:

@@ -986,6 +986,11 @@ def mock_kubernetes_status():
             expected_backends_per_location=1,
             locations=[],
         ),
+        envoy=Struct(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=1,
+            locations=[],
+        ),
         evicted_count=1,
     )
 
@@ -1224,6 +1229,7 @@ class TestPrintKubernetesStatus:
         "paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True
     )
     @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     @patch(
         "paasta_tools.cli.cmds.status.kubernetes_app_deploy_status_human", autospec=True
@@ -1236,6 +1242,7 @@ class TestPrintKubernetesStatus:
         mock_desired_state,
         mock_kubernetes_app_deploy_status_human,
         mock_naturaltime,
+        mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
         mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_status,

@@ -20,7 +20,6 @@ import datetime
 import logging
 import re
 import traceback
-from enum import Enum
 from typing import Any
 from typing import Dict
 from typing import List
@@ -183,7 +182,7 @@ def marathon_instance_status(
             if include_smartstack:
                 mstatus["smartstack"] = marathon_service_mesh_status(
                     service,
-                    ServiceMesh.SMARTSTACK,
+                    pik.ServiceMesh.SMARTSTACK,
                     instance,
                     job_config,
                     service_namespace_config,
@@ -193,7 +192,7 @@ def marathon_instance_status(
             if include_envoy:
                 mstatus["envoy"] = marathon_service_mesh_status(
                     service,
-                    ServiceMesh.ENVOY,
+                    pik.ServiceMesh.ENVOY,
                     instance,
                     job_config,
                     service_namespace_config,
@@ -327,11 +326,6 @@ def build_marathon_task_dict(marathon_task: MarathonTask) -> MutableMapping[str,
     return task_dict
 
 
-class ServiceMesh(Enum):
-    SMARTSTACK = "smartstack"
-    ENVOY = "envoy"
-
-
 def _build_smartstack_location_dict_for_backends(
     synapse_host: str,
     registration: str,
@@ -401,7 +395,7 @@ def _build_envoy_location_dict_for_backends(
 
 def marathon_service_mesh_status(
     service: str,
-    service_mesh: ServiceMesh,
+    service_mesh: pik.ServiceMesh,
     instance: str,
     job_config: marathon_tools.MarathonServiceConfig,
     service_namespace_config: ServiceNamespaceConfig,
@@ -434,7 +428,7 @@ def marathon_service_mesh_status(
     }
 
     for location, hosts in slave_hostname_by_location.items():
-        if service_mesh == ServiceMesh.SMARTSTACK:
+        if service_mesh == pik.ServiceMesh.SMARTSTACK:
             service_mesh_status["locations"].append(
                 _build_smartstack_location_dict_for_backends(
                     synapse_host=hosts[0],
@@ -444,7 +438,7 @@ def marathon_service_mesh_status(
                     should_return_individual_backends=should_return_individual_backends,
                 )
             )
-        elif service_mesh == ServiceMesh.ENVOY:
+        elif service_mesh == pik.ServiceMesh.ENVOY:
             service_mesh_status["locations"].append(
                 _build_envoy_location_dict_for_backends(
                     envoy_host=hosts[0],
@@ -676,6 +670,7 @@ def instance_status(request):
                     instance=instance,
                     verbose=verbose,
                     include_smartstack=include_smartstack,
+                    include_envoy=include_envoy,
                     instance_type=instance_type,
                     settings=settings,
                 )
