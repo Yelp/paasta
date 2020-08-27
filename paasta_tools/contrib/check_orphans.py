@@ -43,7 +43,7 @@ def get_zk_hosts(path: str) -> List[str]:
 SmartstackData = Dict[str, Dict[str, Any]]
 
 
-def get_zk_data(blacklisted_services: Set[str]) -> SmartstackData:
+def get_zk_data(ignored_services: Set[str]) -> SmartstackData:
     logger.info(f"using {DEFAULT_ZK_DISCOVERY_PATH} for zookeeper")
     zk_hosts = get_zk_hosts(DEFAULT_ZK_DISCOVERY_PATH)
 
@@ -55,7 +55,7 @@ def get_zk_data(blacklisted_services: Set[str]) -> SmartstackData:
     zk_data = {}
     services = zk.get_children(PREFIX)
     for service in services:
-        if service in blacklisted_services:
+        if service in ignored_services:
             continue
         service_instances = zk.get_children(os.path.join(PREFIX, service))
         instances_data = {}
@@ -137,10 +137,10 @@ def read_nerve_files(
 
 
 def get_instance_data(
-    blacklisted_services: Set[str],
+    ignored_services: Set[str],
 ) -> Tuple[Set[InstanceTuple], Set[InstanceTuple]]:
     # Dump ZK
-    zk_data = get_zk_data(blacklisted_services)
+    zk_data = get_zk_data(ignored_services)
     zk_instance_data = read_from_zk_data(zk_data)
 
     hosts = {x[0] for x in zk_instance_data}
@@ -208,7 +208,9 @@ def main() -> ExitCode:
     logging.basicConfig(level=logging.WARNING)
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--blacklisted-services",
+        "--ignored-services",
+        # TODO(ckuehl|2020-08-27): Remove this deprecated option alias eventually.
+        "--blacklisted-services-DEPRECATED",
         default="",
         type=str,
         help="Comma separated list of services to ignore",
@@ -216,7 +218,7 @@ def main() -> ExitCode:
     args = parser.parse_args()
 
     zk_instance_data, nerve_instance_data = get_instance_data(
-        set(args.blacklisted_services.split(","))
+        set(args.ignored_services.split(","))
     )
 
     return check_orphans(zk_instance_data, nerve_instance_data)
