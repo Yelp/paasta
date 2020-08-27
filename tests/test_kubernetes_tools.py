@@ -398,9 +398,13 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "enable_envoy_check, enable_nerve_check, expected_cmd",
         [
-            (True, True, "/check_proxy_up.sh --enable-smartstack --enable-envoy"),
-            (True, False, "/check_proxy_up.sh --enable-envoy"),
-            (False, True, "/check_smartstack_up.sh"),
+            (
+                True,
+                True,
+                ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
+            ),
+            (True, False, ["/check_proxy_up.sh", "--enable-envoy"]),
+            (False, True, ["/check_smartstack_up.sh"]),
         ],
     )
     def test_get_readiness_check_script(
@@ -445,7 +449,7 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_readiness_check_script",
             autospec=True,
-            return_value="/nail/blah.sh",
+            return_value=["/nail/blah.sh"],
         ):
             mock_system_config = mock.Mock(
                 get_hacheck_sidecar_image_url=mock.Mock(

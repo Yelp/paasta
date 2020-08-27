@@ -1835,8 +1835,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     enforce_disk_quota: bool
     envoy_admin_domain_name: str
     envoy_admin_endpoint_format: str
-    envoy_nerve_readiness_check_script: str
-    envoy_readiness_check_script: str
+    envoy_nerve_readiness_check_script: List[str]
+    envoy_readiness_check_script: List[str]
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
@@ -1858,7 +1858,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
-    nerve_readiness_check_script: str
+    nerve_readiness_check_script: List[str]
     paasta_native: PaastaNativeConfig
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
@@ -2068,20 +2068,20 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get("enable_envoy_readiness_check", False)
 
-    def get_nerve_readiness_check_script(self) -> str:
+    def get_nerve_readiness_check_script(self) -> List[str]:
         return self.config_dict.get(
-            "nerve_readiness_check_script", "/check_smartstack_up.sh"
+            "nerve_readiness_check_script", ["/check_smartstack_up.sh"]
         )
 
-    def get_envoy_readiness_check_script(self) -> str:
+    def get_envoy_readiness_check_script(self) -> List[str]:
         return self.config_dict.get(
-            "envoy_readiness_check_script", "/check_proxy_up.sh --enable-envoy"
+            "envoy_readiness_check_script", ["/check_proxy_up.sh", "--enable-envoy"]
         )
 
-    def get_envoy_nerve_readiness_check_script(self) -> str:
+    def get_envoy_nerve_readiness_check_script(self) -> List[str]:
         return self.config_dict.get(
             "envoy_nerve_readiness_check_script",
-            "/check_proxy_up.sh --enable-smartstack --enable-envoy",
+            ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
         )
 
     def get_enforce_disk_quota(self) -> bool:
