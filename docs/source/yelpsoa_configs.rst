@@ -391,9 +391,9 @@ instance MAY have:
     is treated as a failure. This is a required field if ``healthcheck_mode``
     is ``cmd``.
 
-  * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long for a
-    service to come up before counting failed healthchecks. Defaults to 60
-    seconds.
+  * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long
+    after the container has started before liveness or readiness probes are
+    initiated. Defaults to 60 seconds.
 
   * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
     healthchecks. Defaults to 10 seconds.
