@@ -1,3 +1,11 @@
+paasta-tools (0.96.48) xenial; urgency=medium
+
+  * 0.96.48 tagged with 'make release'
+    Commit: Merge pull request #2899 from Yelp/u/gabrielv/MESH-857-fix-
+    readiness-cmd  MESH-857 Fix hacheck-sidecar command path
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 27 Aug 2020 03:13:22 -0700
+
 paasta-tools (0.96.47) xenial; urgency=medium
 
   * 0.96.47 tagged with 'make release'
