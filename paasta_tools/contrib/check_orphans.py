@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
+import functools
 import json
 import logging
 import os.path
+import re
+import socket
 import sys
 from collections import defaultdict
 from enum import Enum
@@ -43,7 +46,7 @@ def get_zk_hosts(path: str) -> List[str]:
 SmartstackData = Dict[str, Dict[str, Any]]
 
 
-def get_zk_data(blacklisted_services: Set[str]) -> SmartstackData:
+def get_zk_data(ignored_services: Set[str]) -> SmartstackData:
     logger.info(f"using {DEFAULT_ZK_DISCOVERY_PATH} for zookeeper")
     zk_hosts = get_zk_hosts(DEFAULT_ZK_DISCOVERY_PATH)
 
@@ -55,7 +58,7 @@ def get_zk_data(blacklisted_services: Set[str]) -> SmartstackData:
     zk_data = {}
     services = zk.get_children(PREFIX)
     for service in services:
-        if service in blacklisted_services:
+        if service in ignored_services:
             continue
         service_instances = zk.get_children(os.path.join(PREFIX, service))
         instances_data = {}
@@ -71,6 +74,10 @@ def get_zk_data(blacklisted_services: Set[str]) -> SmartstackData:
 
 
 class InstanceTuple(NamedTuple):
+    # paasta_host may be different from the service's host if running on k8s.
+    # We need the actual PaaSTA host because the k8s pod does not listen for
+    # xinetd connections.
+    paasta_host: str
     host: str
     port: int
     service: str
@@ -78,10 +85,39 @@ class InstanceTuple(NamedTuple):
 
 def read_from_zk_data(registrations: SmartstackData) -> Set[InstanceTuple]:
     return {
-        InstanceTuple(instance_data["host"], instance_data["port"], service)
+        InstanceTuple(
+            host_to_ip(instance_data["name"], instance_data["host"]),
+            instance_data["host"],
+            instance_data["port"],
+            service,
+        )
         for service, instance in registrations.items()
         for instance_data in instance.values()
     }
+
+
+@functools.lru_cache()
+def host_to_ip(host: str, fallback: str) -> str:
+    """Try to resolve a host to an IP with a fallback.
+
+    Because DNS resolution is relatively slow and can't be easily performed
+    using asyncio, we cheat a little and use a regex for well-formed hostnames
+    to try to guess the IP without doing real resolution.
+
+    A fallback is needed because in some cases the nerve registration does not
+    match an actual hostname (e.g. "prod-db15" or "prod-splunk-master").
+    """
+    for match in (
+        re.match(r"^(\d+)-(\d+)-(\d+)-(\d+)-", host),
+        re.match(r"^ip-(\d+)-(\d+)-(\d+)-(\d+)", host),
+    ):
+        if match:
+            return ".".join(match.groups())
+    else:
+        try:
+            return socket.gethostbyname(host)
+        except socket.gaierror:
+            return fallback
 
 
 async def transfer_one_file(
@@ -93,8 +129,8 @@ async def transfer_one_file(
             asyncio.open_connection(host=host, port=port, limit=2 ** 32), timeout=1.0
         )
         resp = await asyncio.wait_for(reader.read(), timeout=1.0)
-    except (asyncio.TimeoutError, ConnectionRefusedError):
-        logger.warning(f"error getting file from {host}")
+    except (asyncio.TimeoutError, ConnectionRefusedError) as ex:
+        logger.warning(f"error getting file from {host}: {ex!r}")
         return (host, None)
 
     return (host, resp.decode())
@@ -113,12 +149,20 @@ async def gather_files(hosts: Set[str]) -> Dict[str, str]:
 
 
 def read_one_nerve_file(nerve_config: str) -> Set[InstanceTuple]:
-    services = json.loads(nerve_config)["services"]
+    nerve_config = json.loads(nerve_config)
     return {
         InstanceTuple(
-            service["host"], service["port"], service["zk_path"][len(PREFIX) :]
+            # The "instance_id" configured in nerve's config file is the same
+            # as the "name" attribute in a zookeeper registration (i.e. for
+            # PaaSTA hosts, it will be the hostname of the machine running
+            # nerve). To be able to easily compare the tuples using set
+            # operations, we resolve it to an IP in both places.
+            host_to_ip(nerve_config["instance_id"], service["host"]),
+            service["host"],
+            service["port"],
+            service["zk_path"][len(PREFIX) :],
         )
-        for service in services.values()
+        for service in nerve_config["services"].values()
         if service["zk_path"].startswith(PREFIX)
     }
 
@@ -137,10 +181,10 @@ def read_nerve_files(
 
 
 def get_instance_data(
-    blacklisted_services: Set[str],
+    ignored_services: Set[str],
 ) -> Tuple[Set[InstanceTuple], Set[InstanceTuple]]:
     # Dump ZK
-    zk_data = get_zk_data(blacklisted_services)
+    zk_data = get_zk_data(ignored_services)
     zk_instance_data = read_from_zk_data(zk_data)
 
     hosts = {x[0] for x in zk_instance_data}
@@ -208,7 +252,9 @@ def main() -> ExitCode:
     logging.basicConfig(level=logging.WARNING)
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--blacklisted-services",
+        "--ignored-services",
+        # TODO(ckuehl|2020-08-27): Remove this deprecated option alias eventually.
+        "--blacklisted-services-DEPRECATED",
         default="",
         type=str,
         help="Comma separated list of services to ignore",
@@ -216,7 +262,7 @@ def main() -> ExitCode:
     args = parser.parse_args()
 
     zk_instance_data, nerve_instance_data = get_instance_data(
-        set(args.blacklisted_services.split(","))
+        set(args.ignored_services.split(","))
     )
 
     return check_orphans(zk_instance_data, nerve_instance_data)
