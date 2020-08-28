@@ -28,7 +28,7 @@ class DockerVolumeDict(TypedDict):
     mode: str
 
 
-def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str]:
+def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str, Optional[str]]:
     with open(yaml_file_path, "r") as yaml_file:
         try:
             credentials_yaml = YAML().load(yaml_file.read())
@@ -45,6 +45,7 @@ def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str]:
         return (
             credentials_yaml["aws_access_key_id"],
             credentials_yaml["aws_secret_access_key"],
+            credentials_yaml.get("aws_session_token", None),
         )
 
 
@@ -54,9 +55,8 @@ def get_aws_credentials(
     aws_credentials_yaml: Optional[str] = None,
     profile_name: Optional[str] = None,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    '''
     if no_aws_credentials:
-        return None, None
+        return None, None, None
     elif aws_credentials_yaml:
         return _load_aws_credentials_from_yaml(aws_credentials_yaml)
     elif service != DEFAULT_SPARK_SERVICE:
@@ -70,12 +70,14 @@ def get_aws_credentials(
                     "user credentials." % (service_credentials_path)
                 )
             )
-    '''
 
     
-    print(">>>>>" + profile_name + "\n")
     creds = Session(profile_name=profile_name).get_credentials()
-    return creds.access_key, creds.secret_key, creds.token
+    return (
+        creds.access_key,
+        creds.secret_key,
+        creds.token,
+    )
 
 
 def get_default_event_log_dir(**kwargs) -> str:
@@ -96,15 +98,12 @@ def get_default_event_log_dir(**kwargs) -> str:
         spark_run_conf = {}
 
     try:
-        resp = boto3.client(
+        return boto3.client(
             "sts",
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
             aws_session_token=session_token,
-        ).get_caller_identity()
-        print('sts caller identity')
-        print(resp)
-        account_id = resp.get("Account")
+        ).get_caller_identity().get("Account")
     except Exception as e:
         log.warning("Failed to identify account ID, error: {}".format(str(e)))
         return None

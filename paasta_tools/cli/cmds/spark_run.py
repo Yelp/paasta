@@ -672,20 +672,12 @@ def configure_and_run_docker_container(
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
     spark_app_name = get_spark_app_name(original_docker_cmd, spark_ui_port)
 
-    command = f"echo 'hola\n'"
-    retcode, _ = _run(command, stream=True)
-    # Uncomment this code to update the credentials file to define the session token/key/id inline
-    # command = f"aws-okta -a Dev -r read-only -k --session-duration 900"
-    # retcode, _ = _run(command, stream=True)
-
     access_key, secret_key, session_token = get_aws_credentials(
         service=args.service,
         no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
     )
-    # Debuging access key so I can see which profile is used
-    print('>>>>>' + access_key + "<<<<<<\n")
     spark_config_dict = get_spark_config(
         args=args,
         spark_app_name=spark_app_name,
