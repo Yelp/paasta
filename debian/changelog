@@ -1,3 +1,11 @@
+paasta-tools (0.96.49) xenial; urgency=medium
+
+  * 0.96.49 tagged with 'make release'
+    Commit: Merge pull request #2900 from Yelp/fix-check-orphans  Fix
+    check_orphans.py to handle k8s instances
+
+ -- Chris Kuehl <ckuehl@yelp.com>  Fri, 28 Aug 2020 10:51:17 -0700
+
 paasta-tools (0.96.48) xenial; urgency=medium
 
   * 0.96.48 tagged with 'make release'
