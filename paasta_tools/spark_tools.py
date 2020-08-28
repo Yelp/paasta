@@ -81,7 +81,10 @@ def get_aws_credentials(
 
 
 def get_default_event_log_dir(**kwargs) -> str:
-    access_key, secret_key, session_token = kwargs["access_key"], kwargs["secret_key"], kwargs["session_token"]
+    if "access_key" not in kwargs or "secret_key" not in kwargs:
+        access_key, secret_key, session_token  = get_aws_credentials(**kwargs)
+    else:
+        access_key, secret_key, session_token = kwargs["access_key"], kwargs["secret_key"], kwargs.get("session_token", None)
     if access_key is None:
         log.warning(
             "Since no AWS credentials were provided, spark event logging "
