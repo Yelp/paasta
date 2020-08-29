@@ -101,7 +101,7 @@ def get_default_event_log_dir(**kwargs) -> str:
         spark_run_conf = {}
 
     try:
-        return boto3.client(
+        account_id = boto3.client(
             "sts",
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,

@@ -18,16 +18,17 @@ def test_load_aws_credentials_from_yaml(tmpdir):
         f'aws_secret_access_key: "{fake_secret_access_key}"'
     )
 
-    aws_access_key_id, aws_secret_access_key = _load_aws_credentials_from_yaml(
+    aws_access_key_id, aws_secret_access_key, aws_session_token  = _load_aws_credentials_from_yaml(
         yaml_file
     )
     assert aws_access_key_id == fake_access_key_id
     assert aws_secret_access_key == fake_secret_access_key
+    assert aws_session_token is None
 
 
 def test_creds_disabled():
     credentials = get_aws_credentials(no_aws_credentials=True)
-    assert credentials == (None, None)
+    assert credentials == (None, None, None)
 
 
 @mock.patch("paasta_tools.spark_tools._load_aws_credentials_from_yaml", autospec=True)
@@ -61,11 +62,11 @@ def test_use_default_creds(mock_load_aws_credentials_from_yaml, mock_get_credent
         service=DEFAULT_SPARK_SERVICE,
     )
     mock_get_credentials.return_value = mock.MagicMock(
-        access_key="id", secret_key="secret"
+        access_key="id", secret_key="secret", token="token"
     )
     credentials = get_aws_credentials(args)
 
-    assert credentials == ("id", "secret")
+    assert credentials == ("id", "secret", "token")
 
 
 @mock.patch("paasta_tools.spark_tools.os", autospec=True)
@@ -76,11 +77,11 @@ def test_service_provided_fallback_to_default(mock_get_credentials, mock_os):
     )
     mock_os.path.exists.return_value = False
     mock_get_credentials.return_value = mock.MagicMock(
-        access_key="id", secret_key="secret"
+        access_key="id", secret_key="secret", token="token"
     )
     credentials = get_aws_credentials(args)
 
-    assert credentials == ("id", "secret")
+    assert credentials == ("id", "secret", "token")
 
 
 class TestStuff:
@@ -135,12 +136,10 @@ class TestStuff:
     )
     def test_get_default_event_log_dir(self, mock_account_id, account_id, expected_dir):
         mock_account_id.return_value = account_id
-        assert (
-            get_default_event_log_dir(
-                access_key="test_access_key", secret_key="test_secret_key"
-            )
-            == expected_dir
+        ret = get_default_event_log_dir(
+            access_key="test_access_key", secret_key="test_secret_key", session_token="test_token"
         )
+        assert ret == expected_dir
 
 
 def test_get_spark_resource_requirements(tmpdir):
