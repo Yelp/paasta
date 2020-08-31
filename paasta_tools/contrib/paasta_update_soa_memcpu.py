@@ -178,6 +178,7 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
         serv["old_mem"] = d["result"].get("current_mem")
         serv["disk"] = d["result"].get("suggested_disk")
         serv["old_disk"] = d["result"].get("current_disk")
+        serv["hacheck_cpus"] = d["result"].get("suggested_hacheck_cpus")
         services_to_update[criteria] = serv
 
     return {
