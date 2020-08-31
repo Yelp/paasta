@@ -57,9 +57,9 @@ def get_inuse_ports_from_etc_services():
 
 
 def suggest_smartstack_proxy_port(
-    yelpsoa_config_root, range_min=20000, range_max=21000
+    yelpsoa_config_root, range_min=19000, range_max=21000
 ):
-    """Pick a random available port in the 20000-21000 block"""
+    """Pick a random available port in the 19000-21000 block"""
     available_proxy_ports = set(range(range_min, range_max + 1))
     for root, dirs, files in os.walk(yelpsoa_config_root):
         for f in files:
