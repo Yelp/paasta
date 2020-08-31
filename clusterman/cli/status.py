@@ -26,6 +26,7 @@ from clusterman.args import add_pool_arg
 from clusterman.args import add_scheduler_arg
 from clusterman.args import subparser
 from clusterman.autoscaler.pool_manager import PoolManager
+from clusterman.cli.util import timeout_wrapper
 from clusterman.interfaces.types import AgentState
 from clusterman.interfaces.types import ClusterNodeMetadata
 from clusterman.util import any_of
@@ -136,6 +137,7 @@ def print_status(manager: PoolManager, args) -> None:
     sys.stdout.write('\n')
 
 
+@timeout_wrapper
 def main(args: argparse.Namespace) -> None:  # pragma: no cover
     manager = PoolManager(args.cluster, args.pool, args.scheduler)
     print_status(manager, args)

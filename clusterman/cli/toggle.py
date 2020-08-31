@@ -22,12 +22,14 @@ from clusterman.args import add_pool_arg
 from clusterman.args import add_scheduler_arg
 from clusterman.args import subparser
 from clusterman.aws.client import dynamodb
+from clusterman.cli.util import timeout_wrapper
 from clusterman.util import AUTOSCALER_PAUSED
 from clusterman.util import autoscaling_is_paused
 from clusterman.util import CLUSTERMAN_STATE_TABLE
 from clusterman.util import parse_time_string
 
 
+@timeout_wrapper
 def disable(args: argparse.Namespace) -> None:
     state = {
         'state': {'S': AUTOSCALER_PAUSED},
@@ -54,6 +56,7 @@ def disable(args: argparse.Namespace) -> None:
         print(s)
 
 
+@timeout_wrapper
 def enable(args: argparse.Namespace) -> None:
     dynamodb.delete_item(
         TableName=staticconf.read('aws.state_table', default=CLUSTERMAN_STATE_TABLE),

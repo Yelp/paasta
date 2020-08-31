@@ -21,7 +21,7 @@ from clusterman.util import setup_logging
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
-    args = parse_args(argv, 'Mesos cluster scaling and management')
+    args = parse_args(argv, 'Cluster scaling and management for Mesos and Kubernetes')
     setup_logging(args.log_level)
     setup_config(args)
     args.entrypoint(args)

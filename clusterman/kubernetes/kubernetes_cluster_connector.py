@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import socket
 from collections import defaultdict
 from distutils.util import strtobool
 from typing import List
@@ -55,7 +56,15 @@ class KubernetesClusterConnector(ClusterConnector):
 
     def reload_state(self) -> None:
         logger.info('Reloading nodes')
-        kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
+        try:
+            kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
+        except TypeError:
+            error_msg = 'Could not load KUBECONFIG; is this running on Kubernetes master?'
+            if 'yelpcorp' in socket.getfqdn():
+                error_msg += '\nHint: try using the clusterman-k8s-<clustername> wrapper script!'
+            logger.error(error_msg)
+            raise
+
         self._core_api = kubernetes.client.CoreV1Api()
         self._pods = self._get_all_pods()
         self._nodes_by_ip = self._get_nodes_by_ip()
