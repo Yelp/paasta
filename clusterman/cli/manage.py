@@ -24,6 +24,7 @@ from clusterman.args import add_pool_arg
 from clusterman.args import add_scheduler_arg
 from clusterman.args import subparser
 from clusterman.autoscaler.pool_manager import PoolManager
+from clusterman.cli.util import timeout_wrapper
 from clusterman.config import POOL_NAMESPACE
 from clusterman.util import ask_for_confirmation
 from clusterman.util import get_autoscaler_scribe_stream
@@ -74,6 +75,7 @@ def mark_stale(manager: PoolManager, dry_run: bool) -> str:
     )
 
 
+@timeout_wrapper
 def main(args: argparse.Namespace) -> None:
     if args.target_capacity and args.mark_stale:
         raise ValueError('Cannot specify --target-capacity and --mark-stale simultaneously')
