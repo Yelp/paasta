@@ -71,7 +71,6 @@ def get_aws_credentials(
                 )
             )
 
-    
     creds = Session(profile_name=profile_name).get_credentials()
     return (
         creds.access_key,
@@ -82,9 +81,13 @@ def get_aws_credentials(
 
 def get_default_event_log_dir(**kwargs) -> str:
     if "access_key" not in kwargs or "secret_key" not in kwargs:
-        access_key, secret_key, session_token  = get_aws_credentials(**kwargs)
+        access_key, secret_key, session_token = get_aws_credentials(**kwargs)
     else:
-        access_key, secret_key, session_token = kwargs["access_key"], kwargs["secret_key"], kwargs.get("session_token", None)
+        access_key, secret_key, session_token = (
+            kwargs["access_key"],
+            kwargs["secret_key"],
+            kwargs.get("session_token", None),
+        )
     if access_key is None:
         log.warning(
             "Since no AWS credentials were provided, spark event logging "
@@ -101,12 +104,16 @@ def get_default_event_log_dir(**kwargs) -> str:
         spark_run_conf = {}
 
     try:
-        account_id = boto3.client(
-            "sts",
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            aws_session_token=session_token,
-        ).get_caller_identity().get("Account")
+        account_id = (
+            boto3.client(
+                "sts",
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+            )
+            .get_caller_identity()
+            .get("Account")
+        )
     except Exception as e:
         log.warning("Failed to identify account ID, error: {}".format(str(e)))
         return None

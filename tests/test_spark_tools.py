@@ -18,9 +18,11 @@ def test_load_aws_credentials_from_yaml(tmpdir):
         f'aws_secret_access_key: "{fake_secret_access_key}"'
     )
 
-    aws_access_key_id, aws_secret_access_key, aws_session_token  = _load_aws_credentials_from_yaml(
-        yaml_file
-    )
+    (
+        aws_access_key_id,
+        aws_secret_access_key,
+        aws_session_token,
+    ) = _load_aws_credentials_from_yaml(yaml_file)
     assert aws_access_key_id == fake_access_key_id
     assert aws_secret_access_key == fake_secret_access_key
     assert aws_session_token is None
@@ -137,7 +139,9 @@ class TestStuff:
     def test_get_default_event_log_dir(self, mock_account_id, account_id, expected_dir):
         mock_account_id.return_value = account_id
         ret = get_default_event_log_dir(
-            access_key="test_access_key", secret_key="test_secret_key", session_token="test_token"
+            access_key="test_access_key",
+            secret_key="test_secret_key",
+            session_token="test_token",
         )
         assert ret == expected_dir
 

@@ -429,9 +429,7 @@ def get_spark_config(
     }
 
     default_event_log_dir = get_default_event_log_dir(
-        access_key=access_key,
-        secret_key=secret_key,
-        session_token=session_token,
+        access_key=access_key, secret_key=secret_key, session_token=session_token,
     )
     if default_event_log_dir is not None:
         user_args["spark.eventLog.enabled"] = "true"
