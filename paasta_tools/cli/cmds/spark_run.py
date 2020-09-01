@@ -413,6 +413,7 @@ def get_spark_config(
     volumes,
     access_key,
     secret_key,
+    session_token,
 ):
     # User configurable Spark options
     user_args = {
@@ -428,7 +429,7 @@ def get_spark_config(
     }
 
     default_event_log_dir = get_default_event_log_dir(
-        access_key=access_key, secret_key=secret_key
+        access_key=access_key, secret_key=secret_key, session_token=session_token,
     )
     if default_event_log_dir is not None:
         user_args["spark.eventLog.enabled"] = "true"
@@ -669,7 +670,7 @@ def configure_and_run_docker_container(
     spark_ui_port = pick_random_port(args.service + str(os.getpid()))
     spark_app_name = get_spark_app_name(original_docker_cmd, spark_ui_port)
 
-    access_key, secret_key = get_aws_credentials(
+    access_key, secret_key, session_token = get_aws_credentials(
         service=args.service,
         no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
@@ -684,6 +685,7 @@ def configure_and_run_docker_container(
         volumes=volumes,
         access_key=access_key,
         secret_key=secret_key,
+        session_token=session_token,
     )
     spark_conf_str = create_spark_config_str(spark_config_dict, is_mrjob=args.mrjob)
 

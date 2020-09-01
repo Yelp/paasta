@@ -180,6 +180,7 @@ class TestGetSparkConfig:
             volumes=["v1:v1:rw", "v2:v2:rw"],
             access_key="test_access_key",
             secret_key="test_secret_key",
+            session_token=None,
         )
 
     def test_find_master(self):
@@ -293,7 +294,7 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username.return_value = "fake_user"
         mock_get_spark_config.return_value = {"spark.app.name": "fake_app"}
         mock_run_docker_container.return_value = 0
-        mock_get_aws_credentials.return_value = ("id", "secret")
+        mock_get_aws_credentials.return_value = ("id", "secret", "token")
 
         args = mock.MagicMock()
         args.aws_region = "fake_region"
@@ -361,7 +362,7 @@ class TestConfigureAndRunDockerContainer:
         mock_os_path_exists,
         mock_get_aws_credentials,
     ):
-        mock_get_aws_credentials.return_value = ("id", "secret")
+        mock_get_aws_credentials.return_value = ("id", "secret", "token")
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.emit_resource_requirements", autospec=True
         ) as mock_emit_resource_requirements, mock.patch(
@@ -394,7 +395,7 @@ class TestConfigureAndRunDockerContainer:
         mock_os_path_exists,
         mock_get_aws_credentials,
     ):
-        mock_get_aws_credentials.return_value = ("id", "secret")
+        mock_get_aws_credentials.return_value = ("id", "secret", "token")
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.emit_resource_requirements", autospec=True
         ) as mock_emit_resource_requirements, mock.patch(
@@ -431,7 +432,7 @@ class TestConfigureAndRunDockerContainer:
         mock_get_aws_credentials,
         mock_create_spark_config_str,
     ):
-        mock_get_aws_credentials.return_value = ("id", "secret")
+        mock_get_aws_credentials.return_value = ("id", "secret", "token")
 
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.emit_resource_requirements", autospec=True
@@ -472,7 +473,7 @@ class TestConfigureAndRunDockerContainer:
         mock_get_aws_credentials,
         mock_create_spark_config_str,
     ):
-        mock_get_aws_credentials.return_value = ("id", "secret")
+        mock_get_aws_credentials.return_value = ("id", "secret", "token")
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.emit_resource_requirements", autospec=True
         ) as mock_emit_resource_requirements, mock.patch(
