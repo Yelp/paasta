@@ -60,6 +60,6 @@ def step_impl_when_fsm_auto(context):
 @then("the new yelpsoa-configs directory has a valid smartstack proxy_port")
 def step_impl_then_proxy_port(context):
     port = context.my_config["smartstack"]["main"]["proxy_port"]
-    assert port >= 20000
+    assert port >= 19000
     assert port <= 21000
     assert port != 20666
