@@ -7,7 +7,7 @@ from typing import Optional
 from typing import Tuple
 
 import boto3
-from botocore.session import Session
+from boto3 import Session
 from ruamel.yaml import YAML
 from typing_extensions import TypedDict
 
@@ -28,7 +28,7 @@ class DockerVolumeDict(TypedDict):
     mode: str
 
 
-def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str]:
+def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str, Optional[str]]:
     with open(yaml_file_path, "r") as yaml_file:
         try:
             credentials_yaml = YAML().load(yaml_file.read())
@@ -45,6 +45,7 @@ def _load_aws_credentials_from_yaml(yaml_file_path) -> Tuple[str, str]:
         return (
             credentials_yaml["aws_access_key_id"],
             credentials_yaml["aws_secret_access_key"],
+            credentials_yaml.get("aws_session_token", None),
         )
 
 
@@ -53,9 +54,9 @@ def get_aws_credentials(
     no_aws_credentials: bool = False,
     aws_credentials_yaml: Optional[str] = None,
     profile_name: Optional[str] = None,
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     if no_aws_credentials:
-        return None, None
+        return None, None, None
     elif aws_credentials_yaml:
         return _load_aws_credentials_from_yaml(aws_credentials_yaml)
     elif service != DEFAULT_SPARK_SERVICE:
@@ -70,15 +71,23 @@ def get_aws_credentials(
                 )
             )
 
-    creds = Session(profile=profile_name).get_credentials()
-    return creds.access_key, creds.secret_key
+    creds = Session(profile_name=profile_name).get_credentials()
+    return (
+        creds.access_key,
+        creds.secret_key,
+        creds.token,
+    )
 
 
 def get_default_event_log_dir(**kwargs) -> str:
     if "access_key" not in kwargs or "secret_key" not in kwargs:
-        access_key, secret_key = get_aws_credentials(**kwargs)
+        access_key, secret_key, session_token = get_aws_credentials(**kwargs)
     else:
-        access_key, secret_key = kwargs["access_key"], kwargs["secret_key"]
+        access_key, secret_key, session_token = (
+            kwargs["access_key"],
+            kwargs["secret_key"],
+            kwargs.get("session_token", None),
+        )
     if access_key is None:
         log.warning(
             "Since no AWS credentials were provided, spark event logging "
@@ -97,7 +106,10 @@ def get_default_event_log_dir(**kwargs) -> str:
     try:
         account_id = (
             boto3.client(
-                "sts", aws_access_key_id=access_key, aws_secret_access_key=secret_key
+                "sts",
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
             )
             .get_caller_identity()
             .get("Account")
