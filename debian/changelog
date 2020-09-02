@@ -1,3 +1,12 @@
+paasta-tools (0.96.51) xenial; urgency=medium
+
+  * 0.96.51 tagged with 'make release'
+    Commit: Merge pull request #2905 from Yelp/drmorr/PAASTA-
+    16862/clean_up_replication_messages  put the alert threshold on the
+    same line as the message for easier parsing
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 02 Sep 2020 10:20:58 -0700
+
 paasta-tools (0.96.50) xenial; urgency=medium
 
   * 0.96.50 tagged with 'make release'
