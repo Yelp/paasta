@@ -4,7 +4,9 @@ from collections import defaultdict
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
-
+from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
+from paasta_tools.utils import format_git_url
+from paasta_tools.utils import load_system_paasta_config
 
 NULL = "null"
 
@@ -43,7 +45,7 @@ def parse_args():
     parser.add_argument(
         "--git-remote",
         help="Master git repo for soaconfigs",
-        required=True,
+        default=None,
         dest="git_remote",
     )
     parser.add_argument(
@@ -81,6 +83,17 @@ def parse_args():
         dest="verbose",
     )
     return parser.parse_args()
+
+
+def get_default_git_remote():
+    system_paasta_config = load_system_paasta_config()
+    repo_config = system_paasta_config.get_git_repo_config("yelpsoa-configs")
+    default_git_remote = format_git_url(
+        system_paasta_config.get_git_config()["git_user"],
+        repo_config.get("git_server", DEFAULT_SOA_CONFIGS_GIT_URL),
+        repo_config["repo_name"],
+    )
+    return default_git_remote
 
 
 def get_recommendation_from_result(result):
@@ -136,7 +149,7 @@ def main(args):
     results = get_recommendations_by_service_file(report["results"])
     updater = AutoConfigUpdater(
         config_source=config_source,
-        git_remote=args.git_remote,
+        git_remote=args.git_remote or get_default_git_remote(),
         branch=args.branch,
         working_dir=args.local_dir or "/nail/tmp",
         do_clone=args.local_dir is None,
