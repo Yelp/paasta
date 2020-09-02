@@ -520,8 +520,7 @@ def check_under_replication(
     crit_threshold = instance_config.get_replication_crit_percentage()
     if sub_component is not None:
         output = (
-            "Service %s has %d out of %d expected instances of %s available!\n"
-            + "(threshold: %d%%)"
+            "Service %s has %d out of %d expected instances of %s available! (threshold: %d%%)"
         ) % (
             instance_config.job_id,
             num_available,
@@ -531,8 +530,7 @@ def check_under_replication(
         )
     else:
         output = (
-            "Service %s has %d out of %d expected instances available!\n"
-            + "(threshold: %d%%)"
+            "Service %s has %d out of %d expected instances available! (threshold: %d%%)"
         ) % (instance_config.job_id, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(
         num_available, expected_count, crit_threshold
