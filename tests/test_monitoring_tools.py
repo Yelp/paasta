@@ -1076,7 +1076,7 @@ def test_send_replication_event_if_under_replication_handles_0_expected(
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
         assert (
-            "{} has 0 out of 0 expected instances available!\n(threshold: 90%)".format(
+            "{} has 0 out of 0 expected instances available! (threshold: 90%)".format(
                 instance_config.job_id
             )
         ) in alert_output
@@ -1095,7 +1095,7 @@ def test_send_replication_event_if_under_replication_good(instance_config):
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
         assert (
-            "{} has 100 out of 100 expected instances available!\n(threshold: 90%)".format(
+            "{} has 100 out of 100 expected instances available! (threshold: 90%)".format(
                 instance_config.job_id
             )
         ) in alert_output
@@ -1114,7 +1114,7 @@ def test_send_replication_event_if_under_replication_critical(instance_config):
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
         assert (
-            "{} has 89 out of 100 expected instances available!\n(threshold: 90%)".format(
+            "{} has 89 out of 100 expected instances available! (threshold: 90%)".format(
                 instance_config.job_id
             )
         ) in alert_output
