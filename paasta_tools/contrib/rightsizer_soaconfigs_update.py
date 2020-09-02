@@ -94,6 +94,15 @@ def get_recommendation_from_result(result):
     disk = result.get("disk")
     if disk and disk != NULL:
         rec["disk"] = max(128, round(float(disk)))
+    hacheck_cpus = result.get("hacheck_cpus")
+    if hacheck_cpus and hacheck_cpus != NULL:
+        hacheck_cpus_value = max(0.1, min(float(hacheck_cpus), 1))
+        rec["sidecar_resource_requirements"] = {
+            "hacheck": {
+                "requests": {"cpu": hacheck_cpus_value,},
+                "limits": {"cpu": hacheck_cpus_value,},
+            },
+        }
     return rec
 
 
