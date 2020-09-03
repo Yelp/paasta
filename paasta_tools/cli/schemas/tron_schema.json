@@ -275,6 +275,9 @@
                         },
                         "priority": {
                             "type": "string"
+                        },
+                        "check_oom_events": {
+                            "type": "boolean"
                         }
                     },
                     "additionalProperties": false
