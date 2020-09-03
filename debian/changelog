@@ -1,3 +1,11 @@
+paasta-tools (0.96.52) xenial; urgency=medium
+
+  * 0.96.52 tagged with 'make release'
+    Commit: Merge pull request #2907 from Yelp/TRON-1564-allow-check-oom-
+    events  Allow check_oom_events monitoring option for Tron instances
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 03 Sep 2020 13:55:12 -0700
+
 paasta-tools (0.96.51) xenial; urgency=medium
 
   * 0.96.51 tagged with 'make release'
