@@ -195,7 +195,7 @@ class TestTronActionConfig:
         ), mock.patch(
             "paasta_tools.tron_tools.get_aws_credentials",
             autospec=True,
-            return_value=("access", "secret"),
+            return_value=("access", "secret", "token"),
         ):
             env = action_config.get_env()
             if executor == "spark":
@@ -235,7 +235,7 @@ class TestTronActionConfig:
         ), mock.patch(
             "paasta_tools.tron_tools.get_aws_credentials",
             autospec=True,
-            return_value=("access", "secret"),
+            return_value=("access", "secret", "token"),
         ):
             assert (
                 action_config.get_cmd()

@@ -322,7 +322,7 @@ class TronActionConfig(InstanceConfig):
             )
             if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
                 try:
-                    access_key, secret_key = get_aws_credentials(
+                    access_key, secret_key, session_token = get_aws_credentials(
                         service=self.get_service(),
                         aws_credentials_yaml=self.config_dict.get(
                             "aws_credentials_yaml"
