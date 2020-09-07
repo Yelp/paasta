@@ -46,8 +46,8 @@ build_%_docker:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-PTG_VERSION=0.0.7
-PTG_SUM=cc95361e409939376032980ff1029d24a40b9f227abba47d629252a1f13e10bf
+PTG_VERSION=0.0.10
+PTG_SUM=5d58a4a95fa872ae8d197011e3c7a491275e073ac36c001d97ae22c1c4c9b8c7
 ifeq ($(PAASTA_ENV),YELP)
 	PTG_SANITY=monk
 else
@@ -62,7 +62,7 @@ go_entrypoint:
 	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) && \
 	unzip v$(PTG_VERSION).zip && \
 	cd paasta-tools-go-$(PTG_VERSION) && \
-	make paasta_go && \
+	PAASTA_VERSION=$(RELEASE) make paasta_go && \
 	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)" && \
 	./paasta_go -version | grep "initializers.*$(PTG_SANITY)" && \
 	mv ./paasta_go ../
