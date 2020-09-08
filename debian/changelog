@@ -1,3 +1,10 @@
+paasta-tools (0.96.54) xenial; urgency=medium
+
+  * 0.96.54 tagged with 'make release'
+    Commit: bump paasta-tools-go binary to v0.0.10 (#2909)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 08 Sep 2020 03:31:27 -0700
+
 paasta-tools (0.96.53) xenial; urgency=medium
 
   * 0.96.53 tagged with 'make release'

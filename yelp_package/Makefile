@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.96.53
+RELEASE=0.96.54
 
 SHELL=/bin/bash
 
@@ -46,8 +46,8 @@ build_%_docker:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-PTG_VERSION=0.0.10
-PTG_SUM=5d58a4a95fa872ae8d197011e3c7a491275e073ac36c001d97ae22c1c4c9b8c7
+PTG_VERSION=0.0.12
+PTG_SUM=1fa3f94fe5dd00059186404c2e2717625808c1cdefd90bd551f16b6e72018640
 ifeq ($(PAASTA_ENV),YELP)
 	PTG_SANITY=monk
 else
