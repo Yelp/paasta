@@ -1,3 +1,10 @@
-# do not import all apis into this module because that uses a lot of memory and stack frames
-# if you need the ability to import all apis from one package, import them with
-# from {{packageName}.apis import DefaultApi, PetApi
+from __future__ import absolute_import
+
+# flake8: noqa
+
+# import apis into api package
+from paasta_tools.paastaapi.api.autoscaler_api import AutoscalerApi
+from paasta_tools.paastaapi.api.default_api import DefaultApi
+from paasta_tools.paastaapi.api.marathon_dashboard_api import MarathonDashboardApi
+from paasta_tools.paastaapi.api.resources_api import ResourcesApi
+from paasta_tools.paastaapi.api.service_api import ServiceApi

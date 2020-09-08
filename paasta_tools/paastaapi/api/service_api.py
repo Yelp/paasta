@@ -10,23 +10,18 @@
 """
 
 
-import re  # noqa: F401
-import sys  # noqa: F401
+from __future__ import absolute_import
 
-from paasta_tools.paastaapi.api_client import ApiClient, Endpoint
-from paasta_tools.paastaapi.model_utils import (  # noqa: F401
-    check_allowed_values,
-    check_validations,
-    date,
-    datetime,
-    file_type,
-    none_type,
-    validate_and_convert_types
+import re  # noqa: F401
+
+# python 2 and python 3 compatibility library
+import six
+
+from paasta_tools.paastaapi.api_client import ApiClient
+from paasta_tools.paastaapi.exceptions import (  # noqa: F401
+    ApiTypeError,
+    ApiValueError
 )
-from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
-from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
-from paasta_tools.paastaapi.model.instance_status import InstanceStatus
-from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
 
 
 class ServiceApi(object):
@@ -41,912 +36,1016 @@ class ServiceApi(object):
             api_client = ApiClient()
         self.api_client = api_client
 
-        def __delay_instance(
-            self,
-            service,
-            instance,
-            **kwargs
-        ):
-            """Get the possible reasons for a deployment delay for a marathon service.instance  # noqa: E501
+    def delay_instance(self, service, instance, **kwargs):  # noqa: E501
+        """Get the possible reasons for a deployment delay for a marathon service.instance  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.delay_instance(service, instance, async_req=True)
-            >>> result = thread.get()
+        >>> thread = api.delay_instance(service, instance, async_req=True)
+        >>> result = thread.get()
 
-            Args:
-                service (str): Service name
-                instance (str): Instance name
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: object
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.delay_instance_with_http_info(service, instance, **kwargs)  # noqa: E501
 
-            Keyword Args:
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+    def delay_instance_with_http_info(self, service, instance, **kwargs):  # noqa: E501
+        """Get the possible reasons for a deployment delay for a marathon service.instance  # noqa: E501
 
-            Returns:
-                {str: (bool, date, datetime, dict, float, int, list, str, none_type)}
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['service'] = \
-                service
-            kwargs['instance'] = \
-                instance
-            return self.call_with_http_info(**kwargs)
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
 
-        self.delay_instance = Endpoint(
-            settings={
-                'response_type': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),
-                'auth': [],
-                'endpoint_path': '/services/{service}/{instance}/delay',
-                'operation_id': 'delay_instance',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'service',
-                    'instance',
-                ],
-                'required': [
-                    'service',
-                    'instance',
-                ],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'service':
-                        (str,),
-                    'instance':
-                        (str,),
-                },
-                'attribute_map': {
-                    'service': 'service',
-                    'instance': 'instance',
-                },
-                'location_map': {
-                    'service': 'path',
-                    'instance': 'path',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__delay_instance
+        >>> thread = api.delay_instance_with_http_info(service, instance, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(object, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'service',
+            'instance'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
 
-        def __instance_set_state(
-            self,
-            service,
-            instance,
-            desired_state,
-            **kwargs
-        ):
-            """Change state of service_name.instance_name  # noqa: E501
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method delay_instance" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'service' is set
+        if self.api_client.client_side_validation and ('service' not in local_var_params or  # noqa: E501
+                                                        local_var_params['service'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `service` when calling `delay_instance`")  # noqa: E501
+        # verify the required parameter 'instance' is set
+        if self.api_client.client_side_validation and ('instance' not in local_var_params or  # noqa: E501
+                                                        local_var_params['instance'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `instance` when calling `delay_instance`")  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        collection_formats = {}
 
-            >>> thread = api.instance_set_state(service, instance, desired_state, async_req=True)
-            >>> result = thread.get()
+        path_params = {}
+        if 'service' in local_var_params:
+            path_params['service'] = local_var_params['service']  # noqa: E501
+        if 'instance' in local_var_params:
+            path_params['instance'] = local_var_params['instance']  # noqa: E501
 
-            Args:
-                service (str): Service name
-                instance (str): Instance name
-                desired_state (str): Desired state
+        query_params = []
 
-            Keyword Args:
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+        header_params = {}
 
-            Returns:
-                None
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['service'] = \
-                service
-            kwargs['instance'] = \
-                instance
-            kwargs['desired_state'] = \
-                desired_state
-            return self.call_with_http_info(**kwargs)
+        form_params = []
+        local_var_files = {}
 
-        self.instance_set_state = Endpoint(
-            settings={
-                'response_type': None,
-                'auth': [],
-                'endpoint_path': '/services/{service}/{instance}/state/{desired_state}',
-                'operation_id': 'instance_set_state',
-                'http_method': 'POST',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'service',
-                    'instance',
-                    'desired_state',
-                ],
-                'required': [
-                    'service',
-                    'instance',
-                    'desired_state',
-                ],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'service':
-                        (str,),
-                    'instance':
-                        (str,),
-                    'desired_state':
-                        (str,),
-                },
-                'attribute_map': {
-                    'service': 'service',
-                    'instance': 'instance',
-                    'desired_state': 'desired_state',
-                },
-                'location_map': {
-                    'service': 'path',
-                    'instance': 'path',
-                    'desired_state': 'path',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__instance_set_state
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services/{service}/{instance}/delay', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='object',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
+
+    def instance_set_state(self, service, instance, desired_state, **kwargs):  # noqa: E501
+        """Change state of service_name.instance_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.instance_set_state(service, instance, desired_state, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param desired_state: Desired state (required)
+        :type desired_state: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: None
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.instance_set_state_with_http_info(service, instance, desired_state, **kwargs)  # noqa: E501
+
+    def instance_set_state_with_http_info(self, service, instance, desired_state, **kwargs):  # noqa: E501
+        """Change state of service_name.instance_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.instance_set_state_with_http_info(service, instance, desired_state, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param desired_state: Desired state (required)
+        :type desired_state: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: None
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'service',
+            'instance',
+            'desired_state'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
 
-        def __list_instances(
-            self,
-            service,
-            **kwargs
-        ):
-            """List instances of service_name  # noqa: E501
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method instance_set_state" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'service' is set
+        if self.api_client.client_side_validation and ('service' not in local_var_params or  # noqa: E501
+                                                        local_var_params['service'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `service` when calling `instance_set_state`")  # noqa: E501
+        # verify the required parameter 'instance' is set
+        if self.api_client.client_side_validation and ('instance' not in local_var_params or  # noqa: E501
+                                                        local_var_params['instance'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `instance` when calling `instance_set_state`")  # noqa: E501
+        # verify the required parameter 'desired_state' is set
+        if self.api_client.client_side_validation and ('desired_state' not in local_var_params or  # noqa: E501
+                                                        local_var_params['desired_state'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `desired_state` when calling `instance_set_state`")  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        collection_formats = {}
 
-            >>> thread = api.list_instances(service, async_req=True)
-            >>> result = thread.get()
+        path_params = {}
+        if 'service' in local_var_params:
+            path_params['service'] = local_var_params['service']  # noqa: E501
+        if 'instance' in local_var_params:
+            path_params['instance'] = local_var_params['instance']  # noqa: E501
+        if 'desired_state' in local_var_params:
+            path_params['desired_state'] = local_var_params['desired_state']  # noqa: E501
 
-            Args:
-                service (str): Service name
+        query_params = []
 
-            Keyword Args:
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+        header_params = {}
 
-            Returns:
-                InlineResponse2001
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['service'] = \
-                service
-            return self.call_with_http_info(**kwargs)
+        form_params = []
+        local_var_files = {}
 
-        self.list_instances = Endpoint(
-            settings={
-                'response_type': (InlineResponse2001,),
-                'auth': [],
-                'endpoint_path': '/services/{service}',
-                'operation_id': 'list_instances',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'service',
-                ],
-                'required': [
-                    'service',
-                ],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'service':
-                        (str,),
-                },
-                'attribute_map': {
-                    'service': 'service',
-                },
-                'location_map': {
-                    'service': 'path',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__list_instances
+        body_params = None
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services/{service}/{instance}/state/{desired_state}', 'POST',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type=None,  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
+
+    def list_instances(self, service, **kwargs):  # noqa: E501
+        """List instances of service_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_instances(service, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: InlineResponse2001
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.list_instances_with_http_info(service, **kwargs)  # noqa: E501
+
+    def list_instances_with_http_info(self, service, **kwargs):  # noqa: E501
+        """List instances of service_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_instances_with_http_info(service, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(InlineResponse2001, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'service'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
 
-        def __list_services_for_cluster(
-            self,
-            **kwargs
-        ):
-            """List service names and service instance names on the current cluster  # noqa: E501
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method list_instances" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'service' is set
+        if self.api_client.client_side_validation and ('service' not in local_var_params or  # noqa: E501
+                                                        local_var_params['service'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `service` when calling `list_instances`")  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        collection_formats = {}
 
-            >>> thread = api.list_services_for_cluster(async_req=True)
-            >>> result = thread.get()
+        path_params = {}
+        if 'service' in local_var_params:
+            path_params['service'] = local_var_params['service']  # noqa: E501
 
+        query_params = []
 
-            Keyword Args:
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+        header_params = {}
 
-            Returns:
-                InlineResponse200
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            return self.call_with_http_info(**kwargs)
+        form_params = []
+        local_var_files = {}
 
-        self.list_services_for_cluster = Endpoint(
-            settings={
-                'response_type': (InlineResponse200,),
-                'auth': [],
-                'endpoint_path': '/services',
-                'operation_id': 'list_services_for_cluster',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                ],
-                'required': [],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                },
-                'attribute_map': {
-                },
-                'location_map': {
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__list_services_for_cluster
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services/{service}', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='InlineResponse2001',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
+
+    def list_services_for_cluster(self, **kwargs):  # noqa: E501
+        """List service names and service instance names on the current cluster  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_services_for_cluster(async_req=True)
+        >>> result = thread.get()
+
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: InlineResponse200
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.list_services_for_cluster_with_http_info(**kwargs)  # noqa: E501
+
+    def list_services_for_cluster_with_http_info(self, **kwargs):  # noqa: E501
+        """List service names and service instance names on the current cluster  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.list_services_for_cluster_with_http_info(async_req=True)
+        >>> result = thread.get()
+
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(InlineResponse200, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
 
-        def __status_instance(
-            self,
-            service,
-            instance,
-            **kwargs
-        ):
-            """Get status of service_name.instance_name  # noqa: E501
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method list_services_for_cluster" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        collection_formats = {}
 
-            >>> thread = api.status_instance(service, instance, async_req=True)
-            >>> result = thread.get()
+        path_params = {}
 
-            Args:
-                service (str): Service name
-                instance (str): Instance name
+        query_params = []
 
-            Keyword Args:
-                verbose (int): Include verbose status information. [optional]
-                include_smartstack (bool): Include Smartstack information. [optional]
-                include_envoy (bool): Include Envoy information. [optional]
-                include_mesos (bool): Include Mesos information. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+        header_params = {}
 
-            Returns:
-                InstanceStatus
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['service'] = \
-                service
-            kwargs['instance'] = \
-                instance
-            return self.call_with_http_info(**kwargs)
+        form_params = []
+        local_var_files = {}
 
-        self.status_instance = Endpoint(
-            settings={
-                'response_type': (InstanceStatus,),
-                'auth': [],
-                'endpoint_path': '/services/{service}/{instance}/status',
-                'operation_id': 'status_instance',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'service',
-                    'instance',
-                    'verbose',
-                    'include_smartstack',
-                    'include_envoy',
-                    'include_mesos',
-                ],
-                'required': [
-                    'service',
-                    'instance',
-                ],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'service':
-                        (str,),
-                    'instance':
-                        (str,),
-                    'verbose':
-                        (int,),
-                    'include_smartstack':
-                        (bool,),
-                    'include_envoy':
-                        (bool,),
-                    'include_mesos':
-                        (bool,),
-                },
-                'attribute_map': {
-                    'service': 'service',
-                    'instance': 'instance',
-                    'verbose': 'verbose',
-                    'include_smartstack': 'include_smartstack',
-                    'include_envoy': 'include_envoy',
-                    'include_mesos': 'include_mesos',
-                },
-                'location_map': {
-                    'service': 'path',
-                    'instance': 'path',
-                    'verbose': 'query',
-                    'include_smartstack': 'query',
-                    'include_envoy': 'query',
-                    'include_mesos': 'query',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__status_instance
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='InlineResponse200',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
+
+    def status_instance(self, service, instance, **kwargs):  # noqa: E501
+        """Get status of service_name.instance_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.status_instance(service, instance, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param verbose: Include verbose status information
+        :type verbose: int
+        :param include_smartstack: Include Smartstack information
+        :type include_smartstack: bool
+        :param include_envoy: Include Envoy information
+        :type include_envoy: bool
+        :param include_mesos: Include Mesos information
+        :type include_mesos: bool
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: InstanceStatus
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.status_instance_with_http_info(service, instance, **kwargs)  # noqa: E501
+
+    def status_instance_with_http_info(self, service, instance, **kwargs):  # noqa: E501
+        """Get status of service_name.instance_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.status_instance_with_http_info(service, instance, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param verbose: Include verbose status information
+        :type verbose: int
+        :param include_smartstack: Include Smartstack information
+        :type include_smartstack: bool
+        :param include_envoy: Include Envoy information
+        :type include_envoy: bool
+        :param include_mesos: Include Mesos information
+        :type include_mesos: bool
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(InstanceStatus, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'service',
+            'instance',
+            'verbose',
+            'include_smartstack',
+            'include_envoy',
+            'include_mesos'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
 
-        def __task_instance(
-            self,
-            service,
-            instance,
-            task_id,
-            **kwargs
-        ):
-            """Get mesos task of service_name.instance_name by task_id  # noqa: E501
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method status_instance" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'service' is set
+        if self.api_client.client_side_validation and ('service' not in local_var_params or  # noqa: E501
+                                                        local_var_params['service'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `service` when calling `status_instance`")  # noqa: E501
+        # verify the required parameter 'instance' is set
+        if self.api_client.client_side_validation and ('instance' not in local_var_params or  # noqa: E501
+                                                        local_var_params['instance'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `instance` when calling `status_instance`")  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        collection_formats = {}
 
-            >>> thread = api.task_instance(service, instance, task_id, async_req=True)
-            >>> result = thread.get()
+        path_params = {}
+        if 'service' in local_var_params:
+            path_params['service'] = local_var_params['service']  # noqa: E501
+        if 'instance' in local_var_params:
+            path_params['instance'] = local_var_params['instance']  # noqa: E501
 
-            Args:
-                service (str): Service name
-                instance (str): Instance name
-                task_id (str): mesos task id
+        query_params = []
+        if 'verbose' in local_var_params and local_var_params['verbose'] is not None:  # noqa: E501
+            query_params.append(('verbose', local_var_params['verbose']))  # noqa: E501
+        if 'include_smartstack' in local_var_params and local_var_params['include_smartstack'] is not None:  # noqa: E501
+            query_params.append(('include_smartstack', local_var_params['include_smartstack']))  # noqa: E501
+        if 'include_envoy' in local_var_params and local_var_params['include_envoy'] is not None:  # noqa: E501
+            query_params.append(('include_envoy', local_var_params['include_envoy']))  # noqa: E501
+        if 'include_mesos' in local_var_params and local_var_params['include_mesos'] is not None:  # noqa: E501
+            query_params.append(('include_mesos', local_var_params['include_mesos']))  # noqa: E501
 
-            Keyword Args:
-                verbose (bool): Return slave and executor for task. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+        header_params = {}
 
-            Returns:
-                {str: (bool, date, datetime, dict, float, int, list, str, none_type)}
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['service'] = \
-                service
-            kwargs['instance'] = \
-                instance
-            kwargs['task_id'] = \
-                task_id
-            return self.call_with_http_info(**kwargs)
+        form_params = []
+        local_var_files = {}
 
-        self.task_instance = Endpoint(
-            settings={
-                'response_type': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),
-                'auth': [],
-                'endpoint_path': '/services/{service}/{instance}/tasks/{task_id}',
-                'operation_id': 'task_instance',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'service',
-                    'instance',
-                    'task_id',
-                    'verbose',
-                ],
-                'required': [
-                    'service',
-                    'instance',
-                    'task_id',
-                ],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'service':
-                        (str,),
-                    'instance':
-                        (str,),
-                    'task_id':
-                        (str,),
-                    'verbose':
-                        (bool,),
-                },
-                'attribute_map': {
-                    'service': 'service',
-                    'instance': 'instance',
-                    'task_id': 'task_id',
-                    'verbose': 'verbose',
-                },
-                'location_map': {
-                    'service': 'path',
-                    'instance': 'path',
-                    'task_id': 'path',
-                    'verbose': 'query',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__task_instance
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services/{service}/{instance}/status', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='InstanceStatus',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
+
+    def task_instance(self, service, instance, task_id, **kwargs):  # noqa: E501
+        """Get mesos task of service_name.instance_name by task_id  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.task_instance(service, instance, task_id, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param task_id: mesos task id (required)
+        :type task_id: str
+        :param verbose: Return slave and executor for task
+        :type verbose: bool
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: object
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.task_instance_with_http_info(service, instance, task_id, **kwargs)  # noqa: E501
+
+    def task_instance_with_http_info(self, service, instance, task_id, **kwargs):  # noqa: E501
+        """Get mesos task of service_name.instance_name by task_id  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.task_instance_with_http_info(service, instance, task_id, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param task_id: mesos task id (required)
+        :type task_id: str
+        :param verbose: Return slave and executor for task
+        :type verbose: bool
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(object, status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'service',
+            'instance',
+            'task_id',
+            'verbose'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
 
-        def __tasks_instance(
-            self,
-            service,
-            instance,
-            **kwargs
-        ):
-            """Get mesos tasks of service_name.instance_name  # noqa: E501
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method task_instance" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'service' is set
+        if self.api_client.client_side_validation and ('service' not in local_var_params or  # noqa: E501
+                                                        local_var_params['service'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `service` when calling `task_instance`")  # noqa: E501
+        # verify the required parameter 'instance' is set
+        if self.api_client.client_side_validation and ('instance' not in local_var_params or  # noqa: E501
+                                                        local_var_params['instance'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `instance` when calling `task_instance`")  # noqa: E501
+        # verify the required parameter 'task_id' is set
+        if self.api_client.client_side_validation and ('task_id' not in local_var_params or  # noqa: E501
+                                                        local_var_params['task_id'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `task_id` when calling `task_instance`")  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        collection_formats = {}
 
-            >>> thread = api.tasks_instance(service, instance, async_req=True)
-            >>> result = thread.get()
+        path_params = {}
+        if 'service' in local_var_params:
+            path_params['service'] = local_var_params['service']  # noqa: E501
+        if 'instance' in local_var_params:
+            path_params['instance'] = local_var_params['instance']  # noqa: E501
+        if 'task_id' in local_var_params:
+            path_params['task_id'] = local_var_params['task_id']  # noqa: E501
 
-            Args:
-                service (str): Service name
-                instance (str): Instance name
+        query_params = []
+        if 'verbose' in local_var_params and local_var_params['verbose'] is not None:  # noqa: E501
+            query_params.append(('verbose', local_var_params['verbose']))  # noqa: E501
 
-            Keyword Args:
-                slave_hostname (str): slave hostname to filter tasks by. [optional]
-                verbose (bool): Return slave and executor for task. [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+        header_params = {}
 
-            Returns:
-                InstanceTasks
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            kwargs['service'] = \
-                service
-            kwargs['instance'] = \
-                instance
-            return self.call_with_http_info(**kwargs)
+        form_params = []
+        local_var_files = {}
 
-        self.tasks_instance = Endpoint(
-            settings={
-                'response_type': (InstanceTasks,),
-                'auth': [],
-                'endpoint_path': '/services/{service}/{instance}/tasks',
-                'operation_id': 'tasks_instance',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'service',
-                    'instance',
-                    'slave_hostname',
-                    'verbose',
-                ],
-                'required': [
-                    'service',
-                    'instance',
-                ],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'service':
-                        (str,),
-                    'instance':
-                        (str,),
-                    'slave_hostname':
-                        (str,),
-                    'verbose':
-                        (bool,),
-                },
-                'attribute_map': {
-                    'service': 'service',
-                    'instance': 'instance',
-                    'slave_hostname': 'slave_hostname',
-                    'verbose': 'verbose',
-                },
-                'location_map': {
-                    'service': 'path',
-                    'instance': 'path',
-                    'slave_hostname': 'query',
-                    'verbose': 'query',
-                },
-                'collection_format_map': {
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__tasks_instance
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services/{service}/{instance}/tasks/{task_id}', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='object',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
+
+    def tasks_instance(self, service, instance, **kwargs):  # noqa: E501
+        """Get mesos tasks of service_name.instance_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.tasks_instance(service, instance, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param slave_hostname: slave hostname to filter tasks by
+        :type slave_hostname: str
+        :param verbose: Return slave and executor for task
+        :type verbose: bool
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: list[object]
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.tasks_instance_with_http_info(service, instance, **kwargs)  # noqa: E501
+
+    def tasks_instance_with_http_info(self, service, instance, **kwargs):  # noqa: E501
+        """Get mesos tasks of service_name.instance_name  # noqa: E501
+
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
+
+        >>> thread = api.tasks_instance_with_http_info(service, instance, async_req=True)
+        >>> result = thread.get()
+
+        :param service: Service name (required)
+        :type service: str
+        :param instance: Instance name (required)
+        :type instance: str
+        :param slave_hostname: slave hostname to filter tasks by
+        :type slave_hostname: str
+        :param verbose: Return slave and executor for task
+        :type verbose: bool
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(list[object], status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'service',
+            'instance',
+            'slave_hostname',
+            'verbose'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
+
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method tasks_instance" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+        # verify the required parameter 'service' is set
+        if self.api_client.client_side_validation and ('service' not in local_var_params or  # noqa: E501
+                                                        local_var_params['service'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `service` when calling `tasks_instance`")  # noqa: E501
+        # verify the required parameter 'instance' is set
+        if self.api_client.client_side_validation and ('instance' not in local_var_params or  # noqa: E501
+                                                        local_var_params['instance'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `instance` when calling `tasks_instance`")  # noqa: E501
+
+        collection_formats = {}
+
+        path_params = {}
+        if 'service' in local_var_params:
+            path_params['service'] = local_var_params['service']  # noqa: E501
+        if 'instance' in local_var_params:
+            path_params['instance'] = local_var_params['instance']  # noqa: E501
+
+        query_params = []
+        if 'slave_hostname' in local_var_params and local_var_params['slave_hostname'] is not None:  # noqa: E501
+            query_params.append(('slave_hostname', local_var_params['slave_hostname']))  # noqa: E501
+        if 'verbose' in local_var_params and local_var_params['verbose'] is not None:  # noqa: E501
+            query_params.append(('verbose', local_var_params['verbose']))  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/services/{service}/{instance}/tasks', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='list[object]',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))

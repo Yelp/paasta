@@ -10,20 +10,18 @@
 """
 
 
-import re  # noqa: F401
-import sys  # noqa: F401
+from __future__ import absolute_import
 
-from paasta_tools.paastaapi.api_client import ApiClient, Endpoint
-from paasta_tools.paastaapi.model_utils import (  # noqa: F401
-    check_allowed_values,
-    check_validations,
-    date,
-    datetime,
-    file_type,
-    none_type,
-    validate_and_convert_types
+import re  # noqa: F401
+
+# python 2 and python 3 compatibility library
+import six
+
+from paasta_tools.paastaapi.api_client import ApiClient
+from paasta_tools.paastaapi.exceptions import (  # noqa: F401
+    ApiTypeError,
+    ApiValueError
 )
-from paasta_tools.paastaapi.model.resource import Resource
 
 
 class ResourcesApi(object):
@@ -38,120 +36,136 @@ class ResourcesApi(object):
             api_client = ApiClient()
         self.api_client = api_client
 
-        def __resources(
-            self,
-            **kwargs
-        ):
-            """Get resources in the cluster  # noqa: E501
+    def resources(self, **kwargs):  # noqa: E501
+        """Get resources in the cluster  # noqa: E501
 
-            This method makes a synchronous HTTP request by default. To make an
-            asynchronous HTTP request, please pass async_req=True
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
 
-            >>> thread = api.resources(async_req=True)
-            >>> result = thread.get()
+        >>> thread = api.resources(async_req=True)
+        >>> result = thread.get()
 
+        :param groupings: comma separated list of keys to group by
+        :type groupings: list[str]
+        :param filter: List of slave filters in format 'filter=attr_name:value1,value2&filter=attr2:value3,value4'. Matches attr_name=(value1 OR value2) AND attr2=(value3 OR value4)
+        :type filter: list[str]
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: list[ResourceItem]
+        """
+        kwargs['_return_http_data_only'] = True
+        return self.resources_with_http_info(**kwargs)  # noqa: E501
 
-            Keyword Args:
-                groupings ([str]): comma separated list of keys to group by. [optional]
-                filter ([str]): List of slave filters in format &#39;filter&#x3D;attr_name:value1,value2&amp;filter&#x3D;attr2:value3,value4&#39;. Matches attr_name&#x3D;(value1 OR value2) AND attr2&#x3D;(value3 OR value4). [optional]
-                _return_http_data_only (bool): response data without head status
-                    code and headers. Default is True.
-                _preload_content (bool): if False, the urllib3.HTTPResponse object
-                    will be returned without reading/decoding response data.
-                    Default is True.
-                _request_timeout (float/tuple): timeout setting for this request. If one
-                    number provided, it will be total request timeout. It can also
-                    be a pair (tuple) of (connection, read) timeouts.
-                    Default is None.
-                _check_input_type (bool): specifies if type checking
-                    should be done one the data sent to the server.
-                    Default is True.
-                _check_return_type (bool): specifies if type checking
-                    should be done one the data received from the server.
-                    Default is True.
-                _host_index (int/None): specifies the index of the server
-                    that we want to use.
-                    Default is read from the configuration.
-                async_req (bool): execute request asynchronously
+    def resources_with_http_info(self, **kwargs):  # noqa: E501
+        """Get resources in the cluster  # noqa: E501
 
-            Returns:
-                Resource
-                    If the method is called asynchronously, returns the request
-                    thread.
-            """
-            kwargs['async_req'] = kwargs.get(
-                'async_req', False
-            )
-            kwargs['_return_http_data_only'] = kwargs.get(
-                '_return_http_data_only', True
-            )
-            kwargs['_preload_content'] = kwargs.get(
-                '_preload_content', True
-            )
-            kwargs['_request_timeout'] = kwargs.get(
-                '_request_timeout', None
-            )
-            kwargs['_check_input_type'] = kwargs.get(
-                '_check_input_type', True
-            )
-            kwargs['_check_return_type'] = kwargs.get(
-                '_check_return_type', True
-            )
-            kwargs['_host_index'] = kwargs.get('_host_index')
-            return self.call_with_http_info(**kwargs)
+        This method makes a synchronous HTTP request by default. To make an
+        asynchronous HTTP request, please pass async_req=True
 
-        self.resources = Endpoint(
-            settings={
-                'response_type': (Resource,),
-                'auth': [],
-                'endpoint_path': '/resources/utilization',
-                'operation_id': 'resources',
-                'http_method': 'GET',
-                'servers': None,
-            },
-            params_map={
-                'all': [
-                    'groupings',
-                    'filter',
-                ],
-                'required': [],
-                'nullable': [
-                ],
-                'enum': [
-                ],
-                'validation': [
-                ]
-            },
-            root_map={
-                'validations': {
-                },
-                'allowed_values': {
-                },
-                'openapi_types': {
-                    'groupings':
-                        ([str],),
-                    'filter':
-                        ([str],),
-                },
-                'attribute_map': {
-                    'groupings': 'groupings',
-                    'filter': 'filter',
-                },
-                'location_map': {
-                    'groupings': 'query',
-                    'filter': 'query',
-                },
-                'collection_format_map': {
-                    'groupings': 'csv',
-                    'filter': 'multi',
-                }
-            },
-            headers_map={
-                'accept': [
-                    'application/json'
-                ],
-                'content_type': [],
-            },
-            api_client=api_client,
-            callable=__resources
+        >>> thread = api.resources_with_http_info(async_req=True)
+        >>> result = thread.get()
+
+        :param groupings: comma separated list of keys to group by
+        :type groupings: list[str]
+        :param filter: List of slave filters in format 'filter=attr_name:value1,value2&filter=attr2:value3,value4'. Matches attr_name=(value1 OR value2) AND attr2=(value3 OR value4)
+        :type filter: list[str]
+        :param async_req: Whether to execute the request asynchronously.
+        :type async_req: bool, optional
+        :param _return_http_data_only: response data without head status code
+                                       and headers
+        :type _return_http_data_only: bool, optional
+        :param _preload_content: if False, the urllib3.HTTPResponse object will
+                                 be returned without reading/decoding response
+                                 data. Default is True.
+        :type _preload_content: bool, optional
+        :param _request_timeout: timeout setting for this request. If one
+                                 number provided, it will be total request
+                                 timeout. It can also be a pair (tuple) of
+                                 (connection, read) timeouts.
+        :param _request_auth: set to override the auth_settings for an a single
+                              request; this effectively ignores the authentication
+                              in the spec for a single request.
+        :type _request_auth: dict, optional
+        :return: Returns the result object.
+                 If the method is called asynchronously,
+                 returns the request thread.
+        :rtype: tuple(list[ResourceItem], status_code(int), headers(HTTPHeaderDict))
+        """
+
+        local_var_params = locals()
+
+        all_params = [
+            'groupings',
+            'filter'
+        ]
+        all_params.extend(
+            [
+                'async_req',
+                '_return_http_data_only',
+                '_preload_content',
+                '_request_timeout',
+                '_request_auth'
+            ]
         )
+
+        for key, val in six.iteritems(local_var_params['kwargs']):
+            if key not in all_params:
+                raise ApiTypeError(
+                    "Got an unexpected keyword argument '%s'"
+                    " to method resources" % key
+                )
+            local_var_params[key] = val
+        del local_var_params['kwargs']
+
+        collection_formats = {}
+
+        path_params = {}
+
+        query_params = []
+        if 'groupings' in local_var_params and local_var_params['groupings'] is not None:  # noqa: E501
+            query_params.append(('groupings', local_var_params['groupings']))  # noqa: E501
+            collection_formats['groupings'] = 'csv'  # noqa: E501
+        if 'filter' in local_var_params and local_var_params['filter'] is not None:  # noqa: E501
+            query_params.append(('filter', local_var_params['filter']))  # noqa: E501
+            collection_formats['filter'] = 'multi'  # noqa: E501
+
+        header_params = {}
+
+        form_params = []
+        local_var_files = {}
+
+        body_params = None
+        # HTTP header `Accept`
+        header_params['Accept'] = self.api_client.select_header_accept(
+            ['application/json'])  # noqa: E501
+
+        # Authentication setting
+        auth_settings = []  # noqa: E501
+
+        return self.api_client.call_api(
+            '/resources/utilization', 'GET',
+            path_params,
+            query_params,
+            header_params,
+            body=body_params,
+            post_params=form_params,
+            files=local_var_files,
+            response_type='list[ResourceItem]',  # noqa: E501
+            auth_settings=auth_settings,
+            async_req=local_var_params.get('async_req'),
+            _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
+            _preload_content=local_var_params.get('_preload_content', True),
+            _request_timeout=local_var_params.get('_request_timeout'),
+            collection_formats=collection_formats,
+            _request_auth=local_var_params.get('_request_auth'))
