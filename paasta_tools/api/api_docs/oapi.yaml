@@ -315,6 +315,9 @@ components:
         smartstack:
           $ref: '#/components/schemas/SmartstackStatus'
           description: Status of the service in smartstack
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
       required:
       - desired_state
       - app_count

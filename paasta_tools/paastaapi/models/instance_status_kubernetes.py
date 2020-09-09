@@ -48,7 +48,8 @@ class InstanceStatusKubernetes(object):
         'pods': 'list[KubernetesPod]',
         'replicasets': 'list[KubernetesReplicaSet]',
         'running_instance_count': 'int',
-        'smartstack': 'SmartstackStatus'
+        'smartstack': 'SmartstackStatus',
+        'envoy': 'EnvoyStatus'
     }
 
     attribute_map = {
@@ -67,10 +68,11 @@ class InstanceStatusKubernetes(object):
         'pods': 'pods',
         'replicasets': 'replicasets',
         'running_instance_count': 'running_instance_count',
-        'smartstack': 'smartstack'
+        'smartstack': 'smartstack',
+        'envoy': 'envoy'
     }
 
-    def __init__(self, app_count=None, app_id=None, autoscaling_status=None, backoff_seconds=None, bounce_method=None, create_timestamp=None, deploy_status=None, deploy_status_message=None, desired_state=None, error_message=None, expected_instance_count=None, namespace=None, pods=None, replicasets=None, running_instance_count=None, smartstack=None, local_vars_configuration=None):  # noqa: E501
+    def __init__(self, app_count=None, app_id=None, autoscaling_status=None, backoff_seconds=None, bounce_method=None, create_timestamp=None, deploy_status=None, deploy_status_message=None, desired_state=None, error_message=None, expected_instance_count=None, namespace=None, pods=None, replicasets=None, running_instance_count=None, smartstack=None, envoy=None, local_vars_configuration=None):  # noqa: E501
         """InstanceStatusKubernetes - a model defined in OpenAPI"""  # noqa: E501
         if local_vars_configuration is None:
             local_vars_configuration = Configuration()
@@ -92,6 +94,7 @@ class InstanceStatusKubernetes(object):
         self._replicasets = None
         self._running_instance_count = None
         self._smartstack = None
+        self._envoy = None
         self.discriminator = None
 
         self.app_count = app_count
@@ -123,6 +126,8 @@ class InstanceStatusKubernetes(object):
             self.running_instance_count = running_instance_count
         if smartstack is not None:
             self.smartstack = smartstack
+        if envoy is not None:
+            self.envoy = envoy
 
     @property
     def app_count(self):
@@ -511,6 +516,27 @@ class InstanceStatusKubernetes(object):
         """
 
         self._smartstack = smartstack
+
+    @property
+    def envoy(self):
+        """Gets the envoy of this InstanceStatusKubernetes.  # noqa: E501
+
+
+        :return: The envoy of this InstanceStatusKubernetes.  # noqa: E501
+        :rtype: EnvoyStatus
+        """
+        return self._envoy
+
+    @envoy.setter
+    def envoy(self, envoy):
+        """Sets the envoy of this InstanceStatusKubernetes.
+
+
+        :param envoy: The envoy of this InstanceStatusKubernetes.  # noqa: E501
+        :type envoy: EnvoyStatus
+        """
+
+        self._envoy = envoy
 
     def to_dict(self):
         """Returns the model properties as a dict"""
