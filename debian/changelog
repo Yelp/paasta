@@ -1,3 +1,19 @@
+paasta-tools (0.96.55) xenial; urgency=medium
+
+  * 0.96.55 tagged with 'make release'
+    Commit: Swagger to OpenAPI (#2891)  * paastaapi from oapi3 spec  -
+    convert swagger.json into oapi.yaml - add makefile target to
+    generate api - add generated code  * add scheme to oapi.yaml, fix
+    paasta server url parsing for oapi, add swagger.json and oapi.yaml
+    sync check, exclude generated code from some pre-commit checks  *
+    update pre-commit hook to disallow manual changes to paastaapi  *
+    trigger oapi pre-commit hook for paastaapi files too  * factor out
+    get_paasta_ssl_opts, use it for oapi client  * use oapi client in
+    metastatus  * use 5.0.0.beta2 oapi cli version and standard python
+    generator
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 09 Sep 2020 00:08:37 -0700
+
 paasta-tools (0.96.54) xenial; urgency=medium
 
   * 0.96.54 tagged with 'make release'

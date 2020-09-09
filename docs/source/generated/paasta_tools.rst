@@ -16,6 +16,7 @@ Subpackages
    paasta_tools.mesos
    paasta_tools.metrics
    paasta_tools.monitoring
+   paasta_tools.paastaapi
    paasta_tools.secret_providers
    paasta_tools.tron
 
