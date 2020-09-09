@@ -32,6 +32,7 @@ def instance_status_kwargs():
         instance_type="",
         verbose=0,
         include_smartstack=False,
+        include_envoy=False,
         settings=mock.Mock(),
     )
 
@@ -102,6 +103,7 @@ def test_kubernetes_status(
         instance="",
         verbose=0,
         include_smartstack=False,
+        include_envoy=False,
         instance_type="flink",
         settings=mock.Mock(),
     )

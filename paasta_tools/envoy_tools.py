@@ -27,8 +27,10 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import requests
+from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
 from paasta_tools import marathon_tools
@@ -218,6 +220,39 @@ def get_multiple_backends(
     return backends
 
 
+def match_backends_and_pods(
+    backends: Iterable[EnvoyBackend], pods: Iterable[V1Pod],
+) -> List[Tuple[Optional[EnvoyBackend], Optional[V1Pod]]]:
+    """Returns tuples of matching (backend, pod) pairs, as matched by IP. Each backend will be listed exactly
+    once. If a backend does not match with a pod, (backend, None) will be included.
+    If a pod's IP does not match with any backends, (None, pod) will be included.
+
+    :param backends: An iterable of Envoy backend dictionaries, e.g. the list returned by
+                     envoy_tools.get_multiple_backends.
+    :param pods: A list of pods
+    """
+
+    # { ip : [backend1, backend2], ... }
+    backends_by_ip: DefaultDict[str, List[EnvoyBackend]] = collections.defaultdict(list)
+    backend_pod_pairs = []
+
+    for backend in backends:
+        ip = backend["address"]
+        backends_by_ip[ip].append(backend)
+
+    for pod in pods:
+        ip = pod.status.pod_ip
+        for backend in backends_by_ip.pop(ip, [None]):
+            backend_pod_pairs.append((backend, pod))
+
+    # we've been popping in the above loop, so anything left didn't match a k8s pod.
+    for backends in backends_by_ip.values():
+        for backend in backends:
+            backend_pod_pairs.append((backend, None))
+
+    return backend_pod_pairs
+
+
 def match_backends_and_tasks(
     backends: Iterable[EnvoyBackend], tasks: Iterable[marathon_tools.MarathonTask]
 ) -> List[Tuple[Optional[EnvoyBackend], Optional[marathon_tools.MarathonTask]]]:
@@ -258,7 +293,9 @@ def match_backends_and_tasks(
 def build_envoy_location_dict(
     location: str,
     matched_envoy_backends_and_tasks: Sequence[
-        Tuple[Optional[EnvoyBackend], Optional[marathon_tools.MarathonTask]]
+        Tuple[
+            Optional[EnvoyBackend], Optional[Union[marathon_tools.MarathonTask, V1Pod]]
+        ]
     ],
     should_return_individual_backends: bool,
     casper_proxied_backends: AbstractSet[Tuple[str, int]],
