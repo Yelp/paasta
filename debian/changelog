@@ -1,3 +1,12 @@
+paasta-tools (0.96.56) xenial; urgency=medium
+
+  * 0.96.56 tagged with 'make release'
+    Commit: Merge pull request #2910 from Yelp/u/gabrielv/MESH-848-envoy-
+    status-k8s  MESH-848 Add Envoy support on `paasta status` for k8s
+    services
+
+ -- gabrielv <gabrielv@yelp.com>  Wed, 09 Sep 2020 05:45:19 -0700
+
 paasta-tools (0.96.55) xenial; urgency=medium
 
   * 0.96.55 tagged with 'make release'
