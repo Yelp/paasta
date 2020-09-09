@@ -53,6 +53,7 @@ monotonic==1.4
 msgpack-python==0.5.6
 multidict==4.1.0
 mypy-extensions==0.4.1
+nulltype==2.3.1
 oauthlib==2.0.7
 objgraph==3.4.0
 PasteDeploy==1.5.2

@@ -1,3 +1,4 @@
+exclude: ^paasta_tools/paastaapi
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.1.0
@@ -58,3 +59,16 @@ repos:
         entry: paasta_tools/contrib/mock_patch_checker.py
         language: script
         files: ^tests/.*\.py$|^.*_itests/.*\.py
+    -   id: check-swagger-oapi-in-sync
+        name: check that swagger.json and oapi.yaml are in sync
+        description: we're migrating to oapi, please keep it in sync with swagger
+        entry: paasta_tools/contrib/check_swagger_oapi_sync.sh
+        language: script
+        pass_filenames: false
+        exclude: ^$
+        files: >
+            (?x)^(
+                paasta_tools/api/api_docs/swagger.json|
+                paasta_tools/api/api_docs/oapi.yaml|
+                paasta_tools/paastaapi
+            )

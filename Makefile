@@ -85,3 +85,15 @@ install-hooks:
 
 k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
+
+openapi-codegen:
+	rm -rf paasta_tools/paastaapi
+	docker pull openapitools/openapi-generator-cli:v5.0.0-beta2
+	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src \
+	        openapitools/openapi-generator-cli:v5.0.0-beta2 generate \
+	                -i /src/paasta_tools/api/api_docs/oapi.yaml \
+	                -g python \
+	                --package-name paasta_tools.paastaapi \
+	                -o /src/temp-openapi-client
+	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
+	rm -rf temp-openapi-client
