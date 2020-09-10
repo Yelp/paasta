@@ -147,6 +147,14 @@ def add_disable_sensu_arg(parser):  # pragma: no cover
     )
 
 
+def add_json_arg(parser):  # pragma: no cover
+    parser.add_argument(
+        '--json',
+        action='store_true',
+        help='Return information in JSON format',
+    )
+
+
 def help_formatter(prog):  # pragma: no cover
     """Formatter for the argument parser help strings"""
     return argparse.ArgumentDefaultsHelpFormatter(prog, max_help_position=35, width=100)
@@ -175,10 +183,10 @@ def _get_validated_args(argv, parser):
 
 def get_parser(description=''):  # pragma: no cover
     from clusterman.cli.generate_data import add_generate_data_parser
-    from clusterman.cli.info import add_mesos_list_clusters_parser
-    from clusterman.cli.info import add_mesos_list_pools_parser
-    from clusterman.cli.manage import add_mesos_manager_parser
-    from clusterman.cli.status import add_mesos_status_parser
+    from clusterman.cli.info import add_list_clusters_parser
+    from clusterman.cli.info import add_list_pools_parser
+    from clusterman.cli.manage import add_manager_parser
+    from clusterman.cli.status import add_status_parser
     from clusterman.cli.simulate import add_simulate_parser
     from clusterman.cli.toggle import add_cluster_disable_parser
     from clusterman.cli.toggle import add_cluster_enable_parser
@@ -203,10 +211,10 @@ def get_parser(description=''):  # pragma: no cover
     add_cluster_disable_parser(subparser)
     add_cluster_enable_parser(subparser)
     add_generate_data_parser(subparser)
-    add_mesos_list_clusters_parser(subparser)
-    add_mesos_list_pools_parser(subparser)
-    add_mesos_status_parser(subparser)
-    add_mesos_manager_parser(subparser)
+    add_list_clusters_parser(subparser)
+    add_list_pools_parser(subparser)
+    add_status_parser(subparser)
+    add_manager_parser(subparser)
     add_simulate_parser(subparser)
     add_queue_parser(subparser)
 
