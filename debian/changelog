@@ -1,3 +1,9 @@
+clusterman (4.5.0) xenial bionic; urgency=low
+
+  * Add --json arg for various sub-commands
+
+ -- David Morrison <drmorr@yelp.com>  Fri, 11 Sep 2020 11:17:32 -0700
+
 clusterman (4.4.0) xenial bionic; urgency=low
 
   * CLUSTERMAN-333 display helpful messages if you're in the wrong
