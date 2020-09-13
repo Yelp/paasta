@@ -1,3 +1,12 @@
+paasta-tools (0.96.57) xenial; urgency=medium
+
+  * 0.96.57 tagged with 'make release'
+    Commit: Merge pull request #2912 from
+    Yelp/selston_hpa_signalflow_extrapolation  Use
+    `extrapolation="last_value"` for custom signalflow used by HPA
+
+ -- Stuart Elston <selston@yelp.com>  Sat, 12 Sep 2020 17:09:15 -0700
+
 paasta-tools (0.96.56) xenial; urgency=medium
 
   * 0.96.56 tagged with 'make release'
