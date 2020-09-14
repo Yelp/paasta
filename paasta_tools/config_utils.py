@@ -36,6 +36,16 @@ HEADER_COMMENT = """
 # ^ Braces are doubled for escaping in call to .format
 
 
+def _run_git(git_args):
+    return subprocess.run(
+        ("git",) + git_args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=True,
+        encoding="utf-8",
+    )
+
+
 def write_auto_config_data(
     service: str, extra_info: str, data: Dict[str, Any], soa_dir: str = DEFAULT_SOA_DIR
 ) -> Optional[str]:
@@ -85,6 +95,22 @@ class PushNotFastForwardError(Exception):
 
 class ValidationError(Exception):
     pass
+
+
+def _rebase(onto: str) -> None:
+    try:
+        branch = _run_git(("branch", "--show-current")).stdout.rstrip()
+        if branch == onto:
+            _run_git(("pull", "--rebase", "origin", onto))
+        else:
+            _run_git(("checkout", onto))
+            _run_git(("pull", "origin", onto))
+            _run_git(("checkout", branch))
+            _run_git(("rebase", onto))
+    except subprocess.CalledProcessError as e:
+        log.error(f"Rebase onto {onto} failed on {e.cmd} with:\n{e.stdout}")
+        subprocess.run(("git", "rebase", "--abort"))  # use .run to ignore error
+        raise
 
 
 def _push_to_remote(branch: str) -> None:
@@ -203,6 +229,7 @@ class AutoConfigUpdater:
             message = f"{message}\n\n{extra_message}"
 
         if _commit_files(list(self.files_changed), message):
+            _rebase("master")
             _push_to_remote(self.branch)
         else:
             log.info("No files changed, no push required.")

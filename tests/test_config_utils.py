@@ -191,9 +191,12 @@ def test_auto_config_updater_read_write(updater):
     assert len(updater.files_changed) == 1
 
 
+@mock.patch("paasta_tools.config_utils._rebase", autospec=True)
 @mock.patch("paasta_tools.config_utils._push_to_remote", autospec=True)
 @mock.patch("paasta_tools.config_utils._commit_files", autospec=True)
-def test_auto_config_updater_commit_validate_fails(mock_push, mock_commit, updater):
+def test_auto_config_updater_commit_validate_fails(
+    mock_push, mock_commit, mock_rebase, updater
+):
     updater.files_changed = {"a", "b"}
     with mock.patch.object(
         updater, "validate", autospec=True, return_value=False
@@ -202,12 +205,16 @@ def test_auto_config_updater_commit_validate_fails(mock_push, mock_commit, updat
 
     assert mock_commit.call_count == 0
     assert mock_push.call_count == 0
+    assert mock_rebase.call_count == 0
 
 
 @pytest.mark.parametrize("did_commit", [True, False])
+@mock.patch("paasta_tools.config_utils._rebase", autospec=True)
 @mock.patch("paasta_tools.config_utils._commit_files", autospec=True)
 @mock.patch("paasta_tools.config_utils._push_to_remote", autospec=True)
-def test_auto_config_updater_commit(mock_push, mock_commit, did_commit, updater):
+def test_auto_config_updater_commit(
+    mock_push, mock_commit, mock_rebase, did_commit, updater
+):
     updater.files_changed = {"a", "b"}
     mock_commit.return_value = did_commit
     with mock.patch.object(updater, "validate", autospec=True, return_value=True):
@@ -216,5 +223,6 @@ def test_auto_config_updater_commit(mock_push, mock_commit, did_commit, updater)
     assert mock_commit.call_count == 1
     if did_commit:
         mock_push.assert_called_once_with(updater.branch)
+        mock_rebase.assert_called_once_with("master")
     else:
         assert mock_push.call_count == 0
