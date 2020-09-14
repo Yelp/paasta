@@ -1,3 +1,11 @@
+paasta-tools (0.96.58) xenial; urgency=medium
+
+  * 0.96.58 tagged with 'make release'
+    Commit: Merge pull request #2914 from Yelp/configure-api-timeout
+    Add option for gunicorn worker timeouts to the api
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 14 Sep 2020 16:34:58 -0700
+
 paasta-tools (0.96.57) xenial; urgency=medium
 
   * 0.96.57 tagged with 'make release'
