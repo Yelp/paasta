@@ -66,6 +66,12 @@ def parse_paasta_api_args():
         dest="cluster",
         help="specify a cluster. If no empty, the cluster from /etc/paasta is used",
     )
+    parser.add_argument(
+        "--max-request-seconds",
+        default=120,
+        dest="max_request_seconds",
+        help="Maximum seconds allowed for a worker to process a request",
+    )
     args = parser.parse_args()
     return args
 
@@ -241,6 +247,10 @@ def main(argv=None):
         "4",
         "--bind",
         f":{args.port}",
+        "--timeout",
+        str(args.max_request_seconds),
+        "--graceful-timeout",
+        str(args.max_request_seconds),
         "paasta_tools.api.api:application",
     )
 
