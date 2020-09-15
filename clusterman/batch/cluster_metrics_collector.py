@@ -47,7 +47,6 @@ from clusterman.config import get_pool_config_path
 from clusterman.config import load_cluster_pool_config
 from clusterman.config import setup_config
 from clusterman.mesos.metrics_generators import ClusterMetric
-from clusterman.mesos.metrics_generators import generate_framework_metadata
 from clusterman.mesos.metrics_generators import generate_kubernetes_metrics
 from clusterman.mesos.metrics_generators import generate_simple_metadata
 from clusterman.mesos.metrics_generators import generate_system_metrics
@@ -75,8 +74,6 @@ METRICS_TO_WRITE = [
                   pools=All, schedulers=['kubernetes', 'mesos']),
     MetricToWrite(generate_simple_metadata, METADATA, aggregate_meteorite_dims=False,
                   pools=All, schedulers=['kubernetes', 'mesos']),
-    MetricToWrite(generate_framework_metadata, METADATA, aggregate_meteorite_dims=True,
-                  pools=['default.mesos'], schedulers=['mesos']),
 ]
 
 

@@ -81,7 +81,6 @@ def killable_instance_with_tasks(context, tasks):
                 {'slave_id': instances[0]['InstanceId'], 'state': 'TASK_RUNNING', 'framework_id': 'framework_a'}
             ] * int(tasks),
             {'framework_a': {'name': 'framework_a_name'}},
-            {},
         )
 
     context.pool_manager.cluster_connector._get_tasks_and_frameworks.side_effect = get_tasks_and_frameworks

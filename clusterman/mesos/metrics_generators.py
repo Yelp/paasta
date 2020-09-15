@@ -11,17 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import cast
 from typing import Dict
 from typing import Generator
 from typing import Mapping
-from typing import MutableMapping
 from typing import NamedTuple
 from typing import Union
 
 from clusterman.autoscaler.pool_manager import PoolManager
-from clusterman.mesos.mesos_cluster_connector import FrameworkState
-from clusterman.mesos.mesos_cluster_connector import MesosClusterConnector
 from clusterman.util import get_cluster_dimensions
 
 
@@ -72,41 +68,3 @@ def generate_kubernetes_metrics(manager: PoolManager) -> Generator[ClusterMetric
     dimensions = get_cluster_dimensions(manager.cluster, manager.pool, manager.scheduler)
     for metric_name, value_method in KUBERNETES_METRICS.items():
         yield ClusterMetric(metric_name, value_method(manager), dimensions=dimensions)
-
-
-def _prune_resources_dict(resources_dict: Mapping) -> MutableMapping:
-    return {resource: resources_dict[resource] for resource in ('cpus', 'mem', 'disk', 'gpus')}
-
-
-def _get_framework_metadata_for_frameworks(
-    cluster_connector: MesosClusterConnector,
-    framework_state: FrameworkState,
-) -> Generator[ClusterMetric, None, None]:
-    cluster = cluster_connector.cluster
-    completed = (framework_state == FrameworkState.COMPLETED)
-
-    for framework in cluster_connector.get_framework_list(framework_state):
-        value = _prune_resources_dict(framework['used_resources'])
-        value['registered_time'] = int(framework['registered_time'])
-        value['unregistered_time'] = int(framework['unregistered_time'])
-        value['running_task_count'] = len([
-            task for task in framework['tasks'] if task['state'] == 'TASK_RUNNING'
-        ])
-
-        dimensions: MutableMapping[str, str]
-        dimensions = {field: str(framework[field]) for field in ('name', 'id', 'active')}  # type: ignore
-        dimensions['cluster'] = cluster
-        dimensions['completed'] = str(completed)
-
-        yield ClusterMetric(metric_name='framework', value=value, dimensions=dimensions)
-
-
-def generate_framework_metadata(manager: PoolManager) -> Generator[ClusterMetric, None, None]:
-    yield from _get_framework_metadata_for_frameworks(
-        cast(MesosClusterConnector, manager.cluster_connector),
-        FrameworkState.RUNNING,
-    )
-    yield from _get_framework_metadata_for_frameworks(
-        cast(MesosClusterConnector, manager.cluster_connector),
-        FrameworkState.COMPLETED,
-    )
