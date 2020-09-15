@@ -153,6 +153,6 @@ def test_run(mock_sensu, mock_running, mock_time, mock_sleep, batch):
 
         assert writer_context.__exit__.call_count == len(METRICS_TO_WRITE) * 4
         assert mock_sensu.call_count == 3
-        assert mock_logger.warn.call_count == 4
+        assert mock_logger.warn.call_count == len(METRICS_TO_WRITE)
 
     assert mock_sleep.call_args_list == [mock.call(9), mock.call(7), mock.call(2), mock.call(2)]

@@ -39,7 +39,6 @@ from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.config import load_cluster_pool_config
 from clusterman.config import setup_config
 from clusterman.mesos.metrics_generators import ClusterMetric
-from clusterman.mesos.metrics_generators import generate_framework_metadata
 from clusterman.mesos.metrics_generators import generate_simple_metadata
 from clusterman.mesos.metrics_generators import generate_system_metrics
 from clusterman.util import All
@@ -62,12 +61,6 @@ class MetricToWrite(NamedTuple):
 METRICS_TO_WRITE = [
     MetricToWrite(generate_system_metrics, SYSTEM_METRICS, aggregate_meteorite_dims=False, pools=All),
     MetricToWrite(generate_simple_metadata, METADATA, aggregate_meteorite_dims=False, pools=All),
-    MetricToWrite(
-        generate_framework_metadata,
-        METADATA,
-        aggregate_meteorite_dims=True,
-        pools=['default'],
-    ),
 ]
 
 
