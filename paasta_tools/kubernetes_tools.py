@@ -2370,17 +2370,6 @@ async def get_kubernetes_app_deploy_status(
     kube_client: KubeClient,
     desired_instances: int,
 ) -> Tuple[int, str]:
-    # Try to get a real status message but we don't ever want to crash if this fails
-    try:
-        event_stream = await get_all_events_for_service(app, kube_client)
-        if not event_stream:
-            # events only stick around for so long
-            deploy_message = "Unknown; no recent events"
-        else:
-            deploy_message = event_stream[-1]["message"]
-    except Exception as e:
-        deploy_message = f"Error getting status message: {str(e)}"
-
     if app.status.ready_replicas is None:
         if desired_instances == 0:
             deploy_status = KubernetesDeployStatus.Stopped
@@ -2398,6 +2387,9 @@ async def get_kubernetes_app_deploy_status(
         deploy_status = KubernetesDeployStatus.Stopped
     else:
         deploy_status = KubernetesDeployStatus.Running
+    # Temporarily removing the message because the events query it used was overloading etcd
+    # TODO: change the implementation or remove the deploy message entirely
+    deploy_message = ""
     return deploy_status, deploy_message
 
 
