@@ -285,13 +285,14 @@ class DeploymentWrapper(Application):
         In order for autoscaling to work, there needs to be at least two configurations
         min_instnace, max_instance, and there cannot be instance.
         """
-        self.logging.info(
-            f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
-        )
+        should_have_hpa = self.should_have_hpa()
         hpa_exists = self.exists_hpa(kube_client)
         if hpa_exists:
-            if not self.should_have_hpa():
+            if not should_have_hpa:
                 # Remove HPA if autoscaling is disabled
+                self.logging.info(
+                    f"Deleting HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+                )
                 self.delete_horizontal_pod_autoscaler(kube_client)
                 return
             elif autoscaling_is_paused():
@@ -301,6 +302,15 @@ class DeploymentWrapper(Application):
                 )
                 self.soa_config.set_min_instances(self.item.spec.replicas)
 
+        if not should_have_hpa:
+            self.logging.info(
+                f"No HPA required for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+            )
+            return
+
+        self.logging.info(
+            f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+        )
         body = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name,
             cluster=self.soa_config.cluster,
