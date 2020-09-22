@@ -17,8 +17,6 @@ from socket import gaierror
 
 import ephemeral_port_reserve
 import mock
-from bravado.exception import HTTPError
-from bravado.exception import HTTPNotFound
 from mock import patch
 from pytest import mark
 from pytest import raises
@@ -311,26 +309,6 @@ def test_get_subparser():
     )
 
 
-@patch("paasta_tools.cli.utils.client", autospec=True)
-def test_get_status_for_instance(mock_client):
-    mock_client.get_paasta_api_client.return_value = None
-    with raises(SystemExit):
-        utils.get_status_for_instance("cluster1", "my-service", "main")
-    mock_client.get_paasta_api_client.assert_called_with(cluster="cluster1")
-    mock_api = mock.Mock()
-    mock_client.get_paasta_api_client.return_value = mock_api
-    mock_result = mock.Mock(return_value=mock.Mock(marathon=False))
-    mock_api.service.status_instance.return_value = mock.Mock(result=mock_result)
-    with raises(SystemExit):
-        utils.get_status_for_instance("cluster1", "my-service", "main")
-    mock_result = mock.Mock(return_value=mock.Mock(marathon=True))
-    mock_api.service.status_instance.return_value = mock.Mock(result=mock_result)
-    utils.get_status_for_instance("cluster1", "my-service", "main")
-    mock_api.service.status_instance.assert_called_with(
-        service="my-service", instance="main"
-    )
-
-
 def test_pick_slave_from_status():
     mock_slaves = [1, 2]
     mock_status = mock.Mock(marathon=mock.Mock(slaves=mock_slaves))
@@ -370,60 +348,6 @@ def test_list_deploy_groups_parses_configs(mock_get_instance_configs_for_service
     ]
     actual = utils.list_deploy_groups(service="foo")
     assert actual == {"fake_deploy_group", "fake_cluster.fake_instance"}
-
-
-@patch("paasta_tools.cli.utils.client", autospec=True)
-def test_get_task_from_instance(mock_client):
-    mock_client.get_paasta_api_client.return_value = None
-    with raises(utils.PaastaTaskNotFound):
-        utils.get_task_from_instance("cluster1", "my-service", "main")
-    mock_client.get_paasta_api_client.assert_called_with(cluster="cluster1")
-    mock_api = mock.Mock()
-    mock_client.get_paasta_api_client.return_value = mock_api
-    mock_task_1 = mock.Mock()
-    mock_task_2 = mock.Mock()
-    mock_tasks = [mock_task_1, mock_task_2]
-    mock_result = mock.Mock(return_value=mock_tasks)
-    mock_task_result = mock.Mock(return_value=mock_task_2)
-    mock_api.service.tasks_instance.return_value = mock.Mock(result=mock_result)
-    mock_api.service.task_instance.return_value = mock.Mock(result=mock_task_result)
-    ret = utils.get_task_from_instance("cluster1", "my-service", "main", task_id="123")
-    assert ret == mock_task_2
-    mock_api.service.task_instance.assert_called_with(
-        service="my-service", instance="main", verbose=True, task_id="123"
-    )
-
-    ret = utils.get_task_from_instance("cluster1", "my-service", "main")
-    assert ret == mock_task_1
-    mock_api.service.tasks_instance.assert_called_with(
-        service="my-service", instance="main", verbose=True, slave_hostname=None
-    )
-
-    mock_result = mock.Mock(return_value=[])
-    mock_api.service.tasks_instance.return_value = mock.Mock(result=mock_result)
-    with raises(utils.PaastaTaskNotFound):
-        ret = utils.get_task_from_instance(
-            "cluster1", "my-service", "main", slave_hostname="test"
-        )
-
-    mock_api.service.tasks_instance.side_effect = HTTPError(
-        response=mock.Mock(status_code=500)
-    )
-    with raises(utils.PaastaTaskNotFound):
-        ret = utils.get_task_from_instance(
-            "cluster1", "my-service", "main", slave_hostname="test"
-        )
-    mock_api.service.tasks_instance.assert_called_with(
-        service="my-service", instance="main", verbose=True, slave_hostname="test"
-    )
-
-    mock_api.service.tasks_instance.side_effect = HTTPNotFound(
-        response=mock.Mock(status_code=404)
-    )
-    with raises(utils.PaastaTaskNotFound):
-        ret = utils.get_task_from_instance(
-            "cluster1", "my-service", "main", slave_hostname="test"
-        )
 
 
 def test_get_container_name():

@@ -10,7 +10,7 @@ servers:
     host: {default: localhost}
     scheme: {default: http, enum: [http, https]}
 tags:
-- description: Information about a paasta service
+- description: Information about a paasta service.
   name: service
 components:
   schemas:
@@ -912,12 +912,15 @@ paths:
       operationId: update_service_autoscaler_pause
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
-              properties:
-                minutes:
-                  type: integer
               type: object
+              properties:
+                json_body:
+                  type: object
+                  properties:
+                    minutes:
+                      type: integer
         required: true
       responses:
         "200":

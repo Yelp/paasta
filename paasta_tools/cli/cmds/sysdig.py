@@ -12,14 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import shlex
 import subprocess
 import sys
 from urllib.parse import urlparse
 
+from paasta_tools.api import client
 from paasta_tools.cli.utils import calculate_remote_masters
 from paasta_tools.cli.utils import find_connectable_master
-from paasta_tools.cli.utils import get_status_for_instance
 from paasta_tools.cli.utils import get_subparser
 from paasta_tools.cli.utils import pick_slave_from_status
 from paasta_tools.marathon_tools import get_marathon_clients
@@ -28,6 +29,8 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import _run
 from paasta_tools.utils import load_system_paasta_config
+
+log = logging.getLogger(__name__)
 
 
 def add_subparser(subparsers):
@@ -46,6 +49,17 @@ def add_subparser(subparsers):
         default=False,
         action="store_true",
     )
+
+
+def get_status_for_instance(cluster, service, instance):
+    api = client.get_paasta_oapi_client(cluster=cluster)
+    if not api:
+        sys.exit(1)
+    status = api.service.status_instance(service=service, instance=instance)
+    if not status.marathon:
+        log.error("Not a marathon service, exiting")
+        sys.exit(1)
+    return status
 
 
 def get_any_mesos_master(cluster, system_paasta_config):

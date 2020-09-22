@@ -10,6 +10,7 @@ certifi
 choice >= 0.1
 cookiecutter >= 1.4.0
 croniter
+dataclasses >= 0.7
 # Don't update this unless you have confirmed the client works with
 # the Docker version deployed on PaaSTA servers
 docker-py >= 1.2.3
