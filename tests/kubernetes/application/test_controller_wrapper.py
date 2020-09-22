@@ -222,15 +222,15 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
 
     mock_autoscaling_is_paused.return_value = True
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
-    assert app.soa_config.get_min_instances() == 2
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
     )
     assert (
         mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.call_count
-        == 1
+        == 0
     )
+    assert app.delete_horizontal_pod_autoscaler.call_count == 1
 
 
 @mock.patch(
