@@ -576,6 +576,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.get_desired_state() == "stop":
             return None
 
+        if not self.is_autoscaling_enabled():
+            return None
+
         # use new autoscaling configuration if it exists.
         if "horizontal_autoscaling" in self.config_dict:
             return self.get_hpa_metric_spec(name, cluster, namespace)
@@ -586,7 +589,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
-        if min_replicas is None or max_replicas is None:
+        if min_replicas == 0 or max_replicas == 0:
+            log.error(
+                f"Invalid value for min or max_instances: {min_replicas}, {max_replicas}"
+            )
             return None
 
         metrics_provider = autoscaling_params["metrics_provider"]
