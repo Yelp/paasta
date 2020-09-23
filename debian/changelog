@@ -1,3 +1,11 @@
+paasta-tools (0.97.0) xenial; urgency=medium
+
+  * 0.97.0 tagged with 'make release'
+    Commit: Merge pull request #2916 from Yelp/PAASTA-16979-bespoke-fix
+    Skip creating the HPA if it is not required
+
+ -- Qui Nguyen <qui@yelp.com>  Wed, 23 Sep 2020 10:05:40 -0700
+
 paasta-tools (0.96.59) xenial; urgency=medium
 
   * 0.96.59 tagged with 'make release'
