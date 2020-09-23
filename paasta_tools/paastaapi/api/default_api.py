@@ -634,17 +634,17 @@ class DefaultApi(object):
             collection_formats=collection_formats,
             _request_auth=local_var_params.get('_request_auth'))
 
-    def update_service_autoscaler_pause(self, **kwargs):  # noqa: E501
+    def update_service_autoscaler_pause(self, inline_object, **kwargs):  # noqa: E501
         """update_service_autoscaler_pause  # noqa: E501
 
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
 
-        >>> thread = api.update_service_autoscaler_pause(async_req=True)
+        >>> thread = api.update_service_autoscaler_pause(inline_object, async_req=True)
         >>> result = thread.get()
 
-        :param minutes:
-        :type minutes: int
+        :param inline_object: (required)
+        :type inline_object: InlineObject
         :param async_req: Whether to execute the request asynchronously.
         :type async_req: bool, optional
         :param _preload_content: if False, the urllib3.HTTPResponse object will
@@ -661,19 +661,19 @@ class DefaultApi(object):
         :rtype: None
         """
         kwargs['_return_http_data_only'] = True
-        return self.update_service_autoscaler_pause_with_http_info(**kwargs)  # noqa: E501
+        return self.update_service_autoscaler_pause_with_http_info(inline_object, **kwargs)  # noqa: E501
 
-    def update_service_autoscaler_pause_with_http_info(self, **kwargs):  # noqa: E501
+    def update_service_autoscaler_pause_with_http_info(self, inline_object, **kwargs):  # noqa: E501
         """update_service_autoscaler_pause  # noqa: E501
 
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
 
-        >>> thread = api.update_service_autoscaler_pause_with_http_info(async_req=True)
+        >>> thread = api.update_service_autoscaler_pause_with_http_info(inline_object, async_req=True)
         >>> result = thread.get()
 
-        :param minutes:
-        :type minutes: int
+        :param inline_object: (required)
+        :type inline_object: InlineObject
         :param async_req: Whether to execute the request asynchronously.
         :type async_req: bool, optional
         :param _return_http_data_only: response data without head status code
@@ -700,7 +700,7 @@ class DefaultApi(object):
         local_var_params = locals()
 
         all_params = [
-            'minutes'
+            'inline_object'
         ]
         all_params.extend(
             [
@@ -720,6 +720,10 @@ class DefaultApi(object):
                 )
             local_var_params[key] = val
         del local_var_params['kwargs']
+        # verify the required parameter 'inline_object' is set
+        if self.api_client.client_side_validation and ('inline_object' not in local_var_params or  # noqa: E501
+                                                        local_var_params['inline_object'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `inline_object` when calling `update_service_autoscaler_pause`")  # noqa: E501
 
         collection_formats = {}
 
@@ -731,13 +735,13 @@ class DefaultApi(object):
 
         form_params = []
         local_var_files = {}
-        if 'minutes' in local_var_params:
-            form_params.append(('minutes', local_var_params['minutes']))  # noqa: E501
 
         body_params = None
+        if 'inline_object' in local_var_params:
+            body_params = local_var_params['inline_object']
         # HTTP header `Content-Type`
         header_params['Content-Type'] = self.api_client.select_header_content_type(  # noqa: E501
-            ['application/x-www-form-urlencoded'])  # noqa: E501
+            ['application/json'])  # noqa: E501
 
         # Authentication setting
         auth_settings = []  # noqa: E501

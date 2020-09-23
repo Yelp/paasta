@@ -68,6 +68,7 @@ from paasta_tools.paastaapi.models.marathon_task import MarathonTask
 from paasta_tools.paastaapi.models.meta_status import MetaStatus
 from paasta_tools.paastaapi.models.resource_item import ResourceItem
 from paasta_tools.paastaapi.models.resource_value import ResourceValue
+from paasta_tools.paastaapi.models.service_autoscaler_pause_json_body import ServiceAutoscalerPauseJsonBody
 from paasta_tools.paastaapi.models.smartstack_backend import SmartstackBackend
 from paasta_tools.paastaapi.models.smartstack_location import SmartstackLocation
 from paasta_tools.paastaapi.models.smartstack_status import SmartstackStatus

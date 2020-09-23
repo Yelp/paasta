@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 
 from bravado.client import SwaggerClient
 from bravado.requests_client import RequestsClient
+from dataclasses import dataclass
 
 import paasta_tools.api.auth_decorator
 from paasta_tools import paastaapi
@@ -106,11 +107,20 @@ def get_paasta_ssl_opts(
         return {}
 
 
+@dataclass
+class PaastaOApiClient:
+    autoscaler: paastaapi.AutoscalerApi
+    default: paastaapi.DefaultApi
+    marathon_dashboard: paastaapi.MarathonDashboardApi
+    resources: paastaapi.ResourcesApi
+    service: paastaapi.ServiceApi
+
+
 def get_paasta_oapi_client(
     cluster: str = None,
     system_paasta_config: SystemPaastaConfig = None,
     http_res: bool = False,
-) -> paastaapi.ApiClient:
+) -> PaastaOApiClient:
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 
@@ -133,7 +143,14 @@ def get_paasta_oapi_client(
             config.key_file = opts["key"]
             config.ssl_ca_cert = opts["ca"]
 
-    return paastaapi.ApiClient(configuration=config)
+    client = paastaapi.ApiClient(configuration=config)
+    return PaastaOApiClient(
+        autoscaler=paastaapi.AutoscalerApi(client),
+        default=paastaapi.DefaultApi(client),
+        marathon_dashboard=paastaapi.MarathonDashboardApi(client),
+        resources=paastaapi.ResourcesApi(client),
+        service=paastaapi.ServiceApi(client),
+    )
 
 
 class PaastaRequestsClient(RequestsClient):

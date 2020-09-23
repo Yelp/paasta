@@ -27,6 +27,22 @@ def test_add_subparser(mock_get_subparser):
     assert mock_get_subparser.called
 
 
+@patch("paasta_tools.cli.cmds.sysdig.client", autospec=True)
+def test_get_status_for_instance(mock_client):
+    mock_client.get_paasta_oapi_client.return_value = None
+    with raises(SystemExit):
+        sysdig.get_status_for_instance("cluster1", "my-service", "main")
+    mock_client.get_paasta_oapi_client.assert_called_with(cluster="cluster1")
+
+    mock_api = mock.Mock()
+    mock_client.get_paasta_oapi_client.return_value = mock.Mock(service=mock_api)
+    mock_api.status_instance.return_value = mock.Mock(marathon=False)
+    with raises(SystemExit):
+        sysdig.get_status_for_instance("cluster1", "my-service", "main")
+
+    mock_api.status_instance.assert_called_with(service="my-service", instance="main")
+
+
 @patch.object(sys, "argv", ["paasta", "sysdig", "blah", "blah"])
 @patch("paasta_tools.cli.cmds.sysdig.load_marathon_service_config", autospec=True)
 @patch("paasta_tools.cli.cmds.sysdig.load_system_paasta_config", autospec=True)

@@ -22,7 +22,6 @@ import random
 import re
 import socket
 import subprocess
-import sys
 from collections import defaultdict
 from shlex import quote
 from typing import Callable
@@ -36,13 +35,10 @@ from typing import Set
 from typing import Tuple
 
 import ephemeral_port_reserve
-from bravado.exception import HTTPError
-from bravado.exception import HTTPNotFound
 from mypy_extensions import NamedArg
 
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
-from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
@@ -990,17 +986,6 @@ def get_subparser(subparsers, function, command, help_text, description):
     return new_parser
 
 
-def get_status_for_instance(cluster, service, instance):
-    api = client.get_paasta_api_client(cluster=cluster)
-    if not api:
-        sys.exit(1)
-    status = api.service.status_instance(service=service, instance=instance).result()
-    if not status.marathon:
-        log.error("Not a marathon service, exiting")
-        sys.exit(1)
-    return status
-
-
 def pick_slave_from_status(status, host=None):
     if host:
         return host
@@ -1045,57 +1030,6 @@ def get_instance_configs_for_service(
                     soa_dir=soa_dir,
                     load_deployments=False,
                 )
-
-
-class PaastaTaskNotFound(Exception):
-    pass
-
-
-def get_task_from_instance(
-    cluster, service, instance, slave_hostname=None, task_id=None, verbose=True
-):
-    api = client.get_paasta_api_client(cluster=cluster)
-    if not api:
-        log.error(f"Could not get API client for cluster {cluster}")
-        raise PaastaTaskNotFound
-    if task_id:
-        log.warning("Specifying a task_id, so ignoring hostname if specified")
-        task = api.service.task_instance(
-            service=service, instance=instance, verbose=True, task_id=task_id
-        ).result()
-        return task
-    try:
-        if task_id:
-            log.warning("Specifying a task_id, so ignoring hostname if specified")
-            task = api.service.task_instance(
-                service=service, instance=instance, verbose=True, task_id=task_id
-            ).result()
-            return task
-        tasks = api.service.tasks_instance(
-            service=service,
-            instance=instance,
-            verbose=True,
-            slave_hostname=slave_hostname,
-        ).result()
-    except HTTPNotFound:
-        log.error(
-            "Cannot find instance {}, for service {}, in cluster {}".format(
-                instance, service, cluster
-            )
-        )
-        raise PaastaTaskNotFound
-    except HTTPError as e:
-        log.error("Problem with API call to find task details")
-        log.error(e.response.text)
-        raise PaastaTaskNotFound
-    if not tasks:
-        log.error(
-            "Cannot find any tasks on host: {} or with task_id: {}".format(
-                slave_hostname, task_id
-            )
-        )
-        raise PaastaTaskNotFound
-    return tasks[0]
 
 
 def get_container_name(task):
