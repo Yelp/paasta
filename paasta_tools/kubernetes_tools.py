@@ -586,7 +586,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
-        if min_replicas is None or max_replicas is None:
+        if not min_replicas or not max_replicas:
             return None
 
         metrics_provider = autoscaling_params["metrics_provider"]
