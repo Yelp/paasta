@@ -570,18 +570,25 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_autoscaling_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
     ) -> Optional[V2beta1HorizontalPodAutoscaler]:
+        # Returns None if an HPA should not be attached based on the config,
+        # or the config is invalid.
+
+        if self.get_desired_state() == "stop":
+            return None
+
         # use new autoscaling configuration if it exists.
         if "horizontal_autoscaling" in self.config_dict:
             return self.get_hpa_metric_spec(name, cluster, namespace)
-        min_replicas = self.get_min_instances()
-        max_replicas = self.get_max_instances()
-        if not min_replicas or not max_replicas:
-            log.error(
-                f"Please specify min_instances and max_instances for autoscaling to work: {min_replicas}, {max_replicas}"
-            )
-            return None
 
         autoscaling_params = self.get_autoscaling_params()
+        if autoscaling_params["decision_policy"] == "bespoke":
+            return None
+
+        min_replicas = self.get_min_instances()
+        max_replicas = self.get_max_instances()
+        if min_replicas is None or max_replicas is None:
+            return None
+
         metrics_provider = autoscaling_params["metrics_provider"]
         metrics = []
         target = autoscaling_params["setpoint"]
@@ -641,7 +648,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         else:
             log.error(
-                f"Wrong metrics specified: {metrics_provider} for\
+                f"Unknown metrics_provider specified: {metrics_provider} for\
                 {name}/name in namespace{namespace}"
             )
             return None
