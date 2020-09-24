@@ -505,6 +505,50 @@
                     },
                     "uniqueItems": true
                 },
+                "secret_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "secret_name": {
+                                "type": "string"
+                            },
+                            "default_mode": {
+                                "type": "string"
+                            },
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "mode": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "path"
+                                    ]
+                                },
+                                "uniqueItems": true
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "secret_name"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
                 "replication_threshold": {
                     "type": "integer",
                     "minimum": 0

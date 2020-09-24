@@ -62,6 +62,7 @@ from kubernetes.client import V1ExecAction
 from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1Namespace
@@ -86,6 +87,7 @@ from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
+from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1StatefulSet
@@ -136,6 +138,7 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
+from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import VolumeWithMode
@@ -738,6 +741,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         )
 
+    def get_secret_volume_name(self, secret_volume: SecretVolume) -> str:
+        return self.get_sanitised_volume_name(
+            "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=253
+        )
+
     def read_only_mode(self, d: VolumeWithMode) -> bool:
         return d.get("mode", "RO") == "RO"
 
@@ -805,6 +813,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         docker_volumes=hacheck_sidecar_volumes,
                         aws_ebs_volumes=[],
                         persistent_volumes=[],
+                        secret_volumes=[],
                     ),
                 )
             )
@@ -984,6 +993,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         hacheck_sidecar_volumes: Sequence[DockerVolume],
         system_paasta_config: SystemPaastaConfig,
         aws_ebs_volumes: Sequence[AwsEbsVolume],
+        secret_volumes: Sequence[SecretVolume],
         service_namespace_config: ServiceNamespaceConfig,
     ) -> Sequence[V1Container]:
         ports = [self.get_container_port()]
@@ -1015,6 +1025,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 docker_volumes=docker_volumes,
                 aws_ebs_volumes=aws_ebs_volumes,
                 persistent_volumes=self.get_persistent_volumes(),
+                secret_volumes=secret_volumes,
             ),
         )
         containers = [service_container] + self.get_sidecar_containers(  # type: ignore
@@ -1039,6 +1050,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         docker_volumes: Sequence[DockerVolume],
         aws_ebs_volumes: Sequence[AwsEbsVolume],
+        secret_volumes: Sequence[SecretVolume],
     ) -> Sequence[V1Volume]:
         pod_volumes = []
         unique_docker_volumes = {
@@ -1069,6 +1081,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     name=name,
                 )
             )
+        for secret_volume in secret_volumes:
+            service = self.get_sanitised_service_name()
+            sanitised_secret = sanitise_kubernetes_name(secret_volume["secret_name"])
+            if "items" in secret_volume:
+                items = [
+                    V1KeyToPath(
+                        key=item["key"],
+                        mode=mode_to_int(item.get("mode")),
+                        path=item["path"],
+                    )
+                    for item in secret_volume["items"]
+                ]
+            else:
+                items = None
+            pod_volumes.append(
+                V1Volume(
+                    name=self.get_secret_volume_name(secret_volume),
+                    secret=V1SecretVolumeSource(
+                        secret_name=f"paasta-secret-{service}-{sanitised_secret}",
+                        default_mode=mode_to_int(secret_volume.get("default_mode")),
+                        items=items,
+                    ),
+                )
+            )
         return pod_volumes
 
     def get_volume_mounts(
@@ -1076,6 +1112,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes: Sequence[DockerVolume],
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         persistent_volumes: Sequence[PersistentVolume],
+        secret_volumes: Sequence[SecretVolume],
     ) -> Sequence[V1VolumeMount]:
         return (
             [
@@ -1101,6 +1138,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     read_only=self.read_only_mode(volume),
                 )
                 for volume in persistent_volumes
+            ]
+            + [
+                V1VolumeMount(
+                    mount_path=volume["container_path"],
+                    name=self.get_secret_volume_name(volume),
+                    read_only=True,
+                )
+                for volume in secret_volumes
             ]
         )
 
@@ -1354,6 +1399,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 docker_volumes=docker_volumes,
                 hacheck_sidecar_volumes=hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                secret_volumes=self.get_secret_volumes(),
                 system_paasta_config=system_paasta_config,
                 service_namespace_config=service_namespace_config,
             ),
@@ -1363,6 +1409,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             volumes=self.get_pod_volumes(
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
+                secret_volumes=self.get_secret_volumes(),
             ),
         )
         # need to check if there are node selectors/affinities. if there are none
@@ -2690,3 +2737,12 @@ def create_or_find_service_account_name(
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
     return sa_name
+
+
+def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
+    if mode is not None:
+        if isinstance(mode, str):
+            if len(mode) < 2 or mode[0] != "0":
+                raise ValueError(f"Invalid mode: {mode}")
+            mode = int(mode[1:], 8)
+    return mode
