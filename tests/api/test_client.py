@@ -14,7 +14,6 @@
 import mock
 
 from paasta_tools.api.client import get_paasta_api_client
-from paasta_tools.api.client import PaastaRequestsClient
 from paasta_tools.api.client import renew_issue_cert
 
 
@@ -25,14 +24,6 @@ def test_get_paasta_api_client(system_paasta_config):
         mock_load_system_paasta_config.return_value = system_paasta_config
 
         client = get_paasta_api_client()
-        assert client
-
-
-def test_PaastaRequestsClient():
-    with mock.patch("paasta_tools.api.client.RequestsClient", autospec=True):
-        client = PaastaRequestsClient(
-            scheme="http", cluster="westeros-prod", system_paasta_config=mock.Mock()
-        )
         assert client
 
 

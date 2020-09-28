@@ -1075,6 +1075,7 @@ def test_paasta_status_exception(system_paasta_config):
         incoming_response = RequestsResponseAdapter(requests_response)
 
         mock_swagger_client = Mock()
+        mock_swagger_client.api_error = HTTPError
         mock_swagger_client.service.status_instance.side_effect = HTTPError(
             incoming_response
         )

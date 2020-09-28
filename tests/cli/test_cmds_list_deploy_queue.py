@@ -130,6 +130,7 @@ def test_http_error(mock_get_paasta_api_client):
     response_adapter = RequestsResponseAdapter(mock_response)
 
     mock_api_client = mock_get_paasta_api_client.return_value
+    mock_api_client.api_error = HTTPError
     mock_api_client.deploy_queue.deploy_queue.return_value.result.side_effect = HTTPError(
         response_adapter
     )
