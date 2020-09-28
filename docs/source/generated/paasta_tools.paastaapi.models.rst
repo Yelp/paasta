@@ -7,6 +7,7 @@ Submodules
 .. toctree::
 
    paasta_tools.paastaapi.models.adhoc_launch_history
+   paasta_tools.paastaapi.models.autoscaler_count_msg
    paasta_tools.paastaapi.models.deploy_queue
    paasta_tools.paastaapi.models.deploy_queue_service_instance
    paasta_tools.paastaapi.models.envoy_backend
@@ -15,11 +16,8 @@ Submodules
    paasta_tools.paastaapi.models.float_and_error
    paasta_tools.paastaapi.models.hpa_metric
    paasta_tools.paastaapi.models.inline_object
-   paasta_tools.paastaapi.models.inline_object1
    paasta_tools.paastaapi.models.inline_response200
    paasta_tools.paastaapi.models.inline_response2001
-   paasta_tools.paastaapi.models.inline_response2002
-   paasta_tools.paastaapi.models.inline_response202
    paasta_tools.paastaapi.models.instance_status
    paasta_tools.paastaapi.models.instance_status_flink
    paasta_tools.paastaapi.models.instance_status_kafkacluster

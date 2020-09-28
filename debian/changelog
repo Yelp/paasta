@@ -1,3 +1,12 @@
+paasta-tools (0.97.2) xenial; urgency=medium
+
+  * 0.97.2 tagged with 'make release'
+    Commit: Merge pull request #2922 from Yelp/drmorr/PAASTA-
+    16317/apply_manual_resources  script to track and auto-apply Puppet-
+    created kubernetes resources
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 28 Sep 2020 14:07:38 -0700
+
 paasta-tools (0.97.1) xenial; urgency=medium
 
   * 0.97.1 tagged with 'make release'
