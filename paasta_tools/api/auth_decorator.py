@@ -53,8 +53,10 @@ class AuthResourceDecorator:
 
 
 class AuthClientDecorator:
-    """
-    """
+    api_error: type
+    connection_error: type
+    timeout_error: type
+    request_error: type
 
     def __init__(self, client, cluster_name):
         """ Create a auth client decorator.

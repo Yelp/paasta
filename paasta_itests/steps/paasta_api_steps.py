@@ -39,7 +39,7 @@ def service_instance_status_error(context, error_code, job_id):
         response = context.paasta_api_client.service.status_instance(
             instance=instance, service=service
         ).result()
-    except context.paasta_api_client.exception as exc:
+    except context.paasta_api_client.api_error as exc:
         assert exc.status_code == int(error_code)
 
     assert not response
