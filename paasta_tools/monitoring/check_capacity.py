@@ -17,8 +17,6 @@ import json
 import sys
 from collections import defaultdict
 
-from bravado.exception import HTTPError
-
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.utils import load_system_paasta_config
 
@@ -140,7 +138,7 @@ def run_capacity_check():
 
     try:
         resource_use = client.resources.resources(groupings=attributes).result()
-    except HTTPError as e:
+    except client.api_error as e:
         print("UNKNOWN received exception from paasta api:\n\t%s" % e)
         sys.exit(3)
 

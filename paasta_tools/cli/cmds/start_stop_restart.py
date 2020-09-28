@@ -20,7 +20,6 @@ from typing import Dict
 from typing import List
 
 import choice
-from bravado.exception import HTTPError
 
 from paasta_tools import remote_git
 from paasta_tools import utils
@@ -301,7 +300,7 @@ def paasta_start_or_stop(args, desired_state):
                             instance=instance,
                             desired_state=desired_state,
                         ).result()
-                    except HTTPError as exc:
+                    except client.api_error as exc:
                         print(exc.response.text)
                         return exc.status_code
 

@@ -37,7 +37,6 @@ from typing import Optional
 
 import humanize
 import progressbar
-from bravado.exception import HTTPError
 from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
@@ -1197,7 +1196,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 include_envoy=False,
                 include_mesos=False,
             ).result()
-        except HTTPError as e:
+        except api.api_error as e:
             if e.response.status_code == 404:
                 log.warning(
                     "Can't get status for instance {}, service {} in "

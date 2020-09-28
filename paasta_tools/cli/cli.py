@@ -22,8 +22,8 @@ import sys
 import warnings
 
 import argcomplete
-import pkg_resources
 
+import paasta_tools
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
@@ -106,9 +106,7 @@ def get_argparser():
         "-V",
         "--version",
         action="version",
-        version="paasta-tools {}".format(
-            pkg_resources.get_distribution("paasta-tools").version
-        ),
+        version=f"paasta-tools {paasta_tools.__version__}",
     )
 
     subparsers = parser.add_subparsers(
