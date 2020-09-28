@@ -1,3 +1,11 @@
+paasta-tools (0.97.3) xenial; urgency=medium
+
+  * 0.97.3 tagged with 'make release'
+    Commit: Merge pull request #2926 from Yelp/drmorr/PAASTA-
+    16317/add_links_to_script  forgot to add debian link
+
+ -- David Morrison <drmorr@yelp.com>  Mon, 28 Sep 2020 15:14:45 -0700
+
 paasta-tools (0.97.2) xenial; urgency=medium
 
   * 0.97.2 tagged with 'make release'
