@@ -42,7 +42,6 @@ from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
@@ -233,9 +232,7 @@ def setup_custom_resources(
     return succeded
 
 
-def get_dashboard_url(
-    kind: str, service: str, instance: str, cluster: str
-) -> Optional[str]:
+def get_dashboard_base_url(kind: str, cluster: str) -> Optional[str]:
     system_paasta_config = load_system_paasta_config()
     dashboard_links = system_paasta_config.get_dashboard_links()
     if kind.lower() == "flink":
@@ -244,7 +241,6 @@ def get_dashboard_url(
             flink_link = get_flink_ingress_url_root(cluster)
         if flink_link[-1:] != "/":
             flink_link += "/"
-        flink_link += sanitised_cr_name(service, instance)
         return flink_link
     return None
 
@@ -281,10 +277,10 @@ def format_custom_resource(
         "spec": instance_config,
     }
 
-    url = get_dashboard_url(kind, service, instance, cluster)
+    url = get_dashboard_base_url(kind, cluster)
     if url:
-        resource["metadata"]["annotations"]["yelp.com/dashboard_url"] = url
-        resource["metadata"]["annotations"][paasta_prefixed("dashboard_url")] = url
+        resource["metadata"]["annotations"]["yelp.com/dashboard_base_url"] = url
+        resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
 
     config_hash = get_config_hash(resource)
 

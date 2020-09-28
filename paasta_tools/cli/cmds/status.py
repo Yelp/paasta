@@ -974,7 +974,7 @@ def print_flink_status(
         )
     else:
         output.append(f"    Flink version: {status.config['flink-version']}")
-    dashboard_url = metadata.annotations.get(paasta_prefixed("dashboard_url"))
+    dashboard_url = metadata.annotations.get("flink.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
 
     if status.state != "running":
