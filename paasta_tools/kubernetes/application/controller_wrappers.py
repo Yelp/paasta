@@ -269,56 +269,43 @@ class DeploymentWrapper(Application):
         super().update_related_api_objects(kube_client)
         self.sync_horizontal_pod_autoscaler(kube_client)
 
-    def should_have_hpa(self):
-        return (
-            (
-                self.soa_config.get_max_instances() is not None
-                or self.soa_config.config_dict.get("horizontal_autoscaling", False)
-            )
-            # with bespoke autoscaler, setup_kubernetes_job sets the number of instances directly; no HPA is required.
-            and self.soa_config.get_autoscaling_params()["decision_policy"] != "bespoke"
-            and self.soa_config.get_desired_state() != "stop"
-        )
-
     def sync_horizontal_pod_autoscaler(self, kube_client: KubeClient) -> None:
         """
         In order for autoscaling to work, there needs to be at least two configurations
         min_instnace, max_instance, and there cannot be instance.
         """
-        self.logging.info(
-            f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
-        )
-        hpa_exists = self.exists_hpa(kube_client)
-        if hpa_exists:
-            if not self.should_have_hpa():
-                # Remove HPA if autoscaling is disabled
-                self.delete_horizontal_pod_autoscaler(kube_client)
-                return
-            elif autoscaling_is_paused():
-                self.logging.info(
-                    f"Autoscaler is paused. Setting min instances to {self.item.spec.replicas}."
-                    f"HPA will not scale down service."
-                )
-                self.soa_config.set_min_instances(self.item.spec.replicas)
-
-        body = self.soa_config.get_autoscaling_metric_spec(
+        desired_hpa_spec = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name,
             cluster=self.soa_config.cluster,
             namespace=self.item.metadata.namespace,
         )
-        if not body:
+
+        hpa_exists = self.exists_hpa(kube_client)
+        should_have_hpa = desired_hpa_spec and not autoscaling_is_paused()
+
+        if not should_have_hpa:
             self.logging.info(
-                f"CRIT: autoscaling misconfigured for {self.kube_deployment.service}."
-                f"{self.kube_deployment.instance}.Please correct the configuration and update pre-commit hook."
+                f"No HPA required for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
             )
+            if hpa_exists:
+                self.logging.info(
+                    f"Deleting HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+                )
+                self.delete_horizontal_pod_autoscaler(kube_client)
             return
-        self.logging.debug(body)
+
+        self.logging.info(
+            f"Syncing HPA setting for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
+        )
+        self.logging.debug(desired_hpa_spec)
         if not hpa_exists:
             self.logging.info(
                 f"Creating new HPA for {self.item.metadata.name}/name in {self.item.metadata.namespace}"
             )
             kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
-                namespace=self.item.metadata.namespace, body=body, pretty=True
+                namespace=self.item.metadata.namespace,
+                body=desired_hpa_spec,
+                pretty=True,
             )
         else:
             self.logging.info(
@@ -327,7 +314,7 @@ class DeploymentWrapper(Application):
             kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
                 name=self.item.metadata.name,
                 namespace=self.item.metadata.namespace,
-                body=body,
+                body=desired_hpa_spec,
                 pretty=True,
             )
 

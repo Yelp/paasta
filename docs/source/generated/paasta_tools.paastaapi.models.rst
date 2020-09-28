@@ -41,6 +41,7 @@ Submodules
    paasta_tools.paastaapi.models.meta_status
    paasta_tools.paastaapi.models.resource_item
    paasta_tools.paastaapi.models.resource_value
+   paasta_tools.paastaapi.models.service_autoscaler_pause_json_body
    paasta_tools.paastaapi.models.smartstack_backend
    paasta_tools.paastaapi.models.smartstack_location
    paasta_tools.paastaapi.models.smartstack_status
