@@ -279,7 +279,6 @@ def format_custom_resource(
 
     url = get_dashboard_base_url(kind, cluster)
     if url:
-        resource["metadata"]["annotations"]["yelp.com/dashboard_base_url"] = url
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
 
     config_hash = get_config_hash(resource)
