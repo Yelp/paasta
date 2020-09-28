@@ -8,6 +8,7 @@ mock
 path.py
 pep8
 pre-commit
+pyfakefs
 pylint
 pytest
 pytest-asyncio
