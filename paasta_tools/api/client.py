@@ -22,11 +22,8 @@ from typing import Any
 from typing import Mapping
 from urllib.parse import urlparse
 
-from bravado.client import SwaggerClient
-from bravado.requests_client import RequestsClient
 from dataclasses import dataclass
 
-import paasta_tools.api.auth_decorator
 from paasta_tools import paastaapi
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import load_system_paasta_config
@@ -41,6 +38,24 @@ def get_paasta_api_client(
     system_paasta_config: SystemPaastaConfig = None,
     http_res: bool = False,
 ) -> Any:
+    from bravado.client import SwaggerClient
+    from bravado.requests_client import RequestsClient
+    import paasta_tools.api.auth_decorator
+
+    class PaastaRequestsClient(RequestsClient):
+        def __init__(
+            self, scheme: str, cluster: str, system_paasta_config: SystemPaastaConfig
+        ) -> None:
+            if scheme == "https":
+                opts = get_paasta_ssl_opts(cluster, system_paasta_config)
+                if opts:
+                    super().__init__(
+                        ssl_verify=True, ssl_cert=(opts["cert"], opts["key"]),
+                    )
+                    self.session.verify = opts["ca"]
+            else:
+                super().__init__()
+
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 
@@ -114,6 +129,10 @@ class PaastaOApiClient:
     marathon_dashboard: paastaapi.MarathonDashboardApi
     resources: paastaapi.ResourcesApi
     service: paastaapi.ServiceApi
+    api_error: type
+    connection_error: type
+    timeout_error: type
+    request_error: type
 
 
 def get_paasta_oapi_client(
@@ -150,22 +169,11 @@ def get_paasta_oapi_client(
         marathon_dashboard=paastaapi.MarathonDashboardApi(client),
         resources=paastaapi.ResourcesApi(client),
         service=paastaapi.ServiceApi(client),
+        api_error=paastaapi.ApiException,
+        connection_error=paastaapi.ApiException,
+        timeout_error=paastaapi.ApiException,
+        request_error=paastaapi.ApiException,
     )
-
-
-class PaastaRequestsClient(RequestsClient):
-    def __init__(
-        self, scheme: str, cluster: str, system_paasta_config: SystemPaastaConfig
-    ) -> None:
-        if scheme == "https":
-            opts = get_paasta_ssl_opts(cluster, system_paasta_config)
-            if opts:
-                super().__init__(
-                    ssl_verify=True, ssl_cert=(opts["cert"], opts["key"]),
-                )
-                self.session.verify = opts["ca"]
-        else:
-            super().__init__()
 
 
 def renew_issue_cert(system_paasta_config: SystemPaastaConfig, cluster: str) -> None:
