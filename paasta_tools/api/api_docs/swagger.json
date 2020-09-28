@@ -527,12 +527,7 @@
                     "200": {
                         "description": "Get desired instance count for a service instance",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "desired_instances": {
-                                    "type": "integer"
-                                }
-                            }
+                            "$ref": "#/definitions/AutoscalerCountMsg"
                         }
                     },
                     "404": {
@@ -569,15 +564,7 @@
                     "202": {
                         "description": "Set desired instance count for a service instance",
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "desired_instances": {
-                                    "type": "integer"
-                                },
-                                "status": {
-                                    "type": "string"
-                                }
-                            }
+                            "$ref": "#/definitions/AutoscalerCountMsg"
                         }
                     },
                     "404": {
@@ -612,15 +599,7 @@
                         "name": "json_body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "properties": {
-                                "desired_instances": {
-                                    "type": "integer"
-                                },
-                                "calculated_instances": {
-                                    "type": "integer"
-                                }
-                            }
+                            "$ref": "#/definitions/AutoscalerCountMsg"
                         }
                     }
                 ]
@@ -628,6 +607,21 @@
         }
     },
     "definitions": {
+        "AutoscalerCountMsg": {
+            "description": "Specification for autoscaler count endpoints.",
+            "type": "object",
+            "properties": {
+                "calculated_instances": {
+                    "type": "integer"
+                },
+                "desired_instances": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "InstanceStatus": {
             "type": "object",
             "properties": {

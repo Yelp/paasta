@@ -14,8 +14,7 @@
 # limitations under the License.
 import logging
 
-from bravado.exception import HTTPNotFound
-
+from paasta_tools import paastaapi
 from paasta_tools.api import client
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -59,31 +58,35 @@ def add_subparser(subparsers):
 def paasta_autoscale(args):
     log.setLevel(logging.DEBUG)
     service = figure_out_service_name(args)
-    api = client.get_paasta_api_client(cluster=args.cluster, http_res=True)
+    api = client.get_paasta_oapi_client(cluster=args.cluster, http_res=True)
     if not api:
         print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
+
     try:
         if args.set is None:
             log.debug("Getting the current autoscaler count...")
-            res, http = api.autoscaler.get_autoscaler_count(
+            res, status, _ = api.autoscaler.get_autoscaler_count_with_http_info(
                 service=service, instance=args.instance
-            ).result()
+            )
         else:
             log.debug(f"Setting desired instances to {args.set}.")
-            body = {"desired_instances": int(args.set)}
-            res, http = api.autoscaler.update_autoscaler_count(
-                service=service, instance=args.instance, json_body=body
-            ).result()
+            msg = paastaapi.AutoscalerCountMsg(desired_instances=int(args.set))
+            res, status, _ = api.autoscaler.update_autoscaler_count_with_http_info(
+                service=service, instance=args.instance, autoscaler_count_msg=msg
+            )
 
             _log_audit(
                 action="manual-scale",
-                action_details=body,
+                action_details=str(msg),
                 service=service,
                 instance=args.instance,
                 cluster=args.cluster,
             )
-    except HTTPNotFound:
+    except paastaapi.ApiException as exc:
+        status = exc.status
+
+    if not 200 <= status <= 299:
         print(
             PaastaColors.red(
                 f"ERROR: '{args.instance}' is not configured to autoscale, "
@@ -97,6 +100,6 @@ def paasta_autoscale(args):
         )
         return 0
 
-    log.debug(f"Res: {res} Http: {http}")
-    print(res["desired_instances"])
+    log.debug(f"Res: {res} Http: {status}")
+    print(res.desired_instances)
     return 0

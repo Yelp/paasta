@@ -34,6 +34,7 @@ from paasta_tools.paastaapi.exceptions import ApiAttributeError
 from paasta_tools.paastaapi.exceptions import ApiException
 # import models into sdk package
 from paasta_tools.paastaapi.models.adhoc_launch_history import AdhocLaunchHistory
+from paasta_tools.paastaapi.models.autoscaler_count_msg import AutoscalerCountMsg
 from paasta_tools.paastaapi.models.deploy_queue import DeployQueue
 from paasta_tools.paastaapi.models.deploy_queue_service_instance import DeployQueueServiceInstance
 from paasta_tools.paastaapi.models.envoy_backend import EnvoyBackend
@@ -42,11 +43,8 @@ from paasta_tools.paastaapi.models.envoy_status import EnvoyStatus
 from paasta_tools.paastaapi.models.float_and_error import FloatAndError
 from paasta_tools.paastaapi.models.hpa_metric import HPAMetric
 from paasta_tools.paastaapi.models.inline_object import InlineObject
-from paasta_tools.paastaapi.models.inline_object1 import InlineObject1
 from paasta_tools.paastaapi.models.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.models.inline_response2001 import InlineResponse2001
-from paasta_tools.paastaapi.models.inline_response2002 import InlineResponse2002
-from paasta_tools.paastaapi.models.inline_response202 import InlineResponse202
 from paasta_tools.paastaapi.models.instance_status import InstanceStatus
 from paasta_tools.paastaapi.models.instance_status_flink import InstanceStatusFlink
 from paasta_tools.paastaapi.models.instance_status_kafkacluster import InstanceStatusKafkacluster

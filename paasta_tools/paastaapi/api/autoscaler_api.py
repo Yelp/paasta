@@ -62,7 +62,7 @@ class AutoscalerApi(object):
         :return: Returns the result object.
                  If the method is called asynchronously,
                  returns the request thread.
-        :rtype: InlineResponse2002
+        :rtype: AutoscalerCountMsg
         """
         kwargs['_return_http_data_only'] = True
         return self.get_autoscaler_count_with_http_info(service, instance, **kwargs)  # noqa: E501
@@ -100,7 +100,7 @@ class AutoscalerApi(object):
         :return: Returns the result object.
                  If the method is called asynchronously,
                  returns the request thread.
-        :rtype: tuple(InlineResponse2002, status_code(int), headers(HTTPHeaderDict))
+        :rtype: tuple(AutoscalerCountMsg, status_code(int), headers(HTTPHeaderDict))
         """
 
         local_var_params = locals()
@@ -167,7 +167,7 @@ class AutoscalerApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='InlineResponse2002',  # noqa: E501
+            response_type='AutoscalerCountMsg',  # noqa: E501
             auth_settings=auth_settings,
             async_req=local_var_params.get('async_req'),
             _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
@@ -176,21 +176,21 @@ class AutoscalerApi(object):
             collection_formats=collection_formats,
             _request_auth=local_var_params.get('_request_auth'))
 
-    def update_autoscaler_count(self, service, instance, inline_object1, **kwargs):  # noqa: E501
+    def update_autoscaler_count(self, service, instance, autoscaler_count_msg, **kwargs):  # noqa: E501
         """Get status of service_name.instance_name  # noqa: E501
 
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
 
-        >>> thread = api.update_autoscaler_count(service, instance, inline_object1, async_req=True)
+        >>> thread = api.update_autoscaler_count(service, instance, autoscaler_count_msg, async_req=True)
         >>> result = thread.get()
 
         :param service: Service name (required)
         :type service: str
         :param instance: Instance name (required)
         :type instance: str
-        :param inline_object1: (required)
-        :type inline_object1: InlineObject1
+        :param autoscaler_count_msg: (required)
+        :type autoscaler_count_msg: AutoscalerCountMsg
         :param async_req: Whether to execute the request asynchronously.
         :type async_req: bool, optional
         :param _preload_content: if False, the urllib3.HTTPResponse object will
@@ -204,26 +204,26 @@ class AutoscalerApi(object):
         :return: Returns the result object.
                  If the method is called asynchronously,
                  returns the request thread.
-        :rtype: InlineResponse202
+        :rtype: AutoscalerCountMsg
         """
         kwargs['_return_http_data_only'] = True
-        return self.update_autoscaler_count_with_http_info(service, instance, inline_object1, **kwargs)  # noqa: E501
+        return self.update_autoscaler_count_with_http_info(service, instance, autoscaler_count_msg, **kwargs)  # noqa: E501
 
-    def update_autoscaler_count_with_http_info(self, service, instance, inline_object1, **kwargs):  # noqa: E501
+    def update_autoscaler_count_with_http_info(self, service, instance, autoscaler_count_msg, **kwargs):  # noqa: E501
         """Get status of service_name.instance_name  # noqa: E501
 
         This method makes a synchronous HTTP request by default. To make an
         asynchronous HTTP request, please pass async_req=True
 
-        >>> thread = api.update_autoscaler_count_with_http_info(service, instance, inline_object1, async_req=True)
+        >>> thread = api.update_autoscaler_count_with_http_info(service, instance, autoscaler_count_msg, async_req=True)
         >>> result = thread.get()
 
         :param service: Service name (required)
         :type service: str
         :param instance: Instance name (required)
         :type instance: str
-        :param inline_object1: (required)
-        :type inline_object1: InlineObject1
+        :param autoscaler_count_msg: (required)
+        :type autoscaler_count_msg: AutoscalerCountMsg
         :param async_req: Whether to execute the request asynchronously.
         :type async_req: bool, optional
         :param _return_http_data_only: response data without head status code
@@ -244,7 +244,7 @@ class AutoscalerApi(object):
         :return: Returns the result object.
                  If the method is called asynchronously,
                  returns the request thread.
-        :rtype: tuple(InlineResponse202, status_code(int), headers(HTTPHeaderDict))
+        :rtype: tuple(AutoscalerCountMsg, status_code(int), headers(HTTPHeaderDict))
         """
 
         local_var_params = locals()
@@ -252,7 +252,7 @@ class AutoscalerApi(object):
         all_params = [
             'service',
             'instance',
-            'inline_object1'
+            'autoscaler_count_msg'
         ]
         all_params.extend(
             [
@@ -280,10 +280,10 @@ class AutoscalerApi(object):
         if self.api_client.client_side_validation and ('instance' not in local_var_params or  # noqa: E501
                                                         local_var_params['instance'] is None):  # noqa: E501
             raise ApiValueError("Missing the required parameter `instance` when calling `update_autoscaler_count`")  # noqa: E501
-        # verify the required parameter 'inline_object1' is set
-        if self.api_client.client_side_validation and ('inline_object1' not in local_var_params or  # noqa: E501
-                                                        local_var_params['inline_object1'] is None):  # noqa: E501
-            raise ApiValueError("Missing the required parameter `inline_object1` when calling `update_autoscaler_count`")  # noqa: E501
+        # verify the required parameter 'autoscaler_count_msg' is set
+        if self.api_client.client_side_validation and ('autoscaler_count_msg' not in local_var_params or  # noqa: E501
+                                                        local_var_params['autoscaler_count_msg'] is None):  # noqa: E501
+            raise ApiValueError("Missing the required parameter `autoscaler_count_msg` when calling `update_autoscaler_count`")  # noqa: E501
 
         collection_formats = {}
 
@@ -301,8 +301,8 @@ class AutoscalerApi(object):
         local_var_files = {}
 
         body_params = None
-        if 'inline_object1' in local_var_params:
-            body_params = local_var_params['inline_object1']
+        if 'autoscaler_count_msg' in local_var_params:
+            body_params = local_var_params['autoscaler_count_msg']
         # HTTP header `Accept`
         header_params['Accept'] = self.api_client.select_header_accept(
             ['application/json'])  # noqa: E501
@@ -322,7 +322,7 @@ class AutoscalerApi(object):
             body=body_params,
             post_params=form_params,
             files=local_var_files,
-            response_type='InlineResponse202',  # noqa: E501
+            response_type='AutoscalerCountMsg',  # noqa: E501
             auth_settings=auth_settings,
             async_req=local_var_params.get('async_req'),
             _return_http_data_only=local_var_params.get('_return_http_data_only'),  # noqa: E501
