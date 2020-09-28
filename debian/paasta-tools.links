@@ -1,4 +1,5 @@
 opt/venvs/paasta-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
+opt/venvs/paasta-tools/bin/apply_external_resources.py usr/bin/paasta_apply_external_resources
 opt/venvs/paasta-tools/bin/autoscale_all_services.py usr/bin/autoscale_all_services
 opt/venvs/paasta-tools/bin/check_capacity.py usr/bin/check_capacity
 opt/venvs/paasta-tools/bin/check_flink_services_health.py usr/bin/check_flink_services_health
