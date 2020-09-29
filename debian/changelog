@@ -1,3 +1,12 @@
+paasta-tools (0.97.4) xenial; urgency=medium
+
+  * 0.97.4 tagged with 'make release'
+    Commit: Updating annotation key of dashboard_url for Flink services
+    (#2925)  * Updating annotation key of dashboard_url for Flink
+    services  * Review comments  * Removing local file  * Test fix
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Tue, 29 Sep 2020 09:16:34 -0700
+
 paasta-tools (0.97.3) xenial; urgency=medium
 
   * 0.97.3 tagged with 'make release'
