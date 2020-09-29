@@ -1,6 +1,6 @@
 import mock
 
-from paasta_tools import paastaapi
+import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools.autoscaling.pause_service_autoscaler import (
     delete_service_autoscale_pause_time,
 )
@@ -78,7 +78,7 @@ def test_update_service_autoscale_pause_time(mock_client):
     mock_update.return_value = (None, 500, None)
     return_code = update_service_autoscale_pause_time("cluster1", "3")
     mock_update.assert_called_once_with(
-        paastaapi.ServiceAutoscalerPauseJsonBody(minutes="3")
+        paastamodels.ServiceAutoscalerPauseJsonBody(minutes=3)
     )
     assert return_code == 2
 
@@ -88,7 +88,7 @@ def test_update_service_autoscale_pause_time(mock_client):
 
 
 @mock.patch("paasta_tools.autoscaling.pause_service_autoscaler.client", autospec=True)
-@mock.patch("paasta_tools.paastaapi.DefaultApi", autospec=True)
+@mock.patch("paasta_tools.paastaapi.apis.DefaultApi", autospec=True)
 def test_delete_service_autoscale_pause_time(mock_default_api, mock_client):
     mock_client.get_paasta_oapi_client.return_value = None
     return_code = delete_service_autoscale_pause_time("cluster1")

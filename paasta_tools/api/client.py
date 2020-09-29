@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 
 from dataclasses import dataclass
 
+import paasta_tools.paastaapi.apis as paastaapis
 from paasta_tools import paastaapi
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import load_system_paasta_config
@@ -124,11 +125,11 @@ def get_paasta_ssl_opts(
 
 @dataclass
 class PaastaOApiClient:
-    autoscaler: paastaapi.AutoscalerApi
-    default: paastaapi.DefaultApi
-    marathon_dashboard: paastaapi.MarathonDashboardApi
-    resources: paastaapi.ResourcesApi
-    service: paastaapi.ServiceApi
+    autoscaler: paastaapis.AutoscalerApi
+    default: paastaapis.DefaultApi
+    marathon_dashboard: paastaapis.MarathonDashboardApi
+    resources: paastaapis.ResourcesApi
+    service: paastaapis.ServiceApi
     api_error: type
     connection_error: type
     timeout_error: type

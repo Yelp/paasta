@@ -14,7 +14,7 @@
 # limitations under the License.
 import logging
 
-from paasta_tools import paastaapi
+import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools.api import client
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -71,7 +71,7 @@ def paasta_autoscale(args):
             )
         else:
             log.debug(f"Setting desired instances to {args.set}.")
-            msg = paastaapi.AutoscalerCountMsg(desired_instances=int(args.set))
+            msg = paastamodels.AutoscalerCountMsg(desired_instances=int(args.set))
             res, status, _ = api.autoscaler.update_autoscaler_count_with_http_info(
                 service=service, instance=args.instance, autoscaler_count_msg=msg
             )
@@ -83,7 +83,7 @@ def paasta_autoscale(args):
                 instance=args.instance,
                 cluster=args.cluster,
             )
-    except paastaapi.ApiException as exc:
+    except client.api_error as exc:
         status = exc.status
 
     if not 200 <= status <= 299:

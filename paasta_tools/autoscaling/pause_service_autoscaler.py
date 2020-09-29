@@ -5,7 +5,7 @@ from datetime import datetime
 import pytz
 from tzlocal import get_localzone as tzlocal_get_localzone
 
-from paasta_tools import paastaapi
+import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools.api import client
 
 
@@ -49,7 +49,7 @@ def update_service_autoscale_pause_time(cluster, mins):
         print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
     res, status, _ = api.default.update_service_autoscaler_pause_with_http_info(
-        paastaapi.ServiceAutoscalerPauseJsonBody(minutes=mins)
+        paastamodels.ServiceAutoscalerPauseJsonBody(minutes=int(mins))
     )
     if status == 500:
         print("Could not connect to zookeeper server")
