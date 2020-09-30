@@ -165,11 +165,11 @@ def get_paasta_oapi_client(
 
     client = paastaapi.ApiClient(configuration=config)
     return PaastaOApiClient(
-        autoscaler=paastaapi.AutoscalerApi(client),
-        default=paastaapi.DefaultApi(client),
-        marathon_dashboard=paastaapi.MarathonDashboardApi(client),
-        resources=paastaapi.ResourcesApi(client),
-        service=paastaapi.ServiceApi(client),
+        autoscaler=paastaapis.AutoscalerApi(client),
+        default=paastaapis.DefaultApi(client),
+        marathon_dashboard=paastaapis.MarathonDashboardApi(client),
+        resources=paastaapis.ResourcesApi(client),
+        service=paastaapis.ServiceApi(client),
         api_error=paastaapi.ApiException,
         connection_error=paastaapi.ApiException,
         timeout_error=paastaapi.ApiException,
