@@ -22,6 +22,9 @@ from typing import Any
 from typing import Mapping
 from urllib.parse import urlparse
 
+from dataclasses import dataclass
+
+import paasta_tools.paastaapi.apis as paastaapis
 from paasta_tools import paastaapi
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import load_system_paasta_config
@@ -120,65 +123,17 @@ def get_paasta_ssl_opts(
         return {}
 
 
+@dataclass
 class PaastaOApiClient:
+    autoscaler: paastaapis.AutoscalerApi
+    default: paastaapis.DefaultApi
+    marathon_dashboard: paastaapis.MarathonDashboardApi
+    resources: paastaapis.ResourcesApi
+    service: paastaapis.ServiceApi
     api_error: type
     connection_error: type
     timeout_error: type
     request_error: type
-
-    def __init__(self, api_client):
-        self._api_client = api_client
-        self._autoscaler = None
-        self._default = None
-        self._marathon_dashboard = None
-        self._resources = None
-        self._service = None
-        self.api_error = paastaapi.ApiException
-        self.connection_error = paastaapi.ApiException
-        self.timeout_error = paastaapi.ApiException
-        self.request_error = paastaapi.ApiException
-
-    @property
-    def autoscaler(self):
-        if self._autoscaler is None:
-            from paasta_tools.paastaapi.api.autoscaler_api import AutoscalerApi
-
-            self._autoscaler = AutoscalerApi(self._api_client)
-        return self._autoscaler
-
-    @property
-    def default(self):
-        if self._default is None:
-            from paasta_tools.paastaapi.api.default_api import DefaultApi
-
-            self._default = DefaultApi(self._api_client)
-        return self._default
-
-    @property
-    def marathon_dashboard(self):
-        if self._marathon_dashboard is None:
-            from paasta_tools.paastaapi.api.marathon_dashboard_api import (
-                MarathonDashboardApi,
-            )
-
-            self._marathon_dashboard = MarathonDashboardApi(self._api_client)
-        return self._marathon_dashboard
-
-    @property
-    def resources(self):
-        if self._resources is None:
-            from paasta_tools.paastaapi.api.resources_api import ResourcesApi
-
-            self._resources = ResourcesApi(self._api_client)
-        return self._resources
-
-    @property
-    def service(self):
-        if self._service is None:
-            from paasta_tools.paastaapi.api.service_api import ServiceApi
-
-            self._service = ServiceApi(self._api_client)
-        return self._service
 
 
 def get_paasta_oapi_client(
@@ -209,7 +164,17 @@ def get_paasta_oapi_client(
             config.ssl_ca_cert = opts["ca"]
 
     client = paastaapi.ApiClient(configuration=config)
-    return PaastaOApiClient(client)
+    return PaastaOApiClient(
+        autoscaler=paastaapis.AutoscalerApi(client),
+        default=paastaapis.DefaultApi(client),
+        marathon_dashboard=paastaapis.MarathonDashboardApi(client),
+        resources=paastaapis.ResourcesApi(client),
+        service=paastaapis.ServiceApi(client),
+        api_error=paastaapi.ApiException,
+        connection_error=paastaapi.ApiException,
+        timeout_error=paastaapi.ApiException,
+        request_error=paastaapi.ApiException,
+    )
 
 
 def renew_issue_cert(system_paasta_config: SystemPaastaConfig, cluster: str) -> None:
