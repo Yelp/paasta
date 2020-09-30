@@ -59,30 +59,33 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
 
 
 def check_under_registered_taskmanagers(
-    instance_config: FlinkDeploymentConfig, expected_count: int,
+    instance_config: FlinkDeploymentConfig, expected_count: int, cr_name: str,
 ) -> Tuple[bool, str]:
     """Check if not enough taskmanagers have been registered to the jobmanager and
     returns both the result of the check in the form of a boolean and a human-readable
     text to be used in logging or monitoring events.
     """
     unhealthy = True
-    try:
-        overview = flink_tools.get_flink_jobmanager_overview(
-            instance_config.service, instance_config.instance, instance_config.cluster
-        )
-        num_reported = overview.get("taskmanagers", 0)
-        crit_threshold = instance_config.get_replication_crit_percentage()
-        output = (
-            f"Service {instance_config.job_id} has "
-            f"{num_reported} out of {expected_count} expected instances "
-            f"of taskmanager reported by dashboard!\n"
-            f"(threshold: {crit_threshold}%)"
-        )
-        unhealthy, _ = is_under_replicated(num_reported, expected_count, crit_threshold)
-    except ValueError as e:
-        output = (
-            f"Dashboard of service {instance_config.job_id} is not available!\n({e})"
-        )
+    if cr_name != "":
+        try:
+            overview = flink_tools.get_flink_jobmanager_overview(
+                cr_name, instance_config.cluster
+            )
+            num_reported = overview.get("taskmanagers", 0)
+            crit_threshold = instance_config.get_replication_crit_percentage()
+            output = (
+                f"Service {instance_config.job_id} has "
+                f"{num_reported} out of {expected_count} expected instances "
+                f"of taskmanager reported by dashboard!\n"
+                f"(threshold: {crit_threshold}%)"
+            )
+            unhealthy, _ = is_under_replicated(
+                num_reported, expected_count, crit_threshold
+            )
+        except ValueError as e:
+            output = f"Dashboard of service {instance_config.job_id} is not available!\n({e})"
+    else:
+        output = f"Dashboard of service {instance_config.job_id} is not available!\n"
     if unhealthy:
         output += f"""
 What this alert means:
@@ -105,6 +108,23 @@ Things you can do:
     return (unhealthy, output)
 
 
+def get_cr_name(si_pods: Sequence[V1Pod]) -> str:
+    """Returns the flink custom resource name based on the pod name.  We are randomly choosing jobmanager pod here.
+    This change is related to FLINK-3129
+    """
+    jobmanager_pod = [
+        pod
+        for pod in si_pods
+        if pod.metadata.labels["flink.yelp.com/container-type"] == "jobmanager"
+        and is_pod_ready(pod)
+        and container_lifetime(pod).total_seconds() > 60
+    ]
+    if len(jobmanager_pod) == 1:
+        return jobmanager_pod[0].metadata.name.split("-jobmanager-")[0]
+    else:
+        return ""
+
+
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
     all_tasks_or_pods: Sequence[V1Pod],
@@ -121,6 +141,8 @@ def check_flink_service_health(
     num_healthy_supervisors = healthy_flink_containers_cnt(si_pods, "supervisor")
     num_healthy_jobmanagers = healthy_flink_containers_cnt(si_pods, "jobmanager")
     num_healthy_taskmanagers = healthy_flink_containers_cnt(si_pods, "taskmanager")
+
+    service_cr_name = get_cr_name(si_pods)
 
     results = [
         check_under_replication(
@@ -142,7 +164,9 @@ def check_flink_service_health(
             sub_component="taskmanager",
         ),
         check_under_registered_taskmanagers(
-            instance_config=instance_config, expected_count=taskmanagers_expected_cnt,
+            instance_config=instance_config,
+            expected_count=taskmanagers_expected_cnt,
+            cr_name=service_cr_name,
         ),
     ]
     output = "\n########\n".join([r[1] for r in results])

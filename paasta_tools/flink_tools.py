@@ -159,20 +159,17 @@ def get_flink_ingress_url_root(cluster: str) -> str:
     return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/"
 
 
-def _dashboard_get(service: str, instance: str, cluster: str, path: str) -> str:
+def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
     root = get_flink_ingress_url_root(cluster)
-    name = sanitised_cr_name(service, instance)
-    url = f"{root}{name}/{path}"
+    url = f"{root}{cr_name}/{path}"
     response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.text
 
 
-def get_flink_jobmanager_overview(
-    service: str, instance: str, cluster: str
-) -> Mapping[str, Any]:
+def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, Any]:
     try:
-        response = _dashboard_get(service, instance, cluster, "overview")
+        response = _dashboard_get(cr_name, cluster, "overview")
         return json.loads(response)
     except requests.RequestException as e:
         url = e.request.url
