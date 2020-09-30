@@ -49,7 +49,6 @@ from paasta_tools.paastaapi.model.meta_status import MetaStatus
 from paasta_tools.paastaapi.model.resource import Resource
 from paasta_tools.paastaapi.model.resource_item import ResourceItem
 from paasta_tools.paastaapi.model.resource_value import ResourceValue
-from paasta_tools.paastaapi.model.service_autoscaler_pause_json_body import ServiceAutoscalerPauseJsonBody
 from paasta_tools.paastaapi.model.smartstack_backend import SmartstackBackend
 from paasta_tools.paastaapi.model.smartstack_location import SmartstackLocation
 from paasta_tools.paastaapi.model.smartstack_status import SmartstackStatus

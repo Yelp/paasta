@@ -29,7 +29,9 @@ def get_service_autoscale_pause_time(cluster):
     if not api:
         print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
-    pause_time, status, _ = api.default.get_service_autoscaler_pause_with_http_info()
+    pause_time, status, _ = api.default.get_service_autoscaler_pause(
+        _return_http_data_only=False
+    )
     if status == 500:
         print("Could not connect to zookeeper server")
         return 2
@@ -48,8 +50,8 @@ def update_service_autoscale_pause_time(cluster, mins):
     if not api:
         print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
-    res, status, _ = api.default.update_service_autoscaler_pause_with_http_info(
-        paastamodels.ServiceAutoscalerPauseJsonBody(minutes=int(mins))
+    res, status, _ = api.default.update_service_autoscaler_pause(
+        paastamodels.InlineObject(minutes=int(mins)), _return_http_data_only=False
     )
     if status == 500:
         print("Could not connect to zookeeper server")
@@ -64,7 +66,9 @@ def delete_service_autoscale_pause_time(cluster):
     if not api:
         print("Could not connect to paasta api. Maybe you misspelled the cluster?")
         return 1
-    res, status, _ = api.default.delete_service_autoscaler_pause_with_http_info()
+    res, status, _ = api.default.delete_service_autoscaler_pause(
+        _return_http_data_only=False
+    )
     if status == 500:
         print("Could not connect to zookeeper server")
         return 2
