@@ -1,3 +1,12 @@
+paasta-tools (0.97.5) xenial; urgency=medium
+
+  * 0.97.5 tagged with 'make release'
+    Commit: Updating flink service check to point to correct dashboard
+    url (#2928)  * Updating flink service check to point to correct
+    dashboard url  * Review changes
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Wed, 30 Sep 2020 04:40:38 -0700
+
 paasta-tools (0.97.4) xenial; urgency=medium
 
   * 0.97.4 tagged with 'make release'
