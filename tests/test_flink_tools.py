@@ -30,11 +30,10 @@ def test_get_flink_jobmanager_overview():
         return_value='{"taskmanagers":10,"slots-total":10,"flink-version":"1.6.4","flink-commit":"6241481"}',
     ) as mock_dashboard_get:
         cluster = "mycluster"
-        service = "kurupt_fm"
-        instance = "radio_station"
-        overview = flink_tools.get_flink_jobmanager_overview(service, instance, cluster)
+        cr_name = "kurupt--fm-7c7b459d59"
+        overview = flink_tools.get_flink_jobmanager_overview(cr_name, cluster)
         mock_dashboard_get.assert_called_once_with(
-            service=service, instance=instance, cluster=cluster, path="overview"
+            cr_name=cr_name, cluster=cluster, path="overview"
         )
         assert overview == {
             "taskmanagers": 10,
