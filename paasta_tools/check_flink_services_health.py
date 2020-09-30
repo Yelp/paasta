@@ -142,7 +142,7 @@ def check_flink_service_health(
     num_healthy_jobmanagers = healthy_flink_containers_cnt(si_pods, "jobmanager")
     num_healthy_taskmanagers = healthy_flink_containers_cnt(si_pods, "taskmanager")
 
-    servie_cr_name = get_cr_name(si_pods)
+    service_cr_name = get_cr_name(si_pods)
 
     results = [
         check_under_replication(
@@ -166,7 +166,7 @@ def check_flink_service_health(
         check_under_registered_taskmanagers(
             instance_config=instance_config,
             expected_count=taskmanagers_expected_cnt,
-            cr_name=servie_cr_name,
+            cr_name=service_cr_name,
         ),
     ]
     output = "\n########\n".join([r[1] for r in results])
