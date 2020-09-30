@@ -37,9 +37,6 @@ from typing import Type
 from typing import Union
 
 import humanize
-from bravado.exception import BravadoConnectionError
-from bravado.exception import BravadoTimeoutError
-from bravado.exception import HTTPError
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 
@@ -246,10 +243,10 @@ def paasta_status_on_api_endpoint(
         status = client.service.status_instance(
             service=service, instance=instance, verbose=verbose
         ).result()
-    except HTTPError as exc:
+    except client.api_error as exc:
         output.append(PaastaColors.red(exc.response.text))
         return exc.status_code
-    except (BravadoConnectionError, BravadoTimeoutError) as exc:
+    except (client.connection_error, client.timeout_error) as exc:
         output.append(
             PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
         )

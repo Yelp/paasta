@@ -1,7 +1,10 @@
 import functools
 
 from bravado.docstring_property import docstring_property
+from bravado.exception import BravadoConnectionError
+from bravado.exception import BravadoTimeoutError
 from bravado.exception import HTTPBadRequest
+from bravado.exception import HTTPError
 
 import paasta_tools.api
 from paasta_tools.utils import load_system_paasta_config
@@ -50,8 +53,10 @@ class AuthResourceDecorator:
 
 
 class AuthClientDecorator:
-    """
-    """
+    api_error: type
+    connection_error: type
+    timeout_error: type
+    request_error: type
 
     def __init__(self, client, cluster_name):
         """ Create a auth client decorator.
@@ -61,6 +66,10 @@ class AuthClientDecorator:
         :return: A wrapped swagger client that should be used in place of a
             plain swagger client.
         """
+        self.api_error = HTTPError
+        self.connection_error = BravadoConnectionError
+        self.timeout_error = BravadoTimeoutError
+        self.request_error = HTTPBadRequest
         self.client = client
         self.cluster_name = cluster_name
 

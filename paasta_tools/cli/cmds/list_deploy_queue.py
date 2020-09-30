@@ -19,10 +19,6 @@ import traceback
 from typing import List
 from typing import Union
 
-from bravado.exception import BravadoConnectionError
-from bravado.exception import BravadoTimeoutError
-from bravado.exception import HTTPError
-
 from paasta_tools.api.client import get_paasta_api_client
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -82,10 +78,10 @@ def list_deploy_queue(args,) -> int:
 
     try:
         deploy_queues, raw_response = client.deploy_queue.deploy_queue().result()
-    except HTTPError as exc:
+    except client.api_error as exc:
         print(PaastaColors.red(exc.response.text))
         return exc.status_code
-    except (BravadoConnectionError, BravadoTimeoutError) as exc:
+    except (client.connection_error, client.timeout_error) as exc:
         print(PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}"))
         return 1
     except Exception:

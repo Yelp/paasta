@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from behave import then
-from bravado import exception as bexception
 
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.utils import decompose_job_id
@@ -40,7 +39,7 @@ def service_instance_status_error(context, error_code, job_id):
         response = context.paasta_api_client.service.status_instance(
             instance=instance, service=service
         ).result()
-    except bexception.HTTPError as exc:
+    except context.paasta_api_client.api_error as exc:
         assert exc.status_code == int(error_code)
 
     assert not response

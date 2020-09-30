@@ -23,6 +23,7 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
 from paasta_tools import utils
+from paasta_tools.api import auth_decorator
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
 
@@ -91,7 +92,9 @@ def get_paasta_api_url():
 
 
 def setup_paasta_api_client():
-    return SwaggerClient.from_url(get_paasta_api_url())
+    return auth_decorator.AuthClientDecorator(
+        SwaggerClient.from_url(get_paasta_api_url()), cluster_name="itests"
+    )
 
 
 def _generate_mesos_cli_config(zk_host_and_port):

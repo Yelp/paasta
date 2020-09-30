@@ -133,6 +133,7 @@ def mock_status_instance_side_effect(
 )
 def test_instances_deployed(mock_get_paasta_api_client, mock__log):
     mock_paasta_api_client = Mock()
+    mock_paasta_api_client.api_error = HTTPError
     mock_get_paasta_api_client.return_value = mock_paasta_api_client
     mock_paasta_api_client.service.status_instance.side_effect = (
         mock_status_instance_side_effect
