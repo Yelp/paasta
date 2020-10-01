@@ -124,6 +124,7 @@ class InstanceStatusKubernetes(ModelNormal):
             'running_instance_count': (int,),  # noqa: E501
             'smartstack': (SmartstackStatus,),  # noqa: E501
             'envoy': (EnvoyStatus,),  # noqa: E501
+            'evicted_count': (int,),  # noqa: E501
         }
 
     @cached_property
@@ -149,6 +150,7 @@ class InstanceStatusKubernetes(ModelNormal):
         'running_instance_count': 'running_instance_count',  # noqa: E501
         'smartstack': 'smartstack',  # noqa: E501
         'envoy': 'envoy',  # noqa: E501
+        'evicted_count': 'evicted_count',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -216,6 +218,7 @@ class InstanceStatusKubernetes(ModelNormal):
             running_instance_count (int): The number of actual running instances of the service. [optional]  # noqa: E501
             smartstack (SmartstackStatus): [optional]  # noqa: E501
             envoy (EnvoyStatus): [optional]  # noqa: E501
+            evicted_count (int): Number of pods with status reason \&quot;Evicted\&quot;. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

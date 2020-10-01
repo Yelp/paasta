@@ -37,7 +37,6 @@ from typing import Optional
 
 import humanize
 import progressbar
-from requests.exceptions import ConnectionError
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
@@ -1160,7 +1159,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
     :param green_light: See the docstring for _query_clusters().
     """
 
-    api = client.get_paasta_api_client(cluster=cluster_data.cluster)
+    api = client.get_paasta_oapi_client(cluster=cluster_data.cluster)
     if not api:
         log.warning(
             "Couldn't reach the PaaSTA api for {}! Assuming it is not "
@@ -1195,9 +1194,9 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 include_smartstack=False,
                 include_envoy=False,
                 include_mesos=False,
-            ).result()
+            )
         except api.api_error as e:
-            if e.response.status_code == 404:
+            if e.status == 404:
                 log.warning(
                     "Can't get status for instance {}, service {} in "
                     "cluster {}. This is normally because it is a new "
@@ -1212,11 +1211,6 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                         cluster_data.cluster, e.response.status_code, e.response.text
                     )
                 )
-        except ConnectionError as e:
-            log.warning(
-                "Error getting service status from PaaSTA API for {}:"
-                "{}".format(cluster_data.cluster, e)
-            )
 
         long_running_status = None
         if status:
