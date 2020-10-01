@@ -38,7 +38,7 @@ def test_paasta_autoscale(
     args.instances = instance
     args.set = 14
 
-    mock_api.update_autoscaler_count_with_http_info.return_value = (
+    mock_api.update_autoscaler_count.return_value = (
         mock.Mock(desired_instances=14),
         200,
         None,
@@ -46,4 +46,4 @@ def test_paasta_autoscale(
     mock__log_audit.return_value = None
 
     paasta_autoscale(args)
-    assert mock_api.update_autoscaler_count_with_http_info.call_count == 1
+    assert mock_api.update_autoscaler_count.call_count == 1

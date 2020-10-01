@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uo pipefail
 
-diff_names=$(git diff HEAD~ --name-only)
+diff_names=$(git diff origin/master --name-only)
 touched_schemas=$(
     echo "$diff_names" |
     grep 'paasta_tools/api/api_docs/\(swagger.json\|oapi.yaml\)' |
