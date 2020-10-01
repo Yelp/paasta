@@ -91,7 +91,7 @@ class MarathonAppStatus(ModelNormal):
             'tasks_staged': (int,),  # noqa: E501
             'tasks_total': (int,),  # noqa: E501
             'unused_offer_reason_counts': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),  # noqa: E501
-            'unused_offers': ([{str: (bool, date, datetime, dict, float, int, list, str, none_type)}],),  # noqa: E501
+            'unused_offers': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),  # noqa: E501
         }
 
     @cached_property
@@ -169,7 +169,7 @@ class MarathonAppStatus(ModelNormal):
             tasks_staged (int): Number of staged tasks for this app. [optional]  # noqa: E501
             tasks_total (int): Total number of tasks for this app. [optional]  # noqa: E501
             unused_offer_reason_counts ({str: (bool, date, datetime, dict, float, int, list, str, none_type)}): Mapping of reason offer was refused to the number of times that type of refusal was seen. [optional]  # noqa: E501
-            unused_offers ([{str: (bool, date, datetime, dict, float, int, list, str, none_type)}]): [optional]  # noqa: E501
+            unused_offers ({str: (bool, date, datetime, dict, float, int, list, str, none_type)}): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

@@ -17,7 +17,7 @@
     "tags": [
         {
             "name": "service",
-            "description": "Information about a paasta service"
+            "description": "Information about a paasta service."
         }
     ],
     "paths": {
@@ -974,12 +974,6 @@
                     "description": "Tasks associated to this app",
                     "items": {
                         "$ref": "#/definitions/MarathonTask"
-                    }
-                },
-                "unused_offers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
                     }
                 }
             }

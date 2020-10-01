@@ -10,7 +10,7 @@ servers:
     host: {default: localhost}
     scheme: {default: http, enum: [http, https]}
 tags:
-- description: Information about a paasta service
+- description: Information about a paasta service.
   name: service
 components:
   schemas:
@@ -560,9 +560,7 @@ components:
             that type of refusal was seen
           type: object
         unused_offers:
-          type: array
-          items:
-            type: object
+          type: object
       type: object
     MarathonAutoscalingInfo:
       properties:
