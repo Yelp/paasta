@@ -25,9 +25,9 @@ def service_instance_status(context, app_count, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
     response = context.paasta_api_client.service.status_instance(
         instance=instance, service=service
-    ).result()
+    )
 
-    assert response["marathon"]["app_count"] == int(app_count), response
+    assert response.marathon.app_count == int(app_count), response
 
 
 @then('instance GET should return error code "{error_code}" for "{job_id}"')
@@ -38,9 +38,9 @@ def service_instance_status_error(context, error_code, job_id):
     try:
         response = context.paasta_api_client.service.status_instance(
             instance=instance, service=service
-        ).result()
+        )
     except context.paasta_api_client.api_error as exc:
-        assert exc.status_code == int(error_code)
+        assert exc.status == int(error_code)
 
     assert not response
 
@@ -48,8 +48,8 @@ def service_instance_status_error(context, error_code, job_id):
 @then('resources GET should show "{resource}" has {used} used')
 def resources_resource_used(context, resource, used):
     used = float(used)
-    response = context.paasta_api_client.resources.resources().result()
-    assert response[0][resource]["used"] == used, response
+    response = context.paasta_api_client.resources.resources().value
+    assert response[0].to_dict()[resource].get("used") == used, response
 
 
 @then(
@@ -61,9 +61,9 @@ def resources_groupings_filters(context, groupings, filters, num):
         filters = filters.split("|")
     response = context.paasta_api_client.resources.resources(
         groupings=groupings, filter=filters
-    ).result()
+    )
 
-    assert len(response) == num, response
+    assert len(response.value) == num, response
 
 
 @then('resources GET with groupings "{groupings}" should return {num:d} groups')
@@ -75,14 +75,12 @@ def resources_groupings(context, groupings, num):
     'marathon_dashboard GET should return "{service}.{instance}" in cluster "{cluster}" with shard {shard:d}'
 )
 def marathon_dashboard(context, service, instance, cluster, shard):
-    response = (
-        context.paasta_api_client.marathon_dashboard.marathon_dashboard().result()
-    )
+    response = context.paasta_api_client.marathon_dashboard.marathon_dashboard()
     dashboard = response[cluster]
     shard_url = context.system_paasta_config.get_dashboard_links()[cluster][
         "Marathon RO"
     ][shard]
-    for marathon_dashboard_item in dashboard:
+    for marathon_dashboard_item in dashboard.value:
         if (
             marathon_dashboard_item["service"] == service
             and marathon_dashboard_item["instance"] == instance

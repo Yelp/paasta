@@ -559,6 +559,10 @@ components:
           description: Mapping of reason offer was refused to the number of times
             that type of refusal was seen
           type: object
+        unused_offers:
+          type: array
+          items:
+            type: object
       type: object
     MarathonAutoscalingInfo:
       properties:
@@ -724,6 +728,8 @@ components:
         groupings:
           type: object
         mem:
+          $ref: '#/components/schemas/ResourceValue'
+        gpus:
           $ref: '#/components/schemas/ResourceValue'
       type: object
     ResourceValue:

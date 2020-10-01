@@ -20,6 +20,8 @@ import logging
 import os
 from typing import Any
 from typing import Mapping
+from typing import Optional
+from urllib.parse import ParseResult
 from urllib.parse import urlparse
 
 from dataclasses import dataclass
@@ -136,32 +138,17 @@ class PaastaOApiClient:
     request_error: type
 
 
-def get_paasta_oapi_client(
-    cluster: str = None,
-    system_paasta_config: SystemPaastaConfig = None,
-    http_res: bool = False,
+def get_paasta_oapi_client_by_url(
+    parsed_url: ParseResult,
+    cert_file: Optional[str] = None,
+    key_file: Optional[str] = None,
+    ssl_ca_cert: Optional[str] = None,
 ) -> PaastaOApiClient:
-    if not system_paasta_config:
-        system_paasta_config = load_system_paasta_config()
-
-    if not cluster:
-        cluster = system_paasta_config.get_cluster()
-
-    api_endpoints = system_paasta_config.get_api_endpoints()
-    if cluster not in api_endpoints:
-        log.error("Cluster %s not in paasta-api endpoints config", cluster)
-        return None
-
-    parsed = urlparse(api_endpoints[cluster])
-    server_variables = dict(scheme=parsed.scheme, host=parsed.netloc)
+    server_variables = dict(scheme=parsed_url.scheme, host=parsed_url.netloc)
     config = paastaapi.Configuration(server_variables=server_variables)
-
-    if config.server_variables["scheme"] == "https":
-        opts = get_paasta_ssl_opts(cluster, system_paasta_config)
-        if opts:
-            config.cert_file = opts["cert"]
-            config.key_file = opts["key"]
-            config.ssl_ca_cert = opts["ca"]
+    config.cert_file = cert_file
+    config.key_file = key_file
+    config.ssl_ca_cert = ssl_ca_cert
 
     client = paastaapi.ApiClient(configuration=config)
     return PaastaOApiClient(
@@ -175,6 +162,34 @@ def get_paasta_oapi_client(
         timeout_error=paastaapi.ApiException,
         request_error=paastaapi.ApiException,
     )
+
+
+def get_paasta_oapi_client(
+    cluster: str = None,
+    system_paasta_config: SystemPaastaConfig = None,
+    http_res: bool = False,
+) -> Optional[PaastaOApiClient]:
+    if not system_paasta_config:
+        system_paasta_config = load_system_paasta_config()
+
+    if not cluster:
+        cluster = system_paasta_config.get_cluster()
+
+    api_endpoints = system_paasta_config.get_api_endpoints()
+    if cluster not in api_endpoints:
+        log.error("Cluster %s not in paasta-api endpoints config", cluster)
+        return None
+
+    parsed = urlparse(api_endpoints[cluster])
+    cert_file = key_file = ssl_ca_cert = None
+    if parsed.scheme == "https":
+        opts = get_paasta_ssl_opts(cluster, system_paasta_config)
+        if opts:
+            cert_file = opts["cert"]
+            key_file = opts["key"]
+            ssl_ca_cert = opts["ca"]
+
+    return get_paasta_oapi_client_by_url(parsed, cert_file, key_file, ssl_ca_cert)
 
 
 def renew_issue_cert(system_paasta_config: SystemPaastaConfig, cluster: str) -> None:

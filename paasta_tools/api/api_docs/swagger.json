@@ -975,6 +975,12 @@
                     "items": {
                         "$ref": "#/definitions/MarathonTask"
                     }
+                },
+                "unused_offers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
                 }
             }
         },
@@ -1634,6 +1640,9 @@
                     "$ref": "#/definitions/ResourceValue"
                 },
                 "disk": {
+                    "$ref": "#/definitions/ResourceValue"
+                },
+                "gpus": {
                     "$ref": "#/definitions/ResourceValue"
                 }
             }
