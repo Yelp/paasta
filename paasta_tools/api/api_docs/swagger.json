@@ -975,12 +975,6 @@
                     "items": {
                         "$ref": "#/definitions/MarathonTask"
                     }
-                },
-                "unused_offers": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
-                    }
                 }
             }
         },
