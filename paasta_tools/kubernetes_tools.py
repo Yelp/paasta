@@ -1287,8 +1287,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
             prometheus_shard = self.get_prometheus_shard()
             if prometheus_shard:
-                complete_config.metadata.labels["yelp.com/paasta_prometheus_shard"] = prometheus_shard
-                complete_config.metadata.labels["paasta.yelp.com/config_prometheus_shard"] = prometheus_shard
+                complete_config.metadata.labels[
+                    "yelp.com/paasta_prometheus_shard"
+                ] = prometheus_shard
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/config_prometheus_shard"
+                ] = prometheus_shard
 
             complete_config.spec.template.metadata.labels[
                 "yelp.com/paasta_config_sha"
