@@ -290,6 +290,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
+    prometheus_shard: str
     prometheus_port: int
 
 
@@ -1283,6 +1284,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
             complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
+
+            prometheus_shard = self.get_prometheus_shard()
+            if prometheus_shard:
+                complete_config.metadata.labels["yelp.com/paasta_prometheus_shard"] = prometheus_shard
+                complete_config.metadata.labels["paasta.yelp.com/config_prometheus_shard"] = prometheus_shard
+
             complete_config.spec.template.metadata.labels[
                 "yelp.com/paasta_config_sha"
             ] = config_hash
@@ -1574,6 +1581,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "termination_grace_period_seconds"
         )
+
+    def get_prometheus_shard(self) -> Optional[str]:
+        return self.config_dict.get("prometheus_shard")
 
     def get_prometheus_port(self) -> Optional[int]:
         return self.config_dict.get("prometheus_port")
