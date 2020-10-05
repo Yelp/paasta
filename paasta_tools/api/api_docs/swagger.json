@@ -1659,9 +1659,6 @@
                 },
                 "disk": {
                     "$ref": "#/definitions/ResourceValue"
-                },
-                "gpus": {
-                    "$ref": "#/definitions/ResourceValue"
                 }
             }
         },
