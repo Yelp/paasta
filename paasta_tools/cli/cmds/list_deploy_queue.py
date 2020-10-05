@@ -61,7 +61,7 @@ def add_subparser(subparsers,) -> None:
     list_deploy_queue_parser.set_defaults(command=list_deploy_queue)
 
 
-def list_deploy_queue(args,) -> int:
+def list_deploy_queue(args) -> int:
     cluster = args.cluster
     all_clusters = list_clusters(soa_dir=args.soa_dir)
     if cluster not in all_clusters:
