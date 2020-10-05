@@ -15,7 +15,7 @@ tags:
 components:
   schemas:
     AutoscalerCountMsg:
-      description: Specification for autoscaler count endpoints.
+      description: Specification for autoscaler count endpoints
       properties:
         calculated_instances:
           type: integer

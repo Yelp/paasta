@@ -17,7 +17,7 @@
     "tags": [
         {
             "name": "service",
-            "description": "Information about a paasta service."
+            "description": "Information about a paasta service"
         }
     ],
     "paths": {
@@ -1634,9 +1634,6 @@
                     "$ref": "#/definitions/ResourceValue"
                 },
                 "disk": {
-                    "$ref": "#/definitions/ResourceValue"
-                },
-                "gpus": {
                     "$ref": "#/definitions/ResourceValue"
                 }
             }
