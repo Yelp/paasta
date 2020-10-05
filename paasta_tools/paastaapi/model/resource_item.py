@@ -85,6 +85,7 @@ class ResourceItem(ModelNormal):
             'disk': (ResourceValue,),  # noqa: E501
             'groupings': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),  # noqa: E501
             'mem': (ResourceValue,),  # noqa: E501
+            'gpus': (ResourceValue,),  # noqa: E501
         }
 
     @cached_property
@@ -97,6 +98,7 @@ class ResourceItem(ModelNormal):
         'disk': 'disk',  # noqa: E501
         'groupings': 'groupings',  # noqa: E501
         'mem': 'mem',  # noqa: E501
+        'gpus': 'gpus',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -149,6 +151,7 @@ class ResourceItem(ModelNormal):
             disk (ResourceValue): [optional]  # noqa: E501
             groupings ({str: (bool, date, datetime, dict, float, int, list, str, none_type)}): [optional]  # noqa: E501
             mem (ResourceValue): [optional]  # noqa: E501
+            gpus (ResourceValue): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

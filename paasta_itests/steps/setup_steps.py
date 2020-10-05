@@ -14,16 +14,16 @@
 import json
 import os
 from tempfile import NamedTemporaryFile
+from urllib.parse import urlparse
 
 import yaml
 from behave import given
 from behave import when
-from bravado.client import SwaggerClient
 from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
 from paasta_tools import utils
-from paasta_tools.api import auth_decorator
+from paasta_tools.api.client import get_paasta_oapi_client_by_url
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
 
@@ -92,9 +92,7 @@ def get_paasta_api_url():
 
 
 def setup_paasta_api_client():
-    return auth_decorator.AuthClientDecorator(
-        SwaggerClient.from_url(get_paasta_api_url()), cluster_name="itests"
-    )
+    return get_paasta_oapi_client_by_url(urlparse(get_paasta_api_url()))
 
 
 def _generate_mesos_cli_config(zk_host_and_port):

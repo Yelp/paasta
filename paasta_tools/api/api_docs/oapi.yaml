@@ -10,7 +10,7 @@ servers:
     host: {default: localhost}
     scheme: {default: http, enum: [http, https]}
 tags:
-- description: Information about a paasta service
+- description: Information about a paasta service.
   name: service
 components:
   schemas:
@@ -559,6 +559,8 @@ components:
           description: Mapping of reason offer was refused to the number of times
             that type of refusal was seen
           type: object
+        unused_offers:
+          type: object
       type: object
     MarathonAutoscalingInfo:
       properties:
@@ -724,6 +726,8 @@ components:
         groupings:
           type: object
         mem:
+          $ref: '#/components/schemas/ResourceValue'
+        gpus:
           $ref: '#/components/schemas/ResourceValue'
       type: object
     ResourceValue:
