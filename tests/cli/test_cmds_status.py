@@ -1551,7 +1551,7 @@ class TestFormatKubernetesPodTable:
         mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
-        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict == {
             "Pod ID": "abc123",
@@ -1582,9 +1582,9 @@ class TestFormatKubernetesPodTable:
     ):
         mock_kubernetes_pod.host = None
         mock_kubernetes_pod.events = []
-        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
-        assert pod_table_dict["Host deployed to"] == "Unknown"
+        assert pod_table_dict["Host deployed to"] == PaastaColors.grey("N/A")
 
     @pytest.mark.parametrize("phase,ready", [("Failed", False), ("Running", False)])
     def test_unhealthy(
@@ -1598,7 +1598,7 @@ class TestFormatKubernetesPodTable:
         mock_kubernetes_pod.phase = phase
         mock_kubernetes_pod.ready = ready
         mock_kubernetes_pod.events = []
-        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Unhealthy")
 
@@ -1611,7 +1611,7 @@ class TestFormatKubernetesPodTable:
         mock_kubernetes_pod.phase = "Failed"
         mock_kubernetes_pod.reason = "Evicted"
         mock_kubernetes_pod.events = []
-        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.red("Evicted")
 
@@ -1623,7 +1623,7 @@ class TestFormatKubernetesPodTable:
     ):
         mock_kubernetes_pod.phase = None
         mock_kubernetes_pod.events = []
-        output = format_kubernetes_pod_table([mock_kubernetes_pod])
+        output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.grey("N/A")
 

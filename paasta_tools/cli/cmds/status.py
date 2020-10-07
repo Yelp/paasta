@@ -641,11 +641,11 @@ def format_marathon_task_table(tasks):
     return format_table(rows)
 
 
-def format_kubernetes_pod_table(pods):
+def format_kubernetes_pod_table(pods, verbose: int):
     rows = [("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")]
     for pod in pods:
         local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
-        hostname = f"{pod.host}" if pod.host is not None else "Unknown"
+        hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
         if pod.phase is None or pod.phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif pod.phase == "Running":
@@ -667,7 +667,7 @@ def format_kubernetes_pod_table(pods):
                 health_check_status,
             )
         )
-        if pod.events:
+        if pod.events and verbose > 1:
             rows.extend(format_pod_event_messages(pod.events, pod.name))
         if pod.message is not None:
             rows.append(PaastaColors.grey(f"  {pod.message}"))
@@ -1166,7 +1166,7 @@ def print_kubernetes_status(
 
     if kubernetes_status.pods and len(kubernetes_status.pods) > 0:
         output.append("      Pods:")
-        pods_table = format_kubernetes_pod_table(kubernetes_status.pods)
+        pods_table = format_kubernetes_pod_table(kubernetes_status.pods, verbose)
         output.extend([f"        {line}" for line in pods_table])
 
     if kubernetes_status.replicasets and len(kubernetes_status.replicasets) > 0:
