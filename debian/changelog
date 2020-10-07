@@ -1,3 +1,12 @@
+paasta-tools (0.97.6) xenial; urgency=medium
+
+  * 0.97.6 tagged with 'make release'
+    Commit: Merge pull request #2931 from Yelp/prometheus_shard_poc  Add
+    prometheus_shard label to Kubernetes services if supplied in yelpsoa-
+    config
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 07 Oct 2020 06:09:40 -0700
+
 paasta-tools (0.97.5) xenial; urgency=medium
 
   * 0.97.5 tagged with 'make release'

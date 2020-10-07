@@ -7,6 +7,8 @@ Subpackages
 .. toctree::
 
    paasta_tools.paastaapi.api
+   paasta_tools.paastaapi.apis
+   paasta_tools.paastaapi.model
    paasta_tools.paastaapi.models
 
 Submodules
@@ -17,6 +19,7 @@ Submodules
    paasta_tools.paastaapi.api_client
    paasta_tools.paastaapi.configuration
    paasta_tools.paastaapi.exceptions
+   paasta_tools.paastaapi.model_utils
    paasta_tools.paastaapi.rest
 
 Module contents
