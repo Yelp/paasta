@@ -19,6 +19,7 @@ import staticconf
 
 from clusterman.config import POOL_NAMESPACE
 from clusterman.interfaces.types import AgentMetadata
+from clusterman.util import ClustermanResources
 
 
 class ClusterConnector(metaclass=ABCMeta):
@@ -72,6 +73,22 @@ class ClusterConnector(metaclass=ABCMeta):
         total = self.get_resource_total(resource_name)
         used = self.get_resource_allocation(resource_name)
         return used / total if total else 0
+
+    def get_cluster_allocated_resources(self) -> ClustermanResources:
+        """Get all allocated resources for the cluster"""
+        allocated_resources = {
+            resource: self.get_resource_allocation(resource)
+            for resource in ClustermanResources._fields
+        }
+        return ClustermanResources(**allocated_resources)
+
+    def get_cluster_total_resources(self) -> ClustermanResources:
+        """Get the total available resources for the cluster"""
+        total_resources = {
+            resource: self.get_resource_total(resource)
+            for resource in ClustermanResources._fields
+        }
+        return ClustermanResources(**total_resources)
 
     @abstractmethod
     def _get_agent_metadata(self, ip_address: str) -> AgentMetadata:  # pragma: no cover

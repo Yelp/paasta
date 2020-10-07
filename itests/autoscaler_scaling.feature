@@ -71,7 +71,7 @@ Feature: make sure the autoscaler scales to the proper amount
        Given a cluster with 2 resource groups
          And 20 target capacity
          And 80 CPUs, 1000 MB mem, 1000 MB disk, and 0 GPUs
-         And 56 CPUs allocated, <pending> CPUs pending, and <boost> boost factor
+         And 56 CPUs allocated and <pending> CPUs pending
          And a kubernetes autoscaler object
         When the autoscaler runs
         Then no exception is raised
@@ -79,9 +79,7 @@ Feature: make sure the autoscaler scales to the proper amount
          And the autoscaler should scale rg2 to <rg2_target> capacity
 
       Examples:
-        | pending   | boost | rg1_target | rg2_target |
-        | 0         |       | 10         | 10         |
-        | 14        |       | 16         | 15         |
-        | 1000      |       | 50         | 50         |
-        | 0         | 2     | 20         | 20         |
-        | 50        | 2     | 28         | 28         |
+        | pending   | rg1_target | rg2_target |
+        | 0         | 10         | 10         |
+        | 14        | 16         | 15         |
+        | 1000      | 50         | 50         |

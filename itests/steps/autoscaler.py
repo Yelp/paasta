@@ -38,6 +38,7 @@ from clusterman.kubernetes.util import PodUnschedulableReason
 from clusterman.signals.external_signal import ACK
 from clusterman.util import AUTOSCALER_PAUSED
 from clusterman.util import CLUSTERMAN_STATE_TABLE
+from clusterman.util import ClustermanResources
 from itests.environment import boto_patches
 
 
@@ -56,7 +57,7 @@ def autoscaler_patches(context):
             max_capacity=float('inf'),
         )
 
-    resource_totals = {'cpus': context.cpus, 'mem': context.mem, 'disk': context.disk, 'gpus': context.gpus}
+    resource_totals = ClustermanResources(cpus=context.cpus, mem=context.mem, disk=context.disk, gpus=context.gpus)
 
     with staticconf.testing.PatchConfiguration(
         {'autoscaling': {'default_signal_role': 'bar'}},
@@ -92,7 +93,7 @@ def autoscaler_patches(context):
             ],
         )
         mock_metrics.return_value = {}  # don't know why this is necessary but we get flaky tests if it's not set
-        mock_cluster_connector.return_value.get_resource_total.side_effect = resource_totals.__getitem__
+        mock_cluster_connector.return_value.get_cluster_total_resources.return_value = resource_totals
         context.mock_cluster_connector = mock_cluster_connector
         yield
 
@@ -201,19 +202,20 @@ def resources(context, cpus, mem, disk, gpus):
     context.gpus = int(gpus)
 
 
-@behave.given(
-    '(?P<allocated_cpus>\d+) CPUs allocated, (?P<pending_cpus>\d+) CPUs pending, and (?P<boost>\d*) boost factor'
-)
-def resources_requested(context, allocated_cpus, pending_cpus, boost):
-    # These don't need to be parsed because they get passed to Decimal
-    context.allocated_cpus = allocated_cpus
+@behave.given('(?P<allocated_cpus>\d+) CPUs allocated and (?P<pending_cpus>\d+) CPUs pending')
+def resources_requested(context, allocated_cpus, pending_cpus):
+    context.allocated_cpus = float(allocated_cpus)
     context.pending_cpus = pending_cpus
-    context.boost = boost if boost else None
 
 
 @behave.given('a mesos autoscaler object')
 def mesos_autoscaler(context):
     behave.use_fixture(autoscaler_patches, context)
+    if hasattr(context, 'allocated_cpus'):
+        context.autoscaler.metrics_client.get_metric_values.side_effect = make_mock_scaling_metrics(
+            context.allocated_cpus,
+            context.boost,
+        )
     context.autoscaler = Autoscaler(
         cluster='mesos-test',
         pool='bar',
@@ -228,6 +230,9 @@ def mesos_autoscaler(context):
 def k8s_autoscaler(context):
     behave.use_fixture(autoscaler_patches, context)
     context.mock_cluster_connector.return_value.__class__ = KubernetesClusterConnector
+    context.mock_cluster_connector.return_value.get_cluster_allocated_resources.return_value = ClustermanResources(
+        cpus=context.allocated_cpus,
+    )
     context.mock_cluster_connector.return_value.get_unschedulable_pods.return_value = (
         [] if context.pending_cpus == 0
         else [(
@@ -324,11 +329,6 @@ def signal_resource_request(context, value):
 
 @behave.when('the autoscaler runs')
 def autoscaler_runs(context):
-    if hasattr(context, 'allocated_cpus'):
-        context.autoscaler.metrics_client.get_metric_values.side_effect = make_mock_scaling_metrics(
-            context.allocated_cpus,
-            context.boost,
-        )
     try:
         context.autoscaler.run()
     except Exception as e:
