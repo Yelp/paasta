@@ -1206,10 +1206,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 )
             else:
                 log.warning(
-                    "Error getting service status from PaaSTA API for {}: {}"
-                    "{}".format(
-                        cluster_data.cluster, e.response.status_code, e.response.text
-                    )
+                    "Error getting service status from PaaSTA API for "
+                    f"{cluster_data.cluster}: {e.status} {e.reason}"
                 )
 
         long_running_status = None
