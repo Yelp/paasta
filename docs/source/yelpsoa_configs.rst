@@ -413,6 +413,10 @@ instance MAY have:
    scrape the service. This shard should already exist and will not be
    automatically created.
 
+ * ``prometheus_path``: Optional path the Prometheus shard to be configured with
+   to scrape the service. This shard should already exist and will not be
+   automatically created.
+
  * ``prometheus_port``: Optional port, not equal to ``container_port``, to
    expose for prometheus scraping.
 

@@ -291,6 +291,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
     prometheus_shard: str
+    prometheus_path: str
     prometheus_port: int
 
 
@@ -1284,6 +1285,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta.yelp.com/prometheus_shard"
                 ] = prometheus_shard
 
+            prometheus_path = self.get_prometheus_path()
+            if prometheus_path:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/prometheus_path"
+                ] = prometheus_path
+
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
@@ -1586,6 +1593,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_prometheus_shard(self) -> Optional[str]:
         return self.config_dict.get("prometheus_shard")
+
+    def get_prometheus_path(self) -> Optional[str]:
+        return self.config_dict.get("prometheus_path")
 
     def get_prometheus_port(self) -> Optional[int]:
         return self.config_dict.get("prometheus_port")
