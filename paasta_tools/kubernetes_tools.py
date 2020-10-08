@@ -1278,18 +1278,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
 
+            prometheus_shard = self.get_prometheus_shard()
+            if prometheus_shard:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/prometheus_shard"
+                ] = prometheus_shard
+
+            # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
                 force_bounce=self.get_force_bounce(),
             )
             complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
             complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
-
-            prometheus_shard = self.get_prometheus_shard()
-            if prometheus_shard:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/prometheus_shard"
-                ] = prometheus_shard
 
             complete_config.spec.template.metadata.labels[
                 "yelp.com/paasta_config_sha"
