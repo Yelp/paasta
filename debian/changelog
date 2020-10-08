@@ -1,3 +1,12 @@
+paasta-tools (0.97.8) xenial; urgency=medium
+
+  * 0.97.8 tagged with 'make release'
+    Commit: Merge pull request #2935 from
+    Yelp/reload_service_on_label_change_PERES-2386  Reload service on
+    label change and add new prometheus_path label
+
+ -- David Avent <davent@yelp.com>  Thu, 08 Oct 2020 07:55:43 -0700
+
 paasta-tools (0.97.7) xenial; urgency=medium
 
   * 0.97.7 tagged with 'make release'
