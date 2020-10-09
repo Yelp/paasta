@@ -21,7 +21,6 @@ import pkgutil
 import re
 import subprocess
 import traceback
-from functools import lru_cache
 from string import Formatter
 from typing import List
 from typing import Tuple
@@ -217,10 +216,15 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
-    @lru_cache(maxsize=1)
     def get_spark_config_dict(self):
+        spark_config_dict = getattr(self, "_spark_config_dict", None)
+        # cached the created dict, so that we don't need to process it multiple
+        # times, and having inconsistent result
+        if spark_config_dict is not None:
+            return spark_config_dict
+
         if self.get_spark_cluster_manager() == "mesos":
-            mesos_leader = (
+            mesos_leader = mesos_leader = (
                 f"zk://{load_system_paasta_config().get_zk_hosts()}"
                 if not self.for_validation
                 else "N/A"
@@ -231,7 +235,7 @@ class TronActionConfig(InstanceConfig):
         aws_creds = get_aws_credentials(
             aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml")
         )
-        return get_spark_conf(
+        self._spark_config_dict = get_spark_conf(
             cluster_manager=self.get_spark_cluster_manager(),
             spark_app_base_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
             user_spark_opts=self.config_dict.get("spark_args", {}),
@@ -244,6 +248,7 @@ class TronActionConfig(InstanceConfig):
             mesos_leader=mesos_leader,
             aws_creds=aws_creds,
         )
+        return self._spark_config_dict
 
     def get_job_name(self):
         return self.job
@@ -293,9 +298,10 @@ class TronActionConfig(InstanceConfig):
     def get_env(self):
         env = super().get_env()
         if self.get_executor() == "spark":
+            spark_config_dict = self.get_spark_config_dict()
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            env["SPARK_OPTS"] = stringify_spark_env(self.get_spark_config_dict())
+            env["SPARK_OPTS"] = stringify_spark_env(spark_config_dict)
             # The actual mesos secret will be decrypted and injected on mesos master when assigning
             # tasks.
             env["SPARK_MESOS_SECRET"] = "SHARED_SECRET(SPARK_MESOS_SECRET)"
@@ -303,9 +309,9 @@ class TronActionConfig(InstanceConfig):
                 json.dumps(
                     generate_clusterman_metrics_entries(
                         clusterman_metrics,
-                        get_resources_requested(self.get_config_dict()),
-                        self.get_config_dict()["spark.app.name"],
-                        get_webui_url(self.get_spark_config_dict()["spark.ui.port"]),
+                        get_resources_requested(spark_config_dict),
+                        spark_config_dict["spark.app.name"],
+                        get_webui_url(spark_config_dict["spark.ui.port"]),
                     )
                 )
                 if clusterman_metrics
