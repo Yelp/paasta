@@ -23,7 +23,7 @@ import choice
 
 from paasta_tools import remote_git
 from paasta_tools import utils
-from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
@@ -287,7 +287,7 @@ def paasta_start_or_stop(args, desired_state):
 
         system_paasta_config = load_system_paasta_config()
         for cluster, services_instances in csi.items():
-            client = get_paasta_api_client(cluster, system_paasta_config)
+            client = get_paasta_oapi_client(cluster, system_paasta_config)
             if not client:
                 print("Cannot get a paasta-api client")
                 exit(1)
@@ -299,10 +299,10 @@ def paasta_start_or_stop(args, desired_state):
                             service=service,
                             instance=instance,
                             desired_state=desired_state,
-                        ).result()
+                        )
                     except client.api_error as exc:
-                        print(exc.response.text)
-                        return exc.status_code
+                        print(exc.reason)
+                        return exc.status
 
                 return_val = 0
 

@@ -17,7 +17,6 @@ import difflib
 import shutil
 import sys
 from collections import defaultdict
-from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 from enum import Enum
@@ -42,7 +41,8 @@ from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
-from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.api.client import getattror
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -62,6 +62,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.paastaapi.exceptions import ApiAttributeError
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -235,17 +236,17 @@ def paasta_status_on_api_endpoint(
     verbose: int,
 ) -> int:
     output.append("    instance: %s" % PaastaColors.cyan(instance))
-    client = get_paasta_api_client(cluster, system_paasta_config)
+    client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
     try:
         status = client.service.status_instance(
             service=service, instance=instance, verbose=verbose
-        ).result()
+        )
     except client.api_error as exc:
-        output.append(PaastaColors.red(exc.response.text))
-        return exc.status_code
+        output.append(PaastaColors.red(exc.reason))
+        return exc.status
     except (client.connection_error, client.timeout_error) as exc:
         output.append(
             PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
@@ -277,15 +278,18 @@ def paasta_status_on_api_endpoint(
 
 def find_instance_type(status: Any) -> str:
     """
-    find_instance_type finds the instance type from the status api response it iterates over all instance type
-    registered in `INSTANCE_TYPE_WRITERS`
+    find_instance_type finds the instance type from the status api response it
+    iterates over all instance type registered in `INSTANCE_TYPE_WRITERS`
 
     :param status: paasta api status object
     :return: the first matching instance type or else None
     """
     for instance_type in INSTANCE_TYPE_WRITERS.keys():
-        if instance_type in status and status[instance_type] is not None:
-            return instance_type
+        try:
+            if status[instance_type] is not None:
+                return instance_type
+        except ApiAttributeError:
+            pass
     return None
 
 
@@ -324,8 +328,9 @@ def print_marathon_status(
     marathon_status,
     verbose: int = 0,
 ) -> int:
-    if marathon_status.error_message:
-        output.append(marathon_status.error_message)
+    error_message = getattror(marathon_status, "error_message")
+    if error_message:
+        output.append(error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
@@ -347,10 +352,9 @@ def print_marathon_status(
     )
     output.append(f"    {job_status_human}")
 
-    if marathon_status.autoscaling_info:
-        autoscaling_info_table = create_autoscaling_info_table(
-            marathon_status.autoscaling_info
-        )
+    autoscaling_info = getattror(marathon_status, "autoscaling_info")
+    if autoscaling_info:
+        autoscaling_info_table = create_autoscaling_info_table(autoscaling_info)
         output.extend([f"      {line}" for line in autoscaling_info_table])
 
     for app_status in marathon_status.app_statuses:
@@ -360,71 +364,70 @@ def print_marathon_status(
         output.extend([f"      {line}" for line in app_status_human])
 
     mesos_status_human = marathon_mesos_status_human(
-        marathon_status.mesos.error_message,
-        marathon_status.mesos.running_task_count or 0,
-        marathon_status.expected_instance_count,
-        marathon_status.mesos.running_tasks,
-        marathon_status.mesos.non_running_tasks,
+        marathon_status.mesos, marathon_status.expected_instance_count
     )
     output.extend([f"    {line}" for line in mesos_status_human])
 
-    if marathon_status.smartstack is not None:
+    smartstack = getattror(marathon_status, "smartstack")
+    if smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
-            marathon_status.smartstack.registration,
-            marathon_status.smartstack.expected_backends_per_location,
-            marathon_status.smartstack.locations,
+            smartstack.registration,
+            smartstack.expected_backends_per_location,
+            smartstack.locations,
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
-    if marathon_status.envoy is not None:
+    envoy = getattror(marathon_status, "envoy")
+    if envoy is not None:
         envoy_status_human = get_envoy_status_human(
-            marathon_status.envoy.registration,
-            marathon_status.envoy.expected_backends_per_location,
-            marathon_status.envoy.locations,
+            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
 
     return 0
 
 
-autoscaling_fields_to_headers = OrderedDict(
-    current_instances="Current instances",
-    max_instances="Max instances",
-    min_instances="Min instances",
-    current_utilization="Current utilization",
-    target_instances="Target instances",
-)
-
-
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
-    if autoscaling_info.current_utilization is not None:
-        autoscaling_info.current_utilization = "{:.1f}%".format(
-            autoscaling_info.current_utilization * 100
-        )
+    current_utilization = getattror(autoscaling_info, "current_utilization")
+    if current_utilization is not None:
+        current_utilization = "{:.1f}%".format(current_utilization * 100)
     else:
-        autoscaling_info.current_utilization = "Exception"
+        current_utilization = "Exception"
 
-    if autoscaling_info.target_instances is None:
-        autoscaling_info.target_instances = "Exception"
+    target_instances = getattror(autoscaling_info, "target_instances")
+    if target_instances is None:
+        target_instances = "Exception"
 
-    headers = list(autoscaling_fields_to_headers.values())
-    row = [
-        str(getattr(autoscaling_info, field)) for field in autoscaling_fields_to_headers
+    headers = [
+        "Current instances",
+        "Max instances",
+        "Min instances",
+        "Current utilization",
+        "Target instances",
     ]
+    row = [
+        getattror(autoscaling_info, "current_instances"),
+        getattror(autoscaling_info, "max_instances"),
+        getattror(autoscaling_info, "min_instances"),
+        current_utilization,
+        target_instances,
+    ]
+    row = [str(e) for e in row]
     table = [f"  {line}" for line in format_table([headers, row])]
     output.extend(table)
     return output
 
 
 def marathon_mesos_status_human(
-    error_message,
-    running_task_count,
-    expected_instance_count,
-    running_tasks,
-    non_running_tasks,
+    mesos_status, expected_instance_count,
 ):
+    error_message = getattror(mesos_status, "error_message")
+    running_task_count = getattror(mesos_status, "running_task_count", 0)
+    running_tasks = mesos_status.running_tasks
+    non_running_tasks = mesos_status.non_running_tasks
+
     if error_message:
         return [f"Mesos: {PaastaColors.red(error_message)}"]
 
@@ -474,16 +477,18 @@ def create_mesos_running_tasks_table(running_tasks):
 
 
 def get_mesos_task_memory_string(task):
-    if task.rss.value is None or task.mem_limit.value is None:
-        return task.rss.error_message or task.mem_limit.error_message
-    elif task.mem_limit.value == 0:
+    rss = getattror(task.rss, "value")
+    mem_limit = getattror(task.mem_limit, "value")
+    if rss is None or mem_limit is None:
+        error_message = getattror(
+            task.rss, "error_message", getattror(task.mem_limit, "error_message")
+        )
+        return error_message
+    elif mem_limit == 0:
         return "Undef"
     else:
-        mem_percent = 100 * task.rss.value / task.mem_limit.value
-        mem_string = "%d/%dMB" % (
-            (task.rss.value / 1024 / 1024),
-            (task.mem_limit.value / 1024 / 1024),
-        )
+        mem_percent = 100 * rss / mem_limit
+        mem_string = "%d/%dMB" % ((rss / 1024 / 1024), (mem_limit / 1024 / 1024),)
         if mem_percent > 90:
             return PaastaColors.red(mem_string)
         else:
@@ -491,19 +496,19 @@ def get_mesos_task_memory_string(task):
 
 
 def get_mesos_task_cpu_string(task):
-    if task.cpu_shares.value is None or task.cpu_used_seconds.value is None:
+    cpu_shares = getattror(task.cpu_shares, "value")
+    cpu_used_seconds = getattror(task.cpu_used_seconds, "value")
+    if cpu_shares is None or cpu_used_seconds is None:
         return task.cpu_shares.error_message
     else:
         # The total time a task has been allocated is the total time the task has
         # been running multiplied by the "shares" a task has.
         # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
-        allocated_seconds = task.cpu_shares.value * task.duration_seconds
+        allocated_seconds = cpu_shares * task.duration_seconds
         if allocated_seconds == 0:
             return "Undef"
         else:
-            cpu_percent = round(
-                100 * (task.cpu_used_seconds.value / allocated_seconds), 1
-            )
+            cpu_percent = round(100 * (cpu_used_seconds / allocated_seconds), 1)
             cpu_string = "%s%%" % cpu_percent
             if cpu_percent > 90:
                 return PaastaColors.red(cpu_string)
@@ -647,14 +652,16 @@ def format_kubernetes_pod_table(pods, verbose: int):
     ]
     for pod in pods:
         local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
-        hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
-        if pod.phase is None or pod.phase == "Pending":
+        host = getattror(pod, "host")
+        hostname = f"{host}" if host is not None else PaastaColors.grey("N/A")
+        phase = getattror(pod, "phase")
+        if phase is None or phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
-        elif pod.phase == "Running":
+        elif phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
-            if not pod.ready:
+            if not getattror(pod, "ready"):
                 health_check_status = PaastaColors.red("Unhealthy")
-        elif pod.phase == "Failed" and pod.reason == "Evicted":
+        elif phase == "Failed" and getattror(pod, "reason") == "Evicted":
             health_check_status = PaastaColors.red("Evicted")
         else:
             health_check_status = PaastaColors.red("Unhealthy")
@@ -669,12 +676,15 @@ def format_kubernetes_pod_table(pods, verbose: int):
                 health_check_status,
             )
         )
-        if pod.events and verbose > 1:
-            rows.extend(format_pod_event_messages(pod.events, pod.name))
-        if pod.message is not None:
-            rows.append(PaastaColors.grey(f"  {pod.message}"))
-        if len(pod.containers) > 0:
-            rows.extend(format_tail_lines_for_kubernetes_pod(pod.containers, pod.name))
+        events = getattror(pod, "events")
+        if events and verbose > 1:
+            rows.extend(format_pod_event_messages(events, pod.name))
+        message = getattror(pod, "message")
+        if message is not None:
+            rows.append(PaastaColors.grey(f"  {message}"))
+        containers = getattror(pod, "containers")
+        if len(containers) > 0:
+            rows.extend(format_tail_lines_for_kubernetes_pod(containers, pod.name))
 
     return format_table(rows)
 
@@ -1125,9 +1135,13 @@ def print_kubernetes_status(
     kubernetes_status,
     verbose: int = 0,
 ) -> int:
-    if kubernetes_status.error_message:
-        output.append(kubernetes_status.error_message)
-        return 1
+    try:
+        error_message = kubernetes_status.error_message
+        if error_message:
+            output.append(error_message)
+            return 1
+    except ApiAttributeError:
+        pass
 
     bouncing_status = bouncing_status_human(
         kubernetes_status.app_count, kubernetes_status.bounce_method
@@ -1212,19 +1226,25 @@ def print_kubernetes_status(
             metrics_table.append([metric["name"], current_metric, target_metric])
         output.extend(["         " + s for s in format_table(metrics_table)])
 
-    if kubernetes_status.smartstack is not None:
+    try:
+        smartstack = kubernetes_status.smartstack
+    except ApiAttributeError:
+        smartstack = None
+    if smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
-            kubernetes_status.smartstack.registration,
-            kubernetes_status.smartstack.expected_backends_per_location,
-            kubernetes_status.smartstack.locations,
+            smartstack.registration,
+            smartstack.expected_backends_per_location,
+            smartstack.locations,
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
-    if kubernetes_status.envoy is not None:
+    try:
+        envoy = kubernetes_status.envoy
+    except ApiAttributeError:
+        envoy = None
+    if envoy is not None:
         envoy_status_human = get_envoy_status_human(
-            kubernetes_status.envoy.registration,
-            kubernetes_status.envoy.expected_backends_per_location,
-            kubernetes_status.envoy.locations,
+            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
     return 0

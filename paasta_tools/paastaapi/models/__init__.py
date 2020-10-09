@@ -35,6 +35,7 @@ from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
 from paasta_tools.paastaapi.model.integer_and_error import IntegerAndError
 from paasta_tools.paastaapi.model.kubernetes_container import KubernetesContainer
 from paasta_tools.paastaapi.model.kubernetes_pod import KubernetesPod
+from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent
 from paasta_tools.paastaapi.model.kubernetes_replica_set import KubernetesReplicaSet
 from paasta_tools.paastaapi.model.marathon_app_status import MarathonAppStatus
 from paasta_tools.paastaapi.model.marathon_autoscaling_info import MarathonAutoscalingInfo
