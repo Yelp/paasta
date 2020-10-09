@@ -647,7 +647,7 @@ def format_marathon_task_table(tasks):
 
 
 def format_kubernetes_pod_table(pods, verbose: int):
-    rows: List[Union[str, Sequence[str]]] = [
+    rows: List[Union[tuple, str]] = [
         ("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")
     ]
     for pod in pods:
