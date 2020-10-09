@@ -18,7 +18,6 @@ from mock import Mock
 from mock import patch
 from pytest import raises
 
-from paasta_tools.paastaapi import ApiException
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
