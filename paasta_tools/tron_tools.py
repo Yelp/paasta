@@ -26,13 +26,12 @@ from string import Formatter
 from typing import List
 from typing import Tuple
 
-import clusterman_metrics.util.costs
 import yaml
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import generate_clusterman_metrics_entries
 from service_configuration_lib.spark_config import get_aws_credentials
-from service_configuration_lib.spark_config import get_clusterman_resource_requirements
-from service_configuration_lib.spark_config import get_mesos_spark_auth_env
+from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_spark_conf
 from service_configuration_lib.spark_config import K8S_AUTH_FOLDER
 from service_configuration_lib.spark_config import stringify_spark_env
@@ -44,6 +43,7 @@ try:
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
+from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -79,6 +79,7 @@ VALID_MONITORING_KEYS = set(
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
 DEFAULT_AWS_REGION = "us-west-2"
+clusterman_metrics, _ = get_clusterman_metrics()
 
 
 class TronNotConfigured(Exception):
@@ -240,7 +241,6 @@ class TronActionConfig(InstanceConfig):
             paasta_instance=self.get_instance(),
             docker_img=self.get_docker_url(),
             extra_volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
-            with_secret=False,
             mesos_leader=mesos_leader,
             aws_creds=aws_creds,
         )
@@ -293,25 +293,23 @@ class TronActionConfig(InstanceConfig):
     def get_env(self):
         env = super().get_env()
         if self.get_executor() == "spark":
-            dimensions = {
-                "framework_name": self.get_spark_config_dict()["spark.app.name"],
-                "webui_url": get_webui_url(
-                    self.get_spark_config_dict()["spark.ui.port"]
-                ),
-            }
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
             env["SPARK_OPTS"] = stringify_spark_env(self.get_spark_config_dict())
-            env.update(get_mesos_spark_auth_env())
-            env["CLUSTERMAN_RESOURCES"] = json.dumps(
-                {
-                    clusterman_metrics.generate_key_with_dimensions(
-                        f"required_{resource}", dimensions
-                    ): quantity
-                    for resource, quantity in get_clusterman_resource_requirements(
-                        self.get_config_dict(),
+            # The actual mesos secret will be decrypted and injected on mesos master when assigning
+            # tasks.
+            env["SPARK_MESOS_SECRET"] = "SHARED_SECRET(SPARK_MESOS_SECRET)"
+            env["CLUSTERMAN_RESOURCES"] = (
+                json.dumps(
+                    generate_clusterman_metrics_entries(
+                        clusterman_metrics,
+                        get_resources_requested(self.get_config_dict()),
+                        self.get_config_dict()["spark.app.name"],
+                        get_webui_url(self.get_spark_config_dict()["spark.ui.port"]),
                     )
-                }
+                )
+                if clusterman_metrics
+                else {}
             )
 
             if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:

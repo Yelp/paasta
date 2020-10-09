@@ -7,6 +7,7 @@ import shlex
 import socket
 import sys
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -15,11 +16,11 @@ from typing import Union
 
 from boto3.exceptions import Boto3Error
 from ruamel.yaml import YAML
+from service_configuration_lib.spark_config import get_aws_credentials
+from service_configuration_lib.spark_config import get_history_url
+from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_conf
-from service_configuration_lib.spark_helpers import get_aws_credentials
-from service_configuration_lib.spark_helpers import get_history_url
-from service_configuration_lib.spark_helpers import get_signalfx_url
-from service_configuration_lib.spark_helpers import send_and_calculate_resources_cost
+from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
@@ -438,7 +439,9 @@ def get_spark_env(args, spark_conf, aws_creds):
     return spark_env
 
 
-def _parse_user_spark_args(spark_args):
+def _parse_user_spark_args(spark_args: Optional[str]) -> Dict[str, str]:
+    if not spark_args:
+        return {}
     user_spark_opts = {}
     for spark_arg in spark_args.split():
         fields = spark_arg.split("=", 1)
@@ -545,7 +548,7 @@ def configure_and_run_docker_container(
     if "history-server" in docker_cmd:
         print(f"\nSpark history server URL {webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
-        signalfx_url = get_signalfx_url(args.cluster, args.service, args.instance)
+        signalfx_url = get_signalfx_url(spark_conf)
         print(f"\nSpark monitoring URL {webui_url}\n")
         print(f"\nSignalfx dashboard: {signalfx_url}\n")
         history_server_url = get_history_url(spark_conf)
@@ -560,7 +563,7 @@ def configure_and_run_docker_container(
         try:
             print("Sending resource request metrics to Clusterman")
             hourly_cost, resources = send_and_calculate_resources_cost(
-                spark_conf, webui_url
+                clusterman_metrics, spark_conf, webui_url, args.pool
             )
             message = (
                 f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
@@ -776,4 +779,5 @@ def paasta_spark_run(args):
         instance_config=instance_config,
         system_paasta_config=system_paasta_config,
         spark_conf=spark_conf,
+        aws_creds=aws_creds,
     )
