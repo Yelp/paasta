@@ -24,7 +24,7 @@ DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw -e PIP_INDEX_URL=$(PIP_INDEX_
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
-	ACTUAL_PACKAGE_VERSION=$(RELEASE)-yelp2
+	ACTUAL_PACKAGE_VERSION=$(RELEASE)-yelp1
 	ADD_VERSION_SUFFIX=dch -v $(ACTUAL_PACKAGE_VERSION) --force-distribution --distribution $* --changelog ../debian/changelog 'Build for yelp: add scribereader to virtualenv'
 else
 	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
