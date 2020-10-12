@@ -1285,12 +1285,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta.yelp.com/prometheus_shard"
                 ] = prometheus_shard
 
-            prometheus_path = self.get_prometheus_path()
-            if prometheus_path:
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/prometheus_path"
-                ] = prometheus_path
-
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
@@ -1407,18 +1401,29 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
 
+        # prometheus_path is used to override the default scrape path in Prometheus
+        prometheus_path = self.get_prometheus_path()
+        if prometheus_path:
+            annotations["paasta.yelp.com/prometheus_path"] = prometheus_path
+
+        # Default Pod labels
+        labels: Dict[str, Any] = {
+            "yelp.com/paasta_service": self.get_service(),
+            "yelp.com/paasta_instance": self.get_instance(),
+            "yelp.com/paasta_git_sha": git_sha,
+            "paasta.yelp.com/service": self.get_service(),
+            "paasta.yelp.com/instance": self.get_instance(),
+            "paasta.yelp.com/git_sha": git_sha,
+        }
+
+        # Allow the Prometheus Operator's Pod Service Monitor for specified
+        # shard to find this pod
+        prometheus_shard = self.get_prometheus_shard()
+        if prometheus_shard:
+            labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+
         return V1PodTemplateSpec(
-            metadata=V1ObjectMeta(
-                labels={
-                    "yelp.com/paasta_service": self.get_service(),
-                    "yelp.com/paasta_instance": self.get_instance(),
-                    "yelp.com/paasta_git_sha": git_sha,
-                    "paasta.yelp.com/service": self.get_service(),
-                    "paasta.yelp.com/instance": self.get_instance(),
-                    "paasta.yelp.com/git_sha": git_sha,
-                },
-                annotations=annotations,
-            ),
+            metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
             spec=V1PodSpec(**pod_spec_kwargs),
         )
 
