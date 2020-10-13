@@ -192,7 +192,12 @@ class TestComputeTargetCapacity:
     def test_single_resource(self, mock_autoscaler, resource, signal_resource, total_resource, expected_capacity):
         mock_autoscaler.pool_manager.target_capacity = 125
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 125
-        mock_autoscaler.pool_manager.cluster_connector.get_resource_total.return_value = total_resource
+        mock_autoscaler.pool_manager.cluster_connector.get_cluster_total_resources.return_value = ClustermanResources(
+            cpus=total_resource,
+            mem=total_resource,
+            disk=total_resource,
+            gpus=total_resource,
+        )
         new_target_capacity = mock_autoscaler._compute_target_capacity(SignalResourceRequest(
             **{resource: signal_resource},
         ))
@@ -249,9 +254,9 @@ class TestComputeTargetCapacity:
 
     def test_scale_most_constrained_resource(self, mock_autoscaler):
         resource_request = SignalResourceRequest(cpus=500, mem=30000, disk=19000, gpus=0)
-        resource_totals = {'cpus': 1000, 'mem': 50000, 'disk': 20000, 'gpus': 0}
+        resource_totals = ClustermanResources(cpus=1000, mem=50000, disk=20000, gpus=0)
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 100
-        mock_autoscaler.pool_manager.cluster_connector.get_resource_total.side_effect = resource_totals.__getitem__
+        mock_autoscaler.pool_manager.cluster_connector.get_cluster_total_resources.return_value = resource_totals
         new_target_capacity = mock_autoscaler._compute_target_capacity(resource_request)
 
         # disk would be the most constrained resource, so we should scale the target_capacity (100) by an amount
@@ -261,10 +266,10 @@ class TestComputeTargetCapacity:
 
     def test_excluded_resources(self, mock_autoscaler):
         resource_request = SignalResourceRequest(cpus=500, mem=30000, disk=19000, gpus=0)
-        resource_totals = {'cpus': 1000, 'mem': 50000, 'disk': 20000, 'gpus': 0}
+        resource_totals = ClustermanResources(cpus=1000, mem=50000, disk=20000, gpus=0)
         mock_autoscaler.autoscaling_config = AutoscalingConfig(['disk'], 0.7, 0.1)
         mock_autoscaler.pool_manager.non_orphan_fulfilled_capacity = 100
-        mock_autoscaler.pool_manager.cluster_connector.get_resource_total.side_effect = resource_totals.__getitem__
+        mock_autoscaler.pool_manager.cluster_connector.get_cluster_total_resources.return_value = resource_totals
         new_target_capacity = mock_autoscaler._compute_target_capacity(resource_request)
 
         # disk would be the most constrained resource, but it's excluded, so we scale on the next most constrained (mem)

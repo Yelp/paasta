@@ -236,8 +236,8 @@ class Autoscaler:
         :returns: the new target capacity we should scale to
         """
         current_target_capacity = self.pool_manager.target_capacity
-        cluster_total_resources = self._get_cluster_total_resources()
-        cluster_allocated_resources = self._get_cluster_allocated_resources()
+        cluster_total_resources = self.pool_manager.cluster_connector.get_cluster_total_resources()
+        cluster_allocated_resources = self.pool_manager.cluster_connector.get_cluster_allocated_resources()
         non_orphan_fulfilled_capacity = self.pool_manager.non_orphan_fulfilled_capacity
         logger.info(f'Currently at target_capacity of {current_target_capacity}')
         logger.info(f'Currently non-orphan fulfilled capacity is {non_orphan_fulfilled_capacity}')
@@ -350,20 +350,6 @@ class Autoscaler:
             new_target_capacity = current_target_capacity
 
         return new_target_capacity
-
-    def _get_cluster_total_resources(self) -> ClustermanResources:
-        total_resources = {
-            resource: self.pool_manager.cluster_connector.get_resource_total(resource)
-            for resource in ClustermanResources._fields
-        }
-        return ClustermanResources(**total_resources)
-
-    def _get_cluster_allocated_resources(self) -> ClustermanResources:
-        allocated_resources = {
-            resource: self.pool_manager.cluster_connector.get_resource_allocation(resource)
-            for resource in ClustermanResources._fields
-        }
-        return ClustermanResources(**allocated_resources)
 
     def _get_most_constrained_resource_for_request(
         self,
