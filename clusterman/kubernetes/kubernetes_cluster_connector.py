@@ -217,10 +217,11 @@ class KubernetesClusterConnector(ClusterConnector):
         }
 
     def _get_pods_by_ip(self) -> Mapping[str, List[KubernetesPod]]:
+        KUBERNETES_SCHEDULED_PHASES = {'Pending', 'Running'}
         all_pods = self._core_api.list_pod_for_all_namespaces().items
         pods_by_ip: Mapping[str, List[KubernetesPod]] = defaultdict(list)
         for pod in all_pods:
-            if (pod.status.phase == 'Running' or pod.status.phase == 'Pending') \
+            if pod.status.phase in KUBERNETES_SCHEDULED_PHASES \
                     and pod.status.host_ip in self._nodes_by_ip:
                 pods_by_ip[pod.status.host_ip].append(pod)
         return pods_by_ip
