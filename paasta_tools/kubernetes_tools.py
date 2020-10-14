@@ -896,18 +896,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return kubernetes_env
 
     def get_resource_requirements(self) -> V1ResourceRequirements:
-        return V1ResourceRequirements(
-            limits={
-                "cpu": self.get_cpus() + self.get_cpu_burst_add(),
-                "memory": f"{self.get_mem()}Mi",
-                "ephemeral-storage": f"{self.get_disk()}Mi",
-            },
-            requests={
-                "cpu": self.get_cpus(),
-                "memory": f"{self.get_mem()}Mi",
-                "ephemeral-storage": f"{self.get_disk()}Mi",
-            },
-        )
+        limits = {
+            "cpu": self.get_cpus() + self.get_cpu_burst_add(),
+            "memory": f"{self.get_mem()}Mi",
+            "ephemeral-storage": f"{self.get_disk()}Mi",
+        }
+        requests = {
+            "cpu": self.get_cpus(),
+            "memory": f"{self.get_mem()}Mi",
+            "ephemeral-storage": f"{self.get_disk()}Mi",
+        }
+        if self.get_gpus():
+            limits["nvidia.com/gpu"] = self.get_gpus()
+            requests["nvidia.com/gpu"] = self.get_gpus()
+        return V1ResourceRequirements(limits=limits, requests=requests)
 
     def get_sidecar_resource_requirements(
         self, sidecar_name: str
