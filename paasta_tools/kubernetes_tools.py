@@ -165,6 +165,8 @@ DISCOVERY_ATTRIBUTES = {
 }
 SUPPORTED_STORAGE_CLASSES = {"ebs", "ebs-slow", "ebs-retain"}
 
+GPU_RESOURCE_NAME = "nvidia.com/gpu"
+
 # This Signaflow attempts to recreate the behavior of the legacy autoscaler,
 # which averages the number of instances needed to handle the current (or
 # averaged) load instead of the load itself. This leads to more stable behavior.
@@ -907,8 +909,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "ephemeral-storage": f"{self.get_disk()}Mi",
         }
         if self.get_gpus():
-            limits["nvidia.com/gpu"] = self.get_gpus()
-            requests["nvidia.com/gpu"] = self.get_gpus()
+            limits[GPU_RESOURCE_NAME] = self.get_gpus()
+            requests[GPU_RESOURCE_NAME] = self.get_gpus()
         return V1ResourceRequirements(limits=limits, requests=requests)
 
     def get_sidecar_resource_requirements(
