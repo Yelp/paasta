@@ -1,3 +1,12 @@
+paasta-tools (0.97.10) xenial; urgency=medium
+
+  * 0.97.10 tagged with 'make release'
+    Commit: Merge pull request #2939 from
+    Yelp/limit_signalflow_extrapolations  Limit the number of
+    extrapolations on the service load timeseries in …
+
+ -- Stuart Elston <selston@yelp.com>  Wed, 14 Oct 2020 12:18:39 -0700
+
 paasta-tools (0.97.9) xenial; urgency=medium
 
   * 0.97.9 tagged with 'make release'
