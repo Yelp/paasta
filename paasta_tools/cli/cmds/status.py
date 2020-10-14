@@ -642,7 +642,9 @@ def format_marathon_task_table(tasks):
 
 
 def format_kubernetes_pod_table(pods, verbose: int):
-    rows = [("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")]
+    rows: List[Union[str, Sequence[str]]] = [
+        ("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")
+    ]
     for pod in pods:
         local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
         hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
