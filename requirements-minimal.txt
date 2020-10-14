@@ -1,7 +1,7 @@
 arrow<=0.14.6  # need to restrict for now because of https://github.com/crsmithdev/arrow/issues/612
 boto3
 botocore
-cached-property
+cachetools
 colorlog
 colorama
 humanfriendly

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from abc import ABCMeta
+from abc import abstractmethod
 from abc import abstractproperty
 from collections import defaultdict
 from socket import gethostbyaddr
@@ -25,9 +26,7 @@ from typing import Sequence
 import arrow
 import colorlog
 import simplejson as json
-from cached_property import timed_cached_property
 
-from clusterman.aws import CACHE_TTL_SECONDS
 from clusterman.aws.client import ec2
 from clusterman.aws.client import ec2_describe_instances
 from clusterman.aws.markets import get_instance_market
@@ -37,6 +36,7 @@ from clusterman.interfaces.resource_group import ResourceGroup
 
 
 logger = colorlog.getLogger(__name__)
+RESOURCE_GROUP_CACHE_SECONDS = 60
 
 
 def protect_unowned_instances(func):
@@ -59,6 +59,14 @@ def protect_unowned_instances(func):
 class AWSResourceGroup(ResourceGroup, metaclass=ABCMeta):
     def __init__(self, group_id: str, **kwargs: Any) -> None:
         self.group_id = group_id
+
+        # Resource Groups are reloaded on every autoscaling run, so we just query
+        # AWS data once and store them so we don't run into AWS request limits
+        #
+        # This is expected to populate self.instance_ids, which has to be done _before_
+        # we populate the instances by market
+        self._reload_resource_group()
+        self._instances_by_market = self._get_instances_by_market()
 
     def get_instance_metadatas(self, state_filter: Optional[Collection[str]] = None) -> Sequence[InstanceMetadata]:
         instance_metadatas = []
@@ -158,8 +166,7 @@ class AWSResourceGroup(ResourceGroup, metaclass=ABCMeta):
             return 0
         return self._target_capacity
 
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
-    def _instances_by_market(self):
+    def _get_instances_by_market(self):
         """ Responses from this API call are cached to prevent hitting any AWS request limits """
         instance_dict: Mapping[InstanceMarket, List[Mapping]] = defaultdict(list)
         for instance in ec2_describe_instances(self.instance_ids):
@@ -202,5 +209,6 @@ class AWSResourceGroup(ResourceGroup, metaclass=ABCMeta):
         return matching_resource_groups
 
     @classmethod
+    @abstractmethod
     def _get_resource_group_tags(cls) -> Mapping[str, Mapping[str, str]]:  # pragma: no cover
-        return {}
+        pass

@@ -13,7 +13,6 @@
 # limitations under the License.
 import json
 
-import botocore
 import mock
 import pytest
 from moto import mock_s3
@@ -152,27 +151,31 @@ def test_fulfilled_capacity(mock_spot_fleet_resource_group):
 
 
 def test_modify_target_capacity_stale(mock_spot_fleet_resource_group):
-    with mock.patch('clusterman.aws.spot_fleet_resource_group.ec2.describe_spot_fleet_requests') as mock_describe:
-        mock_describe.return_value = {
-            'SpotFleetRequestConfigs': [
-                {'SpotFleetRequestState': 'cancelled_running'}
-            ],
-        }
-        mock_spot_fleet_resource_group.modify_target_capacity(20)
-        assert mock_spot_fleet_resource_group.target_capacity == 0
+    mock_spot_fleet_resource_group._configuration['SpotFleetRequestState'] = 'cancelled_running'
+    mock_spot_fleet_resource_group.modify_target_capacity(20)
+    assert mock_spot_fleet_resource_group.target_capacity == 0
 
 
 def test_modify_target_capacity_up(mock_spot_fleet_resource_group):
     mock_spot_fleet_resource_group.modify_target_capacity(20)
-    assert mock_spot_fleet_resource_group.target_capacity == 20
-    assert len(mock_spot_fleet_resource_group.instance_ids) == 13
+    assert ec2.describe_spot_fleet_requests(
+        SpotFleetRequestIds=[mock_spot_fleet_resource_group.group_id],
+    )['SpotFleetRequestConfigs'][0]['SpotFleetRequestConfig']['TargetCapacity'] == 20
+    assert len(ec2.describe_spot_fleet_instances(
+        SpotFleetRequestId=mock_spot_fleet_resource_group.group_id,
+    )['ActiveInstances']) == 13
 
 
 def test_modify_target_capacity_down(mock_spot_fleet_resource_group):
     mock_spot_fleet_resource_group.modify_target_capacity(5)
-    assert mock_spot_fleet_resource_group.target_capacity == 5
-    assert mock_spot_fleet_resource_group.fulfilled_capacity == 11
-    assert len(mock_spot_fleet_resource_group.instance_ids) == 7
+    new_config = ec2.describe_spot_fleet_requests(
+        SpotFleetRequestIds=[mock_spot_fleet_resource_group.group_id],
+    )['SpotFleetRequestConfigs'][0]['SpotFleetRequestConfig']
+    assert new_config['TargetCapacity'] == 5
+    assert new_config['FulfilledCapacity'] == 11
+    assert len(ec2.describe_spot_fleet_instances(
+        SpotFleetRequestId=mock_spot_fleet_resource_group.group_id,
+    )['ActiveInstances']) == 7
 
 
 def test_modify_target_capacity_dry_run(mock_spot_fleet_resource_group):
@@ -206,16 +209,5 @@ def test_is_stale(mock_spot_fleet_resource_group):
 
 
 def test_is_stale_not_found(mock_spot_fleet_resource_group):
-    with mock.patch('clusterman.aws.spot_fleet_resource_group.ec2.describe_spot_fleet_requests') as mock_describe:
-        mock_describe.side_effect = botocore.exceptions.ClientError(
-            {'Error': {'Code': 'InvalidSpotFleetRequestId.NotFound'}},
-            'foo',
-        )
-        assert mock_spot_fleet_resource_group.is_stale
-
-
-def test_is_stale_error(mock_spot_fleet_resource_group):
-    with mock.patch('clusterman.aws.spot_fleet_resource_group.ec2.describe_spot_fleet_requests') as mock_describe, \
-            pytest.raises(botocore.exceptions.ClientError):
-        mock_describe.side_effect = botocore.exceptions.ClientError({}, 'foo')
-        mock_spot_fleet_resource_group.is_stale
+    mock_spot_fleet_resource_group._configuration = None
+    assert mock_spot_fleet_resource_group.is_stale

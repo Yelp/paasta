@@ -20,8 +20,10 @@ from typing import Sequence
 from typing import Tuple
 
 import colorlog
+from cachetools.func import ttl_cache
 
 from clusterman.aws.aws_resource_group import AWSResourceGroup
+from clusterman.aws.aws_resource_group import RESOURCE_GROUP_CACHE_SECONDS
 from clusterman.aws.client import autoscaling
 from clusterman.aws.client import ec2
 from clusterman.aws.markets import InstanceMarket
@@ -55,12 +57,6 @@ class AutoScalingResourceGroup(AWSResourceGroup):
 
     def __init__(self, group_id: str) -> None:
         super().__init__(group_id)
-
-        # Resource Groups are reloaded on every autoscaling run, so we just query
-        # AWS data once and store them so we don't run into AWS request limits
-        self._group_config = self._get_auto_scaling_group_config()
-        self._launch_template_config, self._launch_template_overrides = self._get_launch_template_and_overrides()
-        self._stale_instance_ids = self._get_stale_instance_ids()
 
     def market_weight(self, market: InstanceMarket) -> float:
         """ Returns the weight of a given market
@@ -174,6 +170,11 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         running in this resource group.
         """
         raise NotImplementedError()
+
+    def _reload_resource_group(self):
+        self._group_config = self._get_auto_scaling_group_config()
+        self._launch_template_config, self._launch_template_overrides = self._get_launch_template_and_overrides()
+        self._stale_instance_ids = self._get_stale_instance_ids()
 
     def _get_auto_scaling_group_config(self) -> AutoScalingGroupConfig:
         response = autoscaling.describe_auto_scaling_groups(
@@ -294,6 +295,7 @@ class AutoScalingResourceGroup(AWSResourceGroup):
         return self._group_config['DesiredCapacity'] - self._stale_capacity
 
     @classmethod
+    @ttl_cache(ttl=RESOURCE_GROUP_CACHE_SECONDS)
     def _get_resource_group_tags(cls) -> Mapping[str, Mapping[str, str]]:
         """ Retrieves the tags for each ASG """
         asg_id_to_tags = {}
