@@ -37,6 +37,7 @@ from clusterman.kubernetes.util import total_node_resources
 from clusterman.kubernetes.util import total_pod_resources
 
 logger = colorlog.getLogger(__name__)
+KUBERNETES_SCHEDULED_PHASES = {'Pending', 'Running'}
 
 
 class KubernetesClusterConnector(ClusterConnector):
@@ -217,7 +218,6 @@ class KubernetesClusterConnector(ClusterConnector):
         }
 
     def _get_pods_by_ip(self) -> Mapping[str, List[KubernetesPod]]:
-        KUBERNETES_SCHEDULED_PHASES = {'Pending', 'Running'}
         all_pods = self._core_api.list_pod_for_all_namespaces().items
         pods_by_ip: Mapping[str, List[KubernetesPod]] = defaultdict(list)
         for pod in all_pods:
