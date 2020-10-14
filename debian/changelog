@@ -1,3 +1,11 @@
+paasta-tools (0.97.11) xenial; urgency=medium
+
+  * 0.97.11 tagged with 'make release'
+    Commit: Merge pull request #2938 from Yelp/add-gpu-support-k8s  Add
+    gpu request support to k8s
+
+ -- Matthew Bentley <bentley@yelp.com>  Wed, 14 Oct 2020 14:07:01 -0700
+
 paasta-tools (0.97.10) xenial; urgency=medium
 
   * 0.97.10 tagged with 'make release'
