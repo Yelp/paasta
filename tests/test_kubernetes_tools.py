@@ -24,6 +24,7 @@ from kubernetes.client import V1ExecAction
 from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
+from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
 from kubernetes.client import V1NodeAffinity
@@ -41,6 +42,7 @@ from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1SecretKeySelector
+from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
@@ -95,6 +97,7 @@ from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import max_unavailable
+from paasta_tools.kubernetes_tools import mode_to_int
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
@@ -109,6 +112,8 @@ from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
+from paasta_tools.utils import SecretVolume
+from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -754,6 +759,7 @@ class TestKubernetesDeploymentConfig:
             mock_docker_volumes: Sequence[DockerVolume] = []
             mock_hacheck_sidecar_volumes: Sequence[DockerVolume] = []
             mock_aws_ebs_volumes: Sequence[AwsEbsVolume] = []
+            mock_secret_volumes: Sequence[SecretVolume] = []
             ports = [V1ContainerPort(container_port=port) for port in expected_ports]
             expected = [
                 V1Container(
@@ -791,6 +797,7 @@ class TestKubernetesDeploymentConfig:
                     hacheck_sidecar_volumes=mock_hacheck_sidecar_volumes,
                     system_paasta_config=mock_system_config,
                     aws_ebs_volumes=mock_aws_ebs_volumes,
+                    secret_volumes=mock_secret_volumes,
                     service_namespace_config=service_namespace_config,
                 )
                 == expected
@@ -905,6 +912,20 @@ class TestKubernetesDeploymentConfig:
                 partition=123,
             )
         ]
+        mock_secret_volumes = [
+            SecretVolume(container_path="/nail/garply", secret_name="waldo"),
+            SecretVolume(
+                container_path="/nail/garply", secret_name="waldo", default_mode="0765"
+            ),
+            SecretVolume(
+                container_path="/nail/garply",
+                secret_name="waldo",
+                items=[
+                    SecretVolumeItem(key="aaa", mode="0567", path="bbb"),
+                    SecretVolumeItem(key="ccc", path="ddd"),
+                ],
+            ),
+        ]
         expected_volumes = [
             V1Volume(
                 host_path=V1HostPathVolumeSource(path="/nail/blah"),
@@ -927,11 +948,32 @@ class TestKubernetesDeploymentConfig:
                 ),
                 name="aws-ebs--vol-zzzzzzzzzzzzzzzzz123",
             ),
+            V1Volume(
+                name="secret--waldo",
+                secret=V1SecretVolumeSource(secret_name="paasta-secret-kurupt-waldo"),
+            ),
+            V1Volume(
+                name="secret--waldo",
+                secret=V1SecretVolumeSource(
+                    secret_name="paasta-secret-kurupt-waldo", default_mode=0o765
+                ),
+            ),
+            V1Volume(
+                name="secret--waldo",
+                secret=V1SecretVolumeSource(
+                    secret_name="paasta-secret-kurupt-waldo",
+                    items=[
+                        V1KeyToPath(key="aaa", mode=0o567, path="bbb"),
+                        V1KeyToPath(key="ccc", path="ddd"),
+                    ],
+                ),
+            ),
         ]
         assert (
             self.deployment.get_pod_volumes(
                 docker_volumes=mock_docker_volumes + mock_hacheck_volumes,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
+                secret_volumes=mock_secret_volumes,
             )
             == expected_volumes
         )
@@ -964,6 +1006,9 @@ class TestKubernetesDeploymentConfig:
                     container_path="/blah", mode="RW", size=1, storage_class_name="foo"
                 )
             ]
+            mock_secret_volumes = [
+                SecretVolume(container_path="/garply", secret_name="waldo")
+            ]
             expected_volumes = [
                 V1VolumeMount(
                     mount_path="/nail/foo", name="some-volume", read_only=True
@@ -975,12 +1020,14 @@ class TestKubernetesDeploymentConfig:
                     mount_path="/nail/qux", name="some-volume", read_only=True
                 ),
                 V1VolumeMount(mount_path="/blah", name="some-volume", read_only=False),
+                V1VolumeMount(mount_path="/garply", name="some-volume", read_only=True),
             ]
             assert (
                 self.deployment.get_volume_mounts(
                     docker_volumes=mock_docker_volumes,
                     aws_ebs_volumes=mock_aws_ebs_volumes,
                     persistent_volumes=mock_persistent_volumes,
+                    secret_volumes=mock_secret_volumes,
                 )
                 == expected_volumes
             )
@@ -3126,3 +3173,9 @@ def test_get_pod_hostname(pod_node_name, node, expected):
 )
 def test_to_node_label(label, expected):
     assert kubernetes_tools.to_node_label(label) == expected
+
+
+def test_mode_to_int():
+    assert mode_to_int(None) is None
+    assert mode_to_int(0o123) == 0o123
+    assert mode_to_int("0123") == 0o123

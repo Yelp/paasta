@@ -228,6 +228,19 @@ class PersistentVolume(VolumeWithMode):
     storage_class_name: str
 
 
+class SecretVolumeItem(TypedDict, total=False):
+    key: str
+    path: str
+    mode: Union[str, int]
+
+
+class SecretVolume(TypedDict, total=False):
+    secret_name: str
+    container_path: str
+    default_mode: Union[str, int]
+    items: List[SecretVolumeItem]
+
+
 class InstanceConfigDict(TypedDict, total=False):
     deploy_group: str
     mem: float
@@ -247,6 +260,7 @@ class InstanceConfigDict(TypedDict, total=False):
     role: str
     extra_volumes: List[DockerVolume]
     aws_ebs_volumes: List[AwsEbsVolume]
+    secret_volumes: List[SecretVolume]
     security: SecurityConfigDict
     dependencies_reference: str
     dependencies: Dict[str, Dict]
@@ -841,6 +855,9 @@ class InstanceConfig:
 
     def get_aws_ebs_volumes(self) -> List[AwsEbsVolume]:
         return self.config_dict.get("aws_ebs_volumes", [])
+
+    def get_secret_volumes(self) -> List[SecretVolume]:
+        return self.config_dict.get("secret_volumes", [])
 
     def get_role(self) -> Optional[str]:
         """Which mesos role of nodes this job should run on.
