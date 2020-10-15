@@ -15,6 +15,7 @@ RUN     apt-get update \
             lsb-release \
             make \
             openssh-client \
+            python3.6 \
             python3.7 \
             python-pip \
             python-setuptools \
