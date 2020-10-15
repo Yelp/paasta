@@ -150,8 +150,7 @@ opening an issue.  Please read our [Code of Conduct](https://github.com/Yelp/clu
 
 ### Instructions for Yelp developers
 
-0) Run `git remote add yelp git@git.yelpcorp.com:services/clusterman` (you only need to do this once)
 1) Make your changes, push a branch to GitHub, and create a pull request
 2) Once your PR is approved, merge your changes to master
 
-This will trigger the Jenkins pipeline, which will deploy Clusterman as normal.
+A Jenkins pipeline polls GitHub and brings any changes into our internal version. Jenkins will then build and deploy Clusterman as normal.
