@@ -55,7 +55,7 @@ class ResourceParser:
     @staticmethod
     def gpus(resources):
         resources = resources or {}
-        return 0  # TODO
+        return resources.get('nvidia.com/gpu', 0)
 
 
 class PodUnschedulableReason(Enum):
