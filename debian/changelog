@@ -1,3 +1,11 @@
+paasta-tools (0.97.12) xenial; urgency=medium
+
+  * 0.97.12 tagged with 'make release'
+    Commit: Merge pull request #2921 from Yelp/secret-files  Support
+    PaaSTA secrets as files
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 15 Oct 2020 04:24:57 -0700
+
 paasta-tools (0.97.11) xenial; urgency=medium
 
   * 0.97.11 tagged with 'make release'
