@@ -197,6 +197,9 @@ class SimulatedSpotFleetResourceGroup(SimulatedAWSCluster, AWSResourceGroup):
             key=residual_sort_key,
         )
 
+    def _reload_resource_group(self):
+        pass  # don't need to do anything here
+
     def _find_available_markets(self):
         """
         :returns: a list of available spot markets, e.g. markets in the spot fleet request whose bid price is above the
@@ -208,6 +211,9 @@ class SimulatedSpotFleetResourceGroup(SimulatedAWSCluster, AWSResourceGroup):
             for market, config in self._instance_types.items()
             if config.bid_price >= self.simulator.instance_prices[market].call(self.simulator.current_time)
         ]
+
+    def _get_resource_group_tags(self):
+        return {}
 
     @property
     def instance_ids(self):

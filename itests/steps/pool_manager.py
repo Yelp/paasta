@@ -49,6 +49,35 @@ def mock_sfrs(num, subnet_id):
 
 
 @behave.fixture
+def mock_reload_resource_groups(context):
+    with mock.patch(
+        'clusterman.aws.auto_scaling_resource_group.AutoScalingResourceGroup.load',
+        return_value={},
+    ) as mock_asg_load, mock.patch(
+        'clusterman.aws.spot_fleet_resource_group.SpotFleetResourceGroup.load',
+        return_value={},
+    ) as mock_sfr_load:
+        if context.rg_type == 'asg':
+            if getattr(context, 'reload', False):
+                mock_asg_load.return_value = {
+                    f'fake-asg-{i}': AutoScalingResourceGroup(f'fake-asg-{i}')
+                    for i in range(context.rg_num)
+                }
+            else:
+                mock_asg_load.return_value = mock_asgs(context.rg_num, context.subnet_id)
+        elif context.rg_type == 'sfr':
+            if getattr(context, 'reload', False):
+                sfrids = [
+                    config['SpotFleetRequestId']
+                    for config in ec2.describe_spot_fleet_requests()['SpotFleetRequestConfigs']
+                ]
+                mock_sfr_load.return_value = {id: SpotFleetResourceGroup(id) for id in sfrids}
+            else:
+                mock_sfr_load.return_value = mock_sfrs(context.rg_num, context.subnet_id)
+        yield
+
+
+@behave.fixture
 def mock_agents_by_ip_and_tasks(context):
     def get_agents_by_ip():
         agents = {}
@@ -83,18 +112,9 @@ def make_pool_manager(context, num, rg_type):
     behave.use_fixture(boto_patches, context)
     behave.use_fixture(mock_agents_by_ip_and_tasks, context)
     context.rg_type = rg_type
-    with mock.patch(
-        'clusterman.aws.auto_scaling_resource_group.AutoScalingResourceGroup.load',
-        return_value={},
-    ) as mock_asg_load, mock.patch(
-        'clusterman.aws.spot_fleet_resource_group.SpotFleetResourceGroup.load',
-        return_value={},
-    ) as mock_sfr_load:
-        if context.rg_type == 'asg':
-            mock_asg_load.return_value = mock_asgs(int(num), context.subnet_id)
-        elif context.rg_type == 'sfr':
-            mock_sfr_load.return_value = mock_sfrs(int(num), context.subnet_id)
-        context.pool_manager = PoolManager('mesos-test', 'bar', 'mesos')
+    context.rg_num = int(num)
+    behave.use_fixture(mock_reload_resource_groups, context)
+    context.pool_manager = PoolManager('mesos-test', 'bar', 'mesos')
     context.rg_ids = [i for i in context.pool_manager.resource_groups]
     context.pool_manager.max_capacity = 101
 
@@ -115,8 +135,9 @@ def external_target_capacity(context, rg_index, capacity):
         )
 
     # make sure our non orphan fulfilled capacity is up-to-date
-    with mock.patch('clusterman.autoscaler.pool_manager.PoolManager._reload_resource_groups'):
-        context.pool_manager.reload_state()
+    context.reload = True
+    behave.use_fixture(mock_reload_resource_groups, context)
+    context.pool_manager.reload_state()
 
 
 @behave.given('we request (?P<capacity>\d+) capacity')
@@ -126,6 +147,11 @@ def modify_capacity(context, capacity, dry_run=False):
     context.pool_manager.prune_excess_fulfilled_capacity = mock.Mock()
     context.original_capacities = [rg.target_capacity for rg in context.pool_manager.resource_groups.values()]
     context.pool_manager.modify_target_capacity(int(capacity), dry_run=dry_run)
+
+    # make sure our non orphan fulfilled capacity is up-to-date
+    context.reload = True
+    behave.use_fixture(mock_reload_resource_groups, context)
+    context.pool_manager.reload_state()
 
 
 @behave.when('resource group (?P<rgid>\d+) is broken')

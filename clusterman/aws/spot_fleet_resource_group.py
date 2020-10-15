@@ -19,11 +19,11 @@ from typing import Sequence
 import botocore
 import colorlog
 import simplejson as json
-from cached_property import timed_cached_property
+from cachetools.func import ttl_cache
 from mypy_extensions import TypedDict
 
-from clusterman.aws import CACHE_TTL_SECONDS
 from clusterman.aws.aws_resource_group import AWSResourceGroup
+from clusterman.aws.aws_resource_group import RESOURCE_GROUP_CACHE_SECONDS
 from clusterman.aws.client import ec2
 from clusterman.aws.client import s3
 from clusterman.aws.markets import get_instance_market
@@ -56,9 +56,6 @@ class SpotFleetResourceGroup(AWSResourceGroup):
     def __init__(self, group_id: str) -> None:
         super().__init__(group_id)
 
-        # Can't change WeightedCapacity of SFRs, so cache them here for frequent access
-        self._market_weights = self._generate_market_weights()
-
     def market_weight(self, market: InstanceMarket) -> float:
         return self._market_weights.get(market, 1)
 
@@ -88,8 +85,52 @@ class SpotFleetResourceGroup(AWSResourceGroup):
         if not response['Return']:
             raise ResourceGroupError('Could not change size of spot fleet')
 
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
+    @property
     def instance_ids(self) -> Sequence[str]:
+        return self._instance_ids
+
+    @property
+    def fulfilled_capacity(self) -> float:
+        if not self._configuration:
+            return 0
+        return self._configuration['SpotFleetRequestConfig']['FulfilledCapacity']
+
+    @property
+    def status(self) -> str:
+        if not self._configuration:
+            return 'cancelled'
+        return self._configuration['SpotFleetRequestState']
+
+    @property
+    def is_stale(self) -> bool:
+        return self.status.startswith('cancelled')
+
+    def _reload_resource_group(self):
+        try:
+            self._configuration = self._get_sfr_configuration()
+        except botocore.exceptions.ClientError as e:
+            if e.response.get('Error', {}).get('Code', 'Unknown') == 'InvalidSpotFleetRequestId.NotFound':
+                self._configuration = None
+            else:
+                raise e
+        self._instance_ids = self._get_instance_ids()
+        self._market_weights = self._generate_market_weights()
+
+    def _generate_market_weights(self) -> Mapping[InstanceMarket, float]:
+        if not self._configuration:
+            return {}
+
+        return {
+            get_instance_market(spec): spec['WeightedCapacity']
+            for spec in self._configuration['SpotFleetRequestConfig']['LaunchSpecifications']
+        }
+
+    def _get_sfr_configuration(self):
+        """ Responses from this API call are cached to prevent hitting any AWS request limits """
+        fleet_configuration = ec2.describe_spot_fleet_requests(SpotFleetRequestIds=[self.group_id])
+        return fleet_configuration['SpotFleetRequestConfigs'][0]
+
+    def _get_instance_ids(self) -> Sequence[str]:
         """ Responses from this API call are cached to prevent hitting any AWS request limits """
         return [
             instance['InstanceId']
@@ -99,36 +140,9 @@ class SpotFleetResourceGroup(AWSResourceGroup):
         ]
 
     @property
-    def fulfilled_capacity(self) -> float:
-        return self._configuration['SpotFleetRequestConfig']['FulfilledCapacity']
-
-    @property
-    def status(self) -> str:
-        return self._configuration['SpotFleetRequestState']
-
-    @property
-    def is_stale(self) -> bool:
-        try:
-            return self.status.startswith('cancelled')
-        except botocore.exceptions.ClientError as e:
-            if e.response.get('Error', {}).get('Code', 'Unknown') == 'InvalidSpotFleetRequestId.NotFound':
-                return True
-            raise e
-
-    def _generate_market_weights(self) -> Mapping[InstanceMarket, float]:
-        return {
-            get_instance_market(spec): spec['WeightedCapacity']
-            for spec in self._configuration['SpotFleetRequestConfig']['LaunchSpecifications']
-        }
-
-    @timed_cached_property(ttl=CACHE_TTL_SECONDS)
-    def _configuration(self):
-        """ Responses from this API call are cached to prevent hitting any AWS request limits """
-        fleet_configuration = ec2.describe_spot_fleet_requests(SpotFleetRequestIds=[self.group_id])
-        return fleet_configuration['SpotFleetRequestConfigs'][0]
-
-    @property
     def _target_capacity(self) -> float:
+        if not self._configuration:
+            return 0
         return self._configuration['SpotFleetRequestConfig']['TargetCapacity']
 
     @classmethod
@@ -165,6 +179,7 @@ class SpotFleetResourceGroup(AWSResourceGroup):
         return resource_groups
 
     @classmethod
+    @ttl_cache(ttl=RESOURCE_GROUP_CACHE_SECONDS)
     def _get_resource_group_tags(cls) -> Mapping[str, Mapping[str, str]]:
         """ Gets a dictionary of SFR id -> a dictionary of tags. The tags are taken
         from the TagSpecifications for the first LaunchSpecification

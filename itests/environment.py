@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import behave
-import mock
 import simplejson as json
 import staticconf.testing
 from clusterman_metrics import APP_METRICS
@@ -26,8 +25,6 @@ from clusterman.aws.client import ec2
 from clusterman.config import CREDENTIALS_NAMESPACE
 from clusterman.monitoring_lib import yelp_meteorite
 
-_ttl_patch = mock.patch('clusterman.aws.CACHE_TTL_SECONDS', -1)
-_ttl_patch.__enter__()
 behave.use_step_matcher('re')
 BEHAVE_DEBUG_ON_ERROR = False
 

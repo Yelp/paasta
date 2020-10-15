@@ -1,7 +1,6 @@
 arrow==0.14.6
 boto3==1.11.11
 botocore==1.14.11
-cached-property==1.5.1
 cachetools==3.1.1
 certifi==2019.9.11
 chardet==3.0.4

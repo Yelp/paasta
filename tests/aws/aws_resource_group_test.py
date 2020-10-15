@@ -25,7 +25,6 @@ from clusterman.interfaces.types import ClusterNodeMetadata
 
 class MockResourceGroup(AWSResourceGroup):
     def __init__(self, group_id, subnet):
-        super().__init__(group_id)
         self.instances = ec2.run_instances(
             InstanceType='c3.4xlarge',
             MinCount=5,
@@ -33,6 +32,10 @@ class MockResourceGroup(AWSResourceGroup):
             SubnetId=subnet['Subnet']['SubnetId'],
             ImageId='ami-785db401',  # this AMI is hard-coded into moto, represents ubuntu xenial
         )['Instances']
+
+        # We have to call this _after_ we run instances so that when super() calls self.instance_ids
+        # the values are populated correctly
+        super().__init__(group_id)
 
     def modify_target_capacity(self):
         pass
@@ -60,6 +63,9 @@ class MockResourceGroup(AWSResourceGroup):
     @property
     def _target_capacity(self):
         return 5
+
+    def _reload_resource_group(self):
+        pass
 
     @classmethod
     def _get_resource_group_tags(cls):

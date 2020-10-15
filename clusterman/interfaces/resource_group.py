@@ -139,6 +139,14 @@ class ResourceGroup(metaclass=ABCMeta):
         """ The status of the ResourceGroup (e.g., running, modifying, terminated, etc.) """
         pass
 
+    @abstractmethod
+    def _reload_resource_group(self):  # pragma: no cover
+        """ Store any data that the resource group needs to run
+
+        This MUST at least populate data needed for self.instance_ids
+        """
+        pass
+
     @abstractproperty
     def is_stale(self) -> bool:  # pragma: no cover
         """Whether this ResourceGroup is stale."""
