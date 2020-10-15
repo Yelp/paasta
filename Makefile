@@ -150,7 +150,6 @@ debug:
 		-v $(shell pwd)/clusterman:/code/clusterman:rw \
 		-v $(shell pwd)/.cman_debug_bashrc:/home/nobody/.bashrc:ro \
 		-v /nail/srv/configs:/nail/srv/configs:ro \
-		-v $(shell pwd)/cluster-configs:/nail/srv/configs/clusterman-clusters:ro \
 		-v $(shell pwd)/etc-kubernetes:/etc/kubernetes:ro \
 		-v /nail/etc/services:/nail/etc/services:ro \
 		-v /etc/boto_cfg:/etc/boto_cfg:ro \
