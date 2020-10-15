@@ -55,7 +55,11 @@ class ResourceParser:
     @staticmethod
     def gpus(resources):
         resources = resources or {}
-        return resources.get('nvidia.com/gpu', 0)
+        try:
+            return int(resources.get('nvidia.com/gpu', 0))
+        except ValueError:
+            # on the off chance kubernetes tries to set this to a non-integer
+            return 0
 
 
 class PodUnschedulableReason(Enum):
