@@ -24,6 +24,8 @@ class AutoscalingConfig(NamedTuple):
     excluded_resources: List[str]
     setpoint: float
     target_capacity_margin: float
+    prevent_scale_down_after_capacity_loss: bool = False
+    capacity_loss_threshold: int = 0
 
 
 def get_autoscaling_config(config_namespace: str) -> AutoscalingConfig:
@@ -45,4 +47,7 @@ def get_autoscaling_config(config_namespace: str) -> AutoscalingConfig:
             'autoscaling.target_capacity_margin',
             default=default_target_capacity_margin,
         ),
+        prevent_scale_down_after_capacity_loss=reader.read_bool(
+            'autoscaling.prevent_scale_down_after_capacity_loss', default=False),
+        capacity_loss_threshold=reader.read_int('autoscaling.capacity_loss_threshold', default=0)
     )
