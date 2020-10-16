@@ -309,8 +309,8 @@ class TronActionConfig(InstanceConfig):
             # The actual mesos secret will be decrypted and injected on mesos master when assigning
             # tasks.
             env["SPARK_MESOS_SECRET"] = "SHARED_SECRET(SPARK_MESOS_SECRET)"
-            env["CLUSTERMAN_RESOURCES"] = (
-                json.dumps(
+            if clusterman_metrics:
+                env["CLUSTERMAN_RESOURCES"] = json.dumps(
                     generate_clusterman_metrics_entries(
                         clusterman_metrics,
                         get_resources_requested(spark_config_dict),
@@ -318,9 +318,8 @@ class TronActionConfig(InstanceConfig):
                         get_webui_url(spark_config_dict["spark.ui.port"]),
                     )
                 )
-                if clusterman_metrics
-                else {}
-            )
+            else:
+                env["CLUSTERMAN_RESOURCES"] = "{}"
 
             if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
                 try:

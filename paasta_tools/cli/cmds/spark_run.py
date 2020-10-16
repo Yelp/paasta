@@ -414,8 +414,10 @@ def get_spark_env(
         spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
         spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
+    spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
     # Run spark (and mesos framework) as root.
+    spark_env["SPARK_USER"] = "root"
     spark_env["SPARK_OPTS"] = spark_conf_str
 
     # Default configs to start the jupyter notebook server

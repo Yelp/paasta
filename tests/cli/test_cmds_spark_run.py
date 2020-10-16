@@ -227,8 +227,10 @@ def test_get_spark_env(
 ):
     spark_opts = {"spark.ui.port": "1234"}
     expected_output = {
+        "SPARK_USER": "root",
         "SPARK_OPTS": mock_create_spark_config_str.return_value,
         "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
+        "PAASTA_INSTANCE_TYPE": "spark",
         **extra_expected,
         **expected_aws,
     }
@@ -408,11 +410,13 @@ class TestConfigureAndRunDockerContainer:
             volumes=["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw",],
             environment={
                 "env1": "val1",
-                "PAASTA_LAUNCHED_BY": mock.ANY,
                 "AWS_ACCESS_KEY_ID": "id",
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_DEFAULT_REGION": "fake_region",
                 "SPARK_OPTS": mock_create_spark_config_str.return_value,
+                "SPARK_USER": "root",
+                "PAASTA_INSTANCE_TYPE": "spark",
+                "PAASTA_LAUNCHED_BY": mock.ANY,
             },
             docker_img="fake-registry/fake-service",
             docker_cmd=mock_get_docker_cmd.return_value,
