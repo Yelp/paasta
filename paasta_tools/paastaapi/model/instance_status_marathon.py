@@ -111,6 +111,7 @@ class InstanceStatusMarathon(ModelNormal):
             'app_count': (int,),  # noqa: E501
             'bounce_method': (str,),  # noqa: E501
             'desired_state': (str,),  # noqa: E501
+            'active_shas': ([[str]],),  # noqa: E501
             'app_statuses': ([MarathonAppStatus],),  # noqa: E501
             'autoscaling_info': (MarathonAutoscalingInfo,),  # noqa: E501
             'backoff_seconds': (int,),  # noqa: E501
@@ -133,6 +134,7 @@ class InstanceStatusMarathon(ModelNormal):
         'app_count': 'app_count',  # noqa: E501
         'bounce_method': 'bounce_method',  # noqa: E501
         'desired_state': 'desired_state',  # noqa: E501
+        'active_shas': 'active_shas',  # noqa: E501
         'app_statuses': 'app_statuses',  # noqa: E501
         'autoscaling_info': 'autoscaling_info',  # noqa: E501
         'backoff_seconds': 'backoff_seconds',  # noqa: E501
@@ -197,6 +199,7 @@ class InstanceStatusMarathon(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            active_shas ([[str]]): List of git/config SHAs running.. [optional]  # noqa: E501
             app_statuses ([MarathonAppStatus]): Statuses of each app of the service. [optional]  # noqa: E501
             autoscaling_info (MarathonAutoscalingInfo): [optional]  # noqa: E501
             backoff_seconds (int): backoff in seconds before launching the next task. [optional]  # noqa: E501

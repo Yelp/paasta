@@ -27,6 +27,7 @@ from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 
 import a_sync
@@ -206,6 +207,20 @@ def marathon_instance_status(
     return mstatus
 
 
+def get_active_shas_for_marathon_apps(
+    marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
+) -> Set[Tuple[str, str]]:
+    ret = set()
+    for (app, client) in marathon_apps_with_clients:
+        _, _, git_sha, config_sha = marathon_tools.deformat_job_id(app.id)
+        if git_sha.startswith("git"):
+            git_sha = git_sha[len("git") :]
+        if config_sha.startswith("config"):
+            config_sha = config_sha[len("config") :]
+        ret.add((git_sha, config_sha))
+    return ret
+
+
 def marathon_job_status(
     service: str,
     instance: str,
@@ -219,6 +234,9 @@ def marathon_job_status(
         "desired_state": job_config.get_desired_state(),
         "bounce_method": job_config.get_bounce_method(),
         "expected_instance_count": job_config.get_instances(),
+        "active_shas": list(
+            get_active_shas_for_marathon_apps(marathon_apps_with_clients)
+        ),
     }
 
     try:

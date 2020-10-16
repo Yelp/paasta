@@ -766,6 +766,18 @@
                 "error_message": {
                     "type": "string",
                     "description": "Error message when a marathon job ID cannot be found"
+                },
+                "active_shas": {
+                    "type": "array",
+                    "description": "List of git/config SHAs running.",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                    }
                 }
             },
             "required": [
@@ -1288,6 +1300,18 @@
                 "error_message": {
                     "type": "string",
                     "description": "Error message when a kubernetes object (Deployment/Statefulset) cannot be found"
+                },
+                "active_shas": {
+                    "type": "array",
+                    "description": "List of git/config SHAs running.",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                    }
                 }
             },
             "required": [

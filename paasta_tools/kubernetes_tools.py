@@ -2235,15 +2235,19 @@ def parse_container_resources(resources: Mapping[str, str]) -> KubeContainerReso
 
 def get_active_shas_for_service(
     obj_list: Sequence[Union[V1Pod, V1ReplicaSet, V1Deployment, V1StatefulSet]],
-) -> Mapping[str, Set[str]]:
-    ret: MutableMapping[str, Set[str]] = {"config_sha": set(), "git_sha": set()}
+) -> Set[Tuple[str, str]]:
+    ret = set()
+
     for obj in obj_list:
         config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
-        if config_sha is not None:
-            ret["config_sha"].add(config_sha)
+        if config_sha.startswith("config"):
+            config_sha = config_sha[len("config") :]
+
         git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
-        if git_sha is not None:
-            ret["git_sha"].add(git_sha)
+        if git_sha.startswith("git"):
+            git_sha = git_sha[len("git") :]
+
+        ret.add((git_sha, config_sha))
     return ret
 
 
