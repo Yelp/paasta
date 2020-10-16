@@ -22,6 +22,8 @@ from typing import Tuple
 import colorlog
 import kubernetes
 import staticconf
+from cachetools import TTLCache
+from cachetools.keys import hashkey
 from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 from kubernetes.client.models.v1_node_selector_requirement import V1NodeSelectorRequirement
 from kubernetes.client.models.v1_node_selector_term import V1NodeSelectorTerm
@@ -38,6 +40,45 @@ from clusterman.kubernetes.util import total_pod_resources
 
 logger = colorlog.getLogger(__name__)
 KUBERNETES_SCHEDULED_PHASES = {'Pending', 'Running'}
+KUBERNETES_API_CACHE_SIZE = 16
+KUBERNETES_API_CACHE_TTL = 60
+KUBERNETES_API_CACHE = TTLCache(maxsize=KUBERNETES_API_CACHE_SIZE, ttl=KUBERNETES_API_CACHE_TTL)
+
+
+class CachedCoreV1Api:
+    CACHED_FUNCTION_CALLS = {'list_node', 'list_pod_for_all_namespaces'}
+
+    def __init__(self, kubeconfig_path: str):
+        try:
+            kubernetes.config.load_kube_config(kubeconfig_path)
+        except TypeError:
+            error_msg = 'Could not load KUBECONFIG; is this running on Kubernetes master?'
+            if 'yelpcorp' in socket.getfqdn():
+                error_msg += '\nHint: try using the clusterman-k8s-<clustername> wrapper script!'
+            logger.error(error_msg)
+            raise
+
+        self._client = kubernetes.client.CoreV1Api()
+
+    def __getattr__(self, attr):
+        global KUBERNETES_API_CACHE
+        func = getattr(self._client, attr)
+
+        if attr in self.CACHED_FUNCTION_CALLS:
+            def decorator(f):
+                def wrapper(*args, **kwargs):
+                    k = hashkey(f, *args, **kwargs)
+                    try:
+                        return KUBERNETES_API_CACHE[k]
+                    except KeyError:
+                        pass  # the function call hasn't been cached recently
+                    v = f(*args, **kwargs)
+                    KUBERNETES_API_CACHE[k] = v
+                    return v
+                return wrapper
+            func = decorator(func)
+
+        return func
 
 
 class KubernetesClusterConnector(ClusterConnector):
@@ -49,7 +90,7 @@ class KubernetesClusterConnector(ClusterConnector):
 
     def __init__(self, cluster: str, pool: Optional[str]) -> None:
         super().__init__(cluster, pool)
-        self.kubeconfig_path = f'clusters.{cluster}.kubeconfig_path'
+        self.kubeconfig_path = staticconf.read_string(f'clusters.{cluster}.kubeconfig_path')
         self._safe_to_evict_annotation = staticconf.read_string(
             f'clusters.{cluster}.pod_safe_to_evict_annotation',
             default='cluster-autoscaler.kubernetes.io/safe-to-evict',
@@ -57,16 +98,8 @@ class KubernetesClusterConnector(ClusterConnector):
 
     def reload_state(self) -> None:
         logger.info('Reloading nodes')
-        try:
-            kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
-        except TypeError:
-            error_msg = 'Could not load KUBECONFIG; is this running on Kubernetes master?'
-            if 'yelpcorp' in socket.getfqdn():
-                error_msg += '\nHint: try using the clusterman-k8s-<clustername> wrapper script!'
-            logger.error(error_msg)
-            raise
 
-        self._core_api = kubernetes.client.CoreV1Api()
+        self._core_api = CachedCoreV1Api(self.kubeconfig_path)
         self._pods = self._get_all_pods()
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
@@ -206,21 +239,18 @@ class KubernetesClusterConnector(ClusterConnector):
         return True
 
     def _get_nodes_by_ip(self) -> Mapping[str, KubernetesNode]:
-        if self.pool is not None:
-            pool_label_selector = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool') \
-                                  + '=' + self.pool
-            pool_nodes = self._core_api.list_node(label_selector=pool_label_selector).items
-        else:
-            pool_nodes = self._core_api.list_node().items
+        pool_label_selector = self.pool_config.read_string('pool_label_key', default='clusterman.com/pool')
+        pool_nodes = self._core_api.list_node().items
+
         return {
             get_node_ip(node): node
             for node in pool_nodes
+            if not self.pool or node.metadata.labels.get(pool_label_selector, None) == self.pool
         }
 
     def _get_pods_by_ip(self) -> Mapping[str, List[KubernetesPod]]:
-        all_pods = self._core_api.list_pod_for_all_namespaces().items
         pods_by_ip: Mapping[str, List[KubernetesPod]] = defaultdict(list)
-        for pod in all_pods:
+        for pod in self._pods:
             if pod.status.phase in KUBERNETES_SCHEDULED_PHASES \
                     and pod.status.host_ip in self._nodes_by_ip:
                 pods_by_ip[pod.status.host_ip].append(pod)
