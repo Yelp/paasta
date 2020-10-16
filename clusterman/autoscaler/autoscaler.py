@@ -152,6 +152,17 @@ class Autoscaler:
             exception, tb = e, traceback.format_exc()
 
         logger.info(f'Signal {signal_name} requested {resource_request}')
+
+        no_scale_down = False
+        if self.autoscaling_config.prevent_scale_down_after_capacity_loss:
+            removed_nodes_since_last_reload = self.pool_manager.get_removed_nodes_since_last_reload()
+            # TODO (jmalt): we may want something more sophisticated than len(nodes),
+            # especially for heterogeneous SFRs
+            if len(removed_nodes_since_last_reload) > self.autoscaling_config.capacity_loss_threshold:
+                logger.warning('Nodes lost since last autoscaler run is greater than limit,'
+                               ' will not scale down on this run')
+                no_scale_down = True
+
         self.pool_manager.reload_state()
         if isinstance(resource_request, list):
             pass
@@ -160,7 +171,7 @@ class Autoscaler:
             self.target_capacity_gauge.set(new_target_capacity, {'dry_run': dry_run})
             self._emit_requested_resource_metrics(resource_request, dry_run=dry_run)
 
-        self.pool_manager.modify_target_capacity(new_target_capacity, dry_run=dry_run)
+        self.pool_manager.modify_target_capacity(new_target_capacity, dry_run=dry_run, no_scale_down=no_scale_down)
 
         if exception:
             logger.error(f'The client signal failed with:\n{tb}')

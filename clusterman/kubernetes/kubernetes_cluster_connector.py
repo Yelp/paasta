@@ -17,6 +17,7 @@ from distutils.util import strtobool
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Set
 from typing import Tuple
 
 import colorlog
@@ -104,6 +105,23 @@ class KubernetesClusterConnector(ClusterConnector):
         self._pods = self._get_all_pods()
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
+
+    def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
+        try:
+            kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
+        except TypeError:
+            error_msg = 'Could not load KUBECONFIG; is this running on Kubernetes master?'
+            if 'yelpcorp' in socket.getfqdn():
+                error_msg += '\nHint: try using the clusterman-k8s-<clustername> wrapper script!'
+            logger.error(error_msg)
+            raise
+
+        previous_nodes = self._nodes_by_ip
+        current_nodes = self._get_nodes_by_ip()
+
+        # todo jmalt: make sure this gives the desired results
+        # equality is defined based on to_dict() for V1Node, so this should work
+        return set(previous_nodes.values()) - set(current_nodes.values())
 
     def get_resource_pending(self, resource_name: str) -> float:
         return getattr(allocated_node_resources([p for p, __ in self.get_unschedulable_pods()]), resource_name)

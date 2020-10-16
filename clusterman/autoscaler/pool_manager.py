@@ -22,11 +22,13 @@ from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 
 import colorlog
 import staticconf
+from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 from kubernetes.client.models.v1_pod import V1Pod as KubernetesPod
 
 from clusterman.aws.aws_resource_group import AWSResourceGroup
@@ -41,6 +43,7 @@ from clusterman.interfaces.cluster_connector import ClusterConnector
 from clusterman.interfaces.resource_group import ResourceGroup
 from clusterman.interfaces.types import AgentState
 from clusterman.interfaces.types import ClusterNodeMetadata
+from clusterman.kubernetes.kubernetes_cluster_connector import KubernetesClusterConnector
 from clusterman.kubernetes.util import total_pod_resources
 from clusterman.monitoring_lib import get_monitoring_client
 from clusterman.util import read_int_or_inf
@@ -89,6 +92,13 @@ class PoolManager:
         logger.info('Recalculating non-orphan fulfilled capacity')
         self.non_orphan_fulfilled_capacity = self._calculate_non_orphan_fulfilled_capacity()
 
+    def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
+        if not isinstance(self.cluster_connector, KubernetesClusterConnector):
+            logger.warning('get_removed_nodes_since_last_reload is only supported for Kubernetes clusters')
+            return set()
+
+        return self.cluster_connector.get_removed_nodes_since_last_reload()
+
     def mark_stale(self, dry_run: bool) -> None:
         if dry_run:
             logger.warning('Running in "dry-run" mode; cluster state will not be modified')
@@ -107,6 +117,7 @@ class PoolManager:
         dry_run: bool = False,
         force: bool = False,
         prune: bool = True,
+        no_scale_down: bool = False,
     ) -> float:
         """ Change the desired :attr:`target_capacity` of the resource groups belonging to this pool.
 
@@ -130,7 +141,7 @@ class PoolManager:
             raise PoolManagerError('No resource groups available')
 
         orig_target_capacity = self.target_capacity
-        new_target_capacity = self._constrain_target_capacity(new_target_capacity, force)
+        new_target_capacity = self._constrain_target_capacity(new_target_capacity, force, no_scale_down)
 
         res_group_targets = self._compute_new_resource_group_targets(new_target_capacity)
         for group_id, target in res_group_targets.items():
@@ -251,6 +262,7 @@ class PoolManager:
         self,
         requested_target_capacity: float,
         force: bool = False,
+        no_scale_down: bool = False,
     ) -> float:
         """ Signals can return arbitrary values, so make sure we don't add or remove too much capacity """
 
@@ -275,6 +287,10 @@ class PoolManager:
             delta = min(self.max_weight_to_add, delta)
         elif delta < 0:
             delta = max(-self.max_weight_to_remove, delta)
+
+        # third, do not allow delta to be negative if scaling down is currently prohibited
+        if no_scale_down:
+            delta = max(delta, 0)
 
         constrained_target_capacity = self.target_capacity + delta
         if requested_delta != delta:
