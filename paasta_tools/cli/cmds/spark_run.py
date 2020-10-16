@@ -15,7 +15,6 @@ from typing import Tuple
 from typing import Union
 
 from boto3.exceptions import Boto3Error
-from ruamel.yaml import YAML
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -399,7 +398,13 @@ def get_smart_paasta_instance_name(args):
         return f"{args.instance}_{get_username()}_{how_submitted}"
 
 
-def get_spark_env(args, spark_conf, aws_creds):
+def get_spark_env(
+    args: argparse.Namespace,
+    spark_conf: Dict[str, str],
+    aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
+) -> Dict[str, str]:
+    """Create the env config dict to configure on the docker container"""
+
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     spark_env = {}
 
@@ -429,9 +434,9 @@ def get_spark_env(args, spark_conf, aws_creds):
                 file=sys.stderr,
             )
             sys.exit(1)
-        spark_env["SPARK_HISTORY_OPTS"] = "-D%s -Dspark.history.ui.port=%d" % (
-            args.spark_args,
-            spark_conf["spark.ui.port"],
+        spark_env["SPARK_HISTORY_OPTS"] = (
+            f"-D{args.spark_args} "
+            f"-Dspark.history.ui.port={spark_conf['spark.ui.port']}"
         )
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
@@ -468,12 +473,6 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
     for opt, val in spark_config_dict.items():
         spark_config_entries.append(f"{conf_option} {opt}={val}")
     return " ".join(spark_config_entries)
-
-
-def get_aws_region_for_paasta_cluster(paasta_cluster: str) -> str:
-    with open(CLUSTERMAN_YAML_FILE_PATH, "r") as clusterman_yaml_file:
-        clusterman_yaml = YAML().load(clusterman_yaml_file.read())
-        return clusterman_yaml["clusters"][paasta_cluster]["aws_region"]
 
 
 def run_docker_container(
@@ -521,6 +520,7 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
     if spark_app_name is None:
         spark_app_name = "paasta_spark_run"
 
+    spark_app_name += f"_{get_username()}"
     return spark_app_name
 
 
@@ -534,7 +534,11 @@ def configure_and_run_docker_container(
 ) -> int:
 
     # driver specific volumes
-    volumes = spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
+    volumes = (
+        spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
+        if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
+        else []
+    )
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
