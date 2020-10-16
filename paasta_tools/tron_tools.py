@@ -244,9 +244,13 @@ class TronActionConfig(InstanceConfig):
             paasta_service=self.get_service(),
             paasta_instance=self.get_instance(),
             docker_img=self.get_docker_url(),
-            extra_volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
-            mesos_leader=mesos_leader,
             aws_creds=aws_creds,
+            extra_volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
+            # tron is using environment variable to load the required creds
+            with_secret=False,
+            mesos_leader=mesos_leader,
+            # load_system_paasta already load the default volumes
+            load_paasta_default_volumes=False,
         )
         return self._spark_config_dict
 
