@@ -142,9 +142,11 @@ class TestTronActionConfig:
                 paasta_service="my_service",
                 paasta_instance="cool_job.print",
                 docker_img="",
-                extra_volumes=expected_extra_volumes,
-                mesos_leader=expected_mesos_leader,
                 aws_creds=mock_get_aws_credentials.return_value,
+                extra_volumes=expected_extra_volumes,
+                with_secret=False,
+                mesos_leader=expected_mesos_leader,
+                load_paasta_default_volumes=False,
             )
 
     @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)

@@ -391,35 +391,28 @@ class TestConfigureAndRunDockerContainer:
         args.dry_run = True
         args.mrjob = False
         args.nvidia = False
-
-        retcode = configure_and_run_docker_container(
-            args=args,
-            docker_img="fake-registry/fake-service",
-            instance_config=self.instance_config,
-            system_paasta_config=self.system_paasta_config,
-            aws_creds=("id", "secret", "token"),
-            spark_conf=spark_conf,
-        )
-
+        with mock.patch.object(
+            self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
+        ):
+            retcode = configure_and_run_docker_container(
+                args=args,
+                docker_img="fake-registry/fake-service",
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+                aws_creds=("id", "secret", "token"),
+                spark_conf=spark_conf,
+            )
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
             volumes=["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw",],
             environment={
-                "PAASTA_SERVICE": "fake_service",
-                "PAASTA_INSTANCE": "fake_instance",
-                "PAASTA_CLUSTER": "fake_cluster",
-                "PAASTA_DEPLOY_GROUP": "fake_cluster.fake_instance",
-                "PAASTA_DOCKER_IMAGE": "fake_service:fake_sha",
+                "env1": "val1",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
                 "AWS_ACCESS_KEY_ID": "id",
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_DEFAULT_REGION": "fake_region",
                 "SPARK_OPTS": mock_create_spark_config_str.return_value,
-                "PAASTA_RESOURCE_CPUS": "1",
-                "PAASTA_RESOURCE_DISK": "1024",
-                "PAASTA_RESOURCE_MEM": "4096",
-                "PAASTA_GIT_SHA": "fake_ser",
             },
             docker_img="fake-registry/fake-service",
             docker_cmd=mock_get_docker_cmd.return_value,

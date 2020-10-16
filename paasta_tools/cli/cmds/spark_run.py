@@ -542,8 +542,8 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
-    environment = instance_config.get_env_dictionary()
-    environment.update(get_spark_env(args, spark_conf, aws_creds))
+    environment = instance_config.get_env_dictionary()  # type: ignore
+    environment.update(get_spark_env(args, spark_conf, aws_creds))  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
