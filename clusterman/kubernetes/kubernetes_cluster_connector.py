@@ -67,10 +67,11 @@ class CachedCoreV1Api:
         if attr in self.CACHED_FUNCTION_CALLS:
             def decorator(f):
                 def wrapper(*args, **kwargs):
-                    k = hashkey(f, *args, **kwargs)
+                    k = hashkey(attr, *args, **kwargs)
                     try:
                         return KUBERNETES_API_CACHE[k]
                     except KeyError:
+                        logger.debug(f'Cache miss for the {attr} Kubernetes function call')
                         pass  # the function call hasn't been cached recently
                     v = f(*args, **kwargs)
                     KUBERNETES_API_CACHE[k] = v
