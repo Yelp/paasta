@@ -21,6 +21,7 @@ import os
 from typing import Any
 from typing import Mapping
 from typing import Optional
+from typing import Type
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
 
@@ -132,10 +133,10 @@ class PaastaOApiClient:
     marathon_dashboard: paastaapis.MarathonDashboardApi
     resources: paastaapis.ResourcesApi
     service: paastaapis.ServiceApi
-    api_error: type
-    connection_error: type
-    timeout_error: type
-    request_error: type
+    api_error: Type[paastaapi.ApiException]
+    connection_error: Type[paastaapi.ApiException]
+    timeout_error: Type[paastaapi.ApiException]
+    request_error: Type[paastaapi.ApiException]
 
 
 def get_paasta_oapi_client_by_url(

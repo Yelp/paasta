@@ -13,13 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import json
 import sys
 import time
 import traceback
 from typing import List
 from typing import Union
 
-from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
@@ -60,7 +61,7 @@ def add_subparser(subparsers,) -> None:
     list_deploy_queue_parser.set_defaults(command=list_deploy_queue)
 
 
-def list_deploy_queue(args,) -> int:
+def list_deploy_queue(args) -> int:
     cluster = args.cluster
     all_clusters = list_clusters(soa_dir=args.soa_dir)
     if cluster not in all_clusters:
@@ -71,27 +72,27 @@ def list_deploy_queue(args,) -> int:
         return 1
 
     system_paasta_config = load_system_paasta_config()
-    client = get_paasta_api_client(cluster, system_paasta_config, http_res=True)
+    client = get_paasta_oapi_client(cluster, system_paasta_config, http_res=True)
     if not client:
         print("Cannot get a paasta API client")
         return 1
 
     try:
-        deploy_queues, raw_response = client.deploy_queue.deploy_queue().result()
+        deploy_queues = client.default.deploy_queue()
     except client.api_error as exc:
-        print(PaastaColors.red(exc.response.text))
-        return exc.status_code
+        print(PaastaColors.red(exc.reason))
+        return exc.status
     except (client.connection_error, client.timeout_error) as exc:
         print(PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}"))
         return 1
-    except Exception:
+    except Exception as exc:
         tb = sys.exc_info()[2]
-        print(PaastaColors.red(f"Exception when talking to the API:"))
+        print(PaastaColors.red(f"Exception when talking to the API: {exc}"))
         print("".join(traceback.format_tb(tb)))
         return 1
 
     if args.json:
-        print(raw_response.text)
+        json.dump(deploy_queues.to_dict(), sys.stdout)
     else:
         formatted_deploy_queues = format_deploy_queues(deploy_queues, cluster)
         print(formatted_deploy_queues)

@@ -16,11 +16,11 @@ import json
 
 import mock
 import pytest
-from bravado.exception import HTTPError
-from bravado.requests_client import RequestsResponseAdapter
 
 from paasta_tools.cli.cmds.list_deploy_queue import list_deploy_queue
-from tests.cli.test_cmds_status import Struct
+from paasta_tools.paastaapi import ApiException
+from paasta_tools.paastaapi.models import DeployQueue
+from paasta_tools.paastaapi.models import DeployQueueServiceInstance
 
 
 @pytest.fixture(autouse=True)
@@ -41,53 +41,43 @@ def mock_list_clusters():
         yield
 
 
-@pytest.fixture
-def mock_get_paasta_api_client():
+@pytest.fixture()
+def mock_api():
     with mock.patch(
-        "paasta_tools.cli.cmds.list_deploy_queue.get_paasta_api_client", autospec=True,
-    ) as _mock_get_paasta_api_client:
-        yield _mock_get_paasta_api_client
+        "paasta_tools.cli.cmds.list_deploy_queue.get_paasta_oapi_client", autospec=True,
+    ) as m:
+        yield m.return_value
 
 
-def test_list_deploy_queue(mock_get_paasta_api_client, capfd):
-    args = mock.Mock()
-    args.cluster = "westeros-prod"
-    args.json = False
-
-    mock_deploy_queues_response = Struct(
+def test_list_deploy_queue(mock_api, capfd):
+    args = mock.Mock(cluster="westeros-prod", json=False)
+    mock_api.default.deploy_queue.return_value = DeployQueue(
         available_service_instances=[
-            Struct(
+            DeployQueueServiceInstance(
                 service="service1",
                 instance="instance1",
                 watcher="watcher1",
-                bounce_by=1578038400,
-                wait_until=1578038400,
-                enqueue_time=1578038400,
-                bounce_start_time=1578038400,
+                bounce_by=1578038400.0,
+                wait_until=1578038400.0,
+                enqueue_time=1578038400.0,
+                bounce_start_time=1578038400.0,
                 failures=0,
                 processed_count=0,
             ),
         ],
         unavailable_service_instances=[
-            Struct(
+            DeployQueueServiceInstance(
                 service="service2",
                 instance="instance2",
                 watcher="watcher2",
-                bounce_by=1577952000,
-                wait_until=1577952000,
-                enqueue_time=1577952000,
-                bounce_start_time=1577952000,
+                bounce_by=1577952000.0,
+                wait_until=1577952000.0,
+                enqueue_time=1577952000.0,
+                bounce_start_time=1577952000.0,
                 failures=5,
                 processed_count=10,
             ),
         ],
-    )
-    mock_raw_response = Struct(text="abc")
-
-    mock_api_client = mock_get_paasta_api_client.return_value
-    mock_api_client.deploy_queue.deploy_queue.return_value.result.return_value = (
-        mock_deploy_queues_response,
-        mock_raw_response,
     )
 
     return_value = list_deploy_queue(args)
@@ -100,39 +90,26 @@ def test_list_deploy_queue(mock_get_paasta_api_client, capfd):
     assert "service2.instance2" in lines[6]
 
 
-def test_list_deploy_queue_json(mock_get_paasta_api_client, capfd):
-    args = mock.Mock()
-    args.cluster = "westeros-prod"
-    args.json = True
-
-    mock_json_return = json.dumps(
-        {"available_service_instances": [], "unavailable_service_instances": []}
-    )
-    mock_raw_response = Struct(text=mock_json_return)
-
-    mock_api_client = mock_get_paasta_api_client.return_value
-    mock_api_client.deploy_queue.deploy_queue.return_value.result.return_value = (
-        Struct(),
-        mock_raw_response,
+def test_list_deploy_queue_json(mock_api, capfd):
+    args = mock.Mock(cluster="westeros-prod", json=True)
+    mock_api.default.deploy_queue.return_value = DeployQueue(
+        available_service_instances=[], unavailable_service_instances=[],
     )
 
     return_value = list_deploy_queue(args)
     assert return_value == 0
+
     stdout, stderr = capfd.readouterr()
-    assert stdout.strip() == mock_json_return
+    assert stdout.strip() == json.dumps(
+        {"available_service_instances": [], "unavailable_service_instances": []}
+    )
 
 
-def test_http_error(mock_get_paasta_api_client):
-    args = mock.Mock()
-    args.cluster = "westeros-prod"
-
-    mock_response = mock.Mock(status_code=500, text="Internal Server Error")
-    response_adapter = RequestsResponseAdapter(mock_response)
-
-    mock_api_client = mock_get_paasta_api_client.return_value
-    mock_api_client.api_error = HTTPError
-    mock_api_client.deploy_queue.deploy_queue.return_value.result.side_effect = HTTPError(
-        response_adapter
+def test_http_error(mock_api):
+    args = mock.Mock(cluster="westeros-prod")
+    mock_api.api_error = ApiException
+    mock_api.default.deploy_queue.side_effect = ApiException(
+        status=500, reason="Internal Server Error"
     )
 
     assert list_deploy_queue(args) == 500

@@ -14,7 +14,6 @@
 from queue import Queue
 from threading import Event
 
-from bravado.exception import HTTPError
 from mock import Mock
 from mock import patch
 from pytest import raises
@@ -26,6 +25,7 @@ from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha_is_latest
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import TimeoutError
 
@@ -110,31 +110,26 @@ def mock_status_instance_side_effect(
         mock_status.git_sha = "anothersha"
     mock_status.marathon = mock_mstatus
     mock_status.kubernetes = None
-    mock_result = mock_status
-    mock_status_instance = Mock()
-    mock_status_instance.result.return_value = mock_result
+
     if instance == "notaninstance":
         # not an instance paasta can find
-        mock_status_instance.result.side_effect = HTTPError(
-            response=Mock(status_code=404)
-        )
+        raise ApiException(status=404, reason="")
     if instance == "api_error":
         # not an instance paasta can find
-        mock_status_instance.result.side_effect = HTTPError(
-            response=Mock(status_code=500)
-        )
-    return mock_status_instance
+        raise ApiException(status=500, reason="")
+
+    return mock_status
 
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_api_client",
+    "paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_oapi_client",
     autospec=True,
 )
-def test_instances_deployed(mock_get_paasta_api_client, mock__log):
+def test_instances_deployed(mock_get_paasta_oapi_client, mock__log):
     mock_paasta_api_client = Mock()
-    mock_paasta_api_client.api_error = HTTPError
-    mock_get_paasta_api_client.return_value = mock_paasta_api_client
+    mock_paasta_api_client.api_error = ApiException
+    mock_get_paasta_oapi_client.return_value = mock_paasta_api_client
     mock_paasta_api_client.service.status_instance.side_effect = (
         mock_status_instance_side_effect
     )

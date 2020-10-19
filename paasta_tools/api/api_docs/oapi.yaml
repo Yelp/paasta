@@ -15,7 +15,7 @@ tags:
 components:
   schemas:
     AutoscalerCountMsg:
-      description: Specification for autoscaler count endpoints.
+      description: Specification for autoscaler count endpoints
       properties:
         calculated_instances:
           type: integer
@@ -328,6 +328,10 @@ components:
         envoy:
           $ref: '#/components/schemas/EnvoyStatus'
           description: Status of the service in Envoy
+        evicted_count:
+          description: Number of pods with status reason "Evicted"
+          type: integer
+          format: int32
       required:
       - desired_state
       - app_count
