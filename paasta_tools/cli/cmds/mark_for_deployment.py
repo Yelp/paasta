@@ -58,6 +58,7 @@ from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi import ApiAttributeError
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -1212,10 +1213,13 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
 
         long_running_status = None
         if status:
-            if status.marathon:
-                long_running_status = status.marathon
-            elif status.kubernetes:
-                long_running_status = status.kubernetes
+            try:
+                if status.marathon:
+                    long_running_status = status.marathon
+                elif status.kubernetes:
+                    long_running_status = status.kubernetes
+            except ApiAttributeError:
+                pass
         if not status:
             log.debug(
                 "No status for {}.{}, in {}. Not deployed yet.".format(
