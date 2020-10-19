@@ -1,3 +1,10 @@
+paasta-tools (0.97.13) xenial; urgency=medium
+
+  * 0.97.13 tagged with 'make release'
+    Commit: fix mark for deployment attribute error
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 19 Oct 2020 03:21:39 -0700
+
 paasta-tools (0.97.12) xenial; urgency=medium
 
   * 0.97.12 tagged with 'make release'
