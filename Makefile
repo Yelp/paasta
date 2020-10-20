@@ -90,7 +90,7 @@ k8s_itests: .paasta/bin/activate
 openapi-codegen:
 	rm -rf paasta_tools/paastaapi
 	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src \
-		yelp/openapi-generator-cli:20200929 \
+		yelp/openapi-generator-cli:20201020 \
 		generate \
 		-i /src/paasta_tools/api/api_docs/oapi.yaml \
 		-g python-experimental \
