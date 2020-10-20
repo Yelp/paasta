@@ -233,6 +233,15 @@ components:
       type: object
     InstanceStatusKubernetes:
       properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+            minItems: 2
+            maxItems: 2
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -339,6 +348,15 @@ components:
       type: object
     InstanceStatusMarathon:
       properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+            minItems: 2
+            maxItems: 2
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)

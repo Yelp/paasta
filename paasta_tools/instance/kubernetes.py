@@ -181,6 +181,8 @@ async def pod_info(
         "reason": pod.status.reason,
         "message": pod.status.message,
         "events": pod_event_messages,
+        "git_sha": pod.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "config_sha": pod.metadata.labels.get("paasta.yelp.com/config_sha"),
     }
 
 
@@ -219,6 +221,12 @@ async def job_status(
                     "replicas": replicaset.spec.replicas,
                     "ready_replicas": ready_replicas,
                     "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
+                    "git_sha": replicaset.metadata.labels.get(
+                        "paasta.yelp.com/git_sha"
+                    ),
+                    "config_sha": replicaset.metadata.labels.get(
+                        "paasta.yelp.com/config_sha"
+                    ),
                 }
             )
 
@@ -441,11 +449,10 @@ def kubernetes_status(
     active_shas = kubernetes_tools.get_active_shas_for_service(
         [app, *pod_list, *replicaset_list]
     )
-    kstatus["app_count"] = max(
-        len(active_shas["config_sha"]), len(active_shas["git_sha"])
-    )
+    kstatus["app_count"] = len(active_shas)
     kstatus["desired_state"] = job_config.get_desired_state()
     kstatus["bounce_method"] = job_config.get_bounce_method()
+    kstatus["active_shas"] = list(active_shas)
 
     job_status(
         kstatus=kstatus,

@@ -2741,8 +2741,8 @@ def test_get_active_shas_for_service():
         ),
     ]
     assert get_active_shas_for_service(mock_pod_list) == {
-        "git_sha": {"b456", "b456!!!"},
-        "config_sha": {"a123", "a123!!!"},
+        ("b456!!!", "a123!!!"),
+        ("b456", "a123"),
     }
 
 

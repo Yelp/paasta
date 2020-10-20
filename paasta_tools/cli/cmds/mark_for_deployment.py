@@ -1309,6 +1309,33 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 cluster_data.instances_queue.task_done()
                 instances_out.put(instance_config)
                 continue
+
+            # https://github.com/Yelp/paasta/pull/2940#discussion_r508334043
+            try:
+                active_shas = long_running_status.active_shas
+            except ApiAttributeError:
+                active_shas = None
+            # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
+            if active_shas is not None:
+                active_git_shas = {g for g, c in active_shas}
+
+                if cluster_data.git_sha not in active_git_shas:
+                    print(
+                        f"{cluster_data.service}.{instance} on {cluster_data.cluster} not yet running {cluster_data.git_sha}."
+                    )
+                    cluster_data.instances_queue.task_done()
+                    instances_out.put(instance_config)
+                    continue
+
+                # theoretically this case should be caught by the check on long_running_status.app_count
+                if len(active_git_shas) > 1:
+                    print(
+                        f"{cluster_data.service}.{instance} on {cluster_data.cluster} is running multiple versions: {active_git_shas}"
+                    )
+                    cluster_data.instances_queue.task_done()
+                    instances_out.put(instance_config)
+                    continue
+
             print(
                 "Complete: {}.{} on {} looks 100% deployed at {} "
                 "instances on {}".format(

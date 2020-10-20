@@ -204,7 +204,9 @@ def test_marathon_job_status(
     mock_marathon_app_status,
     mock_service_config,
 ):
-    mock_service_config.format_marathon_app_dict = lambda: {"id": "foo"}
+    mock_service_config.format_marathon_app_dict = lambda: {
+        "id": "foo.bar.gitabc.config123"
+    }
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
 
     mock_get_marathon_app_deploy_status.return_value = 0  # Running status
@@ -216,7 +218,7 @@ def test_marathon_job_status(
         target_instances=3,
     )
 
-    mock_app = mock.Mock(id="/foo", tasks_running=2)
+    mock_app = mock.Mock(id="/foo.bar.gitabc.config123", tasks_running=2)
     job_status = instance.marathon_job_status(
         "fake_service",
         "fake_instance",
@@ -234,10 +236,11 @@ def test_marathon_job_status(
         "desired_state": "start",
         "bounce_method": "fake_bounce",
         "expected_instance_count": 1,
-        "desired_app_id": "foo",
+        "desired_app_id": "foo.bar.gitabc.config123",
         "deploy_status": "Running",
         "running_instance_count": 2,
         "autoscaling_info": expected_autoscaling_info,
+        "active_shas": [("abc", "123")],
     }
 
     assert mock_marathon_app_status.call_count == 1
@@ -273,10 +276,12 @@ def test_marathon_job_status_no_dashboard_links(
     mock_marathon_app_status,
     mock_service_config,
 ):
-    mock_service_config.format_marathon_app_dict = lambda: {"id": "foo"}
+    mock_service_config.format_marathon_app_dict = lambda: {
+        "id": "foo.bar.gitabc.config123"
+    }
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
     mock_get_marathon_app_deploy_status.return_value = 0  # Running status
-    mock_app = mock.Mock(id="/foo", tasks_running=2)
+    mock_app = mock.Mock(id="/foo.bar.gitabc.config123", tasks_running=2)
 
     mock_get_marathon_dashboard_links.return_value = None
 
