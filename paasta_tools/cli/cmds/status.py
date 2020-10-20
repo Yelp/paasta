@@ -444,8 +444,12 @@ def marathon_mesos_status_human(
     running_task_count = (
         mesos_status.running_task_count if "running_task_count" in mesos_status else 0
     )
-    running_tasks = mesos_status.running_tasks
-    non_running_tasks = mesos_status.non_running_tasks
+    running_tasks = (
+        mesos_status.running_tasks if "running_tasks" in mesos_status else None
+    )
+    non_running_tasks = (
+        mesos_status.non_running_tasks if "non_running_tasks" in mesos_status else None
+    )
 
     if error_message:
         return [f"Mesos: {PaastaColors.red(error_message)}"]
@@ -621,17 +625,23 @@ def marathon_app_status_human(app_id, app_status) -> List[str]:
     )
 
     deploy_status = MarathonDeployStatus.fromstring(app_status.deploy_status)
+    backoff_seconds = (
+        app_status.backoff_seconds if "backoff_seconds" in app_status else None
+    )
     deploy_status_human = marathon_app_deploy_status_human(
-        deploy_status, app_status.backoff_seconds
+        deploy_status, backoff_seconds
     )
     output.append(f"  Status: {deploy_status_human}")
 
-    if app_status.tasks:
+    if "tasks" in app_status and app_status.tasks:
         output.append("  Tasks:")
         tasks_table = format_marathon_task_table(app_status.tasks)
         output.extend([f"    {line}" for line in tasks_table])
 
-    if app_status.unused_offer_reason_counts is not None:
+    if (
+        "unused_offer_reason_counts" in app_status
+        and app_status.unused_offer_reason_counts is not None
+    ):
         output.append("  Possibly stalled for:")
         output.extend(
             [

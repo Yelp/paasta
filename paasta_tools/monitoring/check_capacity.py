@@ -148,7 +148,7 @@ def run_capacity_check():
     }
 
     failures = defaultdict(list)
-    for usage_value in resource_use:
+    for usage_value in resource_use.value:
         check = get_check_from_overrides(
             overrides, default_check, usage_value["groupings"]
         )
