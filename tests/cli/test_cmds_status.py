@@ -1048,7 +1048,7 @@ def test_paasta_status_on_api_endpoint_marathon(
     )
 
     mock_api = mock_get_paasta_oapi_client.return_value
-    mock_api.status.status_instance.return_value = fake_status_obj
+    mock_api.service.status_instance.return_value = fake_status_obj
 
     output = []
     paasta_status_on_api_endpoint(
