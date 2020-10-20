@@ -97,13 +97,6 @@ def get_paasta_oapi_client_by_url(
     )
 
 
-def getattror(obj, attr, default=None):
-    try:
-        return getattr(obj, attr)
-    except paastaapi.ApiAttributeError:
-        return default
-
-
 def get_paasta_oapi_client(
     cluster: str = None,
     system_paasta_config: SystemPaastaConfig = None,

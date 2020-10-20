@@ -42,7 +42,6 @@ from service_configuration_lib import read_deploy
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_oapi_client
-from paasta_tools.api.client import getattror
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -328,7 +327,9 @@ def print_marathon_status(
     marathon_status,
     verbose: int = 0,
 ) -> int:
-    error_message = getattror(marathon_status, "error_message")
+    error_message = (
+        marathon_status.error_message if "error_message" in marathon_status else None
+    )
     if error_message:
         output.append(error_message)
         return 1
@@ -352,7 +353,11 @@ def print_marathon_status(
     )
     output.append(f"    {job_status_human}")
 
-    autoscaling_info = getattror(marathon_status, "autoscaling_info")
+    autoscaling_info = (
+        marathon_status.autoscaling_info
+        if "autoscaling_info" in marathon_status
+        else None
+    )
     if autoscaling_info:
         autoscaling_info_table = create_autoscaling_info_table(autoscaling_info)
         output.extend([f"      {line}" for line in autoscaling_info_table])
@@ -368,7 +373,7 @@ def print_marathon_status(
     )
     output.extend([f"    {line}" for line in mesos_status_human])
 
-    smartstack = getattror(marathon_status, "smartstack")
+    smartstack = marathon_status.smartstack if "smartstack" in marathon_status else None
     if smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
             smartstack.registration,
@@ -377,7 +382,7 @@ def print_marathon_status(
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
-    envoy = getattror(marathon_status, "envoy")
+    envoy = marathon_status.envoy if "envoy" in marathon_status else None
     if envoy is not None:
         envoy_status_human = get_envoy_status_human(
             envoy.registration, envoy.expected_backends_per_location, envoy.locations,
@@ -390,13 +395,21 @@ def print_marathon_status(
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
-    current_utilization = getattror(autoscaling_info, "current_utilization")
+    current_utilization = (
+        autoscaling_info.current_utilization
+        if "current_utilization" in autoscaling_info
+        else None
+    )
     if current_utilization is not None:
         current_utilization = "{:.1f}%".format(current_utilization * 100)
     else:
         current_utilization = "Exception"
 
-    target_instances = getattror(autoscaling_info, "target_instances")
+    target_instances = (
+        autoscaling_info.target_instances
+        if "target_instances" in autoscaling_info
+        else None
+    )
     if target_instances is None:
         target_instances = "Exception"
 
@@ -408,9 +421,11 @@ def create_autoscaling_info_table(autoscaling_info):
         "Target instances",
     ]
     row = [
-        getattror(autoscaling_info, "current_instances"),
-        getattror(autoscaling_info, "max_instances"),
-        getattror(autoscaling_info, "min_instances"),
+        autoscaling_info.current_instances
+        if "current_instances" in autoscaling_info
+        else None,
+        autoscaling_info.max_instances if "max_instances" in autoscaling_info else None,
+        autoscaling_info.min_instances if "min_instances" in autoscaling_info else None,
         current_utilization,
         target_instances,
     ]
@@ -423,8 +438,12 @@ def create_autoscaling_info_table(autoscaling_info):
 def marathon_mesos_status_human(
     mesos_status, expected_instance_count,
 ):
-    error_message = getattror(mesos_status, "error_message")
-    running_task_count = getattror(mesos_status, "running_task_count", 0)
+    error_message = (
+        mesos_status.error_message if "error_message" in mesos_status else None
+    )
+    running_task_count = (
+        mesos_status.running_task_count if "running_task_count" in mesos_status else 0
+    )
     running_tasks = mesos_status.running_tasks
     non_running_tasks = mesos_status.non_running_tasks
 
@@ -477,12 +496,16 @@ def create_mesos_running_tasks_table(running_tasks):
 
 
 def get_mesos_task_memory_string(task):
-    rss = getattror(task.rss, "value")
-    mem_limit = getattror(task.mem_limit, "value")
+    rss = task.rss.value if "value" in task.rss else None
+    mem_limit = task.mem_limit.value if "value" in task.mem_limit else None
     if rss is None or mem_limit is None:
-        error_message = getattror(
-            task.rss, "error_message", getattror(task.mem_limit, "error_message")
-        )
+        error_message = task.rss.error_message if "error_message" in task.rss else None
+        if error_message is None:
+            error_message = (
+                task.mem_limit.error_message
+                if "error_message" in task.mem_limit
+                else None
+            )
         return error_message
     elif mem_limit == 0:
         return "Undef"
@@ -496,10 +519,17 @@ def get_mesos_task_memory_string(task):
 
 
 def get_mesos_task_cpu_string(task):
-    cpu_shares = getattror(task.cpu_shares, "value")
-    cpu_used_seconds = getattror(task.cpu_used_seconds, "value")
+    cpu_shares = task.cpu_shares.value if "value" in task.cpu_shares else None
+    cpu_used_seconds = (
+        task.cpu_used_seconds.value if "value" in task.cpu_used_seconds else None
+    )
     if cpu_shares is None or cpu_used_seconds is None:
-        return task.cpu_shares.error_message
+        error_message = (
+            task.cpu_shares.error_message
+            if "error_message" in task.cpu_shares
+            else None
+        )
+        return error_message
     else:
         # The total time a task has been allocated is the total time the task has
         # been running multiplied by the "shares" a task has.
@@ -652,16 +682,18 @@ def format_kubernetes_pod_table(pods, verbose: int):
     ]
     for pod in pods:
         local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
-        host = getattror(pod, "host")
+        host = pod.host if "host" in pod else None
         hostname = f"{host}" if host is not None else PaastaColors.grey("N/A")
-        phase = getattror(pod, "phase")
+        phase = pod.phase if "phase" in pod else None
+        reason = pod.reason if "reason" in pod else None
         if phase is None or phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
-            if not getattror(pod, "ready"):
+            ready = pod.ready if "ready" in pod else None
+            if not ready:
                 health_check_status = PaastaColors.red("Unhealthy")
-        elif phase == "Failed" and getattror(pod, "reason") == "Evicted":
+        elif phase == "Failed" and reason == "Evicted":
             health_check_status = PaastaColors.red("Evicted")
         else:
             health_check_status = PaastaColors.red("Unhealthy")
@@ -676,13 +708,13 @@ def format_kubernetes_pod_table(pods, verbose: int):
                 health_check_status,
             )
         )
-        events = getattror(pod, "events")
+        events = pod.events if "events" in pod else None
         if events and verbose > 1:
             rows.extend(format_pod_event_messages(events, pod.name))
-        message = getattror(pod, "message")
+        message = pod.message if "message" in pod else None
         if message is not None:
             rows.append(PaastaColors.grey(f"  {message}"))
-        containers = getattror(pod, "containers")
+        containers = pod.containers if "containers" in pod else None
         if len(containers) > 0:
             rows.extend(format_tail_lines_for_kubernetes_pod(containers, pod.name))
 
