@@ -1,3 +1,12 @@
+paasta-tools (0.97.14) xenial; urgency=medium
+
+  * 0.97.14 tagged with 'make release'
+    Commit: Merge pull request #2930 from Yelp/u/tingyenl/PAASTA-
+    14811_central_point_for_spark_session_builder  move the spark_run
+    major logic to service_configuration_lib
+
+ -- Lydian Lee <tingyenl@yelp.com>  Tue, 20 Oct 2020 14:33:16 -0700
+
 paasta-tools (0.97.13) xenial; urgency=medium
 
   * 0.97.13 tagged with 'make release'
