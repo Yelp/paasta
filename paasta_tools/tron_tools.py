@@ -224,7 +224,7 @@ class TronActionConfig(InstanceConfig):
             return spark_config_dict
 
         if self.get_spark_cluster_manager() == "mesos":
-            mesos_leader = mesos_leader = (
+            mesos_leader = (
                 f"zk://{load_system_paasta_config().get_zk_hosts()}"
                 if not self.for_validation
                 else "N/A"

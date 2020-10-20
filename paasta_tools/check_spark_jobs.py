@@ -166,7 +166,8 @@ def email_user(framework_info, email_domain):
         guessed_user = framework_info["user"]
     elif framework_info["name"].startswith(JUPYTER_PREFIX):
         try:
-            guessed_user = framework_info["name"].split("_")[-2]
+            # the job format is now `<AppName>_<UserName>_<UIPort>_<StartTime>`
+            guessed_user = framework_info["name"].split("_")[-3]
         except IndexError:
             pass
 
