@@ -659,14 +659,14 @@ def format_marathon_task_table(tasks):
     ]
     for task in tasks:
         local_deployed_datetime = datetime.fromtimestamp(task.deployed_timestamp)
-        if task.host is not None:
+        if "host" in task and task.host is not None:
             hostname = f"{task.host}:{task.port}"
         else:
             hostname = "Unknown"
 
-        if task.is_healthy is None:
+        if "is_healthy" in task and task.is_healthy is None:
             health_check_status = PaastaColors.grey("N/A")
-        elif task.is_healthy:
+        elif "is_healthy" in task and task.is_healthy:
             health_check_status = PaastaColors.green("Healthy")
         else:
             health_check_status = PaastaColors.red("Unhealthy")

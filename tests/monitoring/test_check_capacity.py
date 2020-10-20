@@ -74,7 +74,7 @@ def test_get_check_from_overrides_error():
 
 def test_capacity_check_ok(capfd):
     mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources.result.return_value = [
+    mock_api_client.resources.resources.result.return_value.value = [
         {
             "groupings": {"foo", "baz"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -115,7 +115,7 @@ def test_capacity_check_ok(capfd):
 
 def test_capacity_check_warn(capfd):
     mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources.return_value = [
+    mock_api_client.resources.resources.return_value.value = [
         {
             "groupings": {"foo": "baz"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -156,7 +156,7 @@ def test_capacity_check_warn(capfd):
 
 def test_capacity_check_crit(capfd):
     mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources.return_value = [
+    mock_api_client.resources.resources.return_value.value = [
         {
             "groupings": {"foo": "baz"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -197,7 +197,7 @@ def test_capacity_check_crit(capfd):
 
 def test_capacity_check_overrides(capfd):
     mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources.return_value = [
+    mock_api_client.resources.resources.return_value.value = [
         {
             "groupings": {"foo": "bar"},
             "cpus": {"total": 2, "free": 1, "used": 1},
