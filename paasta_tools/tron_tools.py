@@ -28,9 +28,10 @@ from typing import Tuple
 import yaml
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
-from service_configuration_lib.spark_config import get_k8s_spark_env
-from service_configuration_lib.spark_config import get_mesos_spark_auth_env
-from service_configuration_lib.spark_config import get_mesos_spark_env
+from service_configuration_lib.spark_config import generate_clusterman_metrics_entries
+from service_configuration_lib.spark_config import get_aws_credentials
+from service_configuration_lib.spark_config import get_resources_requested
+from service_configuration_lib.spark_config import get_spark_conf
 from service_configuration_lib.spark_config import K8S_AUTH_FOLDER
 from service_configuration_lib.spark_config import stringify_spark_env
 
@@ -41,8 +42,7 @@ try:
 except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
     Dumper = yaml.SafeDumper  # type: ignore
 
-from paasta_tools.spark_tools import get_aws_credentials
-from paasta_tools.spark_tools import get_default_event_log_dir
+from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -57,7 +57,6 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.spark_tools import get_spark_resource_requirements
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 
@@ -79,6 +78,7 @@ VALID_MONITORING_KEYS = set(
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
 DEFAULT_AWS_REGION = "us-west-2"
+clusterman_metrics, _ = get_clusterman_metrics()
 
 
 class TronNotConfigured(Exception):
@@ -213,52 +213,46 @@ class TronActionConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
         self.job, self.action = decompose_instance(instance)
-        self.spark_ui_port = pick_spark_ui_port(service, instance)
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
     def get_spark_config_dict(self):
+        spark_config_dict = getattr(self, "_spark_config_dict", None)
+        # cached the created dict, so that we don't need to process it multiple
+        # times, and having inconsistent result
+        if spark_config_dict is not None:
+            return spark_config_dict
+
         if self.get_spark_cluster_manager() == "mesos":
-            spark_env = get_mesos_spark_env(
-                spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
-                spark_ui_port=self.spark_ui_port,
-                mesos_leader=(
-                    f"zk://{load_system_paasta_config().get_zk_hosts()}"
-                    if not self.for_validation
-                    else "N/A"
-                ),
-                paasta_cluster=self.get_spark_paasta_cluster(),
-                paasta_pool=self.get_spark_paasta_pool(),
-                paasta_service=self.get_service(),
-                paasta_instance=self.get_instance(),
-                docker_img=self.get_docker_url(),
-                volumes=[
-                    f"{v['hostPath']}:{v['containerPath']}:{v['mode'].lower()}"
-                    for v in self.get_volumes(load_system_paasta_config().get_volumes())
-                ],
-                user_spark_opts=self.config_dict.get("spark_args", {}),
-                event_log_dir=get_default_event_log_dir(
-                    service=self.get_service(),
-                    aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
-                ),
+            mesos_leader = (
+                f"zk://{load_system_paasta_config().get_zk_hosts()}"
+                if not self.for_validation
+                else "N/A"
             )
         else:
-            spark_env = get_k8s_spark_env(
-                spark_app_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
-                spark_ui_port=self.spark_ui_port,
-                paasta_cluster=self.get_spark_paasta_cluster(),
-                paasta_service=self.get_service(),
-                paasta_instance=self.get_instance(),
-                paasta_pool=self.get_spark_paasta_pool(),
-                docker_img=self.get_docker_url(),
-                volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
-                user_spark_opts=self.config_dict.get("spark_args", {}),
-                event_log_dir=get_default_event_log_dir(
-                    service=self.get_service(),
-                    aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml"),
-                ),
-            )
-        return spark_env
+            mesos_leader = None
+
+        aws_creds = get_aws_credentials(
+            aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml")
+        )
+        self._spark_config_dict = get_spark_conf(
+            cluster_manager=self.get_spark_cluster_manager(),
+            spark_app_base_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
+            user_spark_opts=self.config_dict.get("spark_args", {}),
+            paasta_cluster=self.get_spark_paasta_cluster(),
+            paasta_pool=self.get_spark_paasta_pool(),
+            paasta_service=self.get_service(),
+            paasta_instance=self.get_instance(),
+            docker_img=self.get_docker_url(),
+            aws_creds=aws_creds,
+            extra_volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
+            # tron is using environment variable to load the required creds
+            with_secret=False,
+            mesos_leader=mesos_leader,
+            # load_system_paasta already load the default volumes
+            load_paasta_default_volumes=False,
+        )
+        return self._spark_config_dict
 
     def get_job_name(self):
         return self.job
@@ -308,18 +302,25 @@ class TronActionConfig(InstanceConfig):
     def get_env(self):
         env = super().get_env()
         if self.get_executor() == "spark":
+            spark_config_dict = self.get_spark_config_dict()
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
             env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            env["SPARK_OPTS"] = stringify_spark_env(self.get_spark_config_dict())
-            env.update(get_mesos_spark_auth_env())
-            env["CLUSTERMAN_RESOURCES"] = json.dumps(
-                dict(
-                    get_spark_resource_requirements(
-                        spark_config_dict=self.get_spark_config_dict(),
-                        webui_url=get_webui_url(self.spark_ui_port),
-                    ).values()
+            env["SPARK_OPTS"] = stringify_spark_env(spark_config_dict)
+            # The actual mesos secret will be decrypted and injected on mesos master when assigning
+            # tasks.
+            env["SPARK_MESOS_SECRET"] = "SHARED_SECRET(SPARK_MESOS_SECRET)"
+            if clusterman_metrics:
+                env["CLUSTERMAN_RESOURCES"] = json.dumps(
+                    generate_clusterman_metrics_entries(
+                        clusterman_metrics,
+                        get_resources_requested(spark_config_dict),
+                        spark_config_dict["spark.app.name"],
+                        get_webui_url(spark_config_dict["spark.ui.port"]),
+                    )
                 )
-            )
+            else:
+                env["CLUSTERMAN_RESOURCES"] = "{}"
+
             if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
                 try:
                     access_key, secret_key, session_token = get_aws_credentials(

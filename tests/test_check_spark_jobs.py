@@ -125,7 +125,7 @@ def test_get_matching_framework_info(
     [
         ("me", "paasta_spark_run_something", "me"),
         ("root", "Custom Spark App", None),
-        ("root", "jupyterhub_bill-search-learning_bill_39904", "bill"),
+        ("root", "jupyterhub_bill-search-learning_bill_39904_1234", "bill"),
     ],
 )
 def test_email_user(mock_smtp, framework_user, framework_name, expected):
