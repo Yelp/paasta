@@ -1,3 +1,9 @@
+clusterman (4.5.3) xenial bionic; urgency=low
+
+  * fix SIGALRM issue for some CLI commands
+
+ -- David Morrison <drmorr@yelp.com>  Wed, 21 Oct 2020 09:13:16 -0700
+
 clusterman (4.5.2) xenial bionic; urgency=low
 
   * fix minor bug in the caching layer
