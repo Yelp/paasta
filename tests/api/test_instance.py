@@ -205,7 +205,7 @@ def test_marathon_job_status(
     mock_service_config,
 ):
     mock_service_config.format_marathon_app_dict = lambda: {
-        "id": "foo.bar.gitabc.config123"
+        "id": "foo.bar.gitabc.config123",
     }
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
 
@@ -219,6 +219,7 @@ def test_marathon_job_status(
     )
 
     mock_app = mock.Mock(id="/foo.bar.gitabc.config123", tasks_running=2)
+    mock_app.container.docker.image = "registry.yelp/servicename-abc"
     job_status = instance.marathon_job_status(
         "fake_service",
         "fake_instance",
@@ -282,6 +283,7 @@ def test_marathon_job_status_no_dashboard_links(
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
     mock_get_marathon_app_deploy_status.return_value = 0  # Running status
     mock_app = mock.Mock(id="/foo.bar.gitabc.config123", tasks_running=2)
+    mock_app.container.docker.image = "registry.yelp/servicename-abc"
 
     mock_get_marathon_dashboard_links.return_value = None
 

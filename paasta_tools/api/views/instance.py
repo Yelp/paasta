@@ -69,6 +69,7 @@ from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.utils import calculate_tail_lines
+from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import TimeoutError
@@ -212,9 +213,8 @@ def get_active_shas_for_marathon_apps(
 ) -> Set[Tuple[str, str]]:
     ret = set()
     for (app, client) in marathon_apps_with_clients:
-        _, _, git_sha, config_sha = marathon_tools.deformat_job_id(app.id)
-        if git_sha.startswith("git"):
-            git_sha = git_sha[len("git") :]
+        git_sha = get_git_sha_from_dockerurl(app.container.docker.image, long=True)
+        _, _, _, config_sha = marathon_tools.deformat_job_id(app.id)
         if config_sha.startswith("config"):
             config_sha = config_sha[len("config") :]
         ret.add((git_sha, config_sha))
