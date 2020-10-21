@@ -22,4 +22,5 @@ def timeout_wrapper(main):
         signal.alarm(TIMEOUT_TIME_SECONDS)
 
         main(args)
+        signal.alarm(0)  # Cancel the alarm if we've gotten here
     return wrapper
