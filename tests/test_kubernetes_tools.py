@@ -59,6 +59,9 @@ from kubernetes.client import V2beta1ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools import kubernetes_tools
+from paasta_tools.contrib.get_running_task_allocation import (
+    get_kubernetes_metadata as task_allocation_get_kubernetes_metadata,
+)
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
@@ -115,7 +118,6 @@ from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.contrib.get_running_task_allocation import get_kubernetes_metadata as task_allocation_get_kubernetes_metadata
 
 
 def test_force_delete_pods():
@@ -3184,16 +3186,14 @@ def test_mode_to_int():
 
 def test_running_task_allocation_get_kubernetes_metadata():
     mock_pod = mock.MagicMock()
-    mock_pod.metadata.labels={
+    mock_pod.metadata.labels = {
         "yelp.com/paasta_service": "srv1",
         "yelp.com/paasta_instance": "instance1",
         "paasta.yelp.com/service": "srv1",
         "paasta.yelp.com/instance": "instance1",
     }
-    mock_pod.spec.node_selector={
-        'yelp.com/pool': 'default'
-    }
+    mock_pod.spec.node_selector = {"yelp.com/pool": "default"}
     mock_pod.metadata.name = "pod_1"
     mock_pod.status.pod_ip = "10.10.10.10"
     ret = task_allocation_get_kubernetes_metadata(mock_pod)
-    assert ret == ('srv1', 'instance1', 'default', 'pod_1', '10.10.10.10')
+    assert ret == ("srv1", "instance1", "default", "pod_1", "10.10.10.10")
