@@ -168,7 +168,7 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
                 "resources": get_kubernetes_resource_request(container.resources),
                 "container_type": get_container_type(container.name, instance),
                 "pod_name": pod_name,
-                "pod_ip": pod_ip
+                "pod_ip": pod_ip,
             }
         container_statuses = pod.status.container_statuses or []
         for container in container_statuses:
