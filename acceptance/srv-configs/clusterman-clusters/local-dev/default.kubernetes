@@ -16,7 +16,6 @@ autoscale_signal:
   internal: true
   period_minutes: 1
 
-# TODO (jmalt): this config option is a first draft, both naming and location are open to change
 autoscaling:
   prevent_scale_down_after_capacity_loss: true
   capacity_loss_threshold: 3

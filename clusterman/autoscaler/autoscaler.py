@@ -156,7 +156,7 @@ class Autoscaler:
         no_scale_down = False
         if self.autoscaling_config.prevent_scale_down_after_capacity_loss:
             removed_nodes_since_last_reload = self.pool_manager.get_removed_nodes_since_last_reload()
-            # TODO (jmalt): we may want something more sophisticated than len(nodes),
+            # TODO (jmalt, CLUSTERMAN-553): we may want something more sophisticated than len(nodes),
             # especially for heterogeneous SFRs
             if len(removed_nodes_since_last_reload) > self.autoscaling_config.capacity_loss_threshold:
                 logger.warning('Nodes lost since last autoscaler run is greater than limit,'

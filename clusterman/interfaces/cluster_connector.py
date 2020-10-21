@@ -37,9 +37,9 @@ class ClusterConnector(metaclass=ABCMeta):
         """ Refresh any state that needs to be stored at the start of an autoscaling run """
         pass
 
-    def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
-        # this is only available in the KubernetesClusterConnector and shouldn't be called otherwise
-        raise NotImplementedError
+    # def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
+    #     # this is only available in the KubernetesClusterConnector and shouldn't be called otherwise
+    #     raise NotImplementedError
 
     def get_agent_metadata(self, ip_address: Optional[str]) -> AgentMetadata:
         """ Get metadata about a cluster agent given an IP address

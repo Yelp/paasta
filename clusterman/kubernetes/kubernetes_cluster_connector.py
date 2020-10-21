@@ -107,15 +107,6 @@ class KubernetesClusterConnector(ClusterConnector):
         self._pods_by_ip = self._get_pods_by_ip()
 
     def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
-        try:
-            kubernetes.config.load_kube_config(staticconf.read_string(f'{self.kubeconfig_path}'))
-        except TypeError:
-            error_msg = 'Could not load KUBECONFIG; is this running on Kubernetes master?'
-            if 'yelpcorp' in socket.getfqdn():
-                error_msg += '\nHint: try using the clusterman-k8s-<clustername> wrapper script!'
-            logger.error(error_msg)
-            raise
-
         previous_nodes = self._nodes_by_ip
         current_nodes = self._get_nodes_by_ip()
 
