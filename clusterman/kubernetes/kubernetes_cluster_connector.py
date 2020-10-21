@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import socket
 from collections import defaultdict
 from distutils.util import strtobool
@@ -64,7 +65,7 @@ class CachedCoreV1Api:
         global KUBERNETES_API_CACHE
         func = getattr(self._client, attr)
 
-        if attr in self.CACHED_FUNCTION_CALLS:
+        if os.environ.get('KUBE_CACHE_ENABLED', '') and attr in self.CACHED_FUNCTION_CALLS:
             def decorator(f):
                 def wrapper(*args, **kwargs):
                     k = hashkey(attr, *args, **kwargs)
