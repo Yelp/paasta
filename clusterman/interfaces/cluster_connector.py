@@ -14,10 +14,8 @@
 from abc import ABCMeta
 from abc import abstractmethod
 from typing import Optional
-from typing import Set
 
 import staticconf
-from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 
 from clusterman.config import POOL_NAMESPACE
 from clusterman.interfaces.types import AgentMetadata
@@ -36,10 +34,6 @@ class ClusterConnector(metaclass=ABCMeta):
     def reload_state(self) -> None:  # pragma: no cover
         """ Refresh any state that needs to be stored at the start of an autoscaling run """
         pass
-
-    # def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
-    #     # this is only available in the KubernetesClusterConnector and shouldn't be called otherwise
-    #     raise NotImplementedError
 
     def get_agent_metadata(self, ip_address: Optional[str]) -> AgentMetadata:
         """ Get metadata about a cluster agent given an IP address
