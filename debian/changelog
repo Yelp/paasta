@@ -1,3 +1,11 @@
+paasta-tools (0.97.16) xenial; urgency=medium
+
+  * 0.97.16 tagged with 'make release'
+    Commit: Have status API return full-length git SHAs in active_shas
+    for marathon apps, to be consistent with kubernetes. PAASTA-17026
+
+ -- Evan Krall <krall@yelp.com>  Wed, 21 Oct 2020 17:28:37 -0700
+
 paasta-tools (0.97.15) xenial; urgency=medium
 
   * 0.97.15 tagged with 'make release'
