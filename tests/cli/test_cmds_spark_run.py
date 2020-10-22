@@ -222,19 +222,18 @@ def test_get_spark_env(
     extra_expected,
     aws,
     expected_aws,
-    mock_create_spark_config_str,
     mock_get_possible_launced_by_user_variable_from_env,
 ):
-    spark_opts = {"spark.ui.port": "1234"}
+    spark_conf_str = "--conf spark.ui.port=1234"
     expected_output = {
         "SPARK_USER": "root",
-        "SPARK_OPTS": mock_create_spark_config_str.return_value,
+        "SPARK_OPTS": "--conf spark.ui.port=1234",
         "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
         "PAASTA_INSTANCE_TYPE": "spark",
         **extra_expected,
         **expected_aws,
     }
-    assert spark_run.get_spark_env(args, spark_opts, aws) == expected_output
+    assert spark_run.get_spark_env(args, spark_conf_str, aws, "1234") == expected_output
 
 
 @pytest.mark.parametrize(
