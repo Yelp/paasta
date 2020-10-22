@@ -1,3 +1,12 @@
+paasta-tools (0.97.17) xenial; urgency=medium
+
+  * 0.97.17 tagged with 'make release'
+    Commit: Merge pull request #2945 from
+    Yelp/u/tingyenl/bump_service_configuration_lib_2.5.2  bump service-
+    configuration-lib to 2.5.2
+
+ -- Lydian Lee <tingyenl@yelp.com>  Wed, 21 Oct 2020 18:04:30 -0700
+
 paasta-tools (0.97.16) xenial; urgency=medium
 
   * 0.97.16 tagged with 'make release'
