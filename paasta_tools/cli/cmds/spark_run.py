@@ -400,12 +400,12 @@ def get_smart_paasta_instance_name(args):
 
 def get_spark_env(
     args: argparse.Namespace,
-    spark_conf: Dict[str, str],
+    spark_conf_str: str,
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
+    ui_port: str,
 ) -> Dict[str, str]:
     """Create the env config dict to configure on the docker container"""
 
-    spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     spark_env = {}
 
     access_key, secret_key, _ = aws_creds
@@ -437,8 +437,7 @@ def get_spark_env(
             )
             sys.exit(1)
         spark_env["SPARK_HISTORY_OPTS"] = (
-            f"-D{args.spark_args} "
-            f"-Dspark.history.ui.port={spark_conf['spark.ui.port']}"
+            f"-D{args.spark_args} " f"-Dspark.history.ui.port={ui_port}"
         )
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
@@ -469,10 +468,13 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
     spark_config_entries = list()
 
     if is_mrjob:
-        spark_master = spark_config_dict.pop("spark.master")
+        spark_master = spark_config_dict["spark.master"]
         spark_config_entries.append(f"--spark-master={spark_master}")
 
     for opt, val in spark_config_dict.items():
+        # mrjob use separate options to configure master
+        if is_mrjob and opt == "spark.master":
+            continue
         spark_config_entries.append(f"{conf_option} {opt}={val}")
     return " ".join(spark_config_entries)
 
@@ -545,10 +547,12 @@ def configure_and_run_docker_container(
     volumes.append("/nail/home:/nail/home:rw")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
-    environment.update(get_spark_env(args, spark_conf, aws_creds))  # type:ignore
+    spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
+    environment.update(
+        get_spark_env(args, spark_conf_str, aws_creds, spark_conf["spark.ui.port"])
+    )  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
-    spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:
@@ -778,7 +782,6 @@ def paasta_spark_run(args):
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
     )
-
     return configure_and_run_docker_container(
         args,
         docker_img=docker_image,
