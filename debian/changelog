@@ -1,3 +1,11 @@
+paasta-tools (0.97.18) xenial; urgency=medium
+
+  * 0.97.18 tagged with 'make release'
+    Commit: Merge pull request #2947 from
+    Yelp/u/tingyenl/fix_spark_run_with_mrjob  fix spark-run with mrjob
+
+ -- Qui Nguyen <qui@yelp.com>  Thu, 22 Oct 2020 17:49:28 -0700
+
 paasta-tools (0.97.17) xenial; urgency=medium
 
   * 0.97.17 tagged with 'make release'
