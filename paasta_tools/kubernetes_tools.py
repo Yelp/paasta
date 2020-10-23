@@ -2240,11 +2240,11 @@ def get_active_shas_for_service(
 
     for obj in obj_list:
         config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
-        if config_sha.startswith("config"):
+        if config_sha and config_sha.startswith("config"):
             config_sha = config_sha[len("config") :]
 
         git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
-        if git_sha.startswith("git"):
+        if git_sha and git_sha.startswith("git"):
             git_sha = git_sha[len("git") :]
 
         ret.add((git_sha, config_sha))
