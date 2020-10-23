@@ -1214,10 +1214,11 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
         long_running_status = None
         if status:
             try:
-                if status.marathon:
-                    long_running_status = status.marathon
-                elif status.kubernetes:
-                    long_running_status = status.kubernetes
+                long_running_status = status.marathon
+            except ApiAttributeError:
+                pass
+            try:
+                long_running_status = status.kubernetes
             except ApiAttributeError:
                 pass
         if not status:
