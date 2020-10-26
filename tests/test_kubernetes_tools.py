@@ -3195,5 +3195,13 @@ def test_running_task_allocation_get_kubernetes_metadata():
     mock_pod.spec.node_selector = {"yelp.com/pool": "default"}
     mock_pod.metadata.name = "pod_1"
     mock_pod.status.pod_ip = "10.10.10.10"
+    mock_pod.status.host_ip = "10.10.10.11"
     ret = task_allocation_get_kubernetes_metadata(mock_pod)
-    assert ret == ("srv1", "instance1", "default", "pod_1", "10.10.10.10")
+    assert ret == (
+        "srv1",
+        "instance1",
+        "default",
+        "pod_1",
+        "10.10.10.10",
+        "10.10.10.11",
+    )

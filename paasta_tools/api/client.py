@@ -18,14 +18,13 @@ Client interface for the Paasta rest api.
 import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import Any
 from typing import Mapping
 from typing import Optional
 from typing import Type
 from urllib.parse import ParseResult
 from urllib.parse import urlparse
-
-from dataclasses import dataclass
 
 import paasta_tools.paastaapi.apis as paastaapis
 from paasta_tools import paastaapi

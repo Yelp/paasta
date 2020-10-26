@@ -1,3 +1,11 @@
+paasta-tools (0.97.19) xenial; urgency=medium
+
+  * 0.97.19 tagged with 'make release'
+    Commit: Run get_running_task_allocation.py using paasta_tools Python
+    Run get_running_task_allocation.py using paasta_tools Python
+
+ -- Serg Shevchenko <sergs@yelp.com>  Mon, 26 Oct 2020 12:22:40 -0700
+
 paasta-tools (0.97.18) xenial; urgency=medium
 
   * 0.97.18 tagged with 'make release'
