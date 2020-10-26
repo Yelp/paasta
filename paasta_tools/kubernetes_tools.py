@@ -2247,7 +2247,9 @@ def get_active_shas_for_service(
         if git_sha and git_sha.startswith("git"):
             git_sha = git_sha[len("git") :]
 
-        ret.add((git_sha, config_sha))
+        # Suppress entries where we have no clue what's running.
+        if git_sha or config_sha:
+            ret.add((git_sha, config_sha))
     return ret
 
 
