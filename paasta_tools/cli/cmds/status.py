@@ -392,7 +392,8 @@ def create_autoscaling_info_table(autoscaling_info):
     else:
         current_utilization = "Exception"
 
-    if autoscaling_info.target_instances is None:
+    target_instances = autoscaling_info.target_instances
+    if target_instances is None:
         target_instances = "Exception"
 
     headers = [
