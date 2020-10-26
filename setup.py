@@ -87,7 +87,7 @@ setup(
         "paasta_tools/synapse_srv_namespaces_fact.py",
     ]
     + glob.glob("paasta_tools/contrib/*.sh")
-    + glob.glob("paasta_tools/contrib/*.py"),
+    + glob.glob("paasta_tools/contrib/[!_]*.py"),
     entry_points={
         "console_scripts": [
             "paasta=paasta_tools.cli.cli:main",
