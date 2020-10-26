@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/opt/venvs/paasta-tools/bin/python
 import argparse
 import time
 from typing import Any
