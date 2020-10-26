@@ -61,7 +61,6 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
-from paasta_tools.paastaapi.exceptions import ApiAttributeError
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -284,11 +283,8 @@ def find_instance_type(status: Any) -> str:
     :return: the first matching instance type or else None
     """
     for instance_type in INSTANCE_TYPE_WRITERS.keys():
-        try:
-            if status[instance_type] is not None:
-                return instance_type
-        except ApiAttributeError:
-            pass
+        if status.get(instance_type) is not None:
+            return instance_type
     return None
 
 
@@ -327,11 +323,8 @@ def print_marathon_status(
     marathon_status,
     verbose: int = 0,
 ) -> int:
-    error_message = (
-        marathon_status.error_message if "error_message" in marathon_status else None
-    )
-    if error_message:
-        output.append(error_message)
+    if marathon_status.error_message:
+        output.append(marathon_status.error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
@@ -353,13 +346,10 @@ def print_marathon_status(
     )
     output.append(f"    {job_status_human}")
 
-    autoscaling_info = (
-        marathon_status.autoscaling_info
-        if "autoscaling_info" in marathon_status
-        else None
-    )
-    if autoscaling_info:
-        autoscaling_info_table = create_autoscaling_info_table(autoscaling_info)
+    if marathon_status.autoscaling_info:
+        autoscaling_info_table = create_autoscaling_info_table(
+            marathon_status.autoscaling_info
+        )
         output.extend([f"      {line}" for line in autoscaling_info_table])
 
     for app_status in marathon_status.app_statuses:
@@ -373,7 +363,7 @@ def print_marathon_status(
     )
     output.extend([f"    {line}" for line in mesos_status_human])
 
-    smartstack = marathon_status.smartstack if "smartstack" in marathon_status else None
+    smartstack = marathon_status.smartstack
     if smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
             smartstack.registration,
@@ -382,7 +372,7 @@ def print_marathon_status(
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
-    envoy = marathon_status.envoy if "envoy" in marathon_status else None
+    envoy = marathon_status.envoy
     if envoy is not None:
         envoy_status_human = get_envoy_status_human(
             envoy.registration, envoy.expected_backends_per_location, envoy.locations,
@@ -395,22 +385,14 @@ def print_marathon_status(
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
-    current_utilization = (
-        autoscaling_info.current_utilization
-        if "current_utilization" in autoscaling_info
-        else None
-    )
-    if current_utilization is not None:
-        current_utilization = "{:.1f}%".format(current_utilization * 100)
+    if autoscaling_info.current_utilization is not None:
+        current_utilization = "{:.1f}%".format(
+            autoscaling_info.current_utilization * 100
+        )
     else:
         current_utilization = "Exception"
 
-    target_instances = (
-        autoscaling_info.target_instances
-        if "target_instances" in autoscaling_info
-        else None
-    )
-    if target_instances is None:
+    if autoscaling_info.target_instances is None:
         target_instances = "Exception"
 
     headers = [
@@ -421,11 +403,9 @@ def create_autoscaling_info_table(autoscaling_info):
         "Target instances",
     ]
     row = [
-        autoscaling_info.current_instances
-        if "current_instances" in autoscaling_info
-        else None,
-        autoscaling_info.max_instances if "max_instances" in autoscaling_info else None,
-        autoscaling_info.min_instances if "min_instances" in autoscaling_info else None,
+        autoscaling_info.current_instances,
+        autoscaling_info.max_instances,
+        autoscaling_info.min_instances,
         current_utilization,
         target_instances,
     ]
@@ -438,27 +418,18 @@ def create_autoscaling_info_table(autoscaling_info):
 def marathon_mesos_status_human(
     mesos_status, expected_instance_count,
 ):
-    error_message = (
-        mesos_status.error_message if "error_message" in mesos_status else None
-    )
-    running_task_count = (
-        mesos_status.running_task_count if "running_task_count" in mesos_status else 0
-    )
-    running_tasks = (
-        mesos_status.running_tasks if "running_tasks" in mesos_status else None
-    )
-    non_running_tasks = (
-        mesos_status.non_running_tasks if "non_running_tasks" in mesos_status else None
-    )
-
-    if error_message:
-        return [f"Mesos: {PaastaColors.red(error_message)}"]
+    if mesos_status.error_message:
+        return [f"Mesos: {PaastaColors.red(mesos_status.error_message)}"]
 
     output = []
     output.append(
-        marathon_mesos_status_summary(running_task_count, expected_instance_count)
+        marathon_mesos_status_summary(
+            mesos_status.get("running_task_count", 0), expected_instance_count
+        )
     )
 
+    running_tasks = mesos_status.running_tasks
+    non_running_tasks = mesos_status.non_running_tasks
     if running_tasks or non_running_tasks:
         output.append("  Running Tasks:")
         running_tasks_table = create_mesos_running_tasks_table(running_tasks)
@@ -500,22 +471,16 @@ def create_mesos_running_tasks_table(running_tasks):
 
 
 def get_mesos_task_memory_string(task):
-    rss = task.rss.value if "value" in task.rss else None
-    mem_limit = task.mem_limit.value if "value" in task.mem_limit else None
-    if rss is None or mem_limit is None:
-        error_message = task.rss.error_message if "error_message" in task.rss else None
-        if error_message is None:
-            error_message = (
-                task.mem_limit.error_message
-                if "error_message" in task.mem_limit
-                else None
-            )
-        return error_message
-    elif mem_limit == 0:
+    if task.rss.value is None or task.mem_limit.value is None:
+        return task.rss.error_message or task.mem_limit.error_message
+    elif task.mem_limit.value == 0:
         return "Undef"
     else:
-        mem_percent = 100 * rss / mem_limit
-        mem_string = "%d/%dMB" % ((rss / 1024 / 1024), (mem_limit / 1024 / 1024),)
+        mem_percent = 100 * task.rss.value / task.mem_limit.value
+        mem_string = "%d/%dMB" % (
+            (task.rss.value / 1024 / 1024),
+            (task.mem_limit.value / 1024 / 1024),
+        )
         if mem_percent > 90:
             return PaastaColors.red(mem_string)
         else:
@@ -523,26 +488,19 @@ def get_mesos_task_memory_string(task):
 
 
 def get_mesos_task_cpu_string(task):
-    cpu_shares = task.cpu_shares.value if "value" in task.cpu_shares else None
-    cpu_used_seconds = (
-        task.cpu_used_seconds.value if "value" in task.cpu_used_seconds else None
-    )
-    if cpu_shares is None or cpu_used_seconds is None:
-        error_message = (
-            task.cpu_shares.error_message
-            if "error_message" in task.cpu_shares
-            else None
-        )
-        return error_message
+    if task.cpu_shares.value is None or task.cpu_used_seconds.value is None:
+        return task.cpu_shares.error_message
     else:
         # The total time a task has been allocated is the total time the task has
         # been running multiplied by the "shares" a task has.
         # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
-        allocated_seconds = cpu_shares * task.duration_seconds
+        allocated_seconds = task.cpu_shares.value * task.duration_seconds
         if allocated_seconds == 0:
             return "Undef"
         else:
-            cpu_percent = round(100 * (cpu_used_seconds / allocated_seconds), 1)
+            cpu_percent = round(
+                100 * (task.cpu_used_seconds.value / allocated_seconds), 1
+            )
             cpu_string = "%s%%" % cpu_percent
             if cpu_percent > 90:
                 return PaastaColors.red(cpu_string)
@@ -625,11 +583,8 @@ def marathon_app_status_human(app_id, app_status) -> List[str]:
     )
 
     deploy_status = MarathonDeployStatus.fromstring(app_status.deploy_status)
-    backoff_seconds = (
-        app_status.backoff_seconds if "backoff_seconds" in app_status else None
-    )
     deploy_status_human = marathon_app_deploy_status_human(
-        deploy_status, backoff_seconds
+        deploy_status, app_status.backoff_seconds
     )
     output.append(f"  Status: {deploy_status_human}")
 
@@ -638,10 +593,7 @@ def marathon_app_status_human(app_id, app_status) -> List[str]:
         tasks_table = format_marathon_task_table(app_status.tasks)
         output.extend([f"    {line}" for line in tasks_table])
 
-    if (
-        "unused_offer_reason_counts" in app_status
-        and app_status.unused_offer_reason_counts is not None
-    ):
+    if app_status.unused_offer_reason_counts is not None:
         output.append("  Possibly stalled for:")
         output.extend(
             [
@@ -659,14 +611,14 @@ def format_marathon_task_table(tasks):
     ]
     for task in tasks:
         local_deployed_datetime = datetime.fromtimestamp(task.deployed_timestamp)
-        if "host" in task and task.host is not None:
+        if task.host is not None:
             hostname = f"{task.host}:{task.port}"
         else:
             hostname = "Unknown"
 
-        if "is_healthy" in task and task.is_healthy is None:
+        if task.is_healthy is None:
             health_check_status = PaastaColors.grey("N/A")
-        elif "is_healthy" in task and task.is_healthy:
+        elif task.is_healthy:
             health_check_status = PaastaColors.green("Healthy")
         else:
             health_check_status = PaastaColors.red("Unhealthy")
@@ -692,16 +644,14 @@ def format_kubernetes_pod_table(pods, verbose: int):
     ]
     for pod in pods:
         local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
-        host = pod.host if "host" in pod else None
-        hostname = f"{host}" if host is not None else PaastaColors.grey("N/A")
-        phase = pod.phase if "phase" in pod else None
-        reason = pod.reason if "reason" in pod else None
+        hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
+        phase = pod.phase
+        reason = pod.reason
         if phase is None or phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
         elif phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
-            ready = pod.ready if "ready" in pod else None
-            if not ready:
+            if not pod.ready:
                 health_check_status = PaastaColors.red("Unhealthy")
         elif phase == "Failed" and reason == "Evicted":
             health_check_status = PaastaColors.red("Evicted")
@@ -718,15 +668,12 @@ def format_kubernetes_pod_table(pods, verbose: int):
                 health_check_status,
             )
         )
-        events = pod.events if "events" in pod else None
-        if events and verbose > 1:
-            rows.extend(format_pod_event_messages(events, pod.name))
-        message = pod.message if "message" in pod else None
-        if message is not None:
-            rows.append(PaastaColors.grey(f"  {message}"))
-        containers = pod.containers if "containers" in pod else None
-        if len(containers) > 0:
-            rows.extend(format_tail_lines_for_kubernetes_pod(containers, pod.name))
+        if pod.events and verbose > 1:
+            rows.extend(format_pod_event_messages(pod.events, pod.name))
+        if pod.message is not None:
+            rows.append(PaastaColors.grey(f"  {pod.message}"))
+        if len(pod.containers) > 0:
+            rows.extend(format_tail_lines_for_kubernetes_pod(pod.containers, pod.name))
 
     return format_table(rows)
 
@@ -1177,13 +1124,10 @@ def print_kubernetes_status(
     kubernetes_status,
     verbose: int = 0,
 ) -> int:
-    try:
-        error_message = kubernetes_status.error_message
-        if error_message:
-            output.append(error_message)
-            return 1
-    except ApiAttributeError:
-        pass
+    error_message = kubernetes_status.error_message
+    if error_message:
+        output.append(error_message)
+        return 1
 
     bouncing_status = bouncing_status_human(
         kubernetes_status.app_count, kubernetes_status.bounce_method
@@ -1234,10 +1178,7 @@ def print_kubernetes_status(
         )
         output.extend([f"        {line}" for line in replicasets_table])
 
-    try:
-        autoscaling_status = kubernetes_status.autoscaling_status
-    except AttributeError:
-        autoscaling_status = None
+    autoscaling_status = kubernetes_status.autoscaling_status
     if autoscaling_status and verbose > 0:
         output.append("    Autoscaling status:")
         output.append(f"       min_instances: {autoscaling_status['min_instances']}")
@@ -1268,25 +1209,19 @@ def print_kubernetes_status(
             metrics_table.append([metric["name"], current_metric, target_metric])
         output.extend(["         " + s for s in format_table(metrics_table)])
 
-    try:
-        smartstack = kubernetes_status.smartstack
-    except ApiAttributeError:
-        smartstack = None
-    if smartstack is not None:
+    if kubernetes_status.smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
-            smartstack.registration,
-            smartstack.expected_backends_per_location,
-            smartstack.locations,
+            kubernetes_status.smartstack.registration,
+            kubernetes_status.smartstack.expected_backends_per_location,
+            kubernetes_status.smartstack.locations,
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
-    try:
-        envoy = kubernetes_status.envoy
-    except ApiAttributeError:
-        envoy = None
-    if envoy is not None:
+    if kubernetes_status.envoy is not None:
         envoy_status_human = get_envoy_status_human(
-            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
+            kubernetes_status.envoy.registration,
+            kubernetes_status.envoy.expected_backends_per_location,
+            kubernetes_status.envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
     return 0
