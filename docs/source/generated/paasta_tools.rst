@@ -9,6 +9,7 @@ Subpackages
    paasta_tools.api
    paasta_tools.autoscaling
    paasta_tools.cli
+   paasta_tools.contrib
    paasta_tools.deployd
    paasta_tools.frameworks
    paasta_tools.instance
