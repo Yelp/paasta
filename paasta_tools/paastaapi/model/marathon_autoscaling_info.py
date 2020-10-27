@@ -77,10 +77,10 @@ class MarathonAutoscalingInfo(ModelNormal):
         """
         return {
             'current_instances': (int,),  # noqa: E501
-            'current_utilization': (float,),  # noqa: E501
+            'current_utilization': (float, none_type,),  # noqa: E501
             'max_instances': (int,),  # noqa: E501
             'min_instances': (int,),  # noqa: E501
-            'target_instances': (int,),  # noqa: E501
+            'target_instances': (int, none_type,),  # noqa: E501
         }
 
     @cached_property
@@ -143,10 +143,10 @@ class MarathonAutoscalingInfo(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             current_instances (int): The number of instances of the service currently running. [optional]  # noqa: E501
-            current_utilization (float): The current utilization of the instances&#39; allocated resources. [optional]  # noqa: E501
+            current_utilization (float, none_type): The current utilization of the instances&#39; allocated resources. [optional]  # noqa: E501
             max_instances (int): The maximum number of instances that the autoscaler will scale to. [optional]  # noqa: E501
             min_instances (int): The minimum number of instances that the autoscaler will scale to. [optional]  # noqa: E501
-            target_instances (int): The autoscaler&#39;s current target number of instances of this service to run. [optional]  # noqa: E501
+            target_instances (int, none_type): The autoscaler&#39;s current target number of instances of this service to run. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

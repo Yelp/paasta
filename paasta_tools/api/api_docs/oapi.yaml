@@ -396,6 +396,9 @@ components:
         desired_app_id:
           description: ID of the desired version of a service instance
           type: string
+        app_id:
+          description: ID of the current version of a service instance
+          type: string
         desired_state:
           description: Desired state of a service, for Marathon
           enum:
@@ -503,6 +506,7 @@ components:
           type: number
         host:
           description: name of the pod's host
+          nullable: true
           type: string
         message:
           description: long message explaining the pod's state
@@ -512,6 +516,7 @@ components:
           description: name of the pod in Kubernetes
           type: string
         phase:
+          nullable: true
           description: The status of the pod
           type: string
         ready:
@@ -521,7 +526,19 @@ components:
           description: short message explaining the pod's state
           nullable: true
           type: string
+        events:
+          description: Kubernetes pod events
+          type: array
+          items:
+            $ref: '#/components/schemas/KubernetesPodEvent'
       type: object
+    KubernetesPodEvent:
+      type: object
+      properties:
+        message:
+          type: string
+        timeStamp:
+          type: string
     KubernetesReplicaSet:
       properties:
         create_timestamp:
@@ -600,6 +617,7 @@ components:
           type: integer
         current_utilization:
           description: The current utilization of the instances' allocated resources
+          nullable: true
           format: float
           type: number
         max_instances:
@@ -615,6 +633,7 @@ components:
         target_instances:
           description: The autoscaler's current target number of instances of this
             service to run
+          nullable: true
           format: int32
           type: integer
       type: object
@@ -721,12 +740,14 @@ components:
           type: number
         host:
           description: Name of the host on which the task is running
+          nullable: true
           type: string
         id:
           description: ID of the task in Mesos
           type: string
         is_healthy:
           description: Whether Marathon thinks the task is healthy
+          nullable: true
           type: boolean
         port:
           description: Port on which the task is listening

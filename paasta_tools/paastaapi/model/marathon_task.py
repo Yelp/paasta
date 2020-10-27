@@ -77,9 +77,9 @@ class MarathonTask(ModelNormal):
         """
         return {
             'deployed_timestamp': (float,),  # noqa: E501
-            'host': (str,),  # noqa: E501
+            'host': (str, none_type,),  # noqa: E501
             'id': (str,),  # noqa: E501
-            'is_healthy': (bool,),  # noqa: E501
+            'is_healthy': (bool, none_type,),  # noqa: E501
             'port': (int,),  # noqa: E501
         }
 
@@ -143,9 +143,9 @@ class MarathonTask(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             deployed_timestamp (float): Time at which the task was deployed. [optional]  # noqa: E501
-            host (str): Name of the host on which the task is running. [optional]  # noqa: E501
+            host (str, none_type): Name of the host on which the task is running. [optional]  # noqa: E501
             id (str): ID of the task in Mesos. [optional]  # noqa: E501
-            is_healthy (bool): Whether Marathon thinks the task is healthy. [optional]  # noqa: E501
+            is_healthy (bool, none_type): Whether Marathon thinks the task is healthy. [optional]  # noqa: E501
             port (int): Port on which the task is listening. [optional]  # noqa: E501
         """
 

@@ -17,7 +17,6 @@ import difflib
 import shutil
 import sys
 from collections import defaultdict
-from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 from enum import Enum
@@ -42,7 +41,7 @@ from service_configuration_lib import read_deploy
 
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
-from paasta_tools.api.client import get_paasta_api_client
+from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -235,17 +234,17 @@ def paasta_status_on_api_endpoint(
     verbose: int,
 ) -> int:
     output.append("    instance: %s" % PaastaColors.cyan(instance))
-    client = get_paasta_api_client(cluster, system_paasta_config)
+    client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
     try:
         status = client.service.status_instance(
             service=service, instance=instance, verbose=verbose
-        ).result()
+        )
     except client.api_error as exc:
-        output.append(PaastaColors.red(exc.response.text))
-        return exc.status_code
+        output.append(PaastaColors.red(exc.reason))
+        return exc.status
     except (client.connection_error, client.timeout_error) as exc:
         output.append(
             PaastaColors.red(f"Could not connect to API: {exc.__class__.__name__}")
@@ -277,14 +276,14 @@ def paasta_status_on_api_endpoint(
 
 def find_instance_type(status: Any) -> str:
     """
-    find_instance_type finds the instance type from the status api response it iterates over all instance type
-    registered in `INSTANCE_TYPE_WRITERS`
+    find_instance_type finds the instance type from the status api response it
+    iterates over all instance type registered in `INSTANCE_TYPE_WRITERS`
 
     :param status: paasta api status object
     :return: the first matching instance type or else None
     """
     for instance_type in INSTANCE_TYPE_WRITERS.keys():
-        if instance_type in status and status[instance_type] is not None:
+        if status.get(instance_type) is not None:
             return instance_type
     return None
 
@@ -298,12 +297,12 @@ def print_adhoc_status(
     verbose: int = 0,
 ) -> int:
     output.append(f"    Job: {instance}")
-    for run in status:
+    for run in status.value:
         output.append(
             "Launch time: %s, run id: %s, framework id: %s"
             % (run["launch_time"], run["run_id"], run["framework_id"])
         )
-    if status:
+    if status.value:
         output.append(
             (
                 "    Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
@@ -360,79 +359,78 @@ def print_marathon_status(
         output.extend([f"      {line}" for line in app_status_human])
 
     mesos_status_human = marathon_mesos_status_human(
-        marathon_status.mesos.error_message,
-        marathon_status.mesos.running_task_count or 0,
-        marathon_status.expected_instance_count,
-        marathon_status.mesos.running_tasks,
-        marathon_status.mesos.non_running_tasks,
+        marathon_status.mesos, marathon_status.expected_instance_count
     )
     output.extend([f"    {line}" for line in mesos_status_human])
 
-    if marathon_status.smartstack is not None:
+    smartstack = marathon_status.smartstack
+    if smartstack is not None:
         smartstack_status_human = get_smartstack_status_human(
-            marathon_status.smartstack.registration,
-            marathon_status.smartstack.expected_backends_per_location,
-            marathon_status.smartstack.locations,
+            smartstack.registration,
+            smartstack.expected_backends_per_location,
+            smartstack.locations,
         )
         output.extend([f"    {line}" for line in smartstack_status_human])
 
-    if marathon_status.envoy is not None:
+    envoy = marathon_status.envoy
+    if envoy is not None:
         envoy_status_human = get_envoy_status_human(
-            marathon_status.envoy.registration,
-            marathon_status.envoy.expected_backends_per_location,
-            marathon_status.envoy.locations,
+            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
 
     return 0
 
 
-autoscaling_fields_to_headers = OrderedDict(
-    current_instances="Current instances",
-    max_instances="Max instances",
-    min_instances="Min instances",
-    current_utilization="Current utilization",
-    target_instances="Target instances",
-)
-
-
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
     if autoscaling_info.current_utilization is not None:
-        autoscaling_info.current_utilization = "{:.1f}%".format(
+        current_utilization = "{:.1f}%".format(
             autoscaling_info.current_utilization * 100
         )
     else:
-        autoscaling_info.current_utilization = "Exception"
+        current_utilization = "Exception"
 
-    if autoscaling_info.target_instances is None:
-        autoscaling_info.target_instances = "Exception"
+    target_instances = autoscaling_info.target_instances
+    if target_instances is None:
+        target_instances = "Exception"
 
-    headers = list(autoscaling_fields_to_headers.values())
-    row = [
-        str(getattr(autoscaling_info, field)) for field in autoscaling_fields_to_headers
+    headers = [
+        "Current instances",
+        "Max instances",
+        "Min instances",
+        "Current utilization",
+        "Target instances",
     ]
+    row = [
+        autoscaling_info.current_instances,
+        autoscaling_info.max_instances,
+        autoscaling_info.min_instances,
+        current_utilization,
+        target_instances,
+    ]
+    row = [str(e) for e in row]
     table = [f"  {line}" for line in format_table([headers, row])]
     output.extend(table)
     return output
 
 
 def marathon_mesos_status_human(
-    error_message,
-    running_task_count,
-    expected_instance_count,
-    running_tasks,
-    non_running_tasks,
+    mesos_status, expected_instance_count,
 ):
-    if error_message:
-        return [f"Mesos: {PaastaColors.red(error_message)}"]
+    if mesos_status.error_message:
+        return [f"Mesos: {PaastaColors.red(mesos_status.error_message)}"]
 
     output = []
     output.append(
-        marathon_mesos_status_summary(running_task_count, expected_instance_count)
+        marathon_mesos_status_summary(
+            mesos_status.get("running_task_count", 0), expected_instance_count
+        )
     )
 
+    running_tasks = mesos_status.running_tasks
+    non_running_tasks = mesos_status.non_running_tasks
     if running_tasks or non_running_tasks:
         output.append("  Running Tasks:")
         running_tasks_table = create_mesos_running_tasks_table(running_tasks)
@@ -591,7 +589,7 @@ def marathon_app_status_human(app_id, app_status) -> List[str]:
     )
     output.append(f"  Status: {deploy_status_human}")
 
-    if app_status.tasks:
+    if "tasks" in app_status and app_status.tasks:
         output.append("  Tasks:")
         tasks_table = format_marathon_task_table(app_status.tasks)
         output.extend([f"    {line}" for line in tasks_table])
@@ -642,19 +640,21 @@ def format_marathon_task_table(tasks):
 
 
 def format_kubernetes_pod_table(pods, verbose: int):
-    rows: List[Union[str, Sequence[str]]] = [
+    rows: List[Union[tuple, str]] = [
         ("Pod ID", "Host deployed to", "Deployed at what localtime", "Health")
     ]
     for pod in pods:
         local_deployed_datetime = datetime.fromtimestamp(pod.deployed_timestamp)
         hostname = f"{pod.host}" if pod.host is not None else PaastaColors.grey("N/A")
-        if pod.phase is None or pod.phase == "Pending":
+        phase = pod.phase
+        reason = pod.reason
+        if phase is None or phase == "Pending":
             health_check_status = PaastaColors.grey("N/A")
-        elif pod.phase == "Running":
+        elif phase == "Running":
             health_check_status = PaastaColors.green("Healthy")
             if not pod.ready:
                 health_check_status = PaastaColors.red("Unhealthy")
-        elif pod.phase == "Failed" and pod.reason == "Evicted":
+        elif phase == "Failed" and reason == "Evicted":
             health_check_status = PaastaColors.red("Evicted")
         else:
             health_check_status = PaastaColors.red("Unhealthy")
@@ -1135,8 +1135,9 @@ def print_kubernetes_status(
     kubernetes_status,
     verbose: int = 0,
 ) -> int:
-    if kubernetes_status.error_message:
-        output.append(kubernetes_status.error_message)
+    error_message = kubernetes_status.error_message
+    if error_message:
+        output.append(error_message)
         return 1
 
     bouncing_status = bouncing_status_human(
@@ -1188,10 +1189,7 @@ def print_kubernetes_status(
         )
         output.extend([f"        {line}" for line in replicasets_table])
 
-    try:
-        autoscaling_status = kubernetes_status.autoscaling_status
-    except AttributeError:
-        autoscaling_status = None
+    autoscaling_status = kubernetes_status.autoscaling_status
     if autoscaling_status and verbose > 0:
         output.append("    Autoscaling status:")
         output.append(f"       min_instances: {autoscaling_status['min_instances']}")

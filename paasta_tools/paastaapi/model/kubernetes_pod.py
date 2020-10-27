@@ -32,7 +32,9 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 
 def lazy_import():
     from paasta_tools.paastaapi.model.kubernetes_container import KubernetesContainer
+    from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent
     globals()['KubernetesContainer'] = KubernetesContainer
+    globals()['KubernetesPodEvent'] = KubernetesPodEvent
 
 
 class KubernetesPod(ModelNormal):
@@ -83,12 +85,13 @@ class KubernetesPod(ModelNormal):
         return {
             'containers': ([KubernetesContainer],),  # noqa: E501
             'deployed_timestamp': (float,),  # noqa: E501
-            'host': (str,),  # noqa: E501
+            'host': (str, none_type,),  # noqa: E501
             'message': (str, none_type,),  # noqa: E501
             'name': (str,),  # noqa: E501
-            'phase': (str,),  # noqa: E501
+            'phase': (str, none_type,),  # noqa: E501
             'ready': (bool,),  # noqa: E501
             'reason': (str, none_type,),  # noqa: E501
+            'events': ([KubernetesPodEvent],),  # noqa: E501
         }
 
     @cached_property
@@ -105,6 +108,7 @@ class KubernetesPod(ModelNormal):
         'phase': 'phase',  # noqa: E501
         'ready': 'ready',  # noqa: E501
         'reason': 'reason',  # noqa: E501
+        'events': 'events',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -155,12 +159,13 @@ class KubernetesPod(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             containers ([KubernetesContainer]): [optional]  # noqa: E501
             deployed_timestamp (float): Time at which the pod was deployed. [optional]  # noqa: E501
-            host (str): name of the pod&#39;s host. [optional]  # noqa: E501
+            host (str, none_type): name of the pod&#39;s host. [optional]  # noqa: E501
             message (str, none_type): long message explaining the pod&#39;s state. [optional]  # noqa: E501
             name (str): name of the pod in Kubernetes. [optional]  # noqa: E501
-            phase (str): The status of the pod. [optional]  # noqa: E501
+            phase (str, none_type): The status of the pod. [optional]  # noqa: E501
             ready (bool): Whether or not the pod is ready (i.e. all containers up). [optional]  # noqa: E501
             reason (str, none_type): short message explaining the pod&#39;s state. [optional]  # noqa: E501
+            events ([KubernetesPodEvent]): Kubernetes pod events. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)
