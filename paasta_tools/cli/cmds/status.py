@@ -297,12 +297,12 @@ def print_adhoc_status(
     verbose: int = 0,
 ) -> int:
     output.append(f"    Job: {instance}")
-    for run in status:
+    for run in status.value:
         output.append(
             "Launch time: %s, run id: %s, framework id: %s"
             % (run["launch_time"], run["run_id"], run["framework_id"])
         )
-    if status:
+    if status.value:
         output.append(
             (
                 "    Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
