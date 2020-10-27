@@ -1358,6 +1358,16 @@
                     "type": "number",
                     "format": "float",
                     "description": "Time at which the replicaset was created"
+                },
+                "git_sha": {
+                    "type": "string",
+                    "description": "Service git SHA that this replicaset runs",
+                    "x-nullable": true
+                },
+                "config_sha": {
+                    "type": "string",
+                    "description": "Hash of the configuration of this replicaset",
+                    "x-nullable": true
                 }
             }
         },

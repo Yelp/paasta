@@ -680,7 +680,15 @@ def format_kubernetes_pod_table(pods, verbose: int):
 
 
 def format_kubernetes_replicaset_table(replicasets):
-    rows = [("ReplicaSet Name", "Ready / Desired", "Created at what localtime")]
+    rows = [
+        (
+            "ReplicaSet Name",
+            "Ready / Desired",
+            "Created at what localtime",
+            "Service git SHA",
+            "Config hash",
+        )
+    ]
     for replicaset in replicasets:
         local_created_datetime = datetime.fromtimestamp(replicaset.create_timestamp)
 
@@ -698,6 +706,8 @@ def format_kubernetes_replicaset_table(replicasets):
                     local_created_datetime.strftime("%Y-%m-%dT%H:%M"),
                     humanize.naturaltime(local_created_datetime),
                 ),
+                replicaset.git_sha if replicaset.git_sha else "Unknown",
+                replicaset.config_sha if replicaset.config_sha else "Unknown",
             )
         )
 

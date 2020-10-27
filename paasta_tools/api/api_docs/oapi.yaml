@@ -539,6 +539,14 @@ components:
           description: number of desired replicas for the replicaset
           format: int32
           type: integer
+        git_sha:
+          description: Git sha of a service
+          type: string
+          nullable: true
+        config_sha:
+          description: Hash of configuration of this replicaset
+          type: string
+          nullable: true
       type: object
     MarathonAppStatus:
       properties:

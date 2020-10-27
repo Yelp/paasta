@@ -80,6 +80,8 @@ class KubernetesReplicaSet(ModelNormal):
             'name': (str,),  # noqa: E501
             'ready_replicas': (int,),  # noqa: E501
             'replicas': (int,),  # noqa: E501
+            'git_sha': (str, none_type,),  # noqa: E501
+            'config_sha': (str, none_type,),  # noqa: E501
         }
 
     @cached_property
@@ -92,6 +94,8 @@ class KubernetesReplicaSet(ModelNormal):
         'name': 'name',  # noqa: E501
         'ready_replicas': 'ready_replicas',  # noqa: E501
         'replicas': 'replicas',  # noqa: E501
+        'git_sha': 'git_sha',  # noqa: E501
+        'config_sha': 'config_sha',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -144,6 +148,8 @@ class KubernetesReplicaSet(ModelNormal):
             name (str): name of the replicaset in Kubernetes. [optional]  # noqa: E501
             ready_replicas (int): number of ready replicas for the replicaset. [optional]  # noqa: E501
             replicas (int): number of desired replicas for the replicaset. [optional]  # noqa: E501
+            git_sha (str, none_type): Git sha of a service. [optional]  # noqa: E501
+            config_sha (str, none_type): Hash of configuration of this replicaset. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

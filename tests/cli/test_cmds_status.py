@@ -1291,6 +1291,8 @@ class TestPrintKubernetesStatus:
                 replicas=3,
                 ready_replicas=2,
                 create_timestamp=1562963508,
+                git_sha=None,
+                config_sha=None,
             )
         ]
 
@@ -1316,8 +1318,8 @@ class TestPrintKubernetesStatus:
             f"        app_3   fake_host3        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
             f"        {PaastaColors.grey('  Disk quota exceeded')}",
             f"      ReplicaSets:",
-            f"        ReplicaSet Name  Ready / Desired  Created at what localtime",
-            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})",
+            f"        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
+            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
         ]
 
         assert expected_output == output
@@ -1542,7 +1544,12 @@ class TestFormatKubernetesPodTable:
     @pytest.fixture
     def mock_kubernetes_replicaset(self):
         return Struct(
-            name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600,
+            name="abc123",
+            replicas=3,
+            ready_replicas=3,
+            create_timestamp=1565648600,
+            git_sha="def456",
+            config_sha=None,
         )
 
     def test_format_kubernetes_pod_table(
@@ -1572,6 +1579,8 @@ class TestFormatKubernetesPodTable:
             "ReplicaSet Name": "abc123",
             "Ready / Desired": PaastaColors.green("3/3"),
             "Created at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Service git SHA": "def456",
+            "Config hash": "Unknown",
         }
 
     def test_no_host(
