@@ -30,6 +30,7 @@ Submodules
    paasta_tools.paastaapi.model.integer_and_error
    paasta_tools.paastaapi.model.kubernetes_container
    paasta_tools.paastaapi.model.kubernetes_pod
+   paasta_tools.paastaapi.model.kubernetes_pod_event
    paasta_tools.paastaapi.model.kubernetes_replica_set
    paasta_tools.paastaapi.model.marathon_app_status
    paasta_tools.paastaapi.model.marathon_autoscaling_info

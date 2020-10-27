@@ -58,7 +58,6 @@ from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.paastaapi import ApiAttributeError
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -1213,16 +1212,10 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
 
         long_running_status = None
         if status:
-            try:
-                if status.marathon:
-                    long_running_status = status.marathon
-            except ApiAttributeError:
-                pass
-            try:
-                if status.kubernetes:
-                    long_running_status = status.kubernetes
-            except ApiAttributeError:
-                pass
+            if status.marathon:
+                long_running_status = status.marathon
+            if status.kubernetes:
+                long_running_status = status.kubernetess
         if not status:
             log.debug(
                 "No status for {}.{}, in {}. Not deployed yet.".format(
@@ -1313,14 +1306,9 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
                 instances_out.put(instance_config)
                 continue
 
-            # https://github.com/Yelp/paasta/pull/2940#discussion_r508334043
-            try:
-                active_shas = long_running_status.active_shas
-            except ApiAttributeError:
-                active_shas = None
             # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
-            if active_shas is not None:
-                active_git_shas = {g for g, c in active_shas}
+            if long_running_status.active_shas is not None:
+                active_git_shas = {g for g, c in long_running_status.active_shas}
 
                 if cluster_data.git_sha not in active_git_shas:
                     print(

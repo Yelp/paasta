@@ -117,6 +117,7 @@ class InstanceStatusMarathon(ModelNormal):
             'backoff_seconds': (int,),  # noqa: E501
             'deploy_status': (str,),  # noqa: E501
             'desired_app_id': (str,),  # noqa: E501
+            'app_id': (str,),  # noqa: E501
             'envoy': (EnvoyStatus,),  # noqa: E501
             'error_message': (str,),  # noqa: E501
             'expected_instance_count': (int,),  # noqa: E501
@@ -140,6 +141,7 @@ class InstanceStatusMarathon(ModelNormal):
         'backoff_seconds': 'backoff_seconds',  # noqa: E501
         'deploy_status': 'deploy_status',  # noqa: E501
         'desired_app_id': 'desired_app_id',  # noqa: E501
+        'app_id': 'app_id',  # noqa: E501
         'envoy': 'envoy',  # noqa: E501
         'error_message': 'error_message',  # noqa: E501
         'expected_instance_count': 'expected_instance_count',  # noqa: E501
@@ -205,6 +207,7 @@ class InstanceStatusMarathon(ModelNormal):
             backoff_seconds (int): backoff in seconds before launching the next task. [optional]  # noqa: E501
             deploy_status (str): Deploy status of a marathon service. [optional]  # noqa: E501
             desired_app_id (str): ID of the desired version of a service instance. [optional]  # noqa: E501
+            app_id (str): ID of the current version of a service instance. [optional]  # noqa: E501
             envoy (EnvoyStatus): [optional]  # noqa: E501
             error_message (str): Error message when a marathon job ID cannot be found. [optional]  # noqa: E501
             expected_instance_count (int): The number of desired instances of the service. [optional]  # noqa: E501

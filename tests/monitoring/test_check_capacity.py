@@ -74,7 +74,7 @@ def test_get_check_from_overrides_error():
 
 def test_capacity_check_ok(capfd):
     mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources.result.return_value = [
+    mock_api_client.resources.resources.result.return_value.value = [
         {
             "groupings": {"foo", "baz"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -100,7 +100,7 @@ def test_capacity_check_ok(capfd):
             "paasta_tools.monitoring.check_capacity.load_system_paasta_config",
             autospec=True,
         ), mock.patch(
-            "paasta_tools.monitoring.check_capacity.get_paasta_api_client",
+            "paasta_tools.monitoring.check_capacity.get_paasta_oapi_client",
             autospec=True,
             return_value=mock_api_client,
         ):
@@ -114,8 +114,8 @@ def test_capacity_check_ok(capfd):
 
 
 def test_capacity_check_warn(capfd):
-    mock_result = mock.MagicMock()
-    mock_result.result = lambda: [
+    mock_api_client = mock.MagicMock()
+    mock_api_client.resources.resources.return_value.value = [
         {
             "groupings": {"foo": "baz"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -123,8 +123,6 @@ def test_capacity_check_warn(capfd):
             "disk": {"total": 2, "free": 1, "used": 1},
         }
     ]
-    mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources = lambda groupings: mock_result
 
     for t in check_types:
         options = mock.MagicMock()
@@ -143,7 +141,7 @@ def test_capacity_check_warn(capfd):
             "paasta_tools.monitoring.check_capacity.load_system_paasta_config",
             autospec=True,
         ), mock.patch(
-            "paasta_tools.monitoring.check_capacity.get_paasta_api_client",
+            "paasta_tools.monitoring.check_capacity.get_paasta_oapi_client",
             autospec=True,
             return_value=mock_api_client,
         ):
@@ -157,8 +155,8 @@ def test_capacity_check_warn(capfd):
 
 
 def test_capacity_check_crit(capfd):
-    mock_result = mock.MagicMock()
-    mock_result.result = lambda: [
+    mock_api_client = mock.MagicMock()
+    mock_api_client.resources.resources.return_value.value = [
         {
             "groupings": {"foo": "baz"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -166,8 +164,6 @@ def test_capacity_check_crit(capfd):
             "disk": {"total": 2, "free": 1, "used": 1},
         }
     ]
-    mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources = lambda groupings: mock_result
 
     for t in check_types:
         options = mock.MagicMock()
@@ -186,7 +182,7 @@ def test_capacity_check_crit(capfd):
             "paasta_tools.monitoring.check_capacity.load_system_paasta_config",
             autospec=True,
         ), mock.patch(
-            "paasta_tools.monitoring.check_capacity.get_paasta_api_client",
+            "paasta_tools.monitoring.check_capacity.get_paasta_oapi_client",
             autospec=True,
             return_value=mock_api_client,
         ):
@@ -200,8 +196,8 @@ def test_capacity_check_crit(capfd):
 
 
 def test_capacity_check_overrides(capfd):
-    mock_result = mock.MagicMock()
-    mock_result.result = lambda: [
+    mock_api_client = mock.MagicMock()
+    mock_api_client.resources.resources.return_value.value = [
         {
             "groupings": {"foo": "bar"},
             "cpus": {"total": 2, "free": 1, "used": 1},
@@ -215,8 +211,6 @@ def test_capacity_check_overrides(capfd):
             "disk": {"total": 2, "free": 1, "used": 1},
         },
     ]
-    mock_api_client = mock.MagicMock()
-    mock_api_client.resources.resources = lambda groupings: mock_result
 
     mock_overrides = [
         {
@@ -243,7 +237,7 @@ def test_capacity_check_overrides(capfd):
             "paasta_tools.monitoring.check_capacity.load_system_paasta_config",
             autospec=True,
         ), mock.patch(
-            "paasta_tools.monitoring.check_capacity.get_paasta_api_client",
+            "paasta_tools.monitoring.check_capacity.get_paasta_oapi_client",
             autospec=True,
             return_value=mock_api_client,
         ), mock.patch(

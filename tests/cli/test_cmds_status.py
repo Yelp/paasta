@@ -17,15 +17,15 @@ from typing import Dict
 from typing import Mapping
 from typing import Set
 
+import mock
 import pytest
-from bravado.exception import HTTPError
-from bravado.requests_client import RequestsResponseAdapter
 from mock import ANY
 from mock import call
 from mock import MagicMock
 from mock import Mock
 from mock import patch
 
+import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
@@ -53,6 +53,7 @@ from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.cmds.status import verify_instances
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.paastaapi import ApiException
 from paasta_tools.utils import remove_ansi_escape_sequences
 
 
@@ -931,12 +932,10 @@ class Struct:
 
 
 @pytest.fixture
-def mock_marathon_status():
-    return Struct(
-        error_message=None,
+def mock_marathon_status(include_envoy=True, include_smartstack=True):
+    kwargs = dict(
         desired_state="start",
         desired_app_id="abc.def",
-        autoscaling_info=None,
         app_id="fake_app_id",
         app_count=1,
         running_instance_count=2,
@@ -944,32 +943,29 @@ def mock_marathon_status():
         deploy_status="Running",
         bounce_method="crossover",
         app_statuses=[],
-        mesos=Struct(
-            running_task_count=2,
-            error_message=None,
-            running_tasks=[],
-            non_running_tasks=[],
-        ),
-        smartstack=Struct(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        ),
-        envoy=Struct(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
+        mesos=paastamodels.MarathonMesosStatus(
+            running_task_count=2, running_tasks=[], non_running_tasks=[],
         ),
     )
+    if include_smartstack:
+        kwargs["smartstack"] = paastamodels.SmartstackStatus(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=1,
+            locations=[],
+        )
+    if include_envoy:
+        kwargs["envoy"] = paastamodels.EnvoyStatus(
+            registration="fake_service.fake_instance",
+            expected_backends_per_location=1,
+            locations=[],
+        )
+    return paastamodels.InstanceStatusMarathon(**kwargs)
 
 
 @pytest.fixture
 def mock_kubernetes_status():
-    return Struct(
-        error_message=None,
+    return paastamodels.InstanceStatusKubernetes(
         desired_state="start",
-        desired_app_id="abc.def",
-        autoscaling_info=None,
         app_id="fake_app_id",
         app_count=1,
         running_instance_count=2,
@@ -977,16 +973,16 @@ def mock_kubernetes_status():
         deploy_status="Running",
         deploy_status_message="some reason",
         bounce_method="crossover",
-        create_timestamp=1562963508,
+        create_timestamp=1562963508.0,
         namespace="paasta",
         pods=[],
         replicasets=[],
-        smartstack=Struct(
+        smartstack=paastamodels.SmartstackStatus(
             registration="fake_service.fake_instance",
             expected_backends_per_location=1,
             locations=[],
         ),
-        envoy=Struct(
+        envoy=paastamodels.EnvoyStatus(
             registration="fake_service.fake_instance",
             expected_backends_per_location=1,
             locations=[],
@@ -1040,46 +1036,41 @@ def mock_kafka_status() -> Mapping[str, Any]:
     )
 
 
+@mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
 def test_paasta_status_on_api_endpoint_marathon(
-    system_paasta_config, mock_marathon_status
+    mock_get_paasta_oapi_client, system_paasta_config, mock_marathon_status
 ):
-    fake_status_obj = Struct(
+    fake_status_obj = paastamodels.InstanceStatus(
         git_sha="fake_git_sha",
         instance="fake_instance",
         service="fake_service",
         marathon=mock_marathon_status,
     )
 
-    system_paasta_config = system_paasta_config
+    mock_api = mock_get_paasta_oapi_client.return_value
+    mock_api.service.status_instance.return_value = fake_status_obj
 
-    with patch("bravado.http_future.HttpFuture.result", autospec=True) as mock_result:
-        mock_result.return_value = fake_status_obj
-        output = []
-        paasta_status_on_api_endpoint(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            system_paasta_config=system_paasta_config,
-            verbose=0,
-        )
+    output = []
+    paasta_status_on_api_endpoint(
+        cluster="fake_cluster",
+        service="fake_service",
+        instance="fake_instance",
+        output=output,
+        system_paasta_config=system_paasta_config,
+        verbose=0,
+    )
 
 
 def test_paasta_status_exception(system_paasta_config):
-    system_paasta_config = system_paasta_config
-
     with patch(
-        "paasta_tools.cli.cmds.status.get_paasta_api_client", autospec=True
-    ) as mock_get_paasta_api_client:
-        requests_response = Mock(status_code=500, text="Internal Server Error")
-        incoming_response = RequestsResponseAdapter(requests_response)
-
+        "paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True
+    ) as mock_get_paasta_oapi_client:
         mock_swagger_client = Mock()
-        mock_swagger_client.api_error = HTTPError
-        mock_swagger_client.service.status_instance.side_effect = HTTPError(
-            incoming_response
+        mock_swagger_client.api_error = ApiException
+        mock_swagger_client.service.status_instance.side_effect = ApiException(
+            status=500, reason="Internal Server Error"
         )
-        mock_get_paasta_api_client.return_value = mock_swagger_client
+        mock_get_paasta_oapi_client.return_value = mock_swagger_client
         paasta_status_on_api_endpoint(
             cluster="fake_cluster",
             service="fake_service",
@@ -1136,14 +1127,13 @@ class TestPrintMarathonStatus:
         mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
         mock_create_autoscaling_info_table,
-        mock_marathon_status,
         include_autoscaling_info,
         include_smartstack,
         include_envoy,
     ):
         mock_marathon_app_status_human.side_effect = lambda desired_app_id, app_status: [
-            f"{app_status.id} status 1",
-            f"{app_status.id} status 2",
+            f"{app_status.deploy_status} status 1",
+            f"{app_status.deploy_status} status 2",
         ]
         mock_marathon_mesos_status_human.return_value = [
             "mesos status 1",
@@ -1162,13 +1152,15 @@ class TestPrintMarathonStatus:
             "autoscaling info 2",
         ]
 
-        mock_marathon_status.app_statuses = [Struct(id="app_1"), Struct(id="app_2")]
+        mms = mock_marathon_status(
+            include_smartstack=include_smartstack, include_envoy=include_envoy
+        )
+        mms.app_statuses = [
+            paastamodels.MarathonAppStatus(deploy_status="app_1"),
+            paastamodels.MarathonAppStatus(deploy_status="app_2"),
+        ]
         if include_autoscaling_info:
-            mock_marathon_status.autoscaling_info = Struct()
-        if not include_smartstack:
-            mock_marathon_status.smartstack = None
-        if not include_envoy:
-            mock_marathon_status.envoy = None
+            mms.autoscaling_info = paastamodels.MarathonAutoscalingInfo()
 
         output = []
         print_marathon_status(
@@ -1176,7 +1168,7 @@ class TestPrintMarathonStatus:
             service="fake_service",
             instance="fake_instance",
             output=output,
-            marathon_status=mock_marathon_status,
+            marathon_status=mms,
         )
 
         expected_output = [
@@ -1253,44 +1245,41 @@ class TestPrintKubernetesStatus:
         mock_kubernetes_app_deploy_status_human.return_value = "Running"
         mock_naturaltime.return_value = "a month ago"
         mock_kubernetes_status.pods = [
-            Struct(
+            paastamodels.KubernetesPod(
                 name="app_1",
                 host="fake_host1",
-                deployed_timestamp=1562963508,
+                deployed_timestamp=1562963508.0,
                 phase="Running",
                 ready=True,
                 containers=[],
                 message=None,
-                events=[],
             ),
-            Struct(
+            paastamodels.KubernetesPod(
                 name="app_2",
                 host="fake_host2",
-                deployed_timestamp=1562963510,
+                deployed_timestamp=1562963510.0,
                 phase="Running",
                 ready=True,
                 containers=[],
                 message=None,
-                events=[],
             ),
-            Struct(
+            paastamodels.KubernetesPod(
                 name="app_3",
                 host="fake_host3",
-                deployed_timestamp=1562963511,
+                deployed_timestamp=1562963511.0,
                 phase="Failed",
                 ready=False,
                 containers=[],
                 message="Disk quota exceeded",
                 reason="Evicted",
-                events=[],
             ),
         ]
         mock_kubernetes_status.replicasets = [
-            Struct(
+            paastamodels.KubernetesReplicaSet(
                 name="replicaset_1",
                 replicas=3,
                 ready_replicas=2,
-                create_timestamp=1562963508,
+                create_timestamp=1562963508.0,
             )
         ]
 
@@ -1395,7 +1384,7 @@ def _formatted_table_to_dict(formatted_table):
 
 
 def test_create_autoscaling_info_table():
-    mock_autoscaling_info = Struct(
+    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
         current_instances=2,
         max_instances=5,
         min_instances=1,
@@ -1416,7 +1405,7 @@ def test_create_autoscaling_info_table():
 
 
 def test_create_autoscaling_info_table_errors():
-    mock_autoscaling_info = Struct(
+    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
         current_instances=2,
         max_instances=5,
         min_instances=1,
@@ -1485,11 +1474,11 @@ class TestMarathonAppStatusHuman:
 class TestFormatMarathonTaskTable:
     @pytest.fixture
     def mock_marathon_task(self):
-        return Struct(
+        return paastamodels.MarathonTask(
             id="abc123",
             host="paasta.cloud",
             port=4321,
-            deployed_timestamp=1565648600,
+            deployed_timestamp=1565648600.0,
             is_healthy=True,
         )
 
@@ -1527,22 +1516,21 @@ class TestFormatMarathonTaskTable:
 class TestFormatKubernetesPodTable:
     @pytest.fixture
     def mock_kubernetes_pod(self):
-        return Struct(
+        return paastamodels.KubernetesPod(
             name="abc123",
             host="paasta.cloud",
-            deployed_timestamp=1565648600,
+            deployed_timestamp=1565648600.0,
             phase="Running",
             ready=True,
             containers=[],
             message=None,
             reason=None,
-            events=[],
         )
 
     @pytest.fixture
     def mock_kubernetes_replicaset(self):
-        return Struct(
-            name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600,
+        return paastamodels.KubernetesReplicaSet(
+            name="abc123", replicas=3, ready_replicas=3, create_timestamp=1565648600.0,
         )
 
     def test_format_kubernetes_pod_table(
@@ -1644,15 +1632,17 @@ def test_marathon_mesos_status_human(
     ]
     mock_create_mesos_non_running_tasks_table.return_value = ["non-running task 1"]
 
-    running_tasks = [Struct(), Struct()]
-    non_running_tasks = [Struct()]
-    output = marathon_mesos_status_human(
-        error_message=None,
+    running_tasks = [
+        paastamodels.MarathonMesosRunningTask(),
+        paastamodels.MarathonMesosRunningTask(),
+    ]
+    non_running_tasks = [paastamodels.MarathonMesosNonrunningTask()]
+    mesos_status = paastamodels.MarathonMesosStatus(
         running_task_count=2,
-        expected_instance_count=2,
         running_tasks=running_tasks,
         non_running_tasks=non_running_tasks,
     )
+    output = marathon_mesos_status_human(mesos_status, expected_instance_count=2,)
 
     assert output == [
         mock_marathon_mesos_status_summary.return_value,
@@ -1689,7 +1679,7 @@ class TestCreateMesosRunningTasksTable:
             cpu_shares=Struct(value=0.5),
             cpu_used_seconds=Struct(value=1.2),
             duration_seconds=300,
-            deployed_timestamp=1565567511,
+            deployed_timestamp=1565567511.0,
             tail_lines=Struct(),
         )
 
@@ -1717,12 +1707,12 @@ class TestCreateMesosRunningTasksTable:
     def test_error_messages(
         self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
     ):
-        mock_running_task.mem_limit = Struct(
-            value=None, error_message="Couldn't get memory"
+        mock_running_task.mem_limit = paastamodels.FloatAndError(
+            error_message="Couldn't get memory"
         )
-        mock_running_task.rss = Struct(value=1, error_message=None)
-        mock_running_task.cpu_shares = Struct(
-            value=None, error_message="Couldn't get CPU"
+        mock_running_task.rss = paastamodels.IntegerAndError(value=1)
+        mock_running_task.cpu_shares = paastamodels.FloatAndError(
+            error_message="Couldn't get CPU"
         )
 
         output = create_mesos_running_tasks_table([mock_running_task])
@@ -1762,7 +1752,7 @@ def test_create_mesos_non_running_tasks_table(
     mock_non_running_task = Struct(
         id="task_id",
         hostname="paasta.restaurant",
-        deployed_timestamp=1564642800,
+        deployed_timestamp=1564642800.0,
         state="Not running",
         tail_lines=Struct(),
     )

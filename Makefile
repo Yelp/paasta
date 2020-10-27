@@ -86,14 +86,19 @@ install-hooks:
 k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
 
+# image source: openapitools/openapi-generator-cli:latest
+# java command:
+#   in oapi repo: mvn clean && mvn install
+#   in paasta repo: java -jar ~/openapi-generator/modules/openapi-generator-cli/target/openapi-generator-cli.jar
 openapi-codegen:
 	rm -rf paasta_tools/paastaapi
-	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src \
-		yelp/openapi-generator-cli:20200929 \
+	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src -w /src \
+		yelp/openapi-generator-cli:20201026 \
 		generate \
-		-i /src/paasta_tools/api/api_docs/oapi.yaml \
+		-i paasta_tools/api/api_docs/oapi.yaml \
 		-g python-experimental \
 		--package-name paasta_tools.paastaapi \
-		-o /src/temp-openapi-client
+		-o temp-openapi-client \
+		-p pythonAttrNoneIfUnset=true
 	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
 	rm -rf temp-openapi-client
