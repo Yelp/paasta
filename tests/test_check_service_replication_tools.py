@@ -23,7 +23,7 @@ def test_main_kubernetes():
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 10
         mock_parse_args.return_value.under_replicated_warn_pct = 5
-        mock_check_services_replication.return_value = 6
+        mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
             instance_type_class=None, check_service_replication=None, namespace="baz",
@@ -38,9 +38,7 @@ def test_main_kubernetes():
             },
         )
         mock_gauge = mock_yelp_meteorite.create_gauge.return_value
-        mock_gauge.set.assert_called_once_with(
-            mock_check_services_replication.return_value
-        )
+        mock_gauge.set.assert_called_once_with(6)
 
         mock_sys_exit.assert_called_once_with(1)
 
@@ -65,7 +63,7 @@ def test_main_mesos():
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 10
         mock_parse_args.return_value.under_replicated_warn_pct = 5
-        mock_check_services_replication.return_value = 6
+        mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
             instance_type_class=None,
@@ -83,9 +81,7 @@ def test_main_mesos():
             },
         )
         mock_gauge = mock_yelp_meteorite.create_gauge.return_value
-        mock_gauge.set.assert_called_once_with(
-            mock_check_services_replication.return_value
-        )
+        mock_gauge.set.assert_called_once_with(6)
 
         mock_sys_exit.assert_called_once_with(1)
 
@@ -117,7 +113,10 @@ def test_check_services_replication():
         mock_pods = [mock.Mock(), mock.Mock()]
         mock_check_service_replication.return_value = True
 
-        pct_under_replicated = check_services_replication_tools.check_services_replication(
+        (
+            count_under_replicated,
+            total,
+        ) = check_services_replication_tools.check_services_replication(
             soa_dir=soa_dir,
             cluster="westeros-prod",
             service_instances=[],
@@ -135,4 +134,5 @@ def test_check_services_replication():
             all_tasks_or_pods=mock_pods,
             replication_checker=mock_replication_checker,
         )
-        assert pct_under_replicated == 0
+        assert count_under_replicated == 0
+        assert total == 1
