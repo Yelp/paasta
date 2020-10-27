@@ -1,3 +1,12 @@
+paasta-tools (0.97.20) xenial; urgency=medium
+
+  * 0.97.20 tagged with 'make release'
+    Commit: [oapi] remove swagger client, migrate rest of the commands
+    (#2936)  * remove get_paasta_api_client, fix status tests * use new
+    oapi generator flag to not raise exception on unset attribute
+
+ -- Maksym Melnychok <maksym@yelp.com>  Tue, 27 Oct 2020 01:52:40 -0700
+
 paasta-tools (0.97.19) xenial; urgency=medium
 
   * 0.97.19 tagged with 'make release'
