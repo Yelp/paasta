@@ -92,12 +92,12 @@ class PoolManager:
         logger.info('Recalculating non-orphan fulfilled capacity')
         self.non_orphan_fulfilled_capacity = self._calculate_non_orphan_fulfilled_capacity()
 
-    def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
+    def get_removed_nodes_before_last_reload(self) -> Set[KubernetesNode]:
         if not isinstance(self.cluster_connector, KubernetesClusterConnector):
             logger.warning('get_removed_nodes_since_last_reload is only supported for Kubernetes clusters')
             return set()
 
-        return self.cluster_connector.get_removed_nodes_since_last_reload()
+        return self.cluster_connector.get_removed_nodes_before_last_reload()
 
     def mark_stale(self, dry_run: bool) -> None:
         if dry_run:

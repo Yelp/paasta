@@ -153,17 +153,17 @@ class Autoscaler:
 
         logger.info(f'Signal {signal_name} requested {resource_request}')
 
+        self.pool_manager.reload_state()
+
         no_scale_down = False
         if self.autoscaling_config.prevent_scale_down_after_capacity_loss:
-            removed_nodes_since_last_reload = self.pool_manager.get_removed_nodes_since_last_reload()
-            # TODO (jmalt, CLUSTERMAN-553): we may want something more sophisticated than len(nodes),
-            # especially for heterogeneous SFRs
-            if len(removed_nodes_since_last_reload) > self.autoscaling_config.capacity_loss_threshold:
+            removed_nodes_before_last_reload = self.pool_manager.get_removed_nodes_before_last_reload()
+            # TODO (CLUSTERMAN-576): support instance weights here, instead of just instance count
+            if len(removed_nodes_before_last_reload) > self.autoscaling_config.instance_loss_threshold:
                 logger.warning('Nodes lost since last autoscaler run is greater than limit,'
                                ' will not scale down on this run')
                 no_scale_down = True
 
-        self.pool_manager.reload_state()
         if isinstance(resource_request, list):
             pass
         else:

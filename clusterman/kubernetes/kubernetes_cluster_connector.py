@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import socket
 from collections import defaultdict
 from distutils.util import strtobool
@@ -87,6 +88,7 @@ class KubernetesClusterConnector(ClusterConnector):
     SCHEDULER = 'kubernetes'
     _core_api: kubernetes.client.CoreV1Api
     _pods: List[KubernetesPod]
+    _prev_nodes_by_ip: Mapping[str, KubernetesNode]
     _nodes_by_ip: Mapping[str, KubernetesNode]
     _pods_by_ip: Mapping[str, List[KubernetesPod]]
 
@@ -103,16 +105,22 @@ class KubernetesClusterConnector(ClusterConnector):
 
         self._core_api = CachedCoreV1Api(self.kubeconfig_path)
         self._pods = self._get_all_pods()
+
+        # store the previous _nodes_by_ip for use in get_removed_nodes_before_last_reload()
+        self._prev_nodes_by_ip = copy.deepcopy(self._nodes_by_ip)
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip = self._get_pods_by_ip()
 
-    def get_removed_nodes_since_last_reload(self) -> Set[KubernetesNode]:
-        previous_nodes = self._nodes_by_ip
-        current_nodes = self._get_nodes_by_ip()
+    def get_removed_nodes_before_last_reload(self) -> Set[KubernetesNode]:
+        previous_nodes = self._prev_nodes_by_ip
+        current_nodes = self._nodes_by_ip
 
         # todo jmalt: make sure this gives the desired results
         # equality is defined based on to_dict() for V1Node, so this should work
-        return set(previous_nodes.values()) - set(current_nodes.values())
+        if previous_nodes is not None:
+            return set(previous_nodes.values()) - set(current_nodes.values())
+        else:
+            return set()
 
     def get_resource_pending(self, resource_name: str) -> float:
         return getattr(allocated_node_resources([p for p, __ in self.get_unschedulable_pods()]), resource_name)

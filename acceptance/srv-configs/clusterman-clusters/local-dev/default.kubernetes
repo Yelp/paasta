@@ -18,4 +18,4 @@ autoscale_signal:
 
 autoscaling:
   prevent_scale_down_after_capacity_loss: true
-  capacity_loss_threshold: 3
+  instance_loss_threshold: 3
