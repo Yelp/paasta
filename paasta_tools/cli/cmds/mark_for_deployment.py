@@ -1215,7 +1215,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             if status.marathon:
                 long_running_status = status.marathon
             if status.kubernetes:
-                long_running_status = status.kubernetess
+                long_running_status = status.kubernetes
         if not status:
             log.debug(
                 "No status for {}.{}, in {}. Not deployed yet.".format(
