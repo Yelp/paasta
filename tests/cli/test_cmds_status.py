@@ -994,12 +994,12 @@ def mock_kubernetes_status():
 @pytest.fixture
 def mock_kafka_status() -> Mapping[str, Any]:
     return defaultdict(
-        metadata=Struct(
+        metadata=dict(
             name="kafka--k8s-local-main",
             namespace="paasta-kafkaclusters",
             annotations={"paasta.yelp.com/desired_state": "testing"},
         ),
-        status=Struct(
+        status=dict(
             brokers=[
                 {
                     "host": "10.93.122.47",
@@ -1356,14 +1356,14 @@ class TestPrintKafkaStatus:
 
         status = mock_kafka_status["status"]
         expected_output = [
-            f"    Kafka View Url: {status.kafka_view_url}",
-            f"    Zookeeper: {status.zookeeper}",
+            f"    Kafka View Url: {status['kafka_view_url']}",
+            f"    Zookeeper: {status['zookeeper']}",
             f"    State: testing",
-            f"    Ready: {str(status.cluster_ready).lower()}",
+            f"    Ready: {str(status['cluster_ready']).lower()}",
             f"    Health: {PaastaColors.red('unhealthy')}",
-            f"     Reason: {status.health['message']}",
-            f"     Offline Partitions: {status.health['offline_partitions']}",
-            f"     Under Replicated Partitions: {status.health['under_replicated_partitions']}",
+            f"     Reason: {status['health']['message']}",
+            f"     Offline Partitions: {status['health']['offline_partitions']}",
+            f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
             f"    Brokers:",
             f"     Id  Phase    Started",
             f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
