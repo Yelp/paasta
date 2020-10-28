@@ -91,6 +91,15 @@ def parse_args() -> argparse.Namespace:
         "the script will return a critical status",
     )
     parser.add_argument(
+        "--min-count-critical",
+        dest="min_count_critical",
+        type=int,
+        default=5,
+        help="The script will not return a critical status if the number of "
+        "under replicated service instances is below this number, even if the "
+        "percentage is above the critical percentage.",
+    )
+    parser.add_argument(
         "service_instance_list",
         nargs="*",
         help="The list of service instances to check",
@@ -142,17 +151,10 @@ def check_services_replication(
                     % instance_config.job_id
                 )
 
-    return calculate_pct_under_replicated(replication_statuses)
-
-
-def calculate_pct_under_replicated(replication_statuses: List[bool]) -> float:
-    if len(replication_statuses) == 0:
-        return 0
-    else:
-        num_under_replicated = len(
-            [status for status in replication_statuses if status is False]
-        )
-        return 100 * num_under_replicated / len(replication_statuses)
+    num_under_replicated = len(
+        [status for status in replication_statuses if status is False]
+    )
+    return num_under_replicated, len(replication_statuses)
 
 
 def emit_cluster_replication_metrics(
@@ -192,7 +194,7 @@ def main(
             nodes=nodes, system_paasta_config=system_paasta_config,
         )
 
-    pct_under_replicated = check_services_replication(
+    count_under_replicated, total = check_services_replication(
         soa_dir=args.soa_dir,
         cluster=cluster,
         service_instances=args.service_instance_list,
@@ -201,21 +203,25 @@ def main(
         replication_checker=replication_checker,
         all_tasks_or_pods=tasks_or_pods,
     )
+    pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total
     if yelp_meteorite is not None:
         emit_cluster_replication_metrics(
             pct_under_replicated, cluster, scheduler="mesos" if mesos else "kubernetes"
         )
 
-    if pct_under_replicated >= args.under_replicated_crit_pct:
+    if (
+        pct_under_replicated >= args.under_replicated_crit_pct
+        and count_under_replicated >= args.min_count_critical
+    ):
         log.critical(
-            f"{pct_under_replicated}% of instances are under replicated "
-            f"(past {args.under_replicated_crit_pct} is critical)!"
+            f"{pct_under_replicated}% of instances ({count_under_replicated}/{total}) "
+            f"are under replicated (past {args.under_replicated_crit_pct} is critical)!"
         )
         sys.exit(2)
     elif pct_under_replicated >= args.under_replicated_warn_pct:
         log.warning(
-            f"{pct_under_replicated}% of instances are under replicated "
-            f"(past {args.under_replicated_warn_pct} is a warning)!"
+            f"{pct_under_replicated}% of instances ({count_under_replicated}/{total}) "
+            f"are under replicated (past {args.under_replicated_warn_pct} is a warning)!"
         )
         sys.exit(1)
     else:
