@@ -83,3 +83,17 @@ Feature: make sure the autoscaler scales to the proper amount
         | 0         | 10         | 10         |
         | 14        | 16         | 15         |
         | 1000      | 50         | 50         |
+
+
+      @wip
+    Scenario: instances are not killed if we've lost capacity recently
+        # start with a scale-down operation to cause "lost capacity recently"
+        # this doesn't yet test that we don't scale down again afterwards
+         Given a cluster with 1 resource groups
+         And 10 target capacity
+         And 40 CPUs, 500 MB mem, 500 MB disk, and 0 GPUs
+        And  1 CPUs allocated and 0 CPUs pending
+         And a kubernetes autoscaler object
+         When the autoscaler runs
+        Then no exception is raised
+         And the autoscaler should scale rg1 to 12 capacity
