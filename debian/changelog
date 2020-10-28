@@ -1,3 +1,10 @@
+paasta-tools (0.97.24) xenial; urgency=medium
+
+  * 0.97.24 tagged with 'make release'
+    Commit: Fix typo in mark_for_deployment.py
+
+ -- Evan Krall <krall@yelp.com>  Wed, 28 Oct 2020 12:17:10 -0700
+
 paasta-tools (0.97.23) xenial; urgency=medium
 
   * 0.97.23 tagged with 'make release'
