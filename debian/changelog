@@ -1,3 +1,10 @@
+paasta-tools (0.97.22) xenial; urgency=medium
+
+  * 0.97.22 tagged with 'make release'
+    Commit: fix flink and kafkacluster status
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 28 Oct 2020 03:34:59 -0700
+
 paasta-tools (0.97.21) xenial; urgency=medium
 
   * 0.97.21 tagged with 'make release'
