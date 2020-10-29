@@ -9,6 +9,13 @@ Subpackages
    paasta_tools.kubernetes.application
    paasta_tools.kubernetes.bin
 
+Submodules
+----------
+
+.. toctree::
+
+   paasta_tools.kubernetes.trace
+
 Module contents
 ---------------
 

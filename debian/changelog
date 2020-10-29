@@ -1,3 +1,48 @@
+paasta-tools (0.97.25) xenial; urgency=medium
+
+  * 0.97.25 tagged with 'make release'
+    Commit: Merge pull request #2963 from Yelp/u/gabrielv/PAASTA-17084-
+    kubernetes_apply_puppet_resources  PAASTA-17084 Don"t fail to remove
+    resources if they are already gone
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Thu, 29 Oct 2020 08:36:33 -0700
+
+paasta-tools (0.97.24) xenial; urgency=medium
+
+  * 0.97.24 tagged with 'make release'
+    Commit: Fix typo in mark_for_deployment.py
+
+ -- Evan Krall <krall@yelp.com>  Wed, 28 Oct 2020 12:17:10 -0700
+
+paasta-tools (0.97.23) xenial; urgency=medium
+
+  * 0.97.23 tagged with 'make release'
+    Commit: Return null config_sha when k8s objects don"t have
+    config_sha annotation (#2955)  * Check if config_sha / git_sha are
+    None before trying to call .startswith. PAASTA-17026 * Make
+    active_shas nullable in swagger/oapi schemas. Suppress (None, None)
+    entries from active_shas.
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 28 Oct 2020 08:19:29 -0700
+
+paasta-tools (0.97.22) xenial; urgency=medium
+
+  * 0.97.22 tagged with 'make release'
+    Commit: Return null config_sha when k8s objects don"t have
+    config_sha annotation (#2955)  * Check if config_sha / git_sha are
+    None before trying to call .startswith. PAASTA-17026 * Make
+    active_shas nullable in swagger/oapi schemas. Suppress (None, None)
+    entries from active_shas.
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 28 Oct 2020 08:16:33 -0700
+
+paasta-tools (0.97.22) xenial; urgency=medium
+
+  * 0.97.22 tagged with 'make release'
+    Commit: fix flink and kafkacluster status
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 28 Oct 2020 03:34:59 -0700
+
 paasta-tools (0.97.21) xenial; urgency=medium
 
   * 0.97.21 tagged with 'make release'

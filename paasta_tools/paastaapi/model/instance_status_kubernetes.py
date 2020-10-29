@@ -110,7 +110,7 @@ class InstanceStatusKubernetes(ModelNormal):
             'app_count': (int,),  # noqa: E501
             'bounce_method': (str,),  # noqa: E501
             'desired_state': (str,),  # noqa: E501
-            'active_shas': ([[str]],),  # noqa: E501
+            'active_shas': ([[str, none_type]],),  # noqa: E501
             'app_id': (str,),  # noqa: E501
             'autoscaling_status': (InstanceStatusKubernetesAutoscalingStatus,),  # noqa: E501
             'backoff_seconds': (int,),  # noqa: E501
@@ -206,7 +206,7 @@ class InstanceStatusKubernetes(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            active_shas ([[str]]): List of git/config SHAs running.. [optional]  # noqa: E501
+            active_shas ([[str, none_type]]): List of git/config SHAs running.. [optional]  # noqa: E501
             app_id (str): ID of the desired version of a service instance. [optional]  # noqa: E501
             autoscaling_status (InstanceStatusKubernetesAutoscalingStatus): [optional]  # noqa: E501
             backoff_seconds (int): backoff in seconds before launching the next task. [optional]  # noqa: E501

@@ -969,7 +969,8 @@ def print_flink_status(
     # Since metadata should be available no matter the state, we show it first. If this errors out
     # then we cannot really do much to recover, because cluster is not in usable state anyway
     metadata = flink.get("metadata")
-    config_sha = metadata.labels.get(paasta_prefixed("config_sha"))
+    labels = metadata.get("labels")
+    config_sha = labels.get(paasta_prefixed("config_sha"))
     if config_sha is None:
         raise ValueError(f"expected config sha on Flink, but received {metadata}")
     if config_sha.startswith("config"):
@@ -977,29 +978,24 @@ def print_flink_status(
 
     output.append(f"    Config SHA: {config_sha}")
 
+    status_config = status["config"]
     if verbose:
         output.append(
-            f"    Flink version: {status.config['flink-version']} {status.config['flink-revision']}"
+            f"    Flink version: {status_config['flink-version']} {status_config['flink-revision']}"
         )
     else:
-        output.append(f"    Flink version: {status.config['flink-version']}")
+        output.append(f"    Flink version: {status_config['flink-version']}")
     # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
-    dashboard_url = metadata.annotations.get("flink.yelp.com/dashboard_url")
+    dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
 
-    if status.state != "running":
-        output.append(
-            "    State: {state}".format(state=PaastaColors.yellow(status.state.title()))
-        )
-    else:
-        output.append(
-            "    State: {state}".format(state=PaastaColors.green(status.state.title()))
-        )
+    color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
+    output.append(f"    State: {color(status['state'].title())}")
 
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
-    for pod in status.pod_status:
+    for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
         elif pod["phase"] == "Failed" and pod["reason"] == "Evicted":
@@ -1018,31 +1014,33 @@ def print_flink_status(
         f" {pod_other_count} other"
     )
 
-    if not should_job_info_be_shown(status.state):
+    if not should_job_info_be_shown(status["state"]):
         # In case where the jobmanager of cluster is in crashloopbackoff
         # The pods for the cluster will be available and we need to show the pods.
         # So that paasta status -v and kubectl get pods show the same consistent result.
-        if verbose and len(status.pod_status) > 0:
-            append_pod_status(status.pod_status, output)
+        if verbose and len(status["pod_status"]) > 0:
+            append_pod_status(status["pod_status"], output)
         output.append(f"    No other information available in non-running state")
         return 0
 
     output.append(
         "    Jobs:"
-        f" {status.overview['jobs-running']} running,"
-        f" {status.overview['jobs-finished']} finished,"
-        f" {status.overview['jobs-failed']} failed,"
-        f" {status.overview['jobs-cancelled']} cancelled"
+        f" {status['overview']['jobs-running']} running,"
+        f" {status['overview']['jobs-finished']} finished,"
+        f" {status['overview']['jobs-failed']} failed,"
+        f" {status['overview']['jobs-cancelled']} cancelled"
     )
     output.append(
         "   "
-        f" {status.overview['taskmanagers']} taskmanagers,"
-        f" {status.overview['slots-available']}/{status.overview['slots-total']} slots available"
+        f" {status['overview']['taskmanagers']} taskmanagers,"
+        f" {status['overview']['slots-available']}/{status['overview']['slots-total']} slots available"
     )
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    if status.jobs:
-        max_job_name_length = max([len(get_flink_job_name(job)) for job in status.jobs])
+    if status["jobs"]:
+        max_job_name_length = max(
+            [len(get_flink_job_name(job)) for job in status["jobs"]]
+        )
     else:
         max_job_name_length = 10
     # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
@@ -1066,7 +1064,7 @@ def print_flink_status(
         sorted(jobs, key=lambda j: -j["start-time"])[0]
         for _, jobs in groupby(
             sorted(
-                (j for j in status.jobs if j.get("name") and j.get("start-time")),
+                (j for j in status["jobs"] if j.get("name") and j.get("start-time")),
                 key=lambda j: j["name"],
             ),
             lambda j: j["name"],
@@ -1109,8 +1107,8 @@ def print_flink_status(
             )
             break
 
-        if verbose > 1 and job_id in status.exceptions:
-            exceptions = status.exceptions[job_id]
+        if verbose > 1 and job_id in status["exceptions"]:
+            exceptions = status["exceptions"][job_id]
             root_exception = exceptions["root-exception"]
             if root_exception is not None:
                 output.append(f"        Exception: {root_exception}")
@@ -1120,9 +1118,9 @@ def print_flink_status(
                     output.append(
                         f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
                     )
-    if verbose and len(status.pod_status) > 0:
-        append_pod_status(status.pod_status, output)
-    if verbose == 1 and status.exceptions:
+    if verbose and len(status["pod_status"]) > 0:
+        append_pod_status(status["pod_status"], output)
+    if verbose == 1 and status["exceptions"]:
         output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
     return 0
 
@@ -1280,12 +1278,12 @@ def print_kafka_status(
 
     # print kafka view url before operator status because if the kafka cluster is not available for some reason
     # atleast the user can get a hold the kafka view url
-    if "kafka_view_url" in status and status.kafka_view_url is not None:
-        output.append(f"    Kafka View Url: {status.kafka_view_url}")
+    if status.get("kafka_view_url") is not None:
+        output.append(f"    Kafka View Url: {status.get('kafka_view_url')}")
 
-    output.append(f"    Zookeeper: {status.zookeeper}")
+    output.append(f"    Zookeeper: {status['zookeeper']}")
 
-    annotations = kafka_status.get("metadata").annotations
+    annotations = kafka_status.get("metadata").get("annotations")
     desired_state = annotations.get(paasta_prefixed("desired_state"))
     if desired_state is None:
         raise ValueError(
@@ -1293,14 +1291,14 @@ def print_kafka_status(
         )
     output.append(f"    State: {desired_state}")
 
-    cluster_ready = "true" if status.cluster_ready else PaastaColors.red("false")
+    cluster_ready = "true" if status.get("cluster_ready") else PaastaColors.red("false")
     cluster_restarting = (
-        " (rolling-restart in progress)" if status.health["restarting"] else ""
+        " (rolling-restart in progress)" if status["health"]["restarting"] else ""
     )
     output.append(f"    Ready: {cluster_ready}{cluster_restarting}")
 
-    if status.cluster_ready:
-        health: Mapping[str, Any] = status.health
+    if status.get("cluster_ready"):
+        health: Mapping[str, Any] = status["health"]
         cluster_health = (
             PaastaColors.green("healthy")
             if health["healthy"]
@@ -1314,7 +1312,7 @@ def print_kafka_status(
                 f"     Under Replicated Partitions: {health['under_replicated_partitions']}"
             )
 
-    brokers = status.brokers
+    brokers = status["brokers"]
     output.append(f"    Brokers:")
 
     if verbose:
