@@ -30,6 +30,7 @@ from clusterman.util import get_pool_name_list
 from clusterman.util import parse_time_interval_seconds
 from clusterman.util import parse_time_string
 from clusterman.util import sensu_checkin
+from clusterman.util import splay_event_time
 from clusterman.util import Status
 
 
@@ -223,3 +224,11 @@ def test_is_paused_with_expiration_timestamp(exp_timestamp):
             not exp_timestamp or
             int(exp_timestamp) > 300
         )
+
+
+@mock.patch('builtins.hash')
+def test_splay_event_time(mock_hash):
+    frequency = 10
+    mock_hash.return_value = frequency - 1  # make `hash(key) % frequency` returns its max value
+    for timestamp in range(20):
+        assert 0 <= splay_event_time(frequency, 'key', timestamp) < frequency
