@@ -59,7 +59,10 @@ def main(puppet_resource_root: str) -> int:
             if not os.path.exists(puppet_path):
                 print(f"Deleting resource {path}...")
                 try:
-                    run(["kubectl", "delete", "-f", path], check=True)
+                    run(
+                        ["kubectl", "delete", "--ignore-not-found=true", "-f", path],
+                        check=True,
+                    )
                     os.remove(path)
                 except CalledProcessError:
                     print(f"There was a problem deleting {path}:\n")
