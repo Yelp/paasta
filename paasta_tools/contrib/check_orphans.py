@@ -130,7 +130,10 @@ async def transfer_one_file(
         )
         resp = await asyncio.wait_for(reader.read(), timeout=1.0)
     except (asyncio.TimeoutError, ConnectionRefusedError) as ex:
-        logger.warning(f"error getting file from {host}: {ex!r}")
+        # this is not ununusual because we sometimes advertise hosts from
+        # firewalled subnets where we can't make this connection to get
+        # the file. check y/ipam to see what the subnet means
+        logger.debug(f"error getting file from {host}: {ex!r}")
         return (host, None)
 
     return (host, resp.decode())
