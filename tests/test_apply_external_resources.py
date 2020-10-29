@@ -110,6 +110,7 @@ def test_resources_deleted_in_reverse_order(mock_run, fs):
             [
                 "kubectl",
                 "delete",
+                "--ignore-not-found=true",
                 "-f",
                 "/external_resources/.applied/00-common/10-foo/40-service.yaml",
             ],
@@ -119,6 +120,7 @@ def test_resources_deleted_in_reverse_order(mock_run, fs):
             [
                 "kubectl",
                 "delete",
+                "--ignore-not-found=true",
                 "-f",
                 "/external_resources/.applied/00-common/10-foo/30-hpa.yaml",
             ],
