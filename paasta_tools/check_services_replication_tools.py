@@ -121,7 +121,7 @@ def check_services_replication(
     check_service_replication: CheckServiceReplication,
     replication_checker: ReplicationChecker,
     all_tasks_or_pods: Sequence[Union[MarathonTask, V1Pod]],
-) -> float:
+) -> Tuple[int, int]:
     service_instances_set = set(service_instances)
     replication_statuses: List[bool] = []
 
