@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# import pdb
 import time
 from decimal import Decimal
 
@@ -18,8 +19,8 @@ import behave
 import mock
 import staticconf.testing
 from hamcrest import assert_that
-from hamcrest import contains
 from hamcrest import equal_to
+from hamcrest import has_item
 from kubernetes.client import V1Container
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1Pod
@@ -27,9 +28,11 @@ from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodStatus
 from kubernetes.client import V1ResourceRequirements
+from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 from moto import mock_dynamodb2
 
 from clusterman.autoscaler.autoscaler import Autoscaler
+from clusterman.autoscaler.config import AutoscalingConfig
 from clusterman.autoscaler.pool_manager import PoolManager
 from clusterman.aws.client import dynamodb
 from clusterman.aws.spot_fleet_resource_group import SpotFleetResourceGroup
@@ -228,13 +231,22 @@ def mesos_autoscaler(context):
 
 @behave.given('a kubernetes autoscaler object')
 def k8s_autoscaler(context):
+    create_k8s_autoscaler(context)
+
+
+@behave.given('a kubernetes autoscaler object with prevent_scale_down_after_capacity_loss enabled')
+def k8s_autoscaler_prevent_scale_dpwn(context):
+    create_k8s_autoscaler(context, prevent_scale_down_after_capacity_loss=True)
+
+
+def create_k8s_autoscaler(context, prevent_scale_down_after_capacity_loss=False):
     behave.use_fixture(autoscaler_patches, context)
     context.mock_cluster_connector.return_value.__class__ = KubernetesClusterConnector
     context.mock_cluster_connector.return_value.get_cluster_allocated_resources.return_value = ClustermanResources(
         cpus=context.allocated_cpus,
     )
     context.mock_cluster_connector.return_value.get_unschedulable_pods.return_value = (
-        [] if context.pending_cpus == 0
+        [] if float(context.pending_cpus) == 0
         else [(
                 V1Pod(
                     metadata=V1ObjectMeta(name='pod1'),
@@ -283,6 +295,15 @@ def k8s_autoscaler(context):
         monitoring_enabled=False,
     )
 
+    if prevent_scale_down_after_capacity_loss:
+        context.autoscaler.autoscaling_config = AutoscalingConfig(
+            excluded_resources=[],
+            setpoint=0.7,
+            target_capacity_margin=0.1,
+            prevent_scale_down_after_capacity_loss=True,
+            instance_loss_threshold=0
+        )
+
 
 @behave.when('the autoscaler is paused')
 def pause_autoscaler(context):
@@ -329,6 +350,18 @@ def signal_resource_request(context, value):
 
 @behave.when('the autoscaler runs')
 def autoscaler_runs(context):
+    run_autoscaler(context, once_only=False)
+
+# usually we run the autoscaler twice to make sure nothing changes,
+# but certain test cases require it to only run once
+
+
+@behave.when('the autoscaler runs only once')
+def autoscaler_runs_once(context):
+    run_autoscaler(context, once_only=True)
+
+
+def run_autoscaler(context, once_only=False):
     try:
         context.autoscaler.run()
     except Exception as e:
@@ -339,9 +372,16 @@ def autoscaler_runs(context):
         except AttributeError:
             pass
 
-    if not hasattr(context, 'exception'):
+    if not once_only and not hasattr(context, 'exception'):
         # run it a second time to make sure nothing's changed
         context.autoscaler.run()
+
+
+@behave.when('the cluster has recently lost capacity')
+def lost_capacity(context):
+    context.mock_cluster_connector.return_value.get_removed_nodes_before_last_reload.return_value = [
+        KubernetesNode()
+    ]
 
 
 @behave.then('the autoscaler should scale rg(?P<rg>[12]) to (?P<target>\d+) capacity')
@@ -350,8 +390,7 @@ def rg_capacity_change(context, rg, target):
     if int(target) != groups[int(rg) - 1].target_capacity:
         assert_that(
             groups[int(rg) - 1].modify_target_capacity.call_args_list,
-            contains(
-                mock.call(int(target), dry_run=False),
+            has_item(
                 mock.call(int(target), dry_run=False),
             ),
         )
