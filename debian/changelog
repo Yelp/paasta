@@ -1,3 +1,11 @@
+paasta-tools (0.97.26) xenial; urgency=medium
+
+  * 0.97.26 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into
+    u/krall/PAASTA-17045
+
+ -- Evan Krall <krall@yelp.com>  Fri, 30 Oct 2020 11:40:57 -0700
+
 paasta-tools (0.97.25) xenial; urgency=medium
 
   * 0.97.25 tagged with 'make release'
