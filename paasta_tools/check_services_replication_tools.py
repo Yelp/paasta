@@ -75,14 +75,6 @@ def parse_args() -> argparse.Namespace:
         help="define a different soa config directory",
     )
     parser.add_argument(
-        "--warn",
-        dest="under_replicated_warn_pct",
-        type=float,
-        default=5,
-        help="The percentage of under replicated service instances past which "
-        "the script will return a warning status",
-    )
-    parser.add_argument(
         "--crit",
         dest="under_replicated_crit_pct",
         type=float,
@@ -218,12 +210,6 @@ def main(
             f"are under replicated (past {args.under_replicated_crit_pct} is critical)!"
         )
         sys.exit(2)
-    elif pct_under_replicated >= args.under_replicated_warn_pct:
-        log.warning(
-            f"{pct_under_replicated}% of instances ({count_under_replicated}/{total}) "
-            f"are under replicated (past {args.under_replicated_warn_pct} is a warning)!"
-        )
-        sys.exit(1)
     else:
         sys.exit(0)
 
