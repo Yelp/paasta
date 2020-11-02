@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import socket
 from collections import defaultdict
 from distutils.util import strtobool
 from typing import List
@@ -23,8 +21,6 @@ from typing import Tuple
 import colorlog
 import kubernetes
 import staticconf
-from cachetools import TTLCache
-from cachetools.keys import hashkey
 from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 from kubernetes.client.models.v1_node_selector_requirement import V1NodeSelectorRequirement
 from kubernetes.client.models.v1_node_selector_term import V1NodeSelectorTerm
@@ -34,60 +30,22 @@ from clusterman.interfaces.cluster_connector import ClusterConnector
 from clusterman.interfaces.types import AgentMetadata
 from clusterman.interfaces.types import AgentState
 from clusterman.kubernetes.util import allocated_node_resources
+from clusterman.kubernetes.util import CachedCoreV1Api
 from clusterman.kubernetes.util import get_node_ip
 from clusterman.kubernetes.util import PodUnschedulableReason
+from clusterman.kubernetes.util import selector_term_matches_requirement
 from clusterman.kubernetes.util import total_node_resources
 from clusterman.kubernetes.util import total_pod_resources
 
 logger = colorlog.getLogger(__name__)
 KUBERNETES_SCHEDULED_PHASES = {'Pending', 'Running'}
-KUBERNETES_API_CACHE_SIZE = 16
-KUBERNETES_API_CACHE_TTL = 60
-KUBERNETES_API_CACHE = TTLCache(maxsize=KUBERNETES_API_CACHE_SIZE, ttl=KUBERNETES_API_CACHE_TTL)
-
-
-class CachedCoreV1Api:
-    CACHED_FUNCTION_CALLS = {'list_node', 'list_pod_for_all_namespaces'}
-
-    def __init__(self, kubeconfig_path: str):
-        try:
-            kubernetes.config.load_kube_config(kubeconfig_path)
-        except TypeError:
-            error_msg = 'Could not load KUBECONFIG; is this running on Kubernetes master?'
-            if 'yelpcorp' in socket.getfqdn():
-                error_msg += '\nHint: try using the clusterman-k8s-<clustername> wrapper script!'
-            logger.error(error_msg)
-            raise
-
-        self._client = kubernetes.client.CoreV1Api()
-
-    def __getattr__(self, attr):
-        global KUBERNETES_API_CACHE
-        func = getattr(self._client, attr)
-
-        if os.environ.get('KUBE_CACHE_ENABLED', '') and attr in self.CACHED_FUNCTION_CALLS:
-            def decorator(f):
-                def wrapper(*args, **kwargs):
-                    k = hashkey(attr, *args, **kwargs)
-                    try:
-                        return KUBERNETES_API_CACHE[k]
-                    except KeyError:
-                        logger.debug(f'Cache miss for the {attr} Kubernetes function call')
-                        pass  # the function call hasn't been cached recently
-                    v = f(*args, **kwargs)
-                    KUBERNETES_API_CACHE[k] = v
-                    return v
-                return wrapper
-            func = decorator(func)
-
-        return func
 
 
 class KubernetesClusterConnector(ClusterConnector):
     SCHEDULER = 'kubernetes'
     _core_api: kubernetes.client.CoreV1Api
-    _pods: List[KubernetesPod]
     _nodes_by_ip: Mapping[str, KubernetesNode]
+    _pending_pods: List[KubernetesPod]
     _pods_by_ip: Mapping[str, List[KubernetesPod]]
 
     def __init__(self, cluster: str, pool: Optional[str]) -> None:
@@ -102,17 +60,16 @@ class KubernetesClusterConnector(ClusterConnector):
         logger.info('Reloading nodes')
 
         self._core_api = CachedCoreV1Api(self.kubeconfig_path)
-        self._pods = self._get_all_pods()
         self._nodes_by_ip = self._get_nodes_by_ip()
-        self._pods_by_ip = self._get_pods_by_ip()
+        self._pods_by_ip, self._pending_pods = self._get_pods_by_ip_or_pending()
 
     def get_resource_pending(self, resource_name: str) -> float:
         return getattr(allocated_node_resources([p for p, __ in self.get_unschedulable_pods()]), resource_name)
 
     def get_resource_allocation(self, resource_name: str) -> float:
         return sum(
-            getattr(allocated_node_resources(self._pods_by_ip[node_ip]), resource_name)
-            for node_ip, node in self._nodes_by_ip.items()
+            getattr(allocated_node_resources(pod), resource_name)
+            for pod in self._pods_by_ip.values()
         )
 
     def get_resource_total(self, resource_name: str) -> float:
@@ -123,7 +80,7 @@ class KubernetesClusterConnector(ClusterConnector):
 
     def get_unschedulable_pods(self) -> List[Tuple[KubernetesPod, PodUnschedulableReason]]:
         unschedulable_pods = []
-        for pod in self._get_pending_pods():
+        for pod in self._pending_pods:
             is_unschedulable = False
             if not pod.status or not pod.status.conditions:
                 logger.info('No conditions in pod status, skipping')
@@ -136,49 +93,38 @@ class KubernetesClusterConnector(ClusterConnector):
                 unschedulable_pods.append((pod, self._get_pod_unschedulable_reason(pod)))
         return unschedulable_pods
 
-    def _selector_term_matches_requirement(
-        self,
-        selector_term: V1NodeSelectorTerm,
-        selector_requirement: V1NodeSelectorRequirement
-    ) -> bool:
-        if selector_term.match_expressions:
-            for match_expression in selector_term.match_expressions:
-                if match_expression == selector_requirement:
-                    return True
-        return False
+    def _pod_belongs_to_pool(self, pod: KubernetesPod) -> bool:
+        # Check if the pod is on a node in the pool -- this should cover most cases
+        if pod.status.phase in KUBERNETES_SCHEDULED_PHASES and pod.status.host_ip in self._nodes_by_ip:
+            return True
 
-    def _pod_matches_node_selector_or_affinity(self, pod: KubernetesPod) -> bool:
+        # Otherwise, check if the node selector matches the pool; we'll only get to either of the
+        # following checks if the pod _should_ be running on the cluster, but isn't currently.  (This won't catch things
+        # that have a nodeSelector or nodeAffinity for anything other than "pool name", for example, system-level
+        # DaemonSets like kiam)
         if pod.spec.node_selector:
             for key, value in pod.spec.node_selector.items():
                 if key == self.pool_label_key:
                     return value == self.pool
 
+        # Lastly, check if an affinity rule matches
         selector_requirement = V1NodeSelectorRequirement(
             key=self.pool_label_key, operator='In', values=[self.pool]
         )
 
         if pod.spec.affinity and pod.spec.affinity.node_affinity:
             node_affinity = pod.spec.affinity.node_affinity
+            terms: List[V1NodeSelectorTerm] = []
             if node_affinity.required_during_scheduling_ignored_during_execution:
-                node_selector_terms = node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms  # noqa: E501
-                for selector_term in node_selector_terms:
-                    if self._selector_term_matches_requirement(selector_term, selector_requirement):
-                        return True
+                terms.extend(node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms)
             if node_affinity.preferred_during_scheduling_ignored_during_execution:
-                for preferred_scheduling_term in node_affinity.preferred_during_scheduling_ignored_during_execution:
-                    if self._selector_term_matches_requirement(
-                        preferred_scheduling_term.preference,
-                        selector_requirement
-                    ):
-                        return True
+                terms.extend([
+                    term.preference
+                    for term in node_affinity.preferred_during_scheduling_ignored_during_execution
+                ])
+            if selector_term_matches_requirement(terms, selector_requirement):
+                return True
         return False
-
-    def _get_pending_pods(self) -> List[KubernetesPod]:
-        return [
-            pod for pod in self._pods
-            if pod.status.phase == 'Pending'
-            and self._pod_matches_node_selector_or_affinity(pod)
-        ]
 
     def _get_pod_unschedulable_reason(self, pod: KubernetesPod) -> PodUnschedulableReason:
         pod_resource_request = total_pod_resources(pod)
@@ -250,17 +196,18 @@ class KubernetesClusterConnector(ClusterConnector):
             if not self.pool or node.metadata.labels.get(pool_label_selector, None) == self.pool
         }
 
-    def _get_pods_by_ip(self) -> Mapping[str, List[KubernetesPod]]:
+    def _get_pods_by_ip_or_pending(self) -> Tuple[Mapping[str, List[KubernetesPod]], List[KubernetesPod]]:
         pods_by_ip: Mapping[str, List[KubernetesPod]] = defaultdict(list)
-        for pod in self._pods:
-            if pod.status.phase in KUBERNETES_SCHEDULED_PHASES \
-                    and pod.status.host_ip in self._nodes_by_ip:
-                pods_by_ip[pod.status.host_ip].append(pod)
-        return pods_by_ip
+        pending_pods: List[KubernetesPod] = []
 
-    def _get_all_pods(self) -> List[KubernetesPod]:
         all_pods = self._core_api.list_pod_for_all_namespaces().items
-        return all_pods
+        for pod in all_pods:
+            if self._pod_belongs_to_pool(pod):
+                if pod.status.phase == 'Running':
+                    pods_by_ip[pod.status.host_ip].append(pod)
+                else:
+                    pending_pods.append(pod)
+        return pods_by_ip, pending_pods
 
     def _count_batch_tasks(self, node_ip: str) -> int:
         count = 0
