@@ -1912,7 +1912,9 @@ def format_pod_event_messages(
     rows: List[str] = list()
     rows.append(PaastaColors.blue(f"Pod Events for {pod_name}"))
     for message in pod_event_messages:
-        rows.append(f"   Event at {message['timeStamp']}: {message['message']}")
+        timestamp = message.get("timeStamp", "unknown time")
+        message_text = message.get("message", "")
+        rows.append(f"   Event at {timestamp}: {message_text}")
     return rows
 
 
