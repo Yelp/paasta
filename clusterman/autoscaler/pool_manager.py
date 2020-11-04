@@ -206,11 +206,12 @@ class PoolManager:
             for instance_metadata in group.get_instance_metadatas(state_filter)
         ]
 
+    # currently dead code, so don't count towards coverage metrics
     def _filter_scale_up_options_for_pod(
         self,
         pod: KubernetesPod,
         scale_up_options: Mapping[str, List[ClusterNodeMetadata]],
-    ) -> Mapping[str, List[ClusterNodeMetadata]]:
+    ) -> Mapping[str, List[ClusterNodeMetadata]]:  # pragma: no cover
         filtered_options: Mapping[str, List[ClusterNodeMetadata]] = defaultdict(list)
         for group_id, options in scale_up_options.items():
             for option in options:
