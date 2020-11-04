@@ -86,10 +86,10 @@ class Signal(metaclass=ABCMeta):
 
     @abstractmethod
     def evaluate(
-            self,
-            timestamp: arrow.Arrow,
-            retry_on_broken_pipe: bool = True,
-     ) -> Union[SignalResourceRequest, List[KubernetesPod]]:
+        self,
+        timestamp: arrow.Arrow,
+        retry_on_broken_pipe: bool = True,
+    ) -> Union[SignalResourceRequest, List[KubernetesPod]]:  # pragma: no cover
         """ Compute a signal and return either a single response (representing an aggregate resource request), or a
         list of responses (representing per-pod resource requests)
 

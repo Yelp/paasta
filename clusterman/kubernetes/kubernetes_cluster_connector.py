@@ -134,36 +134,6 @@ class KubernetesClusterConnector(ClusterConnector):
 
         return PodUnschedulableReason.InsufficientResources
 
-    def set_node_unschedulable(self, node_ip: str):
-        try:
-            agent_metadata = self._get_agent_metadata(node_ip)
-            self._core_api.patch_node(
-                name=agent_metadata.agent_id,
-                body={'spec': {'unschedulable': True}}
-            )
-        except Exception as e:
-            logger.warning(f'error when unscheduling pod: {e}')
-
-    def evict_pods_on_node(self, node_ip: str):
-        pods = self._pods_by_ip[node_ip]
-        for pod in pods:
-            try:
-                self._core_api.create_namespaced_pod_eviction(
-                    name=pod.metadata.name,
-                    namespace=pod.metadata.namespace,
-                    body=kubernetes.client.V1beta1Eviction()
-                )
-            except Exception as e:
-                logger.warning(f'error when evict pod: {e}')
-
-    def delete_node(self, node_ip: str):
-        agent_metadata = self._get_agent_metadata(node_ip)
-        self._core_api.delete_node(
-            name=agent_metadata.agent_id,
-            grace_period_seconds=0,
-            body=kubernetes.client.V1DeleteOptions()
-        )
-
     def _get_agent_metadata(self, node_ip: str) -> AgentMetadata:
         node = self._nodes_by_ip.get(node_ip)
         if not node:
