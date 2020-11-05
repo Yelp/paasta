@@ -485,14 +485,14 @@ def kubernetes_status(
 
     if include_smartstack or include_envoy:
         service_namespace_config = kubernetes_tools.load_service_namespace_config(
-            service=job_config.get_service_name_smartstack(),
+            service=service,
             namespace=job_config.get_nerve_namespace(),
             soa_dir=settings.soa_dir,
         )
         if "proxy_port" in service_namespace_config:
             if include_smartstack:
                 kstatus["smartstack"] = mesh_status(
-                    service=job_config.get_service_name_smartstack(),
+                    service=service,
                     service_mesh=ServiceMesh.SMARTSTACK,
                     instance=job_config.get_nerve_namespace(),
                     job_config=job_config,
@@ -503,7 +503,7 @@ def kubernetes_status(
                 )
             if include_envoy:
                 kstatus["envoy"] = mesh_status(
-                    service=job_config.get_service_name_smartstack(),
+                    service=service,
                     service_mesh=ServiceMesh.ENVOY,
                     instance=job_config.get_nerve_namespace(),
                     job_config=job_config,

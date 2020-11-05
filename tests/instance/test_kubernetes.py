@@ -113,6 +113,53 @@ def test_kubernetes_status(
     assert "desired_state" in status
 
 
+@mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+)
+@mock.patch("paasta_tools.instance.kubernetes.mesh_status", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
+)
+@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_kubernetes_status_include_smartstack(
+    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+    mock_get_kubernetes_app_by_name,
+    mock_pods_for_service_instance,
+    mock_replicasets_for_service_instance,
+    mock_mesh_status,
+    mock_load_service_namespace_config,
+    mock_job_status,
+):
+    mock_load_service_namespace_config.return_value = {"proxy_port": 1234}
+    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["flink"] = mock.Mock()
+    mock_pods_for_service_instance.return_value = []
+    mock_replicasets_for_service_instance.return_value = []
+    mock_service = mock.Mock()
+    status = pik.kubernetes_status(
+        service=mock_service,
+        instance="",
+        verbose=0,
+        include_smartstack=True,
+        include_envoy=False,
+        instance_type="flink",
+        settings=mock.Mock(),
+    )
+    assert (
+        mock_load_service_namespace_config.mock_calls[0][2]["service"] is mock_service
+    )
+    assert mock_mesh_status.mock_calls[0][2]["service"] is mock_service
+    assert "app_count" in status
+    assert "evicted_count" in status
+    assert "bounce_method" in status
+    assert "desired_state" in status
+
+
 def test_cr_status_bad_instance_type():
     with pytest.raises(RuntimeError) as excinfo:
         pik.cr_status(
