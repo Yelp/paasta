@@ -134,6 +134,11 @@ def test_get_signal_for_app(mock_autoscaler, signal_response):
     assert signal == (mock_autoscaler.default_signal if isinstance(signal_response, Exception) else signal)
 
 
+def test_run_interval_seconds(mock_autoscaler):
+    mock_autoscaler.signal.period_minutes = 7
+    assert mock_autoscaler.run_frequency == 7 * 60
+
+
 @pytest.mark.parametrize('dry_run', [True, False])
 def test_autoscaler_run(dry_run, mock_autoscaler, run_timestamp):
     mock_autoscaler._compute_target_capacity = mock.Mock(return_value=100)

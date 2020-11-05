@@ -35,11 +35,13 @@ def _make_metadata(
     weight=1,
     tasks=5,
     batch_tasks=0,
+    is_safe_to_kill=True,
 ):
     return ClusterNodeMetadata(
         AgentMetadata(
             agent_id='foo',
             batch_task_count=batch_tasks,
+            is_safe_to_kill=is_safe_to_kill,
             state=agent_state,
             task_count=tasks,
         ),
@@ -532,6 +534,7 @@ def test_instance_kill_order(mock_pool_manager):
         _make_metadata('sfr-0', 'i-6', batch_tasks=1),
         _make_metadata('sfr-0', 'i-8', agent_state=AgentState.UNKNOWN),
         _make_metadata('sfr-0', 'i-9', tasks=100000),
+        _make_metadata('sfr-0', 'i-10', is_safe_to_kill=False),
     ])
     mock_pool_manager.max_tasks_to_kill = 1000
     killable_nodes = mock_pool_manager._get_prioritized_killable_nodes()

@@ -326,14 +326,21 @@ def splay_event_time(frequency: int, key: str, timestamp: float = None) -> float
     randomly splay out the 'initial' start time based on some key, to prevent events with the same
     frequency from all triggering at once
 
+    Chooses a random offset within a time window of `frequency` seconds that events should be triggered
+    and finds the number of seconds to the next offset.
+
     :param frequency: how often the event should occur (in seconds)
     :param key: a string to hash to get the splay time
     :param timestamp: what time it is "now" (uses time.time() if None)
     :returns: the number of seconds until the next event should happen
     """
     timestamp = timestamp or time.time()
-    random_wait_time = hash(key) % frequency
-    return frequency - (timestamp % frequency) + random_wait_time
+    desired_offset_in_window = hash(key) % frequency
+    current_offset_in_window = timestamp % frequency
+    if current_offset_in_window <= desired_offset_in_window:
+        return desired_offset_in_window - current_offset_in_window
+    else:
+        return frequency - current_offset_in_window + desired_offset_in_window
 
 
 def read_int_or_inf(reader, param):
