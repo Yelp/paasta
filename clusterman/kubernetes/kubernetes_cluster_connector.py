@@ -59,12 +59,12 @@ class KubernetesClusterConnector(ClusterConnector):
             f'clusters.{cluster}.pod_safe_to_evict_annotation',
             default='cluster-autoscaler.kubernetes.io/safe-to-evict',
         )
+        self._nodes_by_ip = {}
 
     def reload_state(self) -> None:
         logger.info('Reloading nodes')
 
         self._core_api = CachedCoreV1Api(self.kubeconfig_path)
-        self._pods = self._get_all_pods()
 
         # store the previous _nodes_by_ip for use in get_removed_nodes_before_last_reload()
         self._prev_nodes_by_ip = copy.deepcopy(self._nodes_by_ip)
