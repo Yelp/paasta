@@ -45,6 +45,12 @@ The following is an example configuration file for the core Clusterman service a
         # beyond this margin.
         target_capacity_margin: 0.1
 
+        # Clusterman will not scale down if, since the last run, the capacity has decreased by more than
+        # this threshold. Note that this includes capacity removed by Clusterman in the last run and
+        # capacity lost for any other region (e.g. instance failures).
+        prevent_scale_down_after_capacity_loss: true
+        instance_loss_threshold: 2
+
     # How long to wait for an agent to "drain" before terminating it
     drain_termination_timeout_seconds:
       sfr: 100
