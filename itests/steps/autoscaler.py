@@ -27,7 +27,6 @@ from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodStatus
 from kubernetes.client import V1ResourceRequirements
-from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 from moto import mock_dynamodb2
 
 from clusterman.autoscaler.autoscaler import Autoscaler
@@ -378,9 +377,7 @@ def run_autoscaler(context, once_only=False):
 
 @behave.when('the cluster has recently lost capacity')
 def lost_capacity(context):
-    context.mock_cluster_connector.return_value.get_removed_nodes_before_last_reload.return_value = [
-        KubernetesNode()
-    ]
+    context.mock_cluster_connector.return_value.get_num_removed_nodes_before_last_reload.return_value = 1
 
 
 @behave.then('the autoscaler should scale rg(?P<rg>[12]) to (?P<target>\d+) capacity')

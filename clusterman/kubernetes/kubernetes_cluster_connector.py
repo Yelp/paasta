@@ -17,7 +17,6 @@ from distutils.util import strtobool
 from typing import List
 from typing import Mapping
 from typing import Optional
-from typing import Set
 from typing import Tuple
 
 import colorlog
@@ -71,16 +70,11 @@ class KubernetesClusterConnector(ClusterConnector):
         self._nodes_by_ip = self._get_nodes_by_ip()
         self._pods_by_ip, self._pending_pods = self._get_pods_by_ip_or_pending()
 
-    def get_removed_nodes_before_last_reload(self) -> Set[KubernetesNode]:
+    def get_num_removed_nodes_before_last_reload(self) -> int:
         previous_nodes = self._prev_nodes_by_ip
         current_nodes = self._nodes_by_ip
 
-        # todo jmalt: make sure this gives the desired results
-        # equality is defined based on to_dict() for V1Node, so this should work
-        if previous_nodes is not None:
-            return set(previous_nodes.values()) - set(current_nodes.values())
-        else:
-            return set()
+        return max(0, len(previous_nodes) - len(current_nodes))
 
     def get_resource_pending(self, resource_name: str) -> float:
         return getattr(allocated_node_resources([p for p, __ in self.get_unschedulable_pods()]), resource_name)

@@ -22,13 +22,11 @@ from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
-from typing import Set
 from typing import Tuple
 from typing import Type
 
 import colorlog
 import staticconf
-from kubernetes.client.models.v1_node import V1Node as KubernetesNode
 from kubernetes.client.models.v1_pod import V1Pod as KubernetesPod
 
 from clusterman.aws.aws_resource_group import AWSResourceGroup
@@ -92,12 +90,12 @@ class PoolManager:
         logger.info('Recalculating non-orphan fulfilled capacity')
         self.non_orphan_fulfilled_capacity = self._calculate_non_orphan_fulfilled_capacity()
 
-    def get_removed_nodes_before_last_reload(self) -> Set[KubernetesNode]:
+    def get_num_removed_nodes_before_last_reload(self) -> int:
         if not isinstance(self.cluster_connector, KubernetesClusterConnector):
-            logger.warning('get_removed_nodes_since_last_reload is only supported for Kubernetes clusters')
-            return set()
+            logger.warning('get_num_removed_nodes_since_last_reload is only supported for Kubernetes clusters')
+            return 0
 
-        return self.cluster_connector.get_removed_nodes_before_last_reload()
+        return self.cluster_connector.get_num_removed_nodes_before_last_reload()
 
     def mark_stale(self, dry_run: bool) -> None:
         if dry_run:
