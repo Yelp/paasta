@@ -157,12 +157,24 @@ class Autoscaler:
 
         no_scale_down = False
         if self.autoscaling_config.prevent_scale_down_after_capacity_loss:
+            logger.warning('prevent_scale_down_after_capacity_loss is enabled, scale down may be slowed')
             removed_nodes_before_last_reload = self.pool_manager.get_removed_nodes_before_last_reload()
             # TODO (CLUSTERMAN-576): support instance weights here, instead of just instance count
             if len(removed_nodes_before_last_reload) > self.autoscaling_config.instance_loss_threshold:
-                logger.warning('Nodes lost since last autoscaler run is greater than limit,'
+                logger.warning('Nodes lost since last autoscaler run is {}'
+                               ' which is greater than the threshold ({}),'.format(
+                                   len(removed_nodes_before_last_reload),
+                                   self.autoscaling_config.instance_loss_threshold
+                                   ),
                                ' will not scale down on this run')
                 no_scale_down = True
+            else:
+                logger.warning('Nodes lost since last autoscaler run ({})'
+                               ' is less than the threshold ({}), '.format(
+                                   len(removed_nodes_before_last_reload),
+                                   self.autoscaling_config.instance_loss_threshold
+                                   ),
+                               'scaling down is not restricted')
 
         if isinstance(resource_request, list):
             pass
