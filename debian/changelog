@@ -1,3 +1,13 @@
+paasta-tools (0.97.28) xenial; urgency=medium
+
+  * 0.97.28 tagged with 'make release'
+    Commit: Fix paasta status mesh data for kubernetes instances (#2967)
+    * use correct service name for mesh data in paasta status for
+    kubernetes instances  * add test for kubernetes instance status with
+    smartstack
+
+ -- Maksym Melnychok <maksym@yelp.com>  Mon, 09 Nov 2020 00:56:25 -0800
+
 paasta-tools (0.97.27) xenial; urgency=medium
 
   * 0.97.27 tagged with 'make release'
