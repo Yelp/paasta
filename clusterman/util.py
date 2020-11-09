@@ -75,6 +75,14 @@ class ClustermanResources(NamedTuple):
             gpus=resources.gpus,
         )
 
+    def __sub__(self, other: 'ClustermanResources') -> 'ClustermanResources':
+        return ClustermanResources(
+            cpus=self.cpus - other.cpus,
+            mem=self.mem - other.mem,
+            disk=self.disk - other.disk,
+            gpus=self.gpus - other.gpus,
+        )
+
     def __mul__(self, scalar: float) -> 'ClustermanResources':
         return ClustermanResources(
             cpus=self.cpus * scalar,
@@ -82,6 +90,9 @@ class ClustermanResources(NamedTuple):
             disk=self.disk * scalar,
             gpus=self.gpus * scalar,
         )
+
+    def __lt__(self, other) -> bool:
+        return (self.cpus < other.cpus and self.mem < other.mem and self.disk < other.disk and self.gpus < other.gpus)
 
 
 class SignalResourceRequest(NamedTuple):
