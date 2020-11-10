@@ -151,6 +151,7 @@ class AutoscalerBatch(BatchDaemon, BatchLoggingMixin, BatchRunningSentinelMixin)
         sensu_args = dict(
             check_name=SERVICE_CHECK_NAME,
             scheduler=self.options.scheduler,
+            app=self.apps[0],  # TODO (CLUSTERMAN-126)
             check_every=check_every,
             source=f'{self.options.cluster}_{self.options.pool}',
             ttl=alert_delay,
