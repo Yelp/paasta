@@ -1,3 +1,11 @@
+paasta-tools (0.97.29) xenial; urgency=medium
+
+  * 0.97.29 tagged with 'make release'
+    Commit: Merge pull request #2968 from Yelp/PAASTA-16974-v2beta2
+    Update to v2beta2 API for HPA
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 10 Nov 2020 11:47:48 -0800
+
 paasta-tools (0.97.28) xenial; urgency=medium
 
   * 0.97.28 tagged with 'make release'
