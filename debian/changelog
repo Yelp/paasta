@@ -1,3 +1,12 @@
+paasta-tools (0.97.30) xenial; urgency=medium
+
+  * 0.97.30 tagged with 'make release'
+    Commit: Merge pull request #2969 from
+    Yelp/u/selston/clamp_uwsgi_signalflow  Discard values of metric used
+    in HPA signalflow that are above 1 sinc…
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 10 Nov 2020 13:50:48 -0800
+
 paasta-tools (0.97.29) xenial; urgency=medium
 
   * 0.97.29 tagged with 'make release'
